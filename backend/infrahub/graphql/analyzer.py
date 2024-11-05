@@ -16,11 +16,15 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         schema: Optional[GraphQLSchema] = None,
         operation_name: Optional[str] = None,
         branch: Optional[Branch] = None,
-    ):
+    ) -> None:
         self.branch: Optional[Branch] = branch
         self.operation_name: Optional[str] = operation_name
         self.query_variables: dict[str, Any] = query_variables or {}
         super().__init__(query=query, schema=schema)
+
+    @property
+    def operation_names(self) -> list[str]:
+        return [operation.name for operation in self.operations if operation.name is not None]
 
     async def get_models_in_use(self, types: dict[str, Any]) -> set[str]:
         """List of Infrahub models that are referenced in the query."""

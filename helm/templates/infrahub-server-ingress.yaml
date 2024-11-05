@@ -4,13 +4,13 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-ingress
+  namespace: "{{ .Release.Namespace }}"
   labels:
-    {{- include "infrahub-helm.labels" . | nindent 4 }}
-  {{- with .Values.infrahubServer.ingress.annotations }}
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
   annotations:
-    {{- range $key, $value := . }}
-    {{ $key }}: {{ $value | quote }}
-    {{- end }}
+  {{- include "infrahub-helm.annotations" . | nindent 4 }}
+  {{- with .Values.infrahubServer.ingress.annotations }}
+  {{- . | toYaml | nindent 4 }}
   {{- end }}
 spec:
   {{- with .Values.infrahubServer.ingress.ingressClassName }}

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class InfrahubMessageBus:
-    DELIVER_TIMEOUT: int = 30
+    DELIVER_TIMEOUT: int = 30 * 60  # 30 minutes
     worker_bindings: list[str] = [
         "check.*.*",
         "event.*.*",

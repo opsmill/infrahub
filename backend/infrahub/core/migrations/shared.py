@@ -21,7 +21,7 @@ from .query import MigrationQuery  # noqa: TCH001
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.schema_manager import SchemaBranch
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
@@ -141,7 +141,7 @@ class InternalSchemaMigration(BaseModel):
 
     @staticmethod
     def get_internal_schema() -> SchemaBranch:
-        from infrahub.core.schema_manager import SchemaBranch  # pylint: disable=import-outside-toplevel
+        from infrahub.core.schema.schema_branch import SchemaBranch  # pylint: disable=import-outside-toplevel
 
         # load the internal schema from
         schema = SchemaRoot(**internal_schema)
@@ -172,3 +172,18 @@ class InternalSchemaMigration(BaseModel):
                 return result
 
         return result
+
+
+class ArbitraryMigration(BaseModel):
+    name: str = Field(..., description="Name of the migration")
+    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
+
+    @classmethod
+    def init(cls, **kwargs: dict[str, Any]) -> Self:
+        return cls(**kwargs)  # type: ignore[arg-type]
+
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+        raise NotImplementedError()
+
+    async def execute(self, db: InfrahubDatabase) -> MigrationResult:
+        raise NotImplementedError()

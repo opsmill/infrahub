@@ -7,23 +7,22 @@ import { CONFIG } from "@/config/config";
 import { ARTIFACT_OBJECT, MENU_EXCLUDELIST } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
-import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import { Generate } from "@/screens/artifacts/generate";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
-import Content from "@/screens/layout/content";
+import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import RelationshipDetails from "@/screens/object-item-details/relationship-details-paginated";
 import { RelationshipsDetails } from "@/screens/object-item-details/relationships-details-paginated";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import { getPermission } from "@/screens/permission/utils";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
 import { classNames } from "@/utils/common";
-import { constructPath } from "@/utils/fetch";
 import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
 import {
   getObjectAttributes,
@@ -35,15 +34,14 @@ import { gql } from "@apollo/client";
 import { LockClosedIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
+import UnauthorizedScreen from "../errors/unauthorized-screen";
 
-export default function ArtifactsDetails() {
-  const { objectid } = useParams();
+export default function ArtifactsDetails({ artifactId }: { artifactId: string }) {
+  const objectid = artifactId;
 
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-  const auth = useAuth();
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
 
@@ -76,6 +74,7 @@ export default function ArtifactsDetails() {
         columns,
         relationshipsTabs,
         objectid,
+        hasPermissions: true,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
@@ -105,6 +104,10 @@ export default function ArtifactsDetails() {
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
 
+  const permission = getPermission(
+    schemaData.kind && data && data[schemaData?.kind]?.permissions?.edges
+  );
+
   const tabs = [
     {
       label: schemaData?.label,
@@ -117,26 +120,14 @@ export default function ArtifactsDetails() {
     return null;
   }
 
+  if (!permission.view.isAllowed) {
+    return <UnauthorizedScreen message={permission.view.message} />;
+  }
+
   const fileUrl = CONFIG.ARTIFACTS_CONTENT_URL(objectDetailsData?.storage_id?.value);
 
   return (
-    <Content>
-      <Content.Title
-        title={
-          <div className="flex items-center gap-1">
-            <Link to={constructPath(`/objects/${ARTIFACT_OBJECT}`)} className="hover:underline">
-              {schemaData.name}
-            </Link>
-            <Icon icon="mdi:chevron-right" className="text-2xl shrink-0 text-gray-400" />
-            <p className="max-w-2xl text-sm text-gray-500 font-normal">
-              {objectDetailsData.display_label}
-            </p>
-          </div>
-        }
-      />
-
-      <div className="px-4 text-sm">{schemaData?.description}</div>
-
+    <>
       <Tabs
         tabs={tabs}
         rightItems={
@@ -150,8 +141,10 @@ export default function ArtifactsDetails() {
             <GroupsManagerTriggerButton
               schema={schemaData}
               objectId={objectid}
+              permission={permission}
               size="default"
-              variant="outline">
+              variant="outline"
+            >
               Manage groups
               <RectangleGroupIcon className="ml-2 h-4 w-4" aria-hidden="true" />
             </GroupsManagerTriggerButton>
@@ -174,7 +167,8 @@ export default function ArtifactsDetails() {
                     href={CONFIG.ARTIFACT_DETAILS_URL(objectDetailsData.id)}
                     target="_blank"
                     rel="noreferrer"
-                    className="cursor-pointer underline">
+                    className="cursor-pointer underline"
+                  >
                     {objectDetailsData.id}
                   </a>
                 </dd>
@@ -199,7 +193,8 @@ export default function ArtifactsDetails() {
                         className={classNames(
                           "text-sm text-gray-900 "
                           // attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
-                        )}>
+                        )}
+                      >
                         {attribute.name === "storage_id" &&
                           objectDetailsData[attribute.name]?.value && (
                             <a
@@ -208,7 +203,8 @@ export default function ArtifactsDetails() {
                               )}
                               target="_blank"
                               rel="noreferrer"
-                              className="cursor-pointer underline">
+                              className="cursor-pointer underline"
+                            >
                               {objectDetailsData[attribute.name].value}
                             </a>
                           )}
@@ -231,7 +227,7 @@ export default function ArtifactsDetails() {
 
                                 <Button
                                   buttonType={BUTTON_TYPES.INVISIBLE}
-                                  disabled={!auth?.permissions?.write}
+                                  disabled={!permission.update.isAllowed}
                                   onClick={() => {
                                     setMetaEditFieldDetails({
                                       type: "attribute",
@@ -240,7 +236,8 @@ export default function ArtifactsDetails() {
                                     });
                                     setShowMetaEditModal(true);
                                   }}
-                                  data-cy="metadata-edit-button">
+                                  data-cy="metadata-edit-button"
+                                >
                                   <Icon icon="mdi:pencil" className="text-custom-blue-500" />
                                 </Button>
                               </div>
@@ -294,7 +291,8 @@ export default function ArtifactsDetails() {
           />
         }
         open={showMetaEditModal}
-        setOpen={setShowMetaEditModal}>
+        setOpen={setShowMetaEditModal}
+      >
         <ObjectItemMetaEdit
           closeDrawer={() => setShowMetaEditModal(false)}
           onUpdateComplete={() => refetch()}
@@ -307,6 +305,6 @@ export default function ArtifactsDetails() {
           row={objectDetailsData}
         />
       </SlideOver>
-    </Content>
+    </>
   );
 }

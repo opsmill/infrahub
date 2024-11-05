@@ -77,7 +77,7 @@ Added the initial version of the Infrahub Sync adapter for IP Fabric.
 In most GraphQL queries, it’s now possible to search for objects based on the absence of an attribute or a relationship using the new isnull filter. For example, the following query returns all groups that have a parent group defined:
 As an example the following query will return all groups that have a parent group defined.
 
-```GraphQL
+```graphql
 query {
   CoreGroup(parent__isnull: false){
     edges {

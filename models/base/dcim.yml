@@ -8,7 +8,6 @@ generics:
     label: "Interface"
     include_in_menu: true
     icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
     display_labels:
       - name__value
     order_by:
@@ -101,6 +100,7 @@ generics:
         identifier: "device__interface"
         optional: false
         cardinality: one
+        order_weight: 1
         kind: Parent
       - name: tags
         peer: BuiltinTag
@@ -150,7 +150,6 @@ generics:
     label: "MLAG Interface"
     icon: "mdi:ethernet"
     include_in_menu: true
-    menu_placement: "InfraDevice"
     attributes:
       - name: mlag_id
         label: MLAG Id
@@ -159,6 +158,7 @@ generics:
     relationships:
       - name: mlag_domain
         label: MLAG Domain
+        order_weight: 1
         peer: InfraMlagDomain
         kind: Attribute
         cardinality: one
@@ -242,6 +242,7 @@ nodes:
         optional: false
         cardinality: one
         kind: Attribute
+        order_weight: 1
         identifier: "site__devices"
       - name: interfaces
         peer: InfraInterface
@@ -430,7 +431,6 @@ nodes:
     description: "A Platform represents the type of software running on a device"
     label: "Platform"
     icon: "mdi:application-cog-outline"
-    menu_placement: "InfraDevice"
     default_filter: name__value
     human_friendly_id: ["name__value"]
     order_by:
@@ -467,7 +467,6 @@ nodes:
     namespace: Infra
     description: "A Circuit represent a single physical link between two locations"
     label: "Circuit"
-    icon: "mdi:cable-data"
     default_filter: circuit_id__value
     human_friendly_id: ["circuit_id__value"]
     order_by:
@@ -478,12 +477,14 @@ nodes:
       - name: circuit_id
         kind: Text
         unique: true
+        order_weight: 2
       - name: description
         kind: Text
         optional: true
       - name: vendor_id
         kind: Text
         optional: true
+        order_weight: 3
       - name: status
         kind: Dropdown
         choices:
@@ -525,6 +526,7 @@ nodes:
         optional: false
         cardinality: one
         kind: Attribute
+        order_weight: 1
       - name: endpoints
         peer: InfraCircuitEndpoint
         optional: true
@@ -540,8 +542,6 @@ nodes:
     namespace: Infra
     description: "A Circuit endpoint is attached to each end of a circuit"
     label: "Circuit Endpoint"
-    icon: "mdi:ethernet-cable"
-    menu_placement: "InfraCircuit"
     include_in_menu: false
     attributes:
       - name: description
@@ -566,8 +566,6 @@ nodes:
     namespace: Infra
     description: "Represents the group of devices that share interfaces in a multi chassis link aggregation group"
     label: "MLAG Domain"
-    icon: "eos-icons:cluster-management"
-    menu_placement: "InfraDevice"
     include_in_menu: true
     display_labels:
       - name__value
@@ -616,6 +614,7 @@ nodes:
     namespace: Infra
     description: "L3 MLAG Interface"
     label: "MLAG Interface L3"
+    icon: "mdi:ethernet"
     include_in_menu: false
     display_labels:
       - mlag_id__value

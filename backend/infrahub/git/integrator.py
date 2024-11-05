@@ -10,12 +10,8 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 import jinja2
 import ujson
 import yaml
-from infrahub_sdk import (
-    InfrahubClient,
-    InfrahubNode,
-    InfrahubRepositoryConfig,
-    ValidationError,
-)
+from infrahub_sdk import InfrahubClient  # noqa: TCH002
+from infrahub_sdk.exceptions import ValidationError
 from infrahub_sdk.protocols import (
     CoreArtifact,
     CoreArtifactDefinition,
@@ -31,6 +27,7 @@ from infrahub_sdk.schema import (
     InfrahubGeneratorDefinitionConfig,
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
+    InfrahubRepositoryConfig,
 )
 from infrahub_sdk.utils import compare_lists
 from infrahub_sdk.yaml import SchemaFile
@@ -46,9 +43,11 @@ if TYPE_CHECKING:
     import types
 
     from infrahub_sdk.checks import InfrahubCheck
+    from infrahub_sdk.node import InfrahubNode
     from infrahub_sdk.schema import InfrahubRepositoryArtifactDefinitionConfig
     from infrahub_sdk.transforms import InfrahubTransform
 
+    from infrahub.git.models import RequestArtifactGenerate
     from infrahub.message_bus import messages
 
 # pylint: disable=too-many-lines
@@ -458,7 +457,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 await self.log.warning(
                     f"Unable to find the schema {schema}", repository=self.name, branch=branch_name, commit=commit
                 )
-                continue
 
             if full_schema.is_file():
                 schema_file = SchemaFile(identifier=str(schema), location=full_schema)
@@ -474,7 +472,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                     schema_file.load_content()
                     schemas_data.append(schema_file)
 
-        has_error = False
+        if not schemas_data:
+            # If the repository doesn't contain any schema files there is no reason to continue
+            # and send an empty list to the API
+            return
+
         for schema_file in schemas_data:
             if schema_file.valid:
                 continue
@@ -484,10 +486,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 branch=branch_name,
                 commit=commit,
             )
-            has_error = True
-
-        if has_error:
-            return
 
         # Valid data format of content
         for schema_file in schemas_data:
@@ -500,10 +498,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                     branch=branch_name,
                     commit=commit,
                 )
-                has_error = True
-
-        if has_error:
-            return
+                raise ValidationError(
+                    identifier=str(self.id),
+                    message=f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}",
+                ) from exc
 
         response = await self.sdk.schema.load(schemas=[item.content for item in schemas_data], branch=branch_name)
 
@@ -523,7 +521,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 f"Unable to load the schema : {', '.join(error_messages)}", repository=self.name, commit=commit
             )
 
-            return
+            raise ValidationError(
+                identifier=str(self.id), message=f"Unable to load the schema : {', '.join(error_messages)}"
+            )
 
         for schema_file in schemas_data:
             await self.log.info(
@@ -628,7 +628,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 await self.log.warning(
                     self.name, import_type="check_definition", file=check.file_path.as_posix(), error=str(exc)
                 )
-                continue
+                raise
 
             checks.extend(
                 await self.get_check_definition(
@@ -816,7 +816,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 await self.log.warning(
                     self.name, import_type="python_transform", file=transform.file_path.as_posix(), error=str(exc)
                 )
-                continue
+                raise
 
             transforms.extend(
                 await self.get_python_transforms(
@@ -912,6 +912,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 repository=self.name,
                 branch=branch_name,
             )
+            raise
         return checks
 
     async def get_python_transforms(
@@ -944,6 +945,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 repository=self.name,
                 branch=branch_name,
             )
+            raise
 
         return transforms
 
@@ -1232,11 +1234,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
             module = importlib.import_module(file_info.module_name)
 
-            transform_class: InfrahubTransform = getattr(module, class_name)
+            transform_class: type[InfrahubTransform] = getattr(module, class_name)
 
-            transform = await transform_class.init(
-                root_directory=commit_worktree.directory, branch=branch_name, client=client
-            )
+            transform = transform_class(root_directory=commit_worktree.directory, branch=branch_name, client=client)
             return await transform.run(data=data)
 
         except ModuleNotFoundError as exc:
@@ -1317,7 +1317,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
     async def render_artifact(
-        self, artifact: CoreArtifact, message: Union[messages.CheckArtifactCreate, messages.RequestArtifactGenerate]
+        self, artifact: CoreArtifact, message: Union[messages.CheckArtifactCreate, RequestArtifactGenerate]
     ) -> ArtifactGenerateResult:
         response = await self.sdk.query_gql_query(
             name=message.query,

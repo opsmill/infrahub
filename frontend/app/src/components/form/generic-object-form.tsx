@@ -1,16 +1,16 @@
-import NoDataFound from "@/screens/errors/no-data-found";
 import { GenericSelector } from "@/components/form/generic-selector";
-import { useState } from "react";
-import { iGenericSchema } from "@/state/atoms/schema.atom";
 import ObjectForm, { ObjectFormProps } from "@/components/form/object-form";
+import NoDataFound from "@/screens/errors/no-data-found";
+import { iGenericSchema } from "@/state/atoms/schema.atom";
+import { useState } from "react";
 
 interface GenericObjectFormProps extends Omit<ObjectFormProps, "kind"> {
   genericSchema: iGenericSchema;
 }
 
 export const GenericObjectForm = ({ genericSchema, ...props }: GenericObjectFormProps) => {
-  const [kindToCreate, setKindToCreate] = useState<string | undefined>(
-    genericSchema.used_by?.length === 1 ? genericSchema.used_by[0] : undefined
+  const [kindToCreate, setKindToCreate] = useState<string | null>(
+    genericSchema.used_by?.length === 1 ? genericSchema.used_by[0] : null
   );
 
   if (!genericSchema.used_by || genericSchema.used_by?.length === 0) {

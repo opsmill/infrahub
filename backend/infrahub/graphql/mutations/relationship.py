@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.relationship import RelationshipManager
 
-    from .. import GraphqlContext
+    from ..initialization import GraphqlContext
 
 
 # pylint: disable=unused-argument,too-many-branches

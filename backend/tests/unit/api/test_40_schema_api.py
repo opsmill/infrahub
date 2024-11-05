@@ -4,24 +4,20 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.initialization import create_branch
+from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.utils import count_relationships
-from infrahub.core.validators.model import SchemaViolation
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.messages.schema_migration_path import (
     SchemaMigrationPathResponse,
     SchemaMigrationPathResponseData,
 )
-from infrahub.message_bus.messages.schema_validator_path import (
-    SchemaValidatorPathResponse,
-    SchemaValidatorPathResponseData,
-)
 
 
 async def test_schema_read_endpoint_default_branch(
     db: InfrahubDatabase,
-    client,
+    client: TestClient,
     client_headers,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
@@ -97,7 +93,7 @@ async def test_schema_read_endpoint_wrong_branch(
 
 async def test_schema_summary_default_branch(
     db: InfrahubDatabase,
-    client,
+    client: TestClient,
     client_headers,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
@@ -121,7 +117,7 @@ async def test_schema_summary_default_branch(
 
 async def test_schema_kind_default_branch(
     db: InfrahubDatabase,
-    client,
+    client: TestClient,
     client_headers,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
@@ -140,7 +136,6 @@ async def test_schema_kind_default_branch(
 
     assert "id" in schema
     assert "hash" in schema
-    assert "filters" in schema
     assert "relationships" in schema
 
 
@@ -174,7 +169,7 @@ async def test_json_schema_kind_default_branch(
 
 async def test_schema_kind_not_valid(
     db: InfrahubDatabase,
-    client,
+    client: TestClient,
     client_headers,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
@@ -195,6 +190,8 @@ async def test_schema_load_endpoint_valid_simple(
     client: TestClient,
     admin_headers,
     default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
     authentication_base,
     helper,
 ):
@@ -225,11 +222,43 @@ async def test_schema_load_endpoint_valid_simple(
     assert relationships["tags"] == 7000
 
 
+async def test_schema_load_permission_failure(
+    db: InfrahubDatabase,
+    client: TestClient,
+    first_account,
+    default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
+    authentication_base,
+    helper,
+):
+    token = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
+    await token.new(db=db, token="unprivileged", account=first_account)
+    await token.save(db=db)
+
+    # Load the schema in the database
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+
+    # Must execute in a with block to execute the startup/shutdown event
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers={"X-INFRAHUB-KEY": "unprivileged"},
+            json={"schemas": [helper.schema_file("infra_simple_01.json")]},
+        )
+
+    assert response.status_code == 403
+    assert response.json()["errors"][0]["message"] == "You are not allowed to manage the schema"
+
+
 async def test_schema_load_restricted_namespace(
     db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
     default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
     authentication_base,
     helper,
 ):
@@ -249,6 +278,8 @@ async def test_schema_load_endpoint_idempotent_simple(
     client: TestClient,
     admin_headers,
     default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
     register_core_schema_db,
     authentication_base,
     helper,
@@ -296,6 +327,8 @@ async def test_schema_load_endpoint_valid_with_generics(
     client: TestClient,
     admin_headers,
     default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
     register_core_schema_db,
     authentication_base,
     helper,
@@ -325,6 +358,8 @@ async def test_schema_load_endpoint_idempotent_with_generics(
     client: TestClient,
     admin_headers,
     default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
     register_core_schema_db,
     authentication_base,
     helper,
@@ -372,6 +407,8 @@ async def test_schema_load_endpoint_valid_with_extensions(
     admin_headers,
     rpc_bus,
     default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
     authentication_base,
     helper,
 ):
@@ -418,6 +455,8 @@ async def test_schema_load_endpoint_not_valid_simple_02(
     client: TestClient,
     admin_headers,
     default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
     authentication_base,
     helper,
 ):
@@ -437,6 +476,8 @@ async def test_schema_load_endpoint_not_valid_simple_03(
     client: TestClient,
     admin_headers,
     default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
     authentication_base,
     helper,
 ):
@@ -456,6 +497,8 @@ async def test_schema_load_endpoint_not_valid_simple_04(
     client: TestClient,
     admin_headers,
     default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
     authentication_base,
     helper,
 ):
@@ -475,6 +518,8 @@ async def test_schema_load_endpoint_not_valid_simple_05(
     client: TestClient,
     admin_headers,
     default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
     authentication_base,
     helper,
 ):
@@ -517,6 +562,8 @@ async def test_schema_load_endpoint_constraints_not_valid(
     admin_headers,
     rpc_bus,
     default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
     authentication_base,
     car_person_schema,
     car_accord_main,
@@ -524,31 +571,9 @@ async def test_schema_load_endpoint_constraints_not_valid(
     person_john_main,
     helper,
 ):
-    # person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
-    # await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
-    # await person.save(db=db)
-
     # Load the schema in the database
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
-
-    rpc_bus.response.append(
-        SchemaValidatorPathResponse(
-            data=SchemaValidatorPathResponseData(
-                violations=[
-                    SchemaViolation(
-                        node_id="cf85d101-c6d6-41aa-b1ab-41bc4c7d46f1",
-                        node_kind="TestPerson",
-                        display_label="ALFRED",
-                        full_display_label="Alfred TestPerson(cf85d101-c6d6-41aa-b1ab-41bc4c7d46f1)",
-                        message="clear error message",
-                    )
-                ],
-                constraint_name="attribute.regex.update",
-                schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
-            )
-        )
-    )
 
     person_schema = {
         "name": "Person",
@@ -572,8 +597,9 @@ async def test_schema_load_endpoint_constraints_not_valid(
             json={"schemas": [{"version": "1.0", "nodes": [person_schema]}]},
         )
 
+    error_message = f"Node John (TestPerson: {person_john_main.id}) is not compatible with the constraint 'attribute.regex.update' at 'schema/TestPerson/name/regex'"  # noqa: E501
     assert response.json() == {
         "data": None,
-        "errors": [{"extensions": {"code": 422}, "message": "clear error message"}],
+        "errors": [{"extensions": {"code": 422}, "message": error_message}],
     }
     assert response.status_code == 422

@@ -44,7 +44,8 @@ export const AccordionStyled = ({
       </h4>
     }
     className="bg-custom-white shadow p-3 rounded"
-    {...props}>
+    {...props}
+  >
     <article className="divide-y px-2 mt-3 bg-gray-100 rounded">{children}</article>
   </Accordion>
 );
@@ -107,7 +108,8 @@ export const TabStyled = ({ children }: { children: ReactElement | string }) => 
         "px-4 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100",
         selected ? "border-b-2 border-b-custom-blue-600 font-semibold" : ""
       )
-    }>
+    }
+  >
     {children}
   </Tab>
 );
@@ -135,7 +137,8 @@ export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
           className="bg-sky-50 text-sky-800 border-sky-200 hover:bg-sky-100 cursor-pointer"
           onClick={() =>
             setKinds(selectedKinds && selectedKinds?.length > 0 ? [...selectedKinds, kind] : [kind])
-          }>
+          }
+        >
           {kind}
         </Badge>
       ))}

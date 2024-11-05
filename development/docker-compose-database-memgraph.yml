@@ -1,8 +1,8 @@
 ---
 services:
   database:
-    image: "${DATABASE_DOCKER_IMAGE:-memgraph/memgraph-platform:latest}"
-    entrypoint: ["/usr/bin/supervisord"]
+    profiles: [demo, dev]
+    image: "${DATABASE_DOCKER_IMAGE:-memgraph/memgraph-mage:latest}"
     init: true
     volumes:
       - database_data:/var/lib/memgraph

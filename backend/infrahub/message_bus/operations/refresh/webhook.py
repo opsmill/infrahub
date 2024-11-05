@@ -1,14 +1,20 @@
 import ujson
+from prefect import flow
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 
 
+@flow(name="registry-webhook-config-refresh")
 async def configuration(
     message: messages.RefreshWebhookConfiguration,  # pylint: disable=unused-argument
     service: InfrahubServices,
 ) -> None:
+    if not service._client:
+        service.log.error("Client hasn't been initialized, can't refresh webhook")
+        return
+
     service.log.debug("Refreshing webhook configuration")
     standard_webhooks = await service.client.all(kind=InfrahubKind.STANDARDWEBHOOK)
     custom_webhooks = await service.client.all(kind=InfrahubKind.CUSTOMWEBHOOK)

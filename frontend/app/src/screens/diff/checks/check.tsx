@@ -150,7 +150,8 @@ export const Check = ({ id }: tCheckProps) => {
       className={classNames(
         "flex flex-col rounded-md p-2 bg-gray-50 border border-l-4",
         getCheckBorderColor(severity?.value)
-      )}>
+      )}
+    >
       <div className="flex mb-2">
         <div className="flex flex-1 flex-col">
           <div className="flex items-center">

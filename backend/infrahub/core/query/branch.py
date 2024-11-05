@@ -25,7 +25,7 @@ class AddNodeToBranch(Query):
         MATCH (root:Root)
         MATCH (d) WHERE %(id_func)s(d) = $node_id
         WITH root,d
-        CREATE (d)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, from: $now, to: null, status: $status }]->(root)
+        CREATE (d)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, from: $now, status: $status }]->(root)
         RETURN %(id_func)s(r)
         """ % {
             "id_func": db.get_id_function_name(),

@@ -1,14 +1,16 @@
 import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
-import { iNodeSchema } from "@/state/atoms/schema.atom";
-import NoDataFound from "@/screens/errors/no-data-found";
+import { FormRelationshipValue, RelationshipManyValueFromUser } from "@/components/form/type";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { updateGroupsQuery } from "@/graphql/mutations/groups/updateGroupsQuery";
 import { useMutation } from "@/hooks/useQuery";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
+import NoDataFound from "@/screens/errors/no-data-found";
+import { iNodeSchema } from "@/state/atoms/schema.atom";
 import { pluralize } from "@/utils/string";
-import { ADD_RELATIONSHIP } from "@/graphql/mutations/relationships/addRelationship";
+import { toast } from "react-toastify";
 
 interface AddGroupFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   objectId: string;
+  defaultGroupIds?: FormRelationshipValue;
   schema: iNodeSchema;
   onUpdateCompleted?: () => void;
 }
@@ -16,12 +18,11 @@ interface AddGroupFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"
 export default function AddGroupForm({
   objectId,
   onUpdateCompleted,
+  defaultGroupIds,
   schema,
   ...props
 }: AddGroupFormProps) {
-  const [addObjectToGroups] = useMutation(ADD_RELATIONSHIP, {
-    variables: { relationshipName: "member_of_groups" },
-  });
+  const [addObjectToGroups] = useMutation(updateGroupsQuery({ schema, objectId }));
 
   const memberOfGroupsRelationship = schema.relationships?.find(
     ({ name }) => name === "member_of_groups"
@@ -31,9 +32,9 @@ export default function AddGroupForm({
     return <NoDataFound message={`Model ${schema.kind} has no relationship with any group`} />;
   }
 
-  async function onSubmit({ groupIds }: { groupIds: Array<{ id: string }> }) {
+  async function onSubmit(groupIds: Array<{ id: string }>) {
     try {
-      await addObjectToGroups({ variables: { objectId, relationshipIds: groupIds } });
+      await addObjectToGroups({ variables: { id: objectId, groupIds } });
 
       toast(
         <Alert
@@ -56,11 +57,17 @@ export default function AddGroupForm({
           name: "groupIds",
           type: "relationship",
           rules: { required: true },
+          defaultValue: defaultGroupIds,
           relationship: memberOfGroupsRelationship,
           schema,
         },
       ]}
-      onSubmit={({ groupIds }) => onSubmit({ groupIds: groupIds.value as Array<{ id: string }> })}
+      onSubmit={async (formData) => {
+        const { groupIds } = formData as { groupIds: RelationshipManyValueFromUser };
+
+        if (!groupIds.value) return;
+        await onSubmit(groupIds.value.map(({ id }) => ({ id })));
+      }}
       {...props}
     />
   );

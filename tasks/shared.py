@@ -28,19 +28,17 @@ INVOKE_PTY = os.getenv("INVOKE_PTY", None)
 INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
 INFRAHUB_ADDRESS = os.getenv("INFRAHUB_ADDRESS", "http://localhost:8000")
 
-INFRAHUB_USE_NATS = bool(os.getenv("INFRAHUB_USE_NATS", False))
+INFRAHUB_USE_NATS = bool(os.getenv("INFRAHUB_USE_NATS", None))
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
-MEMGRAPH_DOCKER_IMAGE = os.getenv(
-    "MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-platform:2.14.0-memgraph2.14.0-lab2.11.1-mage1.14"
-)
+MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
 NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.20.0-enterprise")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
     "MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.7-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine"
 )
 CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine")
 
-TASK_MANAGER_DOCKER_IMAGE = os.getenv("TASK_MANAGER_DOCKER_IMAGE", "prefecthq/prefect:3.0-python3.12")
+TASK_MANAGER_DOCKER_IMAGE = os.getenv("TASK_MANAGER_DOCKER_IMAGE", "prefecthq/prefect:3.0.3-python3.12")
 
 here = Path(__file__).parent.resolve()
 TOP_DIRECTORY_NAME = here.parent.name
@@ -49,10 +47,14 @@ PYTHON_VER = os.getenv("PYTHON_VER", "3.12")
 
 PWD = os.getcwd()
 
-NBR_WORKERS = os.getenv("PYTEST_XDIST_WORKER_COUNT", 1)
-GITHUB_ACTION = os.getenv("GITHUB_ACTION", False)
+NBR_WORKERS = int(os.getenv("PYTEST_XDIST_WORKER_COUNT", "1"))
+GITHUB_ACTION = os.getenv("GITHUB_ACTION"), False
 
-AVAILABLE_SERVICES = ["infrahub-git", "infrahub-server", "database", "message-queue"]
+
+SERVICE_SERVER_NAME = "server"
+SERVICE_WORKER_NAME = "task-worker"
+AVAILABLE_SERVICES = [SERVICE_SERVER_NAME, SERVICE_WORKER_NAME, "database", "message-queue", "task-manager", "cache"]
+
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
 COMPOSE_FILES_DEPS = {False: "development/docker-compose-deps.yml", True: "development/docker-compose-deps-nats.yml"}
@@ -186,12 +188,26 @@ def check_environment(context: Context) -> dict:
     return params
 
 
+def dumb_terminal() -> bool:
+    return os.getenv("TERM", "").lower() == "dumb"
+
+
 def get_compose_cmd(namespace: Namespace) -> str:
-    profile = ""
+    options = []
+
     if namespace == Namespace.DEV:
-        profile = "--profile dev"
-    if profile:
-        return f"docker compose {profile}"
+        options.append("--profile dev")
+    elif namespace == Namespace.DEFAULT:
+        options.append("--profile demo")
+    elif namespace == Namespace.TEST:
+        options.append("--profile test")
+
+    if dumb_terminal():
+        options.append("--ansi never")
+
+    if len(options) > 0:
+        return f"docker compose {' '.join(options)}"
+
     return "docker compose"
 
 
@@ -226,9 +242,9 @@ def get_env_vars(context: Context, namespace: Namespace = Namespace.DEFAULT) -> 
 
     if DATABASE_DOCKER_IMAGE:
         ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = DATABASE_DOCKER_IMAGE
-    elif INFRAHUB_DATABASE == DatabaseType.NEO4J.value:
+    elif DatabaseType.NEO4J.value == INFRAHUB_DATABASE:
         ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = NEO4J_DOCKER_IMAGE
-    elif INFRAHUB_DATABASE == DatabaseType.MEMGRAPH.value:
+    elif DatabaseType.MEMGRAPH.value == INFRAHUB_DATABASE:
         ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = MEMGRAPH_DOCKER_IMAGE
     return " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 

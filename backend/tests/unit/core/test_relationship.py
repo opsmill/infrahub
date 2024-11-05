@@ -9,7 +9,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship.model import Relationship, RelationshipValidatorList
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
@@ -36,7 +36,7 @@ async def test_relationship_init(
     assert rel.node_id == person_jack_main.id
 
     rel_node = await rel.get_node(db=db)
-    assert type(rel_node) == Node
+    assert type(rel_node) is Node
     assert rel_node.id == person_jack_main.id
 
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { formatDiffNodesToDiffTree } from "../../../../src/screens/diff/diff-tree";
 import { DiffNode } from "../../../../src/screens/diff/node-diff/types";
 import { TREE_ROOT_ID } from "../../../../src/screens/ipam/constants";

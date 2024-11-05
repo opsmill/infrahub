@@ -3,7 +3,6 @@ import SlideOver from "@/components/display/slide-over";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { getProposedChangesObjectThreads } from "@/graphql/queries/proposed-changes/getProposedChangesObjectThreads";
-import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { getThreadLabel, getThreadTitle } from "@/utils/diff";
@@ -12,8 +11,9 @@ import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@/components/buttons/button-primitive";
+import { getPermission } from "@/screens/permission/utils";
+import { Icon } from "@iconify-icon/react";
 import { DiffContext } from ".";
 import { DiffComments } from "./comments";
 
@@ -24,7 +24,6 @@ type tDiffThread = {
 export const DiffThread = ({ path }: tDiffThread) => {
   const { proposedChangeId } = useParams();
   const [schemaList] = useAtom(schemaState);
-  const auth = useAuth();
   const { node, currentBranch } = useContext(DiffContext);
   const [showThread, setShowThread] = useState(false);
 
@@ -46,7 +45,9 @@ export const DiffThread = ({ path }: tDiffThread) => {
 
   const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
 
-  const thread = data ? data[PROPOSED_CHANGES_OBJECT_THREAD_OBJECT]?.edges[0]?.node : {};
+  const thread = data ? data[schemaData.kind]?.edges[0]?.node : {};
+
+  const permission = data && getPermission(data?.[schemaData.kind]?.permissions?.edges);
 
   if (loading || error) {
     return null;
@@ -64,14 +65,15 @@ export const DiffThread = ({ path }: tDiffThread) => {
         {thread?.comments?.count ? (
           <Tooltip enabled content={"Add comment"}>
             <Button
-              disabled={!auth?.permissions?.write}
+              disabled={!permission?.create?.isAllowed}
               onClick={(event) => {
                 event.stopPropagation();
                 setShowThread(true);
               }}
               className="px-2 h-6 rounded-full"
               variant={"dark"}
-              data-testid="data-diff-add-comment">
+              data-testid="data-diff-add-comment"
+            >
               <Icon icon="mdi:chat-outline" className="mr-1" />
               {thread?.comments?.count}
             </Button>
@@ -80,7 +82,7 @@ export const DiffThread = ({ path }: tDiffThread) => {
           <div className="hidden group-hover:block">
             <Tooltip enabled content={"Add comment"}>
               <Button
-                disabled={!auth?.permissions?.write}
+                disabled={!permission?.create?.isAllowed}
                 onClick={(event) => {
                   event.stopPropagation();
                   setShowThread(true);
@@ -88,7 +90,8 @@ export const DiffThread = ({ path }: tDiffThread) => {
                 className="p-0 h-6 rounded-full"
                 variant={"outline"}
                 size={"icon"}
-                data-testid="data-diff-add-comment">
+                data-testid="data-diff-add-comment"
+              >
                 <Icon icon={"mdi:plus"} />
               </Button>
             </Tooltip>

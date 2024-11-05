@@ -1,12 +1,13 @@
 import asyncio
 import os
 from pathlib import Path
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, Optional
 
 import pytest
 import yaml
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 from prefect.testing.utilities import prefect_test_harness
+from pytest import TempPathFactory
 
 from infrahub import config
 from infrahub.core import registry
@@ -16,7 +17,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import InfrahubDatabase, get_db
+from infrahub.database import InfrahubDatabase
 from infrahub.utils import get_models_dir
 from tests.helpers.file_repo import FileRepo
 
@@ -39,15 +40,6 @@ def event_loop():
     loop = policy.new_event_loop()
     yield loop
     loop.close()
-
-
-@pytest.fixture(scope="module")
-async def db() -> AsyncGenerator[InfrahubDatabase, None]:
-    driver = InfrahubDatabase(driver=await get_db(retry=1))
-
-    yield driver
-
-    await driver.close()
 
 
 async def load_infrastructure_schema(db: InfrahubDatabase):
@@ -112,32 +104,26 @@ def integration_helper(db: InfrahubDatabase) -> IntegrationHelper:
     return IntegrationHelper(db=db)
 
 
-@pytest.fixture
-def git_sources_dir(tmp_path: Path) -> Path:
-    source_dir = tmp_path / "sources"
-    source_dir.mkdir()
-
-    return source_dir
+@pytest.fixture(scope="session")
+def git_sources_dir(tmp_path_factory: TempPathFactory) -> Path:
+    return tmp_path_factory.mktemp("sources")
 
 
-@pytest.fixture
-def git_repos_dir(tmp_path: Path) -> Path:
-    repos_dir = tmp_path / "repositories"
-    repos_dir.mkdir()
-
+@pytest.fixture(scope="session")
+def git_repos_dir(tmp_path_factory: TempPathFactory) -> Path:
+    repos_dir = tmp_path_factory.mktemp("repositories")
     config.SETTINGS.git.repositories_directory = str(repos_dir)
-
     return repos_dir
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def git_repo_infrahub_demo_edge(git_sources_dir: Path) -> FileRepo:
     """Git Repository used as part of the  demo-edge tutorial."""
 
     return FileRepo(name="infrahub-demo-edge", sources_directory=git_sources_dir)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def git_repo_car_dealership(git_sources_dir: Path) -> FileRepo:
     """Simple Git Repository used for testing."""
 

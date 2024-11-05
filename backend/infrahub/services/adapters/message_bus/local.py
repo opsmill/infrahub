@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Optional, TypeVar
 
 import ujson
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.message_bus import InfrahubMessage, Meta
@@ -21,7 +21,7 @@ ResponseClass = TypeVar("ResponseClass")
 
 
 class BusSimulator(InfrahubMessageBus):
-    def __init__(self, database: Optional[InfrahubDatabase] = None):
+    def __init__(self, database: Optional[InfrahubDatabase] = None) -> None:
         self.messages: list[InfrahubMessage] = []
         self.messages_per_routing_key: dict[str, list[InfrahubMessage]] = {}
         self.service: InfrahubServices = InfrahubServices(database=database, message_bus=self)

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from infrahub.graphql.types.attribute import BaseAttribute as BaseAttributeType
 
 DEFAULT_MODULE_ATTRIBUTE = "infrahub.core.attribute"
-DEFAULT_MODULE_GRAPHQL_INPUT = "infrahub.graphql.mutations"
+DEFAULT_MODULE_GRAPHQL_INPUT = "infrahub.graphql.mutations.attribute"
 DEFAULT_MODULE_GRAPHQL_QUERY = "infrahub.graphql.types"
 
 
@@ -364,6 +364,9 @@ ATTRIBUTE_PYTHON_TYPES: dict[str, type] = {
 }
 
 ATTRIBUTE_KIND_LABELS = list(ATTRIBUTE_TYPES.keys())
+
+# Data types supporting large values, which can therefore not be indexed in neo4j.
+LARGE_ATTRIBUTE_TYPES = [TextArea, JSON]
 
 
 def get_attribute_type(kind: str = "Default") -> type[InfrahubDataType]:

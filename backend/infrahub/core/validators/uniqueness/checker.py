@@ -46,7 +46,7 @@ def get_attribute_path_from_string(
 class UniquenessChecker(ConstraintCheckerInterface):
     def __init__(
         self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None, max_concurrent_execution: int = 5
-    ):
+    ) -> None:
         self.db = db
         self.branch = branch
         self.semaphore = asyncio.Semaphore(max_concurrent_execution)

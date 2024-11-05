@@ -87,7 +87,7 @@ query Widgets($name: String!) {
 
 Create a local directory on your computer where we will store the generator files.
 
-```bash
+```shell
 mkdir example_generator
 ```
 
@@ -168,7 +168,7 @@ Within the `example_generator` folder you should now have 3 files:
 
 Before we can test our generator we must add the files to a local Git repository.
 
-```bash
+```shell
 git init --initial-branch=main
 git add .
 git commit -m "First commit"
@@ -178,7 +178,7 @@ git commit -m "First commit"
 
 Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available generators.
 
-```bash title="❯ infrahubctl generator --list"
+```shell title="❯ infrahubctl generator --list"
 Generators defined in repository: 1
 widget_generator (widget_generator.py::Generator) Target: widgets
 ```
@@ -189,13 +189,13 @@ When running a generator with `infrahubctl` the [SDK tracking](/python-sdk/topic
 
 :::
 
-```bash
+```shell
 infrahubctl branch create test-branch1
 ```
 
 Then we can try to run the generator within this branch.
 
-```bash
+```shell
 infrahubctl generator widget_generator --branch=test-branch1 name=widget1
 infrahubctl generator widget_generator --branch=test-branch1 name=widget2
 ```

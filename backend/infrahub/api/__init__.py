@@ -14,6 +14,8 @@ from infrahub.api import (
     file,
     internal,
     menu,
+    oauth2,
+    oidc,
     query,
     schema,
     storage,
@@ -29,6 +31,8 @@ router.include_router(diff.router)
 router.include_router(file.router)
 router.include_router(internal.router)
 router.include_router(menu.router)
+router.include_router(oauth2.router)
+router.include_router(oidc.router)
 router.include_router(query.router)
 router.include_router(schema.router)
 router.include_router(storage.router)

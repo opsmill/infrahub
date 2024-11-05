@@ -4,8 +4,7 @@ services:
     deploy:
       mode: replicated
       replicas: "${NBR_WORKERS}"
-    image: "${DATABASE_DOCKER_IMAGE:-memgraph/memgraph-platform:latest}"
-    entrypoint: ["/usr/bin/supervisord"]
+    image: "${DATABASE_DOCKER_IMAGE:-memgraph/memgraph-mage:latest}"
     init: true
     volumes:
       - ./memgraph.conf:/etc/memgraph/memgraph.conf

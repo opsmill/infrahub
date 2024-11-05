@@ -1,18 +1,24 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Self
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
-from infrahub_sdk import UUIDT, Config, InfrahubClient
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.uuidt import UUIDT
+from typing_extensions import Self
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
+from infrahub.git.models import GitRepositoryMerge, GitRepositoryPullReadOnly
 from infrahub.git.repository import InfrahubReadOnlyRepository
+from infrahub.git.tasks import pull_read_only
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.operations import git
-from infrahub.services import InfrahubServices
+from infrahub.services import InfrahubServices, services
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
 from tests.helpers.test_client import dummy_async_request
 
 # pylint: disable=redefined-outer-name
@@ -32,9 +38,9 @@ class AsyncContextManagerMock:
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         pass
 
@@ -111,7 +117,7 @@ async def test_git_rpc_merge(
 
     commit_main_before = repo.get_commit_value(branch_name="main")
 
-    message = messages.GitRepositoryMerge(
+    model = GitRepositoryMerge(
         repository_id=str(UUIDT()),
         repository_name=repo.name,
         source_branch="branch01",
@@ -122,9 +128,17 @@ async def test_git_rpc_merge(
 
     client_config = Config(requester=dummy_async_request)
     bus_simulator = helper.get_message_bus_simulator()
-    service = InfrahubServices(client=InfrahubClient(config=client_config), message_bus=bus_simulator)
+    service = InfrahubServices(
+        client=InfrahubClient(config=client_config), message_bus=bus_simulator, workflow=WorkflowLocalExecution()
+    )
     bus_simulator.service = service
-    await service.send(message=message)
+
+    original_services = services.service
+    services.service = service
+    await service.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
+
+    # Restore original services to not impact other tests. This global variable might/should be redesigned at some point.
+    service.service = original_services
 
     commit_main_after = repo.get_commit_value(branch_name="main")
 
@@ -228,8 +242,10 @@ class TestPullReadOnly:
     def setup_method(self):
         self.client = AsyncMock(spec=InfrahubClient)
         self.git_report = AsyncContextManagerMock()
-        self.services = InfrahubServices(client=self.client)
-        self.services.git_report = self.git_report
+        self.original_services = services.service
+        services.service = InfrahubServices(client=self.client, workflow=WorkflowLocalExecution())
+        services.service.git_report = self.git_report
+
         self.commit = str(UUIDT())
         self.infrahub_branch_name = "read-only-branch"
         self.repo_id = str(UUIDT())
@@ -237,7 +253,7 @@ class TestPullReadOnly:
         self.repo_name = "dont-update-this-dude"
         self.ref = "stable-branch"
 
-        self.message = messages.GitRepositoryPullReadOnly(
+        self.model = GitRepositoryPullReadOnly(
             location=self.location,
             repository_id=self.repo_id,
             repository_name=self.repo_name,
@@ -246,12 +262,10 @@ class TestPullReadOnly:
             infrahub_branch_name=self.infrahub_branch_name,
         )
 
-        lock_patcher = patch("infrahub.message_bus.operations.git.repository.lock")
+        lock_patcher = patch("infrahub.git.tasks.lock")
         self.mock_infra_lock = lock_patcher.start()
-        self.mock_infra_lock.registry = AsyncMock(spec=InfrahubLockRegistry)
-        repo_class_patcher = patch(
-            "infrahub.message_bus.operations.git.repository.InfrahubReadOnlyRepository", spec=InfrahubReadOnlyRepository
-        )
+        self.mock_infra_lock.registry = AsyncMock(spec=InfrahubLockRegistry)  # TODO fix mock?
+        repo_class_patcher = patch("infrahub.git.tasks.InfrahubReadOnlyRepository", spec=InfrahubReadOnlyRepository)
         self.mock_repo_class = repo_class_patcher.start()
         self.mock_repo = AsyncMock(spec=InfrahubReadOnlyRepository)
         self.mock_repo_class.new.return_value = self.mock_repo
@@ -259,18 +273,19 @@ class TestPullReadOnly:
 
     def teardown_method(self):
         patch.stopall()
+        services.service = self.original_services
 
     async def test_improper_message(self):
-        self.message.ref = None
-        self.message.commit = None
+        self.model.ref = None
+        self.model.commit = None
 
-        await git.repository.pull_read_only(message=self.message, service=self.services)
+        await pull_read_only(model=self.model)
 
         self.mock_repo_class.new.assert_not_awaited()
         self.mock_repo_class.init.assert_not_awaited()
 
     async def test_existing_repository(self):
-        await git.repository.pull_read_only(message=self.message, service=self.services)
+        await pull_read_only(model=self.model)
 
         self.mock_infra_lock.registry.get(name=self.repo_name, namespace="repository")
         self.mock_repo_class.init.assert_awaited_once_with(
@@ -290,7 +305,7 @@ class TestPullReadOnly:
     async def test_new_repository(self):
         self.mock_repo_class.init.side_effect = RepositoryError(self.repo_name, "it is broken")
 
-        await git.repository.pull_read_only(message=self.message, service=self.services)
+        await pull_read_only(model=self.model)
 
         self.mock_infra_lock.registry.get(name=self.repo_name, namespace="repository")
         self.mock_repo_class.init.assert_awaited_once_with(

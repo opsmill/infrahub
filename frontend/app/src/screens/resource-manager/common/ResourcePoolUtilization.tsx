@@ -53,7 +53,8 @@ const ResourcePoolUtilization = ({
             description="The overall utilization of the pool"
           />
         }
-        enabled>
+        enabled
+      >
         <span className="text-custom-blue-700 font-medium w-8 text-right">
           {roundNumber(utilizationOverall, 0)}%
         </span>

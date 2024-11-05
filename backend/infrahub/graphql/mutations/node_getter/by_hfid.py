@@ -13,7 +13,7 @@ from .interface import MutationNodeGetterInterface
 
 
 class MutationNodeGetterByHfid(MutationNodeGetterInterface):
-    def __init__(self, db: InfrahubDatabase, node_manager: NodeManager):
+    def __init__(self, db: InfrahubDatabase, node_manager: NodeManager) -> None:
         self.db = db
         self.node_manager = node_manager
 
@@ -50,7 +50,7 @@ class MutationNodeGetterByHfid(MutationNodeGetterInterface):
             if attribute_path.is_type_attribute and attribute_path.attribute_schema:
                 hfid_component = data[attribute_path.attribute_schema.name].get(attribute_path.attribute_property_name)
                 if hfid_component is not None:
-                    hfid.append(hfid_component)
+                    hfid.append(str(hfid_component))
             if (
                 attribute_path.relationship_schema
                 and attribute_path.related_schema

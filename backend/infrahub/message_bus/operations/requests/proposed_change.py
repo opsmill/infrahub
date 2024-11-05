@@ -8,36 +8,38 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Union
 
 import pytest
-from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreProposedChange
+from infrahub_sdk.protocols import CoreGeneratorDefinition
+from prefect import flow
 from pydantic import BaseModel
 
 from infrahub import config, lock
-from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, RepositoryInternalStatus
+from infrahub.core.constants import CheckType, InfrahubKind, RepositoryInternalStatus
 from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.model.diff import SchemaConflict
+from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
+from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.registry import registry
 from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import (
     ProposedChangeArtifactDefinition,
     ProposedChangeBranchDiff,
-    ProposedChangeGeneratorDefinition,
     ProposedChangeRepository,
     ProposedChangeSubscriber,
 )
 from infrahub.pytest_plugin import InfrahubBackendPlugin
+from infrahub.services import InfrahubServices  # noqa: TCH001
 
 if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
 
     from infrahub.core.models import SchemaUpdateConstraintInfo
-    from infrahub.core.schema_manager import SchemaBranch
-    from infrahub.services import InfrahubServices
+    from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 log = get_logger()
@@ -69,18 +71,7 @@ class DefinitionSelect(IntFlag):
         return "Doesn't require changes due to no relevant modified kinds or file changes in Git"
 
 
-async def cancel(message: messages.RequestProposedChangeCancel, service: InfrahubServices) -> None:
-    """Cancel a proposed change."""
-    async with service.task_report(
-        related_node=message.proposed_change,
-        title="Canceling proposed change",
-    ) as task_report:
-        await task_report.info("Canceling proposed change as the source branch was deleted", id=message.proposed_change)
-        proposed_change = await service.client.get(kind=CoreProposedChange, id=message.proposed_change)
-        proposed_change.state.value = ProposedChangeState.CANCELED.value
-        await proposed_change.save()
-
-
+@flow(name="proposed-changed-data-integrity")
 async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, service: InfrahubServices) -> None:
     """Triggers a data integrity validation check on the provided proposed change to start."""
     async with service.task_report(
@@ -97,6 +88,7 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
             await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
 
+@flow(name="proposed-changed-pipeline")
 async def pipeline(message: messages.RequestProposedChangePipeline, service: InfrahubServices) -> None:
     async with service.task_report(
         related_node=message.proposed_change,
@@ -132,6 +124,12 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
 
         await _gather_repository_repository_diffs(repositories=repositories)
 
+        destination_branch = await registry.get_branch(db=service.database, branch=message.destination_branch)
+        source_branch = await registry.get_branch(db=service.database, branch=message.source_branch)
+        component_registry = get_component_registry()
+        async with service.database.start_transaction() as dbt:
+            diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
+            await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
         diff_summary = await service.client.get_diff_summary(branch=message.source_branch)
         branch_diff = ProposedChangeBranchDiff(diff_summary=diff_summary, repositories=repositories)
         await _populate_subscribers(branch_diff=branch_diff, service=service, branch=message.source_branch)
@@ -219,6 +217,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             await service.send(message=event)
 
 
+@flow(name="proposed-changed-schema-integrity")
 async def schema_integrity(
     message: messages.RequestProposedChangeSchemaIntegrity,
     service: InfrahubServices,  # pylint: disable=unused-argument
@@ -286,6 +285,7 @@ async def schema_integrity(
             )
 
 
+@flow(name="proposed-changed-repository-check")
 async def repository_checks(message: messages.RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
     async with service.task_report(
         related_node=message.proposed_change,
@@ -326,6 +326,7 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
             await service.send(message=event)
 
 
+@flow(name="proposed-changed-refresh-artifact")
 async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifacts, service: InfrahubServices) -> None:
     async with service.task_report(
         related_node=message.proposed_change,
@@ -389,13 +390,14 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
                 await service.send(message=msg)
 
 
+@flow(name="proposed-changed-run-generator")
 async def run_generators(message: messages.RequestProposedChangeRunGenerators, service: InfrahubServices) -> None:
     async with service.task_report(
         related_node=message.proposed_change,
         title="Evaluating Generators",
     ) as task_report:
-        generators: list[CoreGeneratorDefinition] = await service.client.filters(
-            kind=InfrahubKind.GENERATORDEFINITION,
+        generators = await service.client.filters(
+            kind=CoreGeneratorDefinition,
             prefetch_relationships=True,
             populate_store=True,
             branch=message.source_branch,
@@ -555,6 +557,7 @@ query GatherGraphQLQuerySubscribers($members: [ID!]) {
 """
 
 
+@flow(name="proposed-changed-run-tests")
 async def run_tests(message: messages.RequestProposedChangeRunTests, service: InfrahubServices) -> None:
     async with service.task_report(
         related_node=message.proposed_change,
@@ -879,5 +882,22 @@ async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: 
 async def _get_proposed_change_schema_integrity_constraints(
     message: messages.RequestProposedChangeSchemaIntegrity, schema: SchemaBranch
 ) -> list[SchemaUpdateConstraintInfo]:
+    node_diff_field_summary_map: dict[str, NodeDiffFieldSummary] = {}
+    for node_diff in message.branch_diff.diff_summary:
+        node_kind = node_diff["kind"]
+        if node_kind not in node_diff_field_summary_map:
+            node_diff_field_summary_map[node_kind] = NodeDiffFieldSummary(kind=node_kind)
+        field_summary = node_diff_field_summary_map[node_kind]
+        for element in node_diff["elements"]:
+            element_name = element["name"]
+            element_type = element["element_type"]
+            if element_type.lower() in (
+                DiffElementType.RELATIONSHIP_MANY.value.lower(),
+                DiffElementType.RELATIONSHIP_ONE.value.lower(),
+            ):
+                field_summary.relationship_names.add(element_name)
+            elif element_type.lower() in (DiffElementType.ATTRIBUTE.value.lower(),):
+                field_summary.attribute_names.add(element_name)
+
     determiner = ConstraintValidatorDeterminer(schema_branch=schema)
-    return await determiner.get_constraints(node_diffs=message.branch_diff.diff_summary)
+    return await determiner.get_constraints(node_diffs=list(node_diff_field_summary_map.values()))

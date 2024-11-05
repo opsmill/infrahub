@@ -70,7 +70,8 @@ export const SchemaViewer = ({
         "flex flex-col overflow-hidden space-y-4 p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md",
         className
       )}
-      data-testid="schema-viewer">
+      data-testid="schema-viewer"
+    >
       <div className="flex justify-between items-start">
         <div className="space-x-1">
           <Badge variant="blue">{schema.namespace}</Badge>
@@ -159,6 +160,7 @@ const Properties = ({ schema }: { schema: IModelSchema }) => {
         <PropertyRow title="Name" value={schema.name} />
         <PropertyRow title="Label" value={schema.label} />
         <PropertyRow title="Kind" value={schema.kind} />
+        <PropertyRow title="Human Friendly ID" value={schema.human_friendly_id} />
         <PropertyRow title="Display labels" value={schema.display_labels} />
         <PropertyRow title="Description" value={schema.description} />
       </div>

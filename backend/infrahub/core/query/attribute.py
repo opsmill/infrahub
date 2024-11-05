@@ -18,15 +18,12 @@ if TYPE_CHECKING:
 class AttributeQuery(Query):
     def __init__(
         self,
-        attr: BaseAttribute = None,
+        attr: BaseAttribute,
         attr_id: Optional[str] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Branch] = None,
-        **kwargs,
+        **kwargs: Any,
     ):
-        if not attr and not attr_id:
-            raise ValueError("Either attr or attr_id must be defined, none provided")
-
         self.attr = attr
         self.attr_id = attr_id or attr.db_id
 
@@ -46,7 +43,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -68,7 +65,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
         query = """
         MATCH (a:Attribute { uuid: $attr_uuid })
         MERGE (av:%(labels)s { %(props)s } )
-        CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(av)
+        CREATE (a)-[r:%(rel_label)s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(av)
         """ % {"rel_label": self.attr._rel_to_value_label, "labels": ":".join(labels), "props": ", ".join(prop_list)}
 
         self.add_to_query(query)
@@ -84,8 +81,8 @@ class AttributeUpdateFlagQuery(AttributeQuery):
     def __init__(
         self,
         flag_name: str,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         SUPPORTED_FLAGS = ["is_visible", "is_protected"]
 
         if flag_name not in SUPPORTED_FLAGS:
@@ -95,7 +92,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -108,7 +105,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
         query = """
         MATCH (a:Attribute { uuid: $attr_uuid })
         MERGE (flag:Boolean { value: $flag_value })
-        CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(flag)
+        CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(flag)
         """ % self.flag_name.upper()
 
         self.add_to_query(query)
@@ -125,14 +122,14 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
         self,
         prop_name: str,
         prop_id: str,
-        **kwargs,
+        **kwargs: Any,
     ):
         self.prop_name = prop_name
         self.prop_id = prop_id
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -148,7 +145,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
             """
         MATCH (a:Attribute { uuid: $attr_uuid })
         MATCH (np:Node { uuid: $prop_id })
-        CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(np)
+        CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(np)
         """
             % rel_name
         )
@@ -161,7 +158,7 @@ class AttributeGetQuery(AttributeQuery):
     name = "attribute_get"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.params["attr_uuid"] = self.attr.id
         self.params["node_uuid"] = self.attr.node.id
 

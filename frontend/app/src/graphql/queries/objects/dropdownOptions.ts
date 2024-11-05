@@ -7,6 +7,11 @@ export const getDropdownOptions = Handlebars.compile(`query DropdownOptions {
       node {
         id
         display_label
+        {{#if peerField}}
+        {{peerField}}{
+          value
+        }
+        {{/if}}
         __typename
       }
     }

@@ -16,11 +16,13 @@ from .container_ops import (
     stop_services,
     update_core_schema,
 )
-from .infra_ops import load_infrastructure_data, load_infrastructure_schema
+from .infra_ops import load_infrastructure_data, load_infrastructure_menu, load_infrastructure_schema
 from .shared import (
     BUILD_NAME,
     INFRAHUB_DATABASE,
     PYTHON_VER,
+    SERVICE_SERVER_NAME,
+    SERVICE_WORKER_NAME,
     Namespace,
     build_compose_files_cmd,
     execute_command,
@@ -70,7 +72,7 @@ def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = Fals
 
 @task(optional=["database"])
 def restart(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Restart Infrahub API Server and Git Agent within docker compose."""
+    """Restart Infrahub API Server and Task worker within docker compose."""
     restart_services(context=context, database=database, namespace=NAMESPACE)
 
 
@@ -98,7 +100,9 @@ def cli_server(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Launch a bash shell inside the running Infrahub container."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-server bash"
+        command = (
+            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {SERVICE_SERVER_NAME} bash"
+        )
         execute_command(context=context, command=command)
 
 
@@ -107,7 +111,9 @@ def cli_git(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Launch a bash shell inside the running Infrahub container."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
-        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-git bash"
+        command = (
+            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {SERVICE_WORKER_NAME} bash"
+        )
         execute_command(context=context, command=command)
 
 
@@ -121,7 +127,14 @@ def status(context: Context, database: str = INFRAHUB_DATABASE) -> None:
 def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load the base schema for infrastructure."""
     load_infrastructure_schema(context=context, database=database, namespace=NAMESPACE, add_wait=False)
+    load_infrastructure_menu(context=context, database=database, namespace=NAMESPACE)
     restart_services(context=context, database=database, namespace=NAMESPACE)
+
+
+@task(optional=["database"])
+def load_infra_menu(context: Context, database: str = INFRAHUB_DATABASE) -> None:
+    """Load the base schema for infrastructure."""
+    load_infrastructure_menu(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])

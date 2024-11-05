@@ -39,7 +39,8 @@ export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
       className={classNames(
         "flex items-center relative",
         disabled && "pointer-events-none opacity-50"
-      )}>
+      )}
+    >
       <Input
         disabled={disabled}
         ref={ref}
@@ -55,7 +56,8 @@ export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
           title={"Select a color"}
           height={POPOVER_SIZE.NONE}
           width={POPOVER_SIZE.NONE}
-          className="right- left-0">
+          className="right- left-0"
+        >
           {() => (
             <div className="p-2">
               <Colorful color={hsva} onChange={handleChange} disableAlpha />

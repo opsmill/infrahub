@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
     from infrahub.database import InfrahubDatabase
 
-    from .. import GraphqlContext
+    from ..initialization import GraphqlContext
 
 
 class IPPrefixPoolGetResourceInput(InputObjectType):

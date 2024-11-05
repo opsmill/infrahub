@@ -18,6 +18,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_ANALYTICS_ADDRESS:
   INFRAHUB_ANALYTICS_API_KEY:
   INFRAHUB_ANALYTICS_ENABLE: ${INFRAHUB_ANALYTICS_ENABLE:-true}
+  INFRAHUB_ANONYMOUS_ACCESS_ROLE: ${INFRAHUB_ANONYMOUS_ACCESS_ROLE:-Anonymous User}
   INFRAHUB_API_CORS_ALLOW_CREDENTIALS: ${INFRAHUB_API_CORS_ALLOW_CREDENTIALS:-true}
   INFRAHUB_API_CORS_ALLOW_HEADERS:
   INFRAHUB_API_CORS_ALLOW_METHODS:
@@ -30,6 +31,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_BROKER_NAMESPACE: ${INFRAHUB_BROKER_NAMESPACE:-infrahub}
   INFRAHUB_BROKER_PASSWORD: &broker_password ${INFRAHUB_BROKER_PASSWORD:-infrahub}
   INFRAHUB_BROKER_PORT:
+  INFRAHUB_BROKER_RABBITMQ_HTTP_PORT:
   INFRAHUB_BROKER_TLS_CA_FILE:
   INFRAHUB_BROKER_TLS_ENABLED: ${INFRAHUB_BROKER_TLS_ENABLED:-false}
   INFRAHUB_BROKER_TLS_INSECURE: ${INFRAHUB_BROKER_TLS_INSECURE:-false}
@@ -39,12 +41,12 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_CACHE_DATABASE: ${INFRAHUB_CACHE_DATABASE:-0}
   INFRAHUB_CACHE_DRIVER: ${INFRAHUB_CACHE_DRIVER:-redis}
   INFRAHUB_CACHE_ENABLE: ${INFRAHUB_CACHE_ENABLE:-true}
-  INFRAHUB_CACHE_PASSWORD: ${INFRAHUB_CACHE_PASSWORD:-infrahub}
+  INFRAHUB_CACHE_PASSWORD: &cache_password ${INFRAHUB_CACHE_PASSWORD:-}
   INFRAHUB_CACHE_PORT:
   INFRAHUB_CACHE_TLS_CA_FILE:
   INFRAHUB_CACHE_TLS_ENABLED: ${INFRAHUB_CACHE_TLS_ENABLED:-false}
   INFRAHUB_CACHE_TLS_INSECURE: ${INFRAHUB_CACHE_TLS_INSECURE:-false}
-  INFRAHUB_CACHE_USERNAME: ${INFRAHUB_CACHE_USERNAME:-infrahub}
+  INFRAHUB_CACHE_USERNAME: &cache_username ${INFRAHUB_CACHE_USERNAME:-}
   INFRAHUB_CONFIG:
   INFRAHUB_DB_ADDRESS: ${INFRAHUB_DB_ADDRESS:-localhost}
   INFRAHUB_DB_DATABASE:
@@ -64,6 +66,9 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_EXPERIMENTAL_PULL_REQUEST: ${INFRAHUB_EXPERIMENTAL_PULL_REQUEST:-false}
   INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_GIT_REPOSITORIES_DIRECTORY:-repositories}
   INFRAHUB_GIT_SYNC_INTERVAL: ${INFRAHUB_GIT_SYNC_INTERVAL:-10}
+  INFRAHUB_HTTP_TIMEOUT: ${INFRAHUB_HTTP_TIMEOUT:-10}
+  INFRAHUB_HTTP_TLS_CA_BUNDLE:
+  INFRAHUB_HTTP_TLS_INSECURE: ${INFRAHUB_HTTP_TLS_INSECURE:-false}
   INFRAHUB_INITIAL_ADMIN_PASSWORD: ${INFRAHUB_INITIAL_ADMIN_PASSWORD:-infrahub}
   INFRAHUB_INITIAL_ADMIN_TOKEN:
   INFRAHUB_INITIAL_AGENT_PASSWORD:
@@ -79,8 +84,13 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_MISC_PRINT_QUERY_DETAILS: ${INFRAHUB_MISC_PRINT_QUERY_DETAILS:-false}
   INFRAHUB_MISC_RESPONSE_DELAY: ${INFRAHUB_MISC_RESPONSE_DELAY:-0}
   INFRAHUB_MISC_START_BACKGROUND_RUNNER: ${INFRAHUB_MISC_START_BACKGROUND_RUNNER:-true}
+  INFRAHUB_PERMISSION_BACKENDS: ${INFRAHUB_PERMISSION_BACKENDS:-["infrahub.permissions.LocalPermissionBackend"]}
   INFRAHUB_PRODUCTION:
   INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME: ${INFRAHUB_SECURITY_ACCESS_TOKEN_LIFETIME:-3600}
+  INFRAHUB_SECURITY_OAUTH2_PROVIDERS:
+  INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS:
+  INFRAHUB_SECURITY_OIDC_PROVIDERS:
+  INFRAHUB_SECURITY_OIDC_PROVIDER_SETTINGS:
   INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME: ${INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME:-2592000}
   INFRAHUB_SECURITY_SECRET_KEY:
   INFRAHUB_STORAGE_BUCKET_NAME:
@@ -92,14 +102,22 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_STORAGE_QUERYSTRING_AUTH: ${INFRAHUB_STORAGE_QUERYSTRING_AUTH:-false}
   INFRAHUB_STORAGE_USE_SSL: ${INFRAHUB_STORAGE_USE_SSL:-true}
   INFRAHUB_TELEMETRY_ENDPOINT: ${INFRAHUB_TELEMETRY_ENDPOINT:-https://telemetry.opsmill.cloud/infrahub}
-  INFRAHUB_TELEMETRY_INTERVAL: ${INFRAHUB_TELEMETRY_INTERVAL:-86400}
+  INFRAHUB_TELEMETRY_INTERVAL:
   INFRAHUB_TELEMETRY_OPTOUT: ${INFRAHUB_TELEMETRY_OPTOUT:-false}
+  INFRAHUB_TIMEOUT:
   INFRAHUB_TRACE_ENABLE: ${INFRAHUB_TRACE_ENABLE:-false}
   INFRAHUB_TRACE_EXPORTER_ENDPOINT:
   INFRAHUB_TRACE_EXPORTER_PROTOCOL: ${INFRAHUB_TRACE_EXPORTER_PROTOCOL:-grpc}
   INFRAHUB_TRACE_EXPORTER_TYPE: ${INFRAHUB_TRACE_EXPORTER_TYPE:-console}
   INFRAHUB_TRACE_INSECURE: ${INFRAHUB_TRACE_INSECURE:-true}
+  INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_WORKFLOW_ADDRESS:-localhost}
+  INFRAHUB_WORKFLOW_DRIVER: ${INFRAHUB_WORKFLOW_DRIVER:-worker}
+  INFRAHUB_WORKFLOW_ENABLE: ${INFRAHUB_WORKFLOW_ENABLE:-true}
+  INFRAHUB_WORKFLOW_PORT:
+  INFRAHUB_WORKFLOW_TLS_ENABLED: ${INFRAHUB_WORKFLOW_TLS_ENABLED:-false}
+  INFRAHUB_WORKFLOW_WORKER_POLLING_INTERVAL: ${INFRAHUB_WORKFLOW_WORKER_POLLING_INTERVAL:-2}
   OTEL_RESOURCE_ATTRIBUTES:
+
 
 services:
   message-queue:
@@ -112,7 +130,8 @@ services:
       test: rabbitmq-diagnostics -q check_port_connectivity
       interval: 5s
       timeout: 30s
-      retries: 3
+      retries: 10
+      start_period: 3s
     ports:
       - 15692:15692
 
@@ -129,7 +148,7 @@ services:
     image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.20.0-community}
     restart: unless-stopped
     environment:
-      NEO4J_AUTH: neo4j/${INFRAHUB_DB_PASSWORD:-admin}
+      NEO4J_AUTH: ${INFRAHUB_DB_USERNAME:-neo4j}/${INFRAHUB_DB_PASSWORD:-admin}
       NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
       NEO4J_dbms_security_auth__minimum__password__length: 4
     volumes:
@@ -146,21 +165,19 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0-python3.12}"
+    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0.3-python3.12}"
     command: prefect server start --host 0.0.0.0 --ui
     restart: unless-stopped
+    depends_on:
+      - task-manager-db
     environment:
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
-      PREFECT_WORKER_QUERY_SECONDS: 3
-      PREFECT_AGENT_QUERY_INTERVAL: 3
     healthcheck:
       test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 10s
-    depends_on:
-      - task-manager-db
 
   task-manager-db:
     image: postgres:16-alpine
@@ -178,10 +195,11 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.16.0}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.0.0}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
+      -w ${WEB_CONCURRENCY:-4}
       --logger-class infrahub.serve.log.GunicornLogger
       infrahub.server:app
     depends_on:
@@ -191,6 +209,8 @@ services:
         condition: service_healthy
       cache:
         condition: service_healthy
+      task-manager:
+        condition: service_healthy
     environment:
       <<: *infrahub_config
       INFRAHUB_PRODUCTION: ${INFRAHUB_PRODUCTION:-false}
@@ -198,13 +218,17 @@ services:
       INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_BROKER_ADDRESS:-message-queue}
       INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_CACHE_ADDRESS:-cache}
       INFRAHUB_DB_ADDRESS: ${INFRAHUB_DB_ADDRESS:-database}
+      INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}
       INFRAHUB_INITIAL_ADMIN_TOKEN: ${INFRAHUB_INITIAL_ADMIN_TOKEN:-06438eb2-8019-4776-878c-0941b1f1d1ec}
       INFRAHUB_INITIAL_AGENT_TOKEN: ${INFRAHUB_INITIAL_AGENT_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
       INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_SECURITY_SECRET_KEY:-327f747f-efac-42be-9e73-999f08f86b92"}
+      INFRAHUB_WORKFLOW_PORT: ${INFRAHUB_WORKFLOW_PORT:-4200}
+      PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
     ports:
       - 8000:8000
     volumes:
       - "storage_data:${INFRAHUB_STORAGE_LOCAL_PATH:-/opt/infrahub/storage}"
+      - "workflow_data:/opt/infrahub/workflow"
     tty: true
     healthcheck:
       test: curl -s -f -o /dev/null http://localhost:8000/api/schema/summary || exit 1
@@ -213,12 +237,12 @@ services:
       retries: 20
       start_period: 10s
 
-  infrahub-git:
+  task-worker:
     deploy:
       mode: replicated
       replicas: 2
-    image: "registry.opsmill.io/opsmill/infrahub:${VERSION:-0.16.0}"
-    command: infrahub git-agent start --debug
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.0.0}"
+    command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:
       - infrahub-server
@@ -233,7 +257,10 @@ services:
       INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_BROKER_ADDRESS:-message-queue}
       INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_CACHE_ADDRESS:-cache}
       INFRAHUB_DB_ADDRESS: ${INFRAHUB_DB_ADDRESS:-database}
-      INFRAHUB_TIMEOUT: ${INFRAHUB_TIMEOUT:-20}
+      INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}
+      INFRAHUB_TIMEOUT: ${INFRAHUB_TIMEOUT:-60}
+      INFRAHUB_WORKFLOW_PORT: ${INFRAHUB_WORKFLOW_PORT:-4200}
+      PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
     volumes:
       - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
@@ -246,3 +273,4 @@ volumes:
   git_remote_data:
   storage_data:
   workflow_db:
+  workflow_data:

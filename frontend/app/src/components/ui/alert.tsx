@@ -128,7 +128,8 @@ export const Alert = (props: AlertProps) => {
                 alertClasses?.button
               )}
               onClick={handleDismiss}
-              data-testid="close-alert">
+              data-testid="close-alert"
+            >
               <XMarkIcon className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>

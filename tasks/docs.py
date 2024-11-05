@@ -330,9 +330,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
 
     for name, definition in schema["$defs"].items():
         for property, value in definition["properties"].items():
-            definitions[name]["properties"][property]["required"] = (
-                True if property in definition["required"] else False
-            )
+            definitions[name]["properties"][property]["required"] = property in definition["required"]
             if "anyOf" in value:
                 definitions[name]["properties"][property]["type"] = ", ".join(
                     [i["type"] for i in value["anyOf"] if i["type"] != "null"]

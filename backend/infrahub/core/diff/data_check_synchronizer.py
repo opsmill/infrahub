@@ -5,6 +5,7 @@ from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConf
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import SchemaNotFoundError
 
 from .conflicts_extractor import DiffConflictsExtractor
 from .model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot
@@ -22,14 +23,18 @@ class DiffDataCheckSynchronizer:
         self.conflict_recorder = conflict_recorder
 
     async def synchronize(self, enriched_diff: EnrichedDiffRoot) -> list[Node]:
-        proposed_changes = await NodeManager.query(
-            db=self.db,
-            schema=InfrahubKind.PROPOSEDCHANGE,
-            filters={"source_branch": enriched_diff.diff_branch_name, "state": ProposedChangeState.OPEN},
-        )
+        try:
+            proposed_changes = await NodeManager.query(
+                db=self.db,
+                schema=InfrahubKind.PROPOSEDCHANGE,
+                filters={"source_branch": enriched_diff.diff_branch_name, "state": ProposedChangeState.OPEN},
+            )
+        except SchemaNotFoundError:
+            # if the CoreProposedChange schema does not exist, then there's nothing to do
+            proposed_changes = []
         if not proposed_changes:
             return []
-        enriched_conflicts = enriched_diff.get_all_conflicts()
+        enriched_conflicts_map = enriched_diff.get_all_conflicts()
         data_conflicts = await self.conflicts_extractor.get_data_conflicts(enriched_diff_root=enriched_diff)
         all_data_checks = []
         for pc in proposed_changes:
@@ -38,7 +43,7 @@ class DiffDataCheckSynchronizer:
             )
             all_data_checks.extend(core_data_checks)
             core_data_checks_by_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks}  # type: ignore[attr-defined]
-            enriched_conflicts_by_id = {ec.uuid: ec for ec in enriched_conflicts}
+            enriched_conflicts_by_id = {ec.uuid: ec for ec in enriched_conflicts_map.values()}
             for conflict_id, core_data_check in core_data_checks_by_id.items():
                 enriched_conflict = enriched_conflicts_by_id.get(conflict_id)
                 if not enriched_conflict:

@@ -1,11 +1,11 @@
-import { describe, expect } from "vitest";
 import {
+  AttributeValueFromProfile,
   DynamicFieldProps,
   FormAttributeValue,
   FormRelationshipValue,
-  AttributeValueFromProfile,
 } from "@/components/form/type";
 import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
+import { describe, expect } from "vitest";
 
 export const buildField = (override?: Partial<DynamicFieldProps>): DynamicFieldProps => {
   return {
@@ -166,7 +166,11 @@ describe("getCreateMutationFromFormData - test", () => {
     const formData: Record<string, FormRelationshipValue> = {
       relationship1: {
         source: { type: "user" },
-        value: { id: "relationship-id" },
+        value: {
+          id: "relationship-id",
+          display_label: "Relationship 1",
+          __typename: "relationship",
+        },
       },
     };
 
@@ -229,7 +233,13 @@ describe("getCreateMutationFromFormData - test", () => {
     const formData: Record<string, FormRelationshipValue> = {
       relationship1: {
         source: { type: "user" },
-        value: [{ id: "relationship-id" }],
+        value: [
+          {
+            id: "relationship-id",
+            display_label: "Relationship 1",
+            __typename: "relationship",
+          },
+        ],
       },
     };
 

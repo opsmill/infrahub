@@ -1,6 +1,4 @@
-async def test_get_invalid(
-    client,
-):
+async def test_get_invalid(client, db):
     with client:
         response = client.get(
             "/api/so-such-route",

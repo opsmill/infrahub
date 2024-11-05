@@ -6,14 +6,14 @@ from typing import Any, Dict
 
 import pendulum
 import pytest
-from infrahub_sdk import UUIDT, Config, InfrahubClient
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
 from pytest_httpx import HTTPXMock
 
 from infrahub import config
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core import registry
-from infrahub.core.account import ObjectPermission
 from infrahub.core.attribute import (
     Boolean,
     IntegerOptional,
@@ -43,21 +43,23 @@ from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.protocols_base import CoreNode
+from infrahub.core.relationship import RelationshipManager
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
     SchemaRoot,
     core_models,
 )
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
-from infrahub.test_data import dataset01 as ds01
-from infrahub.utils import format_label
+from infrahub.services import InfrahubServices, services
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
+from tests.test_data import dataset01 as ds01
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -1658,6 +1660,7 @@ async def all_attribute_types_schema(
         "attributes": [
             {"name": "name", "kind": "Text", "optional": True},
             {"name": "mystring", "kind": "Text", "optional": True},
+            {"name": "mytextarea", "kind": "TextArea", "optional": True},
             {"name": "mybool", "kind": "Boolean", "optional": True},
             {"name": "myint", "kind": "Number", "optional": True},
             {"name": "mylist", "kind": "List", "optional": True},
@@ -2069,6 +2072,42 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
 
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def location_generic_protocol():
+    class LocationGeneric(CoreNode):
+        name: String
+        status: StringOptional
+        things: RelationshipManager
+        parent: RelationshipManager
+        children: RelationshipManager
+
+    return LocationGeneric
+
+
+@pytest.fixture
+async def location_site_protocol(location_generic_protocol):
+    class LocationSite(location_generic_protocol):
+        pass
+
+    return LocationSite
+
+
+@pytest.fixture
+async def location_region_protocol(location_generic_protocol):
+    class LocationRegion(location_generic_protocol):
+        pass
+
+    return LocationRegion
+
+
+@pytest.fixture
+async def location_rack_protocol(location_generic_protocol):
+    class LocationRack(location_generic_protocol):
+        pass
+
+    return LocationRack
 
 
 @pytest.fixture
@@ -2501,32 +2540,23 @@ async def register_ipam_extended_schema(default_branch: Branch, register_ipam_sc
 async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, data_schema) -> Node:
     """Create a test admin account, group and role with all global permissions."""
     permissions: list[Node] = []
-    for global_permission in GlobalPermissions:
-        obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-        await obj.new(db=db, name=format_label(global_permission.value), action=global_permission.value)
-        await obj.save(db=db)
-        permissions.append(obj)
-    for object_permission in [
-        ObjectPermission(
-            id="",
-            branch="any",
-            namespace="any",
-            name="any",
-            action=PermissionAction.ANY.value,
-            decision=PermissionDecision.ALLOW.value,
-        )
-    ]:
-        obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
-        await obj.new(
-            db=db,
-            branch=object_permission.branch,
-            namespace=object_permission.namespace,
-            name=object_permission.name,
-            action=object_permission.action,
-            decision=object_permission.decision,
-        )
-        await obj.save(db=db)
-        permissions.append(obj)
+    global_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    await global_permission.new(
+        db=db, action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
+    )
+    await global_permission.save(db=db)
+    permissions.append(global_permission)
+
+    object_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await object_permission.new(
+        db=db,
+        namespace="*",
+        name="*",
+        action=PermissionAction.ANY.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+    )
+    await object_permission.save(db=db)
+    permissions.append(object_permission)
 
     role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
     await role.new(db=db, name="admin", permissions=permissions)
@@ -2579,11 +2609,25 @@ async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, re
 
 
 @pytest.fixture
+async def session_first_account(db: InfrahubDatabase, first_account) -> AccountSession:
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id, role="read-write")
+    return session
+
+
+@pytest.fixture
 async def second_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(db=db, name="Second Account", account_type="Git", password="SecondPassword123")
     await obj.save(db=db)
     return obj
+
+
+@pytest.fixture
+async def session_second_account(db: InfrahubDatabase, second_account) -> AccountSession:
+    session = AccountSession(
+        authenticated=True, auth_type=AuthType.API, account_id=second_account.id, role="read-write"
+    )
+    return session
 
 
 @pytest.fixture
@@ -2885,3 +2929,23 @@ async def prefix_pool_01(
     ip_dataset_prefix_v4["prefix_pool"] = prefix_pool
 
     return ip_dataset_prefix_v4
+
+
+@pytest.fixture()
+def workflow_local():
+    original = config.OVERRIDE.workflow
+    workflow = WorkflowLocalExecution()
+    config.OVERRIDE.workflow = workflow
+    yield workflow
+    config.OVERRIDE.workflow = original
+
+
+@pytest.fixture
+def init_service(db: InfrahubDatabase):
+    original = services.service
+    database = db
+    workflow = WorkflowLocalExecution()
+    service = InfrahubServices(database=database, workflow=workflow)
+    services.service = service
+    yield service
+    services.service = original

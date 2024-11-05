@@ -1,11 +1,12 @@
+import { PROFILE_KIND, TASK_OBJECT } from "@/config/constants";
+import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
+import useQuery from "@/hooks/useQuery";
+import { getPermission } from "@/screens/permission/utils";
+import { IModelSchema, genericsState } from "@/state/atoms/schema.atom";
+import { isGeneric } from "@/utils/common";
+import { getSchemaObjectColumns, getTabs } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import useQuery from "@/hooks/useQuery";
-import { genericsState, IModelSchema } from "@/state/atoms/schema.atom";
-import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
-import { PROFILE_KIND, TASK_OBJECT } from "@/config/constants";
-import { getSchemaObjectColumns, getTabs } from "@/utils/getSchemaObjectColumns";
-import { isGeneric } from "@/utils/common";
 
 export const useObjectDetails = (schema: IModelSchema, objectId: string) => {
   const generics = useAtomValue(genericsState);
@@ -14,6 +15,7 @@ export const useObjectDetails = (schema: IModelSchema, objectId: string) => {
   const relationshipsTabs = getTabs(schema);
   const columns = getSchemaObjectColumns({ schema });
 
+  const isProfileSchema = schema?.namespace === "Profile";
   const query = gql(
     schema
       ? getObjectDetailsPaginated({
@@ -28,14 +30,27 @@ export const useObjectDetails = (schema: IModelSchema, objectId: string) => {
             schema?.kind !== PROFILE_KIND &&
             !isGeneric(schema) &&
             schema?.generate_profile,
+          hasPermissions: !isProfileSchema,
         })
       : // Empty query to make the gql parsing work
         // TODO: Find another solution for queries while loading schema
         "query { ok }"
   );
 
-  return useQuery(query, {
+  const apolloQuery = useQuery(query, {
     skip: !schema,
     notifyOnNetworkStatusChange: true,
   });
+
+  const permissionData =
+    schema?.kind && apolloQuery?.data?.[schema.kind]?.permissions?.edges
+      ? apolloQuery.data[schema.kind].permissions.edges
+      : null;
+
+  const permission = getPermission(permissionData);
+
+  return {
+    ...apolloQuery,
+    permission,
+  };
 };

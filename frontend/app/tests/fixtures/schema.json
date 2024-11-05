@@ -75,36 +75,6 @@
           "cardinality": "one",
           "branch": "aware",
           "optional": false,
-          "filters": [
-            {
-              "name": "id",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "name__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "description__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "type__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            }
-          ],
           "order_weight": 100000
         },
         {
@@ -119,36 +89,6 @@
           "cardinality": "one",
           "branch": "aware",
           "optional": false,
-          "filters": [
-            {
-              "name": "id",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "name__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "label__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "description__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            }
-          ],
           "order_weight": 101000
         },
         {
@@ -163,36 +103,6 @@
           "cardinality": "one",
           "branch": "aware",
           "optional": false,
-          "filters": [
-            {
-              "name": "id",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "name__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "label__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "description__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            }
-          ],
           "order_weight": 102000
         },
         {
@@ -207,50 +117,6 @@
           "cardinality": "many",
           "branch": "aware",
           "optional": true,
-          "filters": [
-            {
-              "name": "id",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "name__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "description__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "speed__value",
-              "kind": "Number",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "mtu__value",
-              "kind": "Number",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "enabled__value",
-              "kind": "Boolean",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            }
-          ],
           "order_weight": 103000
         },
         {
@@ -265,36 +131,6 @@
           "cardinality": "one",
           "branch": "aware",
           "optional": true,
-          "filters": [
-            {
-              "name": "id",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "name__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "asn__value",
-              "kind": "Number",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "description__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            }
-          ],
           "order_weight": 104000
         },
         {
@@ -309,101 +145,13 @@
           "cardinality": "many",
           "branch": "aware",
           "optional": true,
-          "filters": [
-            {
-              "name": "id",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "name__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            },
-            {
-              "name": "description__value",
-              "kind": "Text",
-              "enum": null,
-              "object_kind": null,
-              "description": null
-            }
-          ],
           "order_weight": 105000
         }
       ],
       "label": "Device",
       "inherit_from": [],
       "groups": [],
-      "branch": "aware",
-      "filters": [
-        {
-          "name": "ids",
-          "kind": "Text",
-          "enum": null,
-          "object_kind": null,
-          "description": null
-        },
-        {
-          "name": "name__value",
-          "kind": "Text",
-          "enum": null,
-          "object_kind": null,
-          "description": null
-        },
-        {
-          "name": "description__value",
-          "kind": "Text",
-          "enum": null,
-          "object_kind": null,
-          "description": null
-        },
-        {
-          "name": "type__value",
-          "kind": "Text",
-          "enum": null,
-          "object_kind": null,
-          "description": null
-        },
-        {
-          "name": "site__id",
-          "kind": "Object",
-          "enum": null,
-          "object_kind": "Location",
-          "description": null
-        },
-        {
-          "name": "status__id",
-          "kind": "Object",
-          "enum": null,
-          "object_kind": "Status",
-          "description": null
-        },
-        {
-          "name": "role__id",
-          "kind": "Object",
-          "enum": null,
-          "object_kind": "Role",
-          "description": null
-        },
-        {
-          "name": "asn__id",
-          "kind": "Object",
-          "enum": null,
-          "object_kind": "AutonomousSystem",
-          "description": null
-        },
-        {
-          "name": "tags__id",
-          "kind": "Object",
-          "enum": null,
-          "object_kind": "Tag",
-          "description": null
-        }
-      ]
+      "branch": "aware"
     }
   ]
 }

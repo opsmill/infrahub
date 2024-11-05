@@ -1,8 +1,8 @@
 import { FormRelationshipValue } from "@/components/form/type";
-import { RelationshipType } from "@/utils/getObjectItemDisplayValue";
+import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
 import { store } from "@/state";
 import { schemaState } from "@/state/atoms/schema.atom";
-import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
+import { RelationshipType } from "@/utils/getObjectItemDisplayValue";
 
 type GetRelationshipDefaultValueParams = {
   relationshipData: RelationshipType | undefined;
@@ -22,9 +22,17 @@ export const getRelationshipDefaultValue = ({
       source: {
         type: "user",
       },
-      value: relationshipData.edges.map(({ node }) => ({
-        id: node?.id!,
-      })),
+      value: relationshipData.edges
+        .map(({ node }) =>
+          node
+            ? {
+                id: node.id,
+                display_label: node.display_label,
+                __typename: node.__typename,
+              }
+            : null
+        )
+        .filter((n) => !!n),
     };
   }
 
@@ -49,6 +57,11 @@ export const getRelationshipDefaultValue = ({
   const sourceSchema = nodes.find(({ kind }) => kind === sourceKind);
 
   if (sourceSchema && sourceSchema.inherit_from?.includes(RESOURCE_GENERIC_KIND)) {
+    if (!relationshipData.node) {
+      console.error("Source is a pool but node is null on relationship", relationshipData);
+      return { source: null, value: null };
+    }
+
     return {
       source: {
         type: "pool",

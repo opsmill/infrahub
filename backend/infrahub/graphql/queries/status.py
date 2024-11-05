@@ -10,7 +10,7 @@ from infrahub.services import services
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 class StatusSummary(ObjectType):
@@ -46,9 +46,7 @@ async def resolve_status(
     service = context.service or services.service
     fields = await extract_fields_first_node(info)
     response: dict[str, Any] = {}
-    workers = await service.component.list_workers(
-        branch=context.branch.id if context.branch.id else context.branch.name, schema_hash=True
-    )
+    workers = await service.component.list_workers(branch=context.branch.id or context.branch.name, schema_hash=True)
 
     if summary := fields.get("summary"):
         response["summary"] = {}

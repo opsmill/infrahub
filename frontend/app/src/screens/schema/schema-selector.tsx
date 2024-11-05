@@ -1,12 +1,13 @@
 import Accordion from "@/components/display/accordion";
 import { Badge } from "@/components/ui/badge";
+import { SearchInput } from "@/components/ui/search-input";
 import { QSP } from "@/config/qsp";
 import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { classNames, isGeneric } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import * as R from "ramda";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrayParam, useQueryParam } from "use-query-params";
 
 type SchemaSelectorProps = {
@@ -17,6 +18,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
+  const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,7 +27,10 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
     ref.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [selectedKind?.length]);
 
-  const schemas: IModelSchema[] = [...nodes, ...generics, ...profiles];
+  const schemas: IModelSchema[] = [...nodes, ...generics, ...profiles].filter(({ kind }) =>
+    kind?.toLowerCase().includes(search.toLowerCase())
+  );
+
   const schemasPerNamespace = R.pipe(
     R.sortBy<IModelSchema>(R.prop("name")),
     R.groupBy(R.prop("namespace"))
@@ -33,6 +38,13 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
 
   return (
     <section className={classNames("space-y-2 p-4 bg-custom-white", className)}>
+      <SearchInput
+        className="mb-4"
+        placeholder="Search schema"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+
       {Object.entries(schemasPerNamespace).map(([namespace, schemas]) => {
         return (
           <Accordion key={namespace} title={namespace} defaultOpen>
@@ -52,7 +64,8 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
                       hover:rounded
                         ${isSelected ? "shadow-lg ring-1 ring-custom-blue-600 rounded" : ""}
                     `}
-                    onClick={() => setKind([schema.kind!])}>
+                    onClick={() => setKind([schema.kind!])}
+                  >
                     {schema.icon && (
                       <div className="absolute left-2">
                         <Icon icon={schema.icon} className="text-xl text-custom-blue-700" />

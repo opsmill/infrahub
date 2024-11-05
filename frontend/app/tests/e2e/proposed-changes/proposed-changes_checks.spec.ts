@@ -18,7 +18,7 @@ test.describe("/proposed-changes checks", () => {
 
     await test.step("create a new proposed change", async () => {
       await page.getByTestId("add-proposed-changes-button").click();
-      await expect(page.getByText("Create Proposed Change")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Create a proposed change" })).toBeVisible();
       await page.getByLabel("Name *").fill("pc-checks");
       await page.getByLabel("Source Branch *").click();
       await page.getByRole("option", { name: "atl1-delete-upstream" }).click();
@@ -46,8 +46,9 @@ test.describe("/proposed-changes checks", () => {
       .getByRole("link", { name: "pc-checks 0 atl1-delete-" })
       .first()
       .locator("../..")
-      .getByTestId("delete-row-button")
+      .getByTestId("actions-row-button")
       .click();
+    await page.getByTestId("delete-row-button").click();
     await expect(page.getByTestId("modal-delete")).toBeVisible();
     await page.getByTestId("modal-delete-confirm").click();
     await expect(page.getByText("Proposed changes 'pc-checks' deleted")).toBeVisible();

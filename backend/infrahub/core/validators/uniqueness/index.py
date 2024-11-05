@@ -31,7 +31,7 @@ class GroupedIndexKey:
 
 
 class UniquenessQueryResultsIndex:
-    def __init__(self, query_results: Iterable[QueryResult], exclude_node_ids: Optional[set[str]] = None):
+    def __init__(self, query_results: Iterable[QueryResult], exclude_node_ids: Optional[set[str]] = None) -> None:
         self._relationship_index: dict[str, dict[str, set[str]]] = {}
         self._attribute_index: dict[str, dict[Any, set[str]]] = {}
         self._node_index: dict[str, dict[str, Any]] = {}

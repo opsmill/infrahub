@@ -14,8 +14,23 @@ test.describe("Branches creation and deletion", () => {
   test.describe("when not logged in", () => {
     test("should not be able to create a branch if not logged in", async ({ page }) => {
       await page.goto("/");
-      await expect(page.getByTestId("branch-select-menu")).toContainText("main");
+      await page.getByTestId("branch-selector-trigger").click();
       await expect(page.getByTestId("create-branch-button")).toBeDisabled();
+    });
+
+    test("should not show quick-create option when searching for non-existent branch", async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await page.getByTestId("branch-selector-trigger").click();
+
+      const nonExistentBranchName = "non-existent-branch-123";
+      await page.getByTestId("branch-search-input").fill(nonExistentBranchName);
+
+      await expect(page.getByText("No branch found")).toBeVisible();
+      await expect(
+        page.getByRole("option", { name: `Create branch ${nonExistentBranchName}` })
+      ).not.toBeVisible();
     });
   });
 
@@ -25,6 +40,7 @@ test.describe("Branches creation and deletion", () => {
 
     test("should create a new branch", async ({ page }) => {
       await page.goto("/");
+      await page.getByTestId("branch-selector-trigger").click();
       await page.getByTestId("create-branch-button").click();
 
       // Form
@@ -34,16 +50,16 @@ test.describe("Branches creation and deletion", () => {
       await page.getByRole("button", { name: "Create a new branch" }).click();
 
       // After submit
-      await expect(page.getByTestId("branch-select-menu")).toContainText("test123");
+      await expect(page.getByTestId("branch-selector-trigger")).toContainText("test123");
       await expect(page).toHaveURL(/.*?branch=test123/);
     });
 
     test("should display the new branch", async ({ page }) => {
       await page.goto("/");
-      await page.getByTestId("branch-list-display-button").click();
-      await expect(page.getByTestId("branch-list-dropdown")).toContainText("test123");
+      await page.getByTestId("branch-selector-trigger").click();
+      await expect(page.getByTestId("branch-list")).toContainText("test123");
 
-      await page.getByTestId("sidebar-menu").getByText("Branches").click();
+      await page.getByRole("link", { name: "View all branches" }).click();
       await expect(page).toHaveURL(/.*\/branches/);
 
       await page.getByTestId("branches-items").getByText("test123").click();
@@ -71,23 +87,30 @@ test.describe("Branches creation and deletion", () => {
       await modalDelete.getByRole("button", { name: "Delete" }).click();
 
       // we should stay on the branch test123
-      await expect(page.getByTestId("branch-select-menu")).toContainText("test123");
-      await page.getByTestId("branch-list-display-button").click();
-      await expect(page.getByTestId("branch-list-dropdown")).toContainText("test123");
-      await expect(page.getByTestId("branch-list-dropdown")).not.toContainText("test456");
+      await expect(page.getByTestId("branch-selector-trigger")).toContainText("test123");
+      await page.getByTestId("branch-selector-trigger").click();
+      await expect(page.getByTestId("branch-list")).toContainText("test123");
+      await expect(page.getByTestId("branch-list")).not.toContainText("test456");
       expect(page.url()).toContain("/branches?branch=test123");
     });
 
     test("should delete the currently selected branch", async ({ page }) => {
-      await page.goto("/");
-      await page.getByRole("link", { name: "Branches" }).click();
+      await page.goto("/branches");
       await page.getByText("test123").click();
       await page.getByRole("button", { name: "Delete" }).click();
       await page.getByTestId("modal-delete-confirm").click();
 
       expect(page.url()).toContain("/branches");
-      await page.getByTestId("branch-list-display-button").click();
-      await expect(page.getByTestId("branch-list-dropdown")).not.toContainText("test123");
+      await page.getByTestId("branch-selector-trigger").click();
+      await expect(page.getByTestId("branch-list")).not.toContainText("test123");
+    });
+
+    test("allow to create a branch with a name that does not exists", async ({ page }) => {
+      await page.goto("/");
+      await page.getByTestId("branch-selector-trigger").click();
+      await page.getByTestId("branch-search-input").fill("quick-branch-form");
+      await page.getByRole("option", { name: "Create branch quick-branch-form" }).click();
+      await expect(page.getByLabel("New branch name *")).toHaveValue("quick-branch-form");
     });
   });
 });

@@ -6,7 +6,7 @@ title: Integration with Git
 
 One of the three pillars Infrahub is built on is the idea of having unified storage for data and files. The data is stored in the graph database and the files are stored in Git.
 
-When integrating a Git repository with Infrahub, the Git agent will ensure that both systems stay in sync at any time. Changes to branches or files in a Git repository will be synced to Infrahub automatically.
+When integrating a Git repository with Infrahub, the Task worker will ensure that both systems stay in sync at any time. Changes to branches or files in a Git repository will be synced to Infrahub automatically.
 
 Please refer to [Repository](/topics/repository) to learn more about it.
 
@@ -58,7 +58,7 @@ After adding the `infrahub-demo-edge` repository you will be able to see several
 
 :::note Troubleshooting
 
-If you don't see additional objects under the transformations or `GraphQL Queries`, it's possible that the `Git agent` might not be running anymore.
+If you don't see additional objects under the transformations or `GraphQL Queries`, it's possible that the `Task worker` might not be running anymore.
 
 In this case, you should run `invoke demo.start` first to ensure that everything is working.
 

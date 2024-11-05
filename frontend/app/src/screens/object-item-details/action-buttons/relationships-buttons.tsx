@@ -2,13 +2,13 @@ import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import DynamicForm from "@/components/form/dynamic-form";
 import { SelectOption } from "@/components/inputs/select";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { ADD_RELATIONSHIP } from "@/graphql/mutations/relationships/addRelationship";
-import { usePermission } from "@/hooks/usePermission";
+import { useMutation } from "@/hooks/useQuery";
+import { Permission } from "@/screens/permission/types";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
-import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
@@ -16,8 +16,11 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 
-export function RelationshipsButtons() {
-  const permission = usePermission();
+interface RelationshipsButtonsProps {
+  permission: Permission;
+}
+
+export function RelationshipsButtons({ permission }: RelationshipsButtonsProps) {
   const { objectKind, objectid } = useParams();
   const [addRelationship] = useMutation(ADD_RELATIONSHIP);
   const generics = useAtomValue(genericsState);
@@ -89,11 +92,12 @@ export function RelationshipsButtons() {
   return (
     <>
       <ButtonWithTooltip
-        disabled={!permission.write.allow}
+        disabled={!permission.create.isAllowed}
         tooltipEnabled
-        tooltipContent={permission.write.message ?? "Add relationship"}
+        tooltipContent={permission.create.message ?? "Add relationship"}
         onClick={() => setShowAddDrawer(true)}
-        data-testid="open-relationship-form-button">
+        data-testid="open-relationship-form-button"
+      >
         <Icon icon="mdi:plus" className="mr-1.5" aria-hidden="true" /> Add{" "}
         {relationshipSchema?.label ?? relationshipSchema?.kind ?? "relationship"}
       </ButtonWithTooltip>
@@ -110,7 +114,8 @@ export function RelationshipsButtons() {
           )
         }
         open={showAddDrawer}
-        setOpen={setShowAddDrawer}>
+        setOpen={setShowAddDrawer}
+      >
         <DynamicForm
           fields={[
             {

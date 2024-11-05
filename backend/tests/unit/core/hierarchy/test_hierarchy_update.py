@@ -1,6 +1,9 @@
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import ValidationError
 
 CHECK_HIERARCHY_QUERY = """
 MATCH ({uuid: $node_uuid})-[rel:IS_RELATED]-(rel_node:Relationship {name: "parent__child"})
@@ -30,3 +33,25 @@ async def test_update_node_with_hierarchy(db: InfrahubDatabase, hierarchical_loc
         assert result.get("rel").get("hierarchy") == site_schema.hierarchy
     nodes = await NodeManager.query(db=db, schema=site_schema, filters={"parent__name__value": "europe"})
     assert {node.name.value for node in nodes} == {"paris", "london", "seattle"}
+
+
+async def test_update_node_invalid_hierarchy(db: InfrahubDatabase, hierarchical_location_data):
+    city = await NodeManager.get_one(db=db, id=hierarchical_location_data["seattle"].id, raise_on_error=True)
+    region = await NodeManager.get_one(db=db, id=hierarchical_location_data["europe"].id, raise_on_error=True)
+    rack = await NodeManager.get_one(db=db, id=hierarchical_location_data["paris-r1"].id, raise_on_error=True)
+
+    with pytest.raises(ValidationError) as exc:
+        await region.parent.update(db=db, data=city)
+    assert "Not supported to assign a value to parent" in str(exc.value)
+
+    with pytest.raises(ValidationError) as exc:
+        await region.parent.add(db=db, data=city)
+    assert "Not supported to assign a value to parent" in str(exc.value)
+
+    with pytest.raises(ValidationError) as exc:
+        await rack.children.update(db=db, data=[region])
+    assert "Not supported to assign some children" in str(exc.value)
+
+    with pytest.raises(ValidationError) as exc:
+        await rack.children.update(db=db, data=[region])
+    assert "Not supported to assign some children" in str(exc.value)

@@ -38,7 +38,7 @@ from graphql.utilities import (
 )
 from opentelemetry import trace
 from starlette.datastructures import UploadFile
-from starlette.requests import HTTPConnection, Request
+from starlette.requests import ClientDisconnect, HTTPConnection, Request
 from starlette.responses import JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
@@ -47,8 +47,8 @@ from infrahub.auth import AccountSession, authentication_token
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error
-from infrahub.graphql import GraphqlParams, prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.log import get_logger
 
 from .metrics import (
@@ -104,7 +104,7 @@ class InfrahubGraphQLApp:
         middleware: Optional[Middleware] = None,
         error_formatter: Callable[[GraphQLError], GraphQLFormattedError] = format_error,
         execution_context_class: Optional[type[ExecutionContext]] = None,
-    ):
+    ) -> None:
         self._schema = schema
         self.on_get = on_get
         self.root_value = root_value
@@ -191,6 +191,9 @@ class InfrahubGraphQLApp:
             operations = await _get_operation_from_request(request)
         except ValueError as exc:
             return JSONResponse({"errors": [exc.args[0]]}, status_code=400)
+        except ClientDisconnect as exc:
+            self.logger.error("Exception ClientDisconnect in _handle_http_request")
+            return JSONResponse({"errors": [str(exc)]}, status_code=400)
 
         if isinstance(operations, list):
             return JSONResponse({"errors": ["This server does not support batching"]}, status_code=400)

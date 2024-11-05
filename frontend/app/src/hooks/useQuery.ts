@@ -5,8 +5,8 @@ import { datetimeAtom } from "@/state/atoms/time.atom";
 import {
   OperationVariables,
   useLazyQuery as useApolloLazyQuery,
-  useQuery as useApolloQuery,
   useMutation as useApolloMutation,
+  useQuery as useApolloQuery,
   useSubscription as useApolloSubscription,
 } from "@apollo/client";
 import { useAtomValue } from "jotai";

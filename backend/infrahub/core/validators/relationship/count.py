@@ -25,7 +25,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         min_count_override: Optional[int] = None,
         max_count_override: Optional[int] = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.min_count_override = min_count_override
         self.max_count_override = max_count_override
         super().__init__(**kwargs)
@@ -34,20 +34,22 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.node_schema.kind
         self.params["relationship_id"] = self.relationship_schema.identifier
+        self.params["relationship_direction"] = self.relationship_schema.direction.value
         self.params["min_count"] = (
             self.min_count_override if self.min_count_override is not None else self.relationship_schema.min_count
         )
-        self.params["max_count"] = (
-            self.max_count_override if self.max_count_override is not None else self.relationship_schema.max_count
-        )
+        max_count: int | None = self.relationship_schema.max_count
+        if self.max_count_override:
+            max_count = self.max_count_override
+        if max_count == 0:
+            max_count = None
+        self.params["max_count"] = max_count
 
         # ruff: noqa: E501
         query = """
         // get the nodes on these branches nodes
-        MATCH (n:Node)
-        WHERE $node_kind IN LABELS(n)
+        MATCH (n:%(node_kind)s)
         CALL {
             WITH n
             MATCH path = (root:Root)<-[rroot:IS_PART_OF]-(n)
@@ -64,7 +66,9 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         CALL {
             WITH active_node
             MATCH path = (active_node)-[rrel1:IS_RELATED]-(rel:Relationship { name: $relationship_id })-[rrel2:IS_RELATED]-(peer:Node)
-            WHERE all(
+            WHERE ($relationship_direction <> "outbound" OR (startNode(rrel1) = active_node AND startNode(rrel2) = rel))
+            AND ($relationship_direction <> "inbound" OR (startNode(rrel1) = rel AND startNode(rrel2) = peer))
+            AND all(
                 r in relationships(path)
                 WHERE (%(branch_filter)s)
             )
@@ -115,7 +119,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         }
         // return a row for each node-branch combination with a count for that branch
         UNWIND violation_branches_and_counts as violation_branch_and_count
-        """ % {"branch_filter": branch_filter}
+        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
 
         self.add_to_query(query)
         self.return_labels = [
@@ -146,7 +150,7 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
 class RelationshipCountChecker(ConstraintCheckerInterface):
     query_classes = [RelationshipCountUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]) -> None:
         self.db = db
         self.branch = branch
 

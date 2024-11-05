@@ -1,20 +1,20 @@
+import { Button } from "@/components/buttons/button-primitive";
 import ItemGroup from "@/components/layouts/item-group";
+import ModalDelete from "@/components/modals/modal-delete";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Button } from "@/components/buttons/button-primitive";
-import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router-dom";
-import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { QSP } from "@/config/qsp";
-import ModalDelete from "@/components/modals/modal-delete";
-import { useState } from "react";
-import { useMutation } from "@/hooks/useQuery";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { pluralize } from "@/utils/string";
-import { useAtomValue } from "jotai";
-import { schemaState } from "@/state/atoms/schema.atom";
 import { REMOVE_RELATIONSHIP } from "@/graphql/mutations/relationships/removeRelationship";
+import { useMutation } from "@/hooks/useQuery";
 import { GroupDataFromAPI } from "@/screens/groups/types";
+import { schemaState } from "@/state/atoms/schema.atom";
+import { getObjectDetailsUrl2 } from "@/utils/objects";
+import { pluralize } from "@/utils/string";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
 type ObjectGroupsListProps = {
   className?: string;
@@ -50,7 +50,8 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
       <div className="overflow-hidden space-y-1">
         <Link
           to={getObjectDetailsUrl2(group.__typename, group.id)}
-          className="font-semibold hover:underline truncate block">
+          className="font-semibold hover:underline truncate block"
+        >
           {group.display_label}
         </Link>
 
@@ -59,7 +60,8 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
             to={getObjectDetailsUrl2(group.__typename, group.id, [
               { name: QSP.TAB, value: "members" },
             ])}
-            className="text-sm font-light hover:underline">
+            className="text-sm font-light hover:underline"
+          >
             {pluralize(group.members.count, "member")}
           </Link>
 
@@ -93,7 +95,8 @@ const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
           size="icon"
           className="flex-shrink-0 hover:bg-gray-200"
           onClick={() => setShowDeleteModal(true)}
-          data-testid="leave-group-button">
+          data-testid="leave-group-button"
+        >
           <Icon icon="mdi:link-variant-remove" className="text-lg text-red-600" />
         </Button>
       </Tooltip>

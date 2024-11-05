@@ -13,35 +13,16 @@ test.describe("object dropdown creation", () => {
   });
 
   test("should open the creation form and open the tag option creation form", async ({ page }) => {
-    // Go to home page
-    await page.goto("/");
-
-    await Promise.all([
-      page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
-
-        return reqData?.operationName === "InfraDevice" && status === 200;
-      }),
-
-      // Open all devices
-      page.getByRole("link", { name: "All Device(s)" }).click(),
-    ]);
+    await page.goto("/objects/InfraDevice");
 
     // Open creation form
     await page.getByTestId("create-object-button").click();
 
     // Open tags options
-    const tagsMultiSelectOpenButton = page
-      .getByTestId("side-panel-container")
-      .getByText("Tags")
-      .locator("../..")
-      .getByTestId("select-open-option-button");
-
-    await tagsMultiSelectOpenButton.click();
+    await page.getByLabel("Tags").click();
 
     // Add new option
-    await page.getByRole("option", { name: "Add Tag" }).click();
+    await page.getByRole("button", { name: "+ Add new Tag" }).click();
 
     // Assert form content is visible
     await expect(page.getByText("Create Tag")).toBeVisible();

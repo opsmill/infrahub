@@ -4,6 +4,7 @@ APIs
 artifact_definitions
 artifact_name
 async
+Authentik
 boolean
 check_definitions
 class_name
@@ -43,6 +44,7 @@ graphiql
 graphql
 greymatter
 hfid
+hfids
 hostname
 httpx
 human_friendly_id
@@ -63,6 +65,7 @@ Jotai
 json
 JSONSchema
 kbps
+Keycloak
 Loopbacks
 markdownlint
 max_count
@@ -79,6 +82,7 @@ Newsfragment
 Nornir
 npm
 o'brian
+order_weight
 openconfig
 opentelemetry
 order_by
@@ -93,12 +97,14 @@ REST
 ressources
 schema_mapping
 sdk
+subcommand
 subnet
 template_path
 toml
 Towncrier
 uncheck
 uniqueness_constraints
+userinfo
 validator
 upsert
 Upserting

@@ -16,6 +16,7 @@ import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/screens/ipam/constant
 import { reloadIpamTreeAtom } from "@/screens/ipam/ipam-tree/ipam-tree.state";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
+import { getPermission } from "@/screens/permission/utils";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -44,6 +45,8 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
   });
 
   useImperativeHandle(ref, () => ({ refetch }));
+
+  const permission = getPermission(data?.[IP_PREFIX_GENERIC]?.permissions?.edges);
 
   const columns = [
     { name: "prefix", label: "Prefix" },
@@ -145,7 +148,13 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
       {(loading || !defaultIpNamespace) && <LoadingScreen hideText />}
 
       {data && (
-        <Table rows={rows} columns={columns} onDelete={handleDelete} onUpdate={handleUpdate} />
+        <Table
+          rows={rows}
+          columns={columns}
+          onDelete={handleDelete}
+          onUpdate={handleUpdate}
+          permission={permission}
+        />
       )}
 
       {relatedRowToDelete && (
@@ -185,7 +194,8 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
                     <svg
                       className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                       viewBox="0 0 6 6"
-                      aria-hidden="true">
+                      aria-hidden="true"
+                    >
                       <circle cx={3} cy={3} r={3} />
                     </svg>
                     {relatedObjectToEdit?.__typename}
@@ -195,7 +205,8 @@ const IpamIPPrefixesSummaryList = forwardRef((props, ref) => {
             </>
           }
           open={!!relatedObjectToEdit}
-          setOpen={() => setRelatedObjectToEdit(undefined)}>
+          setOpen={() => setRelatedObjectToEdit(undefined)}
+        >
           <ObjectItemEditComponent
             closeDrawer={() => {
               setRelatedObjectToEdit(undefined);

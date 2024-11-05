@@ -32,7 +32,8 @@ export const Retry = (props: tRetryProps) => {
         isLoading ? "animate-spin" : "",
         isLoading || isDisabled ? "!cursor-not-allowed" : ""
       )}
-      onClick={handleClick}>
+      onClick={handleClick}
+    >
       <Icon
         icon={"mdi:reload"}
         className={classNames(isLoading ? "text-gray-300" : "text-gray-400")}

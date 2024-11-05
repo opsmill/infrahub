@@ -1,10 +1,10 @@
-import { useAtomValue } from "jotai/index";
-import { genericsState } from "@/state/atoms/schema.atom";
-import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
+import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItems from "@/screens/object-items/object-items-paginated";
 import ObjectHeader from "@/screens/objects/object-header";
-import Content from "@/screens/layout/content";
+import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
+import { genericsState } from "@/state/atoms/schema.atom";
+import { useAtomValue } from "jotai/index";
 
 const ResourceManagerPage = () => {
   const generics = useAtomValue(genericsState);
@@ -13,13 +13,11 @@ const ResourceManagerPage = () => {
   if (!resourcePoolSchema) return <LoadingScreen />;
 
   return (
-    <>
+    <Content.Card>
       <ObjectHeader schema={resourcePoolSchema} />
 
-      <Content className="p-2">
-        <ObjectItems schema={resourcePoolSchema} />
-      </Content>
-    </>
+      <ObjectItems schema={resourcePoolSchema} />
+    </Content.Card>
   );
 };
 

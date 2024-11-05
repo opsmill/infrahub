@@ -4,6 +4,9 @@ global:
   kubernetesClusterDomain: cluster.local
   infrahubRepository: opsmill/infrahub
   imagePullPolicy: IfNotPresent
+  commonLabels: {}
+  commonAnnotations: {}
+  podLabels: {}
 
 # ----------- Cache -----------
 redis:
@@ -50,44 +53,16 @@ neo4j:
     dbms.security.procedures.unrestricted: apoc.*
   logInitialPassword: false
 
-# ----------- Infrahub GIT -----------
-infrahubGit:
+# ----------- Infrahub Task Worker -----------
+infrahubTaskWorker:
   replicas: 2
   persistence:
     enabled: true
     size: 100Mi
     accessMode: ReadWriteMany
     storageClassName: nfs
-  infrahubGit:
-    args:
-      - infrahub
-      - git-agent
-      - start
-      - --debug
-    env:
-      INFRAHUB_CACHE_PORT: 6379
-      INFRAHUB_DB_TYPE: neo4j
-      INFRAHUB_LOG_LEVEL: DEBUG
-      INFRAHUB_PRODUCTION: "false"
-      INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
-      INFRAHUB_TIMEOUT: "20"
-      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
-      PREFECT_API_URL: "http://prefect-server:4200/api"
-      PREFECT_WORKER_QUERY_SECONDS: 3
-      PREFECT_AGENT_QUERY_INTERVAL: 3
-      PREFECT_LOCAL_STORAGE_PATH: /opt/infrahub/workflow
-    imagePullPolicy: Always
-    imageRegistry: registry.opsmill.io
-
-# ----------- Infrahub Task Runner -----------
-infrahubTaskRunner:
-  replicas: 2
-  persistence:
-    enabled: true
-    size: 100Mi
-    accessMode: ReadWriteMany
-    storageClassName: nfs
-  infrahubTaskRunner:
+  resources: {}
+  infrahubTaskWorker:
     args:
       - prefect
       - worker
@@ -95,7 +70,7 @@ infrahubTaskRunner:
       - --type
       - infrahubasync
       - --pool
-      - infrahub-internal
+      - infrahub-worker
       - --with-healthcheck
     env:
       INFRAHUB_CACHE_PORT: 6379
@@ -103,14 +78,13 @@ infrahubTaskRunner:
       INFRAHUB_LOG_LEVEL: DEBUG
       INFRAHUB_PRODUCTION: "false"
       INFRAHUB_API_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
-      INFRAHUB_TIMEOUT: "20"
+      INFRAHUB_TIMEOUT: "60"
       INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
       INFRAHUB_WORKFLOW_ADDRESS: prefect-server
       INFRAHUB_WORKFLOW_PORT: 4200
       PREFECT_API_URL: "http://prefect-server:4200/api"
       PREFECT_WORKER_QUERY_SECONDS: 3
       PREFECT_AGENT_QUERY_INTERVAL: 3
-      PREFECT_LOCAL_STORAGE_PATH: /opt/infrahub/workflow
     imagePullPolicy: Always
     imageRegistry: registry.opsmill.io
 
@@ -120,11 +94,13 @@ infrahubServer:
   ingress:
     enabled: true
     hostname: infrahub-cluster.local
+    annotations:
   persistence:
     enabled: true
     size: 100Mi
     accessMode: ReadWriteMany
     storageClassName: nfs
+  resources: {}
   infrahubServer:
     args:
       - gunicorn
@@ -147,14 +123,12 @@ infrahubServer:
       INFRAHUB_WORKFLOW_ADDRESS: prefect-server
       INFRAHUB_WORKFLOW_PORT: 4200
       PREFECT_API_URL: "http://prefect-server:4200/api"
-      PREFECT_LOCAL_STORAGE_PATH: /opt/infrahub/workflow
     imagePullPolicy: Always
     imageRegistry: registry.opsmill.io
   ports:
     - name: "interface"
       port: 8000
       targetPort: 8000
-
 
 infrahubServerDbInitJob:
   enabled: false
@@ -177,7 +151,7 @@ infrahubDemoData:
   command:
     - sh
     - -c
-    - "infrahubctl schema load models/base --wait 30 && infrahubctl run models/infrastructure_edge.py && infrahubctl repository add demo-edge https://github.com/opsmill/infrahub-demo-edge --read-only"
+    - "infrahubctl schema load models/base --wait 30 && infrahubctl run models/infrastructure_edge.py && infrahubctl menu load models/base_menu.yml && infrahubctl repository add demo-edge https://github.com/opsmill/infrahub-demo-edge --read-only"
 
 # ----------- Mesage Queue (Rabbit MQ) -----------
 rabbitmq:
@@ -213,7 +187,7 @@ prefect-server:
   enabled: true
   server:
     image:
-      prefectTag: 3.0.0-python3.12-kubernetes
+      prefectTag: 3.0.3-python3.12-kubernetes
     env:
       - name: PREFECT_UI_SERVE_BASE
         value: /
@@ -224,9 +198,3 @@ prefect-server:
     primary:
       persistence:
         enabled: false
-
-# -------------- Cloud --------------
-traefik:
-  enabled: false
-cloud:
-  enabled: false

@@ -316,10 +316,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             log.warning(f"Found an existing file at {self.directory_root}, deleted it", repository=self.name)
 
         # Initialize directory structure
-        os.makedirs(self.directory_root)
-        os.makedirs(self.directory_branches)
-        os.makedirs(self.directory_commits)
-        os.makedirs(self.directory_temp)
+        Path(self.directory_root).mkdir(parents=True)
+        Path(self.directory_branches).mkdir(parents=True)
+        Path(self.directory_commits).mkdir(parents=True)
+        Path(self.directory_temp).mkdir(parents=True)
 
         try:
             repo = Repo.clone_from(self.location, self.directory_default)

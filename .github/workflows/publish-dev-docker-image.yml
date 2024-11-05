@@ -8,7 +8,7 @@ on:
       publish:
         type: boolean
         description: Publish the image
-        default: true
+        default: false
         required: true
       commit:
         type: string
@@ -62,15 +62,28 @@ jobs:
             latest=false
 
 
-  publish-docker-image:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'cd/preview')
+  publish-docker-image-dispatch:
+    if: github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/ci-docker-image.yml
     needs: meta_data
     secrets: inherit
     with:
-      publish: ${{ inputs.publish == '' && true }}
+      publish: ${{ inputs.publish }}
       version: dev-${{ needs.meta_data.outputs.short_ref }}
       ref: ${{ needs.meta_data.outputs.ref }}
       tags: ${{needs.meta_data.outputs.tags}}
       labels: ${{needs.meta_data.outputs.labels}}
       platforms: ${{ inputs.platforms }}
+
+  publish-docker-image-pr:
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'cd/preview')
+    uses: ./.github/workflows/ci-docker-image.yml
+    needs: meta_data
+    secrets: inherit
+    with:
+      publish: true
+      version: dev-${{ needs.meta_data.outputs.short_ref }}
+      ref: ${{ needs.meta_data.outputs.ref }}
+      tags: ${{ needs.meta_data.outputs.tags }}
+      labels: ${{ needs.meta_data.outputs.labels }}
+      platforms: "linux/amd64"

@@ -1,3 +1,4 @@
+import { Button } from "@/components/buttons/button-primitive";
 import { Retry } from "@/components/buttons/retry";
 import { PieChart } from "@/components/display/pie-chart";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
@@ -5,7 +6,6 @@ import {
   CHECKS_LABEL,
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
   VALIDATIONS_ENUM_MAP,
-  VALIDATION_STATES,
 } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { runCheck } from "@/graphql/mutations/diff/runCheck";
@@ -14,7 +14,9 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { genericsState } from "@/state/atoms/schema.atom";
 import { schemaKindLabelState } from "@/state/atoms/schemaKindLabel.atom";
 import { getValidatorsStats } from "@/utils/checks";
+import { classNames } from "@/utils/common";
 import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -31,7 +33,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   const { proposedChangeId } = useParams();
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
   const schemaList = useAtomValue(genericsState);
-  const auth = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_VALIDATOR_OBJECT);
 
@@ -42,10 +44,6 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
 
     return { ...acc, [kind]: getValidatorsStats(relatedValidators) };
   }, {});
-
-  const validatorsInProgress = validators.filter(
-    (validator: any) => validator?.state?.value === VALIDATION_STATES.IN_PROGRESS
-  );
 
   const handleRetry = async (validator: string) => {
     const runParams = {
@@ -85,13 +83,15 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
     <div className="flex justify-center m-4" data-testid="checks-summary">
       <div className="flex flex-col-reverse items-center relative">
         <div className="lg:absolute lg:top-1/2 lg:-left-28 lg:transform lg:-translate-y-1/2 flex items-center justify-between p-2">
-          <span className="mr-1 text-xs">Retry all:</span>
-
-          <Retry
+          <Button
             onClick={() => handleRetry("all")}
-            isLoading={isLoading || !!validatorsInProgress.length}
-            isDisabled={!auth?.permissions?.write}
-          />
+            disabled={!isAuthenticated}
+            variant="ghost"
+            className="gap-1 hover:bg-neutral-200"
+          >
+            Retry all
+            <Icon icon="mdi:reload" className={classNames(isLoading && "animate-spin")} />
+          </Button>
         </div>
 
         <div className="flex">

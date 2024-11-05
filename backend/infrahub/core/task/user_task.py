@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.protocols import CoreGenericAccount
     from infrahub.database import InfrahubDatabase
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
     from infrahub.services.protocols import InfrahubLogger
 
 

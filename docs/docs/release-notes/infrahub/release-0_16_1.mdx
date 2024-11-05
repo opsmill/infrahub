@@ -1,0 +1,131 @@
+---
+title: Release 0.16.1
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>0.16.1</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>September 24th, 2024</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Beta #5, Patch #1</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v0.16.1](https://github.com/opsmill/infrahub/releases/tag/infrahub-v0.16.1)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 0.16.1
+
+We are thrilled to announce the latest release of Infrahub, version *0.16.1*!
+
+This release focuses largely on bug fixes and is driven by our Beta Test users,
+and as always we greatly appreciate their feedback and time!
+
+## Main changes
+
+The largest change in this version is the movement of the Infrahub SDK into a
+[separate repository](https://github.com/opsmill/infrahub-sdk-python) and package.
+
+[Documentation for the SDK](https://docs.infrahub.app/python-sdk/) remains in the main Infrahub documentation at this time.
+
+Developers may need to take the following steps to ensure their development environment has the proper SDK in place:
+
+```shell
+git checkout develop
+git pull
+rm -rf python_sdk
+git submodule update --init
+```
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Removed
+
+- Removed Python SDK from Infrahub repository and migrated to dedicated repository at [https://github.com/opsmill/infrahub-sdk-python](https://github.com/opsmill/infrahub-sdk-python).
+  ([#4232](https://github.com/opsmill/infrahub/issues/4232))
+
+### Added
+
+- - In list views, always show relationships of type "Parent."
+  - In the details view of an object, hide the "Parent" relationship if the parent is the current object itself.
+
+  ([#3891](https://github.com/opsmill/infrahub/issues/3891))
+- Add ability to construct HFIDs from payload for upsert mutations ([#4167](https://github.com/opsmill/infrahub/issues/4167))
+- Add HFID to schema view in the frontend ([#4172](https://github.com/opsmill/infrahub/issues/4172))
+- Update action buttons in details view and relationships views
+  - in the details view, we can edit / delete the object and manage its groups
+  - in the relationships views, we can add new relationships (it replaces the "+" button at the bottom)
+
+  ([#4362](https://github.com/opsmill/infrahub/issues/4362))
+- Prevent the form from being closed if there are unsaved changes. ([#4419](https://github.com/opsmill/infrahub/issues/4419))
+
+### Fixed
+
+- GraphQL results when querying nodes with `updated_at` named attributes will now return correct values instead of null/None ([#3730](https://github.com/opsmill/infrahub/issues/3730))
+- Loading a schema with a SchemaNode referencing an incorrect menu placement now returns a proper HTTP 422 error ([#4089](https://github.com/opsmill/infrahub/issues/4089))
+- GraphQL mutations to update a many relationship that is required on the peer will succeed or fail with the correct error ([#4124](https://github.com/opsmill/infrahub/issues/4124))
+- Infer human-friendly ID for a schema if it includes a uniqueness constraint of a single attribute ([#4174](https://github.com/opsmill/infrahub/issues/4174))
+- Account for uniqueness constraints of a single attribute when validating human-friendly ID ([#4181](https://github.com/opsmill/infrahub/issues/4181))
+- Synchronize uniqueness_constraints and unique attributes during schema processing ([#4182](https://github.com/opsmill/infrahub/issues/4182))
+- Ensure schema uniqueness_constraints are created if they are missing and human_friendly_id has been specified for the node ([#4186](https://github.com/opsmill/infrahub/issues/4186))
+- Deleting a node that is linked to a mandatory relationship on a generic schema will now fail with an error message ([#4207](https://github.com/opsmill/infrahub/issues/4207))
+- Fixed incorrect consumer timeout for RabbitMQ queue infrahub.rpcs
+
+  If you are upgrading from a previous version of Infrahub and using the provided Docker Compose files you don't have to take any additional action. However if you are using your own setup for RabbitMQ you will need to manually delete the queue yourself.
+
+  Swap the container name and credentials to RabbitMQ if they are different in your setup:
+
+  ```bash
+  docker exec -it infrahub-message-queue-1 rabbitmqadmin --username infrahub --password infrahub delete queue name=infrahub.rpcs
+  ```
+
+  After this step Infrahub and the Git agents need to be restarted, when doing so the correct queue will be recreated. ([#4308](https://github.com/opsmill/infrahub/issues/4308))
+- Add documentation links for Generator Definition and Generator Instance pages to Generator topic ([#4316](https://github.com/opsmill/infrahub/issues/4316))
+- Hierarchical node that don't have a parent or a children defined in the schema will properly enforce that constraint ([#4325](https://github.com/opsmill/infrahub/issues/4325))
+- Properly raise errors instead of just logging them during repository import failures so that the "sync status" gets updated even if we've caught the errors. ([#4334](https://github.com/opsmill/infrahub/issues/4334))
+- Display label composed of an attribute of type Enum will now render correctly ([#4382](https://github.com/opsmill/infrahub/issues/4382))
+- Removed database index in Attribute Value to attribute larger than 8167 bytes ([#4399](https://github.com/opsmill/infrahub/issues/4399))
+- Added cancel button in repository form ([#4402](https://github.com/opsmill/infrahub/issues/4402))
+- Fixes the tasks pagination in the proposed changes tab ([#4434](https://github.com/opsmill/infrahub/issues/4434))
+
+## Migration guide
+
+To migrate your instance of Infrahub to the latest version, please run the following commands and restart all instances of Infrahub.
+
+<!-- vale off -->
+```shell
+infrahub db migrate
+infrahub db update-core-schema
+```
+<!-- vale on -->
+
+> if you are running in docker these commands need to run from the container where Infrahub is installed
+
+### Migration of the demo instance
+
+If you are using the demo environment, you can migrate to the latest version with the following commands
+
+```shell
+invoke demo.stop
+invoke demo.build
+invoke demo.migrate
+invoke demo.start
+```
+
+If you don't want to keep your data, you can start a clean instance with the following command
+
+```shell
+invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
+```
+
+> All data will be lost, please make sure to backup everything you need before running this command.
+
+The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.

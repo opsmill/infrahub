@@ -75,7 +75,7 @@ class PrefixUtilizationGetter:
             return prefix_child_details_list
         for prefix_id in prefix_ids:
             child_details_by_branch = self._results_by_prefix_id[prefix_id]
-            branch_names_to_check = branch_names if branch_names else list(child_details_by_branch.keys())
+            branch_names_to_check = branch_names or list(child_details_by_branch.keys())
             for branch_name in branch_names_to_check:
                 for child_details in child_details_by_branch.get(branch_name, []):
                     if prefix_member_type and child_details.child_type != prefix_member_type:

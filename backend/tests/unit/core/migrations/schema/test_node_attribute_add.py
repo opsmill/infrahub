@@ -1,12 +1,19 @@
 import uuid
 
 import pytest
-from infrahub_sdk import UUIDT, InfrahubClient
+from infrahub_sdk import InfrahubClient
+from infrahub_sdk.uuidt import UUIDT
 
-from infrahub.core.constants import SchemaPathType
+from infrahub.core import registry
+from infrahub.core.branch import Branch
+from infrahub.core.constants import HashableModelState, SchemaPathType
 from infrahub.core.migrations.schema.node_attribute_add import (
     NodeAttributeAddMigration,
     NodeAttributeAddMigrationQuery01,
+)
+from infrahub.core.migrations.schema.node_attribute_remove import (
+    NodeAttributeRemoveMigration,
+    NodeAttributeRemoveMigrationQuery01,
 )
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import NodeSchema
@@ -85,6 +92,54 @@ async def test_query01(db: InfrahubDatabase, default_branch, init_database, sche
     assert query.get_nbr_migrations_executed() == 0
     assert await count_nodes(db=db, label="TestCar") == 5
     assert await count_nodes(db=db, label="Attribute") == 5
+
+
+async def test_query01_re_add(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+
+    assert await count_nodes(db=db, label="TestCar") == 2
+    assert await count_nodes(db=db, label="Attribute") == 14
+
+    # ------------------------------------------
+    # Delete the attribute Color
+    # ------------------------------------------
+    candidate_schema = schema.duplicate()
+    car_schema = candidate_schema.get_node(name="TestCar")
+    attr = car_schema.get_attribute(name="color")
+    attr.state = HashableModelState.ABSENT
+
+    migration_remove = NodeAttributeRemoveMigration(
+        previous_node_schema=schema.get_node(name="TestCar"),
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
+    )
+    query = await NodeAttributeRemoveMigrationQuery01.init(db=db, branch=default_branch, migration=migration_remove)
+    await query.execute(db=db)
+    assert query.get_nbr_migrations_executed() == 2
+
+    # ------------------------------------------
+    # Add the attribute Color back
+    # ------------------------------------------
+    migration_add = NodeAttributeAddMigration(
+        new_node_schema=schema.get_node(name="TestCar"),
+        previous_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
+    )
+    query = await NodeAttributeAddMigrationQuery01.init(db=db, branch=default_branch, migration=migration_add)
+    await query.execute(db=db)
+
+    assert query.get_nbr_migrations_executed() == 2
+
+    assert await count_nodes(db=db, label="TestCar") == 2
+    assert await count_nodes(db=db, label="Attribute") == 16
+
+    # Re-execute the query once to ensure that it won't recreate the attribute twice
+    query = await NodeAttributeAddMigrationQuery01.init(db=db, branch=default_branch, migration=migration_add)
+    await query.execute(db=db)
+
+    assert query.get_nbr_migrations_executed() == 0
+    assert await count_nodes(db=db, label="TestCar") == 2
+    assert await count_nodes(db=db, label="Attribute") == 16
 
 
 async def test_migration(db: InfrahubDatabase, default_branch, init_database, schema_aware):

@@ -7,6 +7,7 @@ from graphene.types.generic import GenericScalar
 
 from infrahub.core import registry
 
+from .enums import BranchRelativePermissionDecision
 from .interface import InfrahubInterface
 
 
@@ -55,6 +56,10 @@ class RelatedPrefixNodeInput(InputObjectType):
     _relation__source = String(required=False)
 
 
+class PermissionType(ObjectType):
+    update_value = Field(BranchRelativePermissionDecision, required=False)
+
+
 class AttributeInterface(InfrahubInterface):
     is_default = Field(Boolean)
     is_inherited = Field(Boolean)
@@ -70,6 +75,7 @@ class AttributeInterface(InfrahubInterface):
 class BaseAttribute(ObjectType):
     id = Field(String)
     is_from_profile = Field(Boolean)
+    permissions = Field(PermissionType, required=False)
 
     @classmethod
     def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:

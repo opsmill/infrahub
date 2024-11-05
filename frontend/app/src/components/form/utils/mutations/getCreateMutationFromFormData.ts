@@ -16,16 +16,30 @@ export const getCreateMutationFromFormData = (
       return acc;
     }
 
+    if (isFormFieldValueFromPool(fieldData)) {
+      return { ...acc, [field.name]: fieldData.value };
+    }
+
     if (fieldData.source?.type === "user") {
+      if (fieldData.value === null) {
+        return { ...acc, [field.name]: { value: null } };
+      }
+
+      if (typeof fieldData.value === "object") {
+        const fieldValue = Array.isArray(fieldData.value)
+          ? fieldData.value.map(({ id }) => ({ id }))
+          : { id: fieldData.value.id };
+        return {
+          ...acc,
+          [field.name]: fieldValue,
+        };
+      }
+
       const fieldValue = fieldData.value === "" ? null : fieldData.value;
       return {
         ...acc,
-        [field.name]: field.type === "relationship" ? fieldValue : { value: fieldValue },
+        [field.name]: { value: fieldValue },
       };
-    }
-
-    if (isFormFieldValueFromPool(fieldData)) {
-      return { ...acc, [field.name]: fieldData.value };
     }
 
     return acc;
@@ -46,9 +60,10 @@ export const getCreateMutationFromFormDataOnly = (
 
     if (data.source?.type === "user") {
       const fieldValue = data.value === "" ? null : data.value;
+
       return {
         ...acc,
-        [name]: { value: fieldValue },
+        [name]: Array.isArray(fieldValue) ? fieldValue : { value: fieldValue },
       };
     }
 

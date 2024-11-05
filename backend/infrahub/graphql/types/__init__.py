@@ -23,7 +23,6 @@ from .attribute import (
 )
 from .branch import BranchType
 from .interface import InfrahubInterface
-from .mixin import GetListMixin
 from .node import InfrahubObject
 from .permission import PaginatedObjectPermission
 from .relationship import RelationshipNode
@@ -40,7 +39,6 @@ __all__ = [
     "CheckboxAttributeType",
     "DropdownFields",
     "DropdownType",
-    "GetListMixin",
     "IPHostType",
     "IPNetworkType",
     "InfrahubInterface",

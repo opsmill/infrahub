@@ -1,50 +1,45 @@
-import { Icon } from "@iconify-icon/react";
-import { Button, ButtonProps } from "../buttons/button-primitive";
-import { Tooltip } from "../ui/tooltip";
-import { usePermission } from "@/hooks/usePermission";
-import { useState } from "react";
-import { ACCOUNT_OBJECT, ARTIFACT_OBJECT } from "@/config/constants";
-import { IModelSchema } from "@/state/atoms/schema.atom";
-import { isGeneric } from "@/utils/common";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
+import { ARTIFACT_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
+import { Permission } from "@/screens/permission/types";
+import { IModelSchema } from "@/state/atoms/schema.atom";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
+import { Button, ButtonProps } from "../buttons/button-primitive";
+import { Tooltip } from "../ui/tooltip";
 
 interface ObjectCreateFormTriggerProps extends ButtonProps {
   schema: IModelSchema;
   onSuccess?: (newObject: any) => void;
+  permission: Permission;
 }
 
 export const ObjectCreateFormTrigger = ({
   schema,
   onSuccess,
   isLoading,
+  permission,
   ...props
 }: ObjectCreateFormTriggerProps) => {
-  const permission = usePermission();
-
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   if (schema.kind === ARTIFACT_OBJECT) {
     return null;
   }
 
-  const isAccount: boolean =
-    schema.kind === ACCOUNT_OBJECT ||
-    (!isGeneric(schema) && !!schema.inherit_from?.includes(ACCOUNT_OBJECT));
-
-  const isAllowed = isAccount ? permission.isAdmin.allow : permission.write.allow;
-  const tooltipMessage = isAccount ? permission.isAdmin.message : permission.isAdmin.message;
+  const isAllowed = permission.create.isAllowed;
 
   return (
     <>
-      <Tooltip enabled={!isAllowed} content={tooltipMessage}>
+      <Tooltip enabled={!isAllowed} content={!isAllowed && permission.create.message}>
         <Button
           data-cy="create"
           data-testid="create-object-button"
           disabled={!isAllowed || isLoading}
           onClick={() => setShowCreateDrawer(true)}
-          {...props}>
+          {...props}
+        >
           <Icon icon="mdi:plus" className="text-sm mr-1.5" />
           Add {schema?.label}
         </Button>
@@ -60,7 +55,8 @@ export const ObjectCreateFormTrigger = ({
           />
         }
         open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}>
+        setOpen={setShowCreateDrawer}
+      >
         <ObjectForm
           onSuccess={async (result: any) => {
             setShowCreateDrawer(false);

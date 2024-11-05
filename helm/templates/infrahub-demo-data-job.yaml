@@ -4,8 +4,11 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-infrahub-demo-data-job
+  namespace: "{{ .Release.Namespace }}"
   labels:
   {{- include "infrahub-helm.labels" . | nindent 4 }}
+  annotations:
+  {{- include "infrahub-helm.annotations" . | nindent 4 }}
 spec:
   backoffLimit: {{ .Values.infrahubDemoData.backoffLimit }}
   template:

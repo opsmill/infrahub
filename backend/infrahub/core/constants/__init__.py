@@ -4,7 +4,7 @@ import enum
 
 from infrahub.core.constants import infrahubkind as InfrahubKind
 from infrahub.exceptions import ValidationError
-from infrahub.utils import InfrahubStringEnum
+from infrahub.utils import InfrahubNumberEnum, InfrahubStringEnum
 
 from .schema import FlagProperty, NodeProperty, SchemaElementPathType, UpdateSupport, UpdateValidationErrorType
 
@@ -52,19 +52,28 @@ class PermissionLevel(enum.Flag):
 
 class GlobalPermissions(InfrahubStringEnum):
     EDIT_DEFAULT_BRANCH = "edit_default_branch"
+    SUPER_ADMIN = "super_admin"
+    MERGE_BRANCH = "merge_branch"
+    MERGE_PROPOSED_CHANGE = "merge_proposed_change"
+    MANAGE_SCHEMA = "manage_schema"
+    MANAGE_ACCOUNTS = "manage_accounts"
+    MANAGE_PERMISSIONS = "manage_permissions"
+    MANAGE_REPOSITORIES = "manage_repositories"
 
 
 class PermissionAction(InfrahubStringEnum):
     ANY = "any"
-    ADD = "create"
-    CHANGE = "update"
+    CREATE = "create"
+    UPDATE = "update"
     DELETE = "delete"
     VIEW = "view"
 
 
-class PermissionDecision(InfrahubStringEnum):
-    ALLOW = "allow"
-    DENY = "deny"
+class PermissionDecision(InfrahubNumberEnum):
+    DENY = 1
+    ALLOW_DEFAULT = 2
+    ALLOW_OTHER = 4
+    ALLOW_ALL = 6
 
 
 class AccountRole(InfrahubStringEnum):
@@ -190,16 +199,6 @@ class PathType(InfrahubStringEnum):
             return cls("relationship_one")
 
         return cls("relationship_many")
-
-
-class FilterSchemaKind(InfrahubStringEnum):
-    TEXT = "Text"
-    LIST = "Text"
-    NUMBER = "Number"
-    BOOLEAN = "Boolean"
-    OBJECT = "Object"
-    MULTIOBJECT = "MultiObject"
-    ENUM = "Enum"
 
 
 class ProposedChangeState(InfrahubStringEnum):

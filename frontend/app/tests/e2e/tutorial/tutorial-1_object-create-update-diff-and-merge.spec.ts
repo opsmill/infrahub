@@ -18,12 +18,12 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
   let dateBeforeTest: Date;
 
   test("1. Create a new organization", async ({ page }) => {
-    dateBeforeTest = new Date(
-      Math.floor(new Date().getTime() / (1000 * 60 * 10)) * (1000 * 60 * 10)
-    );
+    dateBeforeTest = new Date();
 
     await page.goto("/");
-    await page.getByTestId("sidebar-menu").getByRole("link", { name: "Tenant" }).click();
+
+    await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
+    await page.getByRole("menuitem", { name: "Tenant" }).click();
 
     await test.step("fill and submit form for new organization", async () => {
       await page.getByTestId("create-object-button").click();
@@ -45,6 +45,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
   test("2. Create a new branch", async ({ page }) => {
     await page.goto("/");
+    await page.getByTestId("branch-selector-trigger").click();
     await page.getByTestId("create-branch-button").click();
 
     await test.step("fill and submit form for new organization", async () => {
@@ -55,14 +56,17 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     // After submit
-    await expect(page.getByTestId("branch-select-menu")).toContainText("cr1234");
+    await expect(page.getByTestId("branch-selector-trigger")).toContainText("cr1234");
     await expect(page).toHaveURL(/.*?branch=cr1234/);
   });
 
   test("3. Update an organization", async ({ page }) => {
     await test.step("Go to the newly created organization on branch cr1234", async () => {
       await page.goto("/?branch=cr1234");
-      await page.getByRole("link", { name: "Tenant" }).click();
+
+      await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
+      await page.getByRole("menuitem", { name: "Tenant" }).click();
+
       const myFirstOrgLink = page.getByRole("link", { name: "my-first-tenant" });
       await expect(myFirstOrgLink).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_organizations");
@@ -86,8 +90,8 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("See initial value on main branch", async () => {
-      await page.getByTestId("branch-list-display-button").click();
-      await page.getByText("main", { exact: true }).click();
+      await page.getByTestId("branch-selector-trigger").click();
+      await page.getByRole("option", { name: "main default" }).click();
       await expect(page.getByText("Testing Infrahub")).toBeVisible();
     });
   });
@@ -95,7 +99,8 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
   test("4. View the Diff and Merge the branch cr1234 into main", async ({ page }) => {
     await test.step("Go to branch cr1234 page", async () => {
       await page.goto("/?branch=cr1234");
-      await page.getByTestId("sidebar-menu").getByRole("link", { name: "Branches" }).click();
+      await page.getByTestId("branch-selector-trigger").click();
+      await page.getByRole("link", { name: "View all branches" }).click();
       await saveScreenshotForDocs(page, "tutorial_1_branch_list");
       await page.getByTestId("branches-items").getByText("cr1234").click();
       await expect(page.locator("dl")).toContainText("cr1234");
@@ -129,10 +134,13 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("Validate merged changes in main", async () => {
-      await page.getByTestId("branch-list-display-button").click();
-      await page.getByTestId("branch-list-dropdown").getByText("main", { exact: true }).click();
-      await expect(page.getByTestId("branch-list-display-button")).toContainText("main");
-      await page.getByTestId("sidebar-menu").getByRole("link", { name: "Tenant" }).click();
+      await page.getByTestId("branch-selector-trigger").click();
+      await page.getByRole("option", { name: "main default" }).click();
+      await expect(page.getByTestId("branch-selector-trigger")).toContainText("main");
+
+      await page.getByTestId("sidebar").getByRole("button", { name: "Organization" }).click();
+      await page.getByRole("menuitem", { name: "Tenant" }).click();
+
       await expect(page.locator("tbody")).toContainText("Changes from branch cr1234");
     });
   });
@@ -150,6 +158,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page
         .getByRole("option", { name: format(dateBeforeTest, "h:mm aa"), exact: true })
         .click();
+      await expect(page.getByRole("link", { name: "Duff" })).toBeVisible();
       await expect(
         page.getByRole("link", { name: "Changes from branch cr1234" })
       ).not.toBeVisible();
@@ -157,7 +166,8 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("Row my-first-tenant is visible again when we reset date input", async () => {
       await page.getByTestId("reset-timeframe-selector").click();
-      await expect(page.getByRole("link", { name: "my-first-tenant" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Changes from branch cr1234" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Testing Infrahub" })).not.toBeVisible();
     });
   });
 });

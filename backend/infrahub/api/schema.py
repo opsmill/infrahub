@@ -16,23 +16,32 @@ from infrahub import config, lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
+from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch  # noqa: TCH001
-from infrahub.core.migrations.schema.runner import schema_migrations_runner
-from infrahub.core.models import SchemaBranchHash, SchemaDiff  # noqa: TCH001
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
+from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
+from infrahub.core.models import (  # noqa: TCH001
+    SchemaBranchHash,
+    SchemaDiff,
+    SchemaUpdateValidationResult,
+)
 from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, SchemaRoot
-from infrahub.core.schema_manager import SchemaBranch, SchemaNamespace, SchemaUpdateValidationResult  # noqa: TCH001
-from infrahub.core.validators.checker import schema_validators_checker
+from infrahub.core.schema.constants import SchemaNamespace  # noqa: TCH001
+from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub.exceptions import MigrationError
+from infrahub.exceptions import MigrationError, PermissionDeniedError
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
 
 if TYPE_CHECKING:
     from typing_extensions import Self
 
+    from infrahub.auth import AccountSession
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.services import InfrahubServices
 
 
@@ -135,7 +144,6 @@ def evaluate_candidate_schemas(
 
 
 @router.get("")
-@router.get("/", include_in_schema=False, deprecated=True)
 async def get_schema(
     branch: Branch = Depends(get_branch_dep), namespaces: Union[list[str], None] = Query(default=None)
 ) -> SchemaReadAPI:
@@ -234,8 +242,24 @@ async def load_schema(
     background_tasks: BackgroundTasks,
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
-    _: Any = Depends(get_current_user),
+    account_session: AccountSession = Depends(get_current_user),
 ) -> SchemaUpdate:
+    for permission_backend in registry.permission_backends:
+        if not await permission_backend.has_permission(
+            db=db,
+            account_session=account_session,
+            permission=GlobalPermission(
+                action=GlobalPermissions.MANAGE_SCHEMA.value,
+                decision=(
+                    PermissionDecision.ALLOW_DEFAULT
+                    if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+                    else PermissionDecision.ALLOW_OTHER
+                ).value,
+            ),
+            branch=branch,
+        ):
+            raise PermissionDeniedError("You are not allowed to manage the schema")
+
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
 
@@ -258,8 +282,15 @@ async def load_schema(
         # ----------------------------------------------------------
         # Validate if the new schema is valid with the content of the database
         # ----------------------------------------------------------
-        error_messages, _ = await schema_validators_checker(
-            branch=branch, schema=candidate_schema, constraints=result.constraints, service=service
+        validate_migration_data = SchemaValidateMigrationData(
+            branch=branch,
+            schema_branch=candidate_schema,
+            constraints=result.constraints,
+        )
+        error_messages = await service.workflow.execute_workflow(
+            workflow=SCHEMA_VALIDATE_MIGRATION,
+            expected_return=list[str],
+            parameters={"message": validate_migration_data},
         )
         if error_messages:
             raise SchemaNotValidError(message=",\n".join(error_messages))
@@ -293,15 +324,20 @@ async def load_schema(
         # ----------------------------------------------------------
         # Run the migrations
         # ----------------------------------------------------------
-        error_messages = await schema_migrations_runner(
+        apply_migration_data = SchemaApplyMigrationData(
             branch=branch,
             new_schema=candidate_schema,
             previous_schema=origin_schema,
             migrations=result.migrations,
-            service=service,
         )
-        if error_messages:
-            raise MigrationError(message=",\n".join(error_messages))
+        migration_error_msgs = await service.workflow.execute_workflow(
+            workflow=SCHEMA_APPLY_MIGRATION,
+            expected_return=list[str],
+            parameters={"message": apply_migration_data},
+        )
+
+        if migration_error_msgs:
+            raise MigrationError(message=",\n".join(migration_error_msgs))
 
         if config.SETTINGS.broker.enable:
             message = messages.EventSchemaUpdate(
@@ -339,8 +375,15 @@ async def check_schema(
     # ----------------------------------------------------------
     # Validate if the new schema is valid with the content of the database
     # ----------------------------------------------------------
-    error_messages, _ = await schema_validators_checker(
-        branch=branch, schema=candidate_schema, constraints=result.constraints, service=service
+    validate_migration_data = SchemaValidateMigrationData(
+        branch=branch,
+        schema_branch=candidate_schema,
+        constraints=result.constraints,
+    )
+    error_messages = await service.workflow.execute_workflow(
+        workflow=SCHEMA_VALIDATE_MIGRATION,
+        expected_return=list[str],
+        parameters={"message": validate_migration_data},
     )
     if error_messages:
         raise SchemaNotValidError(message=",\n".join(error_messages))

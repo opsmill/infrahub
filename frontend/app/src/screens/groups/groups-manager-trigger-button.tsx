@@ -1,19 +1,18 @@
 import { ButtonProps, ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import { usePermission } from "@/hooks/usePermission";
-import { useState } from "react";
-import { Icon } from "@iconify-icon/react";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
-import { GroupsManager, GroupsManagerProps } from "@/screens/groups/groups-manager";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
+import { GroupsManager, GroupsManagerProps } from "@/screens/groups/groups-manager";
+import { Icon } from "@iconify-icon/react";
+import { useState } from "react";
 
 type GroupsManagerTriggerProps = ButtonProps & GroupsManagerProps;
 
 export const GroupsManagerTriggerButton = ({
   schema,
+  permission,
   objectId,
   ...props
 }: GroupsManagerTriggerProps) => {
-  const permission = usePermission();
   const [isManageGroupsDrawerOpen, setIsManageGroupsDrawerOpen] = useState(false);
 
   const { data } = useObjectDetails(schema, objectId);
@@ -23,14 +22,15 @@ export const GroupsManagerTriggerButton = ({
   return (
     <>
       <ButtonWithTooltip
-        disabled={!permission.write.allow}
+        disabled={!permission.update.isAllowed}
         tooltipEnabled
-        tooltipContent={permission.write.message ?? "Manage groups"}
+        tooltipContent={permission.update.message ?? "Manage groups"}
         onClick={() => setIsManageGroupsDrawerOpen(true)}
         variant="outline"
         size="square"
         data-testid="manage-groups"
-        {...props}>
+        {...props}
+      >
         {props.children ?? <Icon icon="mdi:group" aria-hidden="true" />}
       </ButtonWithTooltip>
 
@@ -44,7 +44,8 @@ export const GroupsManagerTriggerButton = ({
             title="Manage groups"
             subtitle="Add and unassign groups"
           />
-        }>
+        }
+      >
         <GroupsManager schema={schema} objectId={objectId} className="p-4 overflow-auto" />
       </SlideOver>
     </>

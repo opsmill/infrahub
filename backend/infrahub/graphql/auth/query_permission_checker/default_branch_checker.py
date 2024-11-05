@@ -1,34 +1,33 @@
+from infrahub import config
 from infrahub.auth import AccountSession
 from infrahub.core import registry
+from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PermissionDeniedError
-from infrahub.graphql import GraphqlParams
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.initialization import GraphqlParams
 
 from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 
 
 class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
-    permission_required = "global:edit_default_branch:allow"
-    exempt_operations = ["BranchCreate"]
+    """Checker that makes sure a user account can edit data in the default branch."""
 
-    def __init__(self) -> None:
-        self.can_edit_default_branch: bool = False
+    permission_required = GlobalPermission(
+        action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
+    )
+    exempt_operations = [
+        "BranchCreate",
+        "DiffUpdate",
+        "InfrahubAccountSelfUpdate",
+        "InfrahubAccountTokenCreate",
+        "InfrahubAccountTokenDelete",
+    ]
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
-        self.can_edit_default_branch = False
-
-        if registry.permission_backends and account_session.authenticated:
-            for permission_backend in registry.permission_backends:
-                self.can_edit_default_branch = await permission_backend.has_permission(
-                    db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
-                )
-                if self.can_edit_default_branch:
-                    break
-
-        return account_session.authenticated
+        return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
@@ -38,17 +37,24 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         query_parameters: GraphqlParams,
         branch: Branch,
     ) -> CheckerResolution:
+        can_edit_default_branch = False
+        for permission_backend in registry.permission_backends:
+            can_edit_default_branch = await permission_backend.has_permission(
+                db=db, account_session=account_session, permission=self.permission_required, branch=branch
+            )
+            if can_edit_default_branch:
+                break
+
         operates_on_default_branch = analyzed_query.branch is None or analyzed_query.branch.name in (
             GLOBAL_BRANCH_NAME,
             registry.default_branch,
         )
-        is_exempt_operation = analyzed_query.operation_name is not None and (
-            analyzed_query.operation_name in self.exempt_operations
-            or analyzed_query.operation_name.startswith("InfrahubAccount")  # Allow user to manage self
+        is_exempt_operation = all(
+            operation_name in self.exempt_operations for operation_name in analyzed_query.operation_names
         )
 
         if (
-            not self.can_edit_default_branch
+            not can_edit_default_branch
             and operates_on_default_branch
             and analyzed_query.contains_mutation
             and not is_exempt_operation

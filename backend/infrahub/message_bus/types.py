@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from enum import Enum
 
-from infrahub_sdk.client import NodeDiff  # noqa: TCH002
+from infrahub_sdk.diff import NodeDiff  # noqa: TCH002
 from pydantic import BaseModel, Field
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
@@ -105,19 +105,6 @@ class ProposedChangeArtifactDefinition(BaseModel):
             return f"{self.file_path}::{self.class_name}"
 
         raise ValueError("Invalid kind for Transform")
-
-
-class ProposedChangeGeneratorDefinition(BaseModel):
-    definition_id: str
-    definition_name: str
-    query_name: str
-    convert_query_response: bool
-    query_models: list[str]
-    repository_id: str
-    class_name: str
-    file_path: str
-    parameters: dict
-    group_id: str
 
 
 class ProposedChangeBranchDiff(BaseModel):

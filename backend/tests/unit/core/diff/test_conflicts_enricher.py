@@ -2,7 +2,7 @@ import random
 from uuid import uuid4
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.conflicts_enricher import ConflictsEnricher
 from infrahub.core.diff.model.path import EnrichedDiffConflict, EnrichedDiffRoot
@@ -40,7 +40,7 @@ class TestConflictsEnricher:
                         element_prop.conflict = None
 
     async def __call_system_under_test(self, db: InfrahubDatabase, base_enriched_diff, branch_enriched_diff) -> None:
-        conflicts_enricher = ConflictsEnricher(db=db)
+        conflicts_enricher = ConflictsEnricher()
         return await conflicts_enricher.add_conflicts_to_branch_diff(
             base_diff_root=base_enriched_diff, branch_diff_root=branch_enriched_diff
         )
@@ -208,6 +208,7 @@ class TestConflictsEnricher:
                         peer_id=new_base_peer_id, properties=base_properties, action=DiffAction.UPDATED
                     )
                 },
+                cardinality=RelationshipCardinality.ONE,
             )
         }
         base_nodes = {
@@ -235,6 +236,7 @@ class TestConflictsEnricher:
                         peer_id=previous_peer_id, properties=branch_properties, action=DiffAction.REMOVED
                     )
                 },
+                cardinality=RelationshipCardinality.ONE,
             )
         }
         branch_nodes = {
@@ -318,6 +320,7 @@ class TestConflictsEnricher:
                     EnrichedRelationshipElementFactory.build(peer_id=peer_id_1, properties=base_properties_1),
                     EnrichedRelationshipElementFactory.build(peer_id=peer_id_2, properties=base_properties_2),
                 },
+                cardinality=RelationshipCardinality.MANY,
             )
         }
         base_nodes = {
@@ -357,6 +360,7 @@ class TestConflictsEnricher:
                     EnrichedRelationshipElementFactory.build(peer_id=peer_id_1, properties=branch_properties_1),
                     EnrichedRelationshipElementFactory.build(peer_id=peer_id_2, properties=branch_properties_2),
                 },
+                cardinality=RelationshipCardinality.MANY,
             )
         }
         branch_nodes = {

@@ -8,9 +8,10 @@ import pytest
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.lock import InfrahubLockRegistry
-from infrahub.message_bus.messages import RequestArtifactDefinitionGenerate
-from infrahub.services import InfrahubServices
+from infrahub.services import services
+from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -83,12 +84,21 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         assert repository.commit.value
         assert check_definition.file_path.value == "checks/car_overview.py"
 
-    async def test_step02_validate_generated_artifacts(self, db: InfrahubDatabase, client: InfrahubClient):
+    async def test_step02_validate_generated_artifacts(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+    ):
         artifacts = await client.all(kind=InfrahubKind.ARTIFACT, branch="ro_repository")
         assert artifacts
         assert artifacts[0].name.value == "Ownership report"
 
-    async def test_step03_merge_branch(self, db: InfrahubDatabase, client: InfrahubClient, helper: TestHelper):
+    async def test_step03_merge_branch(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        helper: TestHelper,
+    ):
         await client.branch.merge(branch_name="ro_repository")
 
         check_definition: CoreCheckDefinition = await NodeManager.get_one_by_id_or_default_filter(
@@ -96,14 +106,12 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         )
         assert check_definition.file_path.value == "checks/car_overview.py"
 
-        bus_simulator = helper.get_message_bus_simulator()
-        service = InfrahubServices(client=client, message_bus=bus_simulator)
-        bus_simulator.service = service
-
         artifact_definitions = await client.all(kind=InfrahubKind.ARTIFACTDEFINITION)
+
         for artifact_definition in artifact_definitions:
-            await service.send(
-                message=RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch="main")
+            model = RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch="main")
+            await services.service.workflow.submit_workflow(
+                REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
             )
 
         artifacts = await client.all(kind=InfrahubKind.ARTIFACT)

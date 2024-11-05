@@ -1,11 +1,9 @@
 /// <reference types="cypress" />
 
 import { MockedProvider } from "@apollo/client/testing";
-import React from "react";
-import { initials } from "../../../src/components/display/avatar";
-import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
+import { AccountMenu } from "../../../src/components/account-menu";
+import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
 import { AuthProvider } from "../../../src/hooks/useAuth";
-import Header from "../../../src/screens/layout/header";
 import { genericsState } from "../../../src/state/atoms/schema.atom";
 import { encodeJwt } from "../../../src/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
@@ -21,7 +19,7 @@ const mocks = [
   {
     request: {
       query: profileDetailsMocksQuery,
-      variables: { offset: 0, limit: 10 },
+      variables: {},
     },
     result: {
       data: profileDetailsMocksData,
@@ -31,7 +29,7 @@ const mocks = [
 
 const AuthHeader = () => (
   <AuthProvider>
-    <Header />
+    <AccountMenu />
   </AuthProvider>
 );
 
@@ -56,9 +54,6 @@ describe("List screen", () => {
       </MockedProvider>
     );
 
-    cy.get(".h-12").should(
-      "have.text",
-      initials(profileDetailsMocksData.AccountProfile.display_label)
-    );
+    cy.contains(profileDetailsMocksData.AccountProfile.display_label);
   });
 });

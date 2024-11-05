@@ -9,7 +9,8 @@ export default function Transition(props: any) {
       leave="transition-opacity duration-200"
       leaveFrom="opacity-100"
       leaveTo="opacity-0"
-      {...props}>
+      {...props}
+    >
       {props.children}
     </TransitionComponent>
   );

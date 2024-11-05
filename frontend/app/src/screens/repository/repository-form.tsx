@@ -1,21 +1,28 @@
-import { Form, FormSubmit } from "@/components/ui/form";
+import { Button } from "@/components/buttons/button-primitive";
+import { DynamicInput } from "@/components/form/dynamic-form";
+import RelationshipField from "@/components/form/fields/relationship.field";
+import { NodeFormProps } from "@/components/form/node-form";
+import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
+import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 import { Card, CardProps } from "@/components/ui/card";
+import { Form, FormSubmit } from "@/components/ui/form";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { createObject } from "@/graphql/mutations/objects/createObject";
+import { useAuth } from "@/hooks/useAuth";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames } from "@/utils/common";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
-import graphqlClient from "@/graphql/graphqlClientApollo";
 import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { datetimeAtom } from "@/state/atoms/time.atom";
-import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
-import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
-import { useAuth } from "@/hooks/useAuth";
-import { DynamicInput } from "@/components/form/dynamic-form";
-import { NodeFormProps } from "@/components/form/node-form";
-import { createObject } from "@/graphql/mutations/objects/createObject";
-import RelationshipField from "@/components/form/fields/relationship.field";
 
-const RepositoryForm = ({ onSuccess, schema, currentObject, onSubmit }: NodeFormProps) => {
+const RepositoryForm = ({
+  onSuccess,
+  schema,
+  currentObject,
+  onSubmit,
+  onCancel,
+}: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
@@ -57,7 +64,8 @@ const RepositoryForm = ({ onSuccess, schema, currentObject, onSubmit }: NodeForm
 
         await graphqlClient.reFetchObservableQueries();
         if (onSuccess) await onSuccess(result?.data?.[`${schema?.kind}Create`]);
-      }}>
+      }}
+    >
       <FormGroup>
         {gitUrlFieldProps && (
           <DynamicInput
@@ -95,7 +103,15 @@ const RepositoryForm = ({ onSuccess, schema, currentObject, onSubmit }: NodeForm
         </FormGroup>
       )}
 
-      <FormSubmit className="float-right">Save</FormSubmit>
+      <div className="text-right">
+        {onCancel && (
+          <Button variant="outline" className="mr-2" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+
+        <FormSubmit>Save</FormSubmit>
+      </div>
     </Form>
   );
 };

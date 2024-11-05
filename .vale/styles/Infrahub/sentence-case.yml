@@ -49,9 +49,13 @@ exceptions:
   - JetStream
   - Jinja
   - Jinja2
+  - JWT
   - Namespace
   - NATS
   - Node
+  - OAuth2
+  - OIDC
+  - Open ID Connect
   - OpsMill
   - Pydantic
   - Python
@@ -59,9 +63,12 @@ exceptions:
   - REST
   - RFile
   - SDK
+  - Single sign-on
+  - SSO
   - TLS
   - Tony Stark
   - TransformPython
+  - UI
   - Vale
   - VS Code
   - VS Code extensions

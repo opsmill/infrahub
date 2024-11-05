@@ -33,7 +33,7 @@ class IndexItem(BaseModel):
 
 
 class IndexManagerBase(ABC):
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
         self.nodes: list[IndexItem] = []

@@ -10,7 +10,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 
 if TYPE_CHECKING:
     from graphql.execution import ExecutionResult

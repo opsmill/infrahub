@@ -21,14 +21,10 @@ from infrahub.core.protocols import (
 )
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import TransformError
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.utils import extract_data
-from infrahub.message_bus.messages import (
-    TransformPythonData,
-    TransformPythonDataResponse,
-)
-from infrahub.message_bus.messages.transform_jinja_template import TransformJinjaTemplateData
-from infrahub.workflows.catalogue import TRANSFORM_JINJA2_RENDER
+from infrahub.transformations.models import TransformJinjaTemplateData, TransformPythonData
+from infrahub.workflows.catalogue import TRANSFORM_JINJA2_RENDER, TRANSFORM_PYTHON_RENDER
 
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
@@ -89,8 +85,10 @@ async def transform_python(
         data=data,
     )
 
-    response = await service.message_bus.rpc(message=message, response_class=TransformPythonDataResponse)
-    return JSONResponse(content=response.data.transformed_data)
+    response = await service.workflow.execute_workflow(
+        workflow=TRANSFORM_PYTHON_RENDER, parameters={"message": message}
+    )
+    return JSONResponse(content=response)
 
 
 @router.get("/transform/jinja2/{transform_id}", response_class=PlainTextResponse)
@@ -146,6 +144,7 @@ async def transform_jinja2(
 
     service: InfrahubServices = request.app.state.service
 
-    response: str = await service.workflow.execute(workflow=TRANSFORM_JINJA2_RENDER, message=message)  # type: ignore[arg-type]
-
+    response = await service.workflow.execute_workflow(
+        workflow=TRANSFORM_JINJA2_RENDER, expected_return=str, parameters={"message": message}
+    )
     return PlainTextResponse(content=response)

@@ -1,5 +1,5 @@
 export const INFRAHUB_GITHUB_URL = "https://github.com/opsmill/infrahub";
-
+export const INFRAHUB_DISCORD_URL = "https://discord.gg/opsmill";
 export const INFRAHUB_DOC_URL = "https://docs.infrahub.app";
 
 export const INFRAHUB_API_SERVER_URL = import.meta.env.DEV
@@ -7,6 +7,8 @@ export const INFRAHUB_API_SERVER_URL = import.meta.env.DEV
   : window.location.origin.toString();
 
 export const INFRAHUB_DOC_LOCAL = `${INFRAHUB_API_SERVER_URL}/docs`;
+
+export const INFRAHUB_SWAGGER_DOC_URL = `${INFRAHUB_API_SERVER_URL}/api/docs`;
 
 export const INFRAHUB_WEB_SOCKET_URL = "ws://localhost:8000";
 
@@ -29,7 +31,7 @@ export const CONFIG = {
   SEARCH_URL: (query: string, limit: number = 3) =>
     `${INFRAHUB_API_SERVER_URL}/api/search/docs?query=${query}&limit=${limit}`,
   INFO_URL: `${INFRAHUB_API_SERVER_URL}/api/info`,
-  AUTH_SIGN_IN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/login`,
+  AUTH_LOGIN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/login`,
   SCHEMA_SUMMARY_URL: (branch?: string | null) =>
     branch
       ? `${INFRAHUB_API_SERVER_URL}/api/schema/summary?branch=${branch}`

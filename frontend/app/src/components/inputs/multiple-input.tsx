@@ -46,14 +46,16 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
             disabled ? "cursor-not-allowed bg-gray-100" : "",
             error && error?.message ? "ring-red-500 focus:ring-red-600" : ""
           )}
-          data-testid="multi-select-input">
+          data-testid="multi-select-input"
+        >
           Empty list
         </div>
 
         {error?.message && (
           <div
             className="absolute text-sm text-red-500 bg-custom-white -bottom-2 ml-2 px-2 text-left"
-            data-cy="field-error-message">
+            data-cy="field-error-message"
+          >
             {error?.message}
           </div>
         )}
@@ -72,7 +74,8 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
         className ?? "",
         disabled ? "cursor-not-allowed bg-gray-100" : ""
       )}
-      data-testid="multi-select-input">
+      data-testid="multi-select-input"
+    >
       {value?.map((item: string | SelectOption, index: number) => (
         <Badge
           key={index}
@@ -80,7 +83,8 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
           onDelete={handleDelete}
           className="mt-2"
           data-testid="multi-select-input-badge"
-          disabled={disabled}>
+          disabled={disabled}
+        >
           {typeof item === "object" ? item.name : item}
         </Badge>
       ))}

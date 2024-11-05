@@ -4,7 +4,6 @@ from uuid import uuid4
 
 from infrahub import config, lock
 from infrahub.core import registry
-from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     DEFAULT_IP_NAMESPACE,
@@ -16,21 +15,24 @@ from infrahub.core.constants import (
     PermissionDecision,
 )
 from infrahub.core.graph import GRAPH_VERSION
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.ipam import BuiltinIPPrefix
+from infrahub.core.node.permissions import CoreGlobalPermission, CoreObjectPermission
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.protocols import CoreAccount
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
-from infrahub.core.schema_manager import SchemaManager
+from infrahub.core.schema.manager import SchemaManager
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
+from infrahub.menu.menu import default_menu
+from infrahub.menu.utils import create_menu_children
 from infrahub.permissions import PermissionBackend
 from infrahub.storage import InfrahubObjectStorage
-from infrahub.utils import format_label
 
 log = get_logger()
 
@@ -106,6 +108,8 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     registry.node[InfrahubKind.IPADDRESSPOOL] = CoreIPAddressPool
     registry.node[InfrahubKind.IPPREFIXPOOL] = CoreIPPrefixPool
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    registry.node[InfrahubKind.GLOBALPERMISSION] = CoreGlobalPermission
+    registry.node[InfrahubKind.OBJECTPERMISSION] = CoreObjectPermission
 
     # ---------------------------------------------------
     # Instantiate permission backends
@@ -156,6 +160,7 @@ async def initialization(db: InfrahubDatabase) -> None:
                 hash_new=default_branch.active_schema_hash.main,
                 branch=default_branch.name,
             )
+            await default_branch.save(db=db)
 
         for branch in list(registry.branch.values()):
             if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
@@ -171,6 +176,7 @@ async def initialization(db: InfrahubDatabase) -> None:
                     f" {hash_in_db!r} >> {branch.active_schema_hash.main!r}",
                     branch=branch.name,
                 )
+                await branch.save(db=db)
 
     # ---------------------------------------------------
     # Load Default Namespace
@@ -291,64 +297,161 @@ async def create_ipam_namespace(
     return obj
 
 
-async def create_initial_permissions(db: InfrahubDatabase) -> list[Node]:
-    objs: list[Node] = []
-
-    for global_permission in GlobalPermissions:
-        obj = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-        await obj.new(db=db, name=format_label(global_permission.value), action=global_permission.value)
+async def create_default_menu(db: InfrahubDatabase) -> None:
+    for item in default_menu:
+        obj = await item.to_node(db=db)
         await obj.save(db=db)
-        objs.append(obj)
-        log.info(f"Created global permission: {global_permission}")
-
-    for object_permission in [
-        # Allow anything for now to not break existing behaviour
-        ObjectPermission(
-            id="",
-            branch="any",
-            namespace="any",
-            name="any",
-            action=PermissionAction.ANY.value,
-            decision=PermissionDecision.ALLOW.value,
-        )
-    ]:
-        obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
-        await obj.new(
-            db=db,
-            branch=object_permission.branch,
-            namespace=object_permission.namespace,
-            name=object_permission.name,
-            action=object_permission.action,
-            decision=object_permission.decision,
-        )
-        await obj.save(db=db)
-        objs.append(obj)
-        log.info(f"Created object permission: {object_permission!s}")
-
-    return objs
+        if item.children:
+            await create_menu_children(db=db, parent=obj, children=item.children)
 
 
-async def create_administrator_role(db: InfrahubDatabase, global_permissions: Optional[list[Node]] = None) -> Node:
-    role_name = "Administrator"
+async def create_super_administrator_role(db: InfrahubDatabase) -> Node:
+    permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    await permission.new(
+        db=db,
+        action=GlobalPermissions.SUPER_ADMIN.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to do anything",
+    )
+    await permission.save(db=db)
+    log.info(f"Created global permission: {GlobalPermissions.SUPER_ADMIN}")
+
+    role_name = "Super Administrator"
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
-    await obj.new(db=db, name=role_name, permissions=global_permissions)
+    await obj.new(db=db, name=role_name, permissions=[permission])
     await obj.save(db=db)
-    log.info(f"Created User Role: {role_name}")
+    log.info(f"Created account role: {role_name}")
 
     return obj
 
 
-async def create_administrators_group(db: InfrahubDatabase, role: Node, admin_accounts: list[CoreAccount]) -> Node:
-    group_name = "Administrators"
+async def create_default_roles(db: InfrahubDatabase) -> Node:
+    repo_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    await repo_permission.new(
+        db=db,
+        action=GlobalPermissions.MANAGE_REPOSITORIES.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to manage repositories",
+    )
+    await repo_permission.save(db=db)
+
+    schema_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    await schema_permission.new(
+        db=db,
+        action=GlobalPermissions.MANAGE_SCHEMA.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to manage the schema",
+    )
+    await schema_permission.save(db=db)
+
+    proposed_change_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+    await proposed_change_permission.new(
+        db=db,
+        action=GlobalPermissions.MERGE_PROPOSED_CHANGE.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to merge proposed changes",
+    )
+    await proposed_change_permission.save(db=db)
+
+    # Other permissions, created to keep references of them from the start
+    for permission_action, permission_description in (
+        (GlobalPermissions.EDIT_DEFAULT_BRANCH, "Allow a user to change data in the default branch"),
+        (GlobalPermissions.MANAGE_ACCOUNTS, "Allow a user to manage accounts, account roles and account groups"),
+        (GlobalPermissions.MANAGE_PERMISSIONS, "Allow a user to manage permissions"),
+        (GlobalPermissions.MERGE_BRANCH, "Allow a user to merge branches"),
+    ):
+        permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
+        await permission.new(
+            db=db,
+            action=permission_action.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
+            description=permission_description,
+        )
+        await permission.save(db=db)
+
+    view_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await view_permission.new(
+        db=db,
+        name="*",
+        namespace="*",
+        action=PermissionAction.VIEW.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
+        description="Allow a user to view any object in any branch",
+    )
+    await view_permission.save(db=db)
+
+    modify_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await modify_permission.new(
+        db=db,
+        name="*",
+        namespace="*",
+        action=PermissionAction.ANY.value,
+        decision=PermissionDecision.ALLOW_OTHER.value,
+        description="Allow a user to change data in non-default branches",
+    )
+    await modify_permission.save(db=db)
+
+    role_name = "General Access"
+    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role.new(
+        db=db,
+        name=role_name,
+        permissions=[
+            repo_permission,
+            schema_permission,
+            proposed_change_permission,
+            view_permission,
+            modify_permission,
+        ],
+    )
+    await role.save(db=db)
+    log.info(f"Created account role: {role_name}")
+
+    group_name = "Infrahub Users"
     group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
     await group.new(db=db, name=group_name, roles=[role])
     await group.save(db=db)
-    log.info(f"Created User Group: {group_name}")
+    log.info(f"Created account group: {group_name}")
+
+    return role
+
+
+async def create_anonymous_role(db: InfrahubDatabase) -> Node:
+    deny_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await deny_permission.new(
+        db=db, name="*", namespace="*", action=PermissionAction.ANY.value, decision=PermissionDecision.DENY.value
+    )
+    await deny_permission.save(db=db)
+
+    view_permission = await NodeManager.get_one_by_hfid(
+        db=db,
+        kind=InfrahubKind.OBJECTPERMISSION,
+        hfid=["*", "*", PermissionAction.VIEW.value, str(PermissionDecision.ALLOW_ALL.value)],
+    )
+
+    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role.new(
+        db=db, name=config.SETTINGS.main.anonymous_access_role, permissions=[deny_permission, view_permission]
+    )
+    await role.save(db=db)
+    log.info(f"Created anonymous account role: {config.SETTINGS.main.anonymous_access_role}")
+
+    return role
+
+
+async def create_super_administrators_group(
+    db: InfrahubDatabase, role: Node, admin_accounts: list[CoreAccount]
+) -> Node:
+    group_name = "Super Administrators"
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name=group_name, roles=[role])
+    await group.save(db=db)
+    log.info(f"Created account group: {group_name}")
 
     for admin_account in admin_accounts:
         await group.members.add(db=db, data=admin_account)  # type: ignore[attr-defined]
         await group.members.save(db=db)  # type: ignore[attr-defined]
-        log.info(f"Assigned User Group: {group_name} to {admin_account.name.value}")
+        log.info(f"Assigned account group: {group_name} to {admin_account.name.value}")
 
     return group
 
@@ -374,6 +477,11 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     default_branch.update_schema_hash()
     await default_branch.save(db=db)
     log.info("Created the Schema in the database", hash=default_branch.active_schema_hash.main)
+
+    # --------------------------------------------------
+    # Create Default Menu
+    # --------------------------------------------------
+    await create_default_menu(db=db)
 
     # --------------------------------------------------
     # Create Default Users and Groups
@@ -404,9 +512,12 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create Global Permissions and assign them
     # --------------------------------------------------
-    global_permissions = await create_initial_permissions(db=db)
-    administrator_role = await create_administrator_role(db=db, global_permissions=global_permissions)
-    await create_administrators_group(db=db, role=administrator_role, admin_accounts=admin_accounts)
+    administrator_role = await create_super_administrator_role(db=db)
+    await create_super_administrators_group(db=db, role=administrator_role, admin_accounts=admin_accounts)
+
+    await create_default_roles(db=db)
+    if config.SETTINGS.main.allow_anonymous_access:
+        await create_anonymous_role(db=db)
 
     # --------------------------------------------------
     # Create Default IPAM Namespace

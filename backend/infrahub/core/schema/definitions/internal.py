@@ -32,7 +32,6 @@ from infrahub.core.constants import (
 )
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.dropdown import DropdownChoice
-from infrahub.core.schema.filter import FilterSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.types import ATTRIBUTE_KIND_LABELS
 
@@ -181,7 +180,7 @@ class SchemaNode(BaseModel):
             "attributes": [
                 attribute.to_dict()
                 for attribute in self.attributes
-                if attribute.name not in ["id", "filters", "attributes", "relationships"]
+                if attribute.name not in ["id", "attributes", "relationships"]
             ],
             "relationships": [relationship.to_dict() for relationship in self.relationships],
             "display_labels": self.display_labels,
@@ -343,15 +342,6 @@ base_node_schema = SchemaNode(
             description="Expected state of the node/generic after loading the schema",
             default_value=HashableModelState.PRESENT,
             enum=HashableModelState.available_types(),
-            optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
-        ),
-        SchemaAttribute(
-            name="filters",
-            kind="List",
-            internal_kind=FilterSchema,
-            description="Node filters",
-            default_factory="list",
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE},
         ),
@@ -773,15 +763,6 @@ relationship_schema = SchemaNode(
             description="Expected state of the relationship after loading the schema",
             default_value=HashableModelState.PRESENT,
             enum=HashableModelState.available_types(),
-            optional=True,
-            extra={"update": UpdateSupport.NOT_APPLICABLE},
-        ),
-        SchemaAttribute(
-            name="filters",
-            kind="List",
-            internal_kind=FilterSchema,
-            description="Relationship filters",
-            default_factory="list",
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE},
         ),

@@ -10,6 +10,7 @@ ignore: |
   **/node_modules
   # https://github.com/sbaudoin/yamllint/issues/16
   /helm/templates
+  /python_sdk
 
 rules:
   new-lines: disable

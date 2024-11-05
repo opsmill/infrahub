@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any, overload
 
-from prefect.client.orchestration import get_client
-from prefect.client.schemas.actions import WorkPoolCreate
+from prefect.client.schemas import StateType
 from prefect.deployments import run_deployment
-from prefect.exceptions import ObjectAlreadyExists
 
-from infrahub.workflows.catalogue import worker_pools, workflows
+from infrahub.workflows.initialization import setup_task_manager
+from infrahub.workflows.models import WorkflowInfo
 
 from . import InfrahubWorkflow, Return
 
@@ -22,37 +21,47 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
     async def initialize(self, service: InfrahubServices) -> None:
         """Initialize the Workflow engine"""
 
-        async with get_client(sync_client=False) as client:
-            for worker in worker_pools:
-                wp = WorkPoolCreate(
-                    name=worker.name,
-                    type=worker.worker_type,
-                    description=worker.description,
-                )
-                try:
-                    await client.create_work_pool(work_pool=wp)
-                    service.log.info(f"work pool {worker} created successfully ... ")
-                except ObjectAlreadyExists:
-                    service.log.info(f"work pool {worker} already present ")
+        if await service.component.is_primary_api():
+            await setup_task_manager()
 
-            # Create deployment
-            for workflow in workflows:
-                flow_id = await client.create_flow_from_name(workflow.name)
-                await client.create_deployment(flow_id=flow_id, **workflow.to_deployment())
-
-    async def execute(
+    @overload
+    async def execute_workflow(
         self,
-        workflow: WorkflowDefinition | None = None,
-        function: Callable[..., Awaitable[Return]] | None = None,
-        **kwargs: Any,
-    ) -> Return:
-        if workflow:
-            response: FlowRun = await run_deployment(name=workflow.full_name, parameters=kwargs or {})  # type: ignore[return-value, misc]
-            if not response.state:
-                raise RuntimeError("Unable to read state from the response")
-            return await response.state.result(fetch=True, raise_on_failure=True)  # type: ignore[call-overload]
+        workflow: WorkflowDefinition,
+        expected_return: type[Return],
+        parameters: dict[str, Any] | None = ...,
+        tags: list[str] | None = ...,
+    ) -> Return: ...
 
-        if function:
-            return await function(**kwargs)
+    @overload
+    async def execute_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        expected_return: None = ...,
+        parameters: dict[str, Any] | None = ...,
+        tags: list[str] | None = ...,
+    ) -> Any: ...
 
-        raise ValueError("either a workflow definition or a flow must be provided")
+    async def execute_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        expected_return: type[Return] | None = None,
+        parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+    ) -> Any:
+        response: FlowRun = await run_deployment(
+            name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags
+        )  # type: ignore[return-value, misc]
+        if not response.state:
+            raise RuntimeError("Unable to read state from the response")
+
+        if response.state.type == StateType.CRASHED:
+            raise RuntimeError(response.state.message)
+
+        return await response.state.result(raise_on_failure=True, fetch=True)  # type: ignore[call-overload]
+
+    async def submit_workflow(
+        self, workflow: WorkflowDefinition, parameters: dict[str, Any] | None = None, tags: list[str] | None = None
+    ) -> WorkflowInfo:
+        flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {}, tags=tags)  # type: ignore[return-value, misc]
+        return WorkflowInfo.from_flow(flow_run=flow_run)

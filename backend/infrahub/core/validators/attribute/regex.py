@@ -22,13 +22,11 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.node_schema.kind
         self.params["attr_name"] = self.attribute_schema.name
         self.params["attr_value_regex"] = self.attribute_schema.regex
         self.params["null_value"] = NULL_VALUE
         query = """
-        MATCH p = (n:Node)
-        WHERE $node_kind IN LABELS(n)
+        MATCH p = (n:%(node_kind)s)
         CALL {
             WITH n
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
@@ -45,7 +43,7 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND attribute_value <> $null_value
         AND NOT attribute_value =~ $attr_value_regex
-        """ % {"branch_filter": branch_filter}
+        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "attribute_value", "value_relationship"]

@@ -1,11 +1,12 @@
+import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { CSSProperties, useState } from "react";
-import { classNames } from "@/utils/common";
 
 export type AccordionProps = {
   title?: any;
   children?: any;
   className?: string;
+  titleClassName?: string;
   iconClassName?: string;
   defaultOpen?: boolean;
   style?: CSSProperties;
@@ -19,6 +20,7 @@ export default function Accordion({
   className,
   hideChevron,
   iconClassName,
+  titleClassName,
   ...props
 }: AccordionProps) {
   const [isOpen, setIsOpen] = useState<boolean>();
@@ -27,22 +29,20 @@ export default function Accordion({
 
   return (
     <div className={className} {...props}>
-      <div className="flex">
-        <div
-          className="flex flex-1 w-full items-center cursor-pointer relative"
-          onClick={() => setIsOpen(!open)}>
-          <span
-            className={classNames(
-              "flex items-center mx-2 relative",
-              hideChevron && "text-transparent",
-              iconClassName
-            )}>
-            {open ? <Icon icon={"mdi:chevron-down"} /> : <Icon icon={"mdi:chevron-right"} />}
-          </span>
+      <div className="flex items-center cursor-pointer relative" onClick={() => setIsOpen(!open)}>
+        <span
+          className={classNames(
+            "flex items-center mx-2 relative",
+            hideChevron && "text-transparent",
+            iconClassName
+          )}
+        >
+          {open ? <Icon icon={"mdi:chevron-down"} /> : <Icon icon={"mdi:chevron-right"} />}
+        </span>
 
-          <span className="flex-1 font-semibold text-left justify-start">{title}</span>
-        </div>
+        <span className={classNames("flex-1 font-semibold text-left justify-start")}>{title}</span>
       </div>
+
       {open && children}
     </div>
   );

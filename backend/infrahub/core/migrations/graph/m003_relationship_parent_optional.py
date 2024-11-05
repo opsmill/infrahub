@@ -28,16 +28,16 @@ class Migration003Query01(Query):
         WHERE av1.value = "Parent" AND av2.value = true AND all(r IN relationships(path) WHERE ( %(filters)s ))
         CALL {
             WITH n
-            MATCH path = (av2:AttributeValue)-[r22:HAS_VALUE]-(a2:Attribute {name: "optional"})-[:HAS_ATTRIBUTE]-(n:SchemaRelationship)-[:HAS_ATTRIBUTE]-(:Attribute {name:"kind"})-[:HAS_VALUE]-(av1:AttributeValue)
-            WHERE av1.value = "Parent" AND av2.value = true AND all(r IN relationships(path) WHERE ( %(filters)s ))
-            RETURN av2 as av2_sub, r22, a2, path as path2
+            MATCH path22 = (av22:AttributeValue)-[r22:HAS_VALUE]-(a2:Attribute {name: "optional"})-[:HAS_ATTRIBUTE]-(n:SchemaRelationship)-[:HAS_ATTRIBUTE]-(:Attribute {name:"kind"})-[:HAS_VALUE]-(av11:AttributeValue)
+            WHERE av11.value = "Parent" AND av22.value = true AND all(r IN relationships(path22) WHERE ( %(filters)s ))
+            RETURN av22 as av2_sub, r22, a2, path22 as path2
             ORDER BY r22.branch_level DESC, r22.from DESC
             LIMIT 1
         }
         WITH av2_sub as av2, r22, a2, path2
         WHERE all(r IN relationships(path2) WHERE r.status = "active")
         MERGE (new_value: AttributeValue { value: false, is_default: false })
-        CREATE (a2)-[:HAS_VALUE { branch: r22.branch, branch_level: r22.branch_level, status: "active", from: $at, to: null } ]->(new_value)
+        CREATE (a2)-[:HAS_VALUE { branch: r22.branch, branch_level: r22.branch_level, status: "active", from: $at } ]->(new_value)
         SET r22.to = $at
         """ % {"filters": filters}
         self.add_to_query(query)

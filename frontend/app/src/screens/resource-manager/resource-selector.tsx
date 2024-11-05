@@ -1,6 +1,6 @@
 import { PropertyList } from "@/components/table/property-list";
 import { Badge } from "@/components/ui/badge";
-import { CardWithBorder } from "@/components/ui/card";
+import { Card, CardWithBorder } from "@/components/ui/card";
 import { constructPath } from "@/utils/fetch";
 import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
@@ -22,7 +22,7 @@ interface ResourcePoolSelectorProps extends HTMLAttributes<HTMLDivElement> {
 
 const ResourceSelector = ({ resources, className, ...props }: ResourcePoolSelectorProps) => {
   return (
-    <CardWithBorder className={className} {...props}>
+    <Card className={className} {...props}>
       <CardWithBorder.Title className="bg-custom-white border-b">
         Resources <Badge>{resources.length}</Badge>
       </CardWithBorder.Title>
@@ -35,7 +35,8 @@ const ResourceSelector = ({ resources, className, ...props }: ResourcePoolSelect
           name: (
             <Link
               to={getObjectDetailsUrl2(resource.kind, resource.id)}
-              className="font-semibold underline">
+              className="font-semibold underline"
+            >
               {resource.display_label}
             </Link>
           ),
@@ -49,14 +50,15 @@ const ResourceSelector = ({ resources, className, ...props }: ResourcePoolSelect
 
               <Link
                 to={constructPath(`resources/${resource.id}`)}
-                className="flex items-center gap-1 text-nowrap hover:underline">
+                className="flex items-center gap-1 text-nowrap hover:underline"
+              >
                 View <Icon icon="mdi:eye-outline" />
               </Link>
             </div>
           ),
         }))}
       />
-    </CardWithBorder>
+    </Card>
   );
 };
 

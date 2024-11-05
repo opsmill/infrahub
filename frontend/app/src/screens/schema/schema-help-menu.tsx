@@ -6,10 +6,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { INFRAHUB_DOC_LOCAL } from "@/config/config";
-import { IModelSchema, menuFlatAtom } from "@/state/atoms/schema.atom";
-import { constructPath } from "@/utils/fetch";
+import { MENU_EXCLUDELIST } from "@/config/constants";
+import { IModelSchema } from "@/state/atoms/schema.atom";
+import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
 import { Link } from "react-router-dom";
 
 type SchemaHelpMenuProps = {
@@ -17,14 +17,12 @@ type SchemaHelpMenuProps = {
 };
 
 export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
-  const menuItems = useAtomValue(menuFlatAtom);
-  const schemaInMenu = menuItems.find(({ title }) => title === schema.label);
+  const isListViewDisabled = MENU_EXCLUDELIST.includes(schema.kind as string);
 
   const documentationUrl = schema.documentation
     ? `${INFRAHUB_DOC_LOCAL}${schema.documentation}`
     : INFRAHUB_DOC_LOCAL;
 
-  const objectListUrl = schemaInMenu ? constructPath(schemaInMenu.path) : "";
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -42,8 +40,8 @@ export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
           </Link>
         </DropdownMenuItem>
 
-        <DropdownMenuItem disabled={!schemaInMenu} asChild>
-          <Link to={objectListUrl} className="flex gap-2">
+        <DropdownMenuItem disabled={isListViewDisabled} asChild>
+          <Link to={getObjectDetailsUrl2(schema.kind as string)} className="flex gap-2">
             <Icon icon="mdi:table-eye" className="text-lg text-custom-blue-700" />
             Open list view
           </Link>

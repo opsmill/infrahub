@@ -1,3 +1,5 @@
+import DynamicForm from "@/components/form/dynamic-form";
+import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
@@ -9,9 +11,7 @@ import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
-import DynamicForm from "@/components/form/dynamic-form";
 import { mapValues } from "remeda";
-import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 
 interface Props {
   row: any;

@@ -2,8 +2,8 @@ import os
 from typing import Dict
 from unittest.mock import AsyncMock
 
-from infrahub_sdk import UUIDT
 from infrahub_sdk.client import Config, InfrahubClient
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from tests.helpers.test_client import dummy_async_request

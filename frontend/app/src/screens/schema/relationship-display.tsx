@@ -31,7 +31,8 @@ export const RelationshipDisplay = ({
         </>
       }
       description={relationship.description}
-      isOptional={relationship.optional}>
+      isOptional={relationship.optional}
+    >
       <div>
         <PropertyRow title="ID" value={relationship.id} />
         <PropertyRow title="Label" value={relationship.label} />

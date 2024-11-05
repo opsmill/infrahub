@@ -53,9 +53,12 @@ const usePagination = (): [tPagination, Function] => {
 
   // Set the pagination in the QSP
   const setPagination = (newPagination: tPagination) => {
+    const newLimit = getVerifiedLimit(newPagination?.limit, config);
+    const newOffset = getVerifiedOffset(newPagination?.offset, config);
+
     const newValidatedPagination = {
-      limit: getVerifiedLimit(newPagination?.limit, config),
-      offset: getVerifiedOffset(newPagination?.offset, config),
+      limit: newLimit,
+      offset: newOffset,
     };
 
     setPaginationInQueryString(JSON.stringify(newValidatedPagination));

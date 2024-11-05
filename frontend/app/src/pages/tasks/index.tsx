@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { TASK_OBJECT } from "@/config/constants";
 import { getTasksItemsCount } from "@/graphql/queries/tasks/getTasksItemsCount";
 import useQuery from "@/hooks/useQuery";
@@ -6,8 +5,8 @@ import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { gql } from "@apollo/client";
 import { TaskItems } from "@/screens/tasks/task-items";
+import { gql } from "@apollo/client";
 
 const TasksPage = () => {
   useTitle("Task Overview");
@@ -30,22 +29,16 @@ const TasksPage = () => {
     return <LoadingScreen hideText />;
   }
 
-  const result = data ? data[TASK_OBJECT] ?? {} : {};
+  const result = data ? (data[TASK_OBJECT] ?? {}) : {};
 
   const { count } = result;
 
   return (
-    <Content className="bg-custom-white">
-      <Content.Title
-        title={
-          <>
-            Task Overview <Badge>{count}</Badge>
-          </>
-        }
-      />
+    <Content.Card>
+      <Content.CardTitle title="Task Overview" badgeContent={count} />
 
       <TaskItems />
-    </Content>
+    </Content.Card>
   );
 };
 

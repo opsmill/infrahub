@@ -5,6 +5,7 @@ coverage.xml
 *.env
 script.py
 **/*.local.*
+local/*
 .vscode/settings.json
 node_modules/*
 development/docker-compose.override.yml
@@ -33,3 +34,5 @@ python_sdk/dist/*
 generated/
 query_performance_results/
 sync/dist/
+helm/charts/
+helm/Chart.lock

@@ -55,7 +55,11 @@ def add_span_exception(exception: Exception) -> None:
 
 
 def create_tracer_provider(
-    service: str, version: str, exporter_type: str, exporter_endpoint: str = None, exporter_protocol: str = None
+    service: str,
+    version: str,
+    exporter_type: str,
+    exporter_endpoint: str | None = None,
+    exporter_protocol: str | None = None,
 ) -> TracerProvider:
     # Create a BatchSpanProcessor exporter based on the type
     if exporter_type == "console":
@@ -91,7 +95,11 @@ def create_tracer_provider(
 
 
 def configure_trace(
-    service: str, version: str, exporter_type: str, exporter_endpoint: str | None = None, exporter_protocol: str = None
+    service: str,
+    version: str,
+    exporter_type: str,
+    exporter_endpoint: str | None = None,
+    exporter_protocol: str | None = None,
 ) -> None:
     # Create a trace provider with the exporter
     tracer_provider = create_tracer_provider(

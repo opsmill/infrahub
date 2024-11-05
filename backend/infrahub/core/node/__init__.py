@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union, overload
 
-from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import is_valid_uuid
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality
@@ -64,6 +65,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             return self.id
 
         raise InitializationError("The node has not been saved yet and doesn't have an id")
+
+    def get_updated_at(self) -> Timestamp | None:
+        return self._updated_at
 
     async def get_hfid(self, db: InfrahubDatabase, include_kind: bool = False) -> Optional[list[str]]:
         """Return the Human friendly id of the node."""
@@ -524,6 +528,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         fields: Optional[dict] = None,
         related_node_ids: Optional[set] = None,
         filter_sensitive: bool = False,
+        permissions: Optional[dict] = None,
     ) -> dict:
         """Generate GraphQL Payload for all attributes
 
@@ -575,11 +580,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     fields=fields.get(field_name),
                     related_node_ids=related_node_ids,
                     filter_sensitive=filter_sensitive,
+                    permissions=permissions,
                 )
             else:
                 response[field_name] = await field.to_graphql(
-                    db=db,
-                    filter_sensitive=filter_sensitive,
+                    db=db, filter_sensitive=filter_sensitive, permissions=permissions
                 )
 
         return response
@@ -614,7 +619,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 raise ValidationError("Only Attribute can be used in Display Label")
 
             attr = getattr(self, item_elements[0])
-            display_elements.append(getattr(attr, item_elements[1]))
+            attr_value = getattr(attr, item_elements[1])
+            if isinstance(attr_value, Enum):
+                display_elements.append(attr_value.value)
+            else:
+                display_elements.append(attr_value)
 
         if not display_elements or all(de is None for de in display_elements):
             return ""

@@ -1,13 +1,13 @@
-import { FieldSchema, AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { ProfileData } from "@/components/form/object-form";
 import {
-  AttributeValueFormPool,
+  AttributeValueFromPool,
   AttributeValueFromProfile,
   AttributeValueFromUser,
   FormAttributeValue,
 } from "@/components/form/type";
-import * as R from "ramda";
 import { LineageSource } from "@/generated/graphql";
+import { AttributeType, FieldSchema } from "@/utils/getObjectItemDisplayValue";
+import * as R from "ramda";
 
 export type GetFieldDefaultValue = {
   fieldSchema: FieldSchema;
@@ -42,6 +42,7 @@ export const getCurrentFieldValue = (
   if (!objectData) return null;
 
   const currentField = objectData[fieldName];
+
   if (!currentField) return null;
 
   if (currentField.is_default || currentField.is_from_profile) {
@@ -92,7 +93,7 @@ const getDefaultValueFromProfiles = (
 const getDefaultValueFromPool = (
   fieldName: string,
   objectData?: Record<string, AttributeType>
-): AttributeValueFormPool | null => {
+): AttributeValueFromPool | null => {
   if (!objectData) return null;
 
   const currentField = objectData[fieldName];

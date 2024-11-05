@@ -1,18 +1,18 @@
-import { AttributeType } from "@/utils/getObjectItemDisplayValue";
-import { useAtomValue } from "jotai/index";
-import { schemaState } from "@/state/atoms/schema.atom";
-import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
-import { datetimeAtom } from "@/state/atoms/time.atom";
-import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import DynamicForm from "@/components/form/dynamic-form";
 import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { ACCOUNT_GENERIC_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
+import { schemaState } from "@/state/atoms/schema.atom";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
-import graphqlClient from "@/graphql/graphqlClientApollo";
+import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
-import DynamicForm from "@/components/form/dynamic-form";
 
 type ProposedChangeEditFormProps = {
   initialData: Record<string, AttributeType>;
@@ -75,13 +75,17 @@ export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChang
       name: "reviewers",
       label: "Reviewers",
       type: "relationship",
-      relationship: { cardinality: "many", peer: ACCOUNT_OBJECT } as any,
+      relationship: { cardinality: "many", peer: ACCOUNT_GENERIC_OBJECT } as any,
       schema: {} as any,
       defaultValue: {
         source: { type: "user" },
         value:
           initialData?.reviewers?.edges
-            .map((edge: any) => ({ id: edge?.node?.id }))
+            .map((edge: any) => ({
+              id: edge?.node?.id,
+              display_label: edge?.node?.display_label,
+              __typename: edge?.node?.__typename,
+            }))
             .filter(Boolean) ?? [],
       },
       options: initialData?.reviewers?.edges.map(({ node }) => ({

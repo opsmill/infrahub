@@ -54,6 +54,6 @@ class IndexManagerMemgraph(IndexManagerBase):
 
 
 class DatabaseManagerMemgraph(DatabaseManager):
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase) -> None:
         super().__init__(db=db)
         self.index = IndexManagerMemgraph(db=db)

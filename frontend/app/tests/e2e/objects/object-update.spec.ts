@@ -27,7 +27,7 @@ test.describe("Object update", () => {
       await page.getByLabel("Description").fill("New description");
 
       await page.getByTestId("side-panel-container").getByLabel("Status").click();
-      await page.getByRole("option", { name: "Active" }).click();
+      await page.getByRole("option", { name: "Maintenance" }).click();
 
       await page.getByTestId("side-panel-container").getByLabel("Role").click();
       await page.getByRole("option", { name: "Edge Router" }).click();
@@ -35,14 +35,11 @@ test.describe("Object update", () => {
       await page.getByTestId("side-panel-container").getByLabel("Asn").click();
       await page.getByRole("option", { name: "AS701 701" }).click();
 
-      const tagsMultiSelectOpenButton = page.getByTestId("side-panel-container").getByLabel("Tags");
-      await tagsMultiSelectOpenButton.click();
-
-      await page.getByRole("option", { name: "blue" }).click(); // Removes blue
+      await page.getByLabel("Tags").click();
+      await page.getByText("blue×").getByLabel("Remove").click(); // Removes blue
       await page.getByRole("option", { name: "green" }).click(); // Adds green
       await page.getByRole("option", { name: "red", exact: true }).click(); // Adds red
-
-      await page.getByTestId("side-panel-container").getByLabel("Tags").click();
+      await page.getByLabel("Tags").click(); // to close the combobox
 
       await page.getByRole("button", { name: "Save" }).click();
     });
@@ -56,7 +53,7 @@ test.describe("Object update", () => {
       await expect(page.getByText("Nameatl1-core1-new-name")).toBeVisible();
       await expect(page.getByText("New description")).toBeVisible();
       await expect(page.getByRole("link", { name: "AS701 701" })).toBeVisible();
-      await expect(page.getByText("Active")).toBeVisible();
+      await expect(page.getByText("Maintenance")).toBeVisible();
       await expect(page.getByText("Edge Router")).toBeVisible();
       await expect(page.getByRole("link", { name: "green" })).toBeVisible();
       await expect(page.getByRole("link", { name: "red", exact: true })).toBeVisible();
@@ -67,13 +64,13 @@ test.describe("Object update", () => {
       await expect(page.getByLabel("Name *")).toHaveValue("atl1-core1-new-name");
       await expect(page.getByLabel("Description")).toHaveValue("New description");
       await expect(page.getByLabel("Type *")).toHaveValue("MX204");
-      await expect(page.getByLabel("Status")).toHaveText("Active");
+      await expect(page.getByLabel("Status")).toHaveText("Maintenance");
       await expect(page.getByLabel("Role")).toHaveText("Edge Router");
       await expect(
         page.getByTestId("side-panel-container").getByLabel("Asn").locator("../..").locator("input")
       ).toHaveValue("AS701 701");
 
-      const tabInput = page.getByTestId("side-panel-container").getByText("greenred");
+      const tabInput = page.getByTestId("side-panel-container").getByText("green×red×");
       await tabInput.scrollIntoViewIfNeeded();
       await expect(tabInput).toBeVisible();
     });
@@ -87,7 +84,6 @@ test.describe("Object update", () => {
 
     await test.step("assert initial object values", async () => {
       await expect(page.getByText("Nameatl1-leaf1")).toBeVisible();
-      await expect(page.getByText("StatusActive")).toBeVisible();
       await expect(page.getByText("RoleLeaf Switch")).toBeVisible();
       await expect(page.getByText("AsnAS64496 64496")).toBeVisible();
     });

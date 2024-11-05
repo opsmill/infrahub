@@ -1,10 +1,10 @@
-import { DiffNodeRelationshipElement } from "./node-relationship-element";
-import { useParams } from "react-router-dom";
-import { DiffThread } from "@/screens/diff/node-diff/thread";
-import { DiffRow } from "@/screens/diff/node-diff/utils";
-import { DiffRelationship, DiffStatus } from "@/screens/diff/node-diff/types";
 import { Badge } from "@/components/ui/badge";
+import { DiffThread } from "@/screens/diff/node-diff/thread";
+import { DiffRelationship, DiffStatus } from "@/screens/diff/node-diff/types";
+import { DiffRow } from "@/screens/diff/node-diff/utils";
 import { Icon } from "@iconify-icon/react";
+import { useParams } from "react-router-dom";
+import { DiffNodeRelationshipElement } from "./node-relationship-element";
 
 type DiffNodeRelationshipProps = {
   relationship: DiffRelationship;
@@ -51,7 +51,8 @@ export const DiffNodeRelationship = ({ status, relationship }: DiffNodeRelations
             </Badge>
           )}
         </div>
-      }>
+      }
+    >
       <div className="divide-y border-t">
         {relationship.elements.map((element, index: number) => (
           <DiffNodeRelationshipElement key={index} element={element} status={status} />

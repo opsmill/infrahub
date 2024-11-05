@@ -12,7 +12,7 @@ The default branch is called `main`.
 
 To get started, let's create a new **branch** that we'll call `cr1234`.
 
-You can create a new branch in the frontend by using the button with a `+ sign` in the top right corner, next to the name of the current branch, i.e., `main`.
+You can create a new branch in the frontend by using the button with a `+ sign` in the top left corner, next to the name of the current branch, i.e., `main`.
 
 Branch names are fairly permissive, but must conform to [git ref format](https://git-scm.com/docs/git-check-ref-format). For example, slashes (`/`) are allowed, tildes (`~`) are not.
 
@@ -25,7 +25,7 @@ Branch names are fairly permissive, but must conform to [git ref format](https:/
 
   Use the command below to create a new branch named `cr1234`
 
-  ```bash
+  ```shell
   infrahubctl branch create cr1234
   ```
 
@@ -65,7 +65,7 @@ Branch names are fairly permissive, but must conform to [git ref format](https:/
 
 ## Modify an organization via the UI
 
-The name of the active branch in the top right corner should now be `cr1234`.
+The name of the active branch in the top left corner should now be `cr1234`.
 
 1. Select `Organization` under Object in the left menu (near the top).
 
@@ -117,7 +117,7 @@ To view changes and merge a branch you need to:
 
   Use the command below to create a new branch named `cr1234`.
 
-  ```bash
+  ```shell
   infrahubctl branch merge cr1234
   ```
 

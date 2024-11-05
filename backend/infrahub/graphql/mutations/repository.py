@@ -10,10 +10,12 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository, CoreRepository
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import ValidationError
+from infrahub.git.models import GitRepositoryPullReadOnly
 from infrahub.graphql.types.common import IdentifierInput
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import GitRepositoryConnectivityResponse
+from infrahub.workflows.catalogue import GIT_REPOSITORIES_PULL_READ_ONLY
 
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
 
@@ -23,7 +25,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 log = get_logger()
 
@@ -166,7 +168,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             ref=data.ref.value if data.ref else None,
         )
 
-        message = messages.GitRepositoryPullReadOnly(
+        model = GitRepositoryPullReadOnly(
             repository_id=obj.id,
             repository_name=obj.name.value,
             location=obj.location.value,
@@ -175,7 +177,9 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             infrahub_branch_name=branch.name,
         )
         if context.service:
-            await context.service.send(message=message)
+            await context.service.workflow.submit_workflow(
+                workflow=GIT_REPOSITORIES_PULL_READ_ONLY, parameters={"model": model}
+            )
         return obj, result
 
 

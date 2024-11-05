@@ -293,12 +293,12 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
     async def test_create_repository_with_slash_failure(self, db: InfrahubDatabase, initial_dataset):
         repo = await Node.init(schema="CoreRepository", db=db)
         with pytest.raises(
-            ValidationError, match=re.escape("repo/name must be conform with the regex: '^[^/]*$' at name")
+            ValidationError, match=re.escape("repo/name must conform with the regex: '^[^/]*$' at name")
         ):
             await repo.new(db=db, name="repo/name", location="dummy")
 
         repo = await Node.init(schema="CoreReadOnlyRepository", db=db)
         with pytest.raises(
-            ValidationError, match=re.escape("repo/name must be conform with the regex: '^[^/]*$' at name")
+            ValidationError, match=re.escape("repo/name must conform with the regex: '^[^/]*$' at name")
         ):
             await repo.new(db=db, name="repo/name", location="dummy")

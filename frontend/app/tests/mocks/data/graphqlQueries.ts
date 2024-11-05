@@ -1,3 +1,5 @@
+import { permissionsAllow } from "./permissions";
+
 export const graphqlQueriesMocksQuery = `
 query CoreGraphQLQuery($offset: Int, $limit: Int) {
   CoreGraphQLQuery(offset: $offset,limit: $limit) {
@@ -26,6 +28,17 @@ query CoreGraphQLQuery($offset: Int, $limit: Int) {
               display_label
             }
           }
+        }
+      }
+    }
+    permissions {
+      edges {
+        node {
+          kind
+          view
+          create
+          update
+          delete
         }
       }
     }
@@ -61,6 +74,17 @@ query CoreGraphQLQuery($offset: Int, $limit: Int) {
               display_label
             }
           }
+        }
+      }
+    }
+    permissions {
+      edges {
+        node {
+          kind
+          view
+          create
+          update
+          delete
         }
       }
     }
@@ -603,6 +627,7 @@ export const graphqlQueriesMocksData = {
         __typename: "EdgedGraphQLQuery",
       },
     ],
+    permissions: permissionsAllow,
     __typename: "PaginatedGraphQLQuery",
   },
 };
@@ -1091,6 +1116,7 @@ export const graphqlQueriesMocksDataDeleted = {
         __typename: "EdgedGraphQLQuery",
       },
     ],
+    permissions: permissionsAllow,
     __typename: "PaginatedGraphQLQuery",
   },
 };

@@ -48,7 +48,7 @@ async def test_query_failure_cardinality_one(
 ):
     person_schema = registry.schema.get(name="TestPerson")
     cars_rel = person_schema.get_relationship(name="cars")
-    cars_rel.cardinality = RelationshipCardinality.ONE
+    cars_rel.max_count = 1
 
     schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestPerson", field_name="cars")
     query = await RelationshipCountUpdateValidatorQuery.init(
@@ -346,6 +346,88 @@ async def test_query_delete_on_branch_success(
 
     await query.execute(db=db)
 
+    grouped_paths = await query.get_paths()
+    all_paths = grouped_paths.get_all_data_paths()
+    assert len(all_paths) == 0
+
+
+async def test_hierarchical_success(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple):
+    site_schema = registry.schema.get(name="LocationSite", duplicate=False)
+
+    schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="LocationSite", field_name="parent")
+    query = await RelationshipCountUpdateValidatorQuery.init(
+        db=db, branch=default_branch, node_schema=site_schema, schema_path=schema_path
+    )
+
+    await query.execute(db=db)
+
+    grouped_paths = await query.get_paths()
+    all_paths = grouped_paths.get_all_data_paths()
+    assert len(all_paths) == 0
+
+
+async def test_hierarchical_failure(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple):
+    paris_site = hierarchical_location_data_simple["paris"]
+    branch = await create_branch(branch_name=str("branch2"), db=db)
+    schema_path = SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="LocationSite", field_name="children")
+    site_schema = registry.schema.get(name="LocationSite", branch=branch, duplicate=False)
+
+    # check no violations to start with
+    query = await RelationshipCountUpdateValidatorQuery.init(
+        db=db, branch=branch, node_schema=site_schema, schema_path=schema_path
+    )
+
+    await query.execute(db=db)
+    grouped_paths = await query.get_paths()
+    all_paths = grouped_paths.get_all_data_paths()
+    assert len(all_paths) == 0
+
+    # add a violation
+    branch_rack = await NodeManager.get_one(db=db, branch=branch, id=paris_site.id)
+    extra_rack = await Node.init(db=db, branch=branch, schema="LocationRack")
+    await extra_rack.new(db=db, name="extra_rack", parent=branch_rack, status="online")
+    await extra_rack.save(db=db)
+    child_rel = site_schema.get_relationship(name="children")
+    child_rel.max_count = 2
+
+    query = await RelationshipCountUpdateValidatorQuery.init(
+        db=db, branch=branch, node_schema=site_schema, schema_path=schema_path
+    )
+    await query.execute(db=db)
+    grouped_paths = await query.get_paths()
+    all_paths = grouped_paths.get_all_data_paths()
+    assert len(all_paths) == 2
+    assert (
+        DataPath(
+            branch=branch.name,
+            path_type=PathType.NODE,
+            node_id=paris_site.id,
+            kind="LocationSite",
+            field_name="children",
+            value=1,
+        )
+        in all_paths
+    )
+    assert (
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.NODE,
+            node_id=paris_site.id,
+            kind="LocationSite",
+            field_name="children",
+            value=2,
+        )
+        in all_paths
+    )
+
+    # remove violation
+    branch_rack = await NodeManager.get_one(db=db, branch=branch, id=extra_rack.id)
+    await branch_rack.delete(db=db)
+
+    query = await RelationshipCountUpdateValidatorQuery.init(
+        db=db, branch=branch, node_schema=site_schema, schema_path=schema_path
+    )
+    await query.execute(db=db)
     grouped_paths = await query.get_paths()
     all_paths = grouped_paths.get_all_data_paths()
     assert len(all_paths) == 0

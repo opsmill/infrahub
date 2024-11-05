@@ -71,7 +71,7 @@ class ProfileAttributeIndex:
         self,
         profile_attributes_id_map: dict[str, NodeAttributesFromDB],
         profile_ids_by_node_id: dict[str, list[str]],
-    ):
+    ) -> None:
         self._profile_attributes_id_map = profile_attributes_id_map
         self._profile_ids_by_node_id = profile_ids_by_node_id
 
@@ -371,6 +371,12 @@ class NodeManager:
             display_label_fields = schema_branch.generate_fields_for_display_label(name=peer_schema.kind)
             if display_label_fields:
                 fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
+
+        if fields and "hfid" in fields:
+            peer_schema = schema.get_peer_schema(db=db, branch=branch)
+            hfid_fields = peer_schema.generate_fields_for_hfid()
+            if hfid_fields:
+                fields = deep_merge_dict(dicta=fields, dictb=hfid_fields)
 
         if fetch_peers:
             peer_ids = [peer.peer_id for peer in peers_info]
@@ -1043,21 +1049,28 @@ class NodeManager:
         node = result[id]
         node_schema = node.get_schema()
 
+        kind_validation = None
+        if kind:
+            node_schema_validation = get_schema(db=db, branch=branch, node_schema=kind)
+            kind_validation = node_schema_validation.kind
+
         # Temporary list of exception to the validation of the kind
         kind_validation_exceptions = [
             ("CoreChangeThread", "CoreObjectThread"),  # issue/3318
         ]
 
-        if kind and (node_schema.kind != kind and kind not in node_schema.inherit_from):
+        if kind_validation and (
+            node_schema.kind != kind_validation and kind_validation not in node_schema.inherit_from
+        ):
             for item in kind_validation_exceptions:
-                if item[0] == kind and item[1] == node.get_kind():
+                if item[0] == kind_validation and item[1] == node.get_kind():
                     return node
 
             raise NodeNotFoundError(
                 branch_name=branch.name,
-                node_type=kind,
+                node_type=kind_validation,
                 identifier=id,
-                message=f"Node with id {id} exists, but it is a {node.get_kind()}, not {kind}",
+                message=f"Node with id {id} exists, but it is a {node.get_kind()}, not {kind_validation}",
             )
 
         return node

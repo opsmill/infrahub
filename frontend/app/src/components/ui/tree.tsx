@@ -49,7 +49,8 @@ const TreeItemWrapper = (props: INodeRendererProps & { children: React.ReactNode
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-custom-blue-500",
         isSelected ? "bg-gray-200" : "hover:bg-gray-100",
         isHalfSelected && "bg-gray-50"
-      )}>
+      )}
+    >
       {isBranch ? (
         <Icon
           icon={isExpanded ? "mdi:chevron-down" : "mdi:chevron-right"}
@@ -75,7 +76,8 @@ const DotIcon = ({ className }: { className?: string }) => (
     height="6"
     viewBox="0 0 6 6"
     fill="currentColor"
-    xmlns="http://www.w3.org/2000/svg">
+    xmlns="http://www.w3.org/2000/svg"
+  >
     <path
       fillRule="evenodd"
       clipRule="evenodd"

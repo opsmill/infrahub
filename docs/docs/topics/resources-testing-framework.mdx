@@ -138,7 +138,7 @@ In this output we can see `infrahub-sdk-0.8.1` (0.8.1 being the Infrahub SDK ver
 
 Tests can also run as part of the Infrahub CI pipeline. This is a feature which allows to validate the proper behaviour of a proposed change.
 
-This means that the Infrahub Git agent will take care of running the `pytest` process on behalf of users after creating a proposed change or updating it with new changes. User defined tests, if found, will be run as part of the CI pipeline and be logged in checks. One check per test is created which allows to see the outcome of it and an optional message that gives more details in case of failure.
+This means that the Infrahub Task worker will take care of running the `pytest` process on behalf of users after creating a proposed change or updating it with new changes. User defined tests, if found, will be run as part of the CI pipeline and be logged in checks. One check per test is created which allows to see the outcome of it and an optional message that gives more details in case of failure.
 
 ## How testing work
 

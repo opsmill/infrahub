@@ -3,13 +3,16 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Optional
 
-from infrahub.message_bus.messages.schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
+from infrahub.message_bus.messages.schema_migration_path import (
+    SchemaMigrationPath,
+    SchemaMigrationPathResponse,
+)
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.models import SchemaUpdateMigrationInfo
     from infrahub.core.schema import MainSchemaTypes
-    from infrahub.core.schema_manager import SchemaBranch
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.services import InfrahubServices
 
 

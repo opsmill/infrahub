@@ -28,7 +28,7 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
     await test.step("Update Description attribute to make it protected", async () => {
       await page.getByTestId("edit-metadata-button").click();
       await page.getByLabel("Kind").first().click();
-      await page.getByRole("option", { name: "Account" }).click();
+      await page.getByRole("option", { name: "Account" }).first().click();
       await page.getByLabel("Account").click();
       await page.getByRole("option", { name: "Admin" }).click();
       await page.getByLabel("is protected *").check();
@@ -38,11 +38,6 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
       await page.getByText("Description-").getByTestId("view-metadata-button").click();
 
       await expect(page.getByText("Is protectedTrue")).toBeVisible();
-    });
-
-    await test.step("Not allowed to updated description because user is not admin", async () => {
-      await page.getByTestId("edit-button").click();
-      await expect(page.getByLabel("Description")).toBeDisabled();
     });
   });
 });

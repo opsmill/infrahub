@@ -4,9 +4,9 @@ import { Combobox as ComboboxPrimitive } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React, { forwardRef, useState } from "react";
+import { Badge } from "./badge";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { SearchInput } from "./search-input";
-import { Badge } from "./badge";
 
 export interface MultiComboboxProps extends Omit<ButtonProps, "onChange"> {
   children?: React.ReactNode;
@@ -94,7 +94,8 @@ export const ComboboxTrigger = forwardRef<HTMLButtonElement, ComboboxTriggerProp
           "min-h-10 p-2 flex justify-between items-center w-full rounded-md border border-gray-300 bg-custom-white text-sm focus:outline-none focus:ring-1 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 disabled:cursor-not-allowed disabled:bg-gray-100",
           className
         )}
-        {...props}>
+        {...props}
+      >
         <div className="flex-grow">
           {children || <span className="text-gray-400 font-normal">{placeholder}</span>}
         </div>
@@ -135,7 +136,8 @@ export const ComboboxList = ({ items, onReset }: ComboboxListProps) => {
       style={{
         width: "var(--radix-popover-trigger-width)",
         maxHeight: "min(var(--radix-popover-content-available-height), 264px)",
-      }}>
+      }}
+    >
       <div className="flex items-center gap-2">
         <div className="flex-grow">
           <ComboboxPrimitive.Input
@@ -185,7 +187,8 @@ export const ComboboxItem = ({ className, item }: ComboboxItemProps) => {
           className
         )
       }
-      value={item.value?.id || item.value}>
+      value={item.value?.id || item.value}
+    >
       {({ selected }) => (
         <div className="flex justify-between items-center">
           {item.label}
