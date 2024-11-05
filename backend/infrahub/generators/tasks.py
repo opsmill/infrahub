@@ -1,5 +1,3 @@
-import os
-
 from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreGeneratorInstance
@@ -42,7 +40,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
     commit_worktree = repository.get_commit_worktree(commit=model.commit)
 
     file_info = extract_repo_file_information(
-        full_filename=os.path.join(commit_worktree.directory, generator_definition.file_path.as_posix()),
+        full_filename=commit_worktree.directory / generator_definition.file_path,
         repo_directory=repository.directory_root,
         worktree_directory=commit_worktree.directory,
     )

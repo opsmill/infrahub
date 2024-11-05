@@ -1,9 +1,8 @@
 import hashlib
-import os
 from enum import Enum, EnumMeta
 from pathlib import Path
 from re import finditer
-from typing import Any, Optional
+from typing import Any
 
 KWARGS_TO_DROP = ["session"]
 
@@ -20,14 +19,8 @@ def get_models_dir() -> Path:
     return here.parent.parent / "models"
 
 
-def find_first_file_in_directory(directory: str) -> Optional[str]:
-    top_level_files = os.listdir(directory)
-    for filename in top_level_files:
-        full_filename = os.path.join(directory, filename)
-        if os.path.isfile(full_filename):
-            return filename
-
-    return None
+def find_first_file_in_directory(directory: Path) -> Path | None:
+    return next((f for f in directory.iterdir() if f.is_file()), None)
 
 
 def extract_camelcase_words(camel_case: str) -> list[str]:

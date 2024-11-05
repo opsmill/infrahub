@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -66,24 +65,22 @@ class RepoFileInformation(BaseModel):
 
 
 def extract_repo_file_information(
-    full_filename: str, repo_directory: str, worktree_directory: Optional[str] = None
+    full_filename: Path, repo_directory: Path, worktree_directory: Path | None = None
 ) -> RepoFileInformation:
     """Extract all the relevant and required information from a filename.
 
     Args:
-        full_filename (str): Absolute path to the file to load Example:/opt/infrahub/git/repo01/commits/71da[..]4b7/myfile.py
-        root_directory: Absolute path to the root of the repository directory. Example:/opt/infrahub/git/repo01
-        worktree_directory (str, optional): Absolute path to the root of the worktree directory. Defaults to None.
+        full_filename (Path): Absolute path to the file to load Example:/opt/infrahub/git/repo01/commits/71da[..]4b7/myfile.py
+        root_directory (Path): Absolute path to the root of the repository directory. Example:/opt/infrahub/git/repo01
+        worktree_directory (Path, optional): Absolute path to the root of the worktree directory. Defaults to None.
         Example: /opt/infrahub/git/repo01/commits/71da[..]4b7/
 
     Returns:
         RepoFileInformation: Pydantic object to store all information about this file
     """
-    full_path = Path(full_filename)
-    abs_directory = full_path.parent.resolve()
-
-    filename = full_path.name
-    filename_wo_ext = full_path.stem
+    abs_directory = full_filename.parent.resolve()
+    filename = full_filename.name
+    filename_wo_ext = full_filename.stem
 
     relative_repo_path_dir = abs_directory.relative_to(repo_directory)
 
@@ -102,7 +99,7 @@ def extract_repo_file_information(
         absolute_path_dir=str(abs_directory),
         relative_path_dir=str(path_in_repo),
         relative_repo_path_dir=str(relative_repo_path_dir),
-        extension=full_path.suffix,
+        extension=full_filename.suffix,
         relative_path_file=str(file_path),
     )
 
@@ -183,44 +180,44 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         raise InitializationError("The repository has not been initialized with a TaskReport")
 
     @property
-    def legacy_directory_root(self) -> str:
-        """Return the path to the root directory for this repository."""
-        current_dir = os.getcwd()
-        repositories_directory = config.SETTINGS.git.repositories_directory
-        if not os.path.isabs(repositories_directory):
-            repositories_directory = os.path.join(current_dir, config.SETTINGS.git.repositories_directory)
+    def legacy_directory_root(self) -> Path:
+        """Return the legacy path to the root directory for this repository."""
+        current_dir = Path()
+        repositories_directory = Path(config.SETTINGS.git.repositories_directory)
+        if not repositories_directory.is_absolute():
+            repositories_directory = current_dir / config.SETTINGS.git.repositories_directory
 
-        return os.path.join(repositories_directory, self.name)
-
-    @property
-    def directory_root(self) -> str:
-        """Return the path to the root directory for this repository."""
-        current_dir = os.getcwd()
-        repositories_directory = config.SETTINGS.git.repositories_directory
-        if not os.path.isabs(repositories_directory):
-            repositories_directory = os.path.join(current_dir, config.SETTINGS.git.repositories_directory)
-
-        return os.path.join(repositories_directory, str(self.id))
+        return repositories_directory / self.name
 
     @property
-    def directory_default(self) -> str:
+    def directory_root(self) -> Path:
+        """Return the path to the root directory for this repository."""
+        current_dir = Path()
+        repositories_directory = Path(config.SETTINGS.git.repositories_directory)
+        if not repositories_directory.is_absolute():
+            repositories_directory = current_dir / config.SETTINGS.git.repositories_directory
+
+        return repositories_directory / str(self.id)
+
+    @property
+    def directory_default(self) -> Path:
         """Return the path to the directory of the main branch."""
-        return os.path.join(self.directory_root, "main")
+        return self.directory_root / "main"
 
     @property
-    def directory_branches(self) -> str:
+    def directory_branches(self) -> Path:
         """Return the path to the directory where the worktrees of all the branches are stored."""
-        return os.path.join(self.directory_root, BRANCHES_DIRECTORY_NAME)
+        return self.directory_root / BRANCHES_DIRECTORY_NAME
 
     @property
-    def directory_commits(self) -> str:
+    def directory_commits(self) -> Path:
         """Return the path to the directory where the worktrees of all the commits are stored."""
-        return os.path.join(self.directory_root, COMMITS_DIRECTORY_NAME)
+        return self.directory_root / COMMITS_DIRECTORY_NAME
 
     @property
-    def directory_temp(self) -> str:
+    def directory_temp(self) -> Path:
         """Return the path to the directory where the temp worktrees of all the commits pending validation are stored."""
-        return os.path.join(self.directory_root, TEMPORARY_DIRECTORY_NAME)
+        return self.directory_root / TEMPORARY_DIRECTORY_NAME
 
     def get_git_repo_main(self) -> Repo:
         """Return Git Repo object of the main repository.
@@ -247,10 +244,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if worktree := self.get_worktree(identifier=identifier):
             return Repo(worktree.directory)
 
-        raise RepositoryError(
-            identifier=self.name,
-            message=f"Unable to find the worktree {identifier}.",
-        )
+        raise RepositoryError(identifier=self.name, message=f"Unable to find the worktree {identifier}.")
 
     def relocate_directory_root(self) -> None:
         """Move an old repository directory based on its name to a directory based on its ID.
@@ -259,8 +253,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         1. The regular directory exists
         2. The regular directory does not exist but will be created after renaming the legacy one
         """
-        legacy = Path(self.legacy_directory_root)
-        current = Path(self.directory_root)
+        legacy = self.legacy_directory_root
+        current = self.directory_root
 
         if not legacy.exists():
             return
@@ -298,7 +292,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         ]
 
         for directory in directories_to_validate:
-            if not os.path.isdir(directory):
+            if not directory.is_dir():
                 raise RepositoryError(
                     identifier=self.name,
                     message=f"Invalid file system for {self.name}, Local directory {directory} missing.",
@@ -323,7 +317,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 identifier=self.name, message="The initial commit is missing for {self.name}"
             ) from exc
 
-        if not os.path.isdir(os.path.join(self.directory_commits, commit)):
+        if not (self.directory_commits / commit).is_dir():
             raise RepositoryError(
                 identifier=self.name, message=f"The directory for the main commit is missing for {self.name}"
             )
@@ -348,18 +342,18 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             )
 
         # Check if the root, commits and branches directories are already present, create them if needed
-        if os.path.isdir(self.directory_root):
+        if self.directory_root.is_dir():
             shutil.rmtree(self.directory_root)
             log.warning(f"Found an existing directory at {self.directory_root}, deleted it", repository=self.name)
-        elif os.path.isfile(self.directory_root):
-            os.remove(self.directory_root)
+        elif self.directory_root.is_file():
+            self.directory_root.unlink()
             log.warning(f"Found an existing file at {self.directory_root}, deleted it", repository=self.name)
 
         # Initialize directory structure
-        Path(self.directory_root).mkdir(parents=True)
-        Path(self.directory_branches).mkdir(parents=True)
-        Path(self.directory_commits).mkdir(parents=True)
-        Path(self.directory_temp).mkdir(parents=True)
+        self.directory_root.mkdir(parents=True)
+        self.directory_branches.mkdir(parents=True)
+        self.directory_commits.mkdir(parents=True)
+        self.directory_temp.mkdir(parents=True)
 
         try:
             repo = Repo.clone_from(self.location, self.directory_default)
@@ -532,7 +526,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if self.has_worktree(identifier=commit):
             return False
 
-        directory = os.path.join(self.directory_commits, commit)
+        directory = self.directory_commits / commit
         worktree = Worktree(identifier=commit, directory=str(directory), commit=commit)
 
         repo = self.get_git_repo_main()
@@ -557,7 +551,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         try:
             repo = self.get_git_repo_main()
-            repo.git.worktree("add", os.path.join(self.directory_branches, branch_id), branch_name)
+            repo.git.worktree("add", self.directory_branches / branch_id, branch_name)
         except GitCommandError as exc:
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
@@ -753,11 +747,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return path.read_text(encoding="UTF-8")
 
-    def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> Path:
+    def validate_location(self, commit: str, worktree_directory: Path, file_path: str) -> Path:
         """Validate that a file is found inside a repository and return a corresponding `pathlib.Path` object for it."""
-        path = Path(worktree_directory, file_path).resolve()
+        path = (worktree_directory / file_path).resolve()
 
-        if not str(path).startswith(worktree_directory):
+        if not path.is_relative_to(worktree_directory):
             raise FileOutOfRepositoryError(repository_name=self.name, commit=commit, location=file_path)
 
         if not path.exists():
