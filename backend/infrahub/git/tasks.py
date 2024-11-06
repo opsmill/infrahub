@@ -6,9 +6,11 @@ from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.protocols import CoreRepository
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
+from infrahub.message_bus import Meta, messages
 from infrahub.services import services
+from infrahub.worker import WORKER_IDENTITY
 
-from ..log import get_logger
+from ..log import get_log_data, get_logger
 from ..tasks.artifact import define_artifact
 from ..workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, REQUEST_ARTIFACT_GENERATE
 from ..workflows.utils import add_branch_tag
@@ -54,6 +56,17 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
             if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
                 await repo.sync()
 
+                # Notify other workers they need to clone the repository
+                notification = messages.GitRepositoryClone(
+                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+                    location=model.location,
+                    repository_id=model.repository_id,
+                    repository_name=model.repository_name,
+                    default_branch_name=model.default_branch_name,
+                    infrahub_branch_name=model.infrahub_branch_name,
+                )
+                await service.send(message=notification)
+
 
 @flow(
     name="git-repository-add-read-only",
@@ -80,6 +93,16 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
             await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name)
             if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
                 await repo.sync_from_remote()
+
+                # Notify other workers they need to clone the repository
+                notification = messages.GitRepositoryClone(
+                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+                    location=model.location,
+                    repository_id=model.repository_id,
+                    repository_name=model.repository_name,
+                    infrahub_branch_name=model.infrahub_branch_name,
+                )
+                await service.send(message=notification)
 
 
 @flow(name="git_repositories_create_branch")
@@ -166,6 +189,18 @@ async def sync_remote_repositories() -> None:
 
                 try:
                     await repo.sync(staging_branch=staging_branch)
+                    # Notify other workers they need to clone the repository
+                    log_data = get_log_data()
+                    request_id = log_data.get("request_id", "")
+                    message = messages.GitRepositoryFetch(
+                        meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+                        repository_id=repository_data.repository.id,
+                        repository_name=repository_data.repository.name.value,
+                        repository_kind=repository_data.repository.get_kind(),
+                        commit=repository_data.repository.commit.value,
+                        infrahub_branch_name=infrahub_branch,
+                    )
+                    await service.send(message=message)
                 except RepositoryError as exc:
                     error = exc
 
