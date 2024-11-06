@@ -6,13 +6,14 @@ query GetTaskDetails {
     count
     edges {
       node {
-        conclusion
         created_at
         id
         related_node
         related_node_kind
         title
         updated_at
+        state
+        progress
         logs {
           edges {
             node {

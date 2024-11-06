@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import pytest
 from graphql import ExecutionResult, graphql
+from infrahub_sdk.graphql import Query
 from prefect.artifacts import ArtifactRequest
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.states import State
@@ -385,6 +386,39 @@ async def test_task_query_prefect(
         "dummy-running-br1-db",
         "dummy-scheduled-blue-db",
         "dummy-scheduled-br1-db",
+    ]
+    assert result.data["InfrahubTask"]["count"] == len(task_names)
+
+
+async def test_task_query_filter_id(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+):
+    dummy_completed_br1_db = flow_runs_data["dummy-completed-br1-db"]
+    dummy_running_br1 = flow_runs_data["dummy-running-br1"]
+
+    query = Query(
+        query={
+            "InfrahubTask": {
+                "@filters": {"ids": [str(dummy_completed_br1_db.id), str(dummy_running_br1.id)]},
+                "count": None,
+                "edges": {"node": {"id": None, "title": None}},
+            }
+        }
+    )
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=query.render(),
+        variables={},
+    )
+    assert result.errors is None
+    assert result.data
+
+    task_names = sorted([task["node"]["title"] for task in result.data["InfrahubTask"]["edges"]])
+    assert task_names == [
+        "dummy-completed-br1-db",
+        "dummy-running-br1",
     ]
     assert result.data["InfrahubTask"]["count"] == len(task_names)
 

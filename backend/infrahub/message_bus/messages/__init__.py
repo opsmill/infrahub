@@ -15,7 +15,6 @@ from .event_worker_newprimaryapi import EventWorkerNewPrimaryAPI
 from .finalize_validator_execution import FinalizeValidatorExecution
 from .git_diff_namesonly import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from .git_file_get import GitFileGet, GitFileGetResponse
-from .git_repository_add import GitRepositoryAdd
 from .git_repository_connectivity import GitRepositoryConnectivity
 from .git_repository_importobjects import GitRepositoryImportObjects
 from .git_repository_read_only_add import GitRepositoryAddReadOnly
@@ -30,7 +29,6 @@ from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
 from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
-from .request_graphqlquerygroup_update import RequestGraphQLQueryGroupUpdate
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
 from .request_repository_checks import RequestRepositoryChecks
 from .request_repository_userchecks import RequestRepositoryUserChecks
@@ -55,7 +53,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "finalize.validator.execution": FinalizeValidatorExecution,
     "git.diff.names_only": GitDiffNamesOnly,
     "git.file.get": GitFileGet,
-    "git.repository.add": GitRepositoryAdd,
     "git.repository.connectivity": GitRepositoryConnectivity,
     "git.repository.add_read_only": GitRepositoryAddReadOnly,
     "git.repository.import_objects": GitRepositoryImportObjects,
@@ -66,7 +63,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
-    "request.graphql_query_group.update": RequestGraphQLQueryGroupUpdate,
     "request.proposed_change.data_integrity": RequestProposedChangeDataIntegrity,
     "request.proposed_change.pipeline": RequestProposedChangePipeline,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,

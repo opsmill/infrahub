@@ -2943,9 +2943,6 @@ def workflow_local():
 @pytest.fixture
 def init_service(db: InfrahubDatabase):
     original = services.service
-    database = db
-    workflow = WorkflowLocalExecution()
-    service = InfrahubServices(database=database, workflow=workflow)
-    services.service = service
-    yield service
+    services.service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    yield services.service
     services.service = original

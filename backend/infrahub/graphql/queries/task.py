@@ -74,6 +74,7 @@ class Tasks(ObjectType):
         prefect_tasks = await PrefectTask.query(
             db=context.db,
             fields=fields,
+            ids=ids,
             branch=branch,
             statuses=statuses,
             tags=tags,

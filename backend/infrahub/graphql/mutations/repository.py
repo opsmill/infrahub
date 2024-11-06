@@ -10,12 +10,12 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository, CoreRepository
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import ValidationError
-from infrahub.git.models import GitRepositoryPullReadOnly
+from infrahub.git.models import GitRepositoryAdd, GitRepositoryPullReadOnly
 from infrahub.graphql.types.common import IdentifierInput
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import GitRepositoryConnectivityResponse
-from infrahub.workflows.catalogue import GIT_REPOSITORIES_PULL_READ_ONLY
+from infrahub.workflows.catalogue import GIT_REPOSITORIES_PULL_READ_ONLY, GIT_REPOSITORY_ADD
 
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
 
@@ -99,9 +99,12 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 internal_status=obj.internal_status.value,
                 created_by=authenticated_user,
             )
+            if context.service:
+                await context.service.send(message=message)
+
         else:
             obj = cast(CoreRepository, obj)
-            message = messages.GitRepositoryAdd(
+            git_repo_add_model = GitRepositoryAdd(
                 repository_id=obj.id,
                 repository_name=obj.name.value,
                 location=obj.location.value,
@@ -111,8 +114,10 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 created_by=authenticated_user,
             )
 
-        if context.service:
-            await context.service.send(message=message)
+            if context.service:
+                await context.service.workflow.submit_workflow(
+                    workflow=GIT_REPOSITORY_ADD, parameters={"model": git_repo_add_model}
+                )
 
         # TODO Validate that the creation of the repository went as expected
 

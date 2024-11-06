@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import shutil
+import tempfile
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -10,14 +13,13 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.services.adapters.cache.redis import RedisCache
+from infrahub.utils import get_fixtures_dir
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from infrahub_sdk import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
@@ -26,6 +28,23 @@ if TYPE_CHECKING:
 
 class TestProposedChangePipelineConflict(TestInfrahubApp):
     @pytest.fixture(scope="class")
+    def car_dealership_copy(self):
+        """
+        Copies car-dealership local repository to a temporary folder, with a new name.
+        This is needed for this test as using car-dealership folder leads to issues most probably
+        related to https://github.com/opsmill/infrahub/issues/4296 as some other tests use this same repository.
+        """
+
+        source_folder = Path(get_fixtures_dir(), "repos", "car-dealership")
+        new_folder_name = "car-dealership-copy"
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            destination_folder = temp_path / new_folder_name
+            shutil.copytree(source_folder, destination_folder)
+            yield temp_path, new_folder_name
+
+    @pytest.fixture(scope="class")
     async def initial_dataset(
         self,
         db: InfrahubDatabase,
@@ -33,6 +52,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         git_repos_source_dir_module_scope: Path,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
+        car_dealership_copy: tuple[Path, str],
     ) -> str:
         await load_schema(db, schema=CAR_SCHEMA)
         john = await Node.init(schema=TestKind.PERSON, db=db)
@@ -57,10 +77,11 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         await jesko.save(db=db)
 
         bus_simulator.service.cache = RedisCache()
-        FileRepo(name="car-dealership", sources_directory=git_repos_source_dir_module_scope)
+        repo_path, repo_name = car_dealership_copy
+        FileRepo(name=repo_name, local_repo_base_path=repo_path, sources_directory=git_repos_source_dir_module_scope)
         client_repository = await client.create(
             kind=InfrahubKind.REPOSITORY,
-            data={"name": "car-dealership", "location": f"{git_repos_source_dir_module_scope}/car-dealership"},
+            data={"name": "dealership-car", "location": f"{git_repos_source_dir_module_scope}/{repo_name}"},
         )
         await client_repository.save()
         return client_repository.id

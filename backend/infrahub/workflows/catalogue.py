@@ -138,6 +138,15 @@ GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+GIT_REPOSITORY_ADD = WorkflowDefinition(
+    name="git-repository-add-read-write",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.git.tasks",
+    function="add_git_repository",
+    branch_support=BranchSupportType.AWARE,
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 GIT_REPOSITORIES_PULL_READ_ONLY = WorkflowDefinition(
     name="git-repository-pull-read-only",
     type=WorkflowType.INTERNAL,
@@ -187,6 +196,14 @@ BRANCH_CANCEL_PROPOSED_CHANGES = WorkflowDefinition(
     function="cancel_proposed_changes_branch",
 )
 
+UPDATE_GRAPHQL_QUERY_GROUP = WorkflowDefinition(
+    name="update_graphql_query_group",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.groups.tasks",
+    function="update_graphql_query_group",
+    branch_support=BranchSupportType.AWARE,
+)
+
 worker_pools = [INFRAHUB_WORKER_POOL]
 
 workflows = [
@@ -213,4 +230,6 @@ workflows = [
     TRIGGER_GENERATOR_DEFINITION_RUN,
     BRANCH_CANCEL_PROPOSED_CHANGES,
     REQUEST_GENERATOR_DEFINITION_RUN,
+    UPDATE_GRAPHQL_QUERY_GROUP,
+    GIT_REPOSITORY_ADD,
 ]

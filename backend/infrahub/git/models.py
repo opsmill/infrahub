@@ -35,6 +35,18 @@ class RequestArtifactGenerate(BaseModel):
     variables: dict = Field(..., description="Input variables when generating the artifact")
 
 
+class GitRepositoryAdd(BaseModel):
+    """Clone and sync an external repository after creation."""
+
+    location: str = Field(..., description="The external URL of the repository")
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the repository")
+    created_by: Optional[str] = Field(default=None, description="The user ID of the user that created the repository")
+    default_branch_name: Optional[str] = Field(None, description="Default branch for this repository")
+    infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
+    internal_status: str = Field(..., description="Administrative status of the repository")
+
+
 class GitRepositoryPullReadOnly(BaseModel):
     """Update a read-only repository to the latest commit for its ref"""
 

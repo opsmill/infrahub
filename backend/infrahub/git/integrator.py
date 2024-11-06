@@ -1156,9 +1156,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
             module = importlib.import_module(file_info.module_name)
 
-            check_class: InfrahubCheck = getattr(module, class_name)
+            check_class: type[InfrahubCheck] = getattr(module, class_name)
 
-            check = await check_class.init(
+            check = check_class(
                 root_directory=commit_worktree.directory, branch=branch_name, client=client, params=params
             )
             await check.run()
