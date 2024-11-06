@@ -100,6 +100,7 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
                     location=model.location,
                     repository_id=model.repository_id,
                     repository_name=model.repository_name,
+                    default_branch_name=None,
                     infrahub_branch_name=model.infrahub_branch_name,
                 )
                 await service.send(message=notification)
