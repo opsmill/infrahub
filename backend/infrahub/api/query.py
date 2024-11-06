@@ -24,8 +24,9 @@ from infrahub.graphql.metrics import (
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
 )
 from infrahub.graphql.utils import extract_data
+from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.log import get_logger
-from infrahub.message_bus import messages
+from infrahub.workflows.catalogue import UPDATE_GRAPHQL_QUERY_GROUP
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
@@ -106,16 +107,15 @@ async def execute_query(
 
     if update_group:
         service: InfrahubServices = request.app.state.service
-        await service.send(
-            message=messages.RequestGraphQLQueryGroupUpdate(
-                branch=branch_params.branch.name,
-                query_id=gql_query.id,
-                query_name=gql_query.name.value,
-                related_node_ids=sorted(list(related_node_ids)),
-                subscribers=sorted(subscribers),
-                params=params,
-            )
+        model = RequestGraphQLQueryGroupUpdate(
+            branch=branch_params.branch.name,
+            query_id=gql_query.id,
+            query_name=gql_query.name.value,
+            related_node_ids=sorted(list(related_node_ids)),
+            subscribers=sorted(subscribers),
+            params=params,
         )
+        await service.workflow.submit_workflow(workflow=UPDATE_GRAPHQL_QUERY_GROUP, parameters={"model": model})
 
     return response_payload
 

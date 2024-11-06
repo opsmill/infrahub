@@ -573,30 +573,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale on -->
 
 <!-- vale off -->
-### Request Graphql Query Group
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.graphql_query_group.update
-<!-- vale on -->
-
-**Description**: Sent to create or update a GraphQLQueryGroup associated with a given GraphQLQuery.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch to target | string | None |
-| **query_name** | The name of the GraphQLQuery that should be associated with the group | string | None |
-| **query_id** | The ID of the GraphQLQuery that should be associated with the group | string | None |
-| **related_node_ids** | List of nodes related to the GraphQLQuery | array | None |
-| **subscribers** | List of subscribers to add to the group | array | None |
-| **params** | Params sent with the query | object | None |
-<!-- vale on -->
-
-<!-- vale off -->
 ### Request Proposed Change
 <!-- vale on -->
 
@@ -1398,31 +1374,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **source_branch** | The source branch | string | None |
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **destination_branch** | The target branch | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Request Graphql Query Group
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.graphql_query_group.update
-<!-- vale on -->
-
-**Description**: Sent to create or update a GraphQLQueryGroup associated with a given GraphQLQuery.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch to target | string | None |
-| **query_name** | The name of the GraphQLQuery that should be associated with the group | string | None |
-| **query_id** | The ID of the GraphQLQuery that should be associated with the group | string | None |
-| **related_node_ids** | List of nodes related to the GraphQLQuery | array | None |
-| **subscribers** | List of subscribers to add to the group | array | None |
-| **params** | Params sent with the query | object | None |
 <!-- vale on -->
 
 <!-- vale off -->

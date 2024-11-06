@@ -371,54 +371,58 @@ jobs:
           flag-name: backend-functional
           parallel: true
 
-  backend-tests-memgraph:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on:
-      group: huge-runners
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: backend-tests-unit-memgraph
-            env:
-              INFRAHUB_DB_TYPE: memgraph
-          # - name: backend-tests-unit-nats
-          #   env:
-          #     INFRAHUB_DB_TYPE: memgraph
-          #     INFRAHUB_USE_NATS: 1
-          #     INFRAHUB_BROKER_DRIVER: nats
-          #     INFRAHUB_CACHE_DRIVER: nats
-    name: ${{ matrix.name }}
-    env: ${{ matrix.env }}
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-        with:
-          submodules: true
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: "Setup git credentials"
-        run: "git config --global user.name 'Infrahub' && \
-              git config --global user.email 'infrahub@opsmill.com' && \
-              git config --global --add safe.directory '*' && \
-              git config --global credential.usehttppath true && \
-              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
-      - name: "Setup Python environment"
-        run: |
-          poetry config virtualenvs.create true --local
-          poetry env use 3.12
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
-      - name: "Unit Tests"
-        run: "poetry run invoke backend.test-unit"
+  # ---------------------------------------------------
+  # DISABLING Memgraph for now :(
+  # Tests where too flaky in 2.19 and completely broken in 2.20.1
+  # ---------------------------------------------------
+  # backend-tests-memgraph:
+  #   if: |
+  #     always() && !cancelled() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled') &&
+  #     needs.files-changed.outputs.backend == 'true'
+  #   needs: ["files-changed", "yaml-lint", "python-lint"]
+  #   runs-on:
+  #     group: huge-runners
+  #   timeout-minutes: 45
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #         - name: backend-tests-unit-memgraph
+  #           env:
+  #             INFRAHUB_DB_TYPE: memgraph
+  #         # - name: backend-tests-unit-nats
+  #         #   env:
+  #         #     INFRAHUB_DB_TYPE: memgraph
+  #         #     INFRAHUB_USE_NATS: 1
+  #         #     INFRAHUB_BROKER_DRIVER: nats
+  #         #     INFRAHUB_CACHE_DRIVER: nats
+  #   name: ${{ matrix.name }}
+  #   env: ${{ matrix.env }}
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v4"
+  #       with:
+  #         submodules: true
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: '3.12'
+  #     - name: "Setup git credentials"
+  #       run: "git config --global user.name 'Infrahub' && \
+  #             git config --global user.email 'infrahub@opsmill.com' && \
+  #             git config --global --add safe.directory '*' && \
+  #             git config --global credential.usehttppath true && \
+  #             git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+  #     - name: "Setup Python environment"
+  #       run: |
+  #         poetry config virtualenvs.create true --local
+  #         poetry env use 3.12
+  #     - name: "Install dependencies"
+  #       run: "poetry install --no-interaction --no-ansi"
+  #     - name: "Unit Tests"
+  #       run: "poetry run invoke backend.test-unit"
 
   backend-validate-generated:
     if: |

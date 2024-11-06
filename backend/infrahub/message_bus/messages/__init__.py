@@ -30,7 +30,6 @@ from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
 from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
-from .request_graphqlquerygroup_update import RequestGraphQLQueryGroupUpdate
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
 from .request_repository_checks import RequestRepositoryChecks
 from .request_repository_userchecks import RequestRepositoryUserChecks
@@ -66,7 +65,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
-    "request.graphql_query_group.update": RequestGraphQLQueryGroupUpdate,
     "request.proposed_change.data_integrity": RequestProposedChangeDataIntegrity,
     "request.proposed_change.pipeline": RequestProposedChangePipeline,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
