@@ -235,7 +235,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         service = service or InfrahubServices()
         self = cls(service=service, **kwargs)
         await self.create_locally(infrahub_branch_name=self.infrahub_branch_name)
-        log.info("Created the new project locally.", repository=self.name)
+        log.info("Created new repository locally.", repository=self.name)
         return self
 
 
@@ -264,7 +264,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
         self = cls(service=service, **kwargs)
         await self.create_locally(checkout_ref=self.ref, infrahub_branch_name=self.infrahub_branch_name)
-        log.info("Created the new project locally.", repository=self.name)
+        log.info("Created new repository locally.", repository=self.name)
         return self
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
