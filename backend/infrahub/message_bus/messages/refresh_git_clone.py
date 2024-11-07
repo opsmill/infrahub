@@ -3,7 +3,7 @@ from pydantic import Field
 from infrahub.message_bus import InfrahubMessage
 
 
-class GitRepositoryClone(InfrahubMessage):
+class RefreshGitClone(InfrahubMessage):
     """Clone a repository locally."""
 
     location: str = Field(..., description="The external URL of the repository")

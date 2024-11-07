@@ -57,7 +57,7 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
                 await repo.sync()
 
                 # Notify other workers they need to clone the repository
-                notification = messages.GitRepositoryClone(
+                notification = messages.RefreshGitClone(
                     meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
                     location=model.location,
                     repository_id=model.repository_id,
@@ -193,7 +193,7 @@ async def sync_remote_repositories() -> None:
                     # Notify other workers they need to clone the repository
                     log_data = get_log_data()
                     request_id = log_data.get("request_id", "")
-                    message = messages.GitRepositoryFetch(
+                    message = messages.RefreshGitFetch(
                         meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
                         repository_id=repository_data.repository.id,
                         repository_name=repository_data.repository.name.value,

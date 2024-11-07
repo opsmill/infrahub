@@ -3,7 +3,7 @@ from pydantic import Field
 from infrahub.message_bus import InfrahubMessage
 
 
-class GitRepositoryFetch(InfrahubMessage):
+class RefreshGitFetch(InfrahubMessage):
     """Fetch a repository remote changes."""
 
     repository_id: str = Field(..., description="The unique ID of the repository")
