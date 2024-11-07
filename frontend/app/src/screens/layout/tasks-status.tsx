@@ -32,9 +32,7 @@ export function TaskStatus() {
         variant="ghost"
         className="h-8 w-8 bg-neutral-50 border border-neutral-200 rounded-lg relative"
         tooltipEnabled
-        tooltipContent={
-          count === 0 ? "Tasks for the current branch" : "Ongoing tasks for the current branch"
-        }
+        tooltipContent={"Tasks"}
       >
         {loading && <Spinner />}
 
