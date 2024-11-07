@@ -242,6 +242,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             message=f"Unable to find the worktree {identifier}.",
         )
 
+    def validate_directory_root_exists(self) -> bool:
+        return Path(self.directory_root).exists()
+
     def validate_local_directories(self) -> bool:
         """Check if the local directories structure to ensure that the repository has been properly initialized.
 
