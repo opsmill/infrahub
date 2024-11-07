@@ -1,3 +1,4 @@
+import Accordion from "@/components/display/accordion";
 import { DateDisplay } from "@/components/display/date-display";
 import { Badge } from "@/components/ui/badge";
 import { TASK_OBJECT } from "@/config/constants";
@@ -9,7 +10,8 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import { getSeverityBadge, tLog } from "../tasks/logs";
 
 interface TaskDisplayProps {
-  id: string;
+  id?: string;
+  relatedNode?: string;
 }
 
 const background = {
@@ -44,9 +46,45 @@ export const getLogBadge: { [key: string]: any } = {
   CRASHED: <Badge variant={"red-outline"}>CRASHED</Badge>,
 };
 
-export function TaskDisplay({ id }: TaskDisplayProps) {
+function Task({ task }) {
+  return (
+    <div>
+      <div
+        className={classNames(
+          "flex flex-col gap-4 rounded-md p-4 m-auto",
+          "bg-gray-100",
+          background[task.state]
+        )}
+      >
+        <div className="flex justify-between">
+          <div className="flex items-center gap-4">
+            {getLogBadge[task.state] ?? <Badge variant={"gray-outline"}>UNKOWN</Badge>}
+            {task.title}
+          </div>
+
+          <DateDisplay date={task.updated_at} />
+        </div>
+
+        {!!task?.logs?.edges?.length && (
+          <Accordion title={<div className="font-normal text-xs">Logs</div>}>
+            <div className="flex flex-col gap-2 mt-2">
+              {task?.logs?.edges?.map((edge, index) => (
+                <Log key={index} {...edge.node} />
+              ))}
+            </div>
+          </Accordion>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function TaskDisplay({ id, relatedNode }: TaskDisplayProps) {
   const { loading, error, data } = useQuery(TASK_DETAILS, {
-    variables: { id },
+    variables: {
+      ids: id ? [id] : undefined,
+      relatedNodes: relatedNode ? [relatedNode] : undefined,
+    },
     pollInterval: 5000,
   });
 
@@ -58,28 +96,11 @@ export function TaskDisplay({ id }: TaskDisplayProps) {
     return <LoadingScreen message={"Loading task..."} />;
   }
 
-  const task = data[TASK_OBJECT].edges[0]?.node;
-
   return (
-    <div>
-      <div
-        className={classNames("flex flex-col gap-4 rounded-md p-4 m-auto", background[task.state])}
-      >
-        <div className="flex justify-between">
-          <div className="flex items-center gap-4">
-            {getLogBadge[task.state]}
-            {task.title}
-          </div>
-
-          <DateDisplay date={task.updated_at} />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          {task?.logs?.edges?.map((edge, index) => (
-            <Log key={index} {...edge.node} />
-          ))}
-        </div>
-      </div>
+    <div className="flex flex-col gap-2 overflow-scroll">
+      {data[TASK_OBJECT].edges?.map((edge, index) => (
+        <Task key={index} task={edge.node} />
+      ))}
     </div>
   );
 }
