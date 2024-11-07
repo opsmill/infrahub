@@ -2011,7 +2011,7 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
 
 
 @pytest.fixture
-async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -2072,6 +2072,7 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
 
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    return schema
 
 
 @pytest.fixture
@@ -2946,3 +2947,64 @@ def init_service(db: InfrahubDatabase):
     services.service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
     yield services.service
     services.service = original
+
+
+@pytest.fixture
+async def generic_car_person_schema(default_branch: Branch, data_schema):
+    schema: dict[str, Any] = {
+        "generics": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                ],
+                "relationships": [
+                    {
+                        "cardinality": "one",
+                        "identifier": "person__car",
+                        "name": "owner",
+                        "optional": True,
+                        "peer": "TestPerson",
+                    }
+                ],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "ElectricCar",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value", "color__value"],
+                "inherit_from": ["TestCar"],
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                    {
+                        "kind": "Text",
+                        "name": "color",
+                    },
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                ],
+                "relationships": [
+                    {"cardinality": "one", "identifier": "person__car", "name": "car", "peer": "TestCar"}
+                ],
+            },
+        ],
+    }
+
+    schema_root = SchemaRoot(**schema)
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)

@@ -5,6 +5,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch, initialization
+from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
@@ -465,6 +466,169 @@ async def test_read_resources_in_pool_with_branch(db: InfrahubDatabase, default_
         edge["node"]["id"]
         for edge in resources_result.data["CoreIPAddressPool"]["edges"][0]["node"]["resources"]["edges"]
     } == set(branched_peer_ids)
+
+
+async def test_read_resources_in_pool_new_schema_in_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    init_nodes_registry,
+    default_ipnamespace,
+    ipam_schema: SchemaRoot,
+):
+    branch2 = await create_branch(db=db, branch_name="branch2")
+
+    schema_branch2 = registry.schema.get_schema_branch(name=branch2.name)
+    schema_branch2.load_schema(schema=ipam_schema)
+    schema_branch2.process()
+
+    registry.schema.set_schema_branch(name=branch2.name, schema=schema_branch2)
+    branch2.update_schema_hash()
+
+    prefix_schema = schema_branch2.get_node(name="IpamIPPrefix")
+
+    # -----------------------
+    # Create some objects in BRANCH2
+    # -----------------------
+    ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns1.new(db=db, name="ns1")
+    await ns1.save(db=db)
+
+    net146 = await Node.init(db=db, schema=prefix_schema, branch=branch2)
+    await net146.new(db=db, prefix="10.0.0.0/8", ip_namespace=ns1, member_type=PrefixMemberType.PREFIX.value)
+    await net146.save(db=db)
+
+    net140 = await Node.init(db=db, schema=prefix_schema, branch=branch2)
+    await net140.new(db=db, prefix="10.10.0.0/16", ip_namespace=ns1, parent=net146)
+    await net140.save(db=db)
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=branch2)
+    ipv4_prefix_pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db, branch=branch2)
+    await ipv4_prefix_pool.new(
+        db=db,
+        name="ipv4_prefix",
+        default_prefix_length=16,
+        default_prefix_type="IpamIPPrefix",
+        resources=[net146],
+        ip_namespace=ns1,
+    )
+    await ipv4_prefix_pool.save(db=db)
+
+    IP_PREFIX_RESOURCES = """
+        query Resources($pool_ids: [ID]) {
+            CoreIPPrefixPool(ids: $pool_ids) {
+                count
+                edges {
+                    node {
+                        id
+                        resources {
+                            count
+                            edges {
+                                node {
+                                    id
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """
+    # At first there should be 1 resource
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch2)
+    resources_result = await graphql(
+        schema=gql_params.schema,
+        source=IP_PREFIX_RESOURCES,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_ids": [ipv4_prefix_pool.id]},
+    )
+
+    assert not resources_result.errors
+    assert resources_result.data
+    assert resources_result.data["CoreIPPrefixPool"]["edges"][0]["node"]["resources"]["count"] == 1
+
+    POOL_UTILIZATION = """
+    query GET_RESOURCE_POOL_UTILIZATION($pool_id: String!) {
+        InfrahubResourcePoolUtilization(pool_id: $pool_id) {
+            edges {
+                node {
+                    display_label
+                    kind
+                    weight
+                    utilization
+                    utilization_branches
+                    utilization_default_branch
+                    __typename
+                }
+                __typename
+            }
+            count
+            utilization
+            utilization_branches
+            utilization_default_branch
+            __typename
+        }
+    }
+
+    """
+    # ------------------------------------------------------------
+    # Validate the utilization query in the main Branch
+    # ------------------------------------------------------------
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    utilization_result = await graphql(
+        schema=gql_params.schema,
+        source=POOL_UTILIZATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_id": ipv4_prefix_pool.id},
+    )
+
+    assert not utilization_result.errors
+    assert utilization_result.data
+    assert utilization_result.data["InfrahubResourcePoolUtilization"] == {
+        "edges": [],
+        "count": 0,
+        "utilization": 0.0,
+        "utilization_branches": 0.0,
+        "utilization_default_branch": 0.0,
+        "__typename": "PoolUtilization",
+    }
+
+    # ------------------------------------------------------------
+    # Validate the utilization query in Branch2
+    # ------------------------------------------------------------
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch2)
+    utilization_result = await graphql(
+        schema=gql_params.schema,
+        source=POOL_UTILIZATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_id": ipv4_prefix_pool.id},
+    )
+
+    assert not utilization_result.errors
+    assert utilization_result.data
+    assert utilization_result.data["InfrahubResourcePoolUtilization"] == {
+        "edges": [
+            {
+                "__typename": "IPPrefixUtilizationEdge",
+                "node": {
+                    "__typename": "IPPoolUtilizationResource",
+                    "display_label": "10.0.0.0/8",
+                    "kind": "IpamIPPrefix",
+                    "utilization": 0.390625,
+                    "utilization_branches": 0.390625,
+                    "utilization_default_branch": 0.0,
+                    "weight": 16777216,
+                },
+            },
+        ],
+        "count": 1,
+        "utilization": 0.390625,
+        "utilization_branches": 0.390625,
+        "utilization_default_branch": 0.0,
+        "__typename": "PoolUtilization",
+    }
 
 
 async def test_read_resources_in_pool_with_branch_with_mutations(

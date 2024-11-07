@@ -3,6 +3,8 @@ title: Creating a Schema
 ---
 
 import CodeBlock from "@theme/CodeBlock";
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Creating a schema
 
@@ -34,8 +36,8 @@ Create a file named `schema_guide.yml` on your computer. The place where you cre
 
 In the file we will be creating 2 kinds of nodes in the `Network` namespace:
 
-- device: the network device we want to model
-- interface: the network interface we want to model
+- `Device`: the network device we want to model
+- `Interface`: the network interface we want to model
 
 The `NetworkDevice` node will have the following attributes:
 
@@ -49,7 +51,7 @@ The `NetworkInterface` node will have the following attributes:
 
 :::note
 
-We define a `default_filter` on the `hostname` attribute of the `NetworkDevice`. This way we can use the `hostname` as an alternative for the `id` in the queries and mutations in this guide.
+We define a `human_friendly_id` on the `hostname` attribute of the `NetworkDevice`. This way we can use the `hostname` as an alternative for the `hfid` in the queries and mutations in this guide.
 
 :::
 
@@ -59,7 +61,7 @@ version: "1.0"
 nodes:
   - name: Device
     namespace: Network
-    default_filter: hostname__value
+    human_friendly_id: ['hostname__value']
     attributes:
       - name: hostname
         kind: Text
@@ -92,7 +94,12 @@ We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=ne
 
 ![schema page screenshot](../media/guides/create_schema_1.png)
 
-We'll create a device and an interface according to the schema, by executing the following GraphQL query
+We'll create a device and an interface according to the schema by using the web interface, GraphQL Query or cURL.
+
+<Tabs>
+<TabItem value="graphql" label="Via the GraphQL Interface" default>
+
+Open the GraphQL sandbox (bottom left of the web interface) and make a query with the following:
 
 ```graphql
 mutation {
@@ -111,26 +118,39 @@ mutation {
 }
 ```
 
-Here is an example of using `curl` to make the query. Make sure to replace the `X-INFRAHUB-KEY` and the IP address with your actual details. Please also make sure to include the name of the branch in the URL. If you want to learn more about GraphQL, you can find more information [here](https://docs.infrahub.app/topics/graphql).
+![schema page screenshot](../media/guides/create_schema_graphql_1.png)
 
-```graphql
+ </TabItem>
+
+  <TabItem value="web" label="Via the Web Interface">
+
+1. Login to Infrahub's web interface.
+2. Click on **Objects > Device** in the left side menu.
+3. Click on 'Add Device'
+4. Create a new device with 'atl1-edge1' as Hostname and 'Cisco ASR1002-HX' as Model and click save.
+5. Under Interface, create a new interface with 'Ethernet1' as Name and 'WAN interface' as description.
+
+  </TabItem>
+
+ <TabItem value="shell" label="Using cURL">
+
+Here is an example of using `cURL` to make the query. Make sure to replace the `X-INFRAHUB-KEY` and the IP address with your actual details. Please also make sure to include the name of the branch in the URL. If you want to learn more about GraphQL, you can find more information [here](https://docs.infrahub.app/topics/graphql).
+
+```shell
 curl -X POST http://localhost:8000/graphql/network-device-schema \
   -H "Content-Type: application/json" \
   -H "X-INFRAHUB-KEY: 1802eed5-eeb7-cc45-2e4d-c51de9d66cba" \
   -d '{"query": "mutation { NetworkDeviceCreate(data: {hostname: {value: \"atl1-edge1\"}, model: {value: \"Cisco ASR1002-HX\"}}) { ok object { id } } NetworkInterfaceCreate(data: {name: {value: \"Ethernet1\"}, description: {value: \"WAN interface\"}}) { ok object { id } } }"}'
 ```
 
-You can verify this in the GUI by navigating to 'Objects' and selecting 'Device' or 'Interface'.
+ </TabItem>
+</Tabs>
+
+You can verify that both the Device and Interface were added to Infrahub by navigating to `Objects` and selecting `Device` or `Interface`.
 
 ![schema page screenshot](../media/guides/create_schema_2.png)
 
-Finally, you can merge the `network-device-schema` branch to 'main' by running the following command.
-
-```shell
-infrahubctl branch merge network-device-schema
-```
-
-We have now successfully created our first schema, loaded into a branch into Infrahub, created the first nodes and merged the changes into the main branch of Infrahub.
+We have now successfully created our first schema, loaded into a branch into Infrahub and created the first nodes in the `network-device-schema` branch in Infrahub.
 
 ## 2. Adding relationships to the nodes
 
@@ -149,7 +169,7 @@ version: "1.0"
 nodes:
   - name: Device
     namespace: Network
-    default_filter: hostname__value
+    human_friendly_id: ['hostname__value']
     attributes:
       - name: hostname
         kind: Text
@@ -201,7 +221,7 @@ mutation {
           id
         }
   }
-  NetworkInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, device: {id: "atl1-edge1"} }) {
+  NetworkInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, device: {hfid: "atl1-edge1"} }) {
         ok
         object {
           id
@@ -251,7 +271,7 @@ generics:
 nodes:
   - name: Device
     namespace: Network
-    default_filter: hostname__value
+    human_friendly_id: ['hostname__value']
     attributes:
       - name: hostname
         kind: Text
@@ -300,13 +320,13 @@ mutation {
           id
         }
   }
-  NetworkPhysicalInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, speed: {value: 1000000000}, device: {id: "atl1-edge1"}}) {
+  NetworkPhysicalInterfaceCreate(data: {name: {value: "Ethernet1"}, description: {value: "WAN interface"}, speed: {value: 1000000000}, device: {hfid: "atl1-edge1"}}) {
         ok
         object {
           id
         }
   }
-  NetworkLogicalInterfaceCreate(data: {name: {value: "Vlan1"}, description: {value: "SVI for Vlan 1"}, device: {id: "atl1-edge1"}}) {
+  NetworkLogicalInterfaceCreate(data: {name: {value: "Vlan1"}, description: {value: "SVI for Vlan 1"}, device: {hfid: "atl1-edge1"}}) {
         ok
         object {
           id
@@ -316,6 +336,8 @@ mutation {
 ```
 
 In the detailed view of the device in the Web UI, we can now see that the device has 2 interfaces, but they are of a different kind.
+
+![schema page screenshot](../media/guides/create_schema_generics.png)
 
 ## 4. Improving our schema
 
@@ -373,7 +395,7 @@ generics:
 nodes:
   - name: Device
     namespace: Network
-    default_filter: hostname__value
+    human_friendly_id: ['hostname__value']
     attributes:
       - name: hostname
         kind: Text
@@ -382,7 +404,6 @@ nodes:
       - name: device_type
         label: Device Type
         kind: Text
-        id: 17bcf8a7-9c03-4a6a-3295-c51345cb1c33
     relationships:
       - name: interfaces
         label: Interfaces

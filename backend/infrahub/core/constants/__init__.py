@@ -107,6 +107,12 @@ class BranchSupportType(InfrahubStringEnum):
     LOCAL = "local"
 
 
+class ComputedAttributeKind(InfrahubStringEnum):
+    USER = "User"
+    JINJA2 = "Jinja2"
+    TRANSFORM_PYTHON = "TransformPython"
+
+
 class BranchConflictKeep(InfrahubStringEnum):
     TARGET = "target"
     SOURCE = "source"

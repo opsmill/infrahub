@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import pydantic
-from graphene import Boolean, Field, InputField, InputObjectType, List, Mutation, ObjectType, String
+from graphene import Boolean, Field, InputField, InputObjectType, Mutation, ObjectType, String
 from infrahub_sdk.utils import extract_fields, extract_fields_first_node
 from opentelemetry import trace
 from typing_extensions import Self
@@ -11,7 +11,6 @@ from typing_extensions import Self
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -26,7 +25,7 @@ from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workflows.catalogue import BRANCH_DELETE, BRANCH_MERGE, BRANCH_REBASE
+from infrahub.workflows.catalogue import BRANCH_DELETE, BRANCH_MERGE, BRANCH_REBASE, BRANCH_VALIDATE
 
 from ..types import BranchType
 
@@ -222,34 +221,36 @@ class BranchRebase(Mutation):
 class BranchValidate(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
+        wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
-    messages = List(String)
     object = Field(BranchType)
+    task = Field(TaskInfo, required=False)
 
     @classmethod
     @retry_db_transaction(name="branch_validate")
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
+    async def mutate(
+        cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
+    ) -> Self:
         context: GraphqlContext = info.context
 
-        async with UserTask.from_graphql_context(title=f"Validate branch: {data['name']}", context=context):
-            obj = await Branch.get_by_name(db=context.db, name=data["name"])
-            ok = True
-            validation_messages = ""
+        obj = await Branch.get_by_name(db=context.db, name=str(data.name))
+        task: dict | None = None
+        ok = True
 
-            diff = await BranchDiffer.init(db=context.db, branch=obj)
-            conflicts = await diff.get_conflicts()
-
-            if conflicts:
-                ok = False
-                errors = [str(conflict) for conflict in conflicts]
-                validation_messages = ", ".join(errors)
-
-            fields = await extract_fields(info.field_nodes[0].selection_set)
-
-            return cls(
-                object=await obj.to_graphql(fields=fields.get("object", {})), messages=validation_messages, ok=ok
+        if wait_until_completion:
+            await context.active_service.workflow.execute_workflow(
+                workflow=BRANCH_VALIDATE, parameters={"branch": obj.name}
             )
+        else:
+            workflow = await context.active_service.workflow.submit_workflow(
+                workflow=BRANCH_VALIDATE, parameters={"branch": obj.name}
+            )
+            task = {"id": workflow.id}
+
+        fields = await extract_fields_first_node(info=info)
+
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
 
 
 class BranchMerge(Mutation):

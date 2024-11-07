@@ -425,8 +425,14 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 await self.set_peer(value=peer)
 
         if not self.peer_id and self.peer_hfid:
+            peer_schema = db.schema.get(name=self.schema.peer, branch=self.branch)
+            kind = (
+                self.data["kind"]
+                if isinstance(self.data, dict) and "kind" in self.data and peer_schema.is_generic_schema
+                else self.schema.peer
+            )
             peer = await registry.manager.get_one_by_hfid(
-                db=db, hfid=self.peer_hfid, branch=self.branch, kind=self.schema.peer, fields={"display_label": None}
+                db=db, hfid=self.peer_hfid, branch=self.branch, kind=kind, fields={"display_label": None}
             )
             if peer:
                 await self.set_peer(value=peer)

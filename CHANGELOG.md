@@ -11,6 +11,13 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [1.0.2](https://github.com/opsmill/infrahub/tree/v1.0.2) - 2024-11-06
+
+### Fixed
+
+- Update branch merge logic to use smaller queries outside of a transaction to allow merging a branch with many changes ([#4448](https://github.com/opsmill/infrahub/issues/4448))
+- Ensure the GraphQL query InfrahubResourcePoolUtilization works properly when the schema is different in the branch ([#4761](https://github.com/opsmill/infrahub/issues/4761))
+
 ## [1.0.1](https://github.com/opsmill/infrahub/tree/v1.0.1) - 2024-10-31
 
 ### Fixed

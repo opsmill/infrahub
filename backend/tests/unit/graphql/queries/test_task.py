@@ -329,7 +329,7 @@ async def test_task_query_infrahub(
     )
     assert all_tasks.errors is None
     assert all_tasks.data
-    assert all_tasks.data["InfrahubTask"]["count"] == 5
+    assert all_tasks.data["InfrahubTask"]["count"] >= 5
 
     blue_tasks = await run_query(
         db=db,

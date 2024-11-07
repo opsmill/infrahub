@@ -1465,6 +1465,61 @@ async def test_process_relationships_component_can_be_overridden(schema_all_in_o
     assert processed_relationship.on_delete == RelationshipDeleteBehavior.NO_ACTION
 
 
+async def test_hierarchy_update(hierarchical_location_schema_simple: SchemaRoot):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=hierarchical_location_schema_simple)
+    schema.process_inheritance()
+    schema.process_hierarchy()
+    schema.add_hierarchy_generic()
+    schema.add_hierarchy_node()
+
+    site_schema = schema.get("LocationSite", duplicate=False)
+    assert site_schema.parent == "LocationRegion"
+    parent_rel = site_schema.get_relationship(name="parent")
+    assert parent_rel.peer == "LocationRegion"
+    region_schema = schema.get("LocationRegion", duplicate=False)
+    assert region_schema.children == "LocationSite"
+    children_rel = region_schema.get_relationship(name="children")
+    assert children_rel.peer == "LocationSite"
+
+    updated_schema = hierarchical_location_schema_simple.model_copy(deep=True)
+    updated_schema.nodes.append(
+        NodeSchema(
+            name="Country",
+            namespace="Location",
+            inherit_from=["LocationGeneric"],
+            children="LocationSite",
+            parent="LocationRegion",
+        )
+    )
+    site_schema = updated_schema.get("LocationSite")
+    site_schema.parent = "LocationCountry"
+    region_schema = updated_schema.get("LocationRegion")
+    region_schema.children = "LocationCountry"
+    schema.load_schema(updated_schema)
+
+    schema.process_inheritance()
+    schema.process_hierarchy()
+    schema.add_hierarchy_generic()
+    schema.add_hierarchy_node()
+
+    site_schema = schema.get("LocationSite", duplicate=False)
+    assert site_schema.parent == "LocationCountry"
+    parent_rel = site_schema.get_relationship(name="parent")
+    assert parent_rel.peer == "LocationCountry"
+    region_schema = schema.get("LocationRegion", duplicate=False)
+    assert region_schema.children == "LocationCountry"
+    children_rel = region_schema.get_relationship(name="children")
+    assert children_rel.peer == "LocationCountry"
+    country_schema = schema.get("LocationCountry", duplicate=False)
+    children_rel = country_schema.get_relationship(name="children")
+    assert children_rel.peer == "LocationSite"
+    parent_rel = country_schema.get_relationship(name="parent")
+    assert parent_rel.peer == "LocationRegion"
+    generic_schema = schema.get("LocationGeneric", duplicate=False)
+    assert set(generic_schema.used_by) == {"LocationRegion", "LocationCountry", "LocationSite", "LocationRack"}
+
+
 async def test_schema_branch_copy(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
 ):

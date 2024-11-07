@@ -15,7 +15,7 @@ from infrahub.core.query.resource_manager import (
     NumberPoolGetAllocated,
     PrefixPoolGetIdentifiers,
 )
-from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError, ValidationError
 from infrahub.pools.number import NumberUtilizationGetter
 
 if TYPE_CHECKING:
@@ -175,7 +175,13 @@ class PoolUtilization(ObjectType):
         if pool.get_kind() == "CoreNumberPool":
             return await resolve_number_pool_utilization(db=db, context=context, pool=pool)
 
-        resources_map: dict[str, Node] = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined,union-attr]
+        resources_map: dict[str, Node] = {}
+
+        try:
+            resources_map = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined,union-attr]
+        except SchemaNotFoundError:
+            pass
+
         utilization_getter = PrefixUtilizationGetter(db=db, ip_prefixes=list(resources_map.values()), at=context.at)
         fields = await extract_fields_first_node(info=info)
         response: dict[str, Any] = {}
