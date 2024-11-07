@@ -114,16 +114,15 @@ async def rebase_branch(branch: str) -> None:
     # -------------------------------------------------------------
     # Trigger the reconciliation of IPAM data after the rebase
     # -------------------------------------------------------------
-    diff_parser = IpamDiffParser(
-        db=service.database,
-        diff_repository=diff_repository,
+    diff_parser = await component_registry.get_component(IpamDiffParser, db=service.database, branch=obj)
+    ipam_node_details = await diff_parser.get_changed_ipam_node_details(
         source_branch_name=obj.name,
         target_branch_name=registry.default_branch,
     )
-    ipam_node_details = await diff_parser.get_changed_ipam_node_details()
-    await service.workflow.submit_workflow(
-        workflow=IPAM_RECONCILIATION, parameters={"branch": obj.name, "ipam_node_details": ipam_node_details}
-    )
+    if ipam_node_details:
+        await service.workflow.submit_workflow(
+            workflow=IPAM_RECONCILIATION, parameters={"branch": obj.name, "ipam_node_details": ipam_node_details}
+        )
 
     # -------------------------------------------------------------
     # Generate an event to indicate that a branch has been rebased
@@ -186,18 +185,16 @@ async def merge_branch(branch: str) -> None:
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the merge
         # -------------------------------------------------------------
-        diff_repository = await component_registry.get_component(DiffRepository, db=service.database, branch=obj)
-        diff_parser = IpamDiffParser(
-            db=service.database,
-            diff_repository=diff_repository,
+        diff_parser = await component_registry.get_component(IpamDiffParser, db=service.database, branch=obj)
+        ipam_node_details = await diff_parser.get_changed_ipam_node_details(
             source_branch_name=obj.name,
             target_branch_name=registry.default_branch,
         )
-        ipam_node_details = await diff_parser.get_changed_ipam_node_details()
-        await service.workflow.submit_workflow(
-            workflow=IPAM_RECONCILIATION,
-            parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
-        )
+        if ipam_node_details:
+            await service.workflow.submit_workflow(
+                workflow=IPAM_RECONCILIATION,
+                parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
+            )
 
         # -------------------------------------------------------------
         # Generate an event to indicate that a branch has been merged

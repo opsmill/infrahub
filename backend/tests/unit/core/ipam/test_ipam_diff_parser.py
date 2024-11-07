@@ -2,7 +2,6 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
-from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.ipam.model import IpamNodeDetails
 from infrahub.core.manager import NodeManager
@@ -26,11 +25,10 @@ async def test_ipam_diff_parser_update(db: InfrahubDatabase, default_branch: Bra
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch_2)
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch_2)
-    diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=branch_2)
-    parser = IpamDiffParser(
-        db=db, diff_repository=diff_repo, source_branch_name=branch_2.name, target_branch_name=default_branch.name
+    parser = await component_registry.get_component(IpamDiffParser, db=db, branch=branch_2)
+    ipam_diffs = await parser.get_changed_ipam_node_details(
+        source_branch_name=branch_2.name, target_branch_name=default_branch.name
     )
-    ipam_diffs = await parser.get_changed_ipam_node_details()
 
     assert len(ipam_diffs) == 2
     assert (
@@ -72,11 +70,10 @@ async def test_ipam_diff_parser_create(db: InfrahubDatabase, default_branch: Bra
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch_2)
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch_2)
-    diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=branch_2)
-    parser = IpamDiffParser(
-        db=db, diff_repository=diff_repo, source_branch_name=branch_2.name, target_branch_name=default_branch.name
+    parser = await component_registry.get_component(IpamDiffParser, db=db, branch=branch_2)
+    ipam_diffs = await parser.get_changed_ipam_node_details(
+        source_branch_name=branch_2.name, target_branch_name=default_branch.name
     )
-    ipam_diffs = await parser.get_changed_ipam_node_details()
 
     assert len(ipam_diffs) == 2
     assert (
@@ -116,11 +113,10 @@ async def test_ipam_diff_parser_delete(db: InfrahubDatabase, default_branch: Bra
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch_2)
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch_2)
-    diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=branch_2)
-    parser = IpamDiffParser(
-        db=db, diff_repository=diff_repo, source_branch_name=branch_2.name, target_branch_name=default_branch.name
+    parser = await component_registry.get_component(IpamDiffParser, db=db, branch=branch_2)
+    ipam_diffs = await parser.get_changed_ipam_node_details(
+        source_branch_name=branch_2.name, target_branch_name=default_branch.name
     )
-    ipam_diffs = await parser.get_changed_ipam_node_details()
 
     assert len(ipam_diffs) == 4
     assert (

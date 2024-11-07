@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from infrahub.core.constants import DiffAction, InfrahubKind
+from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import BranchTrackingId
+from infrahub.core.ipam.kinds_getter import IpamKindsGetter
 from infrahub.core.ipam.model import IpamNodeDetails
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
@@ -26,42 +27,28 @@ class IpamDiffParser:
         self,
         db: InfrahubDatabase,
         diff_repository: DiffRepository,
-        source_branch_name: str,
-        target_branch_name: str,
+        ip_kinds_getter: IpamKindsGetter,
     ) -> None:
         self.db = db
         self.diff_repo = diff_repository
-        self.source_branch_name = source_branch_name
-        self.target_branch_name = target_branch_name
+        self.ip_kinds_getter = ip_kinds_getter
 
-    async def get_changed_ipam_node_details(self) -> list[IpamNodeDetails]:
-        prefix_generic_schema_source = self.db.schema.get(
-            InfrahubKind.IPPREFIX, branch=self.source_branch_name, duplicate=False
+    async def get_changed_ipam_node_details(
+        self, source_branch_name: str, target_branch_name: str
+    ) -> list[IpamNodeDetails]:
+        ip_address_kinds = await self.ip_kinds_getter.get_ipam_address_kinds(
+            branch_names=[source_branch_name, target_branch_name]
         )
-        prefix_generic_schema_target = self.db.schema.get(
-            InfrahubKind.IPPREFIX, branch=self.target_branch_name, duplicate=False
-        )
-        address_generic_schema_source = self.db.schema.get(
-            InfrahubKind.IPADDRESS, branch=self.source_branch_name, duplicate=False
-        )
-        address_generic_schema_target = self.db.schema.get(
-            InfrahubKind.IPADDRESS, branch=self.target_branch_name, duplicate=False
-        )
-
-        ip_address_kinds = set(
-            getattr(address_generic_schema_target, "used_by", [])
-            + getattr(address_generic_schema_source, "used_by", [])
-        )
-        ip_prefix_kinds = set(
-            getattr(prefix_generic_schema_target, "used_by", []) + getattr(prefix_generic_schema_source, "used_by", [])
+        ip_prefix_kinds = await self.ip_kinds_getter.get_ipam_prefix_kinds(
+            branch_names=[source_branch_name, target_branch_name]
         )
         if not ip_address_kinds and not ip_prefix_kinds:
             return []
 
         enriched_diffs = await self.diff_repo.get(
-            base_branch_name=self.target_branch_name,
-            diff_branch_names=[self.source_branch_name],
-            tracking_id=BranchTrackingId(name=self.source_branch_name),
+            base_branch_name=target_branch_name,
+            diff_branch_names=[source_branch_name],
+            tracking_id=BranchTrackingId(name=source_branch_name),
             filters={
                 "kind": {"includes": list(ip_address_kinds | ip_prefix_kinds)},
                 "status": {"excludes": {DiffAction.UNCHANGED}},
@@ -89,7 +76,11 @@ class IpamDiffParser:
                         ip_value=ip_value,
                     )
                 )
-        await self._add_missing_values(changed_node_details=changed_node_details)
+        await self._add_missing_values(
+            source_branch_name=source_branch_name,
+            target_branch_name=target_branch_name,
+            changed_node_details=changed_node_details,
+        )
 
         return [
             IpamNodeDetails(
@@ -128,7 +119,9 @@ class IpamDiffParser:
             if cnd.ip_value and cnd.namespace_id:
                 uuids_missing_data.remove(cnd.node_uuid)
 
-    async def _add_missing_values(self, changed_node_details: list[ChangedIpamNodeDetails]) -> None:
+    async def _add_missing_values(
+        self, source_branch_name: str, target_branch_name: str, changed_node_details: list[ChangedIpamNodeDetails]
+    ) -> None:
         uuids_missing_data = {
             cnd.node_uuid for cnd in changed_node_details if cnd.ip_value is None or cnd.namespace_id is None
         }
@@ -136,7 +129,7 @@ class IpamDiffParser:
             return
 
         await self._add_missing_values_branch(
-            branch_name=self.source_branch_name,
+            branch_name=source_branch_name,
             changed_node_details=changed_node_details,
             uuids_missing_data=uuids_missing_data,
         )
@@ -144,7 +137,7 @@ class IpamDiffParser:
             return
 
         await self._add_missing_values_branch(
-            branch_name=self.target_branch_name,
+            branch_name=target_branch_name,
             changed_node_details=changed_node_details,
             uuids_missing_data=uuids_missing_data,
         )
