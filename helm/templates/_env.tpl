@@ -30,10 +30,6 @@ Define default env variables if required.
 - name: INFRAHUB_BROKER_USERNAME
   value: {{ .Values.rabbitmq.auth.username | quote }}
 {{- end }}
-{{- if not .Values.infrahubDemoData.env.INFRAHUB_BROKER_PASSWORD }}
-- name: INFRAHUB_BROKER_PASSWORD
-  value: {{ .Values.rabbitmq.auth.password | quote }}
-{{- end }}
 {{- if not .Values.infrahubDemoData.env.INFRAHUB_CACHE_ADDRESS }}
 - name: INFRAHUB_CACHE_ADDRESS
   value: "{{ include "infrahub-helm.fullname" . }}-cache-master"
@@ -73,10 +69,6 @@ Define default env variables if required.
 - name: INFRAHUB_BROKER_USERNAME
   value: {{ .Values.rabbitmq.auth.username | quote }}
 {{- end }}
-{{- if not .Values.infrahubServer.infrahubServer.env.INFRAHUB_BROKER_PASSWORD }}
-- name: INFRAHUB_BROKER_PASSWORD
-  value: {{ .Values.rabbitmq.auth.password | quote }}
-{{- end }}
 {{- if not .Values.infrahubServer.infrahubServer.env.INFRAHUB_CACHE_ADDRESS }}
 - name: INFRAHUB_CACHE_ADDRESS
   value: "{{ include "infrahub-helm.fullname" . }}-cache-master"
@@ -115,10 +107,6 @@ Define default env variables if required.
 {{- if not .Values.infrahubTaskWorker.infrahubTaskWorker.env.INFRAHUB_BROKER_USERNAME }}
 - name: INFRAHUB_BROKER_USERNAME
   value: {{ .Values.rabbitmq.auth.username | quote }}
-{{- end }}
-{{- if not .Values.infrahubTaskWorker.infrahubTaskWorker.env.INFRAHUB_BROKER_PASSWORD }}
-- name: INFRAHUB_BROKER_PASSWORD
-  value: {{ .Values.rabbitmq.auth.password | quote }}
 {{- end }}
 {{- if not .Values.infrahubTaskWorker.infrahubTaskWorker.env.INFRAHUB_CACHE_ADDRESS }}
 - name: INFRAHUB_CACHE_ADDRESS
