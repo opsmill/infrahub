@@ -302,7 +302,6 @@ class TestPullReadOnly:
             client=self.client,
             ref=self.ref,
             infrahub_branch_name=self.infrahub_branch_name,
-            task_report=self.git_report,
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(
             infrahub_branch_name=self.infrahub_branch_name, commit=self.commit
@@ -322,7 +321,6 @@ class TestPullReadOnly:
             client=self.client,
             ref=self.ref,
             infrahub_branch_name=self.infrahub_branch_name,
-            task_report=self.git_report,
         )
         self.mock_repo_class.new.assert_awaited_once_with(
             id=self.repo_id,
@@ -331,7 +329,6 @@ class TestPullReadOnly:
             client=self.client,
             ref=self.ref,
             infrahub_branch_name=self.infrahub_branch_name,
-            task_report=self.git_report,
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(
             infrahub_branch_name=self.infrahub_branch_name, commit=self.commit

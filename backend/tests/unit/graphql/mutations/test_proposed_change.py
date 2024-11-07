@@ -13,6 +13,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.message_bus import messages
 from infrahub.permissions.local_backend import LocalPermissionBackend
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql_mutation
 
@@ -207,9 +208,15 @@ async def test_merge_proposed_change_permission_failure(
     branch_name = "merge-proposed-change-perm"
     await create_branch(branch_name=branch_name, db=db)
 
+    service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+
     proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
     await proposed_change.new(
-        db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
+        db=db,
+        name="pc-merge-perm-1234",
+        destination_branch="main",
+        source_branch=branch_name,
+        state="open",
     )
     await proposed_change.save(db=db)
 
@@ -218,6 +225,7 @@ async def test_merge_proposed_change_permission_failure(
         db=db,
         variables={"proposed_change": proposed_change.id, "state": "merged"},
         account_session=session_first_account,
+        service=service,
     )
 
     assert update_status.errors
@@ -228,6 +236,7 @@ async def test_merge_proposed_change_permission_failure(
         db=db,
         variables={"proposed_change": proposed_change.id, "state": "merged"},
         account_session=session_admin,
+        service=service,
     )
 
     assert not update_status.errors
