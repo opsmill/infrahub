@@ -98,11 +98,11 @@ export const BranchDetails = () => {
   const columns = [
     {
       name: "name",
-      label: "ID",
+      label: "Name",
     },
     {
       name: "origin_branch",
-      label: "Name",
+      label: "Origin branch",
     },
     {
       name: "branched_at",
