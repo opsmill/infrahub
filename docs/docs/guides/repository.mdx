@@ -315,7 +315,7 @@ RUN update-ca-certificates
 We then have to build a Docker image from the Dockerfile. We can do this by executing this command
 
 ```shell
-INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
+INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
 ```
 
 This will build a custom docker image and tag it as `custom/infrahub:0.16.0`. You can change the version by changing the version we set in the `INFRAHUB_VERSION` shell variable and you can change the tag to you own preference.
@@ -359,7 +359,7 @@ RUN git config --global http.sslVerify "false"
 We then have to build a Docker image from the Dockerfile. We can do this by executing this command
 
 ```shell
-INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
+INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
 ```
 
 This will build a custom docker image and tag it as `custom/infrahub:0.16.0`. You can change the version by changing the version we set in the `INFRAHUB_VERSION` shell variable and you can change the tag to you own preference.
@@ -403,7 +403,7 @@ RUN git config --global http.proxy http://user:password@internal.proxy:8080
 We then have to build a Docker image from the Dockerfile. We can do this by executing this command
 
 ```shell
-INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION}
+INFRAHUB_VERSION=0.16.0 && docker build --build-arg INFRAHUB_VERSION=$INFRAHUB_VERSION -f Dockerfile -t custom/infrahub:${INFRAHUB_VERSION} .
 ```
 
 This will build a custom docker image and tag it as `custom/infrahub:0.16.0`. You can change the version by changing the version we set in the `INFRAHUB_VERSION` shell variable and you can change the tag to you own preference.
