@@ -114,10 +114,9 @@ async def rebase_branch(branch: str) -> None:
     # -------------------------------------------------------------
     # Trigger the reconciliation of IPAM data after the rebase
     # -------------------------------------------------------------
-    differ = await merger.get_graph_diff()
     diff_parser = IpamDiffParser(
         db=service.database,
-        differ=differ,
+        diff_repository=diff_repository,
         source_branch_name=obj.name,
         target_branch_name=registry.default_branch,
     )
@@ -187,10 +186,10 @@ async def merge_branch(branch: str) -> None:
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the merge
         # -------------------------------------------------------------
-        differ = await merger.get_graph_diff()
+        diff_repository = await component_registry.get_component(DiffRepository, db=service.database, branch=obj)
         diff_parser = IpamDiffParser(
-            db=db,
-            differ=differ,
+            db=service.database,
+            diff_repository=diff_repository,
             source_branch_name=obj.name,
             target_branch_name=registry.default_branch,
         )

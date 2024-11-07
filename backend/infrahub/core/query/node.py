@@ -1206,6 +1206,7 @@ class NodeGetHierarchyQuery(Query):
             WITH %(with_clause)s
             RETURN peer as peer1, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
             ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
+            LIMIT 1
         }
         WITH peer1 as peer, is_active
         """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
