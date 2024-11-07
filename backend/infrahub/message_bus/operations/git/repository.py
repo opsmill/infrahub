@@ -9,6 +9,7 @@ from infrahub.message_bus.messages.git_repository_connectivity import (
     GitRepositoryConnectivityResponseData,
 )
 from infrahub.services import InfrahubServices
+from infrahub.worker import WORKER_IDENTITY
 
 log = get_logger()
 
