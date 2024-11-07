@@ -189,6 +189,14 @@ BRANCH_DELETE = WorkflowDefinition(
     branch_support=BranchSupportType.AWARE,
 )
 
+BRANCH_VALIDATE = WorkflowDefinition(
+    name="branch-validate",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.core.branch.tasks",
+    function="validate_branch",
+    branch_support=BranchSupportType.AWARE,
+)
+
 BRANCH_CANCEL_PROPOSED_CHANGES = WorkflowDefinition(
     name="proposed-changes-cancel-branch",
     type=WorkflowType.INTERNAL,
@@ -203,6 +211,28 @@ UPDATE_GRAPHQL_QUERY_GROUP = WorkflowDefinition(
     function="update_graphql_query_group",
     branch_support=BranchSupportType.AWARE,
 )
+
+PROCESS_COMPUTED_MACRO = WorkflowDefinition(
+    name="process_computed_attribute_jinja2",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.computed_attribute.tasks",
+    function="process_jinja2",
+)
+
+COMPUTED_ATTRIBUTE_SETUP = WorkflowDefinition(
+    name="computed-attribute-setup",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.computed_attribute.tasks",
+    function="computed_attribute_setup",
+)
+
+UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM = WorkflowDefinition(
+    name="process_computed_attribute_transform",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.computed_attribute.tasks",
+    function="process_transform",
+)
+
 
 worker_pools = [INFRAHUB_WORKER_POOL]
 
@@ -221,6 +251,7 @@ workflows = [
     BRANCH_REBASE,
     BRANCH_MERGE,
     BRANCH_DELETE,
+    BRANCH_VALIDATE,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_GENERATOR_RUN,
     REQUEST_DIFF_UPDATE,
@@ -232,4 +263,7 @@ workflows = [
     REQUEST_GENERATOR_DEFINITION_RUN,
     UPDATE_GRAPHQL_QUERY_GROUP,
     GIT_REPOSITORY_ADD,
+    PROCESS_COMPUTED_MACRO,
+    COMPUTED_ATTRIBUTE_SETUP,
+    UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
 ]

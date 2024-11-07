@@ -12,6 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.initialization import setup_task_manager
 
 
 @pytest.fixture
@@ -57,9 +58,10 @@ def rpc_bus_simulator(helper, db):
 
 
 @pytest.fixture()
-def workflow_local():
+async def workflow_local():
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
+    await setup_task_manager()
     config.OVERRIDE.workflow = workflow
     yield workflow
     config.OVERRIDE.workflow = original

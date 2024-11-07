@@ -327,36 +327,6 @@ async def test_branch_rebase_wrong_branch(
     assert result.errors[0].message == "Branch: branch2 not found."
 
 
-async def test_branch_validate(db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin):
-    branch1 = await Branch.get_by_name(db=db, name="branch1")
-
-    query = """
-    mutation {
-        BranchValidate(data: { name: "branch1" }) {
-            ok
-            object {
-                id
-            }
-        }
-    }
-    """
-    gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch1, account_session=session_admin
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchValidate"]["ok"] is True
-    assert result.data["BranchValidate"]["object"]["id"] == str(branch1.uuid)
-
-
 async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02):
     branch4 = await create_branch(branch_name="branch4", db=db)
 

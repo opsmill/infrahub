@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from prefect import flow, get_run_logger
+from prefect.client.schemas.objects import State  # noqa: TCH002
+from prefect.states import Completed, Failed
 
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -26,7 +29,7 @@ from infrahub.workflows.catalogue import BRANCH_CANCEL_PROPOSED_CHANGES, IPAM_RE
 from infrahub.workflows.utils import add_branch_tag
 
 
-@flow(name="branch-rebase")
+@flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
 async def rebase_branch(branch: str) -> None:
     service = services.service
     log = get_run_logger()
@@ -137,7 +140,7 @@ async def rebase_branch(branch: str) -> None:
     await service.send(message=message)
 
 
-@flow(name="branch-merge")
+@flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
 async def merge_branch(branch: str) -> None:
     service = services.service
     log = get_run_logger()
@@ -209,7 +212,7 @@ async def merge_branch(branch: str) -> None:
     await service.send(message=message)
 
 
-@flow(name="branch-delete")
+@flow(name="branch-delete", flow_run_name="Delete branch {branch}")
 async def delete_branch(branch: str) -> None:
     service = services.service
 
@@ -222,3 +225,27 @@ async def delete_branch(branch: str) -> None:
     await service.workflow.submit_workflow(workflow=BRANCH_CANCEL_PROPOSED_CHANGES, parameters={"branch_name": branch})
 
     await service.event.send(event=event)
+
+
+@flow(
+    name="branch-validate",
+    flow_run_name="Validate branch {branch} for conflicts",
+    description="Validate if the branch has some conflicts",
+    persist_result=True,
+)
+async def validate_branch(branch: str) -> State:
+    service = services.service
+    log = get_run_logger()
+    await add_branch_tag(branch_name=branch)
+
+    obj = await Branch.get_by_name(db=service.database, name=branch)
+
+    diff = await BranchDiffer.init(db=service.database, branch=obj)
+    conflicts = await diff.get_conflicts()
+
+    for conflict in conflicts:
+        log.error(conflict)
+
+    if conflicts:
+        return Failed(message="branch has some conflicts")
+    return Completed(message="branch is valid")
