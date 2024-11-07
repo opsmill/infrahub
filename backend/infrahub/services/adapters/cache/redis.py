@@ -1,7 +1,6 @@
 from typing import Optional
 
 import redis.asyncio as redis
-
 from redis import UsernamePasswordCredentialProvider
 
 from infrahub import config
@@ -15,8 +14,7 @@ class RedisCache(InfrahubCache):
         credential_provider: Optional[UsernamePasswordCredentialProvider] = None
         if config.SETTINGS.cache.username and config.SETTINGS.cache.password:
             credential_provider = UsernamePasswordCredentialProvider(
-                username=config.SETTINGS.cache.username,
-                password=config.SETTINGS.cache.password
+                username=config.SETTINGS.cache.username, password=config.SETTINGS.cache.password
             )
         self.connection = redis.Redis(
             host=config.SETTINGS.cache.address,
