@@ -1,0 +1,1 @@
+Remove the /api/diff/data and /api/diff/schema endpoints that have been replaced by the DiffTree graphql query
