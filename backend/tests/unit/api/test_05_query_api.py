@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import call, patch
 
 import pytest
 
 from infrahub.core.initialization import create_branch
-from infrahub.message_bus import messages
+from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
+from infrahub.workflows.catalogue import UPDATE_GRAPHQL_QUERY_GROUP
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -32,30 +34,34 @@ async def test_query_endpoint_group_no_params(
     patch_services,
 ):
     # Must execute in a with block to execute the startup/shutdown events
-    with client:
+    with (
+        client,
+        patch(
+            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+        ) as mock_submit_workflow,
+    ):
         response = client.get(
             "/api/query/query01?update_group=true&subscribers=AAAAAA&subscribers=BBBBBB", headers=admin_headers
         )
 
-    assert "errors" not in response.json()
-    assert response.status_code == 200
-    assert response.json()["data"] is not None
-    result = response.json()["data"]
+        assert "errors" not in response.json()
+        assert response.status_code == 200
+        assert response.json()["data"] is not None
+        result = response.json()["data"]
 
-    result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
-    assert sorted(result_per_name.keys()) == ["Jane", "John"]
-    assert len(result_per_name["John"]["node"]["cars"]["edges"]) == 2
-    assert len(result_per_name["Jane"]["node"]["cars"]["edges"]) == 1
+        result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
+        assert sorted(result_per_name.keys()) == ["Jane", "John"]
+        assert len(result_per_name["John"]["node"]["cars"]["edges"]) == 2
+        assert len(result_per_name["Jane"]["node"]["cars"]["edges"]) == 1
 
-    q1 = car_person_data["q1"]
-    p1 = car_person_data["p1"]
-    p2 = car_person_data["p2"]
-    c1 = car_person_data["c1"]
-    c2 = car_person_data["c2"]
-    c3 = car_person_data["c3"]
+        q1 = car_person_data["q1"]
+        p1 = car_person_data["p1"]
+        p2 = car_person_data["p2"]
+        c1 = car_person_data["c1"]
+        c2 = car_person_data["c2"]
+        c3 = car_person_data["c3"]
 
-    assert (
-        messages.RequestGraphQLQueryGroupUpdate(
+        model = RequestGraphQLQueryGroupUpdate(
             query_id=q1.id,
             query_name="query01",
             branch="main",
@@ -63,30 +69,40 @@ async def test_query_endpoint_group_no_params(
             subscribers=sorted(["AAAAAA", "BBBBBB"]),
             params={},
         )
-        in client.app.state.service.message_bus.messages
-    )
+
+        expected_calls = [
+            call(
+                workflow=UPDATE_GRAPHQL_QUERY_GROUP,
+                parameters={"model": model},
+            ),
+        ]
+        mock_submit_workflow.assert_has_calls(expected_calls)
 
 
 async def test_query_endpoint_group_params(
     db: InfrahubDatabase, client: TestClient, admin_headers, default_branch, create_test_admin, car_person_data
 ):
     # Must execute in a with block to execute the startup/shutdown events
-    with client:
+    with (
+        client,
+        patch(
+            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+        ) as mock_submit_workflow,
+    ):
         response = client.get("/api/query/query02?update_group=true&person=John", headers=admin_headers)
 
-    assert "errors" not in response.json()
-    assert response.status_code == 200
-    assert response.json()["data"] is not None
-    result = response.json()["data"]
+        assert "errors" not in response.json()
+        assert response.status_code == 200
+        assert response.json()["data"] is not None
+        result = response.json()["data"]
 
-    result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
-    assert sorted(result_per_name.keys()) == ["John"]
+        result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
+        assert sorted(result_per_name.keys()) == ["John"]
 
-    q2 = car_person_data["q2"]
-    p1 = car_person_data["p1"]
+        q2 = car_person_data["q2"]
+        p1 = car_person_data["p1"]
 
-    assert (
-        messages.RequestGraphQLQueryGroupUpdate(
+        model = RequestGraphQLQueryGroupUpdate(
             query_id=q2.id,
             query_name="query02",
             branch="main",
@@ -94,8 +110,14 @@ async def test_query_endpoint_group_params(
             subscribers=[],
             params={"person": "John"},
         )
-        in client.app.state.service.message_bus.messages
-    )
+
+        expected_calls = [
+            call(
+                workflow=UPDATE_GRAPHQL_QUERY_GROUP,
+                parameters={"model": model},
+            ),
+        ]
+        mock_submit_workflow.assert_has_calls(expected_calls)
 
 
 async def test_query_endpoint_get_default_branch(

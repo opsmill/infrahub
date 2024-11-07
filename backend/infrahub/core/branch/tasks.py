@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from prefect import flow, get_run_logger
+from prefect.client.schemas.objects import State  # noqa: TCH002
+from prefect.states import Completed, Failed
 
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -16,16 +19,17 @@ from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.exceptions import ValidationError
+from infrahub.events.branch_action import BranchDeleteEvent
+from infrahub.exceptions import MergeFailedError, ValidationError
 from infrahub.log import get_log_data
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workflows.catalogue import IPAM_RECONCILIATION
+from infrahub.workflows.catalogue import BRANCH_CANCEL_PROPOSED_CHANGES, IPAM_RECONCILIATION
 from infrahub.workflows.utils import add_branch_tag
 
 
-@flow(name="branch-rebase")
+@flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
 async def rebase_branch(branch: str) -> None:
     service = services.service
     log = get_run_logger()
@@ -136,8 +140,8 @@ async def rebase_branch(branch: str) -> None:
     await service.send(message=message)
 
 
-@flow(name="branch-merge")
-async def merge_branch(branch: str, conflict_resolution: dict[str, bool] | None = None) -> None:
+@flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
+async def merge_branch(branch: str) -> None:
     service = services.service
     log = get_run_logger()
 
@@ -149,14 +153,21 @@ async def merge_branch(branch: str, conflict_resolution: dict[str, bool] | None 
 
     merger: BranchMerger | None = None
     async with lock.registry.global_graph_lock():
-        async with service.database.start_transaction() as db:
-            diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
-            diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
-            merger = BranchMerger(
-                db=db, diff_coordinator=diff_coordinator, diff_merger=diff_merger, source_branch=obj, service=service
-            )
-            await merger.merge(conflict_resolution=conflict_resolution)
-            await merger.update_schema()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=service.database, branch=obj)
+        diff_merger = await component_registry.get_component(DiffMerger, db=service.database, branch=obj)
+        merger = BranchMerger(
+            db=service.database,
+            diff_coordinator=diff_coordinator,
+            diff_merger=diff_merger,
+            source_branch=obj,
+            service=service,
+        )
+        try:
+            await merger.merge()
+        except Exception as exc:
+            await merger.rollback()
+            raise MergeFailedError(branch_name=branch) from exc
+        await merger.update_schema()
 
     if merger and merger.migrations:
         errors = await schema_apply_migrations(
@@ -199,3 +210,42 @@ async def merge_branch(branch: str, conflict_resolution: dict[str, bool] | None 
         meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
     )
     await service.send(message=message)
+
+
+@flow(name="branch-delete", flow_run_name="Delete branch {branch}")
+async def delete_branch(branch: str) -> None:
+    service = services.service
+
+    await add_branch_tag(branch_name=branch)
+
+    obj = await Branch.get_by_name(db=service.database, name=str(branch))
+    event = BranchDeleteEvent(branch=branch, branch_id=obj.get_id(), sync_with_git=obj.sync_with_git)
+    await obj.delete(db=service.database)
+
+    await service.workflow.submit_workflow(workflow=BRANCH_CANCEL_PROPOSED_CHANGES, parameters={"branch_name": branch})
+
+    await service.event.send(event=event)
+
+
+@flow(
+    name="branch-validate",
+    flow_run_name="Validate branch {branch} for conflicts",
+    description="Validate if the branch has some conflicts",
+    persist_result=True,
+)
+async def validate_branch(branch: str) -> State:
+    service = services.service
+    log = get_run_logger()
+    await add_branch_tag(branch_name=branch)
+
+    obj = await Branch.get_by_name(db=service.database, name=branch)
+
+    diff = await BranchDiffer.init(db=service.database, branch=obj)
+    conflicts = await diff.get_conflicts()
+
+    for conflict in conflicts:
+        log.error(conflict)
+
+    if conflicts:
+        return Failed(message="branch has some conflicts")
+    return Completed(message="branch is valid")

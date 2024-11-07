@@ -198,9 +198,3 @@ prefect-server:
     primary:
       persistence:
         enabled: false
-
-# -------------- Cloud --------------
-traefik:
-  enabled: false
-cloud:
-  enabled: false

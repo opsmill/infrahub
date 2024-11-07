@@ -14,11 +14,12 @@ from infrahub.database import QueryConfig
 from infrahub.database.constants import Neo4jRuntime
 from infrahub.log import get_logger
 from tests.helpers.constants import NEO4J_COMMUNITY_IMAGE, NEO4J_ENTERPRISE_IMAGE
+from tests.helpers.query_benchmark.benchmark_config import BenchmarkConfig
 from tests.helpers.query_benchmark.car_person_generators import (
     CarGeneratorWithOwnerHavingUniqueCar,
 )
 from tests.helpers.query_benchmark.data_generator import load_data_and_profile
-from tests.helpers.query_benchmark.db_query_profiler import BenchmarkConfig, GraphProfileGenerator
+from tests.helpers.query_benchmark.db_query_profiler import GraphProfileGenerator
 from tests.query_benchmark.conftest import RESULTS_FOLDER
 from tests.query_benchmark.utils import start_db_and_create_default_branch
 
@@ -77,6 +78,7 @@ async def benchmark_uniqueness_query(
     )
 
 
+@pytest.mark.timeout(36000)  # 10 hours
 @pytest.mark.parametrize(
     "query_request",
     [
@@ -114,44 +116,19 @@ async def test_multiple_constraints(query_request, car_person_schema_root, graph
     )
 
 
-@pytest.mark.parametrize(
-    "benchmark_config",
-    [
-        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_COMMUNITY_IMAGE),
-        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_ENTERPRISE_IMAGE),
-        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE),
-    ],
-)
-async def test_multiple_runtimes(benchmark_config, car_person_schema_root, graph_generator):
-    query_request = NodeUniquenessQueryRequest(
-        kind="TestCar",
-        unique_attribute_paths={
-            QueryAttributePath(attribute_name="name", property_name="value"),
-            QueryAttributePath(attribute_name="nbr_seats", property_name="value"),
-        },
-        relationship_attribute_paths={
-            QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="name")
-        },
-    )
-
-    await benchmark_uniqueness_query(
-        query_request=query_request,
-        car_person_schema_root=car_person_schema_root,
-        benchmark_config=benchmark_config,
-        test_params_label=str(benchmark_config),
-        test_name=inspect.currentframe().f_code.co_name,
-        graph_generator=graph_generator,
-    )
-
-
+@pytest.mark.timeout(36000)  # 10 hours
 @pytest.mark.parametrize(
     "benchmark_config",
     [
         BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=False),
-        # BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=True),
+        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=True),
+        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=False),
+        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=True),
+        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_COMMUNITY_IMAGE, load_db_indexes=False),
+        BenchmarkConfig(neo4j_runtime=Neo4jRuntime.DEFAULT, neo4j_image=NEO4J_COMMUNITY_IMAGE, load_db_indexes=True),
     ],
 )
-async def test_indexes(benchmark_config, car_person_schema_root, graph_generator):
+async def test_single_constraint_multiple_runtimes(benchmark_config, car_person_schema_root, graph_generator):
     query_request = NodeUniquenessQueryRequest(
         kind="TestCar",
         unique_attribute_paths={

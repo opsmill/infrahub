@@ -1,10 +1,9 @@
-from prefect import get_client, task
+from prefect import get_client
 from prefect.runtime import flow_run
 
 from .constants import WorkflowTag
 
 
-@task(name="add-branch-tag")
 async def add_branch_tag(branch_name: str) -> None:
     client = get_client(sync_client=False)
     current_flow_run_id = flow_run.id

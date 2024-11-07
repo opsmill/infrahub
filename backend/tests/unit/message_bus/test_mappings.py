@@ -10,9 +10,13 @@ from infrahub.message_bus.operations import COMMAND_MAP
 
 
 def test_message_command_overlap():
-    """Verify that a command is defined for each message."""
-    messages = sorted(list(MESSAGE_MAP.keys()))
-    commands = sorted(list(COMMAND_MAP.keys()))
+    """
+    Verify that a command is defined for each message
+    except events that don't need to be associated with a command
+    """
+    messages = sorted([key for key in MESSAGE_MAP.keys() if not key.startswith("event.")])
+    commands = sorted([key for key in COMMAND_MAP.keys() if not key.startswith("event.")])
+
     assert messages == commands
 
 

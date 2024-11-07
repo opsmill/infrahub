@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from infrahub import config
 from infrahub.log import get_logger
@@ -25,7 +26,8 @@ def initialize_repositories_directory() -> bool:
     """
     repos_dir = get_repositories_directory()
     if not os.path.isdir(repos_dir):
-        os.makedirs(repos_dir)
+        Path(repos_dir).mkdir(parents=True)
+
         log.debug(f"Initialized the repositories_directory at {repos_dir}")
         return True
 

@@ -31,6 +31,7 @@ from infrahub.core.constants import (
     UpdateSupport,
 )
 from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.dropdown import DropdownChoice
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.types import ATTRIBUTE_KIND_LABELS
@@ -476,6 +477,14 @@ attribute_schema = SchemaNode(
             description="Define a list of valid values for the attribute.",
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="computed_attribute",
+            kind="JSON",
+            internal_kind=ComputedAttribute,
+            description="Defines how the value of this attribute will be populated.",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="choices",

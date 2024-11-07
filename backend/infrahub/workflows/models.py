@@ -12,7 +12,7 @@ from typing_extensions import Self
 from infrahub import __version__
 from infrahub.core.constants import BranchSupportType
 
-from .constants import WorkflowTag, WorkflowType
+from .constants import TAG_NAMESPACE, WorkflowTag, WorkflowType
 
 TASK_RESULT_STORAGE_NAME = "infrahub-storage"
 
@@ -61,7 +61,7 @@ class WorkflowDefinition(BaseModel):
         return payload
 
     def get_tags(self) -> list[str]:
-        tags: list[str] = [WorkflowTag.WORKFLOWTYPE.render(identifier=self.type.value)]
+        tags: list[str] = [TAG_NAMESPACE, WorkflowTag.WORKFLOWTYPE.render(identifier=self.type.value)]
         tags += [tag.render() for tag in self.tags]
         return tags
 

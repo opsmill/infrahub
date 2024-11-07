@@ -15,12 +15,9 @@ from .event_worker_newprimaryapi import EventWorkerNewPrimaryAPI
 from .finalize_validator_execution import FinalizeValidatorExecution
 from .git_diff_namesonly import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from .git_file_get import GitFileGet, GitFileGetResponse
-from .git_repository_add import GitRepositoryAdd
 from .git_repository_connectivity import GitRepositoryConnectivity
 from .git_repository_importobjects import GitRepositoryImportObjects
-from .git_repository_merge import GitRepositoryMerge
 from .git_repository_read_only_add import GitRepositoryAddReadOnly
-from .git_repository_read_only_pull import GitRepositoryPullReadOnly
 from .proposed_change.request_proposedchange_dataintegrity import RequestProposedChangeDataIntegrity
 from .proposed_change.request_proposedchange_refreshartifacts import RequestProposedChangeRefreshArtifacts
 from .proposed_change.request_proposedchange_repositorychecks import RequestProposedChangeRepositoryChecks
@@ -32,17 +29,12 @@ from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
 from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
-from .request_generatordefinition_run import RequestGeneratorDefinitionRun
-from .request_graphqlquerygroup_update import RequestGraphQLQueryGroupUpdate
-from .request_proposed_change_cancel import RequestProposedChangeCancel
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
 from .request_repository_checks import RequestRepositoryChecks
 from .request_repository_userchecks import RequestRepositoryUserChecks
 from .schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
 from .schema_validator_path import SchemaValidatorPath, SchemaValidatorPathResponse
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
-from .trigger_generatordefinition_run import TriggerGeneratorDefinitionRun
-from .trigger_proposed_change_cancel import TriggerProposedChangeCancel
 from .trigger_webhook_actions import TriggerWebhookActions
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
@@ -61,12 +53,9 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "finalize.validator.execution": FinalizeValidatorExecution,
     "git.diff.names_only": GitDiffNamesOnly,
     "git.file.get": GitFileGet,
-    "git.repository.add": GitRepositoryAdd,
     "git.repository.connectivity": GitRepositoryConnectivity,
-    "git.repository.merge": GitRepositoryMerge,
     "git.repository.add_read_only": GitRepositoryAddReadOnly,
     "git.repository.import_objects": GitRepositoryImportObjects,
-    "git.repository.pull_read_only": GitRepositoryPullReadOnly,
     "schema.migration.path": SchemaMigrationPath,
     "schema.validator.path": SchemaValidatorPath,
     "refresh.registry.branches": RefreshRegistryBranches,
@@ -74,9 +63,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
-    "request.generator_definition.run": RequestGeneratorDefinitionRun,
-    "request.graphql_query_group.update": RequestGraphQLQueryGroupUpdate,
-    "request.proposed_change.cancel": RequestProposedChangeCancel,
     "request.proposed_change.data_integrity": RequestProposedChangeDataIntegrity,
     "request.proposed_change.pipeline": RequestProposedChangePipeline,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
@@ -87,8 +73,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "request.repository.checks": RequestRepositoryChecks,
     "request.repository.user_checks": RequestRepositoryUserChecks,
     "send.echo.request": SendEchoRequest,
-    "trigger.generator_definition.run": TriggerGeneratorDefinitionRun,
-    "trigger.proposed_change.cancel": TriggerProposedChangeCancel,
     "trigger.webhook.actions": TriggerWebhookActions,
 }
 

@@ -10,10 +10,15 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.component.registry import ComponentDependencyRegistry
 from infrahub.message_bus import messages
-from infrahub.message_bus.operations.event.branch import delete, merge, rebased
+from infrahub.message_bus.operations.event.branch import merge, rebased
 from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workflows.catalogue import REQUEST_DIFF_REFRESH, REQUEST_DIFF_UPDATE, TRIGGER_ARTIFACT_DEFINITION_GENERATE
+from infrahub.workflows.catalogue import (
+    REQUEST_DIFF_REFRESH,
+    REQUEST_DIFF_UPDATE,
+    TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+    TRIGGER_GENERATOR_DEFINITION_RUN,
+)
 from tests.adapters.message_bus import BusRecorder
 
 
@@ -27,25 +32,6 @@ def init_service():
     services.service = service
     yield service
     services.service = original
-
-
-async def test_delete(prefect_test_fixture):
-    """Validate that a deleted branch triggers a registry refresh and cancels open proposed changes"""
-
-    message = messages.EventBranchDelete(
-        branch_id="40fb612f-eaaa-422b-9480-df269080c103", branch="cr1234", sync_with_git=True
-    )
-
-    recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
-
-    await delete(message=message, service=service)
-
-    assert len(recorder.messages) == 2
-    assert isinstance(recorder.messages[0], messages.RefreshRegistryBranches)
-    assert isinstance(recorder.messages[1], messages.TriggerProposedChangeCancel)
-    trigger_cancel: messages.TriggerProposedChangeCancel = recorder.messages[1]
-    assert trigger_cancel.branch == "cr1234"
 
 
 async def test_merged(default_branch: Branch, init_service: InfrahubServices, prefect_test_fixture):
@@ -102,6 +88,10 @@ async def test_merged(default_branch: Branch, init_service: InfrahubServices, pr
         expected_calls = [
             call(workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE, parameters={"branch": message.target_branch}),
             call(
+                workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
+                parameters={"branch": target_branch_name},
+            ),
+            call(
                 workflow=REQUEST_DIFF_UPDATE,
                 parameters={"model": RequestDiffUpdate(branch_name=tracked_diff_roots[0].diff_branch_name)},
             ),
@@ -118,9 +108,8 @@ async def test_merged(default_branch: Branch, init_service: InfrahubServices, pr
     )
     diff_repo.get_empty_roots.assert_awaited_once_with(base_branch_names=[target_branch_name])
 
-    assert len(service.message_bus.messages) == 2
+    assert len(service.message_bus.messages) == 1
     assert service.message_bus.messages[0] == messages.RefreshRegistryBranches()
-    assert service.message_bus.messages[1] == messages.TriggerGeneratorDefinitionRun(branch=target_branch_name)
 
 
 async def test_rebased(default_branch: Branch, prefect_test_fixture):

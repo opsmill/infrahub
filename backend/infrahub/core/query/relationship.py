@@ -446,6 +446,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
 
+        # Specifying relationship type might improve query performance here.
         query = """
         MATCH (s:Node { uuid: $source_id })-[]-(rl:Relationship {uuid: $rel_id})-[]-(d:Node { uuid: $destination_id })
         CREATE (s)%s(rl)

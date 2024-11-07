@@ -1,9 +1,7 @@
-from pydantic import Field
-
-from infrahub.message_bus import InfrahubMessage
+from pydantic import BaseModel, Field
 
 
-class RequestGraphQLQueryGroupUpdate(InfrahubMessage):
+class RequestGraphQLQueryGroupUpdate(BaseModel):
     """Sent to create or update a GraphQLQueryGroup associated with a given GraphQLQuery."""
 
     branch: str = Field(..., description="The branch to target")

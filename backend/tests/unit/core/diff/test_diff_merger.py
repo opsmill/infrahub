@@ -356,6 +356,13 @@ class TestMergeDiff:
         car_element = car_elements_by_peer_id[car_node_branch.id]
         assert car_element.source_id == car_node_branch.id
 
+        await diff_merger.rollback(at=at)
+
+        retrieved_person = await NodeManager.get_one(db=db, id=person_node_branch.id, branch=default_branch)
+        assert retrieved_person is None
+        retrieved_car = await NodeManager.get_one(db=db, id=car_node_branch.id, branch=default_branch)
+        assert retrieved_car is None
+
     @pytest.mark.parametrize("check_idempotent", [False, True])
     async def test_merge_node_deleted(
         self,
@@ -390,6 +397,15 @@ class TestMergeDiff:
 
         with pytest.raises(NodeNotFoundError):
             await NodeManager.get_one(db=db, branch=default_branch, id=person_node_main.id, raise_on_error=True)
+
+        await diff_merger.rollback(at=at)
+
+        rolled_back_person = await NodeManager.get_one(db=db, branch=default_branch, id=person_node_main.id)
+        assert rolled_back_person.id == person_node_main.id
+        assert rolled_back_person.height.value == person_node_main.height.value
+        rolled_back_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_node_main.id)
+        owner_rel = await rolled_back_car.owner.get(db=db)
+        assert owner_rel.peer_id == person_node_main.id
 
     @pytest.mark.parametrize(
         "conflict_selection,expect_deleted",
@@ -433,6 +449,11 @@ class TestMergeDiff:
             target_person = await NodeManager.get_one(db=db, branch=default_branch, id=person_node_branch.id)
             assert target_person.id == person_node_branch.id
             assert target_person.get_updated_at() < at
+
+        await diff_merger.rollback(at=at)
+
+        rolled_back_person = await NodeManager.get_one(db=db, branch=default_branch, id=person_node_main.id)
+        assert rolled_back_person.id == person_node_branch.id
 
     @pytest.fixture
     def updated_person_node_diff(
@@ -668,3 +689,22 @@ class TestMergeDiff:
         assert rel_owner_node.id == car_node_main.id
         rel_source_node = await owner_rel.get_source(db=db)
         assert rel_source_node.id == person_node_main.id
+
+        await diff_merger.rollback(at=at)
+
+        rolled_back_person = await NodeManager.get_one(db=db, branch=default_branch, id=person_node_main.id)
+        assert rolled_back_person.name.value == "Albert"
+        assert rolled_back_person.height.value == 172
+        owner_attr = await rolled_back_person.height.get_owner(db=db)
+        assert owner_attr is None
+        rolled_back_car = await NodeManager.get_one(
+            db=db, branch=default_branch, id=car_node_main.id, include_owner=True, include_source=True
+        )
+        owner_rel = await rolled_back_car.owner.get(db=db)
+        assert owner_rel.peer_id == person_node_main.id
+        assert owner_rel.is_protected is False
+        assert owner_rel.is_visible is True
+        owner_prop = await owner_rel.get_owner(db=db)
+        assert owner_prop.id == car_node_main2.id
+        source_prop = await owner_rel.get_source(db=db)
+        assert source_prop.id == person_node_main2.id

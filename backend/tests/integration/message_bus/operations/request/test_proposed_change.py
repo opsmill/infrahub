@@ -5,12 +5,11 @@ from typing import TYPE_CHECKING, AsyncGenerator
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 
-from infrahub.core.constants import InfrahubKind, ProposedChangeState
-from infrahub.core.manager import NodeManager
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
 from infrahub.message_bus import messages
-from infrahub.message_bus.operations.requests.proposed_change import cancel, pipeline, run_generators
+from infrahub.message_bus.operations.requests.proposed_change import pipeline, run_generators
 from infrahub.message_bus.types import ProposedChangeBranchDiff
 from infrahub.server import app, app_initialization
 from infrahub.services import InfrahubServices, services
@@ -24,7 +23,6 @@ from tests.integration.conftest import IntegrationHelper
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from infrahub.core.protocols import CoreProposedChange
     from infrahub.database import InfrahubDatabase
 
 BRANCH_CREATE = """
@@ -193,29 +191,3 @@ async def test_run_generators_validate_requested_jobs(
         "request.proposed_change.refresh_artifacts",
         "request.proposed_change.repository_checks",
     ]
-
-
-async def test_cancel(
-    prepare_proposed_change: str,
-    db: InfrahubDatabase,
-    test_client: InfrahubTestClient,
-):
-    message = messages.RequestProposedChangeCancel(
-        proposed_change=prepare_proposed_change,
-    )
-    integration_helper = IntegrationHelper(db=db)
-    bus_pre_data_changes = BusRecorder()
-    admin_token = await integration_helper.create_token()
-    config = Config(api_token=admin_token, requester=test_client.async_request)
-    client = InfrahubClient(config=config)
-    fake_log = FakeLogger()
-    services.service._client = client
-    services.service.log = fake_log
-    services.service.message_bus = bus_pre_data_changes
-    services.prepare(service=services.service)
-    await cancel(message=message, service=services.service)
-    assert fake_log.info_logs == ["Canceling proposed change as the source branch was deleted"]
-    proposed_change: CoreProposedChange = await NodeManager.get_one_by_id_or_default_filter(
-        db=db, id=prepare_proposed_change, kind=InfrahubKind.PROPOSEDCHANGE
-    )
-    assert proposed_change.state.value.value == ProposedChangeState.CANCELED.value

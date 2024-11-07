@@ -22,9 +22,9 @@ test.describe("/proposed-changes diff data", () => {
       await page.getByLabel("Source Branch *").click();
       await page.getByRole("option", { name: "den1-maintenance-conflict" }).click();
       await page.getByLabel("Name *").fill("conflict-test");
-      await page.getByTestId("select-open-option-button").click();
+      await page.getByLabel("Reviewers").click();
       await page.getByRole("option", { name: "Admin" }).click();
-      await page.getByTestId("select-open-option-button").click();
+      await page.getByLabel("Reviewers").click();
       await page.getByRole("button", { name: "Create proposed change" }).click();
       await expect(page.getByText("Proposed change created")).toBeVisible();
       await page.getByText("Data").click();

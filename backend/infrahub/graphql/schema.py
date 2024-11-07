@@ -15,6 +15,7 @@ from .mutations.branch import (
     BranchUpdate,
     BranchValidate,
 )
+from .mutations.computed_attribute import UpdateComputedAttribute
 from .mutations.diff import DiffUpdateMutation
 from .mutations.diff_conflict import ResolveDiffConflict
 from .mutations.proposed_change import ProposedChangeRequestRunCheck
@@ -50,9 +51,9 @@ from .queries import (
     InfrahubSearchAnywhere,
     InfrahubStatus,
     Relationship,
-    Task,
 )
 from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
+from .queries.task import Task, TaskBranchStatus
 
 
 class InfrahubBaseQuery(ObjectType):
@@ -72,6 +73,7 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubSearchAnywhere = InfrahubSearchAnywhere
 
     InfrahubTask = Task
+    InfrahubTaskBranchStatus = TaskBranchStatus
 
     IPAddressGetNextAvailable = InfrahubIPAddressGetNextAvailable
     IPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
@@ -101,6 +103,7 @@ class InfrahubBaseMutation(ObjectType):
     InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
     InfrahubTaskCreate = TaskCreate.Field()
     InfrahubTaskUpdate = TaskUpdate.Field()
+    InfrahubUpdateComputedAttribute = UpdateComputedAttribute.Field()
 
     RelationshipAdd = RelationshipAdd.Field()
     RelationshipRemove = RelationshipRemove.Field()

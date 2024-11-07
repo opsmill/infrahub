@@ -35,7 +35,7 @@ from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
+from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_SETUP, SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -347,6 +347,9 @@ async def load_schema(
             background_tasks.add_task(services.send, message)
 
     await service.component.refresh_schema_hash(branches=[branch.name])
+
+    # Temporary workaround, we need to emit a proper event
+    await service.workflow.submit_workflow(workflow=COMPUTED_ATTRIBUTE_SETUP)
 
     return SchemaUpdate(hash=updated_hash, previous_hash=original_hash, diff=result.diff)
 

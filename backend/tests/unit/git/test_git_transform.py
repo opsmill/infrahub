@@ -6,6 +6,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import RepositoryFileNotFoundError, TransformError
 from infrahub.git import InfrahubRepository
 from infrahub.services import InfrahubServices, services
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.transformations.models import TransformJinjaTemplateData, TransformPythonData
 from infrahub.transformations.tasks import transform_python, transform_render_jinja2_template
 
@@ -13,7 +14,7 @@ from infrahub.transformations.tasks import transform_python, transform_render_ji
 @pytest.fixture
 def init_service():
     original = services.service
-    service = InfrahubServices(client=InfrahubClient())
+    service = InfrahubServices(client=InfrahubClient(), workflow=WorkflowLocalExecution())
     services.service = service
     yield service
     services.service = original

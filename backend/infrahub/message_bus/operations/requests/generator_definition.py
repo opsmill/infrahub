@@ -5,11 +5,9 @@ from prefect import flow
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
-from infrahub.generators.models import RequestGeneratorRun
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
-from infrahub.workflows.catalogue import REQUEST_GENERATOR_RUN
 
 
 @flow(name="generator-definition-check")
@@ -129,64 +127,6 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
         for event in events:
             event.assign_meta(parent=message)
             await service.send(message=event)
-
-
-@flow(name="generator-definition-run")
-async def run(message: messages.RequestGeneratorDefinitionRun, service: InfrahubServices) -> None:
-    async with service.task_report(
-        title="Executing Generator",
-        related_node=message.generator_definition.definition_id,
-    ) as task_report:
-        service.log.info(
-            "Received request to run generator",
-            branch=message.branch,
-            generator_definition=message.generator_definition.definition_id,
-        )
-
-        group = await service.client.get(
-            kind=InfrahubKind.GENERICGROUP,
-            prefetch_relationships=True,
-            populate_store=True,
-            id=message.generator_definition.group_id,
-            branch=message.branch,
-        )
-        await group.members.fetch()
-
-        existing_instances = await service.client.filters(
-            kind=InfrahubKind.GENERATORINSTANCE,
-            definition__ids=[message.generator_definition.definition_id],
-            include=["object"],
-            branch=message.branch,
-        )
-        instance_by_member = {}
-        for instance in existing_instances:
-            instance_by_member[instance.object.peer.id] = instance.id
-
-        repository = await service.client.get(
-            kind=InfrahubKind.REPOSITORY, branch=message.branch, id=message.generator_definition.repository_id
-        )
-
-        for relationship in group.members.peers:
-            member = relationship.peer
-            generator_instance = instance_by_member.get(member.id)
-            model = RequestGeneratorRun(
-                generator_definition=message.generator_definition,
-                commit=repository.commit.value,
-                generator_instance=generator_instance,
-                repository_id=repository.id,
-                repository_name=repository.name.value,
-                repository_kind=repository.typename,
-                branch_name=message.branch,
-                query=message.generator_definition.query_name,
-                variables=member.extract(params=message.generator_definition.parameters),
-                target_id=member.id,
-                target_name=member.display_label,
-            )
-            await service.workflow.submit_workflow(workflow=REQUEST_GENERATOR_RUN, parameters={"model": model})
-
-        await task_report.info(
-            event=f"Generator triggered for {len(group.members.peers)} members in {group.name.value}."
-        )
 
 
 def _run_generator(instance_id: Optional[str], managed_branch: bool, impacted_instances: list[str]) -> bool:

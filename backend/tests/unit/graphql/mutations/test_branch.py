@@ -152,20 +152,6 @@ async def test_branch_create(
 async def test_branch_delete(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema, session_admin
 ):
-    create_query = """
-    mutation {
-        BranchCreate(data: { name: "branch3", description: "my description", sync_with_git: false }) {
-            ok
-            object {
-                id
-                name
-                description
-                sync_with_git
-            }
-        }
-    }
-    """
-
     delete_query = """
     mutation {
         BranchDelete(data: { name: "branch3" }) {
@@ -177,29 +163,9 @@ async def test_branch_delete(
     delete_before_create = await graphql_mutation(
         query=delete_query, db=db, branch=default_branch, account_session=session_admin
     )
-    recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
-
-    create = await graphql_mutation(
-        query=create_query, db=db, branch=default_branch, service=service, account_session=session_admin
-    )
-    recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
-
-    delete_after_create = await graphql_mutation(
-        query=delete_query, db=db, branch=default_branch, service=service, account_session=session_admin
-    )
-    delete_after_delete = await graphql_mutation(
-        query=delete_query, db=db, branch=default_branch, account_session=session_admin
-    )
 
     assert delete_before_create.errors
     assert delete_before_create.errors[0].message == "Branch: branch3 not found."
-    assert not create.errors
-    assert not delete_after_create.errors
-    assert delete_after_delete.errors
-    assert delete_after_delete.errors[0].message == "Branch: branch3 not found."
-    assert recorder.seen_routing_keys == ["event.branch.delete"]
 
 
 async def test_branch_create_registry(
@@ -359,36 +325,6 @@ async def test_branch_rebase_wrong_branch(
     assert result.errors
     assert len(result.errors) == 1
     assert result.errors[0].message == "Branch: branch2 not found."
-
-
-async def test_branch_validate(db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin):
-    branch1 = await Branch.get_by_name(db=db, name="branch1")
-
-    query = """
-    mutation {
-        BranchValidate(data: { name: "branch1" }) {
-            ok
-            object {
-                id
-            }
-        }
-    }
-    """
-    gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch1, account_session=session_admin
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchValidate"]["ok"] is True
-    assert result.data["BranchValidate"]["object"]["id"] == str(branch1.uuid)
 
 
 async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02):

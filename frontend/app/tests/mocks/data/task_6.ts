@@ -15,7 +15,7 @@ export const taskMocksSchema = [
         name: "addresses",
         peer: "IpamIPAddress",
         optional: false,
-        cardinality: "many",
+        cardinality: "one",
         kind: "Attribute",
       },
     ],
@@ -38,11 +38,9 @@ query TestTask($offset: Int, $limit: Int) {
         display_label
         __typename
         addresses {
-          edges {
-            node {
-              id
-              display_label
-            }
+          node {
+            id
+            display_label
           }
         }
       }

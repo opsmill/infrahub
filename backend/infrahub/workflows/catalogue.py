@@ -62,6 +62,13 @@ TRIGGER_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
     function="generate_artifact_definition",
 )
 
+TRIGGER_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
+    name="generator_definition_run",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.generators.tasks",
+    function="run_generator_definition",
+)
+
 IPAM_RECONCILIATION = WorkflowDefinition(
     name="ipam_reconciliation",
     type=WorkflowType.INTERNAL,
@@ -76,6 +83,14 @@ REQUEST_GENERATOR_RUN = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.generators.tasks",
     function="run_generator",
+)
+
+REQUEST_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
+    name="request_generator_definition_run",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.generators.tasks",
+    function="request_generator_definition_run",
+    branch_support=BranchSupportType.AWARE,
 )
 
 REQUEST_ARTIFACT_GENERATE = WorkflowDefinition(
@@ -122,6 +137,32 @@ GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
     branch_support=BranchSupportType.AWARE,
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
+
+GIT_REPOSITORY_ADD = WorkflowDefinition(
+    name="git-repository-add-read-write",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.git.tasks",
+    function="add_git_repository",
+    branch_support=BranchSupportType.AWARE,
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+GIT_REPOSITORIES_PULL_READ_ONLY = WorkflowDefinition(
+    name="git-repository-pull-read-only",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.git.tasks",
+    function="pull_read_only",
+)
+
+GIT_REPOSITORIES_MERGE = WorkflowDefinition(
+    name="git-repository-merge",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.git.tasks",
+    function="merge_git_repository",
+    branch_support=BranchSupportType.AWARE,
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 BRANCH_REBASE = WorkflowDefinition(
     name="branch-rebase",
     type=WorkflowType.INTERNAL,
@@ -140,6 +181,59 @@ BRANCH_MERGE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+BRANCH_DELETE = WorkflowDefinition(
+    name="branch-delete",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.core.branch.tasks",
+    function="delete_branch",
+    branch_support=BranchSupportType.AWARE,
+)
+
+BRANCH_VALIDATE = WorkflowDefinition(
+    name="branch-validate",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.core.branch.tasks",
+    function="validate_branch",
+    branch_support=BranchSupportType.AWARE,
+)
+
+BRANCH_CANCEL_PROPOSED_CHANGES = WorkflowDefinition(
+    name="proposed-changes-cancel-branch",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="cancel_proposed_changes_branch",
+)
+
+UPDATE_GRAPHQL_QUERY_GROUP = WorkflowDefinition(
+    name="update_graphql_query_group",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.groups.tasks",
+    function="update_graphql_query_group",
+    branch_support=BranchSupportType.AWARE,
+)
+
+PROCESS_COMPUTED_MACRO = WorkflowDefinition(
+    name="process_computed_attribute_jinja2",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.computed_attribute.tasks",
+    function="process_jinja2",
+)
+
+COMPUTED_ATTRIBUTE_SETUP = WorkflowDefinition(
+    name="computed-attribute-setup",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.computed_attribute.tasks",
+    function="computed_attribute_setup",
+)
+
+UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM = WorkflowDefinition(
+    name="process_computed_attribute_transform",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.computed_attribute.tasks",
+    function="process_transform",
+)
+
+
 worker_pools = [INFRAHUB_WORKER_POOL]
 
 workflows = [
@@ -156,8 +250,20 @@ workflows = [
     REQUEST_ARTIFACT_GENERATE,
     BRANCH_REBASE,
     BRANCH_MERGE,
+    BRANCH_DELETE,
+    BRANCH_VALIDATE,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_GENERATOR_RUN,
     REQUEST_DIFF_UPDATE,
     REQUEST_DIFF_REFRESH,
+    GIT_REPOSITORIES_PULL_READ_ONLY,
+    GIT_REPOSITORIES_MERGE,
+    TRIGGER_GENERATOR_DEFINITION_RUN,
+    BRANCH_CANCEL_PROPOSED_CHANGES,
+    REQUEST_GENERATOR_DEFINITION_RUN,
+    UPDATE_GRAPHQL_QUERY_GROUP,
+    GIT_REPOSITORY_ADD,
+    PROCESS_COMPUTED_MACRO,
+    COMPUTED_ATTRIBUTE_SETUP,
+    UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
 ]

@@ -4,6 +4,7 @@ import { FormField } from "@/components/ui/form";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
 import { IModelSchema } from "@/state/atoms/schema.atom";
+import { Node } from "@/utils/getObjectItemDisplayValue";
 import { ComponentProps } from "react";
 
 type SourceType = "schema" | "user";
@@ -55,17 +56,28 @@ export type FormAttributeValue =
   | AttributeValueFromPool
   | EmptyFieldValue;
 
-export type RelationshipValueFromPool = {
-  source: PoolSource;
-  value: { id: string } | { from_pool: { id: string } };
-};
-
-export type RelationshipValueFromUser = {
+export type RelationshipOneValueFromUser = {
   source: {
     type: SourceType;
   };
-  value: { id: string } | Array<{ id: string }> | null;
+  value: Node | null;
 };
+
+export type RelationshipManyValueFromUser = {
+  source: {
+    type: SourceType;
+  };
+  value: Array<Node> | null;
+};
+
+export type RelationshipValueFromPool = {
+  source: PoolSource;
+  value: Node | { from_pool: { id: string } };
+};
+
+export type RelationshipValueFromUser =
+  | RelationshipOneValueFromUser
+  | RelationshipManyValueFromUser;
 
 export type FormRelationshipValue =
   | RelationshipValueFromUser
