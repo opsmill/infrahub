@@ -37,7 +37,7 @@ doc_files: &doc_files
 release_files: &release_files
   - "changelog/*.md"
   - CHANGELOG.md
-  - "docs/docs/relese_notes/infrahub/*.mdx"
+  - "docs/docs/release_notes/infrahub/*.mdx"
 
 helm_files: &helm_files
   - "helm/**"
