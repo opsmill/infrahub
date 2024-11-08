@@ -129,7 +129,7 @@ async def token(
     payload = token_response.json()
 
     headers = {"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"}
-    userinfo_response = await service.http.post(str(oidc_config.userinfo_endpoint), headers=headers)
+    userinfo_response = await service.http.get(str(oidc_config.userinfo_endpoint), headers=headers)
     _validate_response(response=userinfo_response)
     user_info = userinfo_response.json()
 
