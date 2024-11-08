@@ -22,9 +22,4 @@ title: Release {{ version }}
   </tbody>
 </table>
 
-# Release 0.16.2
-
-We are thrilled to announce the latest release of Infrahub, version *{{ version }}*!
-
-This release focuses largely on bug fixes and is driven by our Beta Test users,
-and as always we greatly appreciate their feedback and time!
+{{ release_notes }}

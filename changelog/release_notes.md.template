@@ -1,6 +1,10 @@
+# Release {{ version }}
+
+We are thrilled to announce the latest release of Infrahub, version *{{ version }}*!
+
 ## Main Changes
 
-{{ changelog_contents }}
+{{ changelog }}
 
 ## Migration guide
 
