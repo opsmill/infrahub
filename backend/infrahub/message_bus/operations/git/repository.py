@@ -1,9 +1,7 @@
 from prefect import flow
 
-from infrahub import lock
-from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
-from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
+from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import (
@@ -13,31 +11,6 @@ from infrahub.message_bus.messages.git_repository_connectivity import (
 from infrahub.services import InfrahubServices
 
 log = get_logger()
-
-
-@flow(name="git-repository-add-read-only")
-async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: InfrahubServices) -> None:
-    log.info(
-        "Cloning and importing read-only repository", repository=message.repository_name, location=message.location
-    )
-    async with service.git_report(
-        related_node=message.repository_id,
-        title="Adding Repository",
-        created_by=message.created_by,
-    ) as git_report:
-        async with lock.registry.get(name=message.repository_name, namespace="repository"):
-            repo = await InfrahubReadOnlyRepository.new(
-                id=message.repository_id,
-                name=message.repository_name,
-                location=message.location,
-                client=service.client,
-                ref=message.ref,
-                infrahub_branch_name=message.infrahub_branch_name,
-                task_report=git_report,
-            )
-            await repo.import_objects_from_files(infrahub_branch_name=message.infrahub_branch_name)
-            if message.internal_status == RepositoryInternalStatus.ACTIVE.value:
-                await repo.sync_from_remote()
 
 
 @flow(name="git-repository-check-connectivity")

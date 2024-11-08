@@ -10,12 +10,16 @@ from typing_extensions import Self
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
-from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge, GitRepositoryPullReadOnly
+from infrahub.git.models import (
+    GitRepositoryAdd,
+    GitRepositoryAddReadOnly,
+    GitRepositoryMerge,
+    GitRepositoryPullReadOnly,
+)
 from infrahub.git.repository import InfrahubReadOnlyRepository
-from infrahub.git.tasks import add_git_repository, pull_read_only
+from infrahub.git.tasks import add_git_repository, add_git_repository_read_only, pull_read_only
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus import Meta, messages
-from infrahub.message_bus.operations import git
 from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
@@ -197,25 +201,26 @@ class TestAddReadOnly:
     def setup_method(self):
         self.client = AsyncMock(spec=InfrahubClient)
         self.git_report = AsyncContextManagerMock()
-        self.services = InfrahubServices(client=self.client)
-        self.services.git_report = self.git_report
 
-        lock_patcher = patch("infrahub.message_bus.operations.git.repository.lock")
+        self.original_services = services.service
+        services.service = InfrahubServices(client=self.client)
+        services.service.git_report = self.git_report
+
+        lock_patcher = patch("infrahub.git.tasks.lock")
         self.mock_infra_lock = lock_patcher.start()
         self.mock_infra_lock.registry = AsyncMock(spec=InfrahubLockRegistry)
-        repo_class_patcher = patch(
-            "infrahub.message_bus.operations.git.repository.InfrahubReadOnlyRepository", spec=InfrahubReadOnlyRepository
-        )
+        repo_class_patcher = patch("infrahub.git.tasks.InfrahubReadOnlyRepository", spec=InfrahubReadOnlyRepository)
         self.mock_repo_class = repo_class_patcher.start()
         self.mock_repo = AsyncMock(spec=InfrahubReadOnlyRepository)
         self.mock_repo_class.new.return_value = self.mock_repo
 
     def teardown_method(self):
         patch.stopall()
+        services.service = self.original_services
 
     async def test_git_rpc_add_read_only_success(self, git_upstream_repo_01: dict[str, str]):
         repo_id = str(UUIDT())
-        message = messages.GitRepositoryAddReadOnly(
+        model = GitRepositoryAddReadOnly(
             repository_id=repo_id,
             repository_name=git_upstream_repo_01["name"],
             location=git_upstream_repo_01["path"],
@@ -224,7 +229,7 @@ class TestAddReadOnly:
             internal_status="active",
         )
 
-        await git.repository.add_read_only(message=message, service=self.services)
+        await add_git_repository_read_only(model=model)
 
         self.mock_infra_lock.registry.get(name=git_upstream_repo_01["name"], namespace="repository")
         self.mock_repo_class.new.assert_awaited_once_with(

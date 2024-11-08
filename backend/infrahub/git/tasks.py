@@ -14,6 +14,7 @@ from ..workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, REQUEST_
 from ..workflows.utils import add_branch_tag
 from .models import (
     GitRepositoryAdd,
+    GitRepositoryAddReadOnly,
     GitRepositoryMerge,
     GitRepositoryPullReadOnly,
     RequestArtifactDefinitionGenerate,
@@ -24,9 +25,13 @@ from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_init
 log = get_logger()
 
 
-@flow(name="git-repository-add-read-write")
+@flow(
+    name="git-repository-add-read-write",
+    flow_run_name="Adding repository {model.repository_name} in branch {model.infrahub_branch_name}",
+)
 async def add_git_repository(model: GitRepositoryAdd) -> None:
     service = services.service
+    await add_branch_tag(model.infrahub_branch_name)
     async with service.git_report(
         related_node=model.repository_id,
         title=f"Initial import of the repository in branch: {model.infrahub_branch_name}",
@@ -48,6 +53,33 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
             )
             if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
                 await repo.sync()
+
+
+@flow(
+    name="git-repository-add-read-only",
+    flow_run_name="Adding read only repository {model.repository_name} in branch {model.infrahub_branch_name}",
+)
+async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
+    service = services.service
+    await add_branch_tag(model.infrahub_branch_name)
+    async with service.git_report(
+        related_node=model.repository_id,
+        title="Adding Repository",
+        created_by=model.created_by,
+    ) as git_report:
+        async with lock.registry.get(name=model.repository_name, namespace="repository"):
+            repo = await InfrahubReadOnlyRepository.new(
+                id=model.repository_id,
+                name=model.repository_name,
+                location=model.location,
+                client=service.client,
+                ref=model.ref,
+                infrahub_branch_name=model.infrahub_branch_name,
+                task_report=git_report,
+            )
+            await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name)
+            if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
+                await repo.sync_from_remote()
 
 
 @flow(name="git_repositories_create_branch")

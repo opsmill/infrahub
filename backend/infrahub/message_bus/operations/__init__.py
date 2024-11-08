@@ -34,7 +34,6 @@ COMMAND_MAP = {
     "finalize.validator.execution": finalize.validator.execution,
     "git.diff.names_only": git.diff.names_only,
     "git.file.get": git.file.get,
-    "git.repository.add_read_only": git.repository.add_read_only,
     "git.repository.connectivity": git.repository.connectivity,
     "git.repository.import_objects": git.repository.import_objects,
     "refresh.registry.branches": refresh.registry.branches,

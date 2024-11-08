@@ -147,6 +147,15 @@ GIT_REPOSITORY_ADD = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+GIT_REPOSITORY_ADD_READ_ONLY = WorkflowDefinition(
+    name="git-repository-add-read-only",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.git.tasks",
+    function="add_git_repository_read_only",
+    branch_support=BranchSupportType.AWARE,
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 GIT_REPOSITORIES_PULL_READ_ONLY = WorkflowDefinition(
     name="git-repository-pull-read-only",
     type=WorkflowType.INTERNAL,
@@ -263,6 +272,7 @@ workflows = [
     REQUEST_GENERATOR_DEFINITION_RUN,
     UPDATE_GRAPHQL_QUERY_GROUP,
     GIT_REPOSITORY_ADD,
+    GIT_REPOSITORY_ADD_READ_ONLY,
     PROCESS_COMPUTED_MACRO,
     COMPUTED_ATTRIBUTE_SETUP,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
