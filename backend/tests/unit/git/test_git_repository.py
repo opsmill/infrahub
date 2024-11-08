@@ -40,10 +40,10 @@ async def test_directories_props(git_upstream_repo_01, git_repos_dir):
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
-    assert repo.directory_root == os.path.join(git_repos_dir, git_upstream_repo_01["name"])
-    assert repo.directory_branches == os.path.join(git_repos_dir, git_upstream_repo_01["name"], BRANCHES_DIRECTORY_NAME)
-    assert repo.directory_commits == os.path.join(git_repos_dir, git_upstream_repo_01["name"], COMMITS_DIRECTORY_NAME)
-    assert repo.directory_temp == os.path.join(git_repos_dir, git_upstream_repo_01["name"], TEMPORARY_DIRECTORY_NAME)
+    assert repo.directory_root == os.path.join(git_repos_dir, str(repo.id))
+    assert repo.directory_branches == os.path.join(git_repos_dir, str(repo.id), BRANCHES_DIRECTORY_NAME)
+    assert repo.directory_commits == os.path.join(git_repos_dir, str(repo.id), COMMITS_DIRECTORY_NAME)
+    assert repo.directory_temp == os.path.join(git_repos_dir, str(repo.id), TEMPORARY_DIRECTORY_NAME)
 
 
 async def test_new_empty_dir(git_upstream_repo_01, git_repos_dir):
