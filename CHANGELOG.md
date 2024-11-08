@@ -11,6 +11,14 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [1.0.3](https://github.com/opsmill/infrahub/tree/v1.0.2) - 2024-11-08
+
+### Fixed
+
+- Fix hierarchical schema update logic to correctly update peer on parent relationship of new node ([#4838](https://github.com/opsmill/infrahub/issues/4838))
+- Fix hierarchical schema update logic to correctly update peer on parent of new child node ([#4839](https://github.com/opsmill/infrahub/issues/4839))
+- Define the version of numpy to install in pyproject.toml
+
 ## [1.0.2](https://github.com/opsmill/infrahub/tree/v1.0.2) - 2024-11-06
 
 ### Fixed

@@ -5,34 +5,36 @@ title: Release 1.0.3 - DEVELOPMENT
   <tbody>
     <tr>
       <th>Release Number</th>
-      <td>TBD</td>
+      <td>1.0.3</td>
     </tr>
     <tr>
       <th>Release Date</th>
-      <td>TBD</td>
+      <td>November 8th, 2024</td>
     </tr>
     <tr>
       <th>Release Codename</th>
-      <td>TBD</td>
+      <td>Stockholm, Patch #3</td>
     </tr>
     <tr>
       <th>Tag</th>
-      <td>TBD</td>
+      <td>[infrahub-v1.0.3](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.0.3)</td>
     </tr>
   </tbody>
 </table>
 
 # Release 1.0.3
 
+This is a bug-fix release to address issues found in Infrahub v1.0.2.
+
 ## Main changes
 
-### Unified storage
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
 
-### Schema
+### Fixed
 
-### Helm chart
-
-### Other
+- Fix hierarchical schema update logic to correctly update peer on parent relationship of new node ([#4838](https://github.com/opsmill/infrahub/issues/4838))
+- Fix hierarchical schema update logic to correctly update peer on parent of new child node ([#4839](https://github.com/opsmill/infrahub/issues/4839))
+- Define the version of numpy to install in pyproject.toml
 
 ## Migration guide
 

@@ -1,1 +1,0 @@
-Define the version of numpy to install in pyproject.toml
