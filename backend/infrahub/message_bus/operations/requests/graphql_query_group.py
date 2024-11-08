@@ -1,7 +1,9 @@
 from typing import List
 
-from infrahub_sdk import InfrahubClient, InfrahubNode
+from infrahub_sdk import InfrahubClient
+from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.utils import dict_hash
+from prefect import flow
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.log import get_logger
@@ -11,7 +13,9 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
-async def group_add_subscriber(client: InfrahubClient, group: InfrahubNode, subscribers: List[str], branch: str):
+async def group_add_subscriber(
+    client: InfrahubClient, group: InfrahubNode, subscribers: List[str], branch: str
+) -> dict:
     subscribers_str = ["{ id: " + f'"{subscriber}"' + " }" for subscriber in subscribers]
     query = """
     mutation {
@@ -33,6 +37,7 @@ async def group_add_subscriber(client: InfrahubClient, group: InfrahubNode, subs
     return await client.execute_graphql(query=query, branch_name=branch, tracker="mutation-relationshipadd")
 
 
+@flow(name="graphql-query-update")
 async def update(message: messages.RequestGraphQLQueryGroupUpdate, service: InfrahubServices) -> None:
     """Create or Update a GraphQLQueryGroup."""
 

@@ -13,7 +13,8 @@ export const Circle = (props: tCircleProps) => {
     <svg
       className={classNames(DEFAULT_CIRCLE_CLASS, className)}
       viewBox="0 0 6 6"
-      aria-hidden="true">
+      aria-hidden="true"
+    >
       <circle cx={3} cy={3} r={3} />
     </svg>
   );

@@ -118,7 +118,8 @@ export const Badge = ({
         onDelete && !disabled ? "cursor-pointer" : ""
       )}
       onClick={handleClick}
-      {...props}>
+      {...props}
+    >
       {children}
 
       {onDelete && (

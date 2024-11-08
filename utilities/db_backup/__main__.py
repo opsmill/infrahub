@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 import docker
 from docker.models.containers import Container
@@ -308,7 +308,7 @@ class Neo4jBackupRunner(Neo4jBackupRestoreBase):
 class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
     backup_helper_container_name = "neo4j-restore-helper"
 
-    def __init__(self, *args, database_cypher_port: int = 7687, **kwargs) -> None:
+    def __init__(self, *args: Any, database_cypher_port: int = 7687, **kwargs: dict[str, Any]) -> None:
         super().__init__(*args, **kwargs)
         self.database_cypher_port = database_cypher_port
         neo4j_auth = os.environ.get("NEO4J_AUTH")

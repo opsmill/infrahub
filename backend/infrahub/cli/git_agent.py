@@ -23,6 +23,8 @@ from infrahub.services.adapters.cache.nats import NATSCache
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.nats import NATSMessageBus
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.trace import configure_trace
 
 if TYPE_CHECKING:
@@ -69,6 +71,7 @@ async def start(
     logging.getLogger("aio_pika").setLevel(logging.ERROR)
     logging.getLogger("aiormq").setLevel(logging.ERROR)
     logging.getLogger("git").setLevel(logging.ERROR)
+    logging.getLogger("aiosqlite").setLevel(logging.ERROR)
 
     log.debug(f"Config file : {config_file}")
     # Prevent git from interactively prompting the user for passwords if the credentials provided
@@ -110,6 +113,12 @@ async def start(
 
     database = await context.get_db(retry=1)
 
+    workflow = config.OVERRIDE.workflow or (
+        WorkflowWorkerExecution()
+        if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
+        else WorkflowLocalExecution()
+    )
+
     message_bus = config.OVERRIDE.message_bus or (
         NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
     )
@@ -121,6 +130,7 @@ async def start(
         cache=cache,
         client=client,
         database=database,
+        workflow=workflow,
         message_bus=message_bus,
         component_type=ComponentType.GIT_AGENT,
     )

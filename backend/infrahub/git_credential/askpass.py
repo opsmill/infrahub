@@ -18,7 +18,7 @@ REGEX_PASSWORD = r"^Password.*\'(.*\:\/\/)(.*)@(.*)\'"
 def askpass(
     text: Optional[list[str]] = typer.Argument(None),
     config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
-):
+) -> None:
     config.SETTINGS.initialize_and_exit(config_file=config_file)
 
     text = text or sys.stdin.read().strip()

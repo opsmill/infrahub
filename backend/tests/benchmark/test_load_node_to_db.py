@@ -4,7 +4,7 @@ from infrahub.core.schema import (
     SchemaRoot,
     internal_schema,
 )
-from infrahub.core.schema_manager import SchemaManager
+from infrahub.core.schema.manager import SchemaManager
 from infrahub.database import InfrahubDatabase
 
 

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from infrahub.core.path import GroupedDataPaths  # noqa: TCH001
+from infrahub.core.path import GroupedDataPaths
 
 from .model import SchemaConstraintValidatorRequest
 

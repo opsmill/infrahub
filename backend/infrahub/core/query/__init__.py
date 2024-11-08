@@ -14,7 +14,6 @@ from neo4j.graph import Relationship as Neo4jRelationship
 from infrahub import config
 from infrahub.core.constants import PermissionLevel
 from infrahub.core.timestamp import Timestamp
-from infrahub.database.constants import DatabaseType, Neo4jRuntime
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
@@ -23,6 +22,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
 
 RETURN_TYPE = TypeVar("RETURN_TYPE")
 
@@ -406,6 +406,11 @@ class Query(ABC):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         raise NotImplementedError
 
+    def get_context(self) -> dict[str, str]:
+        """Provide additional context for this query, beyond the name.
+        Right now it's mainly used to add more labels to the metrics."""
+        return {}
+
     def add_to_query(self, query: Union[str, list[str]]) -> None:
         """Add a new section at the end of the query.
 
@@ -518,9 +523,7 @@ class Query(ABC):
 
         return ":params { " + ", ".join(params) + " }"
 
-    async def execute(
-        self, db: InfrahubDatabase, profile: bool = False, runtime: Neo4jRuntime = Neo4jRuntime.DEFAULT
-    ) -> Self:
+    async def execute(self, db: InfrahubDatabase) -> Self:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
@@ -529,21 +532,17 @@ class Query(ABC):
 
         query_str = self.get_query()
 
-        if profile:
-            query_str = "PROFILE\n" + query_str
-
-        if runtime != Neo4jRuntime.DEFAULT and db.db_type == DatabaseType.NEO4J:
-            query_str = f"CYPHER runtime={runtime.value}\n" + query_str
-
         if self.type == QueryType.READ:
             if self.limit or self.offset:
-                results = await db.execute_query(query=query_str, params=self.params, name=self.name)
+                results = await db.execute_query(
+                    query=query_str, params=self.params, name=self.name, context=self.get_context()
+                )
             else:
                 results = await self.query_with_size_limit(db=db)
 
         elif self.type == QueryType.WRITE:
             results, metadata = await db.execute_query_with_metadata(
-                query=query_str, params=self.params, name=self.name
+                query=query_str, params=self.params, name=self.name, context=self.get_context()
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))
@@ -568,6 +567,7 @@ class Query(ABC):
                 query=self.get_query(limit=query_limit, offset=offset),
                 params=self.params,
                 name=self.name,
+                context=self.get_context(),
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))

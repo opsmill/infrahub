@@ -1,16 +1,17 @@
-import { Dialog, Transition } from "@headlessui/react";
-import React, { Fragment, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Icon } from "@iconify-icon/react";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
-import { useAtomValue } from "jotai/index";
+import { Badge } from "@/components/ui/badge";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";
+import { Dialog, Transition } from "@headlessui/react";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai/index";
+import React, { Fragment, useRef, useState } from "react";
 import ModalDelete from "../modals/modal-delete";
 
 interface Props {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  onClose?: () => void;
   children: React.ReactNode;
   title: string | React.ReactNode;
   offset?: number;
@@ -22,8 +23,7 @@ interface SlideOverContextProps {
 
 export const SlideOverContext = React.createContext<SlideOverContextProps>({});
 
-export default function SlideOver(props: Props) {
-  const { open, setOpen, title, offset = 0 } = props;
+export default function SlideOver({ open, setOpen, onClose, title, offset = 0, children }: Props) {
   const initialFocusRef = useRef(null);
   const [preventClose, setPreventClose] = useState(false);
 
@@ -43,7 +43,15 @@ export default function SlideOver(props: Props) {
   return (
     <SlideOverContext.Provider value={context}>
       <Transition.Root show={open || (!open && preventClose)} as={Fragment}>
-        <Dialog as="div" className="relative z-10" onClose={setOpen} initialFocus={initialFocusRef}>
+        <Dialog
+          as="div"
+          className="relative z-10"
+          onClose={(value) => {
+            setOpen(value);
+            if (onClose) onClose();
+          }}
+          initialFocus={initialFocusRef}
+        >
           <Transition.Child
             as={Fragment}
             enter="ease-in-out duration-500"
@@ -51,7 +59,8 @@ export default function SlideOver(props: Props) {
             enterTo="opacity-100"
             leave="ease-in-out duration-500"
             leaveFrom="opacity-100"
-            leaveTo="opacity-0">
+            leaveTo="opacity-0"
+          >
             <div
               className="fixed inset-0 bg-black bg-opacity-40 transition-opacity"
               data-cy="side-panel-background"
@@ -70,16 +79,18 @@ export default function SlideOver(props: Props) {
                   enterTo={`${offestWidth[offset]}`}
                   leave="transform transition ease-in-out duration-500"
                   leaveFrom={`${offestWidth[offset]}`}
-                  leaveTo="translate-x-full">
+                  leaveTo="translate-x-full"
+                >
                   <Dialog.Panel
                     className={`bg-custom-white pointer-events-auto shadow-xl flex flex-col ${panelWidth} ${offestWidth[offset]}`}
-                    data-testid="side-panel-container">
+                    data-testid="side-panel-container"
+                  >
                     <div className="px-4 py-4 sm:px-4 bg-gray-50 border-b">
                       <div className="w-full">
                         <Dialog.Title className="text-base leading-6">{title}</Dialog.Title>
                       </div>
                     </div>
-                    {props.children}
+                    {children}
                   </Dialog.Panel>
                 </Transition.Child>
               </div>
@@ -103,7 +114,7 @@ export default function SlideOver(props: Props) {
 
 type SlideOverTitleProps = {
   schema: IModelSchema;
-  currentObjectLabel?: string;
+  currentObjectLabel?: string | null;
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
 };

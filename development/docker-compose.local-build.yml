@@ -1,10 +1,11 @@
 ---
 services:
-  infrahub-server:
+  server:
     volumes:
       - ../:/source
       - "storage_data:/opt/infrahub/storage"
-  infrahub-git:
+
+  task-worker:
     volumes:
       - ../:/source
       - "git_data:/opt/infrahub/git"

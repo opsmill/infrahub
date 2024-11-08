@@ -7,13 +7,13 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.core.constants import RESTRICTED_NAMESPACES
 from infrahub.core.models import HashableModel
+from infrahub.exceptions import SchemaNotFoundError
 
 from .attribute_schema import AttributeSchema
 from .basenode_schema import AttributePathParsingError, BaseNodeSchema, SchemaAttributePath, SchemaAttributePathValue
 from .definitions.core import core_models
 from .definitions.internal import internal
 from .dropdown import DropdownChoice
-from .filter import FilterSchema
 from .generic_schema import GenericSchema
 from .node_schema import NodeSchema
 from .profile_schema import ProfileSchema
@@ -58,6 +58,15 @@ class SchemaRoot(BaseModel):
 
         return True
 
+    def get(self, name: str) -> Union[NodeSchema, GenericSchema]:
+        """Check if a schema exist locally as a node or as a generic."""
+
+        for item in self.nodes + self.generics:
+            if item.kind == name:
+                return item
+
+        raise SchemaNotFoundError(branch_name="undefined", identifier=name)
+
     def validate_namespaces(self) -> list[str]:
         models = self.nodes + self.generics
         errors: list[str] = []
@@ -81,19 +90,18 @@ class SchemaRoot(BaseModel):
 internal_schema = internal.to_dict()
 
 __all__ = [
-    "core_models",
-    "internal_schema",
     "AttributePathParsingError",
     "AttributeSchema",
     "BaseNodeSchema",
     "DropdownChoice",
-    "FilterSchema",
-    "NodeSchema",
     "GenericSchema",
+    "MainSchemaTypes",
+    "NodeSchema",
     "ProfileSchema",
     "RelationshipSchema",
     "SchemaAttributePath",
     "SchemaAttributePathValue",
     "SchemaRoot",
-    "MainSchemaTypes",
+    "core_models",
+    "internal_schema",
 ]

@@ -15,10 +15,7 @@ from infrahub.core.constants import (
     RelationshipDirection,
     RelationshipKind,
 )
-
-# noqa: TCH001
 from infrahub.core.models import HashableModel
-from infrahub.core.schema.filter import FilterSchema  # noqa: TCH001
 
 
 class GeneratedRelationshipSchema(HashableModel):
@@ -112,9 +109,6 @@ class GeneratedRelationshipSchema(HashableModel):
         default=HashableModelState.PRESENT,
         description="Expected state of the relationship after loading the schema",
         json_schema_extra={"update": "not_applicable"},
-    )
-    filters: list[FilterSchema] = Field(
-        default_factory=list, description="Relationship filters", json_schema_extra={"update": "not_applicable"}
     )
     on_delete: Optional[RelationshipDeleteBehavior] = Field(
         default=None,

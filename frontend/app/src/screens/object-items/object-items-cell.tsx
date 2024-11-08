@@ -1,14 +1,14 @@
-import { getObjectDetailsUrl2 } from "@/utils/objects";
-import { Link, LinkProps } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
+import { classNames } from "@/utils/common";
 import {
-  getDisplayValue,
   RelationshipManyType,
   RelationshipOneType,
+  getDisplayValue,
 } from "@/utils/getObjectItemDisplayValue";
-import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
-import { Badge } from "@/components/ui/badge";
-import { classNames } from "@/utils/common";
+import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { HTMLAttributes } from "react";
+import { Link, LinkProps } from "react-router-dom";
 
 type ObjectItemsCellProps = {
   row: any;
@@ -34,7 +34,9 @@ export const ObjectItemsCell = ({ row, attribute }: ObjectItemsCellProps) => {
 };
 
 export const TextCell = ({ className, ...props }: HTMLAttributes<HTMLSpanElement>) => {
-  return <span className={classNames("p-2 text-xs whitespace-nowrap", className)} {...props} />;
+  return (
+    <span className={classNames("px-4 py-2 text-xs whitespace-nowrap", className)} {...props} />
+  );
 };
 
 export const LinkCell = ({ className, children, ...props }: LinkProps) => {
@@ -51,7 +53,8 @@ export const RelationshipOneCell = ({ data }: { data: RelationshipOneType }) => 
   return (
     <LinkCell
       to={getObjectDetailsUrl2(data.node.__typename, data.node.id)}
-      className="hover:underline">
+      className="hover:underline"
+    >
       {data.node.display_label}
     </LinkCell>
   );

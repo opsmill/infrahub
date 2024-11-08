@@ -9,7 +9,6 @@ import { store } from "@/state";
 import { iGenericSchema, iNodeSchema, profilesAtom } from "@/state/atoms/schema.atom";
 import * as R from "ramda";
 import { isGeneric, sortByOrderWeight } from "./common";
-import { SelectOption } from "@/components/inputs/select";
 
 type tgetObjectAttributes = {
   schema: iNodeSchema | iGenericSchema | undefined;
@@ -78,7 +77,7 @@ export const getObjectRelationships = ({
   return relationships;
 };
 
-export const getTabs = (schema: iNodeSchema | iGenericSchema) => {
+export const getTabs = (schema?: iNodeSchema | iGenericSchema) => {
   if (!schema) {
     return [];
   }
@@ -185,46 +184,22 @@ export const getRelationshipOptions = (row: any, field: any, schemas: any[], gen
   return [option];
 };
 
-export const getOptionsFromAttribute = (attribute: any, value: any): Array<SelectOption> => {
-  if (attribute.kind === "List") {
-    return (value || [])?.map((option: any) => ({
-      name: option,
-      id: option,
-    }));
-  }
-
-  if (attribute.enum) {
-    return attribute.enum?.map((option: any) => ({
-      name: option,
-      id: option,
-    }));
-  }
-
-  if (attribute.choices) {
-    return attribute.choices?.map((option: any) => ({
-      ...option,
-      name: option.label,
-      id: option.name,
-    }));
-  }
-
-  return [];
-};
-
 type tgetOptionsFromRelationship = {
   options: any[];
   schemas?: any;
   generic?: any;
+  peerField?: string;
 };
 
 export const getOptionsFromRelationship = ({
   options,
   schemas,
   generic,
+  peerField,
 }: tgetOptionsFromRelationship) => {
   if (!generic) {
     return options.map((option: any) => ({
-      name: option.display_label,
+      name: peerField ? (option[peerField]?.value ?? option[peerField]) : option.display_label,
       id: option.id,
       kind: option.__typename,
     }));

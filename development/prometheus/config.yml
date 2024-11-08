@@ -9,8 +9,8 @@ scrape_configs:
 
   - job_name: 'infrahub'
     static_configs:
-      - targets: ['infrahub-server:8000']
-      - targets: ['infrahub-git:8000']
+      - targets: ['server:8000']
+      - targets: ['task-worker:8000']
 
   - job_name: 'message-queue'
     static_configs:

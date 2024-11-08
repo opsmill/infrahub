@@ -1,3 +1,5 @@
+import { permissionsAllow } from "./permissions";
+
 export const artifactThreadSchema = [
   {
     id: "17a28ecc-a776-f84c-3873-c512f0a25a7c",
@@ -1474,5 +1476,31 @@ export const artifactWithoutThreadMockData = {
     count: 0,
     edges: [],
     __typename: "PaginatedCoreArtifactThread",
+  },
+};
+
+export const artifactPermissionsQuery = `
+query getObjectPermissions {
+  CoreThreadComment {
+    permissions {
+      edges {
+        node {
+          kind
+          view
+          create
+          update
+          delete
+        }
+      }
+    }
+  }
+}
+`;
+
+export const artifactPermissionsData = {
+  CoreArtifactThread: {
+    count: 0,
+    edges: [],
+    permissions: permissionsAllow,
   },
 };

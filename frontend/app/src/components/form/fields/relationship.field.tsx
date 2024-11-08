@@ -1,20 +1,20 @@
-import { ElementRef, forwardRef, useState } from "react";
-import { useAtomValue } from "jotai";
-import { components } from "@/infraops";
-import { store } from "@/state";
-import { genericsState, IModelSchema, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { Select, SelectOption } from "@/components/inputs/select";
+import { LabelFormField } from "@/components/form/fields/common";
 import {
   DynamicRelationshipFieldProps,
   FormFieldProps,
   FormRelationshipValue,
 } from "@/components/form/type";
-import { LabelFormField } from "@/components/form/fields/common";
 import { updateRelationshipFieldValue } from "@/components/form/utils/updateFormFieldValue";
-import useQuery from "@/hooks/useQuery";
+import { Select, SelectOption } from "@/components/inputs/select";
+import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { getRelationshipParent } from "@/graphql/queries/objects/getRelationshipParent";
+import useQuery from "@/hooks/useQuery";
+import { components } from "@/infraops";
+import { store } from "@/state";
+import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai";
+import { ElementRef, forwardRef, useState } from "react";
 
 const getGenericParentRelationship = (kind?: string) => {
   if (!kind) return;

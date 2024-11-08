@@ -1,10 +1,21 @@
 from enum import Enum
 
 import pytest
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
-from infrahub.core.attribute import URL, DateTime, Dropdown, Integer, IPHost, IPNetwork, MacAddress, String
+from infrahub.core.attribute import (
+    MAX_STRING_LENGTH,
+    URL,
+    DateTime,
+    Dropdown,
+    Integer,
+    IPHost,
+    IPNetwork,
+    ListAttribute,
+    MacAddress,
+    String,
+)
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -674,3 +685,140 @@ async def test_to_graphql_no_fields(
         "value": "mystring",
     }
     assert await attr2.to_graphql(db=db) == expected_data
+
+
+async def test_attribute_size(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema):
+    obj = await Node.init(db=db, schema="TestAllAttributeTypes")
+
+    large_string = "a" * 5_000
+
+    await obj.new(db=db, name="obj1", mystring=large_string)
+
+    # Text field
+    with pytest.raises(
+        ValidationError, match=f"Text attribute length should be less than {MAX_STRING_LENGTH} characters."
+    ):
+        await obj.save(db=db)
+
+    # TextArea field should have no size limitation
+    await obj.new(db=db, name="obj2", mytextarea=large_string)
+    await obj.save(db=db)
+
+
+@pytest.mark.parametrize("updated_status,expected_is_default", [(None, True), ("online", True), ("offline", False)])
+async def test_enum_with_default_preserves_is_default(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    hierarchical_location_data_simple: dict[str, Node],
+    updated_status,
+    expected_is_default,
+):
+    site = hierarchical_location_data_simple["paris"]
+    rack = await Node.init(db=db, schema="LocationRack")
+    await rack.new(db=db, name="new-rack", parent=site)
+    await rack.save(db=db)
+    status_enum_by_value = {
+        "online": rack.status.value.ONLINE,
+        "offline": rack.status.value.OFFLINE,
+    }
+    assert rack.status.is_default
+    assert rack.status.value.value == "online"
+
+    retrieved_rack = await NodeManager.get_one(db=db, id=rack.id)
+    assert retrieved_rack.status.value.value == "online"
+    assert retrieved_rack.status.is_default
+    retrieved_rack.name.value = "updated-rack"
+    expected_status = "online"
+    if updated_status:
+        retrieved_rack.status.value = status_enum_by_value[updated_status]
+        expected_status = updated_status
+    await retrieved_rack.save(db=db)
+    assert retrieved_rack.status.value.value == expected_status
+    assert retrieved_rack.status.is_default is expected_is_default
+
+    updated_rack = await NodeManager.get_one(db=db, id=rack.id)
+    assert updated_rack.name.value == "updated-rack"
+    assert updated_rack.status.value.value == expected_status
+    assert updated_rack.status.is_default is expected_is_default
+
+
+@pytest.mark.parametrize(
+    "regex_value,input_value,error",
+    [
+        pytest.param(
+            "^box_",
+            ["mystring"],
+            "mystring must conform with the regex: '^box_' at test",
+            id="not-a-box",
+        ),
+        pytest.param(
+            "^box_",
+            ["box_a", "box_b", "chest_a"],
+            "chest_a must conform with the regex: '^box_' at test",
+            id="is-chest",
+        ),
+    ],
+)
+def test_attribute_list_invalid_regex(
+    default_branch: Branch, regex_value: str, input_value: list[str], error: str
+) -> None:
+    storage_attribute = AttributeSchema(name="storage", kind="List", regex=regex_value)
+    widget = NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        label="Widget",
+        attributes=[
+            storage_attribute,
+        ],
+    )
+
+    with pytest.raises(ValidationError) as exc:
+        ListAttribute(
+            id=str(UUIDT()),
+            name="test",
+            schema=storage_attribute,
+            branch=default_branch,
+            at=Timestamp(),
+            node=Node(schema=widget, branch=default_branch, at=Timestamp()),
+            data=input_value,
+        )
+
+    assert error in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "regex_value,input_value",
+    [
+        pytest.param(
+            "^box_",
+            ["box_one"],
+            id="a-box",
+        ),
+        pytest.param(
+            "^box_",
+            ["box_a", "box_b", "box_another"],
+            id="several_boxes",
+        ),
+    ],
+)
+def test_attribute_list_regex(default_branch: Branch, regex_value: str, input_value: list[str]) -> None:
+    storage_attribute = AttributeSchema(name="storage", kind="List", regex=regex_value)
+    widget = NodeSchema(
+        name="Widget",
+        namespace="Testing",
+        label="Widget",
+        attributes=[
+            storage_attribute,
+        ],
+    )
+
+    list_attrib = ListAttribute(
+        id=str(UUIDT()),
+        name="test",
+        schema=storage_attribute,
+        branch=default_branch,
+        at=Timestamp(),
+        node=Node(schema=widget, branch=default_branch, at=Timestamp()),
+        data=input_value,
+    )
+    assert list_attrib.value == input_value

@@ -24,3 +24,10 @@ async def test_allocate_from_number_pool(db: InfrahubDatabase, default_branch: B
 
     assert ticket1.ticket_id.value == 1
     assert ticket2.ticket_id.value == 2
+
+    # If a resource is deleted the allocated number should be returned to the pool
+    await ticket2.delete(db=db)
+    recreated_ticket2 = await Node.init(db=db, schema=TICKET.kind)
+    await recreated_ticket2.new(db=db, title="ticket2", ticket_id={"from_pool": {"id": np1.id}})
+    await recreated_ticket2.save(db=db)
+    assert recreated_ticket2.ticket_id.value == 2

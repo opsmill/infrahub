@@ -1,6 +1,6 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
-import { ACCESS_TOKEN_KEY } from "@/config/constants";
+import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import { getNewToken } from "@/hooks/useAuth";
 import {
   ApolloClient,
@@ -123,6 +123,10 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
 
             forward(operation);
           });
+        }
+        case 403: {
+          // Do not display alert on unauthorized errors
+          return;
         }
         default:
           const { processErrorMessage } = operation.getContext();

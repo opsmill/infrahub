@@ -5,7 +5,7 @@ class Config(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
     url: str = "http://localhost:8000"
     api_token: str = "06438eb2-8019-4776-878c-0941b1f1d1ec"
-    server_container: str = "infrahub-infrahub-server-1"
+    server_container: str = "infrahub-server-1"
     db_container: str = "infrahub-database-1"
     db_volume: str = "infrahub_database_data"
     test_task_iterations: int = 1

@@ -1,5 +1,6 @@
 import { BUTTON_TYPES, Button } from "@/components/buttons/button";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
+import ObjectForm from "@/components/form/object-form";
 import ModalDelete from "@/components/modals/modal-delete";
 import {
   SCHEMA_DROPDOWN_ADD,
@@ -13,7 +14,6 @@ import { basicMutation } from "@/graphql/mutations/objects/basicMutation";
 import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { FormFieldError } from "@/screens/edit-form-hook/form";
-import ObjectForm from "@/components/form/object-form";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { namespacesState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
@@ -28,15 +28,15 @@ import { forwardRef, useContext, useEffect, useState } from "react";
 import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";
 
+import DynamicForm from "@/components/form/dynamic-form";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getObjectDisplayLabel } from "@/graphql/queries/objects/getObjectDisplayLabel";
+import usePrevious from "@/hooks/usePrevious";
 import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { comparedOptions } from "@/utils/array";
 import { getOptionsFromRelationship } from "@/utils/getSchemaObjectColumns";
-import DynamicForm from "@/components/form/dynamic-form";
 import { Badge } from "../ui/badge";
-import usePrevious from "@/hooks/usePrevious";
 
 export type Parent = {
   name?: string;
@@ -80,6 +80,7 @@ export type SelectProps = {
   isUnique?: boolean;
   isInherited?: boolean;
   placeholder?: string;
+  peerField?: string;
 };
 
 export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
@@ -102,6 +103,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
     schema,
     placeholder,
     preventEmpty,
+    peerField, // Field used to build option label
     // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     isOptional, // Avoid proving useless props
     // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
@@ -154,7 +156,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   // Query to fetch options only if a peer is defined
   // TODO: Find another solution for queries while loading schema
   const optionsQueryString = peer
-    ? getDropdownOptions({ kind: peer, parentFilter })
+    ? getDropdownOptions({ kind: peer, parentFilter, peerField })
     : "query { ok }";
   const poolsQueryString = poolPeer ? getDropdownOptions({ kind: poolPeer }) : "query { ok }";
 
@@ -171,7 +173,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const loading = optionsLoading || poolsLoading;
   const data = hasBeenOpened ? optionsData : poolsData;
 
-  const labelQueryString = peer ? getObjectDisplayLabel({ kind: peer }) : "query { ok }";
+  const labelQueryString = peer ? getObjectDisplayLabel({ kind: peer, peerField }) : "query { ok }";
 
   const labelQuery = gql`
     ${labelQueryString}
@@ -185,6 +187,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   const optionsList = getOptionsFromRelationship({
     options: optionsResult,
     schemas: schemaList,
+    peerField,
   });
 
   const addOption: SelectOption = {
@@ -613,7 +616,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
               "relative cursor-pointer select-none py-2 pl-3 pr-9 m-2 rounded-md",
               active ? "bg-custom-blue-600 text-custom-white" : "bg-gray-100 text-gray-900"
             )
-          }>
+          }
+        >
           <span className={"truncate flex items-center"}>
             <Icon icon={"mdi:plus"} /> Add {schemaKindName[peer]}
           </span>
@@ -629,7 +633,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
             value={addOption}
             className={
               "flex relative select-none py-2 pl-3 pr-9 m-2 rounded-md bg-gray-100 text-gray-900 cursor-not-allowed"
-            }>
+            }
+          >
             <Tooltip content="Can't add an option on an attribute inherited from a generic" enabled>
               <span className={"truncate flex flex-grow items-center"}>
                 <Icon icon={"mdi:plus"} className="mr-2" /> Add option
@@ -647,7 +652,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
               "flex relative cursor-pointer select-none py-2 pl-3 pr-9 m-2 rounded-md",
               active ? "bg-custom-blue-600 text-custom-white" : "bg-gray-100 text-gray-900"
             )
-          }>
+          }
+        >
           <span className={"truncate flex items-center"}>
             <Icon icon={"mdi:plus"} /> Add option
           </span>
@@ -674,7 +680,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
           }
           open={open}
           setOpen={setOpen}
-          offset={1}>
+          offset={1}
+        >
           <ObjectForm
             kind={peer}
             onSuccess={handleCreate}
@@ -703,7 +710,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
             }
             open={open}
             setOpen={setOpen}
-            offset={1}>
+            offset={1}
+          >
             {renderContentForDropdown()}
           </SlideOver>
 
@@ -734,7 +742,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
             }
             open={open}
             setOpen={setOpen}
-            offset={1}>
+            offset={1}
+          >
             {renderContentForEnum()}
           </SlideOver>
 
@@ -793,7 +802,10 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       const id = selectedOption?.id ?? value?.id ?? value;
       const { data } = await fetchLabel({ variables: { ids: [id] } });
 
-      const label = data[peer]?.edges[0]?.node?.display_label;
+      const label = peerField
+        ? (data[peer]?.edges[0]?.node?.[peerField]?.value ??
+          data[peer]?.edges[0]?.node?.[peerField])
+        : data[peer]?.edges[0]?.node?.display_label;
 
       const newSelectedOption = {
         ...selectedOption,
@@ -818,7 +830,9 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
       const { data } = await fetchLabel({ variables: { ids } });
 
       const newSelectedOptions = data[peer]?.edges.map((edge) => ({
-        name: edge.node.display_label,
+        name: peerField
+          ? (edge.node?.[peerField]?.value ?? edge.node?.[peerField])
+          : edge.node.display_label,
         id: edge.node.id,
       }));
 
@@ -867,15 +881,17 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
   return (
     <div
       className={classNames("relative", dropdown && disabled && "opacity-60", className)}
-      data-testid="select-container">
+      data-testid="select-container"
+    >
       <Combobox
         as="div"
-        value={multiple ? selectedOption ?? [] : selectedOption ?? ""}
+        value={multiple ? (selectedOption ?? []) : (selectedOption ?? "")}
         onChange={handleChange}
         disabled={disabled}
         multiple={multiple}
         by={comparedOptions}
-        {...otherProps}>
+        {...otherProps}
+      >
         <div className="relative">
           <div className="flex">
             <Combobox.Input
@@ -899,7 +915,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
                 canRequestPools ? "right-10" : "right-0"
               )}
               data-testid="select-open-option-button"
-              onClick={handleFocus}>
+              onClick={handleFocus}
+            >
               {loading && <LoadingScreen hideText size={24} />}
 
               {!loading && (
@@ -911,7 +928,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
                 <Combobox.Button
                   className="inset-y-0 right-0 flex items-center rounded-md px-2 ml-2 focus:outline-none disabled:cursor-not-allowed ring-1 ring-inset ring-gray-300"
                   data-testid="select-open-pool-option-button"
-                  onClick={handleFocusPools}>
+                  onClick={handleFocusPools}
+                >
                   <Icon icon={"mdi:list-box"} className="text-gray-500" />
                 </Combobox.Button>
               </Tooltip>
@@ -923,18 +941,21 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
               className={classNames(
                 "absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-custom-white text-base shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none sm:text-sm",
                 direction === SelectDirection.OVER ? "bottom-0" : ""
-              )}>
+              )}
+            >
               {finalOptions.map((option, index) => (
                 <Combobox.Option
                   key={index}
                   value={option}
                   className="cursor-pointer select-none py-2 px-3"
-                  style={getOptionStyle(option)}>
+                  style={getOptionStyle(option)}
+                >
                   {({ selected }) => (
                     <div className="z-10 flex items-center gap-2">
                       <div className="grow truncate">
                         <span
-                          className={classNames("block truncate", selected ? "font-semibold" : "")}>
+                          className={classNames("block truncate", selected ? "font-semibold" : "")}
+                        >
                           {option.name}
                         </span>
 
@@ -943,7 +964,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
                             className={classNames(
                               "block truncate italic text-xs",
                               selected ? "font-semibold" : ""
-                            )}>
+                            )}
+                          >
                             {option.description}
                           </span>
                         )}
@@ -962,12 +984,14 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
                       {canRemoveOption(option.id) && (
                         <Tooltip
                           content="Can't delete an option on an attribute inherited from a generic"
-                          enabled={field.inherited}>
+                          enabled={field.inherited}
+                        >
                           <Button
                             disabled={field.inherited}
                             buttonType={BUTTON_TYPES.INVISIBLE}
                             className="p-0"
-                            onClick={() => setOptionToDelete(option.id)}>
+                            onClick={() => setOptionToDelete(option.id)}
+                          >
                             <Icon
                               icon="mdi:trash"
                               className={field.inherited ? "text-gray-400" : "text-red-500"}

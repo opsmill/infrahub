@@ -22,6 +22,7 @@ import {
 } from "@/screens/ipam/constants";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
+import { getPermission } from "@/screens/permission/utils";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -58,6 +59,8 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
     },
     skip: !defaultIpNamespace,
   });
+
+  const permission = getPermission(data?.[IP_ADDRESS_GENERIC]?.permissions?.edges);
 
   const { data: getPrefixKindData } = useQuery(GET_PREFIX_KIND, {
     variables: { ids: [prefix] },
@@ -151,7 +154,8 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
           <Link
             to={constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${prefixData.id}`, [
               { name: IPAM_QSP.TAB, value: IPAM_TABS.PREFIX_DETAILS },
-            ])}>
+            ])}
+          >
             {prefixData.display_label}
           </Link>
 
@@ -164,7 +168,13 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
       {(loading || !defaultIpNamespace) && <LoadingScreen hideText />}
 
       {data && (
-        <Table rows={rows} columns={columns} onDelete={handleDelete} onUpdate={handleUpdate} />
+        <Table
+          rows={rows}
+          columns={columns}
+          onDelete={handleDelete}
+          onUpdate={handleUpdate}
+          permission={permission}
+        />
       )}
 
       {relatedRowToDelete && (
@@ -202,7 +212,8 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
                 <svg
                   className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                   viewBox="0 0 6 6"
-                  aria-hidden="true">
+                  aria-hidden="true"
+                >
                   <circle cx={3} cy={3} r={3} />
                 </svg>
                 {relatedObjectToEdit?.__typename}
@@ -210,7 +221,8 @@ const IpamIPAddressesList = forwardRef((props, ref) => {
             </div>
           }
           open={!!relatedObjectToEdit}
-          setOpen={() => setRelatedObjectToEdit(undefined)}>
+          setOpen={() => setRelatedObjectToEdit(undefined)}
+        >
           <ObjectItemEditComponent
             closeDrawer={() => {
               setRelatedObjectToEdit(undefined);

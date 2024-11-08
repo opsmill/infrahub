@@ -66,6 +66,12 @@ class CoreArtifactTarget(CoreNode):
     artifacts: RelationshipManager
 
 
+class CoreBasePermission(CoreNode):
+    description: StringOptional
+    identifier: StringOptional
+    roles: RelationshipManager
+
+
 class CoreCheck(CoreNode):
     name: StringOptional
     label: StringOptional
@@ -123,6 +129,22 @@ class CoreGroup(CoreNode):
     group_type: Enum
     members: RelationshipManager
     subscribers: RelationshipManager
+    parent: RelationshipManager
+    children: RelationshipManager
+
+
+class CoreMenu(CoreNode):
+    namespace: String
+    name: String
+    label: StringOptional
+    kind: StringOptional
+    path: StringOptional
+    description: StringOptional
+    icon: StringOptional
+    protected: Boolean
+    order_weight: Integer
+    required_permissions: ListAttributeOptional
+    section: Enum
     parent: RelationshipManager
     children: RelationshipManager
 
@@ -192,6 +214,16 @@ class BuiltinTag(CoreNode):
 
 class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
     pass
+
+
+class CoreAccountGroup(LineageOwner, LineageSource, CoreGroup):
+    roles: RelationshipManager
+
+
+class CoreAccountRole(CoreNode):
+    name: String
+    groups: RelationshipManager
+    permissions: RelationshipManager
 
 
 class CoreArtifact(CoreTaskTarget):
@@ -311,6 +343,11 @@ class CoreGeneratorValidator(CoreValidator):
     definition: RelationshipManager
 
 
+class CoreGlobalPermission(CoreBasePermission):
+    action: Dropdown
+    decision: Enum
+
+
 class CoreGraphQLQuery(CoreNode):
     name: String
     description: StringOptional
@@ -344,11 +381,22 @@ class CoreIPPrefixPool(CoreResourcePool, LineageSource):
     ip_namespace: RelationshipManager
 
 
+class CoreMenuItem(CoreMenu):
+    pass
+
+
 class CoreNumberPool(CoreResourcePool, LineageSource):
     node: String
     node_attribute: String
     start_range: Integer
     end_range: Integer
+
+
+class CoreObjectPermission(CoreBasePermission):
+    namespace: String
+    name: String
+    action: Enum
+    decision: Enum
 
 
 class CoreObjectThread(CoreThread):

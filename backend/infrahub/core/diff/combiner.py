@@ -108,7 +108,7 @@ class DiffCombiner:
             (DiffAction.REMOVED, DiffAction.ADDED): DiffAction.UPDATED,
             (DiffAction.REMOVED, DiffAction.UPDATED): DiffAction.UPDATED,
         }
-        return actions_map[(earlier, later)]
+        return actions_map[earlier, later]
 
     @staticmethod
     def combine_conflicts(
@@ -146,6 +146,15 @@ class DiffCombiner:
             if not self._should_include(earlier=earlier_property.action, later=later_property.action):
                 continue
             combined_conflict = self.combine_conflicts(earlier=earlier_property.conflict, later=later_property.conflict)
+            combined_properties.add(
+                replace(
+                    later_property,
+                    previous_label=earlier_property.previous_label,
+                    previous_value=earlier_property.previous_value,
+                    action=self._combine_actions(earlier=earlier_property.action, later=later_property.action),
+                    conflict=combined_conflict,
+                )
+            )
             combined_properties.add(
                 replace(
                     later_property,

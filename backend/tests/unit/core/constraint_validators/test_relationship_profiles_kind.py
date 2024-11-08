@@ -6,7 +6,7 @@ from infrahub.core.constants import BranchSupportType
 from infrahub.core.node import Node
 from infrahub.core.relationship.constraints.profiles_kind import RelationshipProfilesKindConstraint
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from tests.helpers.test_app import TestInfrahubApp

@@ -1,27 +1,30 @@
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
-import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { stringifyWithoutQuotes } from "@/utils/string";
-import { gql } from "@apollo/client";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
-import React, { useState } from "react";
-import { useAtomValue } from "jotai/index";
+import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { useAuth } from "@/hooks/useAuth";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { useAuth } from "@/hooks/useAuth";
+import { stringifyWithoutQuotes } from "@/utils/string";
+import { gql } from "@apollo/client";
+import { useAtomValue } from "jotai/index";
+import { useState } from "react";
+import { toast } from "react-toastify";
 
-interface PcMergeButtonProps extends ButtonProps {
+interface PcApproveButtonProps extends ButtonProps {
   proposedChangeId: string;
   approvers: Array<any>;
+  state: "closed" | "open" | "merged";
 }
 
 export const PcApproveButton = ({
   approvers = [],
   proposedChangeId,
+  state,
+  disabled,
   ...props
-}: PcMergeButtonProps) => {
+}: PcApproveButtonProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
@@ -81,8 +84,9 @@ export const PcApproveButton = ({
       variant="outline"
       onClick={handleApprove}
       isLoading={isLoadingApprove}
-      disabled={!auth?.permissions?.write || !approverId || !canApprove}
-      {...props}>
+      disabled={disabled || !approverId || !canApprove || state === "closed" || state === "merged"}
+      {...props}
+    >
       Approve
     </Button>
   );

@@ -1,6 +1,3 @@
-/// <reference types="cypress" />
-
-import React from "react";
 import { BUTTON_TYPES, Button } from "../../../src/components/buttons/button";
 
 describe("Button component", () => {

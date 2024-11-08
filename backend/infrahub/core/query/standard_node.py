@@ -126,10 +126,10 @@ class StandardNodeGetListQuery(Query):
     type: QueryType = QueryType.WRITE
 
     def __init__(
-        self, node_class: StandardNode, ids: Optional[list[str]] = None, name: Optional[str] = None, **kwargs: Any
+        self, node_class: StandardNode, ids: Optional[list[str]] = None, node_name: Optional[str] = None, **kwargs: Any
     ) -> None:
         self.ids = ids
-        self.name = name
+        self.node_name = node_name
         self.node_class = node_class
 
         super().__init__(**kwargs)
@@ -139,9 +139,9 @@ class StandardNodeGetListQuery(Query):
         if self.ids:
             filters.append("n.uuid in $ids_value")
             self.params["ids_value"] = self.ids
-        if self.name:
+        if self.node_name:
             filters.append("n.name = $name")
-            self.params["name"] = self.name
+            self.params["name"] = self.node_name
 
         where = ""
         if filters:

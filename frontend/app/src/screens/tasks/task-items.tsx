@@ -48,7 +48,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
     return <LoadingScreen hideText />;
   }
 
-  const result = data ? data[TASK_OBJECT] ?? {} : {};
+  const result = data ? (data[TASK_OBJECT] ?? {}) : {};
 
   const { count, edges = [] } = result;
 
@@ -107,7 +107,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
 
       {rows && (
         <div>
-          <Table columns={columns} rows={rows} />
+          <Table columns={columns} rows={rows} className="border-none" />
 
           <Pagination count={count} />
         </div>

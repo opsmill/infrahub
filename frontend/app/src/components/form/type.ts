@@ -1,9 +1,10 @@
+import { DropdownOption } from "@/components/inputs/dropdown";
+import { SelectOption } from "@/components/inputs/select";
 import { FormField } from "@/components/ui/form";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
-import { ComponentProps } from "react";
-import { SelectOption } from "@/components/inputs/select";
-import { components } from "@/infraops";
+import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
 import { IModelSchema } from "@/state/atoms/schema.atom";
+import { ComponentProps } from "react";
 
 type SourceType = "schema" | "user";
 
@@ -29,7 +30,7 @@ export type PoolSource = {
   id: string;
 };
 
-export type AttributeValueFormPool = {
+export type AttributeValueFromPool = {
   source: PoolSource;
   value: { from_pool: { id: string } };
 };
@@ -51,15 +52,15 @@ export type AttributeValueFromUser =
 export type FormAttributeValue =
   | AttributeValueFromUser
   | AttributeValueFromProfile
-  | EmptyFieldValue
-  | AttributeValueFormPool;
+  | AttributeValueFromPool
+  | EmptyFieldValue;
 
-export type RelationshipValueFormPool = {
+export type RelationshipValueFromPool = {
   source: PoolSource;
   value: { id: string } | { from_pool: { id: string } };
 };
 
-export type RelationshipValueFormUser = {
+export type RelationshipValueFromUser = {
   source: {
     type: SourceType;
   };
@@ -67,8 +68,8 @@ export type RelationshipValueFormUser = {
 };
 
 export type FormRelationshipValue =
-  | RelationshipValueFormUser
-  | RelationshipValueFormPool
+  | RelationshipValueFromUser
+  | RelationshipValueFromPool
   | EmptyFieldValue;
 
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
@@ -96,19 +97,15 @@ export type DynamicNumberFieldProps = FormFieldProps & {
 
 export type DynamicDropdownFieldProps = FormFieldProps & {
   type: "Dropdown";
-  items: Array<SelectOption>;
-  field?:
-    | components["schemas"]["AttributeSchema-Output"]
-    | components["schemas"]["RelationshipSchema-Output"];
+  items: Array<DropdownOption>;
+  field?: AttributeSchema;
   schema?: IModelSchema;
 };
 
 export type DynamicEnumFieldProps = FormFieldProps & {
   type: "enum";
-  items: Array<SelectOption>;
-  field?:
-    | components["schemas"]["AttributeSchema-Output"]
-    | components["schemas"]["RelationshipSchema-Output"];
+  items: Array<unknown>;
+  field?: AttributeSchema;
   schema?: IModelSchema;
 };
 
@@ -118,8 +115,9 @@ export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue">
   peer?: string;
   parent?: string;
   options?: SelectOption[];
-  relationship: components["schemas"]["RelationshipSchema-Output"];
+  relationship: RelationshipSchema;
   schema: IModelSchema;
+  peerField?: string;
 };
 
 export type DynamicFieldProps =
@@ -131,7 +129,7 @@ export type DynamicFieldProps =
 
 export const isFormFieldValueFromPool = (
   fieldData: FormFieldValue
-): fieldData is RelationshipValueFormPool => fieldData.source?.type === "pool";
+): fieldData is RelationshipValueFromPool => fieldData.source?.type === "pool";
 
 export type NumberPoolData = {
   id: string;

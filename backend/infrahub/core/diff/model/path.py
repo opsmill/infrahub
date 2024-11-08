@@ -4,7 +4,13 @@ from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional
 
-from infrahub.core.constants import DiffAction, RelationshipCardinality, RelationshipDirection, RelationshipStatus
+from infrahub.core.constants import (
+    BranchSupportType,
+    DiffAction,
+    RelationshipCardinality,
+    RelationshipDirection,
+    RelationshipStatus,
+)
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.timestamp import Timestamp
 
@@ -15,7 +21,7 @@ if TYPE_CHECKING:
     from neo4j.graph import Path as Neo4jPath
     from neo4j.graph import Relationship as Neo4jRelationship
 
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 @dataclass
@@ -81,6 +87,13 @@ class NodeFieldSpecifier:
 
     def __hash__(self) -> int:
         return hash(f"{self.node_uuid}:{self.field_name}")
+
+
+@dataclass
+class NodeDiffFieldSummary:
+    kind: str
+    attribute_names: set[str] = field(default_factory=set)
+    relationship_names: set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -157,8 +170,8 @@ class EnrichedDiffAttribute(BaseSummary):
     def __hash__(self) -> int:
         return hash(self.name)
 
-    def get_all_conflicts(self) -> list[EnrichedDiffConflict]:
-        return [prop.conflict for prop in self.properties if prop.conflict]
+    def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
+        return {prop.path_identifier: prop.conflict for prop in self.properties if prop.conflict}
 
     @classmethod
     def from_calculated_attribute(cls, calculated_attribute: DiffAttribute) -> EnrichedDiffAttribute:
@@ -186,11 +199,11 @@ class EnrichedDiffSingleRelationship(BaseSummary):
     def __hash__(self) -> int:
         return hash(self.peer_id)
 
-    def get_all_conflicts(self) -> list[EnrichedDiffConflict]:
-        all_conflicts = []
+    def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
+        all_conflicts: dict[str, EnrichedDiffConflict] = {}
         if self.conflict:
-            all_conflicts.append(self.conflict)
-        all_conflicts.extend([prop.conflict for prop in self.properties if prop.conflict])
+            all_conflicts[self.path_identifier] = self.conflict
+        all_conflicts.update({prop.path_identifier: prop.conflict for prop in self.properties if prop.conflict})
         return all_conflicts
 
     def get_property(self, property_type: DatabaseEdgeType) -> EnrichedDiffProperty:
@@ -226,10 +239,10 @@ class EnrichedDiffRelationship(BaseSummary):
     def __hash__(self) -> int:
         return hash(self.name)
 
-    def get_all_conflicts(self) -> list[EnrichedDiffConflict]:
-        all_conflicts = []
+    def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
+        all_conflicts: dict[str, EnrichedDiffConflict] = {}
         for element in self.relationships:
-            all_conflicts.extend(element.get_all_conflicts())
+            all_conflicts.update(element.get_all_conflicts())
         return all_conflicts
 
     @property
@@ -275,14 +288,14 @@ class EnrichedDiffNode(BaseSummary):
     def __hash__(self) -> int:
         return hash(self.uuid)
 
-    def get_all_conflicts(self) -> list[EnrichedDiffConflict]:
-        all_conflicts = []
+    def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
+        all_conflicts: dict[str, EnrichedDiffConflict] = {}
         if self.conflict:
-            all_conflicts.append(self.conflict)
+            all_conflicts[self.path_identifier] = self.conflict
         for attribute in self.attributes:
-            all_conflicts.extend(attribute.get_all_conflicts())
+            all_conflicts.update(attribute.get_all_conflicts())
         for relationship in self.relationships:
-            all_conflicts.extend(relationship.get_all_conflicts())
+            all_conflicts.update(relationship.get_all_conflicts())
         return all_conflicts
 
     def get_parent_info(self, context: GraphqlContext | None = None) -> ParentNodeInfo | None:
@@ -401,10 +414,10 @@ class EnrichedDiffRoot(BaseSummary):
         except ValueError:
             return False
 
-    def get_all_conflicts(self) -> list[EnrichedDiffConflict]:
-        all_conflicts = []
+    def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
+        all_conflicts: dict[str, EnrichedDiffConflict] = {}
         for node in self.nodes:
-            all_conflicts.extend(node.get_all_conflicts())
+            all_conflicts.update(node.get_all_conflicts())
         return all_conflicts
 
     @classmethod
@@ -627,6 +640,10 @@ class DatabasePath:  # pylint: disable=too-many-public-methods
         return RelationshipStatus(self.path_to_node.get("status"))
 
     @property
+    def node_branch_support(self) -> BranchSupportType:
+        return BranchSupportType(self.node_node.get("branch_support"))
+
+    @property
     def attribute_name(self) -> str:
         return str(self.attribute_node.get("name"))
 
@@ -655,33 +672,37 @@ class DatabasePath:  # pylint: disable=too-many-public-methods
         return self.property_node.element_id
 
     @property
-    def property_changed_at(self) -> Timestamp:
+    def property_from_time(self) -> Timestamp:
         return Timestamp(self.path_to_property.get("from"))
+
+    @property
+    def property_to_time(self) -> Timestamp | None:
+        raw_to = self.path_to_property.get("to")
+        if not raw_to:
+            return None
+        return Timestamp(str(raw_to))
 
     @property
     def property_status(self) -> RelationshipStatus:
         return RelationshipStatus(self.path_to_property.get("status"))
 
     @property
-    def property_end_time(self) -> Optional[Timestamp]:
-        end_time_str = self.path_to_property.get("to")
-        if not end_time_str:
-            return None
-        return Timestamp(end_time_str)
-
-    @property
     def property_value(self) -> Any:
         return self.property_node.get("value")
 
     @property
+    def property_is_peer(self) -> bool:
+        return "Node" in self.property_node.labels
+
+    @property
     def peer_id(self) -> Optional[str]:
-        if "Node" not in self.property_node.labels:
+        if not self.property_is_peer:
             return None
         return str(self.property_node.get("uuid"))
 
     @property
     def peer_kind(self) -> Optional[str]:
-        if "Node" not in self.property_node.labels:
+        if not self.property_is_peer:
             return None
         return str(self.property_node.get("kind"))
 

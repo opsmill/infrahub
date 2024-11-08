@@ -10,7 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.relationship_schema import RelationshipSchema
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 
@@ -114,8 +114,8 @@ async def test_diff_payload_two_updates_one_relationship(db: InfrahubDatabase, p
     assert owner_element.type is DiffElementType.RELATIONSHIP_ONE
     assert owner_element.name == "owner"
     assert owner_element.branch == branch.name
-    assert owner_element.action is DiffAction.UPDATED
-    assert owner_element.peer.previous.id == person_albert_main.id
+    assert owner_element.action is DiffAction.ADDED
+    assert owner_element.peer.previous is None
     assert owner_element.peer.new.id == person_alfred_main.id
 
 
@@ -159,8 +159,8 @@ async def test_diff_payload_three_updates_one_relationship(
     assert owner_element.type is DiffElementType.RELATIONSHIP_ONE
     assert owner_element.name == "owner"
     assert owner_element.branch == branch.name
-    assert owner_element.action is DiffAction.UPDATED
-    assert owner_element.peer.previous.id == person_jane_main.id
+    assert owner_element.action is DiffAction.ADDED
+    assert owner_element.peer.previous is None
     assert owner_element.peer.new.id == person_alfred_main.id
 
 

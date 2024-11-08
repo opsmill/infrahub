@@ -2,8 +2,8 @@ from typing import TYPE_CHECKING, Any, Dict
 
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
-from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import extract_fields
+from infrahub_sdk.uuidt import UUIDT
 from typing_extensions import Self
 
 from infrahub.auth import AuthType
@@ -18,7 +18,7 @@ from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
 from ..types import InfrahubObjectType
 
 if TYPE_CHECKING:
-    from .. import GraphqlContext
+    from ..initialization import GraphqlContext
 
 
 # pylint: disable=unused-argument

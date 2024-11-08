@@ -86,7 +86,7 @@ class DiffCoordinator:
         if from_time:
             from_timestamp = Timestamp(from_time)
         else:
-            from_timestamp = Timestamp(diff_branch.get_created_at())
+            from_timestamp = Timestamp(diff_branch.get_branched_from())
         if to_time:
             to_timestamp = Timestamp(to_time)
         else:
@@ -123,7 +123,7 @@ class DiffCoordinator:
         general_lock_name = self._get_lock_name(
             base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=False
         )
-        from_time = Timestamp(diff_branch.get_created_at())
+        from_time = Timestamp(diff_branch.get_branched_from())
         to_time = Timestamp()
         tracking_id = BranchTrackingId(name=diff_branch.name)
         async with (
@@ -343,11 +343,12 @@ class DiffCoordinator:
         return missing_time_ranges
 
     def _get_node_field_specifiers(self, enriched_diff: EnrichedDiffRoot) -> set[NodeFieldSpecifier]:
-        specifiers = set()
+        specifiers: set[NodeFieldSpecifier] = set()
         schema_branch = registry.schema.get_schema_branch(name=enriched_diff.diff_branch_name)
         for node in enriched_diff.nodes:
-            for attribute in node.attributes:
-                specifiers.add(NodeFieldSpecifier(node_uuid=node.uuid, field_name=attribute.name))
+            specifiers.update(
+                NodeFieldSpecifier(node_uuid=node.uuid, field_name=attribute.name) for attribute in node.attributes
+            )
             if not node.relationships:
                 continue
             node_schema = schema_branch.get_node(name=node.kind, duplicate=False)

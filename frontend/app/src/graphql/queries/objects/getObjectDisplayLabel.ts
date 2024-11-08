@@ -7,6 +7,11 @@ query {{kind}}($ids: [ID]) {
       node{
         id
         display_label
+        {{#if peerField}}
+        {{peerField}}{
+          value
+        }
+        {{/if}}
       }
     }
   }

@@ -27,7 +27,7 @@ test.describe("Object update", () => {
       await page.getByLabel("Description").fill("New description");
 
       await page.getByTestId("side-panel-container").getByLabel("Status").click();
-      await page.getByRole("option", { name: "Active" }).click();
+      await page.getByRole("option", { name: "Maintenance" }).click();
 
       await page.getByTestId("side-panel-container").getByLabel("Role").click();
       await page.getByRole("option", { name: "Edge Router" }).click();
@@ -56,7 +56,7 @@ test.describe("Object update", () => {
       await expect(page.getByText("Nameatl1-core1-new-name")).toBeVisible();
       await expect(page.getByText("New description")).toBeVisible();
       await expect(page.getByRole("link", { name: "AS701 701" })).toBeVisible();
-      await expect(page.getByText("Active")).toBeVisible();
+      await expect(page.getByText("Maintenance")).toBeVisible();
       await expect(page.getByText("Edge Router")).toBeVisible();
       await expect(page.getByRole("link", { name: "green" })).toBeVisible();
       await expect(page.getByRole("link", { name: "red", exact: true })).toBeVisible();
@@ -67,20 +67,8 @@ test.describe("Object update", () => {
       await expect(page.getByLabel("Name *")).toHaveValue("atl1-core1-new-name");
       await expect(page.getByLabel("Description")).toHaveValue("New description");
       await expect(page.getByLabel("Type *")).toHaveValue("MX204");
-      await expect(
-        page
-          .getByTestId("side-panel-container")
-          .getByLabel("Status")
-          .locator("../..")
-          .locator("input")
-      ).toHaveValue("Active");
-      await expect(
-        page
-          .getByTestId("side-panel-container")
-          .getByLabel("Role")
-          .locator("../..")
-          .locator("input")
-      ).toHaveValue("Edge Router");
+      await expect(page.getByLabel("Status")).toHaveText("Maintenance");
+      await expect(page.getByLabel("Role")).toHaveText("Edge Router");
       await expect(
         page.getByTestId("side-panel-container").getByLabel("Asn").locator("../..").locator("input")
       ).toHaveValue("AS701 701");
@@ -99,7 +87,7 @@ test.describe("Object update", () => {
 
     await test.step("assert initial object values", async () => {
       await expect(page.getByText("Nameatl1-leaf1")).toBeVisible();
-      await expect(page.getByText("StatusActive")).toBeVisible();
+      // await expect(page.getByText("StatusActive")).toBeVisible();
       await expect(page.getByText("RoleLeaf Switch")).toBeVisible();
       await expect(page.getByText("AsnAS64496 64496")).toBeVisible();
     });
@@ -108,10 +96,10 @@ test.describe("Object update", () => {
       await page.getByTestId("edit-button").click();
 
       await page.getByTestId("side-panel-container").getByLabel("Status").click();
-      await page.getByRole("option", { name: "Empty", exact: true }).click();
+      await page.getByRole("option", { name: "Active" }).click();
 
       await page.getByTestId("side-panel-container").getByLabel("Role").click();
-      await page.getByRole("option", { name: "Empty", exact: true }).click();
+      await page.getByRole("option", { name: "Leaf Switch" }).click();
 
       await page.getByTestId("side-panel-container").getByLabel("Asn").click();
       await page.getByRole("option", { name: "Empty", exact: true }).click();

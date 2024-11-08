@@ -8,7 +8,7 @@ from infrahub.core.diff.model.path import NodeFieldSpecifier
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
@@ -693,7 +693,7 @@ async def test_relationship_one_property_branch_update(
     single_relationship = single_relationships_by_peer_id[person_john_main.id]
     assert single_relationship.peer_id == person_john_main.id
     assert single_relationship.action is DiffAction.REMOVED
-    assert len(single_relationship.properties) == 3
+    assert len(single_relationship.properties) == 2
     assert before_main_change < single_relationship.changed_at < after_main_change
     property_diff_by_type = {p.property_type: p for p in single_relationship.properties}
     property_diff = property_diff_by_type[DatabaseEdgeType.IS_RELATED]
@@ -705,12 +705,6 @@ async def test_relationship_one_property_branch_update(
     property_diff = property_diff_by_type[DatabaseEdgeType.IS_VISIBLE]
     assert property_diff.property_type == DatabaseEdgeType.IS_VISIBLE
     assert property_diff.previous_value is True
-    assert property_diff.new_value is None
-    assert property_diff.action is DiffAction.REMOVED
-    assert before_main_change < property_diff.changed_at < after_main_change
-    property_diff = property_diff_by_type[DatabaseEdgeType.IS_PROTECTED]
-    assert property_diff.property_type == DatabaseEdgeType.IS_PROTECTED
-    assert property_diff.previous_value is False
     assert property_diff.new_value is None
     assert property_diff.action is DiffAction.REMOVED
     assert before_main_change < property_diff.changed_at < after_main_change
@@ -1293,7 +1287,7 @@ async def test_agnostic_owner_relationship_added(
     branch_root_path = calculated_diffs.diff_branch_diff
     assert branch_root_path.branch == branch.name
     diff_nodes_by_id = {n.uuid: n for n in branch_root_path.nodes}
-    assert set(diff_nodes_by_id.keys()) == {new_car.get_id()}
+    assert set(diff_nodes_by_id.keys()) == {new_car.get_id(), person_1.get_id()}
     diff_node_car = diff_nodes_by_id[new_car.get_id()]
     assert diff_node_car.action is DiffAction.ADDED
     assert {(attr.name, attr.action) for attr in diff_node_car.attributes} == {
@@ -1326,6 +1320,81 @@ async def test_agnostic_owner_relationship_added(
         (DatabaseEdgeType.IS_PROTECTED, DiffAction.ADDED, None, False),
         (DatabaseEdgeType.IS_VISIBLE, DiffAction.ADDED, None, True),
     }
+    diff_node_person = diff_nodes_by_id[person_1.get_id()]
+    assert diff_node_person.action is DiffAction.UPDATED
+    assert len(diff_node_person.attributes) == 0
+    assert len(diff_node_person.relationships) == 1
+    diff_relationship = diff_node_person.relationships.pop()
+    assert diff_relationship.name == "cars"
+    assert diff_relationship.action is DiffAction.UPDATED
+    assert len(diff_relationship.relationships) == 1
+    diff_element = diff_relationship.relationships.pop()
+    assert diff_element.peer_id == new_car.get_id()
+    assert diff_element.action is DiffAction.ADDED
+
+    diff_props_by_type = {p.property_type: p for p in diff_element.properties}
+    assert set(diff_props_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.HAS_OWNER,
+        DatabaseEdgeType.IS_PROTECTED,
+        DatabaseEdgeType.IS_VISIBLE,
+    }
+    diff_prop_tuples = {
+        (diff_prop.property_type, diff_prop.action, diff_prop.previous_value, diff_prop.new_value)
+        for diff_prop in diff_props_by_type.values()
+    }
+    assert diff_prop_tuples == {
+        (DatabaseEdgeType.IS_RELATED, DiffAction.ADDED, None, new_car.get_id()),
+        (DatabaseEdgeType.HAS_OWNER, DiffAction.ADDED, None, person_1.get_id()),
+        (DatabaseEdgeType.IS_PROTECTED, DiffAction.ADDED, None, False),
+        (DatabaseEdgeType.IS_VISIBLE, DiffAction.ADDED, None, True),
+    }
+
+
+async def test_update_attribute_under_agnostic_node(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    fruit_tag_schema_global,
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    fruit_1 = await Node.init(db=db, schema="GardenFruit", branch=branch)
+    await fruit_1.new(db=db, name="blueberry", branch_aware_attr="branchval")
+    await fruit_1.save(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+    )
+
+    base_root_path = calculated_diffs.base_branch_diff
+    assert base_root_path.nodes == []
+    branch_root_path = calculated_diffs.diff_branch_diff
+    assert branch_root_path.branch == branch.name
+    diff_nodes_by_id = {n.uuid: n for n in branch_root_path.nodes}
+    assert set(diff_nodes_by_id.keys()) == {fruit_1.get_id()}
+    diff_node_fruit = diff_nodes_by_id[fruit_1.get_id()]
+    assert diff_node_fruit.action is DiffAction.UPDATED
+    assert len(diff_node_fruit.relationships) == 0
+    assert len(diff_node_fruit.attributes) == 1
+    attr_diff = diff_node_fruit.attributes.pop()
+    assert attr_diff.name == "branch_aware_attr"
+    assert attr_diff.action is DiffAction.ADDED
+    properties_by_type = {p.property_type: p for p in attr_diff.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.HAS_VALUE,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for property_type, new_value in (
+        (DatabaseEdgeType.HAS_VALUE, "branchval"),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ):
+        prop_diff = properties_by_type[property_type]
+        assert prop_diff.action is DiffAction.ADDED
+        assert prop_diff.previous_value is None
+        assert prop_diff.new_value == new_value
 
 
 async def test_diff_attribute_branch_update_with_previous_base_update_ignored(

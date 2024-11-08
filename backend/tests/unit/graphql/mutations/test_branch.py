@@ -5,9 +5,10 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 from tests.adapters.message_bus import BusRecorder
@@ -329,36 +330,6 @@ async def test_branch_create_with_repositories(
     assert await Branch.get_by_name(db=db, name="branch2")
 
 
-async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, car_person_schema, session_admin):
-    branch2 = await create_branch(db=db, branch_name="branch2")
-
-    query = """
-    mutation {
-        BranchRebase(data: { name: "branch2" }) {
-            ok
-            object {
-                id
-            }
-        }
-    }
-    """
-    recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
-    result = await graphql_mutation(
-        query=query, db=db, branch=default_branch, service=service, account_session=session_admin
-    )
-
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchRebase"]["ok"] is True
-    assert result.data["BranchRebase"]["object"]["id"] == str(branch2.uuid)
-
-    new_branch2 = await Branch.get_by_name(db=db, name="branch2")
-    assert new_branch2.branched_from != branch2.branched_from
-
-    assert recorder.seen_routing_keys == ["event.branch.rebased"]
-
-
 async def test_branch_rebase_wrong_branch(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, session_admin
 ):
@@ -453,12 +424,14 @@ async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02):
     assert branch4_updated.description == "testing"
 
 
-async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin):
+async def test_branch_merge_wrong_branch(
+    db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin
+):
     branch1 = await Branch.get_by_name(db=db, name="branch1")
 
     query = """
     mutation {
-        BranchMerge(data: { name: "branch1" }) {
+        BranchMerge(data: { name: "branch99" }) {
             ok
             object {
                 id
@@ -466,8 +439,10 @@ async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core
         }
     }
     """
+    recorder = BusRecorder()
+    service = InfrahubServices(message_bus=recorder)
     gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch1, account_session=session_admin
+        db=db, include_subscription=False, branch=branch1, account_session=session_admin, service=service
     )
     result = await graphql(
         schema=gql_params.schema,
@@ -477,7 +452,44 @@ async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core
         variable_values={},
     )
 
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchMerge"]["ok"] is True
-    assert result.data["BranchMerge"]["object"]["id"] == str(branch1.uuid)
+    assert result.errors
+    assert len(result.errors) == 1
+    assert result.errors[0].message == "Branch: branch99 not found."
+
+
+async def test_branch_merge_with_conflict_fails(db: InfrahubDatabase, car_person_schema, car_camry_main, session_admin):
+    query = """
+    mutation {
+        BranchMerge(data: { name: "branch2" }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+
+    branch2 = await create_branch(db=db, branch_name="branch2")
+    car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
+    car_main.name.value += "-main"
+    await car_main.save(db=db)
+    car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
+    car_branch.name.value += "-branch"
+    await car_branch.save(db=db)
+
+    recorder = BusRecorder()
+    service = InfrahubServices(message_bus=recorder)
+    gql_params = prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch2, account_session=session_admin, service=service
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert "contains conflicts with the default branch" in result.errors[0].message

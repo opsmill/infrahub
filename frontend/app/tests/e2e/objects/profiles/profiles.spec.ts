@@ -51,7 +51,10 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await expect(page.getByText("DescriptionA profile for E2E")).toBeVisible();
 
     await test.step("return to profiles list using breadcrumb", async () => {
-      await page.getByTestId("object-header").getByRole("link", { name: "All Profiles" }).click();
+      await page
+        .getByTestId("breadcrumb-navigation")
+        .getByRole("link", { name: "Profile", exact: true })
+        .click();
       expect(page.url()).toContain("/objects/CoreProfile");
     });
   });
@@ -194,31 +197,26 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
 
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page
-        .locator("div")
-        .filter({ hasText: /^Clear$/ })
-        .getByRole("combobox")
-        .fill("l2");
       await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
     });
 
     await test.step("verify Interface L2 optional attributes are all visible", async () => {
-      await expect(page.getByText("Profile Name *")).toBeVisible();
-      await expect(page.getByText("Description")).toBeVisible();
-      await expect(page.getByText("MTU")).toBeVisible();
-      await expect(page.getByText("Enabled")).toBeVisible();
-      await expect(page.getByText("Status")).toBeVisible();
-      await expect(page.getByText("Role")).toBeVisible();
+      await expect(page.getByLabel("Profile Name *")).toBeVisible();
+      await expect(page.getByLabel("Description")).toBeVisible();
+      await expect(page.getByLabel("MTU")).toBeVisible();
+      await expect(page.getByLabel("Enabled")).toBeVisible();
+      await expect(page.getByLabel("Status")).toBeVisible();
+      await expect(page.getByLabel("Role")).toBeVisible();
     });
 
     await test.step("verify Interface L2 mandatory attributes and relationships are not visible", async () => {
-      await expect(page.getByText("Layer2 Mode *")).not.toBeVisible();
-      await expect(page.getByText("Speed *")).not.toBeVisible();
-      await expect(page.getByText("Untagged VLAN")).not.toBeVisible();
+      await expect(page.getByLabel("Layer2 Mode *")).not.toBeVisible();
+      await expect(page.getByLabel("Speed *")).not.toBeVisible();
+      await expect(page.getByLabel("Untagged VLAN")).not.toBeVisible();
       await expect(
         page.getByTestId("side-panel-container").getByText("Tagged VLANs")
       ).not.toBeVisible();
-      await expect(page.getByText("Device *")).not.toBeVisible();
+      await expect(page.getByLabel("Device *")).not.toBeVisible();
     });
   });
 
@@ -235,11 +233,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
       await page.getByLabel("Profile Priority").fill("2000");
       await page.getByLabel("MTU").fill("256");
       await page.getByLabel("Enabled").check();
-      await page
-        .locator("div:below(:text('Status'))")
-        .first()
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByLabel("Status").click();
       await page.getByText("Provisioning").click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("InfraInterfaceL2 created")).toBeVisible();
@@ -257,11 +251,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     await test.step("fill and submit form", async () => {
       await page.getByLabel("Profile Name *").fill(GENERIC_PROFILE_NAME);
       await page.getByLabel("Profile Priority").fill("2000");
-      await page
-        .locator("div:below(:text('Status'))")
-        .first()
-        .getByTestId("select-open-option-button")
-        .click();
+      await page.getByLabel("Status").click();
       await page.getByText("Maintenance", { exact: true }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("InfraInterface created")).toBeVisible();

@@ -1,42 +1,44 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from graphene import ObjectType
-from infrahub_sdk.utils import extract_fields
 
-from infrahub.core.constants import InfrahubKind
-from infrahub.core.manager import NodeManager
-from infrahub.exceptions import NodeNotFoundError
-
-from .mutations import (
+from .mutations.account import (
+    InfrahubAccountSelfUpdate,
+    InfrahubAccountTokenCreate,
+    InfrahubAccountTokenDelete,
+)
+from .mutations.branch import (
     BranchCreate,
     BranchDelete,
     BranchMerge,
     BranchRebase,
     BranchUpdate,
     BranchValidate,
-    DiffUpdateMutation,
-    InfrahubAccountSelfUpdate,
-    InfrahubAccountTokenCreate,
-    InfrahubAccountTokenDelete,
-    IPAddressPoolGetResource,
-    IPPrefixPoolGetResource,
-    ProcessRepository,
-    ProposedChangeRequestRunCheck,
+)
+from .mutations.diff import DiffUpdateMutation
+from .mutations.diff_conflict import ResolveDiffConflict
+from .mutations.proposed_change import ProposedChangeRequestRunCheck
+from .mutations.relationship import (
     RelationshipAdd,
     RelationshipRemove,
-    ResolveDiffConflict,
+)
+from .mutations.repository import (
+    ProcessRepository,
+    ValidateRepositoryConnectivity,
+)
+from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
+from .mutations.schema import (
     SchemaDropdownAdd,
     SchemaDropdownRemove,
     SchemaEnumAdd,
     SchemaEnumRemove,
+)
+from .mutations.task import (
     TaskCreate,
     TaskUpdate,
-    ValidateRepositoryConnectivity,
 )
-from .parser import extract_selection
 from .queries import (
+    AccountPermissions,
     AccountToken,
     BranchQueryList,
     DiffSummary,
@@ -52,42 +54,11 @@ from .queries import (
 )
 from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
 
-if TYPE_CHECKING:
-    from graphql import GraphQLResolveInfo
-
-    from . import GraphqlContext
-
-
-# pylint: disable=unused-argument
-
-
-async def default_paginated_list_resolver(root: dict, info: GraphQLResolveInfo, **kwargs):
-    fields = await extract_selection(info.field_nodes[0], schema=info.return_type.graphene_type._meta.schema)
-
-    return await info.return_type.graphene_type.get_paginated_list(**kwargs, fields=fields, context=info.context)
-
-
-async def account_resolver(root, info: GraphQLResolveInfo):
-    fields = await extract_fields(info.field_nodes[0].selection_set)
-    context: GraphqlContext = info.context
-
-    async with context.db.start_session() as db:
-        results = await NodeManager.query(
-            schema=InfrahubKind.GENERICACCOUNT,
-            filters={"ids": [context.account_session.account_id]},
-            fields=fields,
-            db=db,
-        )
-        if results:
-            account_profile = await results[0].to_graphql(db=db, fields=fields)
-            return account_profile
-
-        raise NodeNotFoundError(node_type=InfrahubKind.GENERICACCOUNT, identifier=context.account_session.account_id)
-
 
 class InfrahubBaseQuery(ObjectType):
     Branch = BranchQueryList
     InfrahubAccountToken = AccountToken
+    InfrahubPermissions = AccountPermissions
 
     DiffTree = DiffTreeQuery
     DiffTreeSummary = DiffTreeSummaryQuery

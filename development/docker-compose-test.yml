@@ -98,7 +98,7 @@ services:
       INFRAHUB_TEST_IN_DOCKER: 1
       INFRAHUB_BROKER_ADDRESS: message-queue
       INFRAHUB_CACHE_ADDRESS: "${INFRAHUB_CACHE_ADDRESS:-cache}"
-      INFRAHUB_INTERNAL_ADDRESS: "http://infrahub-server:8000"
+      INFRAHUB_INTERNAL_ADDRESS: "http://server:8000"
       INFRAHUB_GIT_REPOSITORIES_DIRECTORY: "/opt/infrahub/git"
       INFRAHUB_DB_ADDRESS: database
       INFRAHUB_DB_USERNAME: neo4j

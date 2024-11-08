@@ -17,7 +17,7 @@ from infrahub.core.path import SchemaPath
 
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
-    from infrahub.core.schema_manager import SchemaBranch
+    from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 class NodeKind(BaseModel):
@@ -366,7 +366,7 @@ class HashableModel(BaseModel):
         else:
             hashes.append(cls._get_hash_value(value))
 
-        return hashes
+        return sorted(hashes)
 
     @property
     def _sorting_id(self) -> tuple[Any]:
@@ -409,7 +409,7 @@ class HashableModel(BaseModel):
 
     @staticmethod
     def is_list_composed_of_hashable_model(items: list[Any]) -> bool:
-        return all((isinstance(item, HashableModel) for item in items))
+        return all(isinstance(item, HashableModel) for item in items)
 
     @staticmethod
     def _organize_sub_items(items: list[HashableModel], shared_ids: set[str]) -> dict[tuple[Any], HashableModel]:
@@ -417,7 +417,7 @@ class HashableModel(BaseModel):
         sub_items = {}
         for item in items:
             if item.id and item.id in shared_ids:
-                sub_items[(item.id,)] = item
+                sub_items[item.id,] = item
                 continue
             sub_items[item._sorting_id] = item
 

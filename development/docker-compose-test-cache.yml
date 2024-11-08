@@ -1,7 +1,0 @@
----
-# yamllint disable rule:line-length
-services:
-  cache:
-    deploy:
-      mode: replicated
-      replicas: "${NBR_WORKERS}"

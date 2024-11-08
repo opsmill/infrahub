@@ -7,7 +7,9 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 
-async def test_graphql_endpoint(db: InfrahubDatabase, client, client_headers, default_branch: Branch, car_person_data):
+async def test_graphql_endpoint(
+    db: InfrahubDatabase, client, admin_headers, default_branch: Branch, create_test_admin, car_person_data
+):
     query = """
     query {
         TestPerson {
@@ -33,11 +35,7 @@ async def test_graphql_endpoint(db: InfrahubDatabase, client, client_headers, de
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        response = client.post(
-            "/graphql",
-            json={"query": query},
-            headers=client_headers,
-        )
+        response = client.post("/graphql", json={"query": query}, headers=admin_headers)
 
     assert response.status_code == 200
     assert "errors" not in response.json()
@@ -52,7 +50,7 @@ async def test_graphql_endpoint(db: InfrahubDatabase, client, client_headers, de
 
 
 async def test_graphql_endpoint_with_timestamp(
-    db: InfrahubDatabase, client, client_headers, default_branch: Branch, car_person_data
+    db: InfrahubDatabase, client, admin_headers, default_branch: Branch, create_test_admin, car_person_data
 ):
     time_before = Timestamp()
 
@@ -76,11 +74,7 @@ async def test_graphql_endpoint_with_timestamp(
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        response = client.post(
-            "/graphql",
-            json={"query": query},
-            headers=client_headers,
-        )
+        response = client.post("/graphql", json={"query": query}, headers=admin_headers)
 
     assert response.status_code == 200
     assert "errors" not in response.json()
@@ -92,11 +86,7 @@ async def test_graphql_endpoint_with_timestamp(
     assert sorted(names) == ["Jane", "Johnny"]
 
     with client:
-        response = client.post(
-            f"/graphql?at={time_before.to_string()}",
-            json={"query": query},
-            headers=client_headers,
-        )
+        response = client.post(f"/graphql?at={time_before.to_string()}", json={"query": query}, headers=admin_headers)
 
     assert response.status_code == 200
     assert "errors" not in response.json()
@@ -221,7 +211,14 @@ async def test_download_schema(db: InfrahubDatabase, client, client_headers):
 
 
 async def test_query_at_previous_schema(
-    db: InfrahubDatabase, client, admin_headers, default_branch: Branch, authentication_base, car_person_data
+    db: InfrahubDatabase,
+    client,
+    admin_headers,
+    default_branch: Branch,
+    authentication_base,
+    prefect_test_fixture,
+    workflow_local,
+    car_person_data,
 ):
     # Load the schema in the database
     schema = registry.schema.get_schema_branch(name=default_branch.name)

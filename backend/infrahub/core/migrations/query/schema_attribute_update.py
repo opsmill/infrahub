@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 import ujson
 
-from infrahub.core.query import Query, QueryType  # noqa: TCH001
+from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:

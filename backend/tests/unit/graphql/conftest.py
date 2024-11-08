@@ -1,11 +1,50 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 
 from infrahub.dependencies.registry import build_component_registry
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+    from infrahub.core.protocols import CoreAccount
 
 
 @pytest.fixture(scope="module", autouse=True)
 def load_component_dependency_registry():
     build_component_registry()
+
+
+class PermissionsHelper:
+    def __init__(self) -> None:
+        self._first: None | CoreAccount = None
+        self._second: None | CoreAccount = None
+        self._default_branch: None | Branch = None
+
+    @property
+    def first(self) -> CoreAccount:
+        if self._first:
+            return self._first
+
+        raise NotImplementedError()
+
+    @property
+    def second(self) -> CoreAccount:
+        if self._second:
+            return self._second
+
+        raise NotImplementedError()
+
+    @property
+    def default_branch(self) -> Branch:
+        if self._default_branch:
+            return self._default_branch
+
+
+@pytest.fixture(scope="module")
+def permissions_helper() -> PermissionsHelper:
+    return PermissionsHelper()
 
 
 @pytest.fixture

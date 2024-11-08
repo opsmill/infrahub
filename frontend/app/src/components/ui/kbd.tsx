@@ -1,5 +1,5 @@
 import { classNames } from "@/utils/common";
-import { forwardRef, HTMLAttributes, useMemo } from "react";
+import { HTMLAttributes, forwardRef, useMemo } from "react";
 
 export type KbdKey =
   | "command"
@@ -48,7 +48,8 @@ const Kbd = forwardRef<HTMLElement, KbdProps>((props, ref) => {
       <abbr
         key={key}
         title={kbdKeysLabelMap[key]}
-        className={classNames("no-underline", keyClassName)}>
+        className={classNames("no-underline", keyClassName)}
+      >
         {kbdKeysMap[key]}
       </abbr>
     ));
@@ -60,7 +61,8 @@ const Kbd = forwardRef<HTMLElement, KbdProps>((props, ref) => {
       className={classNames(
         "text-gray-600 bg-gray-100 font-sans py-0.5 px-1.5 rounded text-xs",
         className
-      )}>
+      )}
+    >
       {keysContent}
       {children && <span>{children}</span>}
     </kbd>

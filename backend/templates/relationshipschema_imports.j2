@@ -1,5 +1,7 @@
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from infrahub.core.constants import AllowOverrideType, BranchSupportType, RelationshipKind, RelationshipCardinality, RelationshipDeleteBehavior, RelationshipDirection, HashableModelState # noqa: TCH001
 from infrahub.core.models import HashableModel
-from infrahub.core.schema.filter import FilterSchema # noqa: TCH001
+
+if TYPE_CHECKING:
+    from infrahub.core.schema.filter import FilterSchema # noqa: TCH001

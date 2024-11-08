@@ -3,7 +3,7 @@ import re
 import pytest
 
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 
 from .conftest import _get_schema_by_kind
 

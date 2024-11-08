@@ -76,7 +76,8 @@ export default function MetaDetailsTooltip({
           variant="ghost"
           className="text-gray-500 focus-visible:ring-0"
           data-cy="metadata-button"
-          data-testid="view-metadata-button">
+          data-testid="view-metadata-button"
+        >
           <Icon icon="mdi:information-slab-circle-outline" />
         </Button>
       </PopoverTrigger>

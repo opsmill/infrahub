@@ -20,7 +20,8 @@ export default function LoadingScreen(props: Props) {
       className={classNames(
         "flex flex-col items-center justify-center h-auto w-auto",
         className ?? ""
-      )}>
+      )}
+    >
       <ReactLoading
         className={color}
         type={type ?? "bars"}

@@ -1,12 +1,15 @@
 agent
+Alibaba
 Ansible
 APIs
 artifact_definitions
 artifact_name
 async
+Authentik
 boolean
 check_definitions
 class_name
+CloudFormation
 codespace
 codespaces
 config
@@ -64,6 +67,7 @@ Jotai
 json
 JSONSchema
 kbps
+Keycloak
 Loopbacks
 markdownlint
 max_count
@@ -80,6 +84,7 @@ Newsfragment
 Nornir
 npm
 o'brian
+order_weight
 openconfig
 opentelemetry
 order_by
@@ -94,6 +99,7 @@ REST
 ressources
 schema_mapping
 sdk
+subcommand
 subnet
 template_path
 toml
@@ -101,6 +107,7 @@ Towncrier
 towncrier
 uncheck
 uniqueness_constraints
+userinfo
 validator
 upsert
 Upserting

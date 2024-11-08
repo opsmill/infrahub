@@ -1,0 +1,177 @@
+---
+title: Controlling the menu
+---
+
+# Controlling the menu
+
+Infrahub allows you to control the menu on the left side of the web interface.
+
+The menu is made up of 2 sections, the bottom section is fixed and cannot be changed. It will list menu items that are related to the working of multiple Infrahub features.
+
+The top section is the section that can be changed, or controlled by the user. The goal of this top section is to list the different types of nodes that you have defined in your schema, in an order and organised in a way that is most relevant for your use case.
+
+By default the top section of the menu will contain an IPAM and Other section.
+
+The goal of this guide is to show you how you can control or change the layout of the top section of the menu.
+
+## Loading an example schema into Infrahub
+
+We assume that you have an empty instance of Infrahub started.
+
+Save the following schema into a file on your disk.
+
+The schema contains the following nodes:
+
+- A location hierarchy with a Country and a Site
+- A network device with a relation to network interfaces and a site
+- A network interface with a relation to a network device
+
+```yaml
+---
+version: "1.0"
+generics:
+  - name: Generic
+    namespace: Location
+    include_in_menu: false
+    hierarchical: true
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+nodes:
+  - name: Country
+    namespace: Location
+    inherit_from:
+      - LocationGeneric
+    parent: ""
+    children: LocationSite
+  - name: Site
+    namespace: Location
+    inherit_from:
+      - LocationGeneric
+    parent: LocationCountry
+    children: ""
+    relationships:
+      - name: devices
+        kind: Generic
+        peer: NetworkDevice
+        cardinality: many
+        optional: true
+  - name: Device
+    namespace: Network
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+    relationships:
+      - name: site
+        kind: Attribute
+        cardinality: one
+        optional: true
+        peer: LocationSite
+      - name: interfaces
+        kind: Component
+        cardinality: many
+        optional: true
+        peer: NetworkInterface
+  - name: Interface
+    namespace: Network
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+    relationships:
+      - name: device
+        kind: Parent
+        optional: false
+        cardinality: one
+        peer: NetworkDevice
+```
+
+Load the schema into Infrahub using the following command
+
+```bash
+infrahubctl schema load /path/to/schema.yml
+```
+
+In the web interface you will now see that all the nodes defined in the schema are available in the top section of the menu.
+
+## Defining a menu file
+
+Our goal is to define a menu in which we define 2 top sections Location and Infrastructure.
+
+Under the Location section we want to define 2 items, Countries and Sites. Under the Infrastructure section we want to define 2 items, Devices and Interfaces.
+
+We can define this menu structure in a menu file. A menu file is a YAML file that has a particular structure (schema). For more information on the structure of the file, visit the menu file reference.
+
+Save the following menu definition file on your local disk.
+
+```yaml
+---
+apiVersion: infrahub.app/v1
+kind: Menu
+spec:
+  data:
+    - namespace: Location
+      name: Mainmenu
+      label: Location
+      icon: "mingcute:location-line"
+      children:
+        data:
+          - namespace: Location
+            name: Country
+            label: Countries
+            kind: LocationCountry
+            icon: "gis:search-country"
+
+          - namespace: Location
+            name: Site
+            label: Sites
+            kind: LocationSite
+            icon: "ri:building-line"
+
+    - namespace: Infrastructure
+      name: Mainmenu
+      label: Infrastructure
+      icon: "mdi:domain"
+      children:
+        data:
+          - namespace: Network
+            name: Device
+            label: Devices
+            kind: NetworkDevice
+            icon: "mdi:router"
+
+          - namespace: Network
+            name: Interface
+            label: Interface
+            kind: NetworkInterface
+            icon: "mdi:ethernet"
+```
+
+At the top of the file we find some required boilerplate to indicate the type of the contents of the file, so that we understand what content is going to provided and what the expected structure should be.
+
+In the spec mapping we find a data key which defines a sequence. Here we can clearly find the 2 menu items Location and Infrastructure. Each item in the menu structure has a name and namespace defined and some additional properties to control how it is displayed in the web interface, like the icon.
+
+The Location and Infrastructure menu items have children defined, the children are menu items that reference a kind that we defined in the schema. This will result in a sub menu item, which, when you click on it, will open the list view of the referenced kind in the schema.
+
+:::info
+
+In more complex scenarios where you have to define a lot of different menu structures, you may want to split the menu definitions into multiple files, similar to how we do this with schema files.
+
+:::
+
+## Loading a menu file
+
+You can load the menu file into Infrahub using `menu` subcommand of the `infrahubctl` utility.
+
+Load the menu into Infrahub using the following command
+
+```bash
+infrahubctl menu load /path/to/menu.yml
+```
+
+More information on `infrahubctl` command line utility can be found [here](/infrahubctl).
+More information on the `menu` subcommand can be found [here](/infrahubctl/infrahubctl-menu).

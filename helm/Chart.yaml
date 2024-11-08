@@ -2,6 +2,7 @@
 apiVersion: v2
 name: infrahub
 description: A Helm chart to deploy Infrahub on Kubernetes
+icon: https://github.com/opsmill/infrahub/raw/develop/frontend/app/public/favicons/logo512.png
 # A chart can be either an 'application' or a 'library' chart.
 #
 # Application charts are a collection of templates that can be packaged into versioned archives
@@ -14,16 +15,16 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 2.7.2
+version: 3.2.1
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "0.16.3"
+appVersion: "1.0.3"
 
 dependencies:
   - name: neo4j
-    version: "5.19.0"
+    version: "5.20.0"
     repository: "https://helm.neo4j.com/neo4j/"
     condition: neo4j.enabled
   - name: common
@@ -46,7 +47,7 @@ dependencies:
     version: "1.1.12"
     repository: "https://nats-io.github.io/k8s/helm/charts/"
     condition: nats.enabled
-  - name: traefik
-    version: "28.2.0"
-    repository: "https://traefik.github.io/charts"
-    condition: traefik.enabled
+  - name: prefect-server
+    version: "2024.7.25191224"
+    repository: "https://prefecthq.github.io/prefect-helm"
+    condition: prefect-server.enabled

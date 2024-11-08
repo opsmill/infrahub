@@ -1,0 +1,186 @@
+---
+apiVersion: infrahub.app/v1
+kind: Menu
+spec:
+  data:
+    - namespace: Organization
+      name: MainMenu
+      label: Organization
+      icon: "mdi:domain"
+      kind: OrganizationGeneric
+      children:
+        data:
+          - namespace: Organization
+            name: Generic
+            label: All Organizations
+            kind: OrganizationGeneric
+            icon: "mdi:domain"
+
+          - namespace: Organization
+            name: Manufacturer
+            label: Manufacturer
+            kind: OrganizationManufacturer
+            icon: "mdi:domain"
+
+          - namespace: Organization
+            name: Provider
+            label: Provider
+            kind: OrganizationProvider
+            icon: "mdi:domain"
+
+          - namespace: Organization
+            name: Tenant
+            label: Tenant
+            kind: OrganizationTenant
+            icon: "mdi:domain"
+
+    - namespace: Location
+      name: Menu
+      label: Location
+      kind: LocationGeneric
+      icon: "mingcute:location-line"
+      children:
+        data:
+          - namespace: Location
+            name: Generic
+            label: All Locations
+            kind: LocationGeneric
+            icon: "mingcute:location-line"
+
+          - namespace: Location
+            name: Continent
+            label: Continent
+            kind: LocationContinent
+            icon: "jam:world"
+
+          - namespace: Location
+            name: Country
+            label: Country
+            kind: LocationCountry
+            icon: "gis:search-country"
+
+          - namespace: Location
+            name: Site
+            label: Site
+            kind: LocationSite
+            icon: "ri:building-line"
+
+          - namespace: Location
+            name: Rack
+            label: Rack
+            kind: LocationRack
+            icon: clarity:rack-server-solid
+
+    - namespace: Infra
+      name: DeviceManagementMenu
+      label: Device Management
+      icon: "mdi:server"
+      children:
+        data:
+          - namespace: Infra
+            name: NetworkDeviceMenu
+            label: Network Device
+            icon: "mdi:server"
+            children:
+              data:
+                - namespace: Infra
+                  name: Device
+                  label: Device
+                  kind: InfraDevice
+                  icon: "mdi:server"
+                - name: Interface
+                  namespace: Infra
+                  label: "Interface"
+                  icon: "mdi:ethernet"
+                  kind: InfraInterface
+
+          - namespace: Infra
+            name: MlagMenu
+            label: MLAG
+            icon: "eos-icons:cluster-management"
+            children:
+              data:
+                - name: MlagDomain
+                  namespace: Infra
+                  label: "MLAG Domain"
+                  icon: "eos-icons:cluster-management"
+                  kind: InfraMlagDomain
+
+                - name: MlagInterface
+                  namespace: Infra
+                  label: "MLAG Interface"
+                  icon: "mdi:ethernet"
+                  kind: InfraMlagInterface
+
+          - namespace: Infra
+            name: Platform
+            label: Platform
+            kind: InfraPlatform
+            icon: "mdi:application-cog-outline"
+
+
+    - namespace: Infra
+      name: CircuitMenu
+      label: Circuit Management
+      icon: "mdi:transit-connection-variant"
+      children:
+        data:
+          - name: Circuit
+            namespace: Infra
+            label: "Circuit"
+            icon: "mdi:cable-data"
+            kind: InfraCircuit
+
+    - namespace: Infra
+      name: NetworkMenu
+      label: Network Configuration
+      icon: "mdi:lan"
+      children:
+        data:
+          - name: VLAN
+            namespace: Infra
+            label: "VLAN"
+            icon: "mdi:lan-pending"
+            kind: InfraVLAN
+
+    - namespace: Infra
+      name: RoutingPeeringMenu
+      label: Routing & Peering
+      icon: "mdi:router"
+      children:
+        data:
+          - name: BGP
+            namespace: Infra
+            label: "BGP"
+            icon: "mdi:router"
+            children:
+              data:
+                - name: AutonomousSystem
+                  namespace: Infra
+                  label: "Autonomous System"
+                  icon: "mdi:bank-circle-outline"
+                  kind: InfraAutonomousSystem
+
+                - name: BGPSession
+                  namespace: Infra
+                  label: "BGP Session"
+                  icon: "mdi:router"
+                  kind: InfraBGPSession
+
+                - name: BGPPeerGroup
+                  namespace: Infra
+                  label: "BGP Peer Group"
+                  icon: "mdi:view-grid-plus-outline"
+                  kind: InfraBGPPeerGroup
+
+    - namespace: Infra
+      name: Service
+      label: Services
+      icon: "carbon:container-services"
+      children:
+        data:
+          - namespace: Infra
+            name: BackBoneService
+            label: "Backbone Service"
+            kind: InfraBackBoneService
+            icon: "carbon:container-services"

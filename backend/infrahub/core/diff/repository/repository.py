@@ -2,8 +2,9 @@ from typing import Generator
 
 from infrahub import config
 from infrahub.core import registry
+from infrahub.core.diff.query.field_summary import EnrichedDiffNodeFieldSummaryQuery
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
+from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import ResourceNotFoundError
 
 from ..model.path import (
@@ -12,6 +13,7 @@ from ..model.path import (
     EnrichedDiffRoot,
     EnrichedDiffs,
     EnrichedNodeCreateRequest,
+    NodeDiffFieldSummary,
     TimeRange,
     TrackingId,
 )
@@ -155,6 +157,7 @@ class DiffRepository:
         if node_requests:
             yield node_requests
 
+    @retry_db_transaction(name="enriched_diff_save")
     async def save(self, enriched_diffs: EnrichedDiffs) -> None:
         root_query = await EnrichedDiffRootsCreateQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await root_query.execute(db=self.db)
@@ -235,3 +238,12 @@ class DiffRepository:
         if not conflict_node:
             raise ResourceNotFoundError(f"No conflict with id {conflict_id}")
         return self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node)
+
+    async def get_node_field_summaries(
+        self, diff_branch_name: str, tracking_id: TrackingId | None = None, diff_id: str | None = None
+    ) -> list[NodeDiffFieldSummary]:
+        query = await EnrichedDiffNodeFieldSummaryQuery.init(
+            db=self.db, diff_branch_name=diff_branch_name, tracking_id=tracking_id, diff_id=diff_id
+        )
+        await query.execute(db=self.db)
+        return await query.get_field_summaries()

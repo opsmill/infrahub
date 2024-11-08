@@ -3,6 +3,7 @@ from typing import Dict
 import pendulum
 import pytest
 from fastapi.testclient import TestClient
+from prefect.testing.utilities import prefect_test_harness
 
 from infrahub import config
 from infrahub.core.constants import InfrahubKind
@@ -10,10 +11,11 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 
 
 @pytest.fixture
-def client():
+def client(nats, redis):
     # In order to mock some methods later we can't load app by default because it will automatically load all import in main.py as well
     from infrahub.server import app
 
@@ -28,6 +30,12 @@ def client_headers():
 @pytest.fixture
 def admin_headers():
     return {"X-INFRAHUB-KEY": "admin-security"}
+
+
+@pytest.fixture(autouse=True, scope="session")
+def prefect_test_fixture():
+    with prefect_test_harness():
+        yield
 
 
 @pytest.fixture
@@ -46,6 +54,15 @@ def rpc_bus_simulator(helper, db):
     config.OVERRIDE.message_bus = bus
     yield bus
     config.OVERRIDE.message_bus = original
+
+
+@pytest.fixture()
+def workflow_local():
+    original = config.OVERRIDE.workflow
+    workflow = WorkflowLocalExecution()
+    config.OVERRIDE.workflow = workflow
+    yield workflow
+    config.OVERRIDE.workflow = original
 
 
 @pytest.fixture

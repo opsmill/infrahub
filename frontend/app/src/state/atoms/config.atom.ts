@@ -21,11 +21,24 @@ export type MainConfig = {
   allow_anonymous_access: boolean;
 };
 
+export type Provider = {
+  name: string;
+  display_label: string;
+  icon: string;
+  protocol: string;
+  readonly authorize_path: string;
+  readonly token_path: string;
+};
+
 export type Config = {
   analytics: AnalyticsConfig;
   logging: LoggingConfig;
   main: MainConfig;
   experimental_features: { [key: string]: boolean };
+  sso: {
+    enabled: boolean;
+    providers: Array<Provider>;
+  };
 };
 
 export const configState = atom<Config | undefined>(undefined);

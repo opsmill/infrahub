@@ -13,7 +13,11 @@ from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub.message_bus.types import MessageTTL
 
 from .adapters.cache import InfrahubCache
+from .adapters.event import InfrahubEventService
+from .adapters.http import InfrahubHTTP
+from .adapters.http.httpx import HttpxAdapter
 from .adapters.message_bus import InfrahubMessageBus
+from .adapters.workflow import InfrahubWorkflow
 from .component import InfrahubComponent
 from .protocols import InfrahubLogger
 from .scheduler import InfrahubScheduler
@@ -26,15 +30,21 @@ class InfrahubServices:
         client: Optional[InfrahubClient] = None,
         database: Optional[InfrahubDatabase] = None,
         message_bus: Optional[InfrahubMessageBus] = None,
+        http: InfrahubHTTP | None = None,
+        workflow: Optional[InfrahubWorkflow] = None,
+        event: InfrahubEventService | None = None,
         log: Optional[InfrahubLogger] = None,
         component_type: Optional[ComponentType] = None,
-    ):
+    ) -> None:
         self.cache = cache or InfrahubCache()
         self._client = client
         self._database = database
         self.message_bus = message_bus or InfrahubMessageBus()
+        self.workflow = workflow or InfrahubWorkflow()
+        self.event = event or InfrahubEventService()
         self.log = log or get_logger()
         self.component_type = component_type or ComponentType.NONE
+        self.http = http or HttpxAdapter()
         self.scheduler = InfrahubScheduler()
         self.component = InfrahubComponent()
 
@@ -44,6 +54,9 @@ class InfrahubServices:
             raise InitializationError()
 
         return self._client
+
+    def set_client(self, client: InfrahubClient) -> None:
+        self._client = client
 
     @property
     def database(self) -> InfrahubDatabase:
@@ -90,10 +103,13 @@ class InfrahubServices:
 
     async def initialize(self) -> None:
         """Initialize the Services"""
-        await self.component.initialize(service=self)
         await self.message_bus.initialize(service=self)
         await self.cache.initialize(service=self)
+        await self.http.initialize(service=self)
+        await self.component.initialize(service=self)
         await self.scheduler.initialize(service=self)
+        await self.workflow.initialize(service=self)
+        await self.event.initialize(service=self)
 
     async def shutdown(self) -> None:
         """Initialize the Services"""

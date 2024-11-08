@@ -1,5 +1,5 @@
 from graphql import graphql
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -7,7 +7,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.initialization import prepare_graphql_params
 
 
 async def test_relationship_add(

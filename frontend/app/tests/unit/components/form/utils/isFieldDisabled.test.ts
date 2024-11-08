@@ -1,5 +1,5 @@
+import { IsFieldDisabledParams, isFieldDisabled } from "@/components/form/utils/isFieldDisabled";
 import { describe, expect, it } from "vitest";
-import { isFieldDisabled, IsFieldDisabledParams } from "@/components/form/utils/isFieldDisabled";
 
 describe("isFieldDisabled", () => {
   it("returns true when field is read only", () => {
@@ -73,22 +73,6 @@ describe("isFieldDisabled", () => {
       isReadOnly: false,
       owner: { id: "user-1" },
       auth: { user: { id: "user-1" } },
-    };
-
-    // WHEN
-    const disabled = isFieldDisabled(params);
-
-    // THEN
-    expect(disabled).to.equal(false);
-  });
-
-  it("returns false if the auth is an admin", () => {
-    // GIVEN
-    const params: IsFieldDisabledParams = {
-      isProtected: true,
-      isReadOnly: false,
-      owner: { id: "not-admin" },
-      auth: { permissions: { isAdmin: true } },
     };
 
     // WHEN

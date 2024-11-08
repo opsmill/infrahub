@@ -1,16 +1,15 @@
+import { Button } from "@/components/buttons/button-primitive";
+import CheckboxField from "@/components/form/fields/checkbox.field";
+import InputField from "@/components/form/fields/input.field";
+import { isMinLength, isRequired } from "@/components/form/utils/validation";
+import { Form, FormSubmit } from "@/components/ui/form";
 import { QSP } from "@/config/qsp";
 import { Branch } from "@/generated/graphql";
 import { BRANCH_CREATE } from "@/graphql/mutations/branches/createBranch";
-import { branchesState } from "@/state/atoms/branches.atom";
 import { useMutation } from "@/hooks/useQuery";
+import { branchesState } from "@/state/atoms/branches.atom";
 import { useAtom } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Form, FormSubmit } from "@/components/ui/form";
-import { Button } from "@/components/buttons/button-primitive";
-import React from "react";
-import InputField from "@/components/form/fields/input.field";
-import { isMinLength, isRequired } from "@/components/form/utils/validation";
-import CheckboxField from "@/components/form/fields/checkbox.field";
 
 type BranchFormData = {
   name: string;
@@ -21,9 +20,10 @@ type BranchFormData = {
 type BranchCreateFormProps = {
   onCancel?: () => void;
   onSuccess?: (branch: Branch) => void;
+  defaultBranchName?: string;
 };
 
-const BranchCreateForm = ({ onCancel, onSuccess }: BranchCreateFormProps) => {
+const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCreateFormProps) => {
   const [branches, setBranches] = useAtom(branchesState);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const [createBranch] = useMutation(BRANCH_CREATE);
@@ -56,10 +56,15 @@ const BranchCreateForm = ({ onCancel, onSuccess }: BranchCreateFormProps) => {
           sync_with_git: !!data.sync_with_git.value,
         };
         await handleSubmit(branchData);
-      }}>
+      }}
+    >
       <InputField
         name="name"
         label="New branch name"
+        defaultValue={
+          defaultBranchName ? { source: { type: "user" }, value: defaultBranchName } : undefined
+        }
+        autoFocus
         rules={{
           required: true,
           validate: {

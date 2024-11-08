@@ -3,6 +3,7 @@ from typing import Any
 from infrahub.core.constants import (
     DEFAULT_KIND_MAX_LENGTH,
     DEFAULT_KIND_MIN_LENGTH,
+    NAMESPACE_REGEX,
     AccountRole,
     AccountStatus,
     AccountType,
@@ -12,7 +13,10 @@ from infrahub.core.constants import (
     BranchSupportType,
     ContentType,
     GeneratorInstanceStatus,
+    GlobalPermissions,
     InfrahubKind,
+    PermissionAction,
+    PermissionDecision,
     ProposedChangeState,
     RelationshipDeleteBehavior,
     RepositoryInternalStatus,
@@ -53,6 +57,49 @@ core_profile_schema_definition: dict[str, Any] = {
     ],
 }
 
+# -----------------------------------------------
+# Menu Items
+# -----------------------------------------------
+generic_menu_item: dict[str, Any] = {
+    "name": "Menu",
+    "namespace": "Core",
+    "include_in_menu": False,
+    "description": "Element of the Menu",
+    "label": "Menu",
+    "hierarchical": True,
+    "human_friendly_id": ["namespace__value", "name__value"],
+    "display_labels": ["label__value"],
+    "generate_profile": False,
+    "attributes": [
+        {"name": "namespace", "kind": "Text", "regex": NAMESPACE_REGEX, "order_weight": 1000},
+        {"name": "name", "kind": "Text", "order_weight": 1000},
+        {"name": "label", "kind": "Text", "optional": True, "order_weight": 2000},
+        {"name": "kind", "kind": "Text", "optional": True, "order_weight": 2500},
+        {"name": "path", "kind": "Text", "optional": True, "order_weight": 2500},
+        {"name": "description", "kind": "Text", "optional": True, "order_weight": 3000},
+        {"name": "icon", "kind": "Text", "optional": True, "order_weight": 4000},
+        {"name": "protected", "kind": "Boolean", "default_value": False, "read_only": True, "order_weight": 5000},
+        {"name": "order_weight", "kind": "Number", "default_value": 2000, "order_weight": 6000},
+        {"name": "required_permissions", "kind": "List", "optional": True, "order_weight": 7000},
+        {
+            "name": "section",
+            "kind": "Text",
+            "enum": ["object", "internal"],
+            "default_value": "object",
+            "order_weight": 8000,
+        },
+    ],
+}
+
+menu_item: dict[str, Any] = {
+    "name": "MenuItem",
+    "namespace": "Core",
+    "include_in_menu": False,
+    "description": "Menu Item",
+    "label": "Menu Item",
+    "inherit_from": ["CoreMenu"],
+    "generate_profile": False,
+}
 
 core_models: dict[str, Any] = {
     "generics": [
@@ -877,7 +924,36 @@ core_models: dict[str, Any] = {
                 },
             ],
             "relationships": [
-                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"},
+                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"}
+            ],
+        },
+        {
+            "name": "BasePermission",
+            "namespace": "Core",
+            "description": "A permission grants right to an account",
+            "label": "Base permission",
+            "icon": "mdi:user-key",
+            "include_in_menu": False,
+            "generate_profile": False,
+            "attributes": [
+                {"name": "description", "kind": "Text", "optional": True},
+                {
+                    "name": "identifier",
+                    "kind": "Text",
+                    "read_only": True,
+                    "optional": True,
+                    "allow_override": AllowOverrideType.NONE,
+                },
+            ],
+            "relationships": [
+                {
+                    "name": "roles",
+                    "peer": InfrahubKind.ACCOUNTROLE,
+                    "optional": True,
+                    "identifier": "role__permissions",
+                    "cardinality": "many",
+                    "kind": "Attribute",
+                }
             ],
         },
         {
@@ -900,8 +976,10 @@ core_models: dict[str, Any] = {
                 {"name": "description", "kind": "Text", "optional": True, "order_weight": 3000},
             ],
         },
+        generic_menu_item,
     ],
     "nodes": [
+        menu_item,
         {
             "name": "StandardGroup",
             "namespace": "Core",
@@ -2078,6 +2156,125 @@ core_models: dict[str, Any] = {
                     "description": "The end range for the pool",
                     "order_weight": 6000,
                 },
+            ],
+        },
+        {
+            "name": "GlobalPermission",
+            "namespace": "Core",
+            "description": "A permission that grants global rights to perform actions in Infrahub",
+            "label": "Global permission",
+            "include_in_menu": False,
+            "order_by": ["action__value", "decision__value"],
+            "display_labels": ["action__value", "decision__value"],
+            "human_friendly_id": ["action__value", "decision__value"],
+            "generate_profile": False,
+            "inherit_from": [InfrahubKind.BASEPERMISSION],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "attributes": [
+                {
+                    "name": "action",
+                    "kind": "Dropdown",
+                    "choices": [{"name": permission.value} for permission in GlobalPermissions],
+                    "order_weight": 2000,
+                },
+                {
+                    "name": "decision",
+                    "kind": "Number",
+                    "enum": PermissionDecision.available_types(),
+                    "default_value": PermissionDecision.ALLOW_ALL.value,
+                    "order_weight": 3000,
+                    "description": "Decide to deny or allow the action at a global level",
+                },
+            ],
+        },
+        {
+            "name": "ObjectPermission",
+            "namespace": "Core",
+            "description": "A permission that grants rights to perform actions on objects",
+            "label": "Object permission",
+            "include_in_menu": False,
+            "order_by": ["namespace__value", "name__value", "action__value", "decision__value"],
+            "display_labels": ["namespace__value", "name__value", "action__value", "decision__value"],
+            "human_friendly_id": ["namespace__value", "name__value", "action__value", "decision__value"],
+            "uniqueness_constraints": [["namespace__value", "name__value", "action__value", "decision__value"]],
+            "generate_profile": False,
+            "inherit_from": [InfrahubKind.BASEPERMISSION],
+            "attributes": [
+                {"name": "namespace", "kind": "Text", "order_weight": 2000},
+                {"name": "name", "kind": "Text", "order_weight": 3000},
+                {
+                    "name": "action",
+                    "kind": "Text",
+                    "enum": PermissionAction.available_types(),
+                    "default_value": PermissionAction.ANY.value,
+                    "order_weight": 4000,
+                },
+                {
+                    "name": "decision",
+                    "kind": "Number",
+                    "enum": PermissionDecision.available_types(),
+                    "default_value": PermissionDecision.ALLOW_ALL.value,
+                    "order_weight": 5000,
+                    "description": (
+                        "Decide to deny or allow the action. If allowed, it can be configured for the default branch, any other branches or all "
+                        "branches"
+                    ),
+                },
+            ],
+        },
+        {
+            "name": "AccountRole",
+            "namespace": "Core",
+            "description": "A role defines a set of permissions to grant to a group of accounts",
+            "label": "Account role",
+            "icon": "mdi:user-badge",
+            "include_in_menu": False,
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "human_friendly_id": ["name__value"],
+            "generate_profile": False,
+            "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+            "relationships": [
+                {
+                    "name": "groups",
+                    "peer": InfrahubKind.ACCOUNTGROUP,
+                    "optional": True,
+                    "identifier": "role__accountgroups",
+                    "cardinality": "many",
+                    "kind": "Attribute",
+                },
+                {
+                    "name": "permissions",
+                    "peer": InfrahubKind.BASEPERMISSION,
+                    "optional": True,
+                    "identifier": "role__permissions",
+                    "cardinality": "many",
+                    "kind": "Attribute",
+                },
+            ],
+        },
+        {
+            "name": "AccountGroup",
+            "namespace": "Core",
+            "description": "A group of users to manage common permissions",
+            "label": "Account group",
+            "icon": "mdi:account-group",
+            "include_in_menu": False,
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "human_friendly_id": ["name__value"],
+            "generate_profile": False,
+            "inherit_from": [InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE, InfrahubKind.GENERICGROUP],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "relationships": [
+                {
+                    "name": "roles",
+                    "peer": InfrahubKind.ACCOUNTROLE,
+                    "optional": True,
+                    "identifier": "role__accountgroups",
+                    "cardinality": "many",
+                    "kind": "Attribute",
+                }
             ],
         },
     ],

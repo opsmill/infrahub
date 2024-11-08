@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class NodeInheritFromChecker(ConstraintCheckerInterface):
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]) -> None:
         self.db = db
         self.branch = branch
 

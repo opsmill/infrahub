@@ -2,8 +2,6 @@ import { RelationshipKind } from "@/screens/objects/types";
 
 export const DEFAULT_BRANCH_NAME = "main";
 
-export const ACCESS_TOKEN_KEY = "access_token";
-
 export const REFRESH_TOKEN_KEY = "refresh_token";
 
 export const NODE_OBJECT = "CoreNode";
@@ -14,7 +12,16 @@ export const TASK_TARGET = "CoreTaskTarget";
 
 export const DATA_CHECK_OBJECT = "CoreDataCheck";
 
-export const ACCOUNT_OBJECT = "CoreGenericAccount";
+export const ACCOUNT_GENERIC_OBJECT = "CoreGenericAccount";
+export const ACCOUNT_OBJECT = "CoreAccount";
+
+export const ACCOUNT_GROUP_OBJECT = "CoreAccountGroup";
+
+export const ACCOUNT_ROLE_OBJECT = "CoreAccountRole";
+
+export const ACCOUNT_PERMISSION_OBJECT = "CoreBasePermission";
+export const GLOBAL_PERMISSION_OBJECT = "CoreGlobalPermission";
+export const OBJECT_PERMISSION_OBJECT = "CoreObjectPermission";
 
 export const GENERIC_REPOSITORY_KIND = "CoreGenericRepository";
 
@@ -58,8 +65,6 @@ export const NUMBER_POOL_OBJECT = "CoreNumberPool";
 
 export const TASK_OBJECT = "InfrahubTask";
 
-export const WRITE_ROLES = ["admin", "read-write"];
-
 export const ADMIN_ROLES = ["admin"];
 
 export const MENU_EXCLUDELIST = [
@@ -72,7 +77,15 @@ export const MENU_EXCLUDELIST = [
   "InternalRefreshToken",
   "CoreThreadComment",
   "CoreArtifactCheck",
+  "CoreArtifactTarget",
+  "CoreCheck",
+  "CoreComment",
+  "CoreGeneratorCheck",
+  "CoreGeneratorValidator",
+  "CoreNode",
   "CoreStandardCheck",
+  "CoreTaskTarget",
+  "CoreThread",
   "CoreDataCheck",
   "CoreFileCheck",
   "CoreSchemaCheck",
@@ -80,6 +93,10 @@ export const MENU_EXCLUDELIST = [
   "CoreDataValidator",
   "CoreRepositoryValidator",
   "CoreArtifactValidator",
+  "CoreUserValidator",
+  "CoreValidator",
+  "LineageOwner",
+  "LineageSource",
 ];
 
 export const NODE_PATH_EXCLUDELIST = ["property"];

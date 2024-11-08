@@ -1,11 +1,11 @@
 import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
-import { iNodeSchema } from "@/state/atoms/schema.atom";
-import NoDataFound from "@/screens/errors/no-data-found";
-import { useMutation } from "@/hooks/useQuery";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
-import { pluralize } from "@/utils/string";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { ADD_RELATIONSHIP } from "@/graphql/mutations/relationships/addRelationship";
+import { useMutation } from "@/hooks/useQuery";
+import NoDataFound from "@/screens/errors/no-data-found";
+import { iNodeSchema } from "@/state/atoms/schema.atom";
+import { pluralize } from "@/utils/string";
+import { toast } from "react-toastify";
 
 interface AddGroupFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   objectId: string;

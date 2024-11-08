@@ -107,7 +107,8 @@ export const Button = forwardRef((props: ButtonProps, ref: any) => {
       className={classNames(DEFAULT_CLASS(className, buttonType), customClassName, className)}
       {...propsToPass}
       onClick={handleClick}
-      disabled={isLoading ? true : propsToPass.disabled}>
+      disabled={isLoading ? true : propsToPass.disabled}
+    >
       {isLoading && <LoadingScreen size={18} hideText className="px-4" />}
       {!isLoading && children}
     </button>

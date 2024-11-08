@@ -33,7 +33,6 @@ export INFRAHUB_DB_TYPE=neo4j # Accepts neo4j or memgraph
 export INFRAHUB_INITIAL_ADMIN_TOKEN="${ADMIN_TOKEN}" # Random string which can be generated using: openssl rand -hex 16
 export INFRAHUB_STORAGE_LOCAL_PATH="${HOME}/Development/infrahub-storage"
 export INFRAHUB_API_CORS_ALLOW_ORIGINS='["http://localhost:8080"]' # Allow frontend/backend communications without CORS issues
-export INFRAHUB_IMAGE_VER=local # Force building a local image instead of pulling one from the registry
 ```
 
 The exported environment variables are very important and must be set before moving to another step. Without these, you will likely face some errors or issues later.
@@ -59,7 +58,14 @@ cd infrahub # or the directory of your choice
 poetry install
 ```
 
-Now it's time to bring the required services up, and for that we have demo commands:
+Some tests require some services to work. By default, they are automatically started by pytest before tests run.
+It is also possible to disable the automatic startup of services and to rely on existing services using an environment variable:
+
+```bash
+export INFRAHUB_USE_TEST_CONTAINERS=false
+```
+
+The required services now need to be started using dedicated commands:
 
 ```shell
 invoke dev.destroy dev.deps
@@ -72,6 +78,7 @@ poetry run invoke dev.status
 ```
 
 This should yield a Docker output like the following:
+docs
 
 ```shell
 NAME                       IMAGE                      COMMAND                  SERVICE         CREATED       STATUS                 PORTS

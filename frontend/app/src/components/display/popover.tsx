@@ -75,7 +75,8 @@ const PopOverPanel = forwardRef<HTMLDivElement, PopOverProps>(
           maxHeightClass[maxHeight ?? POPOVER_SIZE.NONE]
         )}
         style={style}
-        static={staticProp}>
+        static={staticProp}
+      >
         {({ close }) => (
           <>
             {title && <div className="font-semibold text-center p-2">{title}</div>}

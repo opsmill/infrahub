@@ -33,7 +33,8 @@ describe("Branch list", () => {
           options={{
             searchStringToObject: queryString.parse,
             objectToSearchString: queryString.stringify,
-          }}>
+          }}
+        >
           <MockedProvider mocks={mocks} addTypename={false}>
             <Apollo />
           </MockedProvider>

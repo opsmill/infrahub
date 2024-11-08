@@ -15,7 +15,7 @@ test.describe("/proposed-changes", () => {
     test("should not be able to create a proposed changes", async ({ page }) => {
       await page.goto("/proposed-changes");
 
-      await expect(page.locator("header").getByText("Proposed changes")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Proposed changes" })).toBeVisible();
       await expect(page.getByTestId("add-proposed-changes-button")).toBeDisabled();
     });
   });
@@ -26,16 +26,16 @@ test.describe("/proposed-changes", () => {
     test("allow to create a proposed change", async ({ page }) => {
       await page.goto("/proposed-changes");
 
-      await expect(page.locator("header").getByText("Proposed changes")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Proposed changes" })).toBeVisible();
       await expect(page.getByTestId("add-proposed-changes-button")).toBeEnabled();
       await page.getByTestId("add-proposed-changes-button").click();
-      await expect(page.getByRole("main")).toContainText("Create a proposed change");
+      await expect(page.getByRole("heading", { name: "Create a proposed change" })).toBeVisible();
     });
 
     test("display validation errors when form is submitted with wrong value", async ({ page }) => {
       await page.goto("/proposed-changes/new");
 
-      await expect(page.getByRole("main")).toContainText("Create a proposed change");
+      await expect(page.getByRole("heading", { name: "Create a proposed change" })).toBeVisible();
       await page.getByRole("button", { name: "Create proposed change" }).click();
       await expect(page.getByLabel("Name *").locator("..")).toContainText("Required");
       await expect(page.getByText("Source Branch *").locator("..")).toContainText("Required");
@@ -71,8 +71,8 @@ test.describe("/proposed-changes", () => {
         await page.getByLabel("Name *").fill(pcName);
         await page.getByTestId("codemirror-editor").getByRole("textbox").fill("My description");
         await page.getByTestId("select-open-option-button").click();
-        await page.getByRole("option", { name: "Architecture Team" }).click();
-        await page.getByRole("option", { name: "Crm Synchronization" }).click();
+        await page.getByRole("option", { name: "Olivia Carter" }).click();
+        await page.getByRole("option", { name: "CRM Synchronization" }).click();
         await page.getByTestId("select-open-option-button").click();
 
         await page.getByRole("button", { name: "Create proposed change" }).click();
@@ -101,9 +101,9 @@ test.describe("/proposed-changes", () => {
           await page.getByRole("button", { name: "Save" }).click();
           await expect(page.getByText("ProposedChange updated")).toBeVisible();
 
-          await expect(page.locator("header").getByText(pcNameEdit)).toBeVisible();
+          await expect(page.getByRole("heading", { name: pcNameEdit, exact: true })).toBeVisible();
           await expect(page.getByTestId("pc-description")).toContainText("My description edit");
-          await expect(page.getByText("ReviewersAT")).toBeVisible();
+          await expect(page.getByText("ReviewersOC")).toBeVisible();
         });
       });
 
@@ -135,7 +135,9 @@ test.describe("/proposed-changes", () => {
         });
 
         await test.step("not able to edit proposed change", async () => {
+          await expect(page.getByRole("button", { name: "Approve" })).toBeDisabled();
           await expect(page.getByRole("button", { name: "Merge" })).toBeDisabled();
+          await expect(page.getByRole("button", { name: "Close" })).toBeDisabled();
           await expect(page.getByTestId("edit-button")).toBeDisabled();
         });
       });
@@ -145,8 +147,9 @@ test.describe("/proposed-changes", () => {
         await page
           .getByRole("link", { name: `${pcNameEdit} 0 ${pcBranchName}` })
           .locator("../..")
-          .getByTestId("delete-row-button")
+          .getByTestId("actions-row-button")
           .click();
+        await page.getByTestId("delete-row-button").click();
         await expect(page.getByTestId("modal-delete")).toBeVisible();
         await page.getByTestId("modal-delete-confirm").click();
         await expect(page.getByText(`Proposed changes '${pcNameEdit}' deleted`)).toBeVisible();

@@ -14,12 +14,12 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.enums import ConflictSelection as GraphQLConfictSelection
+from infrahub.graphql.initialization import prepare_graphql_params
 
 ADDED_ACTION = "ADDED"
 UPDATED_ACTION = "UPDATED"
@@ -215,7 +215,7 @@ async def test_diff_tree_no_changes(
     diff_branch: Branch,
 ):
     enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
-    from_time = datetime.fromisoformat(diff_branch.created_at)
+    from_time = datetime.fromisoformat(diff_branch.branched_from)
     to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
 
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
@@ -292,7 +292,8 @@ async def test_diff_tree_one_attr_change(
     after_change_datetime = datetime.now(tz=UTC)
 
     enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
-    enriched_conflict = enriched_diff.get_all_conflicts()[0]
+    enriched_conflict_map = enriched_diff.get_all_conflicts()
+    enriched_conflict = list(enriched_conflict_map.values())[0]
     await diff_repository.update_conflict_by_id(
         conflict_id=enriched_conflict.uuid, selection=ConflictSelection.DIFF_BRANCH
     )
@@ -312,7 +313,7 @@ async def test_diff_tree_one_attr_change(
         root_value=None,
         variable_values={"branch": diff_branch.name},
     )
-    from_time = datetime.fromisoformat(diff_branch.created_at)
+    from_time = datetime.fromisoformat(diff_branch.branched_from)
     to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
 
     assert result.errors is None
@@ -425,7 +426,7 @@ async def test_diff_tree_one_relationship_change(
         root_value=None,
         variable_values={"branch": diff_branch.name},
     )
-    from_time = datetime.fromisoformat(diff_branch.created_at)
+    from_time = datetime.fromisoformat(diff_branch.branched_from)
     to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
 
     assert result.errors is None
@@ -705,7 +706,7 @@ async def test_diff_tree_summary_no_changes(
     diff_branch: Branch,
 ):
     enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
-    from_time = datetime.fromisoformat(diff_branch.created_at)
+    from_time = datetime.fromisoformat(diff_branch.branched_from)
     to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
 
     params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)

@@ -18,7 +18,8 @@ export const CodeViewerLimiter = ({
           !showAllLines && "max-h-[200px]",
           className
         )}
-        {...props}>
+        {...props}
+      >
         {children}
 
         {!showAllLines && (
@@ -31,7 +32,8 @@ export const CodeViewerLimiter = ({
           variant="outline"
           size="xs"
           className="ml-24"
-          onClick={() => setShowAllLines(false)}>
+          onClick={() => setShowAllLines(false)}
+        >
           <Icon icon="mdi:chevron-up" className="text-sm mr-1" />
           Hide lines
         </Button>

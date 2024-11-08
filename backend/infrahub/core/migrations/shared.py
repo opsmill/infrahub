@@ -21,7 +21,7 @@ from .query import MigrationQuery  # noqa: TCH001
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.schema_manager import SchemaBranch
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
@@ -141,7 +141,7 @@ class InternalSchemaMigration(BaseModel):
 
     @staticmethod
     def get_internal_schema() -> SchemaBranch:
-        from infrahub.core.schema_manager import SchemaBranch  # pylint: disable=import-outside-toplevel
+        from infrahub.core.schema.schema_branch import SchemaBranch  # pylint: disable=import-outside-toplevel
 
         # load the internal schema from
         schema = SchemaRoot(**internal_schema)

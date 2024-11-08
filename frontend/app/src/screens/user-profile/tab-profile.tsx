@@ -1,25 +1,24 @@
-import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "@/config/constants";
-import ObjectItemDetails from "@/screens/object-item-details/object-item-details-paginated";
-import { parseJwt } from "@/utils/common";
-import { useAtomValue } from "jotai";
-import { genericsState } from "@/state/atoms/schema.atom";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
+import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
-import NoDataFound from "@/screens/errors/no-data-found";
-import { NetworkStatus } from "@apollo/client";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ErrorScreen from "@/screens/errors/error-screen";
-import { Card } from "@/components/ui/card";
-import Content from "../layout/content";
+import NoDataFound from "@/screens/errors/no-data-found";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import ObjectItemDetails from "@/screens/object-item-details/object-item-details-paginated";
+import { genericsState } from "@/state/atoms/schema.atom";
+import { parseJwt } from "@/utils/common";
+import { NetworkStatus } from "@apollo/client";
+import { useAtomValue } from "jotai";
 
 export default function TabProfile() {
   const nodes = useAtomValue(genericsState);
-  const schema = nodes.find(({ kind }) => kind === ACCOUNT_OBJECT);
+  const schema = nodes.find(({ kind }) => kind === ACCOUNT_GENERIC_OBJECT);
 
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
   const tokenData = parseJwt(localToken);
   const accountId = tokenData?.sub;
 
-  const { data, error, networkStatus } = useObjectDetails(schema, accountId);
+  const { data, error, networkStatus, permission } = useObjectDetails(schema, accountId);
 
   const objectDetailsData = schema && data && data[schema.kind!]?.edges[0]?.node;
 
@@ -40,10 +39,11 @@ export default function TabProfile() {
   }
 
   return (
-    <Content className="p-2">
-      <Card>
-        <ObjectItemDetails schema={schema} objectDetailsData={objectDetailsData} hideHeaders />
-      </Card>
-    </Content>
+    <ObjectItemDetails
+      schema={schema}
+      objectDetailsData={objectDetailsData}
+      permission={permission}
+      hideHeaders
+    />
   );
 }

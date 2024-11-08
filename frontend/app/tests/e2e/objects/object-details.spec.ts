@@ -60,9 +60,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
     });
 
     test("should display the select 2 steps correctly", async ({ page }) => {
-      await page.goto("/");
-      await page.getByRole("link", { name: "All Device(s)" }).click();
-      await expect(page.getByText("Just a moment")).not.toBeVisible();
+      await page.goto("/objects/InfraDevice");
       await page.getByRole("link", { name: "atl1-edge1" }).click();
       await page.getByText("Interfaces15").click();
       await page.getByRole("link", { name: "Backbone: Connected to jfk1-" }).click();

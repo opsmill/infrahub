@@ -45,7 +45,7 @@ class NodeAttributeUniquenessConstraint(NodeConstraintInterface):
                 at=at,
             )
 
-            if any((n for n in nodes if n.get_id() != node.id)):
+            if any(n for n in nodes if n.get_id() != node.id):
                 raise ValidationError(
                     {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
                 )

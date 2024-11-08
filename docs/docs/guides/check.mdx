@@ -293,7 +293,7 @@ We added 2 definitions to the `check_color_tags_name`:
 
 ### 2. Creating a `ColorTags` group
 
-Targeted checks use nodes in a group a their targets. Create the `ColorTags` group with this GraphQL query. Take node of the id of the group, we will need it in the next steps.
+Targeted checks use nodes in a group a their targets. Create the `ColorTags` group with this GraphQL query. Take node of the hfid of the group, we will use it in the next steps.
 
 ```graphql
 mutation {
@@ -301,6 +301,7 @@ mutation {
     ok
     object {
       id
+      hfid
     }
   }
 }
@@ -333,7 +334,7 @@ We can then use the id's of the tags to add them to the `ColorTags` group.
 mutation {
   CoreStandardGroupUpdate(
     data: {
-      id: "<id of the group>",
+      hfid: ["ColorTags"],
       members: [
         {id: "<id of tag1>"},
         {id: "<id of tag2>"},
@@ -415,12 +416,13 @@ mutation {
     ok
       object {
         id
+        hfid
       }
   }
 }
 ```
 
-Take note of the id as we will need it in the next step.
+Take note of the hfid as we will use it in the next step.
 
 ### 8. Add the tags with the number naming scheme to the group
 
@@ -434,7 +436,7 @@ Add the newly created tags to the `NumberTags` group with the following mutation
 mutation {
   CoreStandardGroupUpdate(
     data: {
-      id: "<id of the group>", 
+      hfid: ["NumberTags]",
       members: [
         {id: "<id of tag1>"}, 
         {id: "<id of tag2>"}

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.path import SchemaPath  # noqa: TCH001
@@ -11,11 +11,15 @@ from infrahub.message_bus import InfrahubMessage, InfrahubResponse, InfrahubResp
 ROUTING_KEY = "schema.validator.path"
 
 
-class SchemaValidatorPath(InfrahubMessage):
+class SchemaValidatorPathData(BaseModel):
     branch: Branch = Field(..., description="The name of the branch to target")
     constraint_name: str = Field(..., description="The name of the constraint to validate")
     node_schema: MainSchemaTypes = Field(..., description="Schema of Node or Generic to validate")
     schema_path: SchemaPath = Field(..., description="SchemaPath to the element of the schema to validate")
+
+
+class SchemaValidatorPath(SchemaValidatorPathData, InfrahubMessage):
+    pass
 
 
 class SchemaValidatorPathResponseData(InfrahubResponseData):

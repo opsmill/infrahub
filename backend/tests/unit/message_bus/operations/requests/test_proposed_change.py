@@ -128,8 +128,8 @@ async def test_get_proposed_change_schema_integrity_constraints(
     )
     non_generate_profile_constraints = [c for c in constraints if c.constraint_name != "node.generate_profile.update"]
     # should be updated/removed when ConstraintValidatorDeterminer is updated (#2592)
-    assert len(constraints) == 159
-    assert len(non_generate_profile_constraints) == 94
+    assert len(constraints) == 181
+    assert len(non_generate_profile_constraints) == 109
     dumped_constraints = [c.model_dump() for c in non_generate_profile_constraints]
     assert {
         "constraint_name": "relationship.optional.update",
@@ -289,7 +289,7 @@ async def test_schema_integrity(
 
     # Ignore creation of Task Report response
     httpx_mock.add_response(method="POST", url="http://mock/graphql/main", json={"data": {}})
-    await proposed_change.schema_integrity(message=schema_integrity_01, service=service_all)
+    await proposed_change.schema_integrity.fn(message=schema_integrity_01, service=service_all)
 
     checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
     assert len(checks) == 1

@@ -67,7 +67,8 @@ export const PieChart = (props: tPieChart) => {
           startAngle={90}
           endAngle={-270}
           // label={renderCustomizedLabel}
-          labelLine={false}>
+          labelLine={false}
+        >
           {data.map((entry, index) => (
             <Cell key={index} className={entry.className ?? "fill-gray-200"} />
           ))}

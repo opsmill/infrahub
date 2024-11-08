@@ -1,7 +1,12 @@
 export const configMocks = {
   main: {
-    default_branch: "main",
+    docs_index_path: "/opt/infrahub/docs/build/search-index.json",
     internal_address: "http://infrahub-server:8000",
+    allow_anonymous_access: true,
+    telemetry_optout: false,
+    telemetry_endpoint: "https://telemetry.opsmill.cloud/infrahub",
+    telemetry_interval: 86400,
+    permission_backends: ["infrahub.permissions.LocalPermissionBackend"],
   },
   logging: {
     remote: {
@@ -18,6 +23,10 @@ export const configMocks = {
   },
   experimental_features: {
     pull_request: false,
-    paginated: true,
+    graphql_enums: false,
+  },
+  sso: {
+    providers: [],
+    enabled: false,
   },
 };

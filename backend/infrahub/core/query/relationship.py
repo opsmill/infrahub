@@ -5,7 +5,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generator, Optional, Union
 
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.constants import RelationshipDirection, RelationshipStatus
 from infrahub.core.query import Query, QueryType
@@ -37,7 +37,7 @@ class RelData:
     status: str
 
     @classmethod
-    def from_db(cls, obj: Neo4jRelationship):
+    def from_db(cls, obj: Neo4jRelationship) -> RelData:
         return cls(db_id=obj.element_id, branch=obj.get("branch"), type=obj.type, status=obj.get("status"))
 
 
@@ -128,15 +128,15 @@ class FullRelationshipIdentifier:
 class RelationshipQuery(Query):
     def __init__(
         self,
-        rel: Union[type[Relationship], Relationship] = None,
+        rel: Union[type[Relationship], Relationship] | None = None,
         rel_type: Optional[str] = None,
-        source: Node = None,
-        source_id: UUID = None,
-        destination: Node = None,
-        destination_id: UUID = None,
-        schema: RelationshipSchema = None,
-        branch: Branch = None,
-        at: Union[Timestamp, str] = None,
+        source: Node | None = None,
+        source_id: UUID | None = None,
+        destination: Node | None = None,
+        destination_id: UUID | None = None,
+        schema: RelationshipSchema | None = None,
+        branch: Branch | None = None,
+        at: Union[Timestamp, str] | None = None,
         **kwargs,
     ):
         if not source and not source_id:
@@ -196,7 +196,7 @@ class RelationshipCreateQuery(RelationshipQuery):
     def __init__(
         self,
         destination: Node = None,
-        destination_id: UUID = None,
+        destination_id: UUID | None = None,
         **kwargs,
     ):
         if not destination and not destination_id:
@@ -204,7 +204,7 @@ class RelationshipCreateQuery(RelationshipQuery):
 
         super().__init__(destination=destination, destination_id=destination_id, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
@@ -249,22 +249,22 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.return_labels = ["s", "d", "rl", "r1", "r2", "r3", "r4"]
         self.query_add_all_node_property_create()
 
-    def query_add_all_node_property_match(self):
+    def query_add_all_node_property_match(self) -> None:
         for prop_name in self.rel._node_properties:
             if hasattr(self.rel, f"{prop_name}_id") and getattr(self.rel, f"{prop_name}_id"):
                 self.query_add_node_property_match(name=prop_name)
 
-    def query_add_node_property_match(self, name: str):
+    def query_add_node_property_match(self, name: str) -> None:
         self.add_to_query("MATCH (%s { uuid: $prop_%s_id })" % (name, name))
         self.params[f"prop_{name}_id"] = getattr(self.rel, f"{name}_id")
         self.return_labels.append(name)
 
-    def query_add_all_node_property_create(self):
+    def query_add_all_node_property_create(self) -> None:
         for prop_name in self.rel._node_properties:
             if hasattr(self.rel, f"{prop_name}_id") and getattr(self.rel, f"{prop_name}_id"):
                 self.query_add_node_property_create(name=prop_name)
 
-    def query_add_node_property_create(self, name: str):
+    def query_add_node_property_create(self, name: str) -> None:
         query = """
         CREATE (rl)-[:HAS_%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(%s)
         """ % (
@@ -290,7 +290,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["rel_node_id"] = self.data.rel_node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -307,32 +307,32 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         self.query_add_all_flag_property_create()
         self.query_add_all_node_property_create()
 
-    def query_add_all_flag_property_merge(self):
+    def query_add_all_flag_property_merge(self) -> None:
         for prop_name in self.rel._flag_properties:
             if prop_name in self.properties_to_update:
                 self.query_add_flag_property_merge(name=prop_name)
 
-    def query_add_flag_property_merge(self, name: str):
+    def query_add_flag_property_merge(self, name: str) -> None:
         self.add_to_query("MERGE (prop_%s:Boolean { value: $prop_%s })" % (name, name))
         self.params[f"prop_{name}"] = getattr(self.rel, name)
         self.return_labels.append(f"prop_{name}")
 
-    def query_add_all_node_property_merge(self):
+    def query_add_all_node_property_merge(self) -> None:
         for prop_name in self.rel._node_properties:
             if prop_name in self.properties_to_update:
                 self.query_add_node_property_merge(name=prop_name)
 
-    def query_add_node_property_merge(self, name: str):
+    def query_add_node_property_merge(self, name: str) -> None:
         self.add_to_query("MERGE (prop_%s:Node { uuid: $prop_%s })" % (name, name))
         self.params[f"prop_{name}"] = getattr(self.rel, f"{name}_id")
         self.return_labels.append(f"prop_{name}")
 
-    def query_add_all_flag_property_create(self):
+    def query_add_all_flag_property_create(self) -> None:
         for prop_name in self.rel._flag_properties:
             if prop_name in self.properties_to_update:
                 self.query_add_flag_property_create(name=prop_name)
 
-    def query_add_flag_property_create(self, name: str):
+    def query_add_flag_property_create(self, name: str) -> None:
         query = """
         CREATE (rl)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(prop_%s)
         """ % (
@@ -341,12 +341,12 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         )
         self.add_to_query(query)
 
-    def query_add_all_node_property_create(self):
+    def query_add_all_node_property_create(self) -> None:
         for prop_name in self.rel._node_properties:
             if prop_name in self.properties_to_update:
                 self.query_add_node_property_create(name=prop_name)
 
-    def query_add_node_property_create(self, name: str):
+    def query_add_node_property_create(self, name: str) -> None:
         query = """
         CREATE (rl)-[:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(prop_%s)
         """ % (
@@ -369,7 +369,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         self.data = data
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.data.peer_id
         self.params["rel_node_id"] = self.data.rel_node_id
@@ -434,7 +434,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         if inspect.isclass(self.rel):
             raise TypeError("An instance of Relationship must be provided to RelationshipDeleteQuery")
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["rel_id"] = self.rel.id
@@ -533,7 +533,7 @@ class RelationshipGetPeerQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):  # pylint: disable=too-many-statements
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # pylint: disable=too-many-statements
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
@@ -701,7 +701,7 @@ class RelationshipGetPeerQuery(Query):
                 rel_node_id=result.get("rl").get("uuid"),
                 updated_at=rels[0]["from"],
                 rels=[RelData.from_db(rel) for rel in rels],
-                branch=self.branch,
+                branch=self.branch.name,
                 properties={},
             )
 
@@ -733,7 +733,7 @@ class RelationshipGetQuery(RelationshipQuery):
 
     type: QueryType = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
@@ -860,7 +860,7 @@ class RelationshipCountPerNodeQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 

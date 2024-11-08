@@ -1,8 +1,9 @@
 import os
 
-from infrahub_sdk import InfrahubNode
 from infrahub_sdk.exceptions import ModuleImportError
+from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
+from prefect import flow
 
 from infrahub import lock
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind, ValidatorConclusion
@@ -16,7 +17,8 @@ from infrahub.tasks.check import set_check_status
 # pylint: disable=duplicate-code
 
 
-async def run(message: messages.CheckGeneratorRun, service: InfrahubServices):
+@flow(name="git-repository-check-generator-run")
+async def run(message: messages.CheckGeneratorRun, service: InfrahubServices) -> None:
     repository = await get_initialized_repo(
         repository_id=message.repository_id,
         name=message.repository_name,

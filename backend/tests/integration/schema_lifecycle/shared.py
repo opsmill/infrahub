@@ -1,3 +1,4 @@
+import copy
 from typing import Any, Dict
 
 import pytest
@@ -34,13 +35,13 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         """Rename the attribute name to firstname and add a new lastname attribute."""
         assert schema_person_base["attributes"][0]["name"] == "name"
         schema_person_base["attributes"][0]["name"] = "firstname"
-        schema_person_base["attributes"].append({"name": "lastname", "kind": "Text"})
+        schema_person_base["attributes"].append({"name": "lastname", "kind": "Text", "optional": True})
         return schema_person_base
 
     @pytest.fixture(scope="class")
     def schema_person_03_no_height(self, schema_person_02_first_last) -> Dict[str, Any]:
         """Remove the attribute height."""
-        person = schema_person_02_first_last
+        person = copy.deepcopy(schema_person_02_first_last)
         assert person["attributes"][2]["name"] == "height"
         person["attributes"][2]["state"] = "absent"
         return person

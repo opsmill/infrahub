@@ -1,0 +1,74 @@
+---
+title: Permissions and Roles
+---
+
+# Roles and permissions
+
+Roles and permissions are essential for controlling user access and behavior in **Infrahub**. Within the platform, they **offer exact control** over what users can see, modify, or control.
+
+The permissions system is split into two main types: **Global** and **Object-specific**.  These permissions aid in defining what users are permitted to do on particular system objects or throughout the system.
+
+More information on users authentication, can be found in the [User management and authentication Topic](/topics/auth).
+
+## Overview
+
+Permissions fall into two categories: **Global** and **Object-specific**, while roles act as **convenient bundles** of permissions. To simplify things further, **Account Groups** let you manage permissions for multiple users at once.
+
+- **GlobalPermissions** gives users system-wide rights to perform specific actions. **[See full list of available global permissions](/reference/permissions.mdx#global-permissions).**
+- **ObjectPermissions** are tied to individual objects within Infrahub and control what actions users can take on those objects. **[See full list of available object permissions](/reference/permissions.mdx#object-permissions).**
+- **AccountRoles** are groups of permissions you can assign to accounts.
+- **AccountGroups** allow you to manage permissions for multiple users all at once.
+
+Permissions are allocated to users through groups and roles.
+For more detailed information on this allocation, you can check [Users permissions management Section](/topics/auth.mdx#users-permissions-management).
+
+## Types of permissions
+
+### Global permissions
+
+With a **GlobalPermission**, a user may act on the entire system, not just on particular objects. **A person with the authority to handle accounts, for instance, can do so globally.**
+**The action is blocked** if the required permission is not granted.
+
+:::info Example:
+
+Take the `global:manage_accounts:allow_all` permission:
+
+- **Action**: `manage_accounts`
+- **Decision**: `Allow`
+
+This gives the user the ability to manage all user accounts.
+
+:::
+
+### Object permissions
+
+**ObjectPermission** specifies actions, that apply to a certain kind of object. Actions like create, update, remove, and view are supported. Depending on the kind of object or branch, object permissions may be granted or refused.
+
+**Key features**:
+
+- **Supports wildcards (`*`)** to apply permissions across multiple object types.
+- **Can define different permissions per branch types (default or non-default branches).**
+- **Grants or denies actions based on the assigned permission.**
+
+:::info Example:
+
+Here are some examples of object permissions and their descriptions:
+
+| Identifier                                    | Object Type   | Action  | Decision    | Description                                                                                 |
+|-----------------------------------------------|---------------|---------|-------------|---------------------------------------------------------------------------------------------|
+| `object:*:*:create:allow_other`               | `*` (all types)| `any`   | `allow_other`| Allows creating any object, but only on non-default branches. |
+| `object:*:*:view:allow_all`                   | `*` (all types)| `view`  | `allow_all` | Allows viewing any object, anywhere, across both default and non-default branches. |
+| `object:Builtin:Tag:update:deny`              | `BuiltinTag`   | `update`| `deny`      | Denies the ability to update any object of type BuiltinTag, across all branches. |
+| `object:*:Generic:view:allow_all`             | `*Generic`     | `view`  | `allow_all` | Allows viewing all objects that contain 'Generic' in their type (example: LocationGeneric, DeviceGeneric) in all namespaces, across all branches. |
+
+:::
+
+## Future developments
+
+The authorization structure for Infrahub is constantly changing. Here are some exciting upcoming features:
+
+- **Attribute-based permissions**: Grant permissions at the attribute level within objects.
+- **Metadata-based permissions**: Use metadata to specify access controls.
+- **Group-based permissions**: Deepen the integration of group memberships for permission assignments.
+
+These new features will make Infrahub's permission system even more powerful and flexible in the future.

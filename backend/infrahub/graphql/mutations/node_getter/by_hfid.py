@@ -13,7 +13,7 @@ from .interface import MutationNodeGetterInterface
 
 
 class MutationNodeGetterByHfid(MutationNodeGetterInterface):
-    def __init__(self, db: InfrahubDatabase, node_manager: NodeManager):
+    def __init__(self, db: InfrahubDatabase, node_manager: NodeManager) -> None:
         self.db = db
         self.node_manager = node_manager
 

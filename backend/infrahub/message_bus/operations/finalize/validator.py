@@ -1,3 +1,5 @@
+from prefect import flow
+
 from infrahub import config
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
@@ -8,6 +10,7 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
+@flow(name="validator-finalize-execution")
 async def execution(message: messages.FinalizeValidatorExecution, service: InfrahubServices) -> None:
     """Monitors the status of checks associated with a validator and finalizes the conclusion of the validator
 

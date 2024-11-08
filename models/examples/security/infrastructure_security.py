@@ -2,7 +2,11 @@ import logging
 import random
 from ipaddress import IPv4Interface, IPv4Network
 
-from infrahub_sdk import InfrahubClient, InfrahubNode, NodeStore
+from infrahub_sdk import InfrahubClient
+from infrahub_sdk.node import InfrahubNode
+from infrahub_sdk.store import NodeStore
+
+from infrahub_sdk.protocols import CoreAccount
 
 # flake8: noqa
 # pylint: skip-file
@@ -179,8 +183,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     async for node, _ in batch.execute():
         prepare_log(node, log)
 
-    account_security = store.get("security-builder")
-    store.get("John Doe")
+    account_security = store.get(key="security-builder", kind=CoreAccount, raise_when_missing=True)
 
     # ------------------------------------------
     # Create Status, Role & Tags

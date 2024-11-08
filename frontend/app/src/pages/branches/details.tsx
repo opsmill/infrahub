@@ -4,30 +4,17 @@ import { QSP } from "@/config/qsp";
 import { ArtifactsDiff } from "@/screens/diff/artifact-diff/artifacts-diff";
 import { NodeDiff } from "@/screens/diff/node-diff";
 
+import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
+import { useTitle } from "@/hooks/useTitle";
+import { BranchDetails } from "@/screens/branches/branch-details";
 import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
 import Content from "@/screens/layout/content";
-import { constructPath } from "@/utils/fetch";
-import { Icon } from "@iconify-icon/react";
-import { BranchDetails } from "@/screens/branches/branch-details";
-import { Link, Navigate, useParams } from "react-router-dom";
-import { StringParam, useQueryParam } from "use-query-params";
-import { useTitle } from "@/hooks/useTitle";
-import { Button } from "@/components/buttons/button-primitive";
-import React from "react";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-} from "@/components/breadcrumb/breadcrumb";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useAtomValue } from "jotai";
 import { branchesState } from "@/state/atoms/branches.atom";
+import { constructPath } from "@/utils/fetch";
+import { useAtomValue } from "jotai";
+import { Navigate, useParams } from "react-router-dom";
+import { StringParam, useQueryParam } from "use-query-params";
 
 export const BRANCH_TABS = {
   DETAILS: "details",
@@ -36,59 +23,42 @@ export const BRANCH_TABS = {
 
 export function BranchDetailsPage() {
   const { "*": branchName } = useParams();
+  const branches = useAtomValue(branchesState);
   useTitle(`${branchName} details`);
 
   if (!branchName) {
     return <Navigate to={constructPath("/branches")} />;
   }
 
+  if (branches.length === 0) {
+    return (
+      <Content.Card className="flex justify-center items-center p-5 min-h-[400px]">
+        <Spinner />
+      </Content.Card>
+    );
+  }
+
+  const branch = branches.find((branch) => branch.name === branchName);
+
+  if (!branch) {
+    return <Navigate to={constructPath("/branches")} />;
+  }
+
   return (
-    <Content>
-      <Content.Title
-        title={
-          <Breadcrumb className="text-base">
-            <BreadcrumbLink to={constructPath("/branches")}>Branches</BreadcrumbLink>
-
-            <BreadcrumbSeparator />
-
-            <BreadcrumbItem>
-              <BranchSelectorBreadcrumb branchName={branchName} />
-            </BreadcrumbItem>
-          </Breadcrumb>
-        }
-      />
+    <Content.Card>
+      <header className="p-5 font-bold flex gap-2 items-center">
+        <h1 className="text-xl">{branch.name}</h1>
+        {branch.is_default && <Badge variant="blue-outline">default</Badge>}
+      </header>
 
       <BranchTab />
 
-      <BranchContent branchName={branchName} />
-    </Content>
+      <Content.CardContent>
+        <BranchContent branchName={branchName} />
+      </Content.CardContent>
+    </Content.Card>
   );
 }
-
-const BranchSelectorBreadcrumb = ({ branchName }: { branchName: string }) => {
-  const branches = useAtomValue(branchesState);
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="inline-flex gap-2 justify-between -ml-2">
-          {branchName}
-          <Icon icon="mdi:unfold-more-horizontal" className="text-gray-300" />
-        </Button>
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent>
-        {branches.map((branch) => (
-          <DropdownMenuItem key={branch.name} asChild>
-            <Link to={constructPath(`/branches/${branch.name}`, undefined, [QSP.BRANCH_TAB])}>
-              {branch.name}
-            </Link>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
 
 const BranchTab = () => {
   const tabs = [

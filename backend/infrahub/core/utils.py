@@ -11,6 +11,7 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from neo4j import Record
     from neo4j.graph import Node as Neo4jNode
 
     from infrahub.database import InfrahubDatabase
@@ -25,7 +26,7 @@ async def add_relationship(
     branch_level: Optional[int] = None,
     at: Optional[Timestamp] = None,
     status=RelationshipStatus.ACTIVE,
-):
+) -> Record | None:
     create_rel_query = """
     MATCH (s) WHERE %(id_func)s(s) = $src_node_id
     MATCH (d) WHERE %(id_func)s(d) = $dst_node_id
@@ -51,7 +52,7 @@ async def add_relationship(
     return results[0][0]
 
 
-async def delete_all_relationships_for_branch(branch_name: str, db: InfrahubDatabase):
+async def delete_all_relationships_for_branch(branch_name: str, db: InfrahubDatabase) -> None:
     query = """
     MATCH ()-[r { branch: $branch_name }]-() DELETE r
     """
@@ -60,7 +61,7 @@ async def delete_all_relationships_for_branch(branch_name: str, db: InfrahubData
     await db.execute_query(query=query, params=params, name="delete_all_relationships_for_branch")
 
 
-async def update_relationships_to(ids: list[str], db: InfrahubDatabase, to: Timestamp = None):
+async def update_relationships_to(ids: list[str], db: InfrahubDatabase, to: Timestamp = None) -> list[Record] | None:
     """Update the "to" field on one or multiple relationships."""
     if not ids:
         return None
@@ -86,7 +87,7 @@ async def get_paths_between_nodes(
     relationships: Optional[list[str]] = None,
     max_length: Optional[int] = None,
     print_query=False,
-):
+) -> list[Record]:
     """Return all paths between 2 nodes."""
 
     length_limit = f"..{max_length}" if max_length else ""
@@ -131,12 +132,10 @@ async def count_relationships(db: InfrahubDatabase, label: Optional[str] = None)
 async def get_nodes(db: InfrahubDatabase, label: str) -> list[Neo4jNode]:
     """Return theall nodes of a given label in the database."""
     query = """
-    MATCH (node)
-    WHERE $label IN LABELS(node)
+    MATCH (node:%(node_kind)s)
     RETURN node
-    """
-    params: dict = {"label": label}
-    results = await db.execute_query(query=query, params=params, name="get_nodes")
+    """ % {"node_kind": label}
+    results = await db.execute_query(query=query, name="get_nodes")
     return [result[0] for result in results]
 
 
@@ -154,7 +153,7 @@ async def count_nodes(db: InfrahubDatabase, label: Optional[str] = None) -> int:
     return result[0][0]
 
 
-async def delete_all_nodes(db: InfrahubDatabase):
+async def delete_all_nodes(db: InfrahubDatabase) -> list[Record]:
     query = """
     MATCH (n)
     DETACH DELETE n
@@ -210,7 +209,7 @@ class _NewClass:
 _all_vars = set(dir(_OldClass) + dir(_NewClass))
 
 
-def props(x):
+def props(x) -> dict[str, Any]:
     return {key: vars(x).get(key, getattr(x, key)) for key in dir(x) if key not in _all_vars}
 
 
@@ -254,5 +253,5 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
                 super_class.__init_subclass_with_meta__(**options)
 
     @classmethod
-    def __init_subclass_with_meta__(cls, **meta_options):
+    def __init_subclass_with_meta__(cls, **meta_options) -> None:
         """This method just terminates the super() chain"""

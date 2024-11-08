@@ -22,14 +22,12 @@ class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.node_schema.kind
         self.params["attr_name"] = self.attribute_schema.name
         self.params["min_length"] = self.attribute_schema.min_length
         self.params["max_length"] = self.attribute_schema.max_length
 
         query = """
-        MATCH p = (n:Node)
-        WHERE $node_kind IN LABELS(n)
+        MATCH (n:%(node_kind)s)
         CALL {
             WITH n
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
@@ -48,7 +46,7 @@ class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             (toInteger($min_length) IS NOT NULL AND size(attribute_value) < toInteger($min_length))
             OR (toInteger($max_length) IS NOT NULL AND size(attribute_value) > toInteger($max_length))
         )
-        """ % {"branch_filter": branch_filter}
+        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "value_relationship", "attribute_value"]

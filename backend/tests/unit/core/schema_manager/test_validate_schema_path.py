@@ -7,7 +7,7 @@ from infrahub.core.constants import (
 from infrahub.core.schema import (
     SchemaRoot,
 )
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 

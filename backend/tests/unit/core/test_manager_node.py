@@ -1,5 +1,5 @@
 import pytest
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
@@ -8,7 +8,7 @@ from infrahub.core.node import Node
 from infrahub.core.query.node import NodeToProcess
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError

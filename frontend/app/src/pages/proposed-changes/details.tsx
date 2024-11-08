@@ -8,26 +8,26 @@ import { ArtifactsDiff } from "@/screens/diff/artifact-diff/artifacts-diff";
 import { Checks } from "@/screens/diff/checks/checks";
 import { NodeDiff } from "@/screens/diff/node-diff";
 
+import { ObjectHelpButton } from "@/components/menu/object-help-button";
+import { Badge } from "@/components/ui/badge";
+import { CoreProposedChange } from "@/generated/graphql";
+import { useSchema } from "@/hooks/useSchema";
 import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
 import ErrorScreen from "@/screens/errors/error-screen";
+import NoDataFound from "@/screens/errors/no-data-found";
 import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { ProposedChangesChecksTab } from "@/screens/proposed-changes/checks-tab";
+import { ProposedChangeDetails } from "@/screens/proposed-changes/proposed-change-details";
 import { TaskItemDetails } from "@/screens/tasks/task-item-details";
 import { TaskItems } from "@/screens/tasks/task-items";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { constructPath } from "@/utils/fetch";
+import { getObjectDetailsUrl } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { ProposedChangesChecksTab } from "@/screens/proposed-changes/checks-tab";
-import { ProposedChangeDetails } from "@/screens/proposed-changes/proposed-change-details";
-import { CoreProposedChange } from "@/generated/graphql";
-import { Badge } from "@/components/ui/badge";
-import { getObjectDetailsUrl } from "@/utils/objects";
-import { ObjectHelpButton } from "@/components/menu/object-help-button";
-import { useSchema } from "@/hooks/useSchema";
-import NoDataFound from "@/screens/errors/no-data-found";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
@@ -86,7 +86,8 @@ const ProposedChangeDetailsContent = ({ proposedChangeData }: ProposedChangesDet
                 { name: QSP.PROPOSED_CHANGES_TAB, value: TASK_TAB },
                 { name: QSP.TASK_ID, exclude: true },
               ])}
-              className="flex items-center p-2 ">
+              className="flex items-center p-2 "
+            >
               <Icon icon={"mdi:chevron-left"} />
               All tasks
             </Link>
@@ -153,49 +154,33 @@ export function Component() {
 
   if (error || !proposedChangesData) {
     return (
-      <Content>
-        <Content.Title
-          title={
-            <div className="flex items-center gap-2">
-              <Link
-                className="no-underline hover:underline"
-                to={constructPath("/proposed-changes")}>
-                Proposed changes
-              </Link>
-            </div>
-          }
+      <Content.Card>
+        <Content.CardTitle
+          title="Proposed changes"
           reload={() => client.reFetchObservableQueries()}
-          isReloadLoading={loading}>
-          <ObjectHelpButton
-            documentationUrl={schema?.documentation}
-            kind={PROPOSED_CHANGES_OBJECT}
-            className="ml-auto"
-          />
-        </Content.Title>
+          isReloadLoading={loading}
+          end={
+            <ObjectHelpButton
+              documentationUrl={schema?.documentation}
+              kind={PROPOSED_CHANGES_OBJECT}
+              className="ml-auto"
+            />
+          }
+        />
 
         {error && (
           <ErrorScreen message="Something went wrong when fetching the proposed changes details." />
         )}
 
         {!proposedChangesData && <NoDataFound message="No proposed changes found." />}
-      </Content>
+      </Content.Card>
     );
   }
 
   return (
-    <Content>
-      <Content.Title
-        title={
-          <div className="flex items-center gap-2">
-            <Link className="no-underline hover:underline" to={constructPath("/proposed-changes")}>
-              Proposed changes
-            </Link>
-
-            <Icon icon="mdi:chevron-right" />
-
-            <span>{proposedChangesData.display_label}</span>
-          </div>
-        }
+    <Content.Card className="min-h-[calc(100%-1rem)] flex flex-col">
+      <Content.CardTitle
+        title={proposedChangesData.display_label}
         description={
           <div className="inline-flex gap-1 text-xs items-center">
             <Link
@@ -205,7 +190,8 @@ export function Component() {
                   proposedChangesData?.created_by?.node?.__typename
                 )
               )}
-              className="font-semibold text-custom-blue-green">
+              className="font-semibold text-custom-blue-green"
+            >
               {proposedChangesData?.created_by?.node?.display_label}
             </Link>
             wants to merge
@@ -225,17 +211,19 @@ export function Component() {
           </div>
         }
         reload={() => client.reFetchObservableQueries()}
-        isReloadLoading={loading}>
-        <ObjectHelpButton
-          documentationUrl={schema?.documentation}
-          kind={PROPOSED_CHANGES_OBJECT}
-          className="ml-auto"
-        />
-      </Content.Title>
+        isReloadLoading={loading}
+        end={
+          <ObjectHelpButton
+            documentationUrl={schema?.documentation}
+            kind={PROPOSED_CHANGES_OBJECT}
+            className="ml-auto"
+          />
+        }
+      />
 
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
       <ProposedChangeDetailsContent proposedChangeData={proposedChangesData} />
-    </Content>
+    </Content.Card>
   );
 }

@@ -1,9 +1,12 @@
+from prefect import flow
+
 from infrahub.core.constants import InfrahubKind
 from infrahub.message_bus import messages
 from infrahub.message_bus.types import ProposedChangeGeneratorDefinition
 from infrahub.services import InfrahubServices
 
 
+@flow(name="generator-definition-run")
 async def run(message: messages.TriggerGeneratorDefinitionRun, service: InfrahubServices) -> None:
     generators = await service.client.filters(
         kind=InfrahubKind.GENERATORDEFINITION, prefetch_relationships=True, populate_store=True, branch=message.branch

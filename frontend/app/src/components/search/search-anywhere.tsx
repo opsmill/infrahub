@@ -1,57 +1,47 @@
+import { Button, ButtonProps } from "@/components/buttons/button-primitive";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Kbd from "@/components/ui/kbd";
+import { CollapsedButton } from "@/screens/layout/menu-navigation/components/collapsed-button";
 import { classNames } from "@/utils/common";
-import { Combobox, Dialog, Transition } from "@headlessui/react";
+import { Combobox, Dialog } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import {
-  ChangeEventHandler,
-  Fragment,
-  MouseEventHandler,
-  ReactNode,
-  forwardRef,
-  useEffect,
-  useState,
-} from "react";
+import { ReactNode, forwardRef, useEffect, useState } from "react";
 import { Link, LinkProps, useNavigate } from "react-router-dom";
 import { SearchActions } from "./search-actions";
 import { SearchDocs } from "./search-docs";
 import { SearchNodes } from "./search-nodes";
-import { Card } from "@/components/ui/card";
 
-type SearchInputProps = {
-  className?: string;
-  value?: string;
-  onChange?: ChangeEventHandler<HTMLInputElement>;
-  onClick?: MouseEventHandler<HTMLDivElement>;
-};
-
-const SearchTrigger = ({ value, onChange, onClick, className = "" }: SearchInputProps) => {
+const SearchAnywhereTriggerButton = ({ className, ...props }: ButtonProps) => {
   return (
-    <div className={classNames("relative", className)} onClick={onClick}>
-      <Icon
-        icon="mdi:magnify"
-        className="text-lg text-custom-blue-10 absolute inset-y-0 left-0 pl-2 flex items-center"
-        aria-hidden="true"
-      />
-
-      <Input
-        placeholder="Search anywhere"
-        onChange={onChange}
-        value={value}
-        className="w-full px-8 py-2"
-      />
-
-      <div className="absolute inset-y-0 right-2 flex items-center">
-        <Kbd keys="command">K</Kbd>
+    <Button
+      variant="ghost"
+      className={classNames(
+        "px-3 py-2 gap-3 bg-neutral-100 shadow-none text-neutral-800 justify-between",
+        className
+      )}
+      data-testid="search-anywhere-trigger"
+      {...props}
+    >
+      <div className="flex items-center gap-2 overflow-hidden">
+        <Icon icon="mdi:magnify" aria-hidden="true" className="text-xl" />
+        <span className="text-neutral-700 text-sm group-data-[collapsed=true]/sidebar:hidden transition-all truncate">
+          Search
+        </span>
       </div>
-    </div>
+
+      <Kbd keys="command" className="group-data-[collapsed=true]/sidebar:hidden transition-all">
+        K
+      </Kbd>
+    </Button>
   );
 };
 
 type SearchModalProps = {
   className?: string;
+  isCollapsed?: boolean;
 };
-export function SearchAnywhere({ className = "" }: SearchModalProps) {
+export function SearchAnywhere({ className = "", isCollapsed }: SearchModalProps) {
   let [isOpen, setIsOpen] = useState(false);
 
   function closeDrawer() {
@@ -75,62 +65,57 @@ export function SearchAnywhere({ className = "" }: SearchModalProps) {
 
   return (
     <>
-      <div className={className}>
-        <SearchTrigger
-          value=""
-          className="w-full max-w-lg"
+      {isCollapsed ? (
+        <CollapsedButton
+          tooltipContent="Search anywhere"
+          icon="mdi:search"
           onClick={openModal}
           onChange={openModal}
+          className={className}
         />
-      </div>
+      ) : (
+        <SearchAnywhereTriggerButton
+          onClick={openModal}
+          onChange={openModal}
+          className={className}
+        />
+      )}
 
-      <Transition appear show={isOpen} as={Fragment}>
-        <Dialog onClose={closeDrawer}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0">
-            <div className="fixed inset-0 bg-gray-600/25" />
-          </Transition.Child>
+      <Dialog open={isOpen} onClose={closeDrawer}>
+        <div className="fixed inset-0 bg-gray-600/25 animate-in fade-in" />
 
-          <div className="fixed inset-0">
-            <div className="flex items-center justify-center p-4 pt-1">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95">
-                <SearchAnywhereDialog onSelection={closeDrawer} />
-              </Transition.Child>
-            </div>
+        <div className="fixed inset-0">
+          <div className="flex items-center justify-center p-4 pt-1">
+            <SearchAnywhereDialog
+              onSelection={closeDrawer}
+              className="animate-in fade-in zoom-in-95"
+            />
           </div>
-        </Dialog>
-      </Transition>
+        </div>
+      </Dialog>
     </>
   );
 }
 
 type SearchAnywhereProps = {
+  className?: string;
   onSelection: (url?: string) => void;
 };
 
 const SearchAnywhereDialog = forwardRef<HTMLDivElement, SearchAnywhereProps>(
-  ({ onSelection }, forwardedRef) => {
+  ({ className, onSelection }, forwardedRef) => {
     const navigate = useNavigate();
     const [query, setQuery] = useState("");
 
     return (
       <Dialog.Panel
         ref={forwardedRef}
-        className="p-2 w-full max-w-screen-md rounded-xl bg-stone-100 shadow-xl transition-all space-y-2"
-        data-testid="search-anywhere">
+        className={classNames(
+          "p-2 w-full max-w-screen-md rounded-xl bg-stone-100 shadow-xl space-y-2",
+          className
+        )}
+        data-testid="search-anywhere"
+      >
         <Combobox
           onChange={(url: string) => {
             if (url.length === 0) return;
@@ -142,7 +127,8 @@ const SearchAnywhereDialog = forwardRef<HTMLDivElement, SearchAnywhereProps>(
             }
 
             onSelection(url);
-          }}>
+          }}
+        >
           <div className="relative">
             <Combobox.Button className="absolute top-2.5 pl-2.5">
               <Icon icon="mdi:magnify" className="text-xl text-custom-blue-600" />
@@ -183,7 +169,8 @@ export const SearchGroupTitle = ({ children }: SearchGroupProps) => {
     <Combobox.Option
       value=""
       disabled
-      className="text-xs mb-0.5 pl-1.5 font-semibold text-neutral-600 flex items-center">
+      className="text-xs mb-0.5 pl-1.5 font-semibold text-neutral-600 flex items-center"
+    >
       {children}
     </Combobox.Option>
   );
@@ -201,7 +188,8 @@ export const SearchResultItem = ({ className = "", children, to, ...props }: Lin
           `flex items-center gap-1 text-xs p-2 rounded ${active ? "bg-gray-100" : ""}`,
           className
         )
-      }>
+      }
+    >
       {children}
     </Combobox.Option>
   );

@@ -11,7 +11,7 @@ Examples:
 - allocating the next available IP Prefix out of a IP Prefix pool
 - allocating the next available IP addresses out of a IP Address pool
 - allocating the next available VLAN ID out of a pool of valid VLAN ID's
-- allocating the next available device ID out of a pool of valid Device ID's
+- allocating the next available ASN (Autonomous System Number) out of a number pool
 
 A resource manager in Infrahub allocates resources in a branch agnostic way. When you allocate a resource out of a pool in a branch, then that allocation happens in all the branches.
 
@@ -22,7 +22,4 @@ Resources can be allocated in 2 different ways:
 - Direct allocation: A direct allocation is typically used when you don't need the resource to be related to another node in Infrahub, or if you want establish such a relation at a later time. For example, you want to allocated an IP address out of a pool that is not going to be linked to another node in Infrahub.
 - Relationship resource allocation: A resource can be allocated to a relationship of a node, when you create a new node. For example, when you want to create a device and assign an IP address out of a pool to an interface at device creation time.
 
-## Known limitations
-
-- We only support resource pools for IP Prefixes and IP Addresses, support for other resource pools will come in future releases
-- Direct resource allocations can only happen from the GraphQL API or the Python SDK, support for allocating resources in the web UI will come in a future release.
+See the [guide](/guides/resource-manager) for instructions on creating and using resource manager in Infrahub.

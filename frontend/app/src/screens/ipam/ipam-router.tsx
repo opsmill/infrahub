@@ -1,18 +1,22 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-with-tooltip";
 import SlideOver from "@/components/display/slide-over";
-import { Tabs } from "@/components/tabs";
-import { Card } from "@/components/ui/card";
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { usePermission } from "@/hooks/usePermission";
 import ObjectForm from "@/components/form/object-form";
+import { Tabs } from "@/components/tabs";
+import { DEFAULT_BRANCH_NAME } from "@/config/constants";
+import useQuery from "@/hooks/useQuery";
+import { getPermission } from "@/screens/permission/utils";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
+import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
+import ErrorScreen from "../errors/error-screen";
+import UnauthorizedScreen from "../errors/unauthorized-screen";
+import { getObjectPermissionsQuery } from "../permission/queries/getObjectPermissions";
 import { defaultIpNamespaceAtom } from "./common/namespace.state";
 import {
   IPAM_QSP,
@@ -34,7 +38,6 @@ function IpamRouter() {
   const [qspTab] = useQueryParam(IPAM_QSP.TAB, StringParam);
   const navigate = useNavigate();
   const { prefix } = useParams();
-  const permission = usePermission();
   const branch = useAtomValue(currentBranchAtom);
   const schemaList = useAtomValue(schemaState);
   const genericList = useAtomValue(genericsState);
@@ -42,13 +45,16 @@ function IpamRouter() {
   const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);
   const refetchRef = useRef(null);
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const objectname = qspTab ? tabToKind[qspTab] : IP_PREFIX_GENERIC;
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
   const schemaData = schema || generic;
 
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const { loading, data, error } = useQuery(gql(getObjectPermissionsQuery(objectname)));
+
+  const permission = data && getPermission(data?.[objectname]?.permissions?.edges);
 
   const tabs = [
     {
@@ -117,24 +123,37 @@ function IpamRouter() {
     }
   };
 
+  if (error) {
+    if (error.networkError?.statusCode === 403) {
+      const { message } = error.networkError?.result?.errors?.[0] ?? {};
+
+      return <UnauthorizedScreen message={message} />;
+    }
+
+    return <ErrorScreen message="Something went wrong when fetching IPAM details." />;
+  }
+
   const rightitems = (
     <ButtonWithTooltip
-      disabled={!permission.write.allow}
-      tooltipEnabled={!permission.write.allow}
-      tooltipContent={permission.write.message ?? undefined}
+      disabled={loading || !permission?.create.isAllowed}
+      tooltipEnabled={!permission?.create.isAllowed}
+      tooltipContent={permission?.create.message ?? undefined}
       onClick={() => setShowCreateDrawer(true)}
       className="mr-4"
-      data-testid="create-object-button">
+      data-testid="create-object-button"
+    >
       <Icon icon="mdi:plus" className="text-sm" />
       Add {schemaData?.label}
     </ButtonWithTooltip>
   );
 
   return (
-    <Card className="p-0 overflow-hidden flex flex-col h-full" data-testid="ipam-main-content">
+    <>
       <Tabs tabs={tabs} qsp={IPAM_QSP.TAB} rightItems={rightitems} />
 
-      <div className="m-4 flex flex-grow overflow-auto">{renderContent()}</div>
+      <div className="p-3 flex flex-grow overflow-auto" data-testid="ipam-main-content">
+        {renderContent()}
+      </div>
 
       <SlideOver
         title={
@@ -154,7 +173,8 @@ function IpamRouter() {
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                 viewBox="0 0 6 6"
-                aria-hidden="true">
+                aria-hidden="true"
+              >
                 <circle cx={3} cy={3} r={3} />
               </svg>
               {schemaData?.kind}
@@ -162,7 +182,8 @@ function IpamRouter() {
           </div>
         }
         open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}>
+        setOpen={setShowCreateDrawer}
+      >
         <ObjectForm
           kind={objectname}
           onSuccess={() => {
@@ -177,7 +198,7 @@ function IpamRouter() {
           onCancel={() => setShowCreateDrawer(false)}
         />
       </SlideOver>
-    </Card>
+    </>
   );
 }
 

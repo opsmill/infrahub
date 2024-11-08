@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { ACCOUNT_STATE_PATH } from "../../constants";
 
 const OBJECT_NAME = "atl1-core1";
 const SEARCH = "atl";
 
 test.describe("Object list search", async () => {
+  test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
       if (response.status() === 500) {
@@ -17,13 +20,13 @@ test.describe("Object list search", async () => {
 
     await test.step("should access object list and verify the total amount of results", async () => {
       await expect(page.locator("tbody")).toContainText(OBJECT_NAME);
-      await expect(page.getByRole("main")).toContainText("Showing 1 to 10 of 30 results");
+      await expect(page.getByTestId("object-items")).toContainText("Showing 1 to 10 of 30 results");
     });
 
     await test.step("should search an object and verify the total amount of results", async () => {
       await page.getByTestId("object-list-search-bar").fill(SEARCH);
       await expect(page.locator("tbody")).toContainText(OBJECT_NAME);
-      await expect(page.getByRole("main")).toContainText("Showing 1 to 6 of 6 results");
+      await expect(page.getByTestId("object-items")).toContainText("Showing 1 to 6 of 6 results");
     });
   });
 });

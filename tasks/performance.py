@@ -7,7 +7,7 @@ from .utils import git_info
 
 
 @task
-def run(context: Context, directory: str = "utilities", dataset: str = "dataset03"):
+def run(context: Context, directory: str = "utilities", dataset: str = "dataset03") -> None:
     """Launch a performance test using Locust. Gunicorn must be running"""
     PERFORMANCE_FILE_PREFIX = "locust_"
     NOW = datetime.now(tz=timezone.utc)

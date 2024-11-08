@@ -1,12 +1,14 @@
-import { useAtomValue } from "jotai";
-import { Outlet, useParams } from "react-router-dom";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import NoDataFound from "@/screens/errors/no-data-found";
+import Content from "@/screens/layout/content";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { HierarchicalTree } from "@/screens/objects/hierarchical-tree";
 import ObjectHeader from "@/screens/objects/object-header";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { HierarchicalTree } from "@/screens/objects/hierarchical-tree";
-import NoDataFound from "@/screens/errors/no-data-found";
 import { stateAtom } from "@/state/atoms/state.atom";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { CardWithBorder } from "@/components/ui/card";
+import { useAtomValue } from "jotai";
+import { Outlet, useParams } from "react-router-dom";
 
 const ObjectPageLayout = () => {
   const { objectKind, objectid } = useParams();
@@ -17,52 +19,70 @@ const ObjectPageLayout = () => {
   const state = useAtomValue(stateAtom);
   const schema = [...nodes, ...generics, ...profiles].find(({ kind }) => kind === objectKind);
 
-  if (!state.isReady)
+  if (!state.isReady) {
     return (
-      <div className="flex flex-1 items-center justify-center">
+      <Content.Card className="flex justify-center items-center p-5 min-h-[400px]">
         <LoadingScreen message="Loading schema..." />
-      </div>
+      </Content.Card>
     );
+  }
 
   if (!schema) return <NoDataFound message="No schema found for this kind." />;
 
   const isHierarchicalModel = "hierarchical" in schema && schema.hierarchical;
   const inheritFormHierarchicalModel = "hierarchy" in schema && schema.hierarchy;
 
-  const getTreeSchema = () => {
-    if (isHierarchicalModel) {
-      return schema;
-    }
+  if (isHierarchicalModel || inheritFormHierarchicalModel) {
+    const getTreeSchema = () => {
+      if (isHierarchicalModel) {
+        return schema;
+      }
 
-    if (inheritFormHierarchicalModel) {
-      return generics.find(({ kind }) => kind === schema.hierarchy);
-    }
+      if (inheritFormHierarchicalModel) {
+        return generics.find(({ kind }) => kind === schema.hierarchy);
+      }
 
-    return null;
-  };
+      return null;
+    };
 
-  const treeSchema = getTreeSchema();
+    const treeSchema = getTreeSchema();
+
+    return (
+      <Content.Card>
+        <ObjectHeader schema={schema} objectId={objectid} />
+
+        <ResizablePanelGroup direction="horizontal">
+          {treeSchema && (
+            <>
+              <ResizablePanel defaultSize={20} minSize={10} maxSize={50}>
+                <ScrollArea scrollX className="h-full">
+                  <HierarchicalTree
+                    schema={treeSchema}
+                    currentNodeId={objectid}
+                    className="p-2 min-w-full"
+                  />
+                </ScrollArea>
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+            </>
+          )}
+
+          <ResizablePanel>
+            <div className="overflow-auto">
+              <Outlet />
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </Content.Card>
+    );
+  }
 
   return (
-    <>
+    <Content.Card>
       <ObjectHeader schema={schema} objectId={objectid} />
 
-      <div className="flex-grow flex gap-2 p-2 overflow-auto">
-        {treeSchema && (
-          <CardWithBorder className="min-w-64 max-w-[400px]">
-            <HierarchicalTree
-              schema={treeSchema}
-              currentNodeId={objectid}
-              className="p-2 min-w-full"
-            />
-          </CardWithBorder>
-        )}
-
-        <div className="flex-grow">
-          <Outlet />
-        </div>
-      </div>
-    </>
+      <Outlet />
+    </Content.Card>
   );
 };
 

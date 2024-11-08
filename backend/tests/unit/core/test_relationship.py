@@ -9,7 +9,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship.model import Relationship, RelationshipValidatorList
-from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 

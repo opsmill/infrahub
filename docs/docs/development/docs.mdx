@@ -183,9 +183,48 @@ Reference docs serve a single purpose. To provide quick, clear information when 
 
 For a deeper dive into reference docs, refer to the [diátaxis reference page](https://diataxis.fr/reference/).
 
-## Creating and updating application screenshots
+## Application screenshots
 
 To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use [end-to-end (e2e) tests](/development/frontend/testing-guidelines#e2e-tests). You'll find the e2e tests specifically designed for tutorials located in `frontend/app/tests/e2e/tutorial`.
+
+### Updating all screenshots manually
+
+#### 1. Start with a fresh data environment
+
+Start with fresh demo data each time you want to take new screenshots, as the tests are not idempotent. This ensures consistency across screenshots.
+
+```shell
+invoke dev.destroy dev.start dev.load-infra-schema dev.load-infra-data dev.infra-git-import dev.infra-git-create
+```
+
+#### 2. run the e2e tests
+
+E2E test commands are accessible through inside the `frontend/app` directory. To run the tests with screenshots, execute:
+
+```shell
+cd frontend/app
+npm run test:e2e:screenshots
+```
+
+:::info
+By default, tests are run in headless mode. To run them in a visible browser, use `npm run test:e2e:screenshots:headed` instead.
+:::
+
+#### 3. Check the results
+
+The screenshots will be saved in `docs/docs/media`. You can then use them in our documentation:
+
+```markdown
+![optional caption](../../media/my-screenshot-name.png)
+```
+
+### Add a screenshot
+
+#### 1. Locate on which test the screenshot should be added
+
+If the test does not exist yet, create must create it first. Refer to the [write e2e tests](/development/frontend/testing-guidelines#writing-e2e-tests) for more information.
+
+#### 2. Add the screenshot
 
 To add a new screenshot in the documentation, use this command within the tutorial e2e test:
 
@@ -193,17 +232,10 @@ To add a new screenshot in the documentation, use this command within the tutori
 await saveScreenshotForDocs(page, "my-screenshot-name");
 ```
 
-To update all documentation screenshots, run:
+You can also organize your screenshots using folders, by specifying the folder name like this:
 
-```shell
-cd frontend/app
-npm run test:e2e:screenshots
-```
-
-The screenshots will be saved in `docs/docs/media`. You can then use them in our documentation:
-
-```markdown
-![optional caption](../../media/my-screenshot-name.png)
+```ts
+await saveScreenshotForDocs(page, "my-folder/my-screenshot-name" );
 ```
 
 ## Style guide
@@ -330,7 +362,7 @@ Before publishing new changes to documentation, complete the following tasks:
   - [ ] Confirm build of `infrahubctl` pages.
   - [ ] Confirm build of `infrahub-cli` pages.
   - [ ] Confirm build of schema pages.
-- [ ] [Generate application screenshots](#creating-and-updating-application-screenshots).
+- [ ] [Update application screenshots](#updating-all-screenshots-manually).
 - [ ] If there is a new app version, create a new release notes document in `docs/release-notes`.
 - [ ] Run [linters](#linting-and-automation) and fix valid errors on all source files.
 - [ ] Perform test build of docs, `invoke docs.build`.

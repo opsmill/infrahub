@@ -69,7 +69,7 @@ def selected_field_names_fast(
     return selected_field_names(selection_set, context, runtime_type)
 
 
-def selected_field_names_naive(selection_set: SelectionSetNode):
+def selected_field_names_naive(selection_set: SelectionSetNode) -> list:
     """Get the list of field names that are selected at the current level. Does not include nested names.
 
     Limitations:
@@ -179,7 +179,7 @@ def selected_field_names_from_context(
     return (field.name.value for fields_list in fields_map.values() for field in fields_list)
 
 
-def print_query(info: GraphQLResolveInfo):
+def print_query(info: GraphQLResolveInfo) -> None:
     """Traverse the query"""
     initial_selection_set = info.field_nodes[0].selection_set
     print_selection_set(initial_selection_set, 1)

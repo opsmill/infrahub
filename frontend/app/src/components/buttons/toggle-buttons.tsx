@@ -23,7 +23,8 @@ export const ToggleButtons = ({ tabs, ...props }: TabsProps) => {
             size={"sm"}
             variant={tab.isActive ? "active" : "ghost"}
             className={"cursor-pointer border-0 px-4 py-2 rounded-none"}
-            {...props}>
+            {...props}
+          >
             {tab.label}
           </Button>
         ))}

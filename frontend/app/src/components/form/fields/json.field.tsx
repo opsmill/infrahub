@@ -1,8 +1,8 @@
-import { FormFieldProps, FormAttributeValue } from "@/components/form/type";
-import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { JsonEditor } from "@/components/editor/json/json-editor";
 import { LabelFormField } from "@/components/form/fields/common";
+import { FormAttributeValue, FormFieldProps } from "@/components/form/type";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
+import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 
 const JsonField = ({
   defaultValue,

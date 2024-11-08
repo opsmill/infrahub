@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
-from infrahub_sdk import UUIDT, Config, InfrahubClient
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.uuidt import UUIDT
+from typing_extensions import Self
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
@@ -27,18 +29,18 @@ if TYPE_CHECKING:
 
 
 class AsyncContextManagerMock:
-    async def __aenter__(self, *args: Any, **kwargs: Any):
+    async def __aenter__(self, *args: Any, **kwargs: Any) -> Self:
         return self
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ):
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         pass
 
-    def __call__(self, *args: Any, **kwargs: Any):
+    def __call__(self, *args: Any, **kwargs: Any) -> Self:
         return self
 
 

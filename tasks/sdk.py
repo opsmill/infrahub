@@ -1,6 +1,8 @@
 import os
+from typing import Optional
 
 from invoke import Context, task
+from invoke.runners import Result
 
 from .shared import (
     BUILD_NAME,
@@ -23,7 +25,7 @@ MAIN_DIRECTORY_PATH = os.path.join(ESCAPED_REPO_PATH, MAIN_DIRECTORY)
 # ----------------------------------------------------------------------------
 
 
-def _format_ruff(context: Context):
+def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with ruff")
@@ -34,7 +36,7 @@ def _format_ruff(context: Context):
 
 
 @task(name="format")
-def format_all(context: Context):
+def format_all(context: Context) -> None:
     """This will run all formatter."""
 
     _format_ruff(context)
@@ -46,7 +48,7 @@ def format_all(context: Context):
 # Testing tasks
 # ----------------------------------------------------------------------------
 @task
-def ruff(context: Context, docker: bool = False):
+def ruff(context: Context, docker: bool = False) -> None:
     """Run ruff to check that Python files adherence to black standards."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
@@ -69,7 +71,7 @@ def ruff(context: Context, docker: bool = False):
 
 
 @task
-def mypy(context: Context, docker: bool = False):
+def mypy(context: Context, docker: bool = False) -> None:
     """This will run mypy for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with mypy")
@@ -90,7 +92,7 @@ def mypy(context: Context, docker: bool = False):
 
 
 @task
-def pylint(context: Context, docker: bool = False):
+def pylint(context: Context, docker: bool = False) -> None:
     """This will run pylint for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with pylint")
@@ -111,7 +113,7 @@ def pylint(context: Context, docker: bool = False):
 
 
 @task
-def lint(context: Context, docker: bool = False):
+def lint(context: Context, docker: bool = False) -> Optional[Result]:
     """This will run all linter."""
     ruff(context, docker=docker)
     mypy(context, docker=docker)
@@ -121,7 +123,7 @@ def lint(context: Context, docker: bool = False):
 
 
 @task
-def test_unit(context: Context):
+def test_unit(context: Context) -> Optional[Result]:
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
@@ -131,7 +133,7 @@ def test_unit(context: Context):
 
 
 @task(optional=["database"])
-def test_integration(context: Context, database: str = INFRAHUB_DATABASE):
+def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
@@ -141,6 +143,6 @@ def test_integration(context: Context, database: str = INFRAHUB_DATABASE):
 
 
 @task(default=True)
-def format_and_lint(context: Context):
+def format_and_lint(context: Context) -> None:
     format_all(context)
     lint(context)

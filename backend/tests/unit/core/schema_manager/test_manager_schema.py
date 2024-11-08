@@ -1,9 +1,9 @@
 import copy
+import json
 import re
 import uuid
 
 import pytest
-from deepdiff import DeepDiff
 from infrahub_sdk.utils import compare_lists
 
 from infrahub.core import registry
@@ -11,7 +11,6 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     AllowOverrideType,
     BranchSupportType,
-    FilterSchemaKind,
     HashableModelState,
     InfrahubKind,
     RelationshipDeleteBehavior,
@@ -25,7 +24,8 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
-from infrahub.core.schema_manager import SchemaBranch, SchemaManager
+from infrahub.core.schema.manager import SchemaManager
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 
@@ -366,6 +366,41 @@ async def test_schema_branch_add_groups(schema_all_in_one):
     std_group = schema.get(name=InfrahubKind.STANDARDGROUP)
     assert std_group.get_relationship_or_none(name="member_of_groups") is None
     assert std_group.get_relationship_or_none(name="subscriber_of_groups") is None
+
+
+async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.process_inheritance()
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.process()
+
+    generic = schema.get(name="InfraGenericInterface")
+    attr1 = generic.get_attribute(name="mybool")
+    attr1.state = HashableModelState.ABSENT
+    rel1 = generic.get_relationship(name="primary_tag")
+    rel1.state = HashableModelState.ABSENT
+    schema.set(name=generic.kind, schema=generic)
+
+    node = schema.get(name="BuiltinCriticality")
+    attr1_node = node.get_attribute(name="mybool")
+    assert attr1_node.inherited is True
+    assert attr1_node.state == HashableModelState.PRESENT
+    rel1_node = node.get_relationship(name="primary_tag")
+    assert rel1_node.inherited is True
+    assert rel1_node.state == HashableModelState.PRESENT
+
+    schema.cleanup_inherited_elements()
+    node = schema.get(name="BuiltinCriticality")
+    attr1_node = node.get_attribute(name="mybool")
+    assert attr1_node.inherited is True
+    assert attr1_node.state == HashableModelState.ABSENT
+    rel1_node = node.get_relationship(name="primary_tag")
+    assert rel1_node.inherited is True
+    assert rel1_node.state == HashableModelState.ABSENT
 
 
 @pytest.mark.parametrize(
@@ -921,115 +956,6 @@ async def test_schema_branch_validate_kinds_core(register_core_models_schema: Sc
     register_core_models_schema.validate_kinds()
 
 
-async def test_schema_branch_validate_menu_placement():
-    """Validate that menu placements points to objects that exists in the schema."""
-    FULL_SCHEMA = {
-        "version": "1.0",
-        "nodes": [
-            {
-                "name": "Criticality",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                ],
-            },
-            {
-                "name": "SubObject",
-                "namespace": "Test",
-                "menu_placement": "NoSuchObject",
-                "default_filter": "name__value",
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                ],
-            },
-        ],
-    }
-
-    schema = SchemaBranch(cache={})
-    schema.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
-
-    with pytest.raises(SchemaNotFoundError) as exc:
-        schema.validate_menu_placements()
-
-    assert exc.value.message == "TestSubObject refers to an invalid menu placement node: NoSuchObject."
-
-
-async def test_schema_branch_validate_same_node_menu_placement():
-    """Validate that menu placements points to objects that exists in the schema."""
-    FULL_SCHEMA = {
-        "version": "1.0",
-        "nodes": [
-            {
-                "name": "Criticality",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                ],
-            },
-            {
-                "name": "SubObject",
-                "namespace": "Test",
-                "menu_placement": "TestSubObject",
-                "default_filter": "name__value",
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                ],
-            },
-        ],
-    }
-
-    schema = SchemaBranch(cache={})
-    schema.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
-
-    with pytest.raises(ValueError) as exc:
-        schema.validate_menu_placements()
-
-    assert str(exc.value) == "TestSubObject: cannot be placed under itself in the menu"
-
-
-async def test_schema_branch_validate_cyclic_menu_placement():
-    """Validate that menu placements points to objects that exists in the schema."""
-    FULL_SCHEMA = {
-        "version": "1.0",
-        "nodes": [
-            {
-                "name": "Criticality",
-                "namespace": "Test",
-                "menu_placement": "TestSubObject",
-                "default_filter": "name__value",
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                ],
-            },
-            {
-                "name": "SubObject",
-                "namespace": "Test",
-                "menu_placement": "TestCriticality",
-                "default_filter": "name__value",
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                ],
-            },
-        ],
-    }
-
-    schema = SchemaBranch(cache={})
-    schema.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
-
-    with pytest.raises(ValueError) as exc:
-        schema.validate_menu_placements()
-
-    assert str(exc.value) == "TestSubObject: cyclic menu placement with TestCriticality"
-
-
 @pytest.mark.parametrize(
     "uniqueness_constraints",
     [
@@ -1489,513 +1415,23 @@ async def test_schema_branch_validate_count_against_cardinality_invalid(relation
         schema_branch.validate_count_against_cardinality()
 
 
-async def test_schema_branch_process_filters(
-    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
-):
-    FULL_SCHEMA = {
-        "nodes": [
-            {
-                "name": "Criticality",
-                "namespace": "Builtin",
-                "default_filter": "name__value",
-                "human_friendly_id": ["name__value"],
-                "label": "Criticality",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                    {"name": "level", "kind": "Number", "label": "Level"},
-                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
-                ],
-                "relationships": [
-                    {
-                        "name": "tags",
-                        "peer": InfrahubKind.TAG,
-                        "label": "Tags",
-                        "optional": True,
-                        "cardinality": "many",
-                    },
-                    {
-                        "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
-                        "label": "Primary Tag",
-                        "identifier": "primary_tag__criticality",
-                        "optional": True,
-                        "cardinality": "one",
-                    },
-                ],
-            },
-            {
-                "name": "Tag",
-                "namespace": "Builtin",
-                "label": "Tag",
-                "default_filter": "name__value",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
-                ],
-            },
-        ]
-    }
+async def test_schema_branch_from_dict_schema_object():
+    schema = SchemaRoot(**core_models)
 
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
-    schema_branch.process_filters()
+    schema_branch.load_schema(schema=schema)
 
-    assert len(schema_branch.nodes) == 2
-    criticality_dict = schema_branch.get("BuiltinCriticality").model_dump()
-    tag_dict = schema_branch.get("BuiltinTag").model_dump()
+    exported = schema_branch.to_dict_schema_object()
 
-    criticality_expected_filters = [
-        {
-            "id": None,
-            "name": "ids",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.TEXT,
-            "name": "hfid",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "name__value",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "name__values",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "name__is_visible",
-            "kind": FilterSchemaKind.BOOLEAN,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "name__is_protected",
-            "kind": FilterSchemaKind.BOOLEAN,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "name__source__id",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "name__owner__id",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "level__value",
-            "kind": FilterSchemaKind.NUMBER,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "level__values",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "level__is_visible",
-            "kind": FilterSchemaKind.BOOLEAN,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "level__is_protected",
-            "kind": FilterSchemaKind.BOOLEAN,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "level__source__id",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "level__owner__id",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "color__value",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "color__values",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "color__is_visible",
-            "kind": FilterSchemaKind.BOOLEAN,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "color__is_protected",
-            "kind": FilterSchemaKind.BOOLEAN,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "color__source__id",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "color__owner__id",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "description__value",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "description__values",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "description__is_visible",
-            "kind": FilterSchemaKind.BOOLEAN,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "description__is_protected",
-            "kind": FilterSchemaKind.BOOLEAN,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "description__source__id",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "description__owner__id",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "any__value",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "any__is_visible",
-            "kind": FilterSchemaKind.BOOLEAN,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "any__is_protected",
-            "kind": FilterSchemaKind.BOOLEAN,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "any__source__id",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "id": None,
-            "name": "any__owner__id",
-            "kind": FilterSchemaKind.TEXT,
-            "enum": None,
-            "object_kind": None,
-            "description": None,
-            "state": HashableModelState.PRESENT,
-        },
-    ]
-    tag_expected_filters = [
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.TEXT,
-            "name": "ids",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.TEXT,
-            "name": "name__value",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.TEXT,
-            "name": "name__values",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.BOOLEAN,
-            "name": "name__is_visible",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.BOOLEAN,
-            "name": "name__is_protected",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.TEXT,
-            "name": "name__source__id",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.TEXT,
-            "name": "name__owner__id",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.TEXT,
-            "name": "description__value",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.TEXT,
-            "name": "description__values",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.BOOLEAN,
-            "name": "description__is_visible",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.BOOLEAN,
-            "name": "description__is_protected",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.TEXT,
-            "name": "description__source__id",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.TEXT,
-            "name": "description__owner__id",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.TEXT,
-            "name": "any__value",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.BOOLEAN,
-            "name": "any__is_visible",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.BOOLEAN,
-            "name": "any__is_protected",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.TEXT,
-            "name": "any__source__id",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-        {
-            "description": None,
-            "enum": None,
-            "id": None,
-            "kind": FilterSchemaKind.TEXT,
-            "name": "any__owner__id",
-            "object_kind": None,
-            "state": HashableModelState.PRESENT,
-        },
-    ]
+    exported_json = json.dumps(exported, default=lambda x: x.dict())
 
-    assert criticality_dict["filters"] == criticality_expected_filters
-    assert not DeepDiff(criticality_dict["filters"], criticality_expected_filters, ignore_order=True)
+    exported_dict = json.loads(exported_json)
+    schema_branch_after = SchemaBranch.from_dict_schema_object(data=exported_dict)
 
-    assert tag_dict["filters"] == tag_expected_filters
-    assert not DeepDiff(tag_dict["filters"], tag_expected_filters, ignore_order=True)
+    assert (
+        schema_branch_after.get_node(name=InfrahubKind.TAG).get_hash()
+        == schema_branch.get_node(name=InfrahubKind.TAG).get_hash()
+    )
 
 
 async def test_process_relationships_on_delete_defaults_set(schema_all_in_one):
@@ -2027,6 +1463,61 @@ async def test_process_relationships_component_can_be_overridden(schema_all_in_o
     processed_criticality = schema.get(name="BuiltinCriticality", duplicate=False)
     processed_relationship = processed_criticality.get_relationship(name="tags")
     assert processed_relationship.on_delete == RelationshipDeleteBehavior.NO_ACTION
+
+
+async def test_hierarchy_update(hierarchical_location_schema_simple: SchemaRoot):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=hierarchical_location_schema_simple)
+    schema.process_inheritance()
+    schema.process_hierarchy()
+    schema.add_hierarchy_generic()
+    schema.add_hierarchy_node()
+
+    site_schema = schema.get("LocationSite", duplicate=False)
+    assert site_schema.parent == "LocationRegion"
+    parent_rel = site_schema.get_relationship(name="parent")
+    assert parent_rel.peer == "LocationRegion"
+    region_schema = schema.get("LocationRegion", duplicate=False)
+    assert region_schema.children == "LocationSite"
+    children_rel = region_schema.get_relationship(name="children")
+    assert children_rel.peer == "LocationSite"
+
+    updated_schema = hierarchical_location_schema_simple.model_copy(deep=True)
+    updated_schema.nodes.append(
+        NodeSchema(
+            name="Country",
+            namespace="Location",
+            inherit_from=["LocationGeneric"],
+            children="LocationSite",
+            parent="LocationRegion",
+        )
+    )
+    site_schema = updated_schema.get("LocationSite")
+    site_schema.parent = "LocationCountry"
+    region_schema = updated_schema.get("LocationRegion")
+    region_schema.children = "LocationCountry"
+    schema.load_schema(updated_schema)
+
+    schema.process_inheritance()
+    schema.process_hierarchy()
+    schema.add_hierarchy_generic()
+    schema.add_hierarchy_node()
+
+    site_schema = schema.get("LocationSite", duplicate=False)
+    assert site_schema.parent == "LocationCountry"
+    parent_rel = site_schema.get_relationship(name="parent")
+    assert parent_rel.peer == "LocationCountry"
+    region_schema = schema.get("LocationRegion", duplicate=False)
+    assert region_schema.children == "LocationCountry"
+    children_rel = region_schema.get_relationship(name="children")
+    assert children_rel.peer == "LocationCountry"
+    country_schema = schema.get("LocationCountry", duplicate=False)
+    children_rel = country_schema.get_relationship(name="children")
+    assert children_rel.peer == "LocationSite"
+    parent_rel = country_schema.get_relationship(name="parent")
+    assert parent_rel.peer == "LocationRegion"
+    generic_schema = schema.get("LocationGeneric", duplicate=False)
+    assert set(generic_schema.used_by) == {"LocationRegion", "LocationCountry", "LocationSite", "LocationRack"}
 
 
 async def test_schema_branch_copy(

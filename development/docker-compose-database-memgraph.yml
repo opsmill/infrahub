@@ -1,6 +1,7 @@
 ---
 services:
   database:
+    profiles: [demo, dev]
     image: "${DATABASE_DOCKER_IMAGE:-memgraph/memgraph-mage:latest}"
     init: true
     volumes:

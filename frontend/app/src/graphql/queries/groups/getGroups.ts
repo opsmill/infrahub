@@ -25,6 +25,17 @@ query GET_GROUPS {
         }
       }
     }
+    permissions {
+      edges {
+        node {
+          kind
+          view
+          create
+          update
+          delete
+        }
+      }
+    }
   }
 }
 `);

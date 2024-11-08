@@ -1,0 +1,99 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-task-worker
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    service: infrahub-task-worker
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+  annotations:
+  {{- include "infrahub-helm.annotations" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.infrahubTaskWorker.replicas | default 2 }}
+  selector:
+    matchLabels:
+      service: infrahub-task-worker
+    {{- include "infrahub-helm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        service: infrahub-task-worker
+      {{- with .Values.infrahubTaskWorker.podLabels }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
+      {{- with .Values.infrahubTaskWorker.podAnnotations }}
+      annotations:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.infrahubTaskWorker.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.infrahubTaskWorker.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.infrahubTaskWorker.runtimeClassName }}
+      runtimeClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.infrahubTaskWorker.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: infrahub-task-worker
+          args: {{- toYaml .Values.infrahubTaskWorker.infrahubTaskWorker.args | nindent 12 }}
+          env:
+            {{- include "infrahub-helm.infrahubTaskWorker.defaultEnv" . | nindent 12 }}
+            {{- range $key, $value := .Values.infrahubTaskWorker.infrahubTaskWorker.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- with .Values.infrahubTaskWorker.infrahubTaskWorker.envFromExistingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . }}
+          {{- end }}
+          image: {{ default .Values.global.imageRegistry .Values.infrahubTaskWorker.infrahubTaskWorker.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.infrahubTaskWorker.infrahubTaskWorker.imagePullPolicy }}
+          {{- with .Values.infrahubTaskWorker.resources }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.infrahubTaskWorker.infrahubTaskWorker.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          tty: true
+          volumeMounts:
+            - name: git-data
+              mountPath: /opt/infrahub/git
+      restartPolicy: Always
+      volumes:
+        {{- if and .Values.infrahubTaskWorker.persistence.enabled }}
+        - name: git-data
+          persistentVolumeClaim:
+            claimName: {{ tpl (.Values.infrahubTaskWorker.persistence.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "git-data")) . }}
+        {{- else }}
+        - name: git-data
+          emptyDir: {}
+        {{- end }}
+
+{{- if and .Values.infrahubTaskWorker.persistence.enabled (not .Values.infrahubTaskWorker.persistence.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-git-data
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    service: git-data
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.infrahubTaskWorker.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.infrahubTaskWorker.persistence.size | quote }}
+  {{- with .Values.infrahubTaskWorker.persistence.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}

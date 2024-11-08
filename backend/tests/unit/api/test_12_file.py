@@ -1,5 +1,3 @@
-from fastapi.testclient import TestClient
-
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -8,15 +6,12 @@ from infrahub.message_bus import messages
 
 async def test_get_file(
     db: InfrahubDatabase,
+    client,
     client_headers,
     default_branch,
     rpc_bus,
     register_core_models_schema,
 ):
-    from infrahub.server import app
-
-    client = TestClient(app)
-
     r1 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await r1.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
     await r1.save(db=db)

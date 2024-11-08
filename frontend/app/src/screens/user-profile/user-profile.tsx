@@ -1,26 +1,25 @@
 import { Avatar } from "@/components/display/avatar";
 import { Tabs } from "@/components/tabs";
-import { ACCOUNT_OBJECT } from "@/config/constants";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
-import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { genericsState } from "@/state/atoms/schema.atom";
-import { gql } from "@apollo/client";
+import { gql, useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
-import TabPreferences from "./tab-preferences";
+import NoDataFound from "../errors/no-data-found";
 import TabProfile from "./tab-profile";
 import TabTokens from "./tab-tokens";
-import NoDataFound from "../errors/no-data-found";
+import TabUpdatePassword from "./tab-update-password";
 
 const PROFILE_TABS = {
   PROFILE: "profile",
   TOKENS: "tokens",
-  PREFERENCES: "preferences",
+  PASSWORD: "password",
 };
 
 const tabs = [
@@ -33,15 +32,15 @@ const tabs = [
     name: PROFILE_TABS.TOKENS,
   },
   {
-    label: "Preferences",
-    name: PROFILE_TABS.PREFERENCES,
+    label: "Password",
+    name: PROFILE_TABS.PASSWORD,
   },
 ];
 
 const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
-    case PROFILE_TABS.PREFERENCES:
-      return <TabPreferences />;
+    case PROFILE_TABS.PASSWORD:
+      return <TabUpdatePassword />;
     case PROFILE_TABS.TOKENS:
       return <TabTokens />;
     default:
@@ -54,7 +53,7 @@ export function UserProfilePage() {
   const schemaList = useAtomValue(genericsState);
   useTitle("Profile");
 
-  const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
+  const schema = schemaList.find((s) => s.kind === ACCOUNT_GENERIC_OBJECT);
 
   const queryString = schema
     ? getProfileDetails({
@@ -88,8 +87,8 @@ export function UserProfilePage() {
   }
 
   return (
-    <Content>
-      <Content.Title
+    <Content.Card>
+      <Content.CardTitle
         title={
           <div className="flex items-center gap-2">
             <Avatar name={profile?.name?.value} />
@@ -105,7 +104,7 @@ export function UserProfilePage() {
 
       <Tabs tabs={tabs} />
 
-      <div>{renderContent(qspTab)}</div>
-    </Content>
+      {renderContent(qspTab)}
+    </Content.Card>
   );
 }

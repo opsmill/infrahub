@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import random
-from typing import TYPE_CHECKING, Any, Optional, Union
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar, Union
 
 from neo4j import (
     READ_ACCESS,
@@ -30,7 +31,7 @@ from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
-from .constants import DatabaseType
+from .constants import DatabaseType, Neo4jRuntime
 from .memgraph import DatabaseManagerMemgraph
 from .metrics import QUERY_EXECUTION_METRICS, TRANSACTION_RETRIES
 from .neo4j import DatabaseManagerNeo4j
@@ -40,13 +41,20 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
-    from infrahub.core.schema_manager import SchemaBranch
+    from infrahub.core.schema.schema_branch import SchemaBranch
 
     from .manager import DatabaseManager
 
 validated_database = {}
+R = TypeVar("R")
 
 log = get_logger()
+
+
+@dataclass
+class QueryConfig:
+    neo4j_runtime: Neo4jRuntime = Neo4jRuntime.DEFAULT
+    profile_memory: bool = False
 
 
 class InfrahubDatabaseMode(InfrahubStringEnum):
@@ -70,7 +78,7 @@ def get_branch_name(branch: Optional[Union[Branch, str]] = None) -> str:
 
 
 class DatabaseSchemaManager:
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase) -> None:
         self._db = db
 
     def get(self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True) -> MainSchemaTypes:
@@ -133,6 +141,7 @@ class InfrahubDatabase:
         session: Optional[AsyncSession] = None,
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: Optional[AsyncTransaction] = None,
+        queries_names_to_config: Optional[dict[str, QueryConfig]] = None,
     ):
         self._mode: InfrahubDatabaseMode = mode
         self._driver: AsyncDriver = driver
@@ -140,6 +149,7 @@ class InfrahubDatabase:
         self._session_mode: InfrahubDatabaseSessionMode = session_mode
         self._is_session_local: bool = False
         self._transaction: Optional[AsyncTransaction] = transaction
+        self.queries_names_to_config = queries_names_to_config if queries_names_to_config is not None else {}
 
         if schemas:
             self._schemas: dict[str, SchemaBranch] = {schema.name: schema for schema in schemas}
@@ -172,6 +182,14 @@ class InfrahubDatabase:
             return True
         return False
 
+    def get_context(self) -> dict[str, Any]:
+        """
+        This method is meant to be overridden by subclasses in order to fill in subclass attributes
+        to methods returning a copy of this object using self.__class__ constructor.
+        """
+
+        return {}
+
     def add_schema(self, schema: SchemaBranch, name: Optional[str] = None) -> None:
         self._schemas[name or schema.name] = schema
 
@@ -181,6 +199,8 @@ class InfrahubDatabase:
         if read_only:
             session_mode = InfrahubDatabaseSessionMode.READ
 
+        context = self.get_context()
+
         return self.__class__(
             mode=InfrahubDatabaseMode.SESSION,
             db_type=self.db_type,
@@ -188,9 +208,13 @@ class InfrahubDatabase:
             db_manager=self.manager,
             driver=self._driver,
             session_mode=session_mode,
+            queries_names_to_config=self.queries_names_to_config,
+            **context,
         )
 
     def start_transaction(self, schemas: Optional[list[SchemaBranch]] = None) -> InfrahubDatabase:
+        context = self.get_context()
+
         return self.__class__(
             mode=InfrahubDatabaseMode.TRANSACTION,
             db_type=self.db_type,
@@ -199,6 +223,8 @@ class InfrahubDatabase:
             driver=self._driver,
             session=self._session,
             session_mode=self._session_mode,
+            queries_names_to_config=self.queries_names_to_config,
+            **context,
         )
 
     async def session(self) -> AsyncSession:
@@ -271,26 +297,57 @@ class InfrahubDatabase:
         await self._driver.close()
 
     async def execute_query(
-        self, query: str, params: Optional[dict[str, Any]] = None, name: Optional[str] = "undefined"
+        self,
+        query: str,
+        params: dict[str, Any] | None = None,
+        name: str = "undefined",
+        context: dict[str, str] | None = None,
     ) -> list[Record]:
-        with trace.get_tracer(__name__).start_as_current_span("execute_db_query") as span:
-            span.set_attribute("query", query)
-            if name:
-                span.set_attribute("query_name", name)
-
-            with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
-                response = await self.run_query(query=query, params=params)
-                return [item async for item in response]
+        results, _ = await self.execute_query_with_metadata(query=query, params=params, name=name, context=context)
+        return results
 
     async def execute_query_with_metadata(
-        self, query: str, params: Optional[dict[str, Any]] = None, name: Optional[str] = "undefined"
+        self,
+        query: str,
+        params: dict[str, Any] | None = None,
+        name: str = "undefined",
+        context: dict[str, str] | None = None,
     ) -> tuple[list[Record], dict[str, Any]]:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
             span.set_attribute("query", query)
             if name:
                 span.set_attribute("query_name", name)
 
-            with QUERY_EXECUTION_METRICS.labels(self._session_mode.value, name).time():
+            runtime = Neo4jRuntime.UNDEFINED
+
+            try:
+                query_config = self.queries_names_to_config[name]
+                if self.db_type == DatabaseType.NEO4J:
+                    runtime = self.queries_names_to_config[name].neo4j_runtime
+                    if runtime not in [Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED]:
+                        query = f"CYPHER runtime = {runtime.value}\n" + query
+                if query_config.profile_memory:
+                    query = "PROFILE\n" + query
+            except KeyError:
+                pass  # No specific config for this query
+
+            labels = {
+                "type": self._session_mode.value,
+                "query": name,
+                "runtime": runtime.value,
+                "context1": "",
+                "context2": "",
+            }
+            if context:
+                labels.update(
+                    {
+                        f"context{idx + 1}": f"{key}__{value}"
+                        for idx, (key, value) in enumerate(context.items())
+                        if idx <= 1
+                    }
+                )
+
+            with QUERY_EXECUTION_METRICS.labels(**labels).time():
                 response = await self.run_query(query=query, params=params, name=name)
                 results = [item async for item in response]
                 return results, response._metadata or {}
@@ -400,7 +457,7 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,
         notifications_disabled_categories=[NotificationDisabledCategory.UNRECOGNIZED],
-        notifications_min_severity=NotificationMinimumSeverity.OFF,
+        notifications_min_severity=NotificationMinimumSeverity.WARNING,
     )
 
     if config.SETTINGS.database.database_name not in validated_database:
@@ -411,9 +468,12 @@ async def get_db(retry: int = 0) -> AsyncDriver:
     return driver
 
 
-def retry_db_transaction(name: str):
-    def func_wrapper(func):
-        async def wrapper(*args, **kwargs):
+def retry_db_transaction(
+    name: str,
+) -> Callable[[Callable[..., Coroutine[Any, Any, R]]], Callable[..., Coroutine[Any, Any, R]]]:
+    def func_wrapper(func: Callable[..., Coroutine[Any, Any, R]]) -> Callable[..., Coroutine[Any, Any, R]]:
+        async def wrapper(*args: Any, **kwargs: Any) -> R:
+            error = Exception()
             for attempt in range(1, config.SETTINGS.database.retry_limit + 1):
                 try:
                     return await func(*args, **kwargs)
@@ -426,11 +486,13 @@ def retry_db_transaction(name: str):
                         f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}",
                         retry_time=retry_time,
                     )
-                    log.debug("database transaction failed", message=exc.message)
+                    log.debug("Database transaction failed", message=exc.message)
                     TRANSACTION_RETRIES.labels(name).inc()
                     await asyncio.sleep(retry_time)
                     if attempt == config.SETTINGS.database.retry_limit:
-                        raise
+                        error = exc
+                        break
+            raise error
 
         return wrapper
 

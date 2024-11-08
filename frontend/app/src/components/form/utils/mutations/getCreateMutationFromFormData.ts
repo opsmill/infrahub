@@ -46,9 +46,10 @@ export const getCreateMutationFromFormDataOnly = (
 
     if (data.source?.type === "user") {
       const fieldValue = data.value === "" ? null : data.value;
+
       return {
         ...acc,
-        [name]: { value: fieldValue },
+        [name]: Array.isArray(fieldValue) ? fieldValue : { value: fieldValue },
       };
     }
 

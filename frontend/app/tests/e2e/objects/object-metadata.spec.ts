@@ -13,10 +13,7 @@ test.describe("Object metadata", () => {
   });
 
   test("should contain initial values and update them", async ({ page }) => {
-    await page.goto("/");
-
-    // Access all devices
-    await page.getByRole("link", { name: "All Device(s)" }).click();
+    await page.goto("/objects/InfraDevice");
 
     // Access device details
     await page.getByRole("link", { name: "atl1-core2" }).click();
@@ -41,8 +38,8 @@ test.describe("Object metadata", () => {
 
     // Select Architecture team
     await page.getByText("Owner Kind ?").getByLabel("Kind").first().click();
-    await page.getByRole("option", { name: "Account" }).click();
-    await page.getByText("Owner Kind ?").getByLabel("Account").click();
+    await page.getByRole("option", { name: "Account group" }).click();
+    await page.getByText("Owner Kind ?").getByLabel("Account group").click();
     await page.getByRole("option", { name: "Architecture Team" }).click();
 
     // Save
@@ -51,11 +48,8 @@ test.describe("Object metadata", () => {
     // Verify the alert
     await expect(page.getByText("Metadata updated")).toBeVisible();
 
-    // Verify metadata updates
-    await page.goto("/");
-
     // Access all devices
-    await page.getByRole("link", { name: "All Device(s)" }).click();
+    await page.goto("/objects/InfraDevice");
 
     // Access device details
     await page.getByRole("link", { name: "atl1-core2" }).click();
@@ -67,7 +61,7 @@ test.describe("Object metadata", () => {
     await metadataTooltipUpdated.getByTestId("edit-metadata-button").click();
 
     // Source should be Account + Pop-Builder
-    await expect(page.getByTestId("select-input").nth(0)).toHaveValue("Account");
+    await expect(page.getByTestId("select-input").nth(0)).toHaveValue("Account group");
     await expect(page.getByTestId("select-input").nth(1)).toHaveValue("Architecture Team");
 
     // Is protected should be checked

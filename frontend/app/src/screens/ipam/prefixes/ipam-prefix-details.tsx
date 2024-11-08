@@ -1,3 +1,4 @@
+import { ColorDisplay } from "@/components/display/color-display";
 import SlideOver from "@/components/display/slide-over";
 import ModalDelete from "@/components/modals/modal-delete";
 import ProgressBarChart from "@/components/stats/progress-bar-chart";
@@ -17,6 +18,7 @@ import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/screens/ipam/constant
 import { reloadIpamTreeAtom } from "@/screens/ipam/ipam-tree/ipam-tree.state";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
+import { getPermission } from "@/screens/permission/utils";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";
@@ -27,7 +29,6 @@ import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ColorDisplay } from "@/components/display/color-display";
 
 const IpamIPPrefixDetails = forwardRef((props, ref) => {
   const { prefix } = useParams();
@@ -45,6 +46,8 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
   });
 
   useImperativeHandle(ref, () => ({ refetch }));
+
+  const permission = getPermission(data?.[IP_PREFIX_GENERIC]?.permissions?.edges);
 
   if (!prefix) {
     return <div>Select a Prefix in the Tree to the left to see details</div>;
@@ -169,7 +172,13 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
       </div>
 
       {data && (
-        <Table rows={rows} columns={columns} onDelete={handleDelete} onUpdate={handleUpdate} />
+        <Table
+          rows={rows}
+          columns={columns}
+          onDelete={handleDelete}
+          onUpdate={handleUpdate}
+          permission={permission}
+        />
       )}
 
       {relatedRowToDelete && (
@@ -209,7 +218,8 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
                     <svg
                       className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                       viewBox="0 0 6 6"
-                      aria-hidden="true">
+                      aria-hidden="true"
+                    >
                       <circle cx={3} cy={3} r={3} />
                     </svg>
                     {relatedObjectToEdit?.__typename}
@@ -219,7 +229,8 @@ const IpamIPPrefixDetails = forwardRef((props, ref) => {
             </>
           }
           open={!!relatedObjectToEdit}
-          setOpen={() => setRelatedObjectToEdit(undefined)}>
+          setOpen={() => setRelatedObjectToEdit(undefined)}
+        >
           <ObjectItemEditComponent
             closeDrawer={() => {
               setRelatedObjectToEdit(undefined);

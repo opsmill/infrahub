@@ -1,6 +1,3 @@
-/// <reference types="cypress" />
-
-import React from "react";
 import { PILL_TYPES, Pill } from "../../../src/components/display/pill";
 
 describe("Pill component", () => {

@@ -10,7 +10,7 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from .standard_node import InfrahubObjectType
 
 if TYPE_CHECKING:
-    from infrahub.graphql import GraphqlContext
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 class BranchType(InfrahubObjectType):

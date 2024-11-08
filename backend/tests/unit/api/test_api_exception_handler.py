@@ -26,7 +26,7 @@ class MockError(Error):
     HTTP_CODE = 418
     DESCRIPTION = "the teapot error"
 
-    def __init__(self, message: Optional[str]):
+    def __init__(self, message: Optional[str]) -> None:
         self.message = message or ""
 
 

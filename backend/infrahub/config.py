@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import os.path
+import ssl
 import sys
 from dataclasses import dataclass
 from enum import Enum
@@ -9,17 +10,18 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
 import toml
-from infrahub_sdk import generate_uuid
-from pydantic import AliasChoices, Field, ValidationError, model_validator
+from infrahub_sdk.utils import generate_uuid
+from pydantic import AliasChoices, BaseModel, Field, PrivateAttr, ValidationError, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Self
 
 from infrahub.database.constants import DatabaseType
-from infrahub.exceptions import InitializationError
+from infrahub.exceptions import InitializationError, ProcessingError
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
+    from infrahub.services.adapters.workflow import InfrahubWorkflow
 
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
@@ -32,6 +34,46 @@ def default_cors_allow_methods() -> list[str]:
 
 def default_cors_allow_headers() -> list[str]:
     return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"]
+
+
+class SSOProtocol(str, Enum):
+    OAUTH2 = "oauth2"
+    OIDC = "oidc"
+
+
+class Oauth2Provider(str, Enum):
+    GOOGLE = "google"
+    PROVIDER1 = "provider1"
+    PROVIDER2 = "provider2"
+
+
+class OIDCProvider(str, Enum):
+    GOOGLE = "google"
+    PROVIDER1 = "provider1"
+    PROVIDER2 = "provider2"
+
+
+class SSOInfo(BaseModel):
+    providers: list[SSOProviderInfo] = Field(default_factory=list)
+
+    @computed_field
+    def enabled(self) -> bool:
+        return bool(self.providers)
+
+
+class SSOProviderInfo(BaseModel):
+    name: str
+    display_label: str
+    icon: str
+    protocol: SSOProtocol
+
+    @computed_field
+    def authorize_path(self) -> str:
+        return f"/api/{self.protocol.value}/{self.name}/authorize"
+
+    @computed_field
+    def token_path(self) -> str:
+        return f"/api/{self.protocol.value}/{self.name}/token"
 
 
 class StorageDriver(str, Enum):
@@ -62,6 +104,11 @@ class CacheDriver(str, Enum):
     NATS = "nats"
 
 
+class WorkflowDriver(str, Enum):
+    LOCAL = "local"
+    WORKER = "worker"
+
+
 class MainSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
     docs_index_path: str = Field(
@@ -72,10 +119,14 @@ class MainSettings(BaseSettings):
     allow_anonymous_access: bool = Field(
         default=True, description="Indicates if the system allows anonymous read access"
     )
+    anonymous_access_role: str = Field(
+        default="Anonymous User", description="Name of the role defining which permissions anonymous users have"
+    )
     telemetry_optout: bool = Field(default=False, description="Disable anonymous usage reporting")
     telemetry_endpoint: str = "https://telemetry.opsmill.cloud/infrahub"
-    telemetry_interval: int = Field(
-        default=3600 * 24, ge=60, description="Time (in seconds) between telemetry usage push"
+    permission_backends: list[str] = Field(
+        default=["infrahub.permissions.LocalPermissionBackend"],
+        description="List of modules to handle permissions, they will be run in the given order",
     )
 
 
@@ -165,6 +216,21 @@ class DatabaseSettings(BaseSettings):
         return self.database or self.db_type.value
 
 
+class DevelopmentSettings(BaseSettings):
+    """The development settings are only relevant for local development"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_DEV_")
+
+    frontend_url: Optional[str] = Field(
+        default=None,
+        description="Define the URL of the frontend, useful for OAuth2 development when the frontend and backend use different ports.",
+    )
+    frontend_redirect_sso: bool = Field(
+        default=False,
+        description="Indicates of the frontend should be responsible for the SSO redirection",
+    )
+
+
 class BrokerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_BROKER_")
     enable: bool = True
@@ -175,6 +241,7 @@ class BrokerSettings(BaseSettings):
     password: str = "infrahub"
     address: str = "localhost"
     port: Optional[int] = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
+    rabbitmq_http_port: Optional[int] = Field(default=None, ge=1, le=65535)
     namespace: str = "infrahub"
     maximum_message_retries: int = Field(
         default=10, description="The maximum number of retries that are attempted for failed messages"
@@ -202,8 +269,8 @@ class CacheSettings(BaseSettings):
     )
     database: int = Field(default=0, ge=0, le=15, description="Id of the database to use")
     driver: CacheDriver = CacheDriver.Redis
-    username: str = "infrahub"
-    password: str = "infrahub"
+    username: str = ""
+    password: str = ""
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
@@ -214,6 +281,28 @@ class CacheSettings(BaseSettings):
         if self.driver == CacheDriver.NATS:
             return self.port or 4222
         return self.port or default_ports
+
+
+class WorkflowSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_WORKFLOW_")
+    enable: bool = True
+    address: str = "localhost"
+    port: Optional[int] = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
+    tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
+    driver: WorkflowDriver = WorkflowDriver.WORKER
+    default_worker_type: str = "infrahubasync"
+    worker_polling_interval: int = Field(
+        default=2, ge=1, le=30, description="Specify how often the worker should poll the server for tasks (sec)"
+    )
+
+    @property
+    def api_endpoint(self) -> str:
+        url = "https://" if self.tls_enabled else "http://"
+        url += self.address
+        if self.port:
+            url += f":{self.port}"
+        url += "/api"
+        return url
 
 
 class ApiSettings(BaseSettings):
@@ -238,8 +327,63 @@ class GitSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_GIT_")
     repositories_directory: str = "repositories"
     sync_interval: int = Field(
-        default=10, ge=0, description="Time (in seconds) between git repositories synchronizations"
+        default=10,
+        ge=0,
+        description="Time (in seconds) between git repositories synchronizations",
+        deprecated="This setting is deprecated and not currently in use.",
     )
+
+
+class HTTPSettings(BaseSettings):
+    """The HTTP settings control how Infrahub interacts with external HTTP servers
+
+    This can be things like webhooks and OAuth2 providers"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_HTTP_")
+    timeout: int = Field(default=10, description="Default connection timeout in seconds")
+    tls_insecure: bool = Field(
+        default=False,
+        description="Indicates if Infrahub will validate server certificates or if the validation is ignored.",
+    )
+    tls_ca_bundle: str | None = Field(
+        default=None,
+        description="Custom CA bundle in PEM format. The value should either be the CA bundle as a string, alternatively as a file path.",
+    )
+
+    @model_validator(mode="after")
+    def set_tls_context(self) -> Self:
+        try:
+            # Validate that the context can be created, we want to raise this error during application start
+            # instead of running into issues later when we first try to use the tls context.
+            self.get_tls_context()
+        except ssl.SSLError as exc:
+            raise ValueError(f"Unable load CA bundle from {self.tls_ca_bundle}: {exc}") from exc
+
+        return self
+
+    def get_tls_context(self) -> ssl.SSLContext:
+        if self.tls_insecure:
+            return ssl._create_unverified_context()
+
+        if not self.tls_ca_bundle:
+            return ssl.create_default_context()
+
+        tls_ca_path = Path(self.tls_ca_bundle)
+
+        try:
+            possibly_file = tls_ca_path.exists()
+        except OSError:
+            # Raised if the filename is too long which can indicate
+            # that the value is a PEM certificate in string form.
+            possibly_file = False
+
+        if possibly_file and tls_ca_path.is_file():
+            context = ssl.create_default_context(cafile=str(tls_ca_path))
+        else:
+            context = ssl.create_default_context()
+            context.load_verify_locations(cadata=self.tls_ca_bundle)
+
+        return context
 
 
 class InitialSettings(BaseSettings):
@@ -266,6 +410,101 @@ class InitialSettings(BaseSettings):
         if self.admin_token is not None and self.agent_token is not None and self.admin_token == self.agent_token:
             raise ValueError("Initial user tokens can't have the same values")
         return self
+
+
+def _default_scopes() -> list[str]:
+    return ["openid", "profile", "email"]
+
+
+class SecurityOIDCBaseSettings(BaseSettings):
+    """Baseclass for typing"""
+
+    icon: str = Field(default="mdi:account-key")
+    display_label: str = Field(default="Single Sign on")
+
+
+class SecurityOIDCSettings(SecurityOIDCBaseSettings):
+    client_id: str = Field(..., description="Client ID of the application created in the auth provider")
+    client_secret: str = Field(..., description="Client secret as defined in auth provider")
+    discovery_url: str = Field(..., description="The OIDC discovery URL xyz/.well-known/openid-configuration")
+    scopes: list[str] = Field(default_factory=_default_scopes)
+
+
+class SecurityOIDCGoogle(SecurityOIDCSettings):
+    """Settings for the custom OIDC provider"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_GOOGLE_")
+
+    discovery_url: str = Field(default="https://accounts.google.com/.well-known/openid-configuration")
+    icon: str = Field(default="mdi:google")
+    display_label: str = Field(default="Google")
+
+
+class SecurityOIDCProvider1(SecurityOIDCSettings):
+    """Settings for the custom OIDC provider"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_PROVIDER1_")
+
+
+class SecurityOIDCProvider2(SecurityOIDCSettings):
+    """Settings for the custom OIDC provider"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_PROVIDER2_")
+
+
+class SecurityOIDCProviderSettings(BaseModel):
+    """This class is meant to facilitate configuration of OIDC providers when loading configuration from a infrahub.toml file."""
+
+    google: Optional[SecurityOIDCGoogle] = Field(default=None)
+    provider1: Optional[SecurityOIDCProvider1] = Field(default=None)
+    provider2: Optional[SecurityOIDCProvider2] = Field(default=None)
+
+
+class SecurityOAuth2BaseSettings(BaseSettings):
+    """Baseclass for typing"""
+
+    icon: str = Field(default="mdi:account-key")
+
+
+class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
+    """Common base for Oauth2 providers"""
+
+    client_id: str = Field(..., description="Client ID of the application created in the auth provider")
+    client_secret: str = Field(..., description="Client secret as defined in auth provider")
+    authorization_url: str = Field(...)
+    token_url: str = Field(...)
+    userinfo_url: str = Field(...)
+    scopes: list[str] = Field(default_factory=_default_scopes)
+    display_label: str = Field(default="Single Sign on")
+
+
+class SecurityOAuth2Provider1(SecurityOAuth2Settings):
+    """Common base for Oauth2 providers"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_PROVIDER1_")
+
+
+class SecurityOAuth2Provider2(SecurityOAuth2Settings):
+    """Common base for Oauth2 providers"""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_PROVIDER2_")
+
+
+class SecurityOAuth2Google(SecurityOAuth2Settings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_GOOGLE_")
+    authorization_url: str = Field(default="https://accounts.google.com/o/oauth2/auth")
+    token_url: str = Field(default="https://oauth2.googleapis.com/token")
+    userinfo_url: str = Field(default="https://www.googleapis.com/oauth2/v3/userinfo")
+    icon: str = Field(default="mdi:google")
+    display_label: str = Field(default="Google")
+
+
+class SecurityOAuth2ProviderSettings(BaseModel):
+    """This class is meant to facilitate configuration of OAuth2 providers when loading configuration from a infrahub.toml file."""
+
+    google: Optional[SecurityOAuth2Google] = Field(default=None)
+    provider1: Optional[SecurityOAuth2Provider1] = Field(default=None)
+    provider2: Optional[SecurityOAuth2Provider2] = Field(default=None)
 
 
 class MiscellaneousSettings(BaseSettings):
@@ -312,6 +551,98 @@ class SecuritySettings(BaseSettings):
     secret_key: str = Field(
         default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
     )
+    oauth2_providers: list[Oauth2Provider] = Field(default_factory=list, description="The selected OAuth2 providers")
+    oauth2_provider_settings: SecurityOAuth2ProviderSettings = Field(default_factory=SecurityOAuth2ProviderSettings)
+    oidc_providers: list[OIDCProvider] = Field(default_factory=list, description="The selected OIDC providers")
+    oidc_provider_settings: SecurityOIDCProviderSettings = Field(default_factory=SecurityOIDCProviderSettings)
+    _oauth2_settings: dict[str, SecurityOAuth2Settings] = PrivateAttr(default_factory=dict)
+    _oidc_settings: dict[str, SecurityOIDCSettings] = PrivateAttr(default_factory=dict)
+
+    @model_validator(mode="after")
+    def check_oauth2_provider_settings(self) -> Self:
+        mapped_providers: dict[Oauth2Provider, type[SecurityOAuth2BaseSettings]] = {
+            Oauth2Provider.PROVIDER1: SecurityOAuth2Provider1,
+            Oauth2Provider.PROVIDER2: SecurityOAuth2Provider2,
+            Oauth2Provider.GOOGLE: SecurityOAuth2Google,
+        }
+        for oauth2_provider in self.oauth2_providers:
+            match oauth2_provider:
+                case Oauth2Provider.GOOGLE:
+                    if self.oauth2_provider_settings.google:
+                        self._oauth2_settings[oauth2_provider.value] = self.oauth2_provider_settings.google
+                case Oauth2Provider.PROVIDER1:
+                    if self.oauth2_provider_settings.provider1:
+                        self._oauth2_settings[oauth2_provider.value] = self.oauth2_provider_settings.provider1
+                case Oauth2Provider.PROVIDER2:
+                    if self.oauth2_provider_settings.provider2:
+                        self._oauth2_settings[oauth2_provider.value] = self.oauth2_provider_settings.provider2
+
+            if oauth2_provider.value not in self._oauth2_settings:
+                provider = mapped_providers[oauth2_provider]()
+                if isinstance(provider, SecurityOAuth2Settings):
+                    self._oauth2_settings[oauth2_provider.value] = provider
+
+        return self
+
+    @model_validator(mode="after")
+    def check_oidc_provider_settings(self) -> Self:
+        mapped_providers: dict[OIDCProvider, type[SecurityOIDCBaseSettings]] = {
+            OIDCProvider.GOOGLE: SecurityOIDCGoogle,
+            OIDCProvider.PROVIDER1: SecurityOIDCProvider1,
+            OIDCProvider.PROVIDER2: SecurityOIDCProvider2,
+        }
+        for oidc_provider in self.oidc_providers:
+            match oidc_provider:
+                case OIDCProvider.GOOGLE:
+                    if self.oidc_provider_settings.google:
+                        self._oidc_settings[oidc_provider.value] = self.oidc_provider_settings.google
+                case OIDCProvider.PROVIDER1:
+                    if self.oidc_provider_settings.provider1:
+                        self._oidc_settings[oidc_provider.value] = self.oidc_provider_settings.provider1
+                case OIDCProvider.PROVIDER2:
+                    if self.oidc_provider_settings.provider2:
+                        self._oidc_settings[oidc_provider.value] = self.oidc_provider_settings.provider2
+
+            if oidc_provider.value not in self._oidc_settings:
+                provider = mapped_providers[oidc_provider]()
+                if isinstance(provider, SecurityOIDCSettings):
+                    self._oidc_settings[oidc_provider.value] = provider
+
+        return self
+
+    def get_oauth2_provider(self, provider: str) -> SecurityOAuth2Settings:
+        if provider in self._oauth2_settings:
+            return self._oauth2_settings[provider]
+
+        raise ProcessingError(message=f"The provider {provider} has not been initialized")
+
+    def get_oidc_provider(self, provider: str) -> SecurityOIDCSettings:
+        if provider in self._oidc_settings:
+            return self._oidc_settings[provider]
+
+        raise ProcessingError(message=f"The provider {provider} has not been initialized")
+
+    @property
+    def public_sso_config(self) -> SSOInfo:
+        oauth2_providers = [
+            SSOProviderInfo(
+                name=provider,
+                display_label=self._oauth2_settings[provider].display_label,
+                icon=self._oauth2_settings[provider].icon,
+                protocol=SSOProtocol.OAUTH2,
+            )
+            for provider in self._oauth2_settings
+        ]
+        oidc_providers = [
+            SSOProviderInfo(
+                name=provider,
+                display_label=self._oidc_settings[provider].display_label,
+                icon=self._oidc_settings[provider].icon,
+                protocol=SSOProtocol.OIDC,
+            )
+            for provider in self._oidc_settings
+        ]
+        return SSOInfo(providers=oauth2_providers + oidc_providers)
 
 
 class TraceSettings(BaseSettings):
@@ -333,10 +664,11 @@ class TraceSettings(BaseSettings):
 class Override:
     message_bus: Optional[InfrahubMessageBus] = None
     cache: Optional[InfrahubCache] = None
+    workflow: Optional[InfrahubWorkflow] = None
 
 
 @dataclass
-class ConfiguredSettings:
+class ConfiguredSettings:  # pylint: disable=too-many-public-methods
     settings: Optional[Settings] = None
 
     def initialize(self, config_file: Optional[str] = None) -> None:
@@ -346,7 +678,7 @@ class ConfiguredSettings:
         if not config_file:
             config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
             config_file = os.path.abspath(config_file_name)
-        load(config_file)
+        self.settings = load(config_file)
 
     def initialize_and_exit(self, config_file: Optional[str] = None) -> None:
         """Initialize the settings if they have not been initialized, exit on failures."""
@@ -380,6 +712,10 @@ class ConfiguredSettings:
         return self.active_settings.git
 
     @property
+    def http(self) -> HTTPSettings:
+        return self.active_settings.http
+
+    @property
     def database(self) -> DatabaseSettings:
         return self.active_settings.database
 
@@ -390,6 +726,14 @@ class ConfiguredSettings:
     @property
     def cache(self) -> CacheSettings:
         return self.active_settings.cache
+
+    @property
+    def dev(self) -> DevelopmentSettings:
+        return self.active_settings.dev
+
+    @property
+    def workflow(self) -> WorkflowSettings:
+        return self.active_settings.workflow
 
     @property
     def miscellaneous(self) -> MiscellaneousSettings:
@@ -430,9 +774,12 @@ class Settings(BaseSettings):
     main: MainSettings = MainSettings()
     api: ApiSettings = ApiSettings()
     git: GitSettings = GitSettings()
+    dev: DevelopmentSettings = DevelopmentSettings()
+    http: HTTPSettings = HTTPSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
     cache: CacheSettings = CacheSettings()
+    workflow: WorkflowSettings = WorkflowSettings()
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
@@ -443,7 +790,7 @@ class Settings(BaseSettings):
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
 
-def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> None:
+def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> Settings:
     """Load configuration.
 
     Configuration is loaded from a config file in toml format that contains the settings,
@@ -451,17 +798,15 @@ def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str
     """
 
     if config_data:
-        SETTINGS.settings = Settings(**config_data)
-        return
+        return Settings(**config_data)
 
     if os.path.exists(config_file_name):
         config_string = Path(config_file_name).read_text(encoding="utf-8")
         config_tmp = toml.loads(config_string)
 
         SETTINGS.settings = Settings(**config_tmp)
-        return
 
-    SETTINGS.settings = Settings()
+    return Settings()
 
 
 def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> None:
@@ -475,7 +820,7 @@ def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional
         config_data (dict, optional): [description]. Defaults to None.
     """
     try:
-        load(config_file_name=config_file_name, config_data=config_data)
+        SETTINGS.settings = load(config_file_name=config_file_name, config_data=config_data)
     except ValidationError as err:
         print(f"Configuration not valid, found {len(err.errors())} error(s)")
         for error in err.errors():

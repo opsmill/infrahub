@@ -1,9 +1,12 @@
-import { describe, expect, it } from "vitest";
 import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
-import { IModelSchema } from "@/state/atoms/schema.atom";
 import { AuthContextType } from "@/hooks/useAuth";
-import { AttributeType } from "@/utils/getObjectItemDisplayValue";
 import { components } from "@/infraops";
+import { RelationshipSchema } from "@/screens/schema/types";
+import { store } from "@/state";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { IModelSchema } from "@/state/atoms/schema.atom";
+import { AttributeType } from "@/utils/getObjectItemDisplayValue";
+import { describe, expect, it } from "vitest";
 
 export const buildAttributeSchema = (
   override?: Partial<components["schemas"]["AttributeSchema-Output"]>
@@ -31,8 +34,8 @@ export const buildAttributeSchema = (
 });
 
 export const buildRelationshipSchema = (
-  override?: Partial<components["schemas"]["RelationshipSchema-Output"]>
-): components["schemas"]["RelationshipSchema-Output"] => ({
+  override?: Partial<RelationshipSchema>
+): RelationshipSchema => ({
   id: "17e2718c-73ed-3ffe-3402-c515757ff94f",
   state: "present",
   name: "tagone",
@@ -267,16 +270,16 @@ describe("getFormFieldsFromSchema", () => {
       },
       items: [
         {
-          id: "prefix",
+          value: "prefix",
+          label: "Prefix",
           description: "Prefix serves as container for other prefixes",
           color: "#ed6a5a",
-          name: "Prefix",
         },
         {
-          id: "address",
+          value: "address",
+          label: "Address",
           description: "Prefix serves as subnet for IP addresses",
           color: "#f4f1bb",
-          name: "Address",
         },
       ],
       field: schema.attributes?.[0],
@@ -316,11 +319,7 @@ describe("getFormFieldsFromSchema", () => {
           required: expect.any(Function),
         },
       },
-      items: [
-        { id: 1, name: 1 },
-        { id: 2, name: 2 },
-        { id: 3, name: 3 },
-      ],
+      items: [1, 2, 3],
       field: schema.attributes?.[0],
       schema,
       unique: false,
@@ -356,8 +355,9 @@ describe("getFormFieldsFromSchema", () => {
       data: {
         sub: "1",
       },
-      signIn: async () => {},
+      login: async () => {},
       signOut: () => {},
+      setToken: () => {},
       user: {
         id: "1",
       },
@@ -414,8 +414,9 @@ describe("getFormFieldsFromSchema", () => {
       data: {
         sub: "1",
       },
-      signIn: async () => {},
+      login: async () => {},
       signOut: () => {},
+      setToken: () => {},
       user: {
         id: "1",
       },
@@ -423,6 +424,340 @@ describe("getFormFieldsFromSchema", () => {
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema, initialObject, auth });
+
+    // THEN
+    expect(fields.length).to.equal(1);
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "user" }, value: "test-value" },
+      description: undefined,
+      disabled: false,
+      name: "field1",
+      label: "Field 1",
+      type: "Text",
+      unique: false,
+      rules: {
+        required: false,
+        validate: {
+          required: expect.any(Function),
+        },
+      },
+    });
+  });
+
+  it("should disable a field if permission is DENY", () => {
+    // GIVEN
+    const schema = {
+      attributes: [buildAttributeSchema()],
+    } as IModelSchema;
+
+    const initialObject: { field1: Partial<AttributeType> } = {
+      field1: {
+        is_from_profile: false,
+        is_protected: true,
+        is_visible: true,
+        owner: {
+          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
+          display_label: "Architecture Team",
+        },
+        permissions: {
+          update_value: "DENY",
+        },
+        source: null,
+        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        value: "test-value",
+        __typename: "TextAttribute",
+      },
+    };
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, initialObject });
+
+    // THEN
+    expect(fields.length).to.equal(1);
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "user" }, value: "test-value" },
+      description: undefined,
+      disabled: true,
+      name: "field1",
+      label: "Field 1",
+      type: "Text",
+      unique: false,
+      rules: {
+        required: false,
+        validate: {
+          required: expect.any(Function),
+        },
+      },
+    });
+  });
+
+  it("should enable a field if permission is ALLOW_ALL", () => {
+    // GIVEN
+    const schema = {
+      attributes: [buildAttributeSchema()],
+    } as IModelSchema;
+
+    const initialObject: { field1: Partial<AttributeType> } = {
+      field1: {
+        is_from_profile: false,
+        is_protected: true,
+        is_visible: true,
+        owner: {
+          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
+          display_label: "Architecture Team",
+        },
+        permissions: {
+          update_value: "ALLOW",
+        },
+        source: null,
+        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        value: "test-value",
+        __typename: "TextAttribute",
+      },
+    };
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, initialObject });
+
+    // THEN
+    expect(fields.length).to.equal(1);
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "user" }, value: "test-value" },
+      description: undefined,
+      disabled: false,
+      name: "field1",
+      label: "Field 1",
+      type: "Text",
+      unique: false,
+      rules: {
+        required: false,
+        validate: {
+          required: expect.any(Function),
+        },
+      },
+    });
+  });
+
+  it("should enable a field if permission is ALLOW_DEFAULT and current branch is default", () => {
+    // GIVEN
+    const schema = {
+      attributes: [buildAttributeSchema()],
+    } as IModelSchema;
+
+    const initialObject: { field1: Partial<AttributeType> } = {
+      field1: {
+        is_from_profile: false,
+        is_protected: true,
+        is_visible: true,
+        owner: {
+          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
+          display_label: "Architecture Team",
+        },
+        permissions: {
+          update_value: "ALLOW_DEFAULT",
+        },
+        source: null,
+        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        value: "test-value",
+        __typename: "TextAttribute",
+      },
+    };
+
+    store.set(currentBranchAtom, {
+      id: "18007869-b812-f080-2d60-c51d9e906226",
+      name: "mainnn",
+      description: "Default Branch",
+      origin_branch: "main",
+      branched_from: "2024-10-21T12:44:12.365354Z",
+      created_at: "2024-10-21T12:44:12.365371Z",
+      sync_with_git: true,
+      is_default: true,
+      has_schema_changes: false,
+      __typename: "Branch",
+    });
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, initialObject });
+
+    // THEN
+    expect(fields.length).to.equal(1);
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "user" }, value: "test-value" },
+      description: undefined,
+      disabled: false,
+      name: "field1",
+      label: "Field 1",
+      type: "Text",
+      unique: false,
+      rules: {
+        required: false,
+        validate: {
+          required: expect.any(Function),
+        },
+      },
+    });
+  });
+
+  it("should disable a field if permission is ALLOW_DEFAULT and current branch is not default", () => {
+    // GIVEN
+    const schema = {
+      attributes: [buildAttributeSchema()],
+    } as IModelSchema;
+
+    const initialObject: { field1: Partial<AttributeType> } = {
+      field1: {
+        is_from_profile: false,
+        is_protected: true,
+        is_visible: true,
+        owner: {
+          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
+          display_label: "Architecture Team",
+        },
+        permissions: {
+          update_value: "ALLOW_DEFAULT",
+        },
+        source: null,
+        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        value: "test-value",
+        __typename: "TextAttribute",
+      },
+    };
+
+    store.set(currentBranchAtom, {
+      id: "18007869-b812-f080-2d60-c51d9e906226",
+      name: "other",
+      description: "other Branch",
+      origin_branch: "main",
+      branched_from: "2024-10-21T12:44:12.365354Z",
+      created_at: "2024-10-21T12:44:12.365371Z",
+      sync_with_git: true,
+      is_default: false,
+      has_schema_changes: false,
+      __typename: "Branch",
+    });
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, initialObject });
+
+    // THEN
+    expect(fields.length).to.equal(1);
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "user" }, value: "test-value" },
+      description: undefined,
+      disabled: true,
+      name: "field1",
+      label: "Field 1",
+      type: "Text",
+      unique: false,
+      rules: {
+        required: false,
+        validate: {
+          required: expect.any(Function),
+        },
+      },
+    });
+  });
+
+  it("should disable a field if permission is ALLOW_OTHER and current branch is default", () => {
+    // GIVEN
+    const schema = {
+      attributes: [buildAttributeSchema()],
+    } as IModelSchema;
+
+    const initialObject: { field1: Partial<AttributeType> } = {
+      field1: {
+        is_from_profile: false,
+        is_protected: true,
+        is_visible: true,
+        owner: {
+          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
+          display_label: "Architecture Team",
+        },
+        permissions: {
+          update_value: "ALLOW_OTHER",
+        },
+        source: null,
+        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        value: "test-value",
+        __typename: "TextAttribute",
+      },
+    };
+
+    store.set(currentBranchAtom, {
+      id: "18007869-b812-f080-2d60-c51d9e906226",
+      name: "main",
+      description: "Default Branch",
+      origin_branch: "main",
+      branched_from: "2024-10-21T12:44:12.365354Z",
+      created_at: "2024-10-21T12:44:12.365371Z",
+      sync_with_git: true,
+      is_default: true,
+      has_schema_changes: false,
+      __typename: "Branch",
+    });
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, initialObject });
+
+    // THEN
+    expect(fields.length).to.equal(1);
+    expect(fields[0]).toEqual({
+      defaultValue: { source: { type: "user" }, value: "test-value" },
+      description: undefined,
+      disabled: true,
+      name: "field1",
+      label: "Field 1",
+      type: "Text",
+      unique: false,
+      rules: {
+        required: false,
+        validate: {
+          required: expect.any(Function),
+        },
+      },
+    });
+  });
+
+  it("should disable a field if permission is ALLOW_OTHER and current branch is not default", () => {
+    // GIVEN
+    const schema = {
+      attributes: [buildAttributeSchema()],
+    } as IModelSchema;
+
+    const initialObject: { field1: Partial<AttributeType> } = {
+      field1: {
+        is_from_profile: false,
+        is_protected: true,
+        is_visible: true,
+        owner: {
+          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
+          display_label: "Architecture Team",
+        },
+        permissions: {
+          update_value: "ALLOW_OTHER",
+        },
+        source: null,
+        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        value: "test-value",
+        __typename: "TextAttribute",
+      },
+    };
+
+    store.set(currentBranchAtom, {
+      id: "18007869-b812-f080-2d60-c51d9e906226",
+      name: "other",
+      description: "other Branch",
+      origin_branch: "main",
+      branched_from: "2024-10-21T12:44:12.365354Z",
+      created_at: "2024-10-21T12:44:12.365371Z",
+      sync_with_git: true,
+      is_default: false,
+      has_schema_changes: false,
+      __typename: "Branch",
+    });
+
+    // WHEN
+    const fields = getFormFieldsFromSchema({ schema, initialObject });
 
     // THEN
     expect(fields.length).to.equal(1);

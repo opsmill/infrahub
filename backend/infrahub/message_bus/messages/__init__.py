@@ -13,7 +13,6 @@ from .event_node_mutated import EventNodeMutated
 from .event_schema_update import EventSchemaUpdate
 from .event_worker_newprimaryapi import EventWorkerNewPrimaryAPI
 from .finalize_validator_execution import FinalizeValidatorExecution
-from .git_branch_create import GitBranchCreate
 from .git_diff_namesonly import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_add import GitRepositoryAdd
@@ -31,16 +30,9 @@ from .proposed_change.request_proposedchange_schemaintegrity import RequestPropo
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
 from .refresh_webhook_configuration import RefreshWebhookConfiguration
-from .request_artifact_generate import RequestArtifactGenerate
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
-from .request_artifactdefinition_generate import RequestArtifactDefinitionGenerate
-from .request_diff_refresh import RequestDiffRefresh
-from .request_diff_update import RequestDiffUpdate
-from .request_generator_run import RequestGeneratorRun
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
 from .request_generatordefinition_run import RequestGeneratorDefinitionRun
-from .request_git_createbranch import RequestGitCreateBranch
-from .request_git_sync import RequestGitSync
 from .request_graphqlquerygroup_update import RequestGraphQLQueryGroupUpdate
 from .request_proposed_change_cancel import RequestProposedChangeCancel
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
@@ -49,13 +41,7 @@ from .request_repository_userchecks import RequestRepositoryUserChecks
 from .schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
 from .schema_validator_path import SchemaValidatorPath, SchemaValidatorPathResponse
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
-from .send_telemetry_push import SendTelemetryPush
-from .send_webhook_event import SendWebhookEvent
-from .transform_jinja_template import TransformJinjaTemplate, TransformJinjaTemplateResponse
-from .transform_python_data import TransformPythonData, TransformPythonDataResponse
-from .trigger_artifact_definition_generate import TriggerArtifactDefinitionGenerate
 from .trigger_generatordefinition_run import TriggerGeneratorDefinitionRun
-from .trigger_ipam_reconciliation import TriggerIpamReconciliation
 from .trigger_proposed_change_cancel import TriggerProposedChangeCancel
 from .trigger_webhook_actions import TriggerWebhookActions
 
@@ -73,7 +59,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "event.schema.update": EventSchemaUpdate,
     "event.worker.new_primary_api": EventWorkerNewPrimaryAPI,
     "finalize.validator.execution": FinalizeValidatorExecution,
-    "git.branch.create": GitBranchCreate,
     "git.diff.names_only": GitDiffNamesOnly,
     "git.file.get": GitFileGet,
     "git.repository.add": GitRepositoryAdd,
@@ -87,16 +72,9 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
     "refresh.webhook.configuration": RefreshWebhookConfiguration,
-    "request.artifact.generate": RequestArtifactGenerate,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
-    "request.artifact_definition.generate": RequestArtifactDefinitionGenerate,
-    "request.diff.update": RequestDiffUpdate,
-    "request.diff.refresh": RequestDiffRefresh,
-    "request.generator.run": RequestGeneratorRun,
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
     "request.generator_definition.run": RequestGeneratorDefinitionRun,
-    "request.git.create_branch": RequestGitCreateBranch,
-    "request.git.sync": RequestGitSync,
     "request.graphql_query_group.update": RequestGraphQLQueryGroupUpdate,
     "request.proposed_change.cancel": RequestProposedChangeCancel,
     "request.proposed_change.data_integrity": RequestProposedChangeDataIntegrity,
@@ -109,20 +87,12 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "request.repository.checks": RequestRepositoryChecks,
     "request.repository.user_checks": RequestRepositoryUserChecks,
     "send.echo.request": SendEchoRequest,
-    "send.webhook.event": SendWebhookEvent,
-    "send.telemetry.push": SendTelemetryPush,
-    "transform.jinja.template": TransformJinjaTemplate,
-    "transform.python.data": TransformPythonData,
-    "trigger.artifact_definition.generate": TriggerArtifactDefinitionGenerate,
     "trigger.generator_definition.run": TriggerGeneratorDefinitionRun,
-    "trigger.ipam.reconciliation": TriggerIpamReconciliation,
     "trigger.proposed_change.cancel": TriggerProposedChangeCancel,
     "trigger.webhook.actions": TriggerWebhookActions,
 }
 
 RESPONSE_MAP: dict[str, type[InfrahubResponse]] = {
-    "transform.jinja.template": TransformJinjaTemplateResponse,
-    "transform.python.data": TransformPythonDataResponse,
     "git.diff.names_only": GitDiffNamesOnlyResponse,
     "git.file.get": GitFileGetResponse,
     "send.echo.request": SendEchoRequestResponse,

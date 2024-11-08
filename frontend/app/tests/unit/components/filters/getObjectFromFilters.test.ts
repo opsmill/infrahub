@@ -1,7 +1,7 @@
-import { describe, expect } from "vitest";
 import { getObjectFromFilters } from "@/components/filters/utils/getObjectFromFilters";
 import { Filter } from "@/hooks/useFilters";
 import { IModelSchema } from "@/state/atoms/schema.atom";
+import { describe, expect } from "vitest";
 import { buildRelationshipSchema } from "../form/utils/getFormFieldsFromSchema.test";
 
 describe("getObjectFromFilters - test", () => {

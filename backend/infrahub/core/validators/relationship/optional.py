@@ -24,14 +24,12 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.node_schema.kind
         self.params["relationship_id"] = self.relationship_schema.identifier
 
         query = """
         // Query all Active Nodes of type
         // and store their UUID in uuids_active_node
-        MATCH (n:Node)
-        WHERE $node_kind IN LABELS(n)
+        MATCH (n:%(node_kind)s)
         CALL {
             WITH n
             MATCH (root:Root)<-[r:IS_PART_OF]-(n)
@@ -45,8 +43,7 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
         WITH COLLECT(active_node.uuid) AS uuids_active_node
         // identifier all nodes with at least one active member for this relationship
         // and store their UUID in uuids_with_rel
-        MATCH (n:Node)
-        WHERE $node_kind IN LABELS(n)
+        MATCH (n:%(node_kind)s)
         CALL {
             WITH n, uuids_active_node
             MATCH path = (n)-[r:IS_RELATED]-(:Relationship { name: $relationship_id })
@@ -58,12 +55,11 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
         WITH n1 as node_with_rel, r1 as r, uuids_active_node
         WHERE r.status = "active"
         WITH COLLECT(node_with_rel.uuid) AS uuids_with_rel, uuids_active_node
-        MATCH (n:Node)-[r:IS_PART_OF]->(:Root)
-        WHERE $node_kind IN LABELS(n)
-          AND n.uuid IN uuids_active_node
+        MATCH (n:%(node_kind)s)-[r:IS_PART_OF]->(:Root)
+        WHERE n.uuid IN uuids_active_node
           AND not n.uuid IN uuids_with_rel
           AND NOT exists((n)-[:IS_RELATED]-(:Relationship { name: $relationship_id }))
-        """ % {"branch_filter": branch_filter}
+        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
 
         self.add_to_query(query)
         self.return_labels = ["n.uuid", "r as root_relationship"]
@@ -86,7 +82,7 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
 class RelationshipOptionalChecker(ConstraintCheckerInterface):
     query_classes = [RelationshipOptionalUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]) -> None:
         self.db = db
         self.branch = branch
 

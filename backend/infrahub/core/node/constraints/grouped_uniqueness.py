@@ -105,7 +105,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         self, schema_attribute_path_values: list[SchemaAttributePathValue], results_index: UniquenessQueryResultsIndex
     ) -> None:
         # constraint cannot be violated if this node is missing any values
-        if any((sapv.value is None for sapv in schema_attribute_path_values)):
+        if any(sapv.value is None for sapv in schema_attribute_path_values):
             return
 
         matching_node_ids = results_index.get_node_ids_for_value_group(schema_attribute_path_values)

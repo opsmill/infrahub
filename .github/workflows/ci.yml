@@ -7,6 +7,7 @@ on:
     branches:
       - develop
       - stable
+      - release-*
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,15 +16,15 @@ concurrency:
 env:
   INFRAHUB_DB_USERNAME: neo4j
   INFRAHUB_DB_PASSWORD: admin
-  INFRAHUB_DB_ADDRESS: localhost
-  INFRAHUB_DB_PORT: 7687
   INFRAHUB_DB_PROTOCOL: bolt
-  INFRAHUB_BROKER_ADDRESS: message-queue
   INFRAHUB_LOG_LEVEL: CRITICAL
   INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
   INFRAHUB_IMAGE_VER: "local"
+  INFRAHUB_SERVER_PORT: 0
+  INFRAHUB_DB_BACKUP_PORT: 0
+  VMAGENT_PORT: 0
   PYTEST_XDIST_WORKER_COUNT: 4
-  INFRAHUB_TEST_IN_DOCKER: 1
+  INFRAHUB_USE_TEST_CONTAINERS: 1
   VALE_VERSION: "3.7.1"
   GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
   METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
@@ -91,8 +92,6 @@ jobs:
         run: "yamllint -s ."
 
   javascript-lint:
-    if: needs.files-changed.outputs.javascript == 'true'
-    needs: ["files-changed"]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -100,18 +99,13 @@ jobs:
         uses: "actions/checkout@v4"
         with:
           submodules: true
-      - name: Install NodeJS
-        uses: actions/setup-node@v4
+      - name: Setup Biome
+        uses: biomejs/setup-biome@v2
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
-      - name: Install frontend dependencies
+          version: 1.9.3
+      - name: Run Biome
         working-directory: ./frontend/app
-        run: npm install
-      - name: Run ESLint
-        working-directory: ./frontend/app
-        run: npm run eslint
+        run: biome ci .
 
   python-lint:
     if: needs.files-changed.outputs.python == 'true'
@@ -124,11 +118,11 @@ jobs:
         with:
           submodules: true
       - name: "Setup environment"
-        run: "pip install ruff==0.5.0"
+        run: "pip install ruff==0.7.1"
       - name: "Linting: ruff check"
-        run: "ruff check ."
+        run: "ruff check . --exclude python_sdk"
       - name: "Linting: ruff format"
-        run: "ruff format --check --diff ."
+        run: "ruff format --check --diff --exclude python_sdk ."
 
   markdown-lint:
     if: |
@@ -143,7 +137,7 @@ jobs:
         with:
           submodules: true
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@v16
+        uses: DavidAnson/markdownlint-cli2-action@v17
         with:
           config: .markdownlint.yaml
           globs: |
@@ -243,26 +237,30 @@ jobs:
       group: huge-runners
     timeout-minutes: 45
     env:
-      INFRAHUB_DB_TYPE: memgraph
+      INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
         with:
           submodules: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: "Setup git credentials"
+        run: "git config --global user.name 'Infrahub' && \
+              git config --global user.email 'infrahub@opsmill.com' && \
+              git config --global --add safe.directory '*' && \
+              git config --global credential.usehttppath true && \
+              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
-        run: "pip install toml invoke"
-      - name: "Set environment variables"
-        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
-      - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-      - name: "Clear docker environment"
-        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-      - name: "Build Test Image"
-        run: "invoke dev.build"
-      - name: "Pull External Docker Images"
-        run: "invoke dev.pull"
+        run: |
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
+      - name: "Install dependencies"
+        run: "poetry install --no-interaction --no-ansi"
       - name: "Unit Tests"
-        run: "invoke backend.test-unit"
+        run: "poetry run invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -272,7 +270,7 @@ jobs:
           flag-name: backend-unit
           parallel: true
       - name: Generate tracing spans
-        if: always() && github.event.pull_request.head.repo.fork == false
+        if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
         uses: inception-health/otel-upload-test-artifact-action@v1
         with:
           jobName: "backend-tests-unit"
@@ -298,24 +296,28 @@ jobs:
         uses: "actions/checkout@v4"
         with:
           submodules: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: "Setup git credentials"
+        run: "git config --global user.name 'Infrahub' && \
+              git config --global user.email 'infrahub@opsmill.com' && \
+              git config --global --add safe.directory '*' && \
+              git config --global credential.usehttppath true && \
+              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
-        run: "pip install toml invoke"
-      - name: "Set environment variables"
-        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
-      - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-      - name: "Clear docker environment"
-        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-      - name: "Build Test Image"
-        run: "invoke dev.build"
-      - name: "Pull External Docker Images"
-        run: "invoke dev.pull"
+        run: |
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
+      - name: "Install dependencies"
+        run: "poetry install --no-interaction --no-ansi"
       - name: "Mypy Tests"
-        run: "invoke backend.mypy --docker"
+        run: "poetry run invoke backend.mypy"
       - name: "Pylint Tests"
-        run: "invoke backend.pylint --docker"
+        run: "poetry run invoke backend.pylint"
       - name: "Integration Tests"
-        run: "invoke backend.test-integration"
+        run: "poetry run invoke backend.test-integration"
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -325,7 +327,7 @@ jobs:
           flag-name: backend-integration
           parallel: true
 
-  backend-tests-neo4j:
+  backend-tests-memgraph:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -339,18 +341,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: backend-tests-neo4j
-            env:
-              INFRAHUB_DB_TYPE: neo4j
-          - name: backend-tests-nats
+          - name: backend-tests-unit-memgraph
             env:
               INFRAHUB_DB_TYPE: memgraph
-              INFRAHUB_USE_NATS: 1
-              INFRAHUB_BROKER_DRIVER: nats
-              INFRAHUB_BROKER_PORT: 4222
-              INFRAHUB_CACHE_DRIVER: nats
-              INFRAHUB_CACHE_ADDRESS: message-queue
-              INFRAHUB_CACHE_PORT: 4222
+          # - name: backend-tests-unit-nats
+          #   env:
+          #     INFRAHUB_DB_TYPE: memgraph
+          #     INFRAHUB_USE_NATS: 1
+          #     INFRAHUB_BROKER_DRIVER: nats
+          #     INFRAHUB_CACHE_DRIVER: nats
     name: ${{ matrix.name }}
     env: ${{ matrix.env }}
     steps:
@@ -358,20 +357,24 @@ jobs:
         uses: "actions/checkout@v4"
         with:
           submodules: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: "Setup git credentials"
+        run: "git config --global user.name 'Infrahub' && \
+              git config --global user.email 'infrahub@opsmill.com' && \
+              git config --global --add safe.directory '*' && \
+              git config --global credential.usehttppath true && \
+              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
-        run: "pip install toml invoke"
-      - name: "Set environment variables"
-        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
-      - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-      - name: "Clear docker environment"
-        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-      - name: "Build Test Image"
-        run: "invoke dev.build"
-      - name: "Pull External Docker Images"
-        run: "invoke dev.pull"
+        run: |
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
+      - name: "Install dependencies"
+        run: "poetry install --no-interaction --no-ansi"
       - name: "Unit Tests"
-        run: "invoke backend.test-unit"
+        run: "poetry run invoke backend.test-unit"
 
   backend-validate-generated:
     if: |
@@ -474,7 +477,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: docs/package-lock.json
       - name: "Install dependencies"
         run: npm install
       - name: "Setup Python environment"
@@ -581,15 +584,15 @@ jobs:
           - name: E2E-testing-playwright
             env:
               INFRAHUB_DB_TYPE: neo4j
-          - name: E2E-testing-playwright-nats
-            env:
-              INFRAHUB_DB_TYPE: neo4j
-              INFRAHUB_USE_NATS: 1
-              INFRAHUB_BROKER_DRIVER: nats
-              INFRAHUB_BROKER_PORT: 4222
-              INFRAHUB_CACHE_DRIVER: nats
-              INFRAHUB_CACHE_ADDRESS: message-queue
-              INFRAHUB_CACHE_PORT: 4222
+          # - name: E2E-testing-playwright-nats
+          #   env:
+          #     INFRAHUB_DB_TYPE: neo4j
+          #     INFRAHUB_USE_NATS: 1
+          #     INFRAHUB_BROKER_DRIVER: nats
+          #     INFRAHUB_BROKER_PORT: 4222
+          #     INFRAHUB_CACHE_DRIVER: nats
+          #     INFRAHUB_CACHE_ADDRESS: message-queue
+          #     INFRAHUB_CACHE_PORT: 4222
     name: ${{ matrix.name }}
     env: ${{ matrix.env }}
     steps:
@@ -602,22 +605,16 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: frontend/app/package-lock.json
 
       - name: Install Invoke
         run: pip install toml invoke
 
-      - name: Select infrahub port
-        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
-      - name: Select infrahub db port
-        run: echo "INFRAHUB_DB_BACKUP_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
-      - name: Select vmagent port
-        run: echo "VMAGENT_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
       - name: Set job name
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
 
       - name: Enable tracing
-        if: github.event.pull_request.head.repo.fork == false
+        if: github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
         run: echo "INFRAHUB_TRACE_ENABLE=true" >> $GITHUB_ENV
       - name: Set tracing configuration
         run: echo "INFRAHUB_TRACE_INSECURE=false" >> $GITHUB_ENV
@@ -658,7 +655,9 @@ jobs:
         run: invoke dev.infra-git-import dev.infra-git-create
 
       - name: Set infrahub address
-        run: echo "INFRAHUB_ADDRESS=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
+        run: |
+          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
+          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
 
       - name: Install frontend dependencies
         run: npm install
@@ -684,11 +683,17 @@ jobs:
         env:
           INFRAHUB_MISC_RESPONSE_DELAY: 2
 
+      - name: Set infrahub address
+        if: needs.files-changed.outputs.e2e_tests == 'true'
+        run: |
+          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
+          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
+
       - name: Run Playwright tests
         run: npm run ci:test:e2e
 
       - name: Generate tracing spans
-        if: always() && github.event.pull_request.head.repo.fork == false
+        if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
         uses: inception-health/otel-upload-test-artifact-action@v1
         with:
           jobName: "E2E-testing-playwright"
@@ -710,15 +715,19 @@ jobs:
 
       - name: Display server logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
 
-      - name: Display git 1 logs
+      - name: Display task worker 1 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-1"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1"
 
-      - name: Display git 2 logs
+      - name: Display task worker 2 logs
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-2"
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2"
+
+      - name: Display task manager logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1"
 
       - name: Display database logs
         if: always()
@@ -743,6 +752,79 @@ jobs:
         if: always()
         run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$JOB_NAME&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
 
+  # ------------------------------------------ E2E invoke demo ------------------------------------------------
+  E2E-testing-invoke-demo-start:
+    needs:
+      - javascript-lint
+      - files-changed
+      - yaml-lint
+      - python-lint
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      github.base_ref == 'develop'
+    runs-on:
+      group: huge-runners
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Invoke
+        run: |
+          pip install toml invoke
+
+      - name: Set job name
+        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+
+      - name: Run 'invoke demo'
+        run: |
+          unset INFRAHUB_IMAGE_VER
+          invoke demo.start demo.load-infra-schema demo.load-infra-data
+
+      - name: Display server logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
+
+      - name: Display task worker 1 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-1"
+
+      - name: Display task worker 2 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-2"
+
+      - name: Display task manager logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1"
+
+      - name: Display database logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
+
+      - name: Display message-queue logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1"
+
+      - name: "Clear docker environment and force vmagent to stop"
+        if: always()
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
   # ------------------------------------------ Benchmarks ------------------------------------------------
   backend-benchmark:
     needs:
@@ -758,7 +840,7 @@ jobs:
     runs-on:
       group: huge-runners
     env:
-      INFRAHUB_DB_TYPE: memgraph
+      INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -767,33 +849,19 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12
-      - name: "Setup environment"
+          python-version: '3.12'
+      - name: "Setup git credentials"
+        run: "git config --global user.name 'Infrahub' && \
+              git config --global user.email 'infrahub@opsmill.com' && \
+              git config --global --add safe.directory '*' && \
+              git config --global credential.usehttppath true && \
+              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+      - name: "Setup Python environment"
         run: |
-          pipx install poetry
-          poetry config virtualenvs.prefer-active-python true
-          pip install invoke toml
-      - name: Set Version of Pydantic
-        run: poetry add pydantic@^2
-      - name: "Install Package"
-        run: "poetry install"
-
-      - name: Select infrahub db port
-        run: echo "INFRAHUB_DB_PORT=$(shuf -n 1 -i 10000-30000)" >> $GITHUB_ENV
-
-      - name: "Set environment variables"
-        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
-      - name: "Set environment variables"
-        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-      - name: "Clear docker environment"
-        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-
-      - name: Create docker compose override
-        run: mv development/docker-compose.dev-override-benchmark.yml development/docker-compose.dev-override.yml
-
-      - name: Start dependencies
-        run: invoke dev.deps
-
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
+      - name: "Install dependencies"
+        run: "poetry install --no-interaction --no-ansi"
       - name: Update PATH
         run: "echo ~/.cargo/bin >> $GITHUB_PATH"
       - name: Run benchmarks
@@ -801,8 +869,6 @@ jobs:
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           run: "poetry run pytest -v backend/tests/benchmark/ --codspeed"
-        env:
-          INFRAHUB_TEST_IN_DOCKER: "false"
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
     needs:

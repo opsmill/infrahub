@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from invoke import Context, task
+from invoke.runners import Result
 
 from .shared import (
     BUILD_NAME,
@@ -25,7 +26,7 @@ NAMESPACE = "BACKEND"
 # ----------------------------------------------------------------------------
 
 
-def _format_ruff(context: Context):
+def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with ruff")
@@ -36,7 +37,7 @@ def _format_ruff(context: Context):
 
 
 @task(name="format")
-def format_all(context: Context):
+def format_all(context: Context) -> None:
     """This will run all formatter."""
 
     _format_ruff(context)
@@ -48,11 +49,11 @@ def format_all(context: Context):
 # Testing tasks
 # ----------------------------------------------------------------------------
 @task
-def ruff(context: Context, docker: bool = False):
+def ruff(context: Context, docker: bool = False) -> None:
     """Run ruff to check that Python files adherence to black standards."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = f"ruff check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+    exec_cmd = f"poetry run ruff check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
@@ -64,11 +65,11 @@ def ruff(context: Context, docker: bool = False):
 
 
 @task
-def mypy(context: Context, docker: bool = False):
+def mypy(context: Context, docker: bool = False) -> None:
     """This will run mypy for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with mypy")
-    exec_cmd = f"mypy --show-error-codes {MAIN_DIRECTORY}"
+    exec_cmd = f"poetry run mypy --show-error-codes {MAIN_DIRECTORY}"
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
@@ -80,11 +81,11 @@ def mypy(context: Context, docker: bool = False):
 
 
 @task
-def pylint(context: Context, docker: bool = False):
+def pylint(context: Context, docker: bool = False) -> None:
     """This will run pylint for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with pylint")
-    exec_cmd = f"pylint --ignore-paths {MAIN_DIRECTORY}/tests {MAIN_DIRECTORY}"
+    exec_cmd = f"poetry run pylint --ignore-paths {MAIN_DIRECTORY}/tests {MAIN_DIRECTORY}"
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
@@ -96,7 +97,7 @@ def pylint(context: Context, docker: bool = False):
 
 
 @task
-def lint(context: Context, docker: bool = False):
+def lint(context: Context, docker: bool = False) -> None:
     """This will run all linter."""
     ruff(context, docker=docker)
     mypy(context, docker=docker)
@@ -106,19 +107,17 @@ def lint(context: Context, docker: bool = False):
 
 
 @task(optional=["database"])
-def test_unit(context: Context, database: str = INFRAHUB_DATABASE):
+def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
     with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_test_compose_files_cmd(database=database)
-        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
-        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
+        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         if database == "neo4j":
             exec_cmd += " --neo4j"
-        print(f"{base_cmd} {exec_cmd}")
-        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
+        print(f"{exec_cmd}")
+        return execute_command(context=context, command=f"{exec_cmd}")
 
 
 @task(optional=["database"])
-def test_core(context: Context, database: str = INFRAHUB_DATABASE):
+def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
@@ -130,19 +129,19 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE):
 
 
 @task(optional=["database"])
-def test_integration(context: Context, database: str = INFRAHUB_DATABASE):
+def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
     with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_test_compose_files_cmd(database=database)
-        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
-        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
+        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
         if database == "neo4j":
             exec_cmd += " --neo4j"
-        print(f"{base_cmd} {exec_cmd}")
-        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
+        print(f"{exec_cmd=}")
+        return execute_command(context=context, command=f"{exec_cmd}")
 
 
 @task
-def test_scale_env_start(context: Context, database: str = INFRAHUB_DATABASE, gunicorn_workers: int = 4):
+def test_scale_env_start(
+    context: Context, database: str = INFRAHUB_DATABASE, gunicorn_workers: int = 4
+) -> Optional[Result]:
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_scale_compose_files_cmd(database=database)
         command = f"{get_env_vars(context)} GUNICORN_WORKERS={gunicorn_workers} docker compose {compose_files_cmd} -p {BUILD_NAME} up -d"
@@ -150,7 +149,7 @@ def test_scale_env_start(context: Context, database: str = INFRAHUB_DATABASE, gu
 
 
 @task
-def test_scale_env_destroy(context: Context, database: str = INFRAHUB_DATABASE):
+def test_scale_env_destroy(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_scale_compose_files_cmd(database=database)
         command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} down --remove-orphans --volumes"
@@ -161,13 +160,13 @@ def test_scale_env_destroy(context: Context, database: str = INFRAHUB_DATABASE):
 def test_scale(
     context: Context,
     schema: Path = f"{ESCAPED_REPO_PATH}/backend/tests/scale/schema.yml",
-    stager: str = None,
-    amount: int = None,
-    test: str = None,
-    attrs: int = None,
-    rels: int = None,
-    changes: int = None,
-):
+    stager: Optional[str] = None,
+    amount: Optional[int] = None,
+    test: Optional[str] = None,
+    attrs: Optional[int] = None,
+    rels: Optional[int] = None,
+    changes: Optional[int] = None,
+) -> Optional[Result]:
     args = []
     if stager:
         args.extend(["--stager", stager])
@@ -198,7 +197,7 @@ def test_scale(
 
 
 @task(default=True)
-def format_and_lint(context: Context):
+def format_and_lint(context: Context) -> None:
     format_all(context)
     lint(context)
 
@@ -209,14 +208,14 @@ def format_and_lint(context: Context):
 
 
 @task
-def generate(context: Context):
+def generate(context: Context) -> None:
     """Generate internal backend models."""
     _generate_schemas(context=context)
     _generate_protocols(context=context)
 
 
 @task
-def validate_generated(context: Context, docker: bool = False):
+def validate_generated(context: Context, docker: bool = False) -> None:
     """Validate that the generated documentation is committed to Git."""
 
     _generate_schemas(context=context)
@@ -230,7 +229,7 @@ def validate_generated(context: Context, docker: bool = False):
         context.run(exec_cmd)
 
 
-def _generate_schemas(context: Context):
+def _generate_schemas(context: Context) -> None:
     from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
     from infrahub.core.schema.definitions.internal import (
@@ -321,7 +320,7 @@ def _sort_and_filter_models(
     return sorted(filtered, key=lambda k: (k["namespace"].lower(), k["name"].lower()))
 
 
-def _generate_protocols(context: Context):
+def _generate_protocols(context: Context) -> None:
     from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
     from infrahub.core.schema.definitions.core import core_models

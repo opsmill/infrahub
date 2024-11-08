@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import pydantic
 from graphene import Boolean, Field, InputField, InputObjectType, List, Mutation, String
@@ -8,28 +8,32 @@ from infrahub_sdk.utils import extract_fields, extract_fields_first_node
 from opentelemetry import trace
 from typing_extensions import Self
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.branch_differ import BranchDiffer
-from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
+from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.merger.merger import DiffMerger
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.merge import BranchMerger
-from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.core.task import UserTask
-from infrahub.core.validators.checker import schema_validators_checker
+from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
+from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
+from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import retry_db_transaction
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
-from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
+from infrahub.workflows.catalogue import BRANCH_MERGE, BRANCH_REBASE
 
 from ..types import BranchType
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from .. import GraphqlContext
+    from ..initialization import GraphqlContext
 
 
 # pylint: disable=unused-argument
@@ -183,85 +187,22 @@ class BranchRebase(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    @retry_db_transaction(name="branch_rebase")
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
         if not context.service:
             raise ValueError("Service must be provided to rebase a branch.")
 
-        async with UserTask.from_graphql_context(title=f"Rebase branch : {data.name}", context=context) as task:
-            obj = await Branch.get_by_name(db=context.db, name=str(data.name))
-            merger = BranchMerger(db=context.db, source_branch=obj, service=context.service)
+        obj = await Branch.get_by_name(db=context.db, name=str(data.name))
 
-            # If there are some changes related to the schema between this branch and main, we need to
-            #  - Run all the validations to ensure everything if correct before rebasing the branch
-            #  - Run all the migrations after the rebase
-            if obj.has_schema_changes:
-                candidate_schema = merger.get_candidate_schema()
-                constraints = await merger.calculate_validations(target_schema=candidate_schema)
-                error_messages, _ = await schema_validators_checker(
-                    branch=obj, schema=candidate_schema, constraints=constraints, service=context.service
-                )
-                if error_messages:
-                    raise ValidationError(",\n".join(error_messages))
+        await context.service.workflow.execute_workflow(workflow=BRANCH_REBASE, parameters={"branch": obj.name})
 
-            schema_in_main_before = merger.destination_schema.duplicate()
+        # Pull the latest information about the branch from the database directly
+        obj = await Branch.get_by_name(db=context.db, name=str(data.name))
+        fields = await extract_fields_first_node(info=info)
+        ok = True
 
-            async with context.db.start_transaction() as dbt:
-                await obj.rebase(db=dbt)
-                await task.info(message="Branch successfully rebased", db=dbt)
-
-            if obj.has_schema_changes:
-                # NOTE there is a bit additional work in order to calculate a proper diff that will
-                # allow us to pull only the part of the schema that has changed, for now the safest option is to pull
-                # Everything
-                # schema_diff = await merger.has_schema_changes()
-                updated_schema = await registry.schema.load_schema_from_db(
-                    db=context.db,
-                    branch=obj,
-                    # schema=merger.source_schema.duplicate(),
-                    # schema_diff=schema_diff,
-                )
-                registry.schema.set_schema_branch(name=obj.name, schema=updated_schema)
-                obj.update_schema_hash()
-                await obj.save(db=context.db)
-
-                # Execute the migrations
-                migrations = await merger.calculate_migrations(target_schema=updated_schema)
-
-                errors = await schema_migrations_runner(
-                    branch=merger.source_branch,
-                    new_schema=candidate_schema,
-                    previous_schema=schema_in_main_before,
-                    migrations=migrations,
-                    service=context.service,
-                )
-                for error in errors:
-                    context.service.log.error(error)
-
-            fields = await extract_fields_first_node(info=info)
-
-            ok = True
-
-            log_data = get_log_data()
-            request_id = log_data.get("request_id", "")
-            differ = await merger.get_graph_diff()
-            diff_parser = IpamDiffParser(
-                db=context.db,
-                differ=differ,
-                source_branch_name=obj.name,
-                target_branch_name=registry.default_branch,
-            )
-            ipam_node_details = await diff_parser.get_changed_ipam_node_details()
-            message = messages.EventBranchRebased(
-                branch=obj.name,
-                ipam_node_details=ipam_node_details,
-                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
-            )
-            await context.service.send(message=message)
-
-            return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
 
 class BranchValidate(Mutation):
@@ -305,53 +246,55 @@ class BranchMerge(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    @retry_db_transaction(name="branch_merge")
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
-        async with UserTask.from_graphql_context(title=f"Merge branch: {data['name']}", context=context) as task:
-            obj = await Branch.get_by_name(db=context.db, name=data["name"])
+        if not context.service:
+            raise ValueError("Service must be provided to merge a branch.")
 
-            merger: Optional[BranchMerger] = None
-            async with lock.registry.global_graph_lock():
-                async with context.db.start_transaction() as db:
-                    merger = BranchMerger(db=db, source_branch=obj, service=context.service)
-                    await merger.merge()
-                    await merger.update_schema()
+        obj = await Branch.get_by_name(db=context.db, name=data["name"])
+        base_branch = await Branch.get_by_name(db=context.db, name=registry.default_branch)
 
-            fields = await extract_fields(info.field_nodes[0].selection_set)
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=context.db, branch=obj)
+        diff_repository = await component_registry.get_component(DiffRepository, db=context.db, branch=obj)
+        diff_merger = await component_registry.get_component(DiffMerger, db=context.db, branch=obj)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
+        if enriched_diff.get_all_conflicts():
+            raise ValidationError(
+                f"Branch {obj.name} contains conflicts with the default branch."
+                " Please create a Proposed Change to resolve the conflicts or manually update them before merging."
+            )
+        node_diff_field_summaries = await diff_repository.get_node_field_summaries(
+            diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
+        )
 
-            ok = True
+        merger = BranchMerger(
+            db=context.db,
+            diff_coordinator=diff_coordinator,
+            diff_merger=diff_merger,
+            source_branch=obj,
+            service=context.service,
+        )
+        candidate_schema = merger.get_candidate_schema()
+        determiner = ConstraintValidatorDeterminer(schema_branch=candidate_schema)
+        constraints = await determiner.get_constraints(node_diffs=node_diff_field_summaries)
+        if obj.has_schema_changes:
+            constraints += await merger.calculate_validations(target_schema=candidate_schema)
 
-            if merger and merger.migrations and context.service:
-                errors = await schema_migrations_runner(
-                    branch=merger.destination_branch,
-                    new_schema=merger.destination_schema,
-                    previous_schema=merger.initial_source_schema,
-                    migrations=merger.migrations,
-                    service=context.service,
-                )
-                for error in errors:
-                    await task.error(message=error)
+        if constraints:
+            error_messages = await schema_validate_migrations(
+                message=SchemaValidateMigrationData(branch=obj, schema_branch=candidate_schema, constraints=constraints)
+            )
+            if error_messages:
+                raise ValidationError(",\n".join(error_messages))
 
-            if config.SETTINGS.broker.enable and context.background:
-                log_data = get_log_data()
-                request_id = log_data.get("request_id", "")
+        await context.service.workflow.execute_workflow(workflow=BRANCH_MERGE, parameters={"branch": obj.name})
 
-                differ = await merger.get_graph_diff()
-                diff_parser = IpamDiffParser(
-                    db=context.db,
-                    differ=differ,
-                    source_branch_name=obj.name,
-                    target_branch_name=registry.default_branch,
-                )
-                ipam_node_details = await diff_parser.get_changed_ipam_node_details()
-                message = messages.EventBranchMerge(
-                    source_branch=obj.name,
-                    target_branch=registry.default_branch,
-                    ipam_node_details=ipam_node_details,
-                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
-                )
-                context.background.add_task(services.send, message)
+        # Pull the latest information about the branch from the database directly
+        obj = await Branch.get_by_name(db=context.db, name=data["name"])
 
-            return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        fields = await extract_fields(info.field_nodes[0].selection_set)
+        ok = True
+
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)

@@ -11,6 +11,8 @@ const config: Config = {
       src: 'https://plausible.io/js/script.js',
       defer: true,
       'data-domain': 'docs.infrahub.app'
+    }, {
+      src: '/js/custom-reo.js'
     }
   ] : [],
 

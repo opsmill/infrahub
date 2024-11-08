@@ -6,7 +6,6 @@ from math import floor
 from typing import Any, Optional, Union
 from uuid import uuid4
 
-import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.core.constants import InfrahubKind
@@ -37,8 +36,7 @@ class Webhook(BaseModel):
     async def send(self) -> None:
         await self._prepare_payload()
         self._assign_headers()
-        async with httpx.AsyncClient(verify=self.validate_certificates) as client:
-            await client.post(self.url, json=self._payload, headers=self._headers)
+        await self.service.http.post(url=self.url, json=self._payload, headers=self._headers)
 
 
 class CustomWebhook(Webhook):

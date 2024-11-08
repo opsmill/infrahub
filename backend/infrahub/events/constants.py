@@ -1,0 +1,1 @@
+EVENT_NAMESPACE = "infrahub"

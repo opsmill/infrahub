@@ -2,13 +2,13 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 
-import useQuery from "@/hooks/useQuery";
-import { getProposedChangesDiffSummary } from "@/graphql/queries/proposed-changes/getProposedChangesDiffSummary";
-import { Alert, ALERT_TYPES } from "@/components/ui/alert";
-import ErrorScreen from "@/screens/errors/error-screen";
-import { DiffBadge } from "@/screens/diff/node-diff/utils";
-import { constructPath } from "@/utils/fetch";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { QSP } from "@/config/qsp";
+import { getProposedChangesDiffSummary } from "@/graphql/queries/proposed-changes/getProposedChangesDiffSummary";
+import useQuery from "@/hooks/useQuery";
+import { DiffBadge } from "@/screens/diff/node-diff/utils";
+import ErrorScreen from "@/screens/errors/error-screen";
+import { constructPath } from "@/utils/fetch";
 import { DIFF_STATUS, DiffStatus } from "../diff/node-diff/types";
 
 interface DiffTreeSummary {
@@ -36,7 +36,8 @@ const BadgeLink: React.FC<{
       to={constructPath(proposedChangeDetailsPath, [
         tabSearchParam,
         { name: QSP.STATUS, value: status },
-      ])}>
+      ])}
+    >
       <DiffBadge status={status}>{count}</DiffBadge>
     </Link>
   );

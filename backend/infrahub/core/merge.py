@@ -2,19 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
 
-from infrahub.core.constants import DiffAction, RelationshipStatus, RepositoryInternalStatus
+from infrahub.core.constants import DiffAction, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
-from infrahub.core.models import SchemaBranchDiff
+from infrahub.core.models import SchemaBranchDiff, SchemaUpdateValidationResult
 from infrahub.core.protocols import CoreRepository
-from infrahub.core.query.branch import (
-    AddNodeToBranch,
-)
-from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
 from infrahub.core.registry import registry
 from infrahub.core.schema import GenericSchema, NodeSchema
-from infrahub.core.schema_manager import SchemaUpdateValidationResult
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.exceptions import ValidationError
 from infrahub.message_bus import messages
 
@@ -22,8 +16,11 @@ from .diff.branch_differ import BranchDiffer
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.diff.coordinator import DiffCoordinator
+    from infrahub.core.diff.merger.merger import DiffMerger
     from infrahub.core.models import SchemaUpdateConstraintInfo, SchemaUpdateMigrationInfo
-    from infrahub.core.schema_manager import SchemaBranch, SchemaDiff
+    from infrahub.core.schema.manager import SchemaDiff
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
@@ -35,12 +32,16 @@ class BranchMerger:
         self,
         db: InfrahubDatabase,
         source_branch: Branch,
+        diff_coordinator: DiffCoordinator,
+        diff_merger: DiffMerger,
         destination_branch: Optional[Branch] = None,
         service: Optional[InfrahubServices] = None,
     ):
         self.source_branch = source_branch
-        self.destination_branch = destination_branch or registry.get_branch_from_registry()
+        self.destination_branch: Branch = destination_branch or registry.get_branch_from_registry()
         self.db = db
+        self.diff_coordinator = diff_coordinator
+        self.diff_merger = diff_merger
         self.migrations: list[SchemaUpdateMigrationInfo] = []
         self._graph_diff: Optional[BranchDiffer] = None
 
@@ -228,209 +229,31 @@ class BranchMerger:
     async def merge(
         self,
         at: Optional[Union[str, Timestamp]] = None,
-        conflict_resolution: Optional[dict[str, bool]] = None,
+        conflict_resolution: Optional[dict[str, bool]] = None,  # pylint: disable=unused-argument
     ) -> None:
         """Merge the current branch into main."""
-        conflict_resolution = conflict_resolution or {}
-        conflicts = await self.validate_branch()
-
-        if conflict_resolution:
-            errors: list[str] = []
-            for conflict in conflicts:
-                if conflict.conflict_path not in conflict_resolution:
-                    errors.append(str(conflict))
-
-            if errors:
-                raise ValidationError(
-                    f"Unable to merge the branch '{self.source_branch.name}', conflict resolution missing: {', '.join(errors)}"
-                )
-
-        elif conflicts:
-            errors = [str(conflict) for conflict in conflicts]
-            raise ValidationError(
-                f"Unable to merge the branch '{self.source_branch.name}', validation failed: {', '.join(errors)}"
-            )
-
         if self.source_branch.name == registry.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
 
+        enriched_diff = await self.diff_coordinator.update_branch_diff(
+            base_branch=self.destination_branch, diff_branch=self.source_branch
+        )
+        conflict_map = enriched_diff.get_all_conflicts()
+        errors: list[str] = []
+        for conflict_path, conflict in conflict_map.items():
+            if conflict.selected_branch is None:
+                errors.append(conflict_path)
+
+        if errors:
+            raise ValidationError(
+                f"Unable to merge the branch '{self.source_branch.name}', conflict resolution missing: {', '.join(errors)}"
+            )
+
         # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
         # From the Graph or From the repositories
-        await self.merge_graph(at=at, conflict_resolution=conflict_resolution)
-        await self.merge_repositories()
-
-    async def merge_graph(  # pylint: disable=too-many-branches,too-many-statements
-        self,
-        at: Optional[Union[str, Timestamp]] = None,
-        conflict_resolution: Optional[dict[str, bool]] = None,
-    ) -> None:
-        rel_ids_to_update: list[str] = []
-        conflict_resolution = conflict_resolution or {}
-
-        default_branch: Branch = registry.branch[registry.default_branch]
-
         at = Timestamp(at)
-
-        diff = await self.get_graph_diff()
-        nodes = await diff.get_nodes()
-
-        if self.source_branch.name in nodes:
-            origin_nodes_query = await NodeListGetInfoQuery.init(
-                db=self.db, ids=list(nodes[self.source_branch.name].keys()), branch=default_branch
-            )
-            await origin_nodes_query.execute(db=self.db)
-            origin_nodes = {
-                node.get("n").get("uuid"): node for node in origin_nodes_query.get_results_group_by(("n", "uuid"))
-            }
-
-            # ---------------------------------------------
-            # NODES
-            # ---------------------------------------------
-            for node_id, node in nodes[self.source_branch.name].items():
-                if node.action == DiffAction.ADDED:
-                    query1 = await AddNodeToBranch.init(db=self.db, node_id=node.db_id, branch=default_branch)
-                    await query1.execute(db=self.db)
-                    if node.rel_id:
-                        rel_ids_to_update.append(node.rel_id)
-
-                elif node.action == DiffAction.REMOVED:
-                    if node_id in origin_nodes:
-                        query2 = await NodeDeleteQuery.init(db=self.db, branch=default_branch, node_id=node_id, at=at)
-                        await query2.execute(db=self.db)
-                        if node.rel_id:
-                            rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").element_id])
-
-                for attr in node.attributes.values():
-                    if attr.action == DiffAction.ADDED:
-                        await add_relationship(
-                            src_node_id=node.db_id,
-                            dst_node_id=attr.db_id,
-                            rel_type="HAS_ATTRIBUTE",
-                            at=at,
-                            branch_name=default_branch.name,
-                            branch_level=default_branch.hierarchy_level,
-                            db=self.db,
-                        )
-                        rel_ids_to_update.append(attr.rel_id)
-
-                    elif attr.action == DiffAction.REMOVED and attr.origin_rel_id:
-                        await add_relationship(
-                            src_node_id=node.db_id,
-                            dst_node_id=attr.db_id,
-                            rel_type="HAS_ATTRIBUTE",
-                            branch_name=default_branch.name,
-                            branch_level=default_branch.hierarchy_level,
-                            at=at,
-                            status=RelationshipStatus.DELETED,
-                            db=self.db,
-                        )
-                        rel_ids_to_update.extend([attr.rel_id, attr.origin_rel_id])
-
-                    for prop_type, prop in attr.properties.items():
-                        if prop.action == DiffAction.ADDED:
-                            await add_relationship(
-                                src_node_id=attr.db_id,
-                                dst_node_id=prop.db_id,
-                                rel_type=prop_type,
-                                at=at,
-                                branch_name=default_branch.name,
-                                branch_level=default_branch.hierarchy_level,
-                                db=self.db,
-                            )
-                            rel_ids_to_update.append(prop.rel_id)
-
-                        elif (
-                            prop.action == DiffAction.UPDATED
-                            and (prop.path not in conflict_resolution or conflict_resolution[prop.path])
-                            and prop.origin_rel_id
-                        ):
-                            await add_relationship(
-                                src_node_id=attr.db_id,
-                                dst_node_id=prop.db_id,
-                                rel_type=prop_type,
-                                at=at,
-                                branch_name=default_branch.name,
-                                branch_level=default_branch.hierarchy_level,
-                                db=self.db,
-                            )
-                            rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
-
-                        elif prop.action == DiffAction.REMOVED and prop.origin_rel_id:
-                            await add_relationship(
-                                src_node_id=attr.db_id,
-                                dst_node_id=prop.db_id,
-                                rel_type=prop_type,
-                                at=at,
-                                branch_name=default_branch.name,
-                                branch_level=default_branch.hierarchy_level,
-                                status=RelationshipStatus.DELETED,
-                                db=self.db,
-                            )
-                            rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
-
-        # ---------------------------------------------
-        # RELATIONSHIPS
-        # ---------------------------------------------
-        rels = await diff.get_relationships()
-        branch_relationships = rels.get(self.source_branch.name, {})
-
-        for rel_name in branch_relationships.keys():
-            for rel_element in branch_relationships[rel_name].values():
-                for rel_node in rel_element.nodes.values():
-                    matched_conflict_path = [path for path in rel_element.conflict_paths if path in conflict_resolution]
-                    conflict_path = None
-                    if matched_conflict_path:
-                        conflict_path = matched_conflict_path[0]
-
-                    if rel_element.action in [DiffAction.ADDED, DiffAction.REMOVED] and (
-                        conflict_path not in conflict_resolution or conflict_resolution[conflict_path]
-                    ):
-                        rel_status = RelationshipStatus.ACTIVE
-                        if rel_element.action == DiffAction.REMOVED:
-                            rel_status = RelationshipStatus.DELETED
-
-                        if not rel_node.rel_id or not rel_node.db_id or not rel_element.db_id:
-                            raise ValueError("node.rel_id, rel_node.db_id and rel_element.db_id must be defined")
-
-                        await add_relationship(
-                            src_node_id=rel_node.db_id,
-                            dst_node_id=rel_element.db_id,
-                            rel_type="IS_RELATED",
-                            at=at,
-                            branch_name=default_branch.name,
-                            branch_level=default_branch.hierarchy_level,
-                            status=rel_status,
-                            db=self.db,
-                        )
-                        rel_ids_to_update.append(rel_node.rel_id)
-
-                for prop_type, prop in rel_element.properties.items():
-                    rel_status = RelationshipStatus.ACTIVE
-                    if prop.action == DiffAction.REMOVED:
-                        rel_status = RelationshipStatus.DELETED
-
-                    await add_relationship(
-                        src_node_id=rel_element.db_id,
-                        dst_node_id=prop.db_id,
-                        rel_type=prop.type,
-                        at=at,
-                        branch_name=default_branch.name,
-                        branch_level=default_branch.hierarchy_level,
-                        db=self.db,
-                    )
-                    rel_ids_to_update.append(prop.rel_id)
-
-                    if rel_element.action in [DiffAction.UPDATED, DiffAction.REMOVED] and prop.origin_rel_id:
-                        rel_ids_to_update.append(prop.origin_rel_id)
-
-        if rel_ids_to_update:
-            await update_relationships_to(ids=rel_ids_to_update, to=at, db=self.db)
-
-            # Update the branched_from time and update the registry
-            # provided that an update is needed
-            self.source_branch.branched_from = Timestamp().to_string()
-            await self.source_branch.save(db=self.db)
-            registry.branch[self.source_branch.name] = self.source_branch
+        await self.diff_merger.merge_graph(at=at)
+        await self.merge_repositories()
 
     async def merge_repositories(self) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.

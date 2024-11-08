@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
-import { addItemsToTree } from "@/screens/ipam/ipam-tree/utils";
-import { EMPTY_TREE } from "@/screens/ipam/ipam-tree/utils";
 import { TreeProps } from "@/components/ui/tree";
 import { TREE_ROOT_ID } from "@/screens/ipam/constants";
+import { addItemsToTree } from "@/screens/ipam/ipam-tree/utils";
+import { EMPTY_TREE } from "@/screens/ipam/ipam-tree/utils";
+import { describe, expect, it } from "vitest";
 
 describe("Add items to tree", () => {
   it("should return the original tree when no items are provided", () => {

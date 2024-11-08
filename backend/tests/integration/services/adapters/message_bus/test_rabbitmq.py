@@ -4,7 +4,7 @@ import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import httpx
@@ -62,7 +62,7 @@ class RabbitMQManager:
     @property
     def base_url(self) -> str:
         scheme = "https" if self.settings.tls_enabled else "http"
-        port = f"1{self.settings.service_port}"
+        port = f"{self.settings.rabbitmq_http_port}"
         return f"{scheme}://{self.settings.address}:{port}/api"
 
     async def create_virtual_host(self) -> None:
@@ -109,7 +109,7 @@ class RabbitMQManager:
         response = await self._request(method="DELETE", url=f"{self.base_url}/vhosts/{self.settings.virtualhost}")
         assert response.status_code in {204, 404}
 
-    async def _request(self, method: str, url: str, payload: Optional[dict] = None) -> httpx.Response:
+    async def _request(self, method: str, url: str, payload: dict | None = None) -> httpx.Response:
         params: dict[str, Any] = {}
         if payload:
             params["json"] = payload
@@ -136,7 +136,7 @@ class RabbitMQManager:
 
 
 @pytest.fixture
-async def rabbitmq_api() -> RabbitMQManager:
+async def rabbitmq_api(rabbitmq) -> RabbitMQManager:
     settings = deepcopy(config.SETTINGS.broker)
     settings.virtualhost = "integration-tests"
     manager = RabbitMQManager(settings=settings)
