@@ -183,7 +183,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         raise InitializationError("The repository has not been initialized with a TaskReport")
 
     @property
-    def directory_root(self) -> str:
+    def legacy_directory_root(self) -> str:
         """Return the path to the root directory for this repository."""
         current_dir = os.getcwd()
         repositories_directory = config.SETTINGS.git.repositories_directory
@@ -191,6 +191,16 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             repositories_directory = os.path.join(current_dir, config.SETTINGS.git.repositories_directory)
 
         return os.path.join(repositories_directory, self.name)
+
+    @property
+    def directory_root(self) -> str:
+        """Return the path to the root directory for this repository."""
+        current_dir = os.getcwd()
+        repositories_directory = config.SETTINGS.git.repositories_directory
+        if not os.path.isabs(repositories_directory):
+            repositories_directory = os.path.join(current_dir, config.SETTINGS.git.repositories_directory)
+
+        return os.path.join(repositories_directory, str(self.id))
 
     @property
     def directory_default(self) -> str:
@@ -242,8 +252,35 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             message=f"Unable to find the worktree {identifier}.",
         )
 
-    def validate_directory_root_exists(self) -> bool:
-        return Path(self.directory_root).exists()
+    def relocate_directory_root(self) -> None:
+        """Move an old repository directory based on its name to a directory based on its ID.
+
+        This method will also take care of removing the legacy directory if:
+        1. The regular directory exists
+        2. The regular directory does not exist but will be created after renaming the legacy one
+        """
+        legacy = Path(self.legacy_directory_root)
+        current = Path(self.directory_root)
+
+        if not legacy.exists():
+            return
+
+        if not legacy.is_dir():
+            log.error("A file named after the repository should not exist", repository=self.name)
+            return
+
+        if current.is_dir():
+            log.warning(
+                f"Found legacy directory at {self.legacy_directory_root} but {self.directory_root} exists, deleting legacy directory",
+                repository=self.name,
+            )
+            shutil.rmtree(self.legacy_directory_root)
+        else:
+            log.warning(
+                f"Found legacy directory at {self.legacy_directory_root}, moving it to {self.directory_root}",
+                repository=self.name,
+            )
+            legacy.rename(self.directory_root)
 
     def validate_local_directories(self) -> bool:
         """Check if the local directories structure to ensure that the repository has been properly initialized.
@@ -565,6 +602,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             return False
 
         log.debug("Fetching the latest updates from remote origin.", repository=self.name)
+
+        self.relocate_directory_root()
 
         repo = self.get_git_repo_main()
         try:
