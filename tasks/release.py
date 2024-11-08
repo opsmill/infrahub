@@ -64,10 +64,16 @@ def build_changelog(context: Context):
         print("Warning, Towncrier is not installed")
         return
 
+    # Ensure local environment is up to date
+    print(" - [release] Update local environment")
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run("poetry install --sync")
+
+    print( "- [release] Build changelog")
     exec_cmd = "towncrier build --draft 2> /dev/null"
     with context.cd(ESCAPED_REPO_PATH):
         changelog_contents = context.run(exec_cmd, hide="stdout").stdout
-    # print(changelog_contents)
+    print(changelog_contents)
 
 
 @task
