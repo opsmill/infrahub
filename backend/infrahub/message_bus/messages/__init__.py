@@ -22,7 +22,6 @@ from .proposed_change.request_proposedchange_repositorychecks import RequestProp
 from .proposed_change.request_proposedchange_rungenerators import RequestProposedChangeRunGenerators
 from .proposed_change.request_proposedchange_runtests import RequestProposedChangeRunTests
 from .proposed_change.request_proposedchange_schemaintegrity import RequestProposedChangeSchemaIntegrity
-from .refresh_git_clone import RefreshGitClone
 from .refresh_git_fetch import RefreshGitFetch
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
@@ -57,7 +56,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "git.repository.import_objects": GitRepositoryImportObjects,
     "schema.migration.path": SchemaMigrationPath,
     "schema.validator.path": SchemaValidatorPath,
-    "refresh.git.clone": RefreshGitClone,
     "refresh.git.fetch": RefreshGitFetch,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,

@@ -1,7 +1,7 @@
 from prefect import flow
 
 from infrahub.exceptions import RepositoryError
-from infrahub.git.repository import InfrahubRepository, get_initialized_repo
+from infrahub.git.repository import InfrahubRepository, get_initialized_repo, initialize_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import (
@@ -47,25 +47,6 @@ async def import_objects(message: messages.GitRepositoryImportObjects, service: 
         await repo.import_objects_from_files(infrahub_branch_name=message.infrahub_branch_name, commit=message.commit)
 
 
-@flow(name="refresh-git-clone")
-async def clone(message: messages.RefreshGitClone, service: InfrahubServices) -> None:
-    if message.meta and message.meta.initiator_id == WORKER_IDENTITY:
-        log.info("Ignoring git clone request originating from self", worker=WORKER_IDENTITY)
-        return
-
-    log.info("Cloning repository", repository=message.repository_id, location=message.location)
-
-    repo = await InfrahubRepository.new(
-        id=message.repository_id,
-        name=message.repository_name,
-        location=message.location,
-        client=service.client,
-        infrahub_branch_name=message.infrahub_branch_name,
-        default_branch_name=message.default_branch_name,
-    )
-    await repo.fetch()
-
-
 @flow(name="refresh-git-fetch")
 async def fetch(message: messages.RefreshGitFetch, service: InfrahubServices) -> None:
     if message.meta and message.meta.initiator_id == WORKER_IDENTITY:
@@ -74,14 +55,21 @@ async def fetch(message: messages.RefreshGitFetch, service: InfrahubServices) ->
 
     log.info("Fetching repository", repository=message.repository_id)
 
-    repo = await get_initialized_repo(
-        repository_id=message.repository_id,
-        name=message.repository_name,
-        service=service,
-        repository_kind=message.repository_kind,
-    )
+    try:
+        repo = await get_initialized_repo(
+            repository_id=message.repository_id,
+            name=message.repository_name,
+            service=service,
+            repository_kind=message.repository_kind,
+        )
+    except RepositoryError:
+        repo = await initialize_repo(
+            location=message.location,
+            repository_id=message.repository_id,
+            name=message.repository_name,
+            service=service,
+            repository_kind=message.repository_kind,
+        )
 
-    # Ensure the repository exists locally
-    if repo.validate_directory_root_exists():
-        await repo.create_locally(infrahub_branch_name=message.infrahub_branch_name)
     await repo.fetch()
+    await repo.pull(branch_name=message.infrahub_branch_name)

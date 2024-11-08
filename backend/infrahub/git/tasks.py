@@ -57,12 +57,12 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
                 await repo.sync()
 
                 # Notify other workers they need to clone the repository
-                notification = messages.RefreshGitClone(
+                notification = messages.RefreshGitFetch(
                     meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
                     location=model.location,
                     repository_id=model.repository_id,
                     repository_name=model.repository_name,
-                    default_branch_name=model.default_branch_name,
+                    repository_kind=InfrahubKind.REPOSITORY,
                     infrahub_branch_name=model.infrahub_branch_name,
                 )
                 await service.send(message=notification)
@@ -95,12 +95,12 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
                 await repo.sync_from_remote()
 
                 # Notify other workers they need to clone the repository
-                notification = messages.RefreshGitClone(
+                notification = messages.RefreshGitFetch(
                     meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
                     location=model.location,
                     repository_id=model.repository_id,
                     repository_name=model.repository_name,
-                    default_branch_name=None,
+                    repository_kind=InfrahubKind.REPOSITORY,
                     infrahub_branch_name=model.infrahub_branch_name,
                 )
                 await service.send(message=notification)
@@ -193,10 +193,10 @@ async def sync_remote_repositories() -> None:
                     # Notify other workers they need to clone the repository
                     message = messages.RefreshGitFetch(
                         meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+                        location=repository_data.repository.location.value,
                         repository_id=repository_data.repository.id,
                         repository_name=repository_data.repository.name.value,
                         repository_kind=repository_data.repository.get_kind(),
-                        commit=repository_data.repository.commit.value,
                         infrahub_branch_name=infrahub_branch,
                     )
                     await service.send(message=message)
@@ -377,10 +377,10 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
             # Notify other workers they need to clone the repository
             message = messages.RefreshGitFetch(
                 meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+                location=model.location,
                 repository_id=model.repository_id,
                 repository_name=model.repository_name,
                 repository_kind=InfrahubKind.READONLYREPOSITORY,
-                commit=model.ref,
                 infrahub_branch_name=model.infrahub_branch_name,
             )
             await service.send(message=message)

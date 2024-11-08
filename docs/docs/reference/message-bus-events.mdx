@@ -438,24 +438,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale on -->
 
 <!-- vale off -->
-#### Event refresh.git.clone
-<!-- vale on -->
-
-**Description**: Clone a repository locally.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **location** | The external URL of the repository | string | None |
-| **repository_id** | The unique ID of the repository | string | None |
-| **repository_name** | The name of the repository | string | None |
-| **default_branch_name** | Default branch for this repository | N/A | None |
-| **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
-<!-- vale on -->
-<!-- vale off -->
 #### Event refresh.git.fetch
 <!-- vale on -->
 
@@ -467,6 +449,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | Key | Description | Type | Default Value |
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
+| **location** | The external URL of the repository | string | None |
 | **repository_id** | The unique ID of the repository | string | None |
 | **repository_name** | The name of the repository | string | None |
 | **repository_kind** | The type of repository | string | None |
@@ -1218,25 +1201,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale on -->
 
 <!-- vale off -->
-#### Event refresh.git.clone
-<!-- vale on -->
-
-**Description**: Clone a repository locally.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **location** | The external URL of the repository | string | None |
-| **repository_id** | The unique ID of the repository | string | None |
-| **repository_name** | The name of the repository | string | None |
-| **default_branch_name** | Default branch for this repository | N/A | None |
-| **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
-<!-- vale on -->
-<!-- vale off -->
 #### Event refresh.git.fetch
 <!-- vale on -->
 
@@ -1249,6 +1213,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | Key | Description | Type | Default Value |
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
+| **location** | The external URL of the repository | string | None |
 | **repository_id** | The unique ID of the repository | string | None |
 | **repository_name** | The name of the repository | string | None |
 | **repository_kind** | The type of repository | string | None |

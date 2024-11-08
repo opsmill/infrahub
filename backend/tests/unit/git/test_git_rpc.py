@@ -20,7 +20,7 @@ from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.git.tasks import add_git_repository, add_git_repository_read_only, pull_read_only
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus import Meta, messages
-from infrahub.message_bus.messages import RefreshGitClone, RefreshGitFetch
+from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
@@ -113,7 +113,7 @@ class TestAddRepository:
             self.mock_repo.sync.assert_awaited_once_with()
 
         assert len(self.recorder.messages) > 0
-        assert isinstance(self.recorder.messages[0], RefreshGitClone)
+        assert isinstance(self.recorder.messages[0], RefreshGitFetch)
 
 
 async def test_git_rpc_merge(
@@ -251,7 +251,7 @@ class TestAddReadOnly:
         self.mock_repo.sync_from_remote.assert_awaited_once_with()
 
         assert len(self.recorder.messages) > 0
-        assert isinstance(self.recorder.messages[0], RefreshGitClone)
+        assert isinstance(self.recorder.messages[0], RefreshGitFetch)
 
 
 class TestPullReadOnly:
