@@ -190,7 +190,7 @@ async def sync_remote_repositories() -> None:
 
                 try:
                     await repo.sync(staging_branch=staging_branch)
-                    # Notify other workers they need to clone the repository
+                    # Tell workers to fetch to stay in sync
                     message = messages.RefreshGitFetch(
                         meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
                         location=repository_data.repository.location.value,
@@ -212,9 +212,22 @@ async def sync_remote_repositories() -> None:
 async def git_branch_create(
     client: InfrahubClient, branch: str, branch_id: str, repository_id: str, repository_name: str
 ) -> None:
+    service = services.service
+
     repo = await InfrahubRepository.init(id=repository_id, name=repository_name, client=client)
     async with lock.registry.get(name=repository_name, namespace="repository"):
         await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id)
+        if repo.location:
+            # New branch has been pushed remotely, tell workers to fetch it
+            message = messages.RefreshGitFetch(
+                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+                location=repo.location,
+                repository_id=str(repo.id),
+                repository_name=repo.name,
+                repository_kind=InfrahubKind.REPOSITORY,
+                infrahub_branch_name=branch,
+            )
+            await service.send(message=message)
 
 
 @flow(name="artifact-definition-generate")
@@ -374,7 +387,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
             await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
             await repo.sync_from_remote(commit=model.commit)
 
-            # Notify other workers they need to clone the repository
+            # Tell workers to fetch to stay in sync
             message = messages.RefreshGitFetch(
                 meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
                 location=model.location,
@@ -416,7 +429,17 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
         repo_main.commit.value = commit
 
         await repo_main.save()
-
     else:
         async with lock.registry.get(name=model.repository_name, namespace="repository"):
             await repo.merge(source_branch=model.source_branch, dest_branch=model.destination_branch)
+            if repo.location:
+                # Destination branch has changed and pushed remotely, tell workers to re-fetch
+                message = messages.RefreshGitFetch(
+                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+                    location=repo.location,
+                    repository_id=str(repo.id),
+                    repository_name=repo.name,
+                    repository_kind=InfrahubKind.REPOSITORY,
+                    infrahub_branch_name=model.destination_branch,
+                )
+                await service.send(message=message)
