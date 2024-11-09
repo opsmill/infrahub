@@ -30,7 +30,6 @@ from tests.helpers.test_client import dummy_async_request
 # pylint: disable=redefined-outer-name
 
 if TYPE_CHECKING:
-    from pathlib import Path
     from types import TracebackType
 
     from infrahub_sdk.branch import BranchData
@@ -116,13 +115,7 @@ class TestAddRepository:
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
 
 
-async def test_git_rpc_merge(
-    git_upstream_repo_01: dict[str, str],
-    git_repo_01: InfrahubRepository,
-    branch01: BranchData,
-    tmp_path: Path,
-    helper: TestHelper,
-):
+async def test_git_rpc_merge(git_repo_01: InfrahubRepository, branch01: BranchData, helper: TestHelper):
     repo = git_repo_01
 
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
@@ -130,7 +123,7 @@ async def test_git_rpc_merge(
     commit_main_before = repo.get_commit_value(branch_name="main")
 
     model = GitRepositoryMerge(
-        repository_id=str(UUIDT()),
+        repository_id=str(repo.id),
         repository_name=repo.name,
         source_branch="branch01",
         destination_branch="main",
@@ -158,12 +151,7 @@ async def test_git_rpc_merge(
 
 
 async def test_git_rpc_diff(
-    git_upstream_repo_01: dict[str, str],
-    git_repo_01: InfrahubRepository,
-    branch01: BranchData,
-    branch02: BranchData,
-    tmp_path: Path,
-    helper: TestHelper,
+    git_repo_01: InfrahubRepository, branch01: BranchData, branch02: BranchData, helper: TestHelper
 ):
     repo = git_repo_01
 
@@ -177,8 +165,8 @@ async def test_git_rpc_diff(
     # Diff Between Branch01 and Branch02
     correlation_id = str(UUIDT())
     message = messages.GitDiffNamesOnly(
-        repository_id=str(UUIDT()),
-        repository_name=git_upstream_repo_01["name"],
+        repository_id=str(repo.id),
+        repository_name=repo.name,
         repository_kind=InfrahubKind.REPOSITORY,
         first_commit=commit_branch01,
         second_commit=commit_branch02,
@@ -192,8 +180,8 @@ async def test_git_rpc_diff(
     assert result.data.files_changed == ["README.md", "test_files/sports.yml"]
 
     message = messages.GitDiffNamesOnly(
-        repository_id=str(UUIDT()),
-        repository_name=git_upstream_repo_01["name"],
+        repository_id=str(repo.id),
+        repository_name=repo.name,
         repository_kind=InfrahubKind.REPOSITORY,
         first_commit=commit_branch01,
         second_commit=commit_main,
