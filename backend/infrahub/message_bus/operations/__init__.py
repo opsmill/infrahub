@@ -18,7 +18,6 @@ from infrahub.message_bus.operations import (
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
 from infrahub.tasks.check import set_check_status
-from infrahub.worker import WORKER_IDENTITY
 
 COMMAND_MAP = {
     "check.artifact.create": check.artifact.create,
@@ -64,11 +63,6 @@ async def execute_message(
     message_data = ujson.loads(message_body)
     message = messages.MESSAGE_MAP[routing_key](**message_data)
     message.set_log_data(routing_key=routing_key)
-
-    if message.meta and message.meta.initiator_id == WORKER_IDENTITY:
-        service.log.info("Ignoring message originating from self", worker=WORKER_IDENTITY, routing_key=routing_key)
-        return None
-
     try:
         func = COMMAND_MAP[routing_key]
         if skip_flow and isinstance(func, Flow):
