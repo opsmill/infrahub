@@ -47,13 +47,11 @@ async def import_objects(message: messages.GitRepositoryImportObjects, service: 
         await repo.import_objects_from_files(infrahub_branch_name=message.infrahub_branch_name, commit=message.commit)
 
 
-@flow(name="refresh-git-fetch")
+@flow(name="refresh-git-fetch", flow_run_name="Fetch git repository {message.repository_name} on " + WORKER_IDENTITY)
 async def fetch(message: messages.RefreshGitFetch, service: InfrahubServices) -> None:
     if message.meta and message.meta.initiator_id == WORKER_IDENTITY:
         log.info("Ignoring git fetch request originating from self", worker=WORKER_IDENTITY)
         return
-
-    log.info("Fetching repository", repository=message.repository_id)
 
     try:
         repo = await get_initialized_repo(
