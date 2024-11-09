@@ -815,8 +815,12 @@ async def test_list_all_files(git_repo_01: InfrahubRepository, branch01: BranchD
 
 
 def test_extract_repo_file_information():
+    sys_tmp = str(Path("/tmp").resolve())  # in some system /tmp is a symlink to another directory
+
     file_info = extract_repo_file_information(
-        full_filename="/tmp/dir1/dir2/dir3/myfile.py", repo_directory="/tmp", worktree_directory="/tmp/dir1"
+        full_filename=f"{sys_tmp}/dir1/dir2/dir3/myfile.py",
+        repo_directory=sys_tmp,
+        worktree_directory=f"{sys_tmp}/dir1",
     )
 
     assert isinstance(file_info, RepoFileInformation)
@@ -825,20 +829,22 @@ def test_extract_repo_file_information():
     assert file_info.filename_wo_ext == "myfile"
     assert file_info.relative_path_dir == "dir2/dir3"
     assert file_info.relative_repo_path_dir == "dir1/dir2/dir3"
-    assert file_info.absolute_path_dir == "/tmp/dir1/dir2/dir3"
+    assert file_info.absolute_path_dir == f"{sys_tmp}/dir1/dir2/dir3"
     assert file_info.relative_path_file == "dir2/dir3/myfile.py"
     assert file_info.module_name == "dir1.dir2.dir3.myfile"
 
-    file_info = extract_repo_file_information(full_filename="/tmp/dir1/dir2/dir3/myfile.py", repo_directory="/tmp/dir1")
+    file_info = extract_repo_file_information(
+        full_filename=f"{sys_tmp}/dir1/dir2/dir3/myfile.py", repo_directory=f"{sys_tmp}/dir1"
+    )
 
     assert isinstance(file_info, RepoFileInformation)
     assert file_info.filename == "myfile.py"
     assert file_info.extension == ".py"
     assert file_info.filename_wo_ext == "myfile"
     assert file_info.relative_repo_path_dir == "dir2/dir3"
-    assert file_info.relative_path_dir == "/tmp/dir1/dir2/dir3"
-    assert file_info.absolute_path_dir == "/tmp/dir1/dir2/dir3"
-    assert file_info.relative_path_file == "/tmp/dir1/dir2/dir3/myfile.py"
+    assert file_info.relative_path_dir == f"{sys_tmp}/dir1/dir2/dir3"
+    assert file_info.absolute_path_dir == f"{sys_tmp}/dir1/dir2/dir3"
+    assert file_info.relative_path_file == f"{sys_tmp}/dir1/dir2/dir3/myfile.py"
     assert file_info.module_name == "dir2.dir3.myfile"
 
 
