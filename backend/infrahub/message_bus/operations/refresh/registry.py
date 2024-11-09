@@ -5,7 +5,7 @@ from infrahub.services import InfrahubServices
 from infrahub.tasks.registry import refresh_branches
 
 
-async def branches(message: messages.RefreshRegistryBranches, service: InfrahubServices) -> None:  # pylint: disable=unused-argument
+async def branches(message: messages.RefreshRegistryBranches, service: InfrahubServices) -> None:
     async with service.database.start_session() as db:
         await refresh_branches(db=db)
 
