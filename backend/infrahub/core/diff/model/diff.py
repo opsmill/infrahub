@@ -509,11 +509,6 @@ class BranchDiffEntry(BaseModel):
     display_label: dict[str, str] = Field(default_factory=dict)
 
 
-#  NEW
-class BranchDiff(BaseModel):
-    diffs: list[BranchDiffEntry] = Field(default_factory=list)
-
-
 class BranchDiffFile(BaseModel):
     branch: str
     location: str

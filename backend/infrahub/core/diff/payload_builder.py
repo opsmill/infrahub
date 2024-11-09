@@ -10,7 +10,6 @@ from infrahub.core.registry import registry
 from infrahub.log import get_logger
 
 from .model.diff import (
-    BranchDiff,
     BranchDiffAttribute,
     BranchDiffElement,
     BranchDiffElementAttribute,
@@ -449,11 +448,6 @@ class DiffPayloadBuilder:
         await self._process_nodes()
         await self._process_relationships()
         self.is_parsed = True
-
-    async def get_branch_diff(self) -> BranchDiff:
-        if not self.is_parsed:
-            await self._parse_diff()
-        return BranchDiff(diffs=list(self.entries.values()))
 
     async def get_node_diffs_by_branch(self) -> dict[str, list[BranchDiffNode]]:
         if not self.is_parsed:

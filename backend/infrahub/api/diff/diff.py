@@ -4,25 +4,23 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Optional
 
 from fastapi import APIRouter, Depends, Request
-from infrahub_sdk.utils import compare_lists
 
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
-from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind
+from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.diff.model.diff import (
     ArtifactTarget,
     BranchDiffArtifact,
     BranchDiffArtifactStorage,
     BranchDiffFile,
-    BranchDiffNode,
     BranchDiffRepository,
 )
 from infrahub.core.diff.payload_builder import (
-    DiffPayloadBuilder,
     get_display_labels_per_kind,
 )
+from infrahub.core.protocols import CoreArtifact
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 
 if TYPE_CHECKING:
@@ -69,124 +67,90 @@ async def get_diff_files(
     return response
 
 
-# pylint: disable=too-many-branches
 @router.get("/artifacts")
 async def get_diff_artifacts(
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
-    time_from: Optional[str] = None,
-    time_to: Optional[str] = None,
-    branch_only: bool = False,
     _: str = Depends(get_current_user),
 ) -> dict[str, BranchDiffArtifact]:
-    response = {}
-
-    default_branch_name = registry.default_branch
-    # Query the Diff for all artifacts
-    diff = await BranchDiffer.init(
+    branch_artifacts = await registry.manager.query(
         db=db,
         branch=branch,
-        diff_from=time_from,
-        diff_to=time_to,
-        branch_only=branch_only,
-        kinds_include=[InfrahubKind.ARTIFACT],
-        branch_support=[BranchSupportType.AWARE, BranchSupportType.LOCAL],
-    )
-    diff_payload_builder = DiffPayloadBuilder(db=db, diff=diff, kinds_to_include=[InfrahubKind.ARTIFACT])
-    payload = await diff_payload_builder.get_node_diffs_by_branch()
-
-    # Extract the ids of all the targets associated with these artifacts and query the display label for all of them
-    artifact_ids_branch = [node.id for node in payload[branch.name]]
-    artifact_ids_main = [node.id for node in payload[default_branch_name]]
-    _, _, only_in_main = compare_lists(list1=artifact_ids_branch, list2=artifact_ids_main)
-
-    targets = await registry.manager.query(
-        db=db,
-        schema=InfrahubKind.ARTIFACTTARGET,
-        filters={"artifacts__ids": artifact_ids_branch},
+        schema=CoreArtifact,
         prefetch_relationships=True,
-        branch=branch,
     )
+    branch_artifacts_map: dict[tuple[str, str], CoreArtifact] = {}
+    branch_target_ids: set[str] = set()
+    target_ids_by_definition_id_map: dict[str, set[str]] = defaultdict(set)
+    for bart in branch_artifacts:
+        target_rels = await bart.object.get_relationships(db=db)
+        definition_rels = await bart.definition.get_relationships(db=db)
+        target_peer_id = target_rels[0].get_peer_id()
+        definition_peer_id = definition_rels[0].get_peer_id()
+        branch_target_ids.add(target_peer_id)
+        target_ids_by_definition_id_map[definition_peer_id].add(target_peer_id)
+        branch_artifacts_map[definition_peer_id, target_peer_id] = bart
+    main_artifacts_map: dict[tuple[str, str], CoreArtifact] = {}
+    possible_main_artifacts = await registry.manager.query(
+        db=db,
+        branch=registry.default_branch,
+        schema=CoreArtifact,
+        filters={"definition__ids": list(target_ids_by_definition_id_map.keys())},
+        prefetch_relationships=True,
+    )
+    for pmart in possible_main_artifacts:
+        target_rels = await pmart.object.get_relationships(db=db)
+        definition_rels = await pmart.definition.get_relationships(db=db)
+        target_peer_id = target_rels[0].get_peer_id()
+        definition_peer_id = definition_rels[0].get_peer_id()
+        if target_peer_id in target_ids_by_definition_id_map[definition_peer_id]:
+            main_artifacts_map[definition_peer_id, target_peer_id] = pmart
 
-    if only_in_main:
-        targets_in_main = await registry.manager.query(
-            db=db,
-            schema=InfrahubKind.ARTIFACTTARGET,
-            filters={"artifacts__ids": only_in_main},
-            prefetch_relationships=True,
-            branch=default_branch_name,
-        )
-        targets += targets_in_main
+    # target display labels
+    target_map = await registry.manager.get_many(db=db, branch=branch, ids=list(branch_target_ids))
+    target_per_kinds: dict[str, set[str]] = defaultdict(set)
+    target_per_kinds[InfrahubKind.ARTIFACT] = {bart.get_id() for bart in branch_artifacts}
+    serialized_target_map: dict[str, ArtifactTarget] = {}
+    for target in target_map.values():
+        serialized_target_map[target.get_id()] = ArtifactTarget(id=target.get_id(), kind=target.get_kind())
+        target_per_kinds[target.get_kind()].add(target.get_id())
 
-    target_per_kinds = defaultdict(list)
-    target_per_artifact: dict[str, ArtifactTarget] = {}
-    for target in targets:
-        for artifact_id in await target.artifacts.get_peers(db=db):
-            target_per_artifact[artifact_id] = ArtifactTarget(id=target.id, kind=target.get_kind())
-            target_per_kinds[target.get_kind()].append(target.id)
-
-    display_labels = {}
+    display_labels_map: dict[str, str] = {}
     for kind, ids in target_per_kinds.items():
-        display_labels.update(await get_display_labels_per_kind(kind=kind, ids=ids, branch_name=branch.name, db=db))
-
-    # If an artifact has been already created in main, it will appear as CREATED insted of UPDATED
-    # To fix that situation, we extract all unique identifier for an artifact (target_id, definition_id) in order to make it easier to search later
-    artifacts_in_main: dict[tuple[str, str], BranchDiffNode] = {}
-    for node in payload[default_branch_name]:
-        if (
-            node.action != DiffAction.ADDED
-            or "storage_id" not in node.elements
-            or "checksum" not in node.elements
-            or "definition" not in node.elements
-        ):
-            continue
-
-        target = target_per_artifact.get(node.id, None)
-        if not target:
-            continue
-        definition_id = node.elements["definition"].peer.new.id
-        artifacts_in_main[target.id, definition_id] = node
-
-    for node in payload[branch.name]:
-        if "storage_id" not in node.elements or "checksum" not in node.elements:
-            continue
-
-        display_label = node.display_label
-        target = target_per_artifact.get(node.id, None)
-        if target:
-            target.display_label = display_labels.get(target.id, None)
-            if target.display_label:
-                display_label = f"{target.display_label} - {node.display_label}"
-
-        diff_artifact = BranchDiffArtifact(
-            id=node.id, action=node.action, branch=branch.name, display_label=display_label, target=target
+        display_labels_map.update(
+            await get_display_labels_per_kind(kind=kind, ids=list(ids), branch_name=branch.name, db=db)
         )
 
-        if node.action in [DiffAction.UPDATED, DiffAction.ADDED]:
-            diff_artifact.item_new = BranchDiffArtifactStorage(
-                storage_id=node.elements["storage_id"].value.value.new,
-                checksum=node.elements["checksum"].value.value.new,
+    response: dict[str, BranchDiffArtifact] = {}
+
+    for artifact_identifier, artifact in branch_artifacts_map.items():
+        action = DiffAction.ADDED
+        if artifact_identifier in main_artifacts_map:
+            action = DiffAction.UPDATED
+        artifact_display_label = display_labels_map.get(artifact.get_id())
+        target_rels = await artifact.object.get_relationships(db=db)
+        target_peer_id = target_rels[0].get_peer_id()
+        serialized_target = serialized_target_map[target_peer_id]
+        if not serialized_target.display_label:
+            serialized_target.display_label = display_labels_map.get(target_peer_id)
+        if serialized_target.display_label:
+            artifact_display_label = f"{serialized_target.display_label} - {artifact_display_label}"
+        serialized_artifact = BranchDiffArtifact(
+            id=artifact.get_id(),
+            action=action,
+            branch=branch.name,
+            display_label=artifact_display_label,
+            target=serialized_target,
+        )
+        if artifact.storage_id.value and artifact.checksum.value:
+            serialized_artifact.item_new = BranchDiffArtifactStorage(
+                storage_id=artifact.storage_id.value, checksum=artifact.checksum.value
             )
-
-        if node.action in [DiffAction.UPDATED, DiffAction.REMOVED]:
-            diff_artifact.item_previous = BranchDiffArtifactStorage(
-                storage_id=node.elements["storage_id"].value.value.previous,
-                checksum=node.elements["checksum"].value.value.previous,
-            )
-
-        # if there is an artifact in main with the same target.id / definition.id, we merge them
-        if (
-            node.action == DiffAction.ADDED
-            and "definition" in node.elements
-            and (target.id, node.elements["definition"].peer.new.id) in artifacts_in_main
-        ):
-            diff_artifact.action = DiffAction.UPDATED
-            node_in_main = artifacts_in_main[target.id, node.elements["definition"].peer.new.id]
-            diff_artifact.item_previous = BranchDiffArtifactStorage(
-                storage_id=node_in_main.elements["storage_id"].value.value.new,
-                checksum=node_in_main.elements["checksum"].value.value.new,
-            )
-
-        response[node.id] = diff_artifact
-
+        if artifact_identifier in main_artifacts_map:
+            main_artifact = main_artifacts_map[artifact_identifier]
+            if main_artifact.storage_id.value and main_artifact.checksum.value:
+                serialized_artifact.item_previous = BranchDiffArtifactStorage(
+                    storage_id=main_artifact.storage_id.value, checksum=main_artifact.checksum.value
+                )
+        response[artifact.get_id()] = serialized_artifact
     return response
