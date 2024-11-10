@@ -11,7 +11,6 @@ from infrahub.message_bus.operations import (
     git,
     refresh,
     requests,
-    schema,
     send,
     trigger,
 )
@@ -51,8 +50,6 @@ COMMAND_MAP = {
     "request.repository.checks": requests.repository.checks,
     "request.repository.user_checks": requests.repository.user_checks,
     "send.echo.request": send.echo.request,
-    "schema.migration.path": schema.migration.path,
-    "schema.validator.path": schema.validator.path,
     "trigger.webhook.actions": trigger.webhook.actions,
 }
 

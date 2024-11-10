@@ -2,17 +2,12 @@ from fastapi.testclient import TestClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, SchemaPathType
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.messages.schema_migration_path import (
-    SchemaMigrationPathResponse,
-    SchemaMigrationPathResponseData,
-)
 
 
 async def test_schema_read_endpoint_default_branch(
@@ -422,17 +417,6 @@ async def test_schema_load_endpoint_valid_with_extensions(
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     await registry.schema.load_schema_to_db(
         db=db, schema=schema, branch=default_branch, limit=["CoreOrganization", "InfraSite"]
-    )
-
-    rpc_bus.response.append(
-        SchemaMigrationPathResponse(
-            data=SchemaMigrationPathResponseData(
-                migration_name="test.test.update",
-                errors=[],
-                nbr_migrations_executed=3,
-                schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="CoreOrganization"),
-            )
-        )
     )
 
     # Must execute in a with block to execute the startup/shutdown events

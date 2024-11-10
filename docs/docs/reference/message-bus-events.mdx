@@ -392,48 +392,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 
 
 <!-- vale off -->
-### Schema Migration
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event schema.migration.path
-<!-- vale on -->
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The name of the branch to target | N/A | None |
-| **migration_name** | The name of the migration to run | string | None |
-| **new_node_schema** | new Schema of Node or Generic to process | N/A | None |
-| **previous_node_schema** | Previous Schema of Node or Generic to process | N/A | None |
-| **schema_path** | SchemaPath to the element of the schema to migrate | N/A | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Schema Validator
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event schema.validator.path
-<!-- vale on -->
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The name of the branch to target | N/A | None |
-| **constraint_name** | The name of the constraint to validate | string | None |
-| **node_schema** | Schema of Node or Generic to validate | N/A | None |
-| **schema_path** | SchemaPath to the element of the schema to validate | N/A | None |
-<!-- vale on -->
-
-
-<!-- vale off -->
 ### Refresh Git
 <!-- vale on -->
 
@@ -1148,50 +1106,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_kind** | The type of repository | string | None |
 | **commit** | Specific commit to pull | string | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
-<!-- vale on -->
-
-
-<!-- vale off -->
-### Schema Migration
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event schema.migration.path
-<!-- vale on -->
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The name of the branch to target | N/A | None |
-| **migration_name** | The name of the migration to run | string | None |
-| **new_node_schema** | new Schema of Node or Generic to process | N/A | None |
-| **previous_node_schema** | Previous Schema of Node or Generic to process | N/A | None |
-| **schema_path** | SchemaPath to the element of the schema to migrate | N/A | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Schema Validator
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event schema.validator.path
-<!-- vale on -->
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The name of the branch to target | N/A | None |
-| **constraint_name** | The name of the constraint to validate | string | None |
-| **node_schema** | Schema of Node or Generic to validate | N/A | None |
-| **schema_path** | SchemaPath to the element of the schema to validate | N/A | None |
 <!-- vale on -->
 
 
