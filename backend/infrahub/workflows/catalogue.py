@@ -97,18 +97,25 @@ REQUEST_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
     function="generate_request_artifact_definition",
 )
 
-REQUEST_DIFF_UPDATE = WorkflowDefinition(
+DIFF_UPDATE = WorkflowDefinition(
     name="diff-update",
     type=WorkflowType.INTERNAL,
     module="infrahub.core.diff.tasks",
     function="update_diff",
 )
 
-REQUEST_DIFF_REFRESH = WorkflowDefinition(
+DIFF_REFRESH = WorkflowDefinition(
     name="diff-refresh",
     type=WorkflowType.INTERNAL,
     module="infrahub.core.diff.tasks",
     function="refresh_diff",
+)
+
+DIFF_REFRESH_ALL = WorkflowDefinition(
+    name="diff-refresh-all",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.core.diff.tasks",
+    function="refresh_diff_all",
 )
 
 GIT_REPOSITORIES_SYNC = WorkflowDefinition(
@@ -340,6 +347,26 @@ workflows = [
     ANONYMOUS_TELEMETRY_SEND,
     AUTOMATION_GIT_UPDATED,
     AUTOMATION_SCHEMA_UPDATED,
+    SCHEMA_APPLY_MIGRATION,
+    SCHEMA_VALIDATE_MIGRATION,
+    TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+    IPAM_RECONCILIATION,
+    GIT_REPOSITORIES_SYNC,
+    GIT_REPOSITORIES_CREATE_BRANCH,
+    REQUEST_ARTIFACT_GENERATE,
+    BRANCH_REBASE,
+    BRANCH_MERGE,
+    BRANCH_DELETE,
+    BRANCH_VALIDATE,
+    BRANCH_MERGE_MUTATION,
+    REQUEST_ARTIFACT_DEFINITION_GENERATE,
+    REQUEST_GENERATOR_RUN,
+    DIFF_UPDATE,
+    DIFF_REFRESH,
+    DIFF_REFRESH_ALL,
+    GIT_REPOSITORIES_PULL_READ_ONLY,
+    GIT_REPOSITORIES_MERGE,
+    TRIGGER_GENERATOR_DEFINITION_RUN,
     BRANCH_CANCEL_PROPOSED_CHANGES,
     BRANCH_CREATE,
     BRANCH_DELETE,
@@ -363,8 +390,6 @@ workflows = [
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_ARTIFACT_GENERATE,
-    REQUEST_DIFF_REFRESH,
-    REQUEST_DIFF_UPDATE,
     REQUEST_GENERATOR_DEFINITION_RUN,
     REQUEST_GENERATOR_RUN,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,

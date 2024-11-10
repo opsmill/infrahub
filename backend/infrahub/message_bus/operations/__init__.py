@@ -27,7 +27,6 @@ COMMAND_MAP = {
     "check.repository.user_check": check.repository.user_check,
     "event.branch.create": event.branch.create,
     "event.branch.merge": event.branch.merge,
-    "event.branch.rebased": event.branch.rebased,
     "event.node.mutated": event.node.mutated,
     "event.schema.update": event.schema.update,
     "event.worker.new_primary_api": event.worker.new_primary_api,

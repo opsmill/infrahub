@@ -4,16 +4,15 @@ from prefect import flow
 
 from infrahub.core import registry
 from infrahub.core.diff.model.path import BranchTrackingId
-from infrahub.core.diff.models import RequestDiffRefresh, RequestDiffUpdate
+from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.services import InfrahubServices
 from infrahub.workflows.catalogue import (
+    DIFF_UPDATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
-    REQUEST_DIFF_REFRESH,
-    REQUEST_DIFF_UPDATE,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
     TRIGGER_GENERATOR_DEFINITION_RUN,
 )
@@ -68,35 +67,7 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
         ):
             request_diff_update_model = RequestDiffUpdate(branch_name=diff_root.diff_branch_name)
             await service.workflow.submit_workflow(
-                workflow=REQUEST_DIFF_UPDATE, parameters={"model": request_diff_update_model}
-            )
-
-    for event in events:
-        event.assign_meta(parent=message)
-        await service.send(message=event)
-
-
-@flow(name="event-branch-rebased")
-async def rebased(message: messages.EventBranchRebased, service: InfrahubServices) -> None:
-    log.info("Branch rebased", branch=message.branch)
-
-    events: List[InfrahubMessage] = [
-        messages.RefreshRegistryRebasedBranch(branch=message.branch),
-    ]
-
-    # for every diff that touches the rebased branch, recalculate it
-    component_registry = get_component_registry()
-    default_branch = registry.get_branch_from_registry()
-    diff_repository = await component_registry.get_component(DiffRepository, db=service.database, branch=default_branch)
-    diff_roots_to_refresh = await diff_repository.get_empty_roots(diff_branch_names=[message.branch])
-
-    for diff_root in diff_roots_to_refresh:
-        if diff_root.base_branch_name != diff_root.diff_branch_name:
-            request_diff_refresh_model = RequestDiffRefresh(
-                branch_name=diff_root.diff_branch_name, diff_id=diff_root.uuid
-            )
-            await service.workflow.submit_workflow(
-                workflow=REQUEST_DIFF_REFRESH, parameters={"model": request_diff_refresh_model}
+                workflow=DIFF_UPDATE, parameters={"model": request_diff_update_model}
             )
 
     for event in events:
