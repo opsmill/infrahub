@@ -240,7 +240,8 @@ async def git_repo_04(
     upstream.git.checkout("branch01")
 
     first_file = find_first_file_in_directory(git_upstream_repo_03["path"])
-    async with await anyio.open_file(git_upstream_repo_03["path"] / first_file, mode="a", encoding="utf-8") as file:
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
         await file.write("new line\n")
     upstream.index.add([first_file])
     upstream.index.commit("Change first file")
@@ -272,7 +273,8 @@ async def git_repo_05(
     # Update the first file at the top level and commit the change in the branch
     upstream = Repo(git_upstream_repo_01["path"])
     first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
-    async with await anyio.open_file(git_upstream_repo_01["path"] / first_file, mode="a", encoding="utf-8") as file:
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
         await file.write("new line\n")
     upstream.index.add([first_file])
     upstream.index.commit("Change first file")
@@ -306,7 +308,8 @@ async def git_repo_06(
     upstream.git.checkout(branch01.name)
 
     first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
-    async with await anyio.open_file(git_upstream_repo_01["path"] / first_file, mode="a", encoding="utf-8") as file:
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
         await file.write("new line\n")
     upstream.index.add([first_file])
     upstream.index.commit("Change first file")
@@ -316,7 +319,9 @@ async def git_repo_06(
     # Update the local branch branch01 to create a conflict.
     branch_wt = repo.get_worktree(identifier=branch01.name)
     branch_repo = Repo(branch_wt.directory)
-    async with await anyio.open_file(branch_wt.directory / first_file, mode="a", encoding="utf-8") as file:
+    first_file = find_first_file_in_directory(branch_wt.directory)
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
         await file.write("not the same line\n")
     branch_repo.index.add([first_file])
     branch_repo.index.commit("Change first file in main")

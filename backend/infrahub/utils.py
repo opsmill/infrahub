@@ -20,7 +20,7 @@ def get_models_dir() -> Path:
 
 
 def find_first_file_in_directory(directory: Path) -> Path | None:
-    return next((f for f in directory.iterdir() if f.is_file()), None)
+    return next((f.resolve() for f in directory.iterdir() if f.is_file()), None)
 
 
 def extract_camelcase_words(camel_case: str) -> list[str]:

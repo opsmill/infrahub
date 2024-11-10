@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import anyio
 import pytest
 from git import Repo
 from infrahub_sdk import Config, InfrahubClient
@@ -143,7 +144,8 @@ async def test_create_commit_worktree(git_repo_01: InfrahubRepository):
 
     # Modify the first file in the main branch to create a new commit
     first_file = find_first_file_in_directory(repo.directory_default)
-    with Path(os.path.join(repo.directory_default, first_file)).open(mode="a", encoding="utf-8") as file:
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -191,7 +193,8 @@ async def test_get_commit_worktree(git_repo_01: InfrahubRepository):
 
     # Modify the first file in the main branch to create a new commit
     first_file = find_first_file_in_directory(repo.directory_default)
-    with Path(os.path.join(repo.directory_default, first_file)).open(mode="a", encoding="utf-8") as file:
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -363,7 +366,8 @@ async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData):
     # Add a new commit in the main branch to have something to rebase.
     git_repo = repo.get_git_repo_main()
     first_file = find_first_file_in_directory(repo.directory_default)
-    with Path(os.path.join(repo.directory_default, first_file)).open("a", encoding="utf-8") as file:
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
