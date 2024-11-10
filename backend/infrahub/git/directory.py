@@ -8,12 +8,7 @@ log = get_logger()
 
 def get_repositories_directory() -> Path:
     """Return the absolute path to the main directory used for the repositories."""
-    repos_dir = Path(config.SETTINGS.git.repositories_directory)
-    if not repos_dir.is_absolute():
-        current_dir = Path()
-        repos_dir = current_dir / config.SETTINGS.git.repositories_directory
-
-    return repos_dir
+    return Path(config.SETTINGS.git.repositories_directory).resolve()
 
 
 def initialize_repositories_directory() -> bool:

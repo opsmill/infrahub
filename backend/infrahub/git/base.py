@@ -15,7 +15,6 @@ from infrahub_sdk.task_report import InfrahubTaskReportLogger  # noqa: TCH002
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
-from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
@@ -27,7 +26,7 @@ from infrahub.exceptions import (
     RepositoryFileNotFoundError,
 )
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
-from infrahub.git.directory import initialize_repositories_directory
+from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
 from infrahub.git.worktree import Worktree
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices  # noqa: TCH001
@@ -182,22 +181,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     @property
     def legacy_directory_root(self) -> Path:
         """Return the legacy path to the root directory for this repository."""
-        current_dir = Path()
-        repositories_directory = Path(config.SETTINGS.git.repositories_directory)
-        if not repositories_directory.is_absolute():
-            repositories_directory = current_dir / config.SETTINGS.git.repositories_directory
-
-        return repositories_directory / self.name
+        return get_repositories_directory() / self.name
 
     @property
     def directory_root(self) -> Path:
         """Return the path to the root directory for this repository."""
-        current_dir = Path()
-        repositories_directory = Path(config.SETTINGS.git.repositories_directory)
-        if not repositories_directory.is_absolute():
-            repositories_directory = current_dir / config.SETTINGS.git.repositories_directory
-
-        return repositories_directory / str(self.id)
+        return get_repositories_directory() / str(self.id)
 
     @property
     def directory_default(self) -> Path:
