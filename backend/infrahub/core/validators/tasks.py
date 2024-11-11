@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from infrahub_sdk.batch import InfrahubBatch
 from prefect import flow, task
+from prefect.logging import get_run_logger
 
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.path import SchemaPath  # noqa: TCH001
@@ -18,22 +19,19 @@ from .models.validate_migration import SchemaValidateMigrationData, SchemaValida
 
 
 @flow(name="schema_validate_migrations", flow_run_name="Validate schema migrations")
-async def schema_validate_migrations(message: SchemaValidateMigrationData) -> list[str]:
+async def schema_validate_migrations(message: SchemaValidateMigrationData) -> list[SchemaValidatorPathResponseData]:
     batch = InfrahubBatch(return_exceptions=True)
-    error_messages: list[str] = []
-    service = services.service
+    violations: list[SchemaValidatorPathResponseData] = []
+
+    log = get_run_logger()
+
     await add_branch_tag(branch_name=message.branch.name)
 
     if not message.constraints:
-        return error_messages
+        return []
 
     for constraint in message.constraints:
-        service.log.info(
-            f"Preparing validator for constraint {constraint.constraint_name!r} ({constraint.routing_key})",
-            branch=message.branch.name,
-            constraint_name=constraint.constraint_name,
-            routing_key=constraint.routing_key,
-        )
+        log.info(f"Preparing validator for constraint {constraint.constraint_name!r} ({constraint.routing_key})")
 
         batch.add(
             task=schema_path_validate,
@@ -45,9 +43,9 @@ async def schema_validate_migrations(message: SchemaValidateMigrationData) -> li
 
     async for _, result in batch.execute():
         for violation in result.violations:
-            error_messages.append(violation.message)
+            violations.append(violation)
 
-    return error_messages
+    return violations
 
 
 @task(

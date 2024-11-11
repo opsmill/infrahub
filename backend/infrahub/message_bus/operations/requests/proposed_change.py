@@ -20,6 +20,8 @@ from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.registry import registry
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
+from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
+from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
@@ -35,8 +37,6 @@ from infrahub.proposed_change.models import RequestProposedChangeDataIntegrity
 from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import InfrahubServices  # noqa: TCH001
 from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY
-from infrahub.core.validators.tasks import schema_validate_migrations
-from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 
 if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
@@ -237,21 +237,23 @@ async def schema_integrity(
         # Validate if the new schema is valid with the content of the database
         # ----------------------------------------------------------
         source_branch = registry.get_branch_from_registry(branch=message.source_branch)
-        responses = await schema_validate_migrations(message=SchemaValidateMigrationData(
-            branch=source_branch, schema_branch=candidate_schema, constraints=list(constraints)
-        ))
+        responses = await schema_validate_migrations(
+            message=SchemaValidateMigrationData(
+                branch=source_branch, schema_branch=candidate_schema, constraints=list(constraints)
+            )
+        )
 
         # TODO we need to report a failure if an error happened during the execution of a validator
         conflicts: list[SchemaConflict] = []
         for response in responses:
-            for violation in response.data.violations:
+            for violation in response.violations:
                 conflicts.append(
                     SchemaConflict(
-                        name=response.data.schema_path.get_path(),
-                        type=response.data.constraint_name,
+                        name=response.schema_path.get_path(),
+                        type=response.constraint_name,
                         kind=violation.node_kind,
                         id=violation.node_id,
-                        path=response.data.schema_path.get_path(),
+                        path=response.schema_path.get_path(),
                         value=violation.message,
                         branch="placeholder",
                     )
