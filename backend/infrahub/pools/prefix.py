@@ -19,7 +19,9 @@ def get_prefix_type(prefix_str: str) -> Literal["ipv4", "ipv6"]:
     raise ValueError(f"'{prefix_str}' is not a valid IPv4 or IPv6 Prefix")
 
 
-def get_next_available_prefix(pool: IPSet, prefix_length: int, prefix_type: Literal["ipv4", "ipv6"] = "ipv4") -> IPNetworkType:
+def get_next_available_prefix(
+    pool: IPSet, prefix_length: int, prefix_type: Literal["ipv4", "ipv6"] = "ipv4"
+) -> IPNetworkType:
     """Get the next available prefix of a given prefix length from an IPSet.
 
     Args:
