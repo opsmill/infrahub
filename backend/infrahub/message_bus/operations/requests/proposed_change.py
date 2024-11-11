@@ -19,7 +19,6 @@ from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.registry import registry
-from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
@@ -36,6 +35,8 @@ from infrahub.proposed_change.models import RequestProposedChangeDataIntegrity
 from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import InfrahubServices  # noqa: TCH001
 from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY
+from infrahub.core.validators.tasks import schema_validate_migrations
+from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 
 if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
@@ -236,9 +237,9 @@ async def schema_integrity(
         # Validate if the new schema is valid with the content of the database
         # ----------------------------------------------------------
         source_branch = registry.get_branch_from_registry(branch=message.source_branch)
-        _, responses = await schema_validators_checker(
-            branch=source_branch, schema=candidate_schema, constraints=list(constraints), service=service
-        )
+        responses = await schema_validate_migrations(message=SchemaValidateMigrationData(
+            branch=source_branch, schema_branch=candidate_schema, constraints=list(constraints)
+        ))
 
         # TODO we need to report a failure if an error happened during the execution of a validator
         conflicts: list[SchemaConflict] = []
