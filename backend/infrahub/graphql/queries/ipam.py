@@ -4,13 +4,14 @@ import ipaddress
 from typing import TYPE_CHECKING, Optional
 
 from graphene import Field, Int, ObjectType, String
+from netaddr import IPSet
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.ipam import get_ip_addresses, get_subnets
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.pools.address import get_available
-from infrahub.pools.prefix import PrefixPool
+from infrahub.pools.prefix import get_next_available_prefix, get_prefix_type
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -92,11 +93,13 @@ class IPPrefixGetNextAvailable(ObjectType):
             branch=context.branch,
         )
 
-        pool = PrefixPool(prefix.prefix.value)  # type: ignore[attr-defined]
+        pool = IPSet([prefix.prefix.value])
         for subnet in subnets:
-            pool.reserve(subnet=str(subnet.prefix))
+            pool.remove(addr=str(subnet.prefix))
 
-        next_available = pool.get(prefixlen=prefix_length)
+        prefix_type = get_prefix_type(prefix.prefix.value)
+        next_available = get_next_available_prefix(pool=pool, prefix_length=prefix_length, prefix_type=prefix_type)
+
         return {"prefix": str(next_available)}
 
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 import ipaddress
 from typing import TYPE_CHECKING, Any, Optional
 
+from netaddr import IPSet
+
 from infrahub.core import registry
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.query.ipam import get_subnets
@@ -10,7 +12,7 @@ from infrahub.core.query.resource_manager import (
     PrefixPoolGetReserved,
     PrefixPoolSetReserved,
 )
-from infrahub.pools.prefix import PrefixPool
+from infrahub.pools.prefix import get_next_available_prefix, get_prefix_type
 
 from .. import Node
 
@@ -95,12 +97,13 @@ class CoreIPPrefixPool(Node):
                 branch_agnostic=True,
             )
 
-            pool = PrefixPool(resource.prefix.value)  # type: ignore[attr-defined]
+            pool = IPSet([resource.prefix.value])
             for subnet in subnets:
-                pool.reserve(subnet=str(subnet.prefix))
+                pool.remove(addr=str(subnet.prefix))
 
             try:
-                next_available = pool.get(prefixlen=prefixlen)
+                prefix_type = get_prefix_type(resource.prefix.value)
+                next_available = get_next_available_prefix(pool=pool, prefix_length=prefixlen, prefix_type=prefix_type)
                 return next_available
             except IndexError:
                 continue

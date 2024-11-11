@@ -1,174 +1,218 @@
 from __future__ import annotations
 
 import ipaddress
-from collections import OrderedDict, defaultdict
-from ipaddress import IPv4Network, IPv6Network
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Literal, Union
+
+from netaddr import IPSet
+
+if TYPE_CHECKING:
+    from infrahub.core.ipam.constants import IPNetworkType
 
 
-class PrefixPool:
+def get_prefix_type(prefix_str: str) -> Literal["ipv4", "ipv6"]:
+    """Determines the type of prefix (ipv4 or ipv6) given a prefix string."""
+    if isinstance(ipaddress.ip_network(prefix_str), ipaddress.IPv4Network):
+        return "ipv4"
+    if isinstance(ipaddress.ip_network(prefix_str), ipaddress.IPv6Network):
+        return "ipv6"
+
+    raise ValueError(f"'{prefix_str}' is not a valid IPv4 or IPv6 Prefix")
+
+
+def get_next_available_prefix(pool: IPSet, prefix_length: int, prefix_type: Literal["ipv4", "ipv6"] = "ipv4") -> IPNetworkType:
+    """Get the next available prefix of a given prefix length from an IPSet.
+
+    Args:
+        pool: netaddr IPSet object with available subnets
+        prefix_length: length of the desired prefix
+        prefix_type: IPSet can contain a mix of IPv4 and IPv6 subnets. This parameter specifies the type of prefix to acquire.
+
+    Raises:
+        ValueError: If there are no available subnets in the pool
     """
-    Class to automatically manage Prefixes and help to carve out sub-prefixes
-    """
+    net_type: type[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]
 
-    def __init__(self, network: str) -> None:
-        self.network = ipaddress.ip_network(network)
+    if prefix_type == "ipv4":
+        net_type = ipaddress.IPv4Network
+    elif prefix_type == "ipv6":
+        net_type = ipaddress.IPv6Network
 
-        # Define biggest and smallest possible masks
-        self.mask_biggest = self.network.prefixlen + 1
-        if self.network.version == 4:
-            self.mask_smallest = 32
-        else:
-            self.mask_smallest = 128
+    filtered_pool = IPSet([])
+    for subnet in pool.iter_cidrs():
+        if isinstance(ipaddress.ip_network(str(subnet)), net_type):
+            filtered_pool.add(subnet)
 
-        self.available_subnets = defaultdict(list)
-        self.sub_by_key: dict[str, Optional[str]] = OrderedDict()
-        self.sub_by_id: dict[str, str] = OrderedDict()
+    for cidr in filtered_pool.iter_cidrs():
+        if cidr.prefixlen <= prefix_length:
+            next_available = ipaddress.ip_network(f"{cidr.network}/{prefix_length}")
+            return next_available
 
-        # Save the top level available subnet
-        for subnet in list(self.network.subnets(new_prefix=self.mask_biggest)):
-            self.available_subnets[self.mask_biggest].append(str(subnet))
+    raise ValueError("No available subnets in pool")
 
-    def reserve(self, subnet: str, identifier: Optional[str] = None) -> bool:
-        """
-        Indicate that a specific subnet is already reserved/used
-        """
 
-        # TODO Add check to make sure the subnet provided has the right size
-        sub = ipaddress.ip_network(subnet)
+# class PrefixPool:
+#     """
+#     Class to automatically manage Prefixes and help to carve out sub-prefixes
+#     """
 
-        if int(sub.prefixlen) <= int(self.network.prefixlen):
-            raise ValueError(f"{subnet} do not have the right size ({sub.prefixlen},{self.network.prefixlen})")
+#     def __init__(self, network: str) -> None:
+#         self.network = ipaddress.ip_network(network)
 
-        if sub.supernet(new_prefix=self.network.prefixlen) != self.network:
-            raise ValueError(f"{subnet} is not part of this network")
+#         # Define biggest and smallest possible masks
+#         self.mask_biggest = self.network.prefixlen + 1
+#         if self.network.version == 4:
+#             self.mask_smallest = 32
+#         else:
+#             self.mask_smallest = 128
 
-        # Check first if this ID as already done a reservation
-        if identifier and identifier in self.sub_by_id.keys():
-            if self.sub_by_id[identifier] == str(sub):
-                return True
-            raise ValueError(
-                f"this identifier ({identifier}) is already used but for a different resource ({self.sub_by_id[identifier]})"
-            )
+#         self.available_subnets = defaultdict(list)
+#         self.sub_by_key: dict[str, Optional[str]] = OrderedDict()
+#         self.sub_by_id: dict[str, str] = OrderedDict()
 
-        if identifier and str(sub) in self.sub_by_key.keys():
-            raise ValueError(f"this subnet is already reserved but not with this identifier ({identifier})")
+#         # Save the top level available subnet
+#         for subnet in list(self.network.subnets(new_prefix=self.mask_biggest)):
+#             self.available_subnets[self.mask_biggest].append(str(subnet))
 
-        if str(sub) in self.sub_by_key.keys():
-            self.remove_subnet_from_available_list(sub)
-            return True
+#     def reserve(self, subnet: str, identifier: Optional[str] = None) -> bool:
+#         """
+#         Indicate that a specific subnet is already reserved/used
+#         """
 
-        # Check if the subnet itself is available
-        # if available reserve and return
-        if subnet in self.available_subnets[sub.prefixlen]:
-            if identifier:
-                self.sub_by_id[identifier] = subnet
-                self.sub_by_key[subnet] = identifier
-            else:
-                self.sub_by_key[subnet] = None
+#         # TODO Add check to make sure the subnet provided has the right size
+#         sub = ipaddress.ip_network(subnet)
 
-            self.remove_subnet_from_available_list(sub)
-            return True
+#         if int(sub.prefixlen) <= int(self.network.prefixlen):
+#             raise ValueError(f"{subnet} do not have the right size ({sub.prefixlen},{self.network.prefixlen})")
 
-        # If not reserved already, check if the subnet is available
-        # start at sublen and check all available subnet
-        # increase 1 by 1 until we find the closer supernet available
-        # break it down and keep track of the other available subnets
+#         if sub.supernet(new_prefix=self.network.prefixlen) != self.network:
+#             raise ValueError(f"{subnet} is not part of this network")
 
-        for sublen in range(sub.prefixlen - 1, self.network.prefixlen, -1):
-            supernet = sub.supernet(new_prefix=sublen)
-            if str(supernet) in self.available_subnets[sublen]:
-                self.split_supernet(supernet=supernet, subnet=sub)
-                return self.reserve(subnet=subnet, identifier=identifier)
+#         # Check first if this ID as already done a reservation
+#         if identifier and identifier in self.sub_by_id.keys():
+#             if self.sub_by_id[identifier] == str(sub):
+#                 return True
+#             raise ValueError(
+#                 f"this identifier ({identifier}) is already used but for a different resource ({self.sub_by_id[identifier]})"
+#             )
 
-        return False
+#         if identifier and str(sub) in self.sub_by_key.keys():
+#             raise ValueError(f"this subnet is already reserved but not with this identifier ({identifier})")
 
-    def get(self, prefixlen: int, identifier: Optional[str] = None) -> Union[IPv4Network, IPv6Network]:
-        """Return the next available Subnet."""
+#         if str(sub) in self.sub_by_key.keys():
+#             self.remove_subnet_from_available_list(sub)
+#             return True
 
-        clean_prefixlen = int(prefixlen)
+#         # Check if the subnet itself is available
+#         # if available reserve and return
+#         if subnet in self.available_subnets[sub.prefixlen]:
+#             if identifier:
+#                 self.sub_by_id[identifier] = subnet
+#                 self.sub_by_key[subnet] = identifier
+#             else:
+#                 self.sub_by_key[subnet] = None
 
-        if identifier and identifier in self.sub_by_id.keys():
-            net = ipaddress.ip_network(self.sub_by_id[identifier])
-            if net.prefixlen == clean_prefixlen:
-                return net
-            raise ValueError()
+#             self.remove_subnet_from_available_list(sub)
+#             return True
 
-        if len(self.available_subnets[clean_prefixlen]) != 0:
-            sub = self.available_subnets[clean_prefixlen][0]
-            self.reserve(subnet=sub, identifier=identifier)
-            return ipaddress.ip_network(sub)
+#         # If not reserved already, check if the subnet is available
+#         # start at sublen and check all available subnet
+#         # increase 1 by 1 until we find the closer supernet available
+#         # break it down and keep track of the other available subnets
 
-        # if a subnet of this size is not available
-        # we need to find the closest subnet available and split it
-        for i in range(clean_prefixlen - 1, self.mask_biggest - 1, -1):
-            if len(self.available_subnets[i]) != 0:
-                supernet = ipaddress.ip_network(self.available_subnets[i][0])
-                # supernet available, will split it
-                subs = supernet.subnets(new_prefix=clean_prefixlen)
-                next_sub: Union[IPv4Network, IPv6Network] = next(subs)  # type: ignore[assignment]
-                self.split_supernet(supernet=supernet, subnet=next_sub)
-                self.reserve(subnet=str(next_sub), identifier=identifier)
-                return next_sub
+#         for sublen in range(sub.prefixlen - 1, self.network.prefixlen, -1):
+#             supernet = sub.supernet(new_prefix=sublen)
+#             if str(supernet) in self.available_subnets[sublen]:
+#                 self.split_supernet(supernet=supernet, subnet=sub)
+#                 return self.reserve(subnet=subnet, identifier=identifier)
 
-        raise IndexError("No More subnet available")
+#         return False
 
-    def get_nbr_available_subnets(self) -> dict[int, int]:
-        tmp = {}
-        for i in range(self.mask_biggest, self.mask_smallest + 1):
-            tmp[i] = len(self.available_subnets[i])
+#     def get(self, prefixlen: int, identifier: Optional[str] = None) -> Union[IPv4Network, IPv6Network]:
+#         """Return the next available Subnet."""
 
-        return tmp
+#         clean_prefixlen = int(prefixlen)
 
-    def check_if_already_allocated(self, identifier: str) -> bool:
-        """
-        Check if a subnet has already been allocated based on an identifier
+#         if identifier and identifier in self.sub_by_id.keys():
+#             net = ipaddress.ip_network(self.sub_by_id[identifier])
+#             if net.prefixlen == clean_prefixlen:
+#                 return net
+#             raise ValueError()
 
-        Need to add the same capability based on Network address
-        If both identifier and subnet are provided, identifier take precedence
-        """
-        if identifier in self.sub_by_id.keys():
-            return True
-        return False
+#         if len(self.available_subnets[clean_prefixlen]) != 0:
+#             sub = self.available_subnets[clean_prefixlen][0]
+#             self.reserve(subnet=sub, identifier=identifier)
+#             return ipaddress.ip_network(sub)
 
-    def split_supernet(
-        self, supernet: Union[IPv4Network, IPv6Network], subnet: Union[IPv4Network, IPv6Network]
-    ) -> None:
-        """Split a supernet into smaller networks"""
+#         # if a subnet of this size is not available
+#         # we need to find the closest subnet available and split it
+#         for i in range(clean_prefixlen - 1, self.mask_biggest - 1, -1):
+#             if len(self.available_subnets[i]) != 0:
+#                 supernet = ipaddress.ip_network(self.available_subnets[i][0])
+#                 # supernet available, will split it
+#                 subs = supernet.subnets(new_prefix=clean_prefixlen)
+#                 next_sub: Union[IPv4Network, IPv6Network] = next(subs)  # type: ignore[assignment]
+#                 self.split_supernet(supernet=supernet, subnet=next_sub)
+#                 self.reserve(subnet=str(next_sub), identifier=identifier)
+#                 return next_sub
 
-        # TODO ensure subnet is small than supernet
-        # TODO ensure that subnet is part of supernet
-        parent_net = supernet
-        for i in range(supernet.prefixlen + 1, subnet.prefixlen + 1):
-            tmp_net: list[Union[IPv4Network, IPv6Network]] = list(parent_net.subnets(new_prefix=i))
+#         raise IndexError("No More subnet available")
 
-            if i == subnet.prefixlen:
-                for net in tmp_net:
-                    self.available_subnets[i].append(str(net))
-            else:
-                if subnet.subnet_of(other=tmp_net[0]):  # type: ignore[arg-type]
-                    parent = 0
-                    other = 1
-                else:
-                    parent = 1
-                    other = 0
+#     def get_nbr_available_subnets(self) -> dict[int, int]:
+#         tmp = {}
+#         for i in range(self.mask_biggest, self.mask_smallest + 1):
+#             tmp[i] = len(self.available_subnets[i])
 
-                parent_net = tmp_net[parent]
-                self.available_subnets[i].append(str(tmp_net[other]))
+#         return tmp
 
-        self.remove_subnet_from_available_list(supernet)
+#     def check_if_already_allocated(self, identifier: str) -> bool:
+#         """
+#         Check if a subnet has already been allocated based on an identifier
 
-    def remove_subnet_from_available_list(self, subnet: Union[IPv4Network, IPv6Network]) -> None:
-        """Remove a subnet from the list of available Subnet."""
-        try:
-            idx = self.available_subnets[subnet.prefixlen].index(str(subnet))
-            del self.available_subnets[subnet.prefixlen][idx]
-        except ValueError:
-            # Already removed
-            pass
+#         Need to add the same capability based on Network address
+#         If both identifier and subnet are provided, identifier take precedence
+#         """
+#         if identifier in self.sub_by_id.keys():
+#             return True
+#         return False
 
-        # if idx:
-        #     return True
-        # except:
-        #     log.warn("Unable to remove %s from list of available subnets" % str(subnet))
-        #     return False
+#     def split_supernet(
+#         self, supernet: Union[IPv4Network, IPv6Network], subnet: Union[IPv4Network, IPv6Network]
+#     ) -> None:
+#         """Split a supernet into smaller networks"""
+
+#         # TODO ensure subnet is small than supernet
+#         # TODO ensure that subnet is part of supernet
+#         parent_net = supernet
+#         for i in range(supernet.prefixlen + 1, subnet.prefixlen + 1):
+#             tmp_net: list[Union[IPv4Network, IPv6Network]] = list(parent_net.subnets(new_prefix=i))
+
+#             if i == subnet.prefixlen:
+#                 for net in tmp_net:
+#                     self.available_subnets[i].append(str(net))
+#             else:
+#                 if subnet.subnet_of(other=tmp_net[0]):  # type: ignore[arg-type]
+#                     parent = 0
+#                     other = 1
+#                 else:
+#                     parent = 1
+#                     other = 0
+
+#                 parent_net = tmp_net[parent]
+#                 self.available_subnets[i].append(str(tmp_net[other]))
+
+#         self.remove_subnet_from_available_list(supernet)
+
+#     def remove_subnet_from_available_list(self, subnet: Union[IPv4Network, IPv6Network]) -> None:
+#         """Remove a subnet from the list of available Subnet."""
+#         try:
+#             idx = self.available_subnets[subnet.prefixlen].index(str(subnet))
+#             del self.available_subnets[subnet.prefixlen][idx]
+#         except ValueError:
+#             # Already removed
+#             pass
+
+#         # if idx:
+#         #     return True
+#         # except:
+#         #     log.warn("Unable to remove %s from list of available subnets" % str(subnet))
+#         #     return False
