@@ -202,6 +202,9 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
 
         response = await client.schema.load(schemas=[schema_step03])
         assert not response.errors
+        _ = await client.all(
+            kind="BuiltinTag",
+        )
 
         # Ensure that we can query the existing node with the new schema
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
