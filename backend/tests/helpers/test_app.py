@@ -1,5 +1,5 @@
 import os
-from typing import Generator
+from typing import AsyncGenerator, Generator
 
 import pytest
 from infrahub_sdk import Config, InfrahubClient
@@ -25,6 +25,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.server import app, app_initialization
 from infrahub.services import services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.message_bus import BusSimulator
 
 from .test_client import InfrahubTestClient
@@ -67,9 +68,10 @@ class TestInfrahubApp(TestInfrahub):
         config.OVERRIDE.message_bus = original
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_local(self) -> Generator[WorkflowLocalExecution, None, None]:
+    async def workflow_local(self) -> AsyncGenerator[WorkflowLocalExecution, None]:
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
+        await setup_task_manager()
         config.OVERRIDE.workflow = workflow
         yield workflow
         config.OVERRIDE.workflow = original

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Optional
 
-from graphene import Boolean, InputObjectType, Mutation, String
+from graphene import Boolean, Field, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 
 from infrahub.core.account import GlobalPermission
@@ -10,8 +10,6 @@ from infrahub.core.constants import (
     GlobalPermissions,
     InfrahubKind,
     PermissionDecision,
-    ProposedChangeState,
-    ValidatorConclusion,
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -22,8 +20,10 @@ from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.message_bus import messages
-from infrahub.workflows.catalogue import BRANCH_MERGE
+from infrahub.proposed_change.constants import ProposedChangeState
+from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE
 
+from ..types.task import TaskInfo
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
@@ -85,7 +85,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         return proposed_change, result
 
     @classmethod
-    @retry_db_transaction(name="proposed_change_update")
     async def mutate_update(  # pylint: disable=too-many-branches
         cls,
         info: GraphQLResolveInfo,
@@ -134,34 +133,21 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         if updated_state == ProposedChangeState.MERGED and not has_merge_permission:
             raise ValidationError("You do not have the permission to merge proposed changes")
 
-        async with context.db.start_transaction() as dbt:
-            proposed_change, result = await super().mutate_update(
-                info=info, data=data, branch=branch, at=at, database=dbt, node=obj
+        if updated_state == ProposedChangeState.MERGED:
+            data["state"]["value"] = ProposedChangeState.MERGING.value
+
+        proposed_change, result = await super().mutate_update(
+            info=info, data=data, branch=branch, at=at, database=context.db, node=obj
+        )
+
+        if updated_state == ProposedChangeState.MERGED:
+            await context.service.workflow.execute_workflow(
+                workflow=PROPOSED_CHANGE_MERGE,
+                parameters={
+                    "proposed_change_id": proposed_change.id,
+                    "proposed_change_name": proposed_change.name.value,
+                },
             )
-
-            if updated_state == ProposedChangeState.MERGED:
-                source_branch = await Branch.get_by_name(db=dbt, name=proposed_change.source_branch.value)
-                validations = await proposed_change.validations.get_peers(db=dbt)
-                for validation in validations.values():
-                    validator_kind = validation.get_kind()
-                    if (
-                        validator_kind != InfrahubKind.DATAVALIDATOR
-                        and validation.conclusion.value.value != ValidatorConclusion.SUCCESS.value
-                    ):
-                        # Ignoring Data integrity checks as they are handled again later
-                        raise ValidationError("Unable to merge proposed change containing failing checks")
-                    if validator_kind == InfrahubKind.DATAVALIDATOR:
-                        data_checks = await validation.checks.get_peers(db=dbt)
-                        for check in data_checks.values():
-                            if check.conflicts.value and not check.keep_branch.value:
-                                raise ValidationError(
-                                    "Data conflicts found on branch and missing decisions about what branch to keep"
-                                )
-
-                await context.service.workflow.execute_workflow(
-                    workflow=BRANCH_MERGE,
-                    parameters={"branch": source_branch.name},
-                )
 
         return proposed_change, result
 
@@ -209,6 +195,62 @@ class ProposedChangeRequestRunCheck(Mutation):
             await context.service.send(message=message)
 
         return {"ok": True}
+
+
+class ProposedChangeMergeInput(InputObjectType):
+    id = String(required=True)
+
+
+class ProposedChangeMerge(Mutation):
+    class Arguments:
+        data = ProposedChangeMergeInput(required=True)
+        wait_until_completion = Boolean(required=False)
+
+    ok = Boolean()
+    task = Field(TaskInfo, required=False)
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # pylint: disable=unused-argument
+        info: GraphQLResolveInfo,
+        data: dict[str, Any],
+        wait_until_completion: bool = True,
+    ) -> dict[str, bool]:
+        context: GraphqlContext = info.context
+        task: dict | None = None
+
+        identifier = data.get("id", "")
+        proposed_change = await NodeManager.get_one(
+            id=identifier, kind=InfrahubKind.PROPOSEDCHANGE, db=context.db, raise_on_error=True
+        )
+        state = ProposedChangeState(proposed_change.state.value.value)
+        if state != ProposedChangeState.OPEN:
+            raise ValidationError("Only proposed change in OPEN state can be merged")
+
+        async with context.db.start_session() as db:
+            proposed_change.state.value = ProposedChangeState.MERGING.value
+            proposed_change.save(db=db)
+
+        if wait_until_completion:
+            await context.service.workflow.execute_workflow(
+                workflow=PROPOSED_CHANGE_MERGE,
+                parameters={
+                    "proposed_change_id": proposed_change.id,
+                    "proposed_change_name": proposed_change.name.value,
+                },
+            )
+        else:
+            workflow = await context.service.workflow.submit_workflow(
+                workflow=PROPOSED_CHANGE_MERGE,
+                parameters={
+                    "proposed_change_id": proposed_change.id,
+                    "proposed_change_name": proposed_change.name.value,
+                },
+            )
+            task = {"id": workflow.id}
+
+        return cls(ok=True, task=task)
 
 
 async def _get_source_branch(db: InfrahubDatabase, name: str) -> Branch:

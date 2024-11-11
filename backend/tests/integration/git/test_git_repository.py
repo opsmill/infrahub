@@ -18,6 +18,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.server import app, app_initialization
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
+from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.log import FakeTaskReportLogger
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import InfrahubTestClient
@@ -46,9 +47,10 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
 
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
-    def workflow_local(prefect_test_fixture):
+    async def workflow_local(prefect_test_fixture):
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
+        await setup_task_manager()
         config.OVERRIDE.workflow = workflow
         yield workflow
         config.OVERRIDE.workflow = original

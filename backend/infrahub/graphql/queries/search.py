@@ -105,7 +105,7 @@ async def search_resolver(
 ) -> dict[str, Any]:
     context: GraphqlContext = info.context
     response: dict[str, Any] = {}
-    result: list[CoreNode] = []
+    results: list[CoreNode] = []
 
     fields = await extract_fields_first_node(info)
 
@@ -114,7 +114,7 @@ async def search_resolver(
             db=context.db, branch=context.branch, at=context.at, id=q
         )
         if matching:
-            result.append(matching)
+            results.append(matching)
     else:
         try:
             # Convert any IPv6 address, network or partial address to collapsed format as it might be stored in db.
@@ -122,22 +122,22 @@ async def search_resolver(
         except (ValueError, ipaddress.AddressValueError):
             pass
 
-        result.extend(
-            await NodeManager.query(
+        for kind in [InfrahubKind.NODE, InfrahubKind.GENERICGROUP]:
+            objs = await NodeManager.query(
                 db=context.db,
                 branch=context.branch,
-                schema=InfrahubKind.NODE,
+                schema=kind,
                 filters={"any__value": q},
                 limit=limit,
                 partial_match=partial_match,
             )
-        )
+            results.extend(objs)
 
-    if "edges" in fields and result:
-        response["edges"] = [{"node": {"id": obj.id, "kind": obj.get_kind()}} for obj in result]
+    if "edges" in fields and len(results) > 0:
+        response["edges"] = [{"node": {"id": obj.id, "kind": obj.get_kind()}} for obj in results]
 
     if "count" in fields:
-        response["count"] = len(result)
+        response["count"] = len(results)
 
     return response
 

@@ -349,6 +349,8 @@ class InfrahubDatabase:
 
             with QUERY_EXECUTION_METRICS.labels(**labels).time():
                 response = await self.run_query(query=query, params=params, name=name)
+                if response is None:
+                    return [], {}
                 results = [item async for item in response]
                 return results, response._metadata or {}
 

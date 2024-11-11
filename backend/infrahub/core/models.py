@@ -477,6 +477,7 @@ class HashableModel(BaseModel):
         Currently this method works for the following type of fields
             int, str, bool, float: If present the value from Other is overwriting the local value
             list[BaseSchemaModel]: The list will be merge if all elements in the list have a _sorting_id and if it's unique.
+            HashableModel: the value will be merged using update()
 
         TODO Implement other fields type like dict
         """
@@ -500,6 +501,11 @@ class HashableModel(BaseModel):
                     field_name=field_name, attr_local=attr_local, attr_other=attr_other
                 )
                 setattr(self, field_name, new_attr)
+                continue
+
+            if isinstance(attr_local, HashableModel) and isinstance(attr_other, HashableModel):
+                attr_local.update(attr_other)
+                continue
 
         return self
 

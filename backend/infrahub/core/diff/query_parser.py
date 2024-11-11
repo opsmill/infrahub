@@ -22,6 +22,7 @@ from .model.path import (
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.query import QueryResult
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.relationship_schema import RelationshipSchema
 
@@ -517,6 +518,18 @@ class DiffQueryParser:
         diff_node.track_database_path(database_path=database_path)
         return diff_node
 
+    def _get_relationship_schema(
+        self, database_path: DatabasePath, node_schema: MainSchemaTypes
+    ) -> RelationshipSchema | None:
+        relationship_schemas = node_schema.get_relationships_by_identifier(id=database_path.attribute_name)
+        if len(relationship_schemas) == 1:
+            return relationship_schemas[0]
+        possible_path_directions = database_path.possible_relationship_directions
+        for rel_schema in relationship_schemas:
+            if rel_schema.direction in possible_path_directions:
+                return rel_schema
+        return None
+
     def _update_attribute_level(self, database_path: DatabasePath, diff_node: DiffNodeIntermediate) -> None:
         node_schema = self.schema_manager.get(
             name=database_path.node_kind, branch=database_path.deepest_branch, duplicate=False
@@ -525,9 +538,7 @@ class DiffQueryParser:
             diff_attribute = self._get_diff_attribute(database_path=database_path, diff_node=diff_node)
             self._update_attribute_property(database_path=database_path, diff_attribute=diff_attribute)
             return
-        relationship_schema = node_schema.get_relationship_by_identifier(
-            id=database_path.attribute_name, raise_on_error=False
-        )
+        relationship_schema = self._get_relationship_schema(database_path=database_path, node_schema=node_schema)
         if not relationship_schema:
             return
         diff_relationship = self._get_diff_relationship(diff_node=diff_node, relationship_schema=relationship_schema)

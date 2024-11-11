@@ -8,6 +8,7 @@ from pydantic import Field
 
 from infrahub.core.constants import AllowOverrideType, HashableModelState
 from infrahub.core.models import HashableModel
+from infrahub.core.schema.computed_attribute import ComputedAttribute  # noqa: TCH001
 from infrahub.core.schema.dropdown import DropdownChoice  # noqa: TCH001
 
 if TYPE_CHECKING:
@@ -33,6 +34,11 @@ class GeneratedAttributeSchema(HashableModel):
         default=None,
         description="Define a list of valid values for the attribute.",
         json_schema_extra={"update": "validate_constraint"},
+    )
+    computed_attribute: Optional[ComputedAttribute] = Field(
+        default=None,
+        description="Defines how the value of this attribute will be populated.",
+        json_schema_extra={"update": "allowed"},
     )
     choices: Optional[list[DropdownChoice]] = Field(
         default=None,

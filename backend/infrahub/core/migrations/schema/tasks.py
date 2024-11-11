@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
 
 
-@flow(name="schema_apply_migrations")
+@flow(name="schema_apply_migrations", flow_run_name="Apply schema migrations")
 async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str]:
     service = services.service
     await add_branch_tag(branch_name=message.branch.name)

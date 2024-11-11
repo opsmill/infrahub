@@ -13,6 +13,7 @@ from infrahub.message_bus.operations.requests.proposed_change import pipeline, r
 from infrahub.message_bus.types import ProposedChangeBranchDiff
 from infrahub.server import app, app_initialization
 from infrahub.services import InfrahubServices, services
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.file_repo import FileRepo
@@ -97,7 +98,7 @@ async def prepare_proposed_change(
     config = Config(api_token=admin_token, requester=test_client.async_request)
     client = InfrahubClient(config=config)
 
-    service = InfrahubServices(message_bus=bus, client=client)
+    service = InfrahubServices(message_bus=bus, client=client, workflow=WorkflowLocalExecution())
     services.prepare(service=service)
 
     repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
@@ -154,7 +155,6 @@ async def test_run_pipeline_validate_requested_jobs(
     ]
 
     assert sorted(bus_post_data_changes.seen_routing_keys) == [
-        "request.proposed_change.data_integrity",
         "request.proposed_change.run_generators",
         "request.proposed_change.run_tests",
         "request.proposed_change.schema_integrity",

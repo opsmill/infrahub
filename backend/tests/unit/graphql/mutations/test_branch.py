@@ -11,8 +11,10 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql_mutation
+from tests.helpers.utils import init_global_service
 
 
 @pytest.fixture
@@ -327,36 +329,6 @@ async def test_branch_rebase_wrong_branch(
     assert result.errors[0].message == "Branch: branch2 not found."
 
 
-async def test_branch_validate(db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin):
-    branch1 = await Branch.get_by_name(db=db, name="branch1")
-
-    query = """
-    mutation {
-        BranchValidate(data: { name: "branch1" }) {
-            ok
-            object {
-                id
-            }
-        }
-    }
-    """
-    gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch1, account_session=session_admin
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchValidate"]["ok"] is True
-    assert result.data["BranchValidate"]["object"]["id"] == str(branch1.uuid)
-
-
 async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02):
     branch4 = await create_branch(branch_name="branch4", db=db)
 
@@ -406,17 +378,18 @@ async def test_branch_merge_wrong_branch(
     }
     """
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
-    gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch1, account_session=session_admin, service=service
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    service = InfrahubServices(message_bus=recorder, database=db, workflow=WorkflowLocalExecution())
+    with init_global_service(service):
+        gql_params = prepare_graphql_params(
+            db=db, include_subscription=False, branch=branch1, account_session=session_admin, service=service
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
 
     assert result.errors
     assert len(result.errors) == 1
@@ -444,17 +417,18 @@ async def test_branch_merge_with_conflict_fails(db: InfrahubDatabase, car_person
     await car_branch.save(db=db)
 
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
-    gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch2, account_session=session_admin, service=service
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    service = InfrahubServices(message_bus=recorder, database=db, workflow=WorkflowLocalExecution())
+    with init_global_service(service):
+        gql_params = prepare_graphql_params(
+            db=db, include_subscription=False, branch=branch2, account_session=session_admin, service=service
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
 
     assert result.errors
     assert len(result.errors) == 1

@@ -1,6 +1,5 @@
 import pytest
 from infrahub_sdk import InfrahubClient
-from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import RepositoryFileNotFoundError, TransformError
@@ -23,7 +22,7 @@ def init_service():
 async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository, prefect_test_fixture, helper):
     commit = git_repo_jinja.get_commit_value(branch_name="main")
     message = TransformJinjaTemplateData(
-        repository_id=str(UUIDT()),
+        repository_id=str(git_repo_jinja.id),
         repository_name=git_repo_jinja.name,
         repository_kind=InfrahubKind.REPOSITORY,
         commit=commit,
@@ -45,7 +44,7 @@ async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository, 
     commit = git_repo_jinja.get_commit_value(branch_name="main")
 
     message = TransformJinjaTemplateData(
-        repository_id=str(UUIDT()),
+        repository_id=str(git_repo_jinja.id),
         repository_name=git_repo_jinja.name,
         repository_kind=InfrahubKind.REPOSITORY,
         commit=commit,
@@ -64,7 +63,7 @@ async def test_git_transform_jinja2_invalid(git_repo_jinja: InfrahubRepository, 
     commit = git_repo_jinja.get_commit_value(branch_name="main")
 
     message = TransformJinjaTemplateData(
-        repository_id=str(UUIDT()),
+        repository_id=str(git_repo_jinja.id),
         repository_name=git_repo_jinja.name,
         repository_kind=InfrahubKind.REPOSITORY,
         commit=commit,
