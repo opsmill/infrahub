@@ -21,3 +21,6 @@ class SchemaValidatorPathResponseData(InfrahubResponseData):
     violations: list[SchemaViolation] = Field(default_factory=list)
     constraint_name: str
     schema_path: SchemaPath
+
+    def get_messages(self) -> list[str]:
+        return [violation.message for violation in self.violations]
