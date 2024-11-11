@@ -273,6 +273,46 @@ async def test_schema_load_restricted_namespace(
     assert response.json()["errors"][0]["message"] == "Restricted namespace 'Internal' used on 'Timestamp'"
 
 
+async def test_schema_load_existing_node_different_kind(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers,
+    default_branch: Branch,
+    prefect_test_fixture,
+    workflow_local,
+    authentication_base,
+    helper,
+):
+    # Load the schema in the database
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        creation = client.post(
+            "/api/schema/load", headers=admin_headers, json={"schemas": [helper.schema_file("infra_simple_01.json")]}
+        )
+        assert creation.status_code == 200
+
+        modified_schema = helper.schema_file("infra_simple_01.json")
+        modified_schema["nodes"].pop(0)
+        modified_schema["generics"] = [
+            {
+                "name": "Device",
+                "namespace": "Infra",
+                "label": "A generic with the same kind as an existing node in the schema",
+            }
+        ]
+
+        response = client.post("/api/schema/load", headers=admin_headers, json={"schemas": [modified_schema]})
+
+        assert response.status_code == 422
+        assert (
+            response.json()["errors"][0]["message"]
+            == "InfraDevice already exist in the schema as a Node. Either rename it or delete the existing one."
+        )
+
+
 async def test_schema_load_endpoint_idempotent_simple(
     db: InfrahubDatabase,
     client: TestClient,

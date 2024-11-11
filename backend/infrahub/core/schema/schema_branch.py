@@ -429,6 +429,14 @@ class SchemaBranch:
                         self.delete(name=new_item.kind)
                 else:
                     new_item = self.get(name=item.kind)
+
+                if (new_item.is_node_schema and not item.is_node_schema) or (
+                    new_item.is_generic_schema and not item.is_generic_schema
+                ):
+                    current_node_type = "Node" if new_item.is_node_schema else "Generic"
+                    raise ValidationError(
+                        f"{item.kind} already exist in the schema as a {current_node_type}. Either rename it or delete the existing one."
+                    )
                 new_item.update(item)
                 self.set(name=item.kind, schema=new_item)
             except SchemaNotFoundError:
