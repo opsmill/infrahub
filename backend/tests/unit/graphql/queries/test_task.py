@@ -14,7 +14,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.tasks.dummy import dummy_flow
+from infrahub.tasks.dummy import dummy_flow, dummy_flow_broken
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 
 CREATE_TASK = """
@@ -59,6 +59,7 @@ query TaskQuery(
         progress
         branch
         tags
+        workflow
         parameters
         related_node
         related_node_kind
@@ -160,7 +161,7 @@ async def flow_runs_data(prefect_client: PrefectClient, tag_blue, account_bob):
             state=State(type="COMPLETED"),
         ),
         await prefect_client.create_flow_run(
-            flow=dummy_flow,
+            flow=dummy_flow_broken,
             name="dummy-completed-no-tag",
             parameters={"firstname": "jane", "lastname": "doe"},
             tags=[],
@@ -168,6 +169,13 @@ async def flow_runs_data(prefect_client: PrefectClient, tag_blue, account_bob):
         ),
         await prefect_client.create_flow_run(
             flow=dummy_flow,
+            name="dummy-completed-no-branch",
+            parameters={"firstname": "jane", "lastname": "doe"},
+            tags=[TAG_NAMESPACE],
+            state=State(type="COMPLETED"),
+        ),
+        await prefect_client.create_flow_run(
+            flow=dummy_flow_broken,
             name="dummy-scheduled-no-tag",
             parameters={"firstname": "jane", "lastname": "doe"},
             tags=[],
@@ -181,7 +189,7 @@ async def flow_runs_data(prefect_client: PrefectClient, tag_blue, account_bob):
             state=State(type="SCHEDULED"),
         ),
         await prefect_client.create_flow_run(
-            flow=dummy_flow,
+            flow=dummy_flow_broken,
             name="dummy-completed-account-br1-db",
             parameters={"firstname": "xxxx", "lastname": "zzzzz"},
             tags=[TAG_NAMESPACE, WorkflowTag.RELATED_NODE.render(identifier=account_bob.get_id()), branch1_tag, db_tag],
@@ -195,7 +203,7 @@ async def flow_runs_data(prefect_client: PrefectClient, tag_blue, account_bob):
             state=State(type="SCHEDULED"),
         ),
         await prefect_client.create_flow_run(
-            flow=dummy_flow,
+            flow=dummy_flow_broken,
             name="dummy-running-br1-db",
             parameters={"firstname": "xxxx", "lastname": "yyy"},
             tags=[TAG_NAMESPACE, branch1_tag, db_tag],
@@ -382,11 +390,80 @@ async def test_task_query_prefect(
     assert task_names == [
         "dummy-completed-account-br1-db",
         "dummy-completed-br1-db",
+        "dummy-completed-no-branch",
         "dummy-running-br1",
         "dummy-running-br1-db",
         "dummy-scheduled-blue-db",
         "dummy-scheduled-br1-db",
     ]
+    assert result.data["InfrahubTask"]["count"] == len(task_names)
+
+
+async def test_task_query_filter_workflow(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+):
+    QUERY = """
+    query {
+        InfrahubTask(workflow: ["dummy-flow"]) {
+            count
+            edges {
+                node {
+                    id
+                    title
+                }
+            }
+        }
+    }
+    """
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY,
+        variables={},
+    )
+    assert result.errors is None
+    assert result.data
+
+    task_names = sorted([task["node"]["title"] for task in result.data["InfrahubTask"]["edges"]])
+    assert task_names == [
+        "dummy-completed-br1-db",
+        "dummy-completed-no-branch",
+        "dummy-running-br1",
+        "dummy-scheduled-blue-db",
+        "dummy-scheduled-br1-db",
+    ]
+    assert result.data["InfrahubTask"]["count"] == len(task_names)
+
+
+async def test_task_query_filter_workflow_state(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+):
+    QUERY = """
+    query {
+        InfrahubTask(workflow: ["dummy-flow"], state: [RUNNING, SCHEDULED]) {
+            count
+            edges {
+                node {
+                    id
+                    title
+                }
+            }
+        }
+    }
+    """
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY,
+        variables={},
+    )
+    assert result.errors is None
+    assert result.data
+
+    task_names = sorted([task["node"]["title"] for task in result.data["InfrahubTask"]["edges"]])
+    assert task_names == ["dummy-running-br1", "dummy-scheduled-blue-db", "dummy-scheduled-br1-db"]
     assert result.data["InfrahubTask"]["count"] == len(task_names)
 
 
@@ -461,6 +538,78 @@ async def test_task_query_filter_branch(
     assert result.data["InfrahubTask"]["count"] == len(task_names)
 
 
+async def test_task_query_filter_state(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+):
+    QUERY = """
+    query {
+        InfrahubTask(state: [RUNNING, COMPLETED]) {
+            count
+            edges {
+                node {
+                    id
+                    title
+                }
+            }
+        }
+    }
+    """
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY,
+        variables={},
+    )
+    assert result.errors is None
+    assert result.data
+
+    task_names = sorted([task["node"]["title"] for task in result.data["InfrahubTask"]["edges"]])
+    assert task_names == [
+        "dummy-completed-account-br1-db",
+        "dummy-completed-br1-db",
+        "dummy-completed-no-branch",
+        "dummy-running-br1",
+        "dummy-running-br1-db",
+    ]
+    assert result.data["InfrahubTask"]["count"] == len(task_names)
+
+
+async def test_task_query_partial_text(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+):
+    QUERY = """
+    query {
+        InfrahubTask(q: "br1") {
+            count
+            edges {
+                node {
+                    id
+                    title
+                }
+            }
+        }
+    }
+    """
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY,
+        variables={},
+    )
+    assert result.errors is None
+    assert result.data
+
+    task_names = sorted([task["node"]["title"] for task in result.data["InfrahubTask"]["edges"]])
+    assert task_names == [
+        "dummy-completed-account-br1-db",
+        "dummy-completed-br1-db",
+        "dummy-running-br1",
+        "dummy-running-br1-db",
+        "dummy-scheduled-br1-db",
+    ]
+    assert result.data["InfrahubTask"]["count"] == len(task_names)
+
+
 async def test_task_query_filter_node(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -495,6 +644,7 @@ async def test_task_query_filter_node(
             "title": flow.name,
             "updated_at": flow.updated.to_iso8601_string(),
             "start_time": None,
+            "workflow": "dummy-flow",
         }
     }
 
@@ -529,6 +679,7 @@ async def test_task_query_filter_node(
             "title": flow.name,
             "updated_at": flow.updated.to_iso8601_string(),
             "start_time": None,
+            "workflow": "dummy-flow-broken",
         }
     }
 
@@ -586,6 +737,7 @@ async def test_task_query_both(
         "Blue Task 1",
         "dummy-completed-account-br1-db",
         "dummy-completed-br1-db",
+        "dummy-completed-no-branch",
         "dummy-running-br1",
         "dummy-running-br1-db",
         "dummy-scheduled-blue-db",
@@ -681,6 +833,7 @@ async def test_task_query_progress(
             "title": flow.name,
             "updated_at": flow.updated.to_iso8601_string(),
             "start_time": flow.start_time.to_iso8601_string(),
+            "workflow": "dummy-flow",
         }
     }
 
@@ -719,6 +872,7 @@ async def test_task_no_count(
     assert task_names == [
         "dummy-completed-account-br1-db",
         "dummy-completed-br1-db",
+        "dummy-completed-no-branch",
         "dummy-running-br1",
         "dummy-running-br1-db",
         "dummy-scheduled-blue-db",
@@ -750,4 +904,4 @@ async def test_task_only_count(
     )
 
     assert result.errors is None
-    assert result.data["InfrahubTask"]["count"] == 6
+    assert result.data["InfrahubTask"]["count"] == 7

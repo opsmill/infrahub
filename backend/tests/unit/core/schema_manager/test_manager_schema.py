@@ -18,16 +18,20 @@ from infrahub.core.constants import (
     SchemaPathType,
 )
 from infrahub.core.schema import (
+    AttributeSchema,
     GenericSchema,
     NodeSchema,
+    RelationshipSchema,
     SchemaRoot,
     core_models,
     internal_schema,
 )
+from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
+from tests.helpers.schema import CHILD, THING
 
 from .conftest import _get_schema_by_kind
 
@@ -1416,10 +1420,11 @@ async def test_schema_branch_validate_count_against_cardinality_invalid(relation
 
 
 async def test_schema_branch_from_dict_schema_object():
-    schema = SchemaRoot(**core_models)
-
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=schema)
+
+    # Load the core models and a model with a computed_attribute
+    schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    schema_branch.load_schema(schema=SchemaRoot(nodes=[CHILD, THING]))
 
     exported = schema_branch.to_dict_schema_object()
 
@@ -2073,22 +2078,23 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Builtin",
-        "default_filter": "name__value",
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "level", "kind": "Number"},
-            {"name": "color", "kind": "Text", "default_value": "#444444"},
-            {"name": "description", "kind": "Text", "optional": True},
+    node = NodeSchema(
+        name="Criticality",
+        namespace="Builtin",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(name="level", kind="Number"),
+            AttributeSchema(name="color", kind="Text", default_value="default_value"),
+            AttributeSchema(
+                name="description",
+                kind="Text",
+                optional=True,
+                computed_attribute=ComputedAttribute(kind="Jinja2", jinja2_template="{{ name__value }}"),
+            ),
         ],
-        "relationships": [
-            {"name": "others", "peer": "BuiltinCriticality", "optional": True, "cardinality": "many"},
-        ],
-    }
-    node = NodeSchema(**SCHEMA)
-
+        relationships=[RelationshipSchema(name="others", peer="BuiltinCriticality", optional=True, cardinality="many")],
+    )
     await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
 
     node2 = registry.schema.get(name=node.kind, branch=default_branch)
@@ -2096,8 +2102,8 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
     assert node2.relationships[0].id
     assert node2.attributes[0].id
 
-    results = await SchemaManager.query(schema="SchemaNode", branch=default_branch, db=db)
-    assert len(results) == 1
+    node_from_db = await SchemaManager.get_one(db=db, id=node2.id, branch=default_branch)
+    assert node_from_db
 
 
 async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_branch):
@@ -2249,7 +2255,14 @@ async def test_load_schema_from_db(
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "level", "kind": "Number", "label": "Level"},
                     {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                    {
+                        "name": "description",
+                        "kind": "Text",
+                        "label": "Description",
+                        "optional": True,
+                        "read_only": True,
+                        "computed_attribute": {"kind": "Jinja2", "jinja2_template": "{{ name__value }}"},
+                    },
                 ],
                 "relationships": [
                     {
@@ -2319,6 +2332,10 @@ async def test_load_schema_from_db(
     assert schema11.get(name="TestCriticality").get_hash() == crit_schema.get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name="BuiltinTag").get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
+
+    description_schema = crit_schema.get_attribute("description")
+    assert description_schema.computed_attribute is not None
+    assert description_schema.computed_attribute.jinja2_template == "{{ name__value }}"
 
 
 async def test_load_schema(

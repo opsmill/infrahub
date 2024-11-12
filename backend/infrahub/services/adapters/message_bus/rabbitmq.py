@@ -173,13 +173,14 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.message_enrichers.append(_add_request_id)
 
     async def _initialize_git_worker(self) -> None:
+        bindings = self.event_bindings + self.broadcasted_event_bindings
         events_queue = await self.channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
 
         self.exchange = await self.channel.declare_exchange(
             f"{self.settings.namespace}.events", type="topic", durable=True
         )
 
-        for routing_key in self.event_bindings:
+        for routing_key in bindings:
             await events_queue.bind(self.exchange, routing_key=routing_key)
         self.delayed_exchange = await self.channel.get_exchange(name=f"{self.settings.namespace}.delayed")
 

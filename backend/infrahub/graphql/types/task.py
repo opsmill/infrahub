@@ -9,12 +9,17 @@ from .task_log import TaskLogEdge
 TaskState = Enum.from_enum(StateType)
 
 
+class TaskInfo(ObjectType):
+    id = Field(String)
+
+
 class Task(ObjectType):
     id = String(required=True)
     title = String(required=True)
     conclusion = String(required=True)
     state = TaskState(required=False)
     progress = Float(required=False)
+    workflow = String(required=False)
     branch = String(required=False)
     created_at = String(required=True)
     updated_at = String(required=True)

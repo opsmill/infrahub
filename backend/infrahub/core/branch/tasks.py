@@ -114,17 +114,15 @@ async def rebase_branch(branch: str) -> None:
     # -------------------------------------------------------------
     # Trigger the reconciliation of IPAM data after the rebase
     # -------------------------------------------------------------
-    differ = await merger.get_graph_diff()
-    diff_parser = IpamDiffParser(
-        db=service.database,
-        differ=differ,
+    diff_parser = await component_registry.get_component(IpamDiffParser, db=service.database, branch=obj)
+    ipam_node_details = await diff_parser.get_changed_ipam_node_details(
         source_branch_name=obj.name,
         target_branch_name=registry.default_branch,
     )
-    ipam_node_details = await diff_parser.get_changed_ipam_node_details()
-    await service.workflow.submit_workflow(
-        workflow=IPAM_RECONCILIATION, parameters={"branch": obj.name, "ipam_node_details": ipam_node_details}
-    )
+    if ipam_node_details:
+        await service.workflow.submit_workflow(
+            workflow=IPAM_RECONCILIATION, parameters={"branch": obj.name, "ipam_node_details": ipam_node_details}
+        )
 
     # -------------------------------------------------------------
     # Generate an event to indicate that a branch has been rebased
@@ -148,68 +146,69 @@ async def merge_branch(branch: str) -> None:
     await add_branch_tag(branch_name=branch)
     await add_branch_tag(branch_name=registry.default_branch)
 
-    obj = await Branch.get_by_name(db=service.database, name=branch)
-    component_registry = get_component_registry()
+    async with service.database.start_session() as db:
+        obj = await Branch.get_by_name(db=db, name=branch)
+        component_registry = get_component_registry()
 
-    merger: BranchMerger | None = None
-    async with lock.registry.global_graph_lock():
-        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=service.database, branch=obj)
-        diff_merger = await component_registry.get_component(DiffMerger, db=service.database, branch=obj)
-        merger = BranchMerger(
-            db=service.database,
-            diff_coordinator=diff_coordinator,
-            diff_merger=diff_merger,
-            source_branch=obj,
-            service=service,
-        )
-        try:
-            await merger.merge()
-        except Exception as exc:
-            await merger.rollback()
-            raise MergeFailedError(branch_name=branch) from exc
-        await merger.update_schema()
+        merger: BranchMerger | None = None
+        async with lock.registry.global_graph_lock():
+            # await update_diff(model=RequestDiffUpdate(branch_name=obj.name))
 
-    if merger and merger.migrations:
-        errors = await schema_apply_migrations(
-            message=SchemaApplyMigrationData(
-                branch=merger.destination_branch,
-                new_schema=merger.destination_schema,
-                previous_schema=merger.initial_source_schema,
-                migrations=merger.migrations,
+            diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
+            diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
+            merger = BranchMerger(
+                db=db,
+                diff_coordinator=diff_coordinator,
+                diff_merger=diff_merger,
+                source_branch=obj,
+                service=service,
             )
+            try:
+                await merger.merge()
+            except Exception as exc:
+                await merger.rollback()
+                raise MergeFailedError(branch_name=branch) from exc
+            await merger.update_schema()
+
+        if merger and merger.migrations:
+            errors = await schema_apply_migrations(
+                message=SchemaApplyMigrationData(
+                    branch=merger.destination_branch,
+                    new_schema=merger.destination_schema,
+                    previous_schema=merger.initial_source_schema,
+                    migrations=merger.migrations,
+                )
+            )
+            for error in errors:
+                log.error(error)
+
+        # -------------------------------------------------------------
+        # Trigger the reconciliation of IPAM data after the merge
+        # -------------------------------------------------------------
+        diff_parser = await component_registry.get_component(IpamDiffParser, db=service.database, branch=obj)
+        ipam_node_details = await diff_parser.get_changed_ipam_node_details(
+            source_branch_name=obj.name,
+            target_branch_name=registry.default_branch,
         )
-        for error in errors:
-            log.error(error)
+        if ipam_node_details:
+            await service.workflow.submit_workflow(
+                workflow=IPAM_RECONCILIATION,
+                parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
+            )
 
-    # -------------------------------------------------------------
-    # Trigger the reconciliation of IPAM data after the merge
-    # -------------------------------------------------------------
-    differ = await merger.get_graph_diff()
-    diff_parser = IpamDiffParser(
-        db=service.database,
-        differ=differ,
-        source_branch_name=obj.name,
-        target_branch_name=registry.default_branch,
-    )
-    ipam_node_details = await diff_parser.get_changed_ipam_node_details()
-    await service.workflow.submit_workflow(
-        workflow=IPAM_RECONCILIATION,
-        parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
-    )
-
-    # -------------------------------------------------------------
-    # Generate an event to indicate that a branch has been merged
-    # NOTE: we still need to convert this event and potentially pull
-    #   some tasks currently executed based on the event into this workflow
-    # -------------------------------------------------------------
-    log_data = get_log_data()
-    request_id = log_data.get("request_id", "")
-    message = messages.EventBranchMerge(
-        source_branch=obj.name,
-        target_branch=registry.default_branch,
-        meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
-    )
-    await service.send(message=message)
+        # -------------------------------------------------------------
+        # Generate an event to indicate that a branch has been merged
+        # NOTE: we still need to convert this event and potentially pull
+        #   some tasks currently executed based on the event into this workflow
+        # -------------------------------------------------------------
+        log_data = get_log_data()
+        request_id = log_data.get("request_id", "")
+        message = messages.EventBranchMerge(
+            source_branch=obj.name,
+            target_branch=registry.default_branch,
+            meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+        )
+        await service.send(message=message)
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")

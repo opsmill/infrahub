@@ -445,7 +445,17 @@ async def test_node_create_local_attrs(db: InfrahubDatabase, default_branch: Bra
     assert obj.json_no_default.value is None
 
     obj = await Node.init(db=db, schema=criticality_schema)
-    await obj.new(db=db, name="medium", level=3, description="My desc", is_true=False, is_false=True, color="#333333")
+    await obj.new(
+        db=db,
+        name="medium",
+        level=3,
+        description="My desc",
+        is_true=False,
+        is_false=True,
+        color="#333333",
+        json_default={"value": {"value": "xxxxx"}},
+        json_no_default={"value": {"testing": True}},
+    )
     await obj.save(db=db)
 
     assert obj.id
@@ -460,6 +470,8 @@ async def test_node_create_local_attrs(db: InfrahubDatabase, default_branch: Bra
     assert obj.color.id
     assert obj.is_true.value is False
     assert obj.is_false.value is True
+    assert obj.json_default.value == {"value": "xxxxx"}
+    assert obj.json_no_default.value == {"testing": True}
 
 
 async def test_node_create_attribute_with_source(

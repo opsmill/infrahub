@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field
 from typing_extensions import Self
 
 from infrahub import __version__
-from infrahub.core.constants import BranchSupportType
 
 from .constants import TAG_NAMESPACE, WorkflowTag, WorkflowType
 
@@ -40,7 +39,6 @@ class WorkflowDefinition(BaseModel):
     module: str
     function: str
     cron: str | None = None
-    branch_support: BranchSupportType = BranchSupportType.AGNOSTIC
     tags: list[WorkflowTag] = Field(default_factory=list)
 
     @property

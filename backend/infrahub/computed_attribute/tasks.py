@@ -17,8 +17,11 @@ from infrahub.core.registry import registry
 from infrahub.git.repository import get_initialized_repo
 from infrahub.services import services
 from infrahub.support.macro import MacroDefinition
-from infrahub.workflows.catalogue import PROCESS_COMPUTED_MACRO
+from infrahub.workflows.catalogue import PROCESS_COMPUTED_MACRO, UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM
 from infrahub.workflows.utils import add_branch_tag
+
+from .constants import AUTOMATION_NAME, AUTOMATION_NAME_PREFIX
+from .models import ComputedAttributeAutomations
 
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
@@ -115,13 +118,22 @@ async def process_transform(
 
 @flow(name="process_computed_attribute_jinja2", log_prints=True)
 async def process_jinja2(
-    branch_name: str, node_kind: str, object_id: str, updated_fields: list[str] | None = None
+    branch_name: str,
+    node_kind: str,
+    object_id: str,
+    computed_attribute_name: str,
+    computed_attribute_kind: str,
+    updated_fields: list[str] | None = None,
 ) -> None:
     """Request to the creation of git branches in available repositories."""
     service = services.service
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
 
-    computed_macros = schema_branch.get_impacted_macros(kind=node_kind, updates=updated_fields)
+    computed_macros = [
+        attrib
+        for attrib in schema_branch.get_impacted_macros(kind=node_kind, updates=updated_fields)
+        if attrib.kind == computed_attribute_kind and attrib.attribute.name == computed_attribute_name
+    ]
     for computed_macro in computed_macros:
         found = []
         for id_filter in computed_macro.node_filters:
@@ -175,24 +187,33 @@ async def process_jinja2(
             print()
 
 
-@flow(name="computed-attribute-setup")
+@flow(name="computed-attribute-setup", flow_run_name="Setup computed attributes in task-manager")
 async def computed_attribute_setup() -> None:
     # service = services.service
     schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
     log = get_run_logger()
+
     async with get_client(sync_client=False) as client:
         deployments = {
             item.name: item
             for item in await client.read_deployments(
-                deployment_filter=DeploymentFilter(name=DeploymentFilterName(any_=[PROCESS_COMPUTED_MACRO.name]))
+                deployment_filter=DeploymentFilter(
+                    name=DeploymentFilterName(
+                        any_=[PROCESS_COMPUTED_MACRO.name, UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM.name]
+                    )
+                )
             )
         }
         if PROCESS_COMPUTED_MACRO.name not in deployments:
             raise ValueError("Unable to find the deployment for PROCESS_COMPUTED_MACRO")
-        deployment_id = deployments[PROCESS_COMPUTED_MACRO.name].id
+        if UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM.name not in deployments:
+            raise ValueError("Unable to find the deployment for UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM")
 
-        # TODO need to pull the existing automation to see if we need to create or update each object
-        # automations = await client.read_automations()
+        deployment_id_jinja = deployments[PROCESS_COMPUTED_MACRO.name].id
+        # deployment_id_python = deployments[UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM.name].id
+
+        automations = await client.read_automations()
+        existing_computed_attr_automations = ComputedAttributeAutomations.from_prefect(automations=automations)
 
         computed_attributes: dict[str, ComputedAttributeTarget] = {}
         for item in schema_branch._computed_jinja2_attribute_map.values():
@@ -205,9 +226,11 @@ async def computed_attribute_setup() -> None:
 
         for identifier, computed_attribute in computed_attributes.items():
             log.info(f"processing {computed_attribute.key_name}")
+            scope = "default"
+
             automation = AutomationCore(
-                name=f"computed-attribute-process-{identifier}",
-                description=f"Process value of the computed attribute for {identifier}",
+                name=AUTOMATION_NAME.format(prefix=AUTOMATION_NAME_PREFIX, identifier=identifier, scope=scope),
+                description=f"Process value of the computed attribute for {identifier} [{scope}]",
                 enabled=True,
                 trigger=EventTrigger(
                     posture=Posture.Reactive,
@@ -219,16 +242,23 @@ async def computed_attribute_setup() -> None:
                 actions=[
                     RunDeployment(
                         source="selected",
-                        deployment_id=deployment_id,
+                        deployment_id=deployment_id_jinja,
                         parameters={
                             "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
                             "node_kind": "{{ event.resource['infrahub.node.kind'] }}",
                             "object_id": "{{ event.resource['infrahub.node.id'] }}",
+                            "computed_attribute_name": computed_attribute.attribute.name,
+                            "computed_attribute_kind": computed_attribute.kind,
                         },
                         job_variables={},
                     )
                 ],
             )
 
-            response = await client.create_automation(automation=automation)
-            log.info(f"Processed: {computed_attribute.key_name} : {response}")
+            if existing_computed_attr_automations.has(identifier=identifier, scope=scope):
+                existing = existing_computed_attr_automations.get(identifier=identifier, scope=scope)
+                await client.update_automation(automation_id=existing.id, automation=automation)
+                log.info(f"{computed_attribute.key_name} Updated")
+            else:
+                await client.create_automation(automation=automation)
+                log.info(f"{computed_attribute.key_name} Created")

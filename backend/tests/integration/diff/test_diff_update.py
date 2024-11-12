@@ -7,7 +7,7 @@ import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchConflictKeep, DiffAction, InfrahubKind, ProposedChangeState
+from infrahub.core.constants import BranchConflictKeep, DiffAction, InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import BranchTrackingId, ConflictSelection, EnrichedDiffRoot
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -16,6 +16,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema

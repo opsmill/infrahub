@@ -112,7 +112,7 @@ async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> Infrah
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name="test_basename",
-        location=f"{git_sources_dir}/test_base",
+        location=str(git_sources_dir / "test_base"),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 

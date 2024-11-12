@@ -8,7 +8,7 @@ from infrahub.services import services
 from infrahub.workflows.utils import add_branch_tag
 
 
-@flow(name="update_graphql_query_group")
+@flow(name="update_graphql_query_group", flow_run_name="Update GraphQLQuery Group {model.query_name}")
 async def update_graphql_query_group(model: RequestGraphQLQueryGroupUpdate) -> None:
     """Create or Update a GraphQLQueryGroup."""
 

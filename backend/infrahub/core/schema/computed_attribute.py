@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, model_serializer
 
 from infrahub.core.constants import ComputedAttributeKind
 from infrahub.core.models import HashableModel
@@ -14,6 +14,10 @@ class ComputedAttribute(HashableModel):
     transform: Optional[str] = Field(
         default=None, description="The Python Transform name or ID, required when assignment_type=transform"
     )
+
+    @model_serializer
+    def ser_model(self) -> dict[str, Any]:
+        return {"kind": self.kind.value, "jinja2_template": self.jinja2_template, "transform": self.transform}
 
     model_config = ConfigDict(
         extra="forbid",

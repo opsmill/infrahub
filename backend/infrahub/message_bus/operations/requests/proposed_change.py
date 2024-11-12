@@ -32,8 +32,10 @@ from infrahub.message_bus.types import (
     ProposedChangeRepository,
     ProposedChangeSubscriber,
 )
+from infrahub.proposed_change.models import RequestProposedChangeDataIntegrity
 from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import InfrahubServices  # noqa: TCH001
+from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY
 
 if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
@@ -69,23 +71,6 @@ class DefinitionSelect(IntFlag):
             return f"Requesting generation due to {' and '.join(change_types)}"
 
         return "Doesn't require changes due to no relevant modified kinds or file changes in Git"
-
-
-@flow(name="proposed-changed-data-integrity")
-async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, service: InfrahubServices) -> None:
-    """Triggers a data integrity validation check on the provided proposed change to start."""
-    async with service.task_report(
-        related_node=message.proposed_change,
-        title="Data Integrity",
-    ):
-        log.info(f"Got a request to process data integrity defined in proposed_change: {message.proposed_change}")
-
-        destination_branch = await registry.get_branch(db=service.database, branch=message.destination_branch)
-        source_branch = await registry.get_branch(db=service.database, branch=message.source_branch)
-        component_registry = get_component_registry()
-        async with service.database.start_transaction() as dbt:
-            diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
-            await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
 
 @flow(name="proposed-changed-pipeline")
@@ -164,14 +149,15 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             branch=message.source_branch
         ):
             await task_report.info("Adding Data Integrity job", proposed_change=message.proposed_change)
-            events.append(
-                messages.RequestProposedChangeDataIntegrity(
-                    proposed_change=message.proposed_change,
-                    source_branch=message.source_branch,
-                    source_branch_sync_with_git=message.source_branch_sync_with_git,
-                    destination_branch=message.destination_branch,
-                    branch_diff=branch_diff,
-                )
+            model = RequestProposedChangeDataIntegrity(
+                proposed_change=message.proposed_change,
+                source_branch=message.source_branch,
+                source_branch_sync_with_git=message.source_branch_sync_with_git,
+                destination_branch=message.destination_branch,
+                branch_diff=branch_diff,
+            )
+            await service.workflow.submit_workflow(
+                workflow=REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY, parameters={"model": model}
             )
 
         if message.check_type in [CheckType.REPOSITORY, CheckType.USER]:

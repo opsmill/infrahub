@@ -434,6 +434,29 @@ For more detailed explanations on how to use these events within Infrahub, see t
 
 
 <!-- vale off -->
+### Refresh Git
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event refresh.git.fetch
+<!-- vale on -->
+
+**Description**: Fetch a repository remote changes.
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **location** | The external URL of the repository | string | None |
+| **repository_id** | The unique ID of the repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The type of repository | string | None |
+| **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+<!-- vale on -->
+
+<!-- vale off -->
 ### Refresh Registry
 <!-- vale on -->
 
@@ -536,24 +559,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 ### Request Proposed Change
 <!-- vale on -->
 
-<!-- vale off -->
-#### Event request.proposed_change.data_integrity
-<!-- vale on -->
-
-**Description**: Sent trigger data integrity checks for a proposed change
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch of the proposed change | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The destination branch of the proposed change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
 <!-- vale off -->
 #### Event request.proposed_change.pipeline
 <!-- vale on -->
@@ -1191,6 +1196,30 @@ For more detailed explanations on how to use these events within Infrahub, see t
 
 
 <!-- vale off -->
+### Refresh Git
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event refresh.git.fetch
+<!-- vale on -->
+
+**Description**: Fetch a repository remote changes.
+
+**Priority**: 3
+
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **location** | The external URL of the repository | string | None |
+| **repository_id** | The unique ID of the repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The type of repository | string | None |
+| **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+<!-- vale on -->
+
+<!-- vale off -->
 ### Refresh Registry
 <!-- vale on -->
 
@@ -1298,25 +1327,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 ### Request Proposed Change
 <!-- vale on -->
 
-<!-- vale off -->
-#### Event request.proposed_change.data_integrity
-<!-- vale on -->
-
-**Description**: Sent trigger data integrity checks for a proposed change
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch of the proposed change | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The destination branch of the proposed change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
 <!-- vale off -->
 #### Event request.proposed_change.pipeline
 <!-- vale on -->

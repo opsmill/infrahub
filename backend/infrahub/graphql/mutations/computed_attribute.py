@@ -4,11 +4,12 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, InputObjectType, Mutation, String
 
-from infrahub.core.constants import ComputedAttributeKind
+from infrahub.core.account import ObjectPermission
+from infrahub.core.constants import ComputedAttributeKind, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
-from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError, ValidationError
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -45,6 +46,28 @@ class UpdateComputedAttribute(Mutation):
             or target_attribute.computed_attribute.kind == ComputedAttributeKind.USER
         ):
             raise ValidationError(input_value=f"{node_schema.kind}.{target_attribute.name} is not a computed attribute")
+
+        required_decision = PermissionDecision.ALLOW_OTHER
+        if context.branch.name == registry.default_branch:
+            required_decision = PermissionDecision.ALLOW_DEFAULT
+
+        has_update_permission = False
+        for permission_backend in registry.permission_backends:
+            if has_update_permission := await permission_backend.has_permission(
+                db=context.db,
+                account_session=context.active_account_session,
+                permission=ObjectPermission(
+                    namespace=node_schema.namespace,
+                    name=node_schema.name,
+                    action=PermissionAction.UPDATE.value,
+                    decision=required_decision.value,
+                ),
+                branch=context.branch,
+            ):
+                break
+
+        if not has_update_permission:
+            raise PermissionDeniedError(message="You don't have the required permission to update this object.")
 
         if not (
             target_node := await NodeManager.get_one(

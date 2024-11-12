@@ -24,9 +24,7 @@ async def test_create_related_macro(
     default_branch.update_schema_hash()
     await default_branch.save(db=db)
     await load_schema(db, schema=SchemaRoot(nodes=[CHILD, THING]))
-    # FIXME: This is a workaround hack as it's not posible to have Schema attributes in JSON format
-    # on creation at the moment so we need to get the schema updated after initial creation..
-    await load_schema(db, schema=SchemaRoot(nodes=[CHILD, THING]))
+
     fred = await Node.init(schema=TestKind.CHILD, db=db)
     await fred.new(db=db, name="Fred", height=110)
     await fred.save(db=db)

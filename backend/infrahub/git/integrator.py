@@ -452,7 +452,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         schemas_data: list[SchemaFile] = []
 
         for schema in config_file.schemas:
-            full_schema = Path(branch_wt.directory, schema)
+            full_schema = branch_wt.directory / schema
             if not full_schema.exists():
                 await self.log.warning(
                     f"Unable to find the schema {schema}", repository=self.name, branch=branch_name, commit=commit
@@ -467,7 +467,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                     extension=["yaml", "yml", "json"], branch_name=branch_name, commit=commit, directory=full_schema
                 )
                 for item in files:
-                    identifier = str(item).replace(branch_wt.directory, "")
+                    identifier = str(item.relative_to(branch_wt.directory))
                     schema_file = SchemaFile(identifier=identifier, location=item)
                     schema_file.load_content()
                     schemas_data.append(schema_file)
@@ -609,8 +609,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
         # Ensure the path for this repository is present in sys.path
-        if self.directory_root not in sys.path:
-            sys.path.append(self.directory_root)
+        if str(self.directory_root) not in sys.path:
+            sys.path.append(str(self.directory_root))
 
         checks = []
         await self.log.info(f"Found {len(config_file.check_definitions)} check definitions in the repository")
@@ -618,7 +618,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             log.debug(self.name, import_type="check_definition", file=check.file_path)
 
             file_info = extract_repo_file_information(
-                full_filename=os.path.join(branch_wt.directory, check.file_path.as_posix()),
+                full_filename=branch_wt.directory / check.file_path,
                 repo_directory=self.directory_root,
                 worktree_directory=commit_wt.directory,
             )
@@ -699,7 +699,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         for generator in config_file.generator_definitions:
             await self.log.info(f"Processing generator {generator.name} ({generator.file_path})")
             file_info = extract_repo_file_information(
-                full_filename=os.path.join(branch_wt.directory, generator.file_path.as_posix()),
+                full_filename=branch_wt.directory / generator.file_path,
                 repo_directory=self.directory_root,
                 worktree_directory=commit_wt.directory,
             )
@@ -796,8 +796,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
         # Ensure the path for this repository is present in sys.path
-        if self.directory_root not in sys.path:
-            sys.path.append(self.directory_root)
+        if str(self.directory_root) not in sys.path:
+            sys.path.append(str(self.directory_root))
 
         transforms = []
         await self.log.info(f"Found {len(config_file.python_transforms)} Python transforms in the repository")
@@ -806,7 +806,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             log.debug(self.name, import_type="python_transform", file=transform.file_path)
 
             file_info = extract_repo_file_information(
-                full_filename=os.path.join(branch_wt.directory, transform.file_path.as_posix()),
+                full_filename=branch_wt.directory / transform.file_path,
                 repo_directory=self.directory_root,
                 worktree_directory=commit_wt.directory,
             )
@@ -1144,12 +1144,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
 
         # Ensure the path for this repository is present in sys.path
-        if self.directory_root not in sys.path:
-            sys.path.append(self.directory_root)
+        if str(self.directory_root) not in sys.path:
+            sys.path.append(str(self.directory_root))
 
         try:
             file_info = extract_repo_file_information(
-                full_filename=os.path.join(commit_worktree.directory, location),
+                full_filename=commit_worktree.directory / location,
                 repo_directory=self.directory_root,
                 worktree_directory=commit_worktree.directory,
             )
@@ -1222,12 +1222,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=file_path)
 
         # Ensure the path for this repository is present in sys.path
-        if self.directory_root not in sys.path:
-            sys.path.append(self.directory_root)
+        if str(self.directory_root) not in sys.path:
+            sys.path.append(str(self.directory_root))
 
         try:
             file_info = extract_repo_file_information(
-                full_filename=os.path.join(commit_worktree.directory, file_path),
+                full_filename=commit_worktree.directory / file_path,
                 repo_directory=self.directory_root,
                 worktree_directory=commit_worktree.directory,
             )

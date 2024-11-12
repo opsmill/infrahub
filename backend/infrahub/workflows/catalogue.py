@@ -1,5 +1,3 @@
-from infrahub.core.constants import BranchSupportType
-
 from .constants import WorkflowTag, WorkflowType
 from .models import WorkerPoolDefinition, WorkflowDefinition
 
@@ -19,7 +17,6 @@ TRANSFORM_JINJA2_RENDER = WorkflowDefinition(
     type=WorkflowType.USER,
     module="infrahub.transformations.tasks",
     function="transform_render_jinja2_template",
-    branch_support=BranchSupportType.AWARE,
 )
 
 TRANSFORM_PYTHON_RENDER = WorkflowDefinition(
@@ -27,7 +24,6 @@ TRANSFORM_PYTHON_RENDER = WorkflowDefinition(
     type=WorkflowType.USER,
     module="infrahub.transformations.tasks",
     function="transform_python",
-    branch_support=BranchSupportType.AWARE,
 )
 
 ANONYMOUS_TELEMETRY_SEND = WorkflowDefinition(
@@ -43,7 +39,6 @@ SCHEMA_APPLY_MIGRATION = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.core.migrations.schema.tasks",
     function="schema_apply_migrations",
-    branch_support=BranchSupportType.AWARE,
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
@@ -52,7 +47,6 @@ SCHEMA_VALIDATE_MIGRATION = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.core.validators.tasks",
     function="schema_validate_migrations",
-    branch_support=BranchSupportType.AWARE,
 )
 
 TRIGGER_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
@@ -74,7 +68,6 @@ IPAM_RECONCILIATION = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.core.ipam.tasks",
     function="ipam_reconciliation",
-    branch_support=BranchSupportType.AWARE,
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
@@ -90,7 +83,6 @@ REQUEST_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.generators.tasks",
     function="request_generator_definition_run",
-    branch_support=BranchSupportType.AWARE,
 )
 
 REQUEST_ARTIFACT_GENERATE = WorkflowDefinition(
@@ -134,7 +126,6 @@ GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.git.tasks",
     function="create_branch",
-    branch_support=BranchSupportType.AWARE,
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
@@ -143,7 +134,6 @@ GIT_REPOSITORY_ADD = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.git.tasks",
     function="add_git_repository",
-    branch_support=BranchSupportType.AWARE,
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
@@ -152,7 +142,6 @@ GIT_REPOSITORY_ADD_READ_ONLY = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.git.tasks",
     function="add_git_repository_read_only",
-    branch_support=BranchSupportType.AWARE,
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
@@ -168,7 +157,6 @@ GIT_REPOSITORIES_MERGE = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.git.tasks",
     function="merge_git_repository",
-    branch_support=BranchSupportType.AWARE,
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
@@ -177,7 +165,6 @@ BRANCH_REBASE = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.core.branch.tasks",
     function="rebase_branch",
-    branch_support=BranchSupportType.AWARE,
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
@@ -186,7 +173,14 @@ BRANCH_MERGE = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.core.branch.tasks",
     function="merge_branch",
-    branch_support=BranchSupportType.AWARE,
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+BRANCH_MERGE_MUTATION = WorkflowDefinition(
+    name="merge-branch-mutation",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.graphql.mutations.tasks",
+    function="merge_branch_mutation",
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
@@ -195,7 +189,6 @@ BRANCH_DELETE = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.core.branch.tasks",
     function="delete_branch",
-    branch_support=BranchSupportType.AWARE,
 )
 
 BRANCH_VALIDATE = WorkflowDefinition(
@@ -203,7 +196,6 @@ BRANCH_VALIDATE = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.core.branch.tasks",
     function="validate_branch",
-    branch_support=BranchSupportType.AWARE,
 )
 
 BRANCH_CANCEL_PROPOSED_CHANGES = WorkflowDefinition(
@@ -213,12 +205,18 @@ BRANCH_CANCEL_PROPOSED_CHANGES = WorkflowDefinition(
     function="cancel_proposed_changes_branch",
 )
 
+PROPOSED_CHANGE_MERGE = WorkflowDefinition(
+    name="proposed-change-merge",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="merge_proposed_change",
+)
+
 UPDATE_GRAPHQL_QUERY_GROUP = WorkflowDefinition(
     name="update_graphql_query_group",
     type=WorkflowType.INTERNAL,
     module="infrahub.groups.tasks",
     function="update_graphql_query_group",
-    branch_support=BranchSupportType.AWARE,
 )
 
 PROCESS_COMPUTED_MACRO = WorkflowDefinition(
@@ -242,6 +240,13 @@ UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM = WorkflowDefinition(
     function="process_transform",
 )
 
+REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY = WorkflowDefinition(
+    name="proposed-changed-data-integrity",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="run_proposed_change_data_integrity_check",
+)
+
 
 worker_pools = [INFRAHUB_WORKER_POOL]
 
@@ -261,6 +266,7 @@ workflows = [
     BRANCH_MERGE,
     BRANCH_DELETE,
     BRANCH_VALIDATE,
+    BRANCH_MERGE_MUTATION,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_GENERATOR_RUN,
     REQUEST_DIFF_UPDATE,
@@ -269,6 +275,7 @@ workflows = [
     GIT_REPOSITORIES_MERGE,
     TRIGGER_GENERATOR_DEFINITION_RUN,
     BRANCH_CANCEL_PROPOSED_CHANGES,
+    PROPOSED_CHANGE_MERGE,
     REQUEST_GENERATOR_DEFINITION_RUN,
     UPDATE_GRAPHQL_QUERY_GROUP,
     GIT_REPOSITORY_ADD,
@@ -276,4 +283,5 @@ workflows = [
     PROCESS_COMPUTED_MACRO,
     COMPUTED_ATTRIBUTE_SETUP,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
+    REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
 ]
