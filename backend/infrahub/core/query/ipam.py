@@ -370,7 +370,12 @@ class IPPrefixReconcileQuery(Query):
             get_node_by_id_query = """
             // Get IP Prefix node by UUID
             MATCH (ip_node {uuid: $node_uuid})
-            """
+            WHERE "%(ip_kind)s" IN labels(ip_node)
+            """ % {
+                "ip_kind": InfrahubKind.IPADDRESS
+                if isinstance(self.ip_value, IPAddressType)
+                else InfrahubKind.IPPREFIX,
+            }
             self.add_to_query(get_node_by_id_query)
 
         else:
