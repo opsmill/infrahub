@@ -202,14 +202,10 @@ export const BranchDetails = () => {
           )}
         </div>
 
-        {isLoadingRequest && <LoadingScreen />}
-
-        {!isLoadingRequest && (
-          <TaskDisplay
-            branch={branch?.name}
-            workflow={[BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW]}
-          />
-        )}
+        <TaskDisplay
+          branch={branch?.name}
+          workflow={[BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW]}
+        />
       </div>
 
       <SlideOver
