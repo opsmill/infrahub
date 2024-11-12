@@ -9,11 +9,6 @@ import ErrorScreen from "../errors/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getSeverityBadge, tLog } from "../tasks/logs";
 
-interface TaskDisplayProps {
-  id?: string;
-  relatedNode?: string;
-}
-
 const background = {
   // Blue
   SCHEDULED: "bg-custom-blue-700/10",
@@ -79,10 +74,17 @@ function Task({ task }) {
   );
 }
 
-export function TaskDisplay({ id, relatedNode }: TaskDisplayProps) {
+interface TaskDisplayProps {
+  branch?: string;
+  workflow?: Array<string>;
+  relatedNode?: string;
+}
+
+export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps) {
   const { loading, error, data } = useQuery(TASK_DETAILS, {
     variables: {
-      ids: id ? [id] : undefined,
+      branch,
+      workflow,
       relatedNodes: relatedNode ? [relatedNode] : undefined,
     },
     pollInterval: 5000,

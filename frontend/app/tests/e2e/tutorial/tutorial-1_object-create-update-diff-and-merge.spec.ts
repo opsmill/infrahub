@@ -126,11 +126,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await expect(mergeButton).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_details");
       await mergeButton.click();
-      await expect(page.locator("#alert-success")).toContainText("Branch merged successfully!");
-      await expect(page.locator("pre")).toContainText(
-        // eslint-disable-next-line quotes
-        '{ "data": { "BranchMerge": { "ok": true, "__typename": "BranchMerge" } } }'
-      );
+      await expect(page.locator("#alert-success")).toContainText("Branch merge requested!");
     });
 
     await test.step("Validate merged changes in main", async () => {
