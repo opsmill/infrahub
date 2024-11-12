@@ -1165,6 +1165,7 @@ async def car_person_data_generic(db: InfrahubDatabase, register_core_models_sch
         "c1": c1,
         "c2": c2,
         "c3": c3,
+        "c4": c4,
         "q1": q1,
         "r1": r1,
     }

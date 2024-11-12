@@ -199,5 +199,7 @@ async def test_diff_artifact(db: InfrahubDatabase, client, client_headers, car_p
         },
     }
 
+    assert set(data.keys()) == set(expected_response.keys())
+
     for artifact_id, serial_artifact in expected_response.items():
         assert data[artifact_id] == serial_artifact
