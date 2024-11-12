@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 from typing import Any
 
 import pydantic
@@ -22,14 +23,18 @@ from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.events.branch_action import BranchDeleteEvent
+from infrahub.events.branch_action import BranchCreateEvent, BranchDeleteEvent
 from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TCH001
 from infrahub.log import get_log_data
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workflows.catalogue import BRANCH_CANCEL_PROPOSED_CHANGES, IPAM_RECONCILIATION
+from infrahub.workflows.catalogue import (
+    BRANCH_CANCEL_PROPOSED_CHANGES,
+    GIT_REPOSITORIES_CREATE_BRANCH,
+    IPAM_RECONCILIATION,
+)
 from infrahub.workflows.utils import add_branch_tag
 
 
@@ -256,40 +261,63 @@ async def validate_branch(branch: str) -> State:
 
 @flow(name="create-branch", flow_run_name="Create branch {model.name}")
 async def create_branch(model: BranchCreateModel) -> None:
-    service = services.service
-
-    await add_branch_tag(model.name)
-
     try:
-        await Branch.get_by_name(db=service.database, name=model.name)
-        raise ValueError(f"The branch {model.name}, already exist")
-    except BranchNotFoundError:
-        pass
+        service = services.service
+        print("create_branch: printing with print")
 
-    data_dict: dict[str, Any] = dict(model)
-    if "is_isolated" in data_dict:
-        del data_dict["is_isolated"]
+        print(f"{id(service)=}")
+        print(f"{id(service.event)=}")
+        print(f"{id(service.event._service)=}")
 
-    try:
-        obj = Branch(**data_dict)
-    except pydantic.ValidationError as exc:
-        error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
-        raise ValueError("\n".join(error_msgs)) from exc
+        await add_branch_tag(model.name)
 
-    async with lock.registry.local_schema_lock():
-        # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-        origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
-        new_schema = origin_schema.duplicate(name=obj.name)
-        registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
-        obj.update_schema_hash()
-        await obj.save(db=service.database)
+        try:
+            await Branch.get_by_name(db=service.database, name=model.name)
+            raise ValueError(f"The branch {model.name}, already exist")
+        except BranchNotFoundError:
+            pass
 
-        # Add Branch to registry
-        registry.branch[obj.name] = obj
+        print(f"{id(service)=}")
+        print(f"{id(service.event)=}")
+        print(f"{id(service.event._service)=}")
 
-    message = messages.EventBranchCreate(
-        branch=obj.name,
-        branch_id=str(obj.id),
-        sync_with_git=obj.sync_with_git,
-    )
-    await service.send(message=message)
+        data_dict: dict[str, Any] = dict(model)
+        if "is_isolated" in data_dict:
+            del data_dict["is_isolated"]
+
+        try:
+            obj = Branch(**data_dict)
+        except pydantic.ValidationError as exc:
+            error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
+            raise ValueError("\n".join(error_msgs)) from exc
+
+        async with lock.registry.local_schema_lock():
+            # Copy the schema from the origin branch and set the hash and the schema_changed_at value
+            origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
+            new_schema = origin_schema.duplicate(name=obj.name)
+            registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
+            obj.update_schema_hash()
+            print("before saving branch obj")
+            await obj.save(db=service.database)
+
+            # Add Branch to registry
+            registry.branch[obj.name] = obj
+
+        print("before sending event")
+
+        event = BranchCreateEvent(branch=obj.name, branch_id=str(obj.id), sync_with_git=obj.sync_with_git)
+        print(f"{id(service)=}")
+        print(f"{id(service.event)=}")
+        print(f" {service.event._service=} {id(service.event._service)=}")
+        await service.event.send(event=event)
+
+        if obj.sync_with_git:
+            print("before sending GIT_REPOSITORIES_CREATE_BRANCH")
+            await service.workflow.submit_workflow(
+                workflow=GIT_REPOSITORIES_CREATE_BRANCH,
+                parameters={"branch": obj.name, "branch_id": str(obj.id)},
+            )
+    except Exception as e:
+        stack_trace = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+        print(stack_trace)
+        raise ValueError(e) from e

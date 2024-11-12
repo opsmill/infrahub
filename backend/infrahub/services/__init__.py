@@ -49,7 +49,7 @@ class InfrahubServices:
     @property
     def client(self) -> InfrahubClient:
         if not self._client:
-            raise InitializationError()
+            raise InitializationError("Service is not initialized with a client")
 
         return self._client
 

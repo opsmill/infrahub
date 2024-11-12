@@ -5,29 +5,32 @@ from graphql import graphql
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.services import InfrahubServices
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from tests.adapters.message_bus import BusRecorder
-from tests.helpers.utils import init_global_service
+from infrahub.services import services
+from tests.helpers.test_app import TestInfrahubApp
 
 
-async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, session_admin):
-    create_branch_query = """
-    mutation {
-        BranchCreate(data: { name: "branch3", description: "my description" }) {
-            ok
-            object {
-                id
-                name
+class TestBranchuQuery(TestInfrahubApp):
+    async def test_branch_query(
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, session_admin, client
+    ):
+        create_branch_query = """
+        mutation {
+            BranchCreate(data: { name: "branch3", description: "my description" }) {
+                ok
+                object {
+                    id
+                    name
+                }
             }
         }
-    }
-    """
+        """
 
-    service = InfrahubServices(message_bus=BusRecorder(), database=db, workflow=WorkflowLocalExecution())
-    with init_global_service(service):
         gql_params = prepare_graphql_params(
-            db=db, include_subscription=False, branch=default_branch, account_session=session_admin, service=service
+            db=db,
+            include_subscription=False,
+            branch=default_branch,
+            account_session=session_admin,
+            service=services.service,
         )
         branch3_result = await graphql(
             schema=gql_params.schema,
@@ -54,7 +57,9 @@ async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, regist
             }
         }
         """
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch, service=service)
+        gql_params = prepare_graphql_params(
+            db=db, include_subscription=False, branch=default_branch, service=services.service
+        )
         all_branches = await graphql(
             schema=gql_params.schema,
             source=query,
@@ -99,7 +104,9 @@ async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, regist
             }
         }
         """ % branch3["name"]
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch, service=service)
+        gql_params = prepare_graphql_params(
+            db=db, include_subscription=False, branch=default_branch, service=services.service
+        )
         name_response = await graphql(
             schema=gql_params.schema,
             source=name_query,
@@ -123,7 +130,9 @@ async def test_branch_query(db: InfrahubDatabase, default_branch: Branch, regist
         """ % [branch3["id"]]
         id_query = id_query.replace("'", '"')
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch, service=service)
+        gql_params = prepare_graphql_params(
+            db=db, include_subscription=False, branch=default_branch, service=services.service
+        )
         id_response = await graphql(
             schema=gql_params.schema,
             source=id_query,

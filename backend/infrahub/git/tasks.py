@@ -1,3 +1,4 @@
+import traceback
 from datetime import timedelta
 
 from infrahub_sdk import InfrahubClient
@@ -111,25 +112,37 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
 @flow(name="git_repositories_create_branch")
 async def create_branch(branch: str, branch_id: str) -> None:
     """Request to the creation of git branches in available repositories."""
-    service = services.service
-    await add_branch_tag(branch_name=branch)
+    try:
+        print("start git_repositories_create_branch")
+        service = services.service
+        await add_branch_tag(branch_name=branch)
 
-    repositories: list[CoreRepository] = await service.client.filters(kind=CoreRepository)
+        print(f"before service.client and {id(service._client)=} and {id(service)=}")
 
-    batch = await service.client.create_batch()
+        repositories: list[CoreRepository] = await service.client.filters(kind=CoreRepository)
 
-    for repository in repositories:
-        batch.add(
-            task=git_branch_create,
-            client=service.client.client,
-            branch=branch,
-            branch_id=branch_id,
-            repository_name=repository.name.value,
-            repository_id=repository.id,
-        )
+        print("after service.client.filters")
 
-    async for _, _ in batch.execute():
-        pass
+        batch = await service.client.create_batch()
+
+        print("start service.client.create_batch")
+
+        for repository in repositories:
+            batch.add(
+                task=git_branch_create,
+                client=service.client.client,
+                branch=branch,
+                branch_id=branch_id,
+                repository_name=repository.name.value,
+                repository_id=repository.id,
+            )
+
+        async for _, _ in batch.execute():
+            pass
+    except Exception as e:
+        stack_trace = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+        print(stack_trace)
+        raise ValueError(e) from e
 
 
 @flow(name="git_repositories_sync")
@@ -205,9 +218,16 @@ async def git_branch_create(
 ) -> None:
     service = services.service
 
+    print("in git branch create")
+
     repo = await InfrahubRepository.init(id=repository_id, name=repository_name, client=client)
+
+    print(f"after repo init, calling create_branch_in_git with {branch=} {branch_id=}")
     async with lock.registry.get(name=repository_name, namespace="repository"):
         await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id)
+
+        print("repo.create_branch_in_git")
+
         if repo.location:
             # New branch has been pushed remotely, tell workers to fetch it
             message = messages.RefreshGitFetch(

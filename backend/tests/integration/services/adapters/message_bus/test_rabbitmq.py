@@ -5,11 +5,9 @@ from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
 
 import httpx
 import pytest
-import ujson
 from aio_pika import Message
 
 from infrahub import config
@@ -17,7 +15,6 @@ from infrahub.components import ComponentType
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.send_echo_request import SendEchoRequestResponse
 from infrahub.message_bus.operations import execute_message
-from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.worker import WORKER_IDENTITY
@@ -336,41 +333,6 @@ async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
         )
         in agent_bindings
     )
-
-
-async def test_rabbitmq_publish(rabbitmq_api: RabbitMQManager) -> None:
-    """Validate that the adapter publishes messages to the correct queue"""
-
-    bus = RabbitMQMessageBus(settings=rabbitmq_api.settings)
-    service = InfrahubServices(message_bus=bus, component_type=ComponentType.API_SERVER)
-
-    normal_message = messages.EventBranchCreate(branch="normal", branch_id=str(uuid4()), sync_with_git=False)
-    delayed_message = messages.EventBranchCreate(branch="delayed", branch_id=str(uuid4()), sync_with_git=False)
-
-    await bus.initialize(service=service)
-    await service.send(message=normal_message)
-    await service.send(message=delayed_message, delay=MessageTTL.FIVE)
-
-    queue = await bus.channel.get_queue(name=f"{bus.settings.namespace}.rpcs")
-    delayed_queue = await bus.channel.get_queue(name=f"{bus.settings.namespace}.delay.five_seconds")
-    message_from_queue = await queue.get()
-    delayed_message_from_queue = await delayed_queue.get()
-    parsed_message = ujson.loads(message_from_queue.body)
-    parsed_delayed_message = ujson.loads(delayed_message_from_queue.body)
-
-    await bus.shutdown()
-
-    parsed_message = messages.EventBranchCreate(**parsed_message)
-    parsed_delayed_message = messages.EventBranchCreate(**parsed_delayed_message)
-
-    # The priority isn't currently included in the header, reset it to show expected priority
-    normal_message.meta.priority = 3
-    delayed_message.meta.priority = 3
-    parsed_delayed_message.meta.headers = {"delay": 5000}
-    assert message_from_queue.priority == 5
-    assert delayed_message_from_queue.priority == 5
-    assert parsed_message == normal_message
-    assert parsed_delayed_message == delayed_message
 
 
 async def test_rabbitmq_callback(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:

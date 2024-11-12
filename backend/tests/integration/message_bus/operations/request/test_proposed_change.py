@@ -102,9 +102,20 @@ async def prepare_proposed_change(
     client = InfrahubClient(config=config)
 
     service = InfrahubServices(message_bus=bus, client=client, workflow=WorkflowLocalExecution(), database=db)
+    await service.event.initialize(service)
+    print("just after service.event.initialize(service)")
+    print(f"{id(service)=}")
+    print(f"{id(service.event)=}")
+    print(f"{service.event._service=} {id(service.event._service)=}")
+
     services.prepare(service=service)
 
     repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
+
+    print("just before sync")
+    print(f"{id(service)=}")
+    print(f"{id(service.event)=}")
+    print(f" {service.event._service=} {id(service.event._service)=}")
 
     await repo.sync()
 

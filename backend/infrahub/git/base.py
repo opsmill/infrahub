@@ -512,6 +512,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         repo = self.get_git_repo_main()
         try:
             repo.git.worktree("add", directory, commit)
+            print(f"in create_commit_worktree, repo.git.worktree: {directory=}, {commit=}")
             log.debug(f"Commit worktree created {commit}", repository=self.name)
             return worktree
         except GitCommandError as exc:
@@ -531,6 +532,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         try:
             repo = self.get_git_repo_main()
+            print(f" running repo.git.worktree {branch_id=} and {branch_name=}")
             repo.git.worktree("add", self.directory_branches / branch_id, branch_name)
         except GitCommandError as exc:
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc

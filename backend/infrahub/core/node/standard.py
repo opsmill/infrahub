@@ -110,6 +110,8 @@ class StandardNode(BaseModel):
         if not result:
             raise Error(f"Unable to create the node {self.get_type()}")
         node = result.get("n")
+        if self.__class__.__name__ == "Branch":
+            print(f"After node.create, f{node.element_id=} and {query.get_query()=} and query ran with {query.params["node_prop"]=}")
 
         self.id = node.element_id
         self.uuid = node["uuid"]
@@ -185,8 +187,10 @@ class StandardNode(BaseModel):
 
         if not self.uuid:
             data["uuid"] = str(UUIDT())
+            print(f"Just built {data["uuid"]=}")
         else:
             data["uuid"] = str(self.uuid)
+            print(f"Reusing {data["uuid"]=}")
 
         for attr_name, field in self.model_fields.items():
             if attr_name in self._exclude_attrs:

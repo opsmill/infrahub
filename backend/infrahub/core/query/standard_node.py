@@ -17,6 +17,8 @@ class StandardNodeQuery(Query):
         self.node_id = node_id
         self.node_db_id = node_db_id
 
+        print(f"in StandardNodeQuery.__init__ and {node_id=} and {node_db_id=} and {node=}")
+
         if not self.node_id and self.node:
             self.node_id = self.node.uuid
 
