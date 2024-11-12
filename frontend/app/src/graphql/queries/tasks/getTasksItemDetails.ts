@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
 
 export const TASK_DETAILS = gql`
-query TASK_DETAILS($id: String!) {
-  InfrahubTask(ids: [$id]) {
+query TASK_DETAILS($branch: String, $workflow: [String]) {
+  InfrahubTask(branch: $branch, workflow: $workflow) {
     count
     edges {
       node {

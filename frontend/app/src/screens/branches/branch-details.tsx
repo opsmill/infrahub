@@ -30,6 +30,11 @@ import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import {
+  BRANCH_MERGE_WORKFLOW,
+  BRANCH_REBASE_WORKFLOW,
+  BRANCH_VALIDATE_WORKFLOW,
+} from "../tasks/constants";
 import { TaskDisplay } from "./task-display";
 
 export const BranchDetails = () => {
@@ -40,7 +45,6 @@ export const BranchDetails = () => {
 
   const [isLoadingRequest, setIsLoadingRequest] = useState(false);
   const [displayModal, setDisplayModal] = useState(false);
-  const [taskId, setTaskId] = useState("");
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const navigate = useNavigate();
@@ -51,7 +55,7 @@ export const BranchDetails = () => {
     try {
       setIsLoadingRequest(true);
 
-      const result = await graphqlClient.mutate({
+      await graphqlClient.mutate({
         mutation,
         variables: {
           name: branch.name,
@@ -61,10 +65,6 @@ export const BranchDetails = () => {
           date,
         },
       });
-
-      const mutationName = mutation.definitions[0].selectionSet.selections[0].name.value;
-
-      setTaskId(result.data[mutationName].task.id);
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />, {
         toastId: "alert-success",
@@ -204,7 +204,12 @@ export const BranchDetails = () => {
 
         {isLoadingRequest && <LoadingScreen />}
 
-        {taskId && !isLoadingRequest && <TaskDisplay id={taskId} />}
+        {!isLoadingRequest && (
+          <TaskDisplay
+            branch={branch?.name}
+            workflow={[BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW]}
+          />
+        )}
       </div>
 
       <SlideOver

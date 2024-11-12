@@ -8,10 +8,6 @@ import ErrorScreen from "../errors/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getSeverityBadge, tLog } from "../tasks/logs";
 
-interface TaskDisplayProps {
-  id: string;
-}
-
 const background = {
   // Blue
   SCHEDULED: "bg-custom-blue-700/10",
@@ -44,9 +40,17 @@ export const getLogBadge: { [key: string]: any } = {
   CRASHED: <Badge variant={"red-outline"}>CRASHED</Badge>,
 };
 
-export function TaskDisplay({ id }: TaskDisplayProps) {
+interface TaskDisplayProps {
+  branch?: string;
+  workflow?: Array<string>;
+}
+
+export function TaskDisplay({ branch, workflow }: TaskDisplayProps) {
   const { loading, error, data } = useQuery(TASK_DETAILS, {
-    variables: { id },
+    variables: {
+      branch,
+      workflow,
+    },
     pollInterval: 5000,
   });
 
