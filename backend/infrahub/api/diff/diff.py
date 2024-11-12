@@ -13,7 +13,6 @@ from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind
 from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.diff.model.diff import (
     ArtifactTarget,
-    BranchDiff,
     BranchDiffArtifact,
     BranchDiffArtifactStorage,
     BranchDiffFile,
@@ -24,62 +23,13 @@ from infrahub.core.diff.payload_builder import (
     DiffPayloadBuilder,
     get_display_labels_per_kind,
 )
-from infrahub.core.schema.constants import INTERNAL_SCHEMA_NODE_KINDS
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-
-from .validation_models import DiffQueryValidated
 
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
 
 router = APIRouter(prefix="/diff")
-
-
-@router.get("/data")
-async def get_diff_data(
-    db: InfrahubDatabase = Depends(get_db),
-    branch: Branch = Depends(get_branch_dep),
-    time_from: Optional[str] = None,
-    time_to: Optional[str] = None,
-    branch_only: bool = True,
-    _: str = Depends(get_current_user),
-) -> BranchDiff:
-    query = DiffQueryValidated(branch=branch, time_from=time_from, time_to=time_to, branch_only=branch_only)
-
-    diff = await BranchDiffer.init(
-        db=db,
-        branch=branch,
-        diff_from=query.time_from,
-        diff_to=query.time_to,
-        branch_only=query.branch_only,
-        namespaces_exclude=["Schema"],
-    )
-    schema = registry.schema.get_full(branch=branch)
-    diff_payload_builder = DiffPayloadBuilder(db=db, diff=diff, kinds_to_include=list(schema.keys()))
-    return await diff_payload_builder.get_branch_diff()
-
-
-@router.get("/schema")
-async def get_diff_schema(
-    db: InfrahubDatabase = Depends(get_db),
-    branch: Branch = Depends(get_branch_dep),
-    time_from: Optional[str] = None,
-    time_to: Optional[str] = None,
-    branch_only: bool = True,
-    _: str = Depends(get_current_user),
-) -> BranchDiff:
-    query = DiffQueryValidated(branch=branch, time_from=time_from, time_to=time_to, branch_only=branch_only)
-    diff = await BranchDiffer.init(
-        db=db,
-        branch=branch,
-        diff_from=query.time_from,
-        diff_to=query.time_to,
-        branch_only=query.branch_only,
-        kinds_include=INTERNAL_SCHEMA_NODE_KINDS,
-    )
-    diff_payload_builder = DiffPayloadBuilder(db=db, diff=diff, kinds_to_include=INTERNAL_SCHEMA_NODE_KINDS)
-    return await diff_payload_builder.get_branch_diff()
 
 
 @router.get("/files")

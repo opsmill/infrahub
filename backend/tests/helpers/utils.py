@@ -1,12 +1,10 @@
 from contextlib import contextmanager
 from typing import Generator
 
-from infrahub_sdk import InfrahubClient
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
 from infrahub.services import InfrahubServices, services
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.helpers.constants import PORT_BOLT_NEO4J, PORT_HTTP_NEO4J
 
 
@@ -38,14 +36,13 @@ def start_neo4j_container(neo4j_image: str) -> DockerContainer:
 
 
 @contextmanager
-def init_service_with_client(client: InfrahubClient) -> Generator:
+def init_global_service(service: InfrahubServices) -> Generator:
     """
-    This helper is needed for tests defining a specific client while `service` still needs to be accessed
-    through a global variable within prefect tasks.
+    `service` needs to be accessed through a global variable within prefect tasks, this utility
+    helps for restoring original `service` values so tests do no have side effects.
     """
 
     original = services.service
-    service = InfrahubServices(client=client, workflow=WorkflowLocalExecution())
     services.service = service
     try:
         yield service

@@ -186,3 +186,37 @@ class TestBranchMutations(TestInfrahubApp):
         with pytest.raises(GraphQLError) as exc:
             await client.execute_graphql(query=query.render())
         assert "branch has some conflicts" in exc.value.message
+
+    async def test_branch_merge(self, initial_dataset: str, client: InfrahubClient) -> None:
+        """
+        Test BranchMerge graphql endpoint, not actual merge logic.
+        """
+
+        branch = await client.branch.create(branch_name="branch_to_merge_sync")
+
+        query = Mutation(
+            mutation="BranchMerge",
+            input_data={"data": {"name": branch.name}},
+            query={"ok": None, "task": {"id": None}, "object": {"id": None}},
+        )
+        result = await client.execute_graphql(query=query.render())
+        assert result["BranchMerge"]["ok"] is True
+        assert result["BranchMerge"]["object"]["id"] == branch.id
+        assert result["BranchMerge"]["task"] is None
+
+    async def test_branch_merge_async(self, initial_dataset: str, client: InfrahubClient) -> None:
+        """
+        Test BranchMerge graphql endpoint with asynchronous feature, not actual merge logic.
+        """
+
+        branch = await client.branch.create(branch_name="branch_to_merge")
+
+        query = Mutation(
+            mutation="BranchMerge",
+            input_data={"data": {"name": branch.name}, "wait_until_completion": False},
+            query={"ok": None, "task": {"id": None}, "object": {"id": None}},
+        )
+        result = await client.execute_graphql(query=query.render())
+        assert result["BranchMerge"]["ok"] is True
+        assert result["BranchMerge"]["object"]["id"] == branch.id
+        assert result["BranchMerge"]["task"]["id"]

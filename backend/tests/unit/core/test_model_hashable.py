@@ -291,3 +291,38 @@ def test_diff_nested_objects():
         "changed": {"subs": None, "value4": {"added": {}, "changed": {"value2": None}, "removed": {}}},
         "removed": {},
     }
+
+
+def test_update_nested_objects():
+    class MySubElement(HashableModel):
+        _sort_by: list[str] = ["name"]
+        name: str
+        value1: Optional[str] = None
+        value2: Optional[int] = None
+
+    class MyTopElement(HashableModel):
+        _sort_by: list[str] = ["name"]
+        name: str
+        value1: Optional[str] = None
+        value2: Optional[int] = None
+        value3: list[str]
+        value4: MySubElement
+        subs: list[MySubElement]
+
+    node1 = MyTopElement(
+        name="node1",
+        value1="first",
+        value2=2,
+        value3=["one", "two"],
+        value4=MySubElement(name="apple", value2=1254),
+        subs=[MySubElement(name="orange", value1="tochange", value2=22), MySubElement(name="coconut")],
+    )
+
+    node2 = node1.duplicate()
+    node2.subs[0].value1 = "new in node2"
+    node2.value4.value2 = 987654
+
+    node1.update(node2)
+
+    assert node1.value4.value2 == node2.value4.value2
+    assert sorted(node1.subs) == sorted(node2.subs)

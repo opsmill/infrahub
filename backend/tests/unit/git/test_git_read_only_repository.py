@@ -1,5 +1,4 @@
-import os
-from typing import Dict
+from pathlib import Path
 from unittest.mock import AsyncMock
 
 from infrahub_sdk.client import Config, InfrahubClient
@@ -9,20 +8,20 @@ from infrahub.git.repository import InfrahubReadOnlyRepository
 from tests.helpers.test_client import dummy_async_request
 
 
-async def test_new_empty_dir(git_upstream_repo_01: Dict[str, str], git_repos_dir: str):
+async def test_new_empty_dir(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path):
     repo = await InfrahubReadOnlyRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
-        location=git_upstream_repo_01["path"],
+        location=str(git_upstream_repo_01["path"]),
         ref="branch01",
         infrahub_branch_name="main",
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
-    assert os.path.isdir(repo.directory_root)
-    assert os.path.isdir(repo.directory_branches)
-    assert os.path.isdir(repo.directory_commits)
-    assert os.path.isdir(repo.directory_temp)
+    assert repo.directory_root.is_dir()
+    assert repo.directory_branches.is_dir()
+    assert repo.directory_commits.is_dir()
+    assert repo.directory_temp.is_dir()
 
 
 async def test_get_commit_value(git_repo_01_read_only: InfrahubReadOnlyRepository):

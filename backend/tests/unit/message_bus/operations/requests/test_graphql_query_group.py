@@ -11,7 +11,9 @@ from pytest_httpx import HTTPXMock
 from infrahub.database import InfrahubDatabase
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.groups.tasks import update_graphql_query_group
-from tests.helpers.utils import init_service_with_client
+from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from tests.helpers.utils import init_global_service
 
 
 @pytest.fixture
@@ -45,8 +47,9 @@ async def test_graphql_group_update(db: InfrahubDatabase, httpx_mock: HTTPXMock,
     client = InfrahubClient(
         config=config,
     )
+    service = InfrahubServices(client=client, workflow=WorkflowLocalExecution())
 
-    with init_service_with_client(client=client), patch("infrahub.groups.tasks.add_branch_tag"):
+    with init_global_service(service), patch("infrahub.groups.tasks.add_branch_tag"):
         # add_branch_tag requires a prefect client, ie it does not work with WorkflowLocal
         response1 = {
             "data": {

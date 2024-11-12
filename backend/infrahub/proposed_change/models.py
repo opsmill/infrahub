@@ -1,4 +1,4 @@
-from .base_with_diff import BaseProposedChangeWithDiffMessage
+from infrahub.message_bus.messages.proposed_change.base_with_diff import BaseProposedChangeWithDiffMessage
 
 
 class RequestProposedChangeDataIntegrity(BaseProposedChangeWithDiffMessage):

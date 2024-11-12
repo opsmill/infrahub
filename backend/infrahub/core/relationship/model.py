@@ -843,23 +843,23 @@ class RelationshipManager:
     async def get_peers(
         self,
         db: InfrahubDatabase,
-        branch_agnostic: bool,
         peer_type: type[PeerType],
+        branch_agnostic: bool = ...,
     ) -> Mapping[str, PeerType]: ...
 
     @overload
     async def get_peers(
         self,
         db: InfrahubDatabase,
-        branch_agnostic: bool,
         peer_type: Literal[None] = None,
+        branch_agnostic: bool = ...,
     ) -> Mapping[str, Node]: ...
 
     async def get_peers(
         self,
         db: InfrahubDatabase,
-        branch_agnostic: bool = False,
         peer_type: type[PeerType] | None = None,  # pylint: disable=unused-argument
+        branch_agnostic: bool = False,
     ) -> Mapping[str, Node | PeerType]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]
