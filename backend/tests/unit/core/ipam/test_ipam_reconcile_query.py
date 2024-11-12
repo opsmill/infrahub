@@ -4,6 +4,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch, create_ipam_namespace, get_default_ipnamespace
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import IPPrefixReconcileQuery
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -228,6 +229,73 @@ async def test_ipprefix_reconcile_query_get_deleted_node_by_uuid(
     assert query.get_current_parent_uuid() is None
     assert query.get_current_children_uuids() == []
     assert query.get_calculated_parent_uuid() == ip_dataset_01["net146"].id
+    assert set(query.get_calculated_children_uuids()) == {
+        ip_dataset_01["net142"].id,
+        ip_dataset_01["net144"].id,
+        ip_dataset_01["net145"].id,
+        ip_dataset_01["address10"].id,
+    }
+
+
+async def test_ipprefix_reconcile_query_deleted_children_ignored_on_branch(
+    db: InfrahubDatabase, ip_dataset_01: dict[str, Node]
+):
+    branch = await create_branch(db=db, branch_name="branch2")
+
+    ns1_id = ip_dataset_01["ns1"].id
+    net140_branch = await NodeManager.get_one(db=db, branch=branch, id=ip_dataset_01["net140"].id)
+    await net140_branch.delete(db=db)
+    net145_branch = await NodeManager.get_one(db=db, branch=branch, id=ip_dataset_01["net145"].id)
+    await net145_branch.delete(db=db)
+    address_10_branch = await NodeManager.get_one(db=db, branch=branch, id=ip_dataset_01["address10"].id)
+    await address_10_branch.delete(db=db)
+
+    query = await IPPrefixReconcileQuery.init(
+        db=db,
+        branch=branch,
+        ip_value=ipaddress.ip_network(net140_branch.prefix.value),
+        node_uuid=net140_branch.id,
+        namespace=ns1_id,
+    )
+    await query.execute(db=db)
+
+    assert query.get_ip_node_uuid() == net140_branch.id
+    assert query.get_current_parent_uuid() is None
+    assert query.get_current_children_uuids() == []
+    assert query.get_calculated_parent_uuid() == ip_dataset_01["net146"].id
+    assert set(query.get_calculated_children_uuids()) == {
+        ip_dataset_01["net142"].id,
+        ip_dataset_01["net144"].id,
+        # should not be included b/c the address was deleted
+        # ip_dataset_01["net145"].id,
+        # ip_dataset_01["address10"].id
+    }
+
+
+async def test_ipprefix_reconcile_query_deleted_parent_ignored_on_branch(
+    db: InfrahubDatabase, ip_dataset_01: dict[str, Node]
+):
+    branch = await create_branch(db=db, branch_name="branch2")
+
+    ns1_id = ip_dataset_01["ns1"].id
+    net140_branch = await NodeManager.get_one(db=db, branch=branch, id=ip_dataset_01["net140"].id)
+    await net140_branch.delete(db=db)
+    net146_branch = await NodeManager.get_one(db=db, branch=branch, id=ip_dataset_01["net146"].id)
+    await net146_branch.delete(db=db)
+
+    query = await IPPrefixReconcileQuery.init(
+        db=db,
+        branch=branch,
+        ip_value=ipaddress.ip_network(net140_branch.prefix.value),
+        node_uuid=net140_branch.id,
+        namespace=ns1_id,
+    )
+    await query.execute(db=db)
+
+    assert query.get_ip_node_uuid() == net140_branch.id
+    assert query.get_current_parent_uuid() is None
+    assert query.get_current_children_uuids() == []
+    assert query.get_calculated_parent_uuid() is None
     assert set(query.get_calculated_children_uuids()) == {
         ip_dataset_01["net142"].id,
         ip_dataset_01["net144"].id,
