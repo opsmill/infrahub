@@ -1,0 +1,11 @@
+export const TASK_STATES = [
+  "SCHEDULED",
+  "PENDING",
+  "RUNNING",
+  "COMPLETED",
+  "FAILED",
+  "CANCELLED",
+  "CRASHED",
+  "PAUSED",
+  "CANCELLING",
+];
