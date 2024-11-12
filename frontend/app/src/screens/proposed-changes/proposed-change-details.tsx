@@ -25,6 +25,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { TaskDisplay } from "../branches/task-display";
 import { getObjectPermissionsQuery } from "../permission/queries/getObjectPermissions";
 import { getPermission } from "../permission/utils";
+import {
+  BRANCH_MERGE_WORKFLOW,
+  BRANCH_REBASE_WORKFLOW,
+  BRANCH_VALIDATE_WORKFLOW,
+} from "../tasks/constants";
 
 export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const { proposedChangeId } = useParams();
@@ -134,7 +139,10 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       <Card>
         <Accordion title={<div className="font-normal text-xs">Tasks</div>}>
           <div className="mt-2">
-            <TaskDisplay relatedNode={proposedChangeId} />
+            <TaskDisplay
+              relatedNode={proposedChangeId}
+              workflow={[BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW]}
+            />
           </div>
         </Accordion>
       </Card>
