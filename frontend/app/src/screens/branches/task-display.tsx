@@ -64,14 +64,21 @@ export function TaskDisplay({ branch, workflow }: TaskDisplayProps) {
 
   const task = data[TASK_OBJECT].edges[0]?.node;
 
+  if (!task) {
+    return null;
+  }
+
   return (
     <div>
       <div
-        className={classNames("flex flex-col gap-4 rounded-md p-4 m-auto", background[task.state])}
+        className={classNames(
+          "flex flex-col gap-4 rounded-md p-4 m-auto",
+          task.state && background[task?.state]
+        )}
       >
         <div className="flex justify-between">
           <div className="flex items-center gap-4">
-            {getLogBadge[task.state]}
+            {task.state && getLogBadge[task.state]}
             {task.title}
           </div>
 
@@ -79,7 +86,7 @@ export function TaskDisplay({ branch, workflow }: TaskDisplayProps) {
         </div>
 
         <div className="flex flex-col gap-2">
-          {task?.logs?.edges?.map((edge, index) => (
+          {task.logs?.edges?.map((edge, index) => (
             <Log key={index} {...edge.node} />
           ))}
         </div>
