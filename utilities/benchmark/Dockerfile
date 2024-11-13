@@ -15,4 +15,9 @@ RUN bash -c 'curl -o pt_linux.zip https://www.passmark.com/downloads/pt_linux_$(
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/*
 
+RUN mkdir -p /data
+RUN chmod 777 /data
+
+WORKDIR /data
+
 CMD /entrypoint.sh
