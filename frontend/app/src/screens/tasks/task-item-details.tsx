@@ -80,7 +80,6 @@ export const TaskItemDetails = forwardRef((props, ref) => {
   ];
 
   const object = edges[0].node;
-  console.log("object: ", object);
 
   const row = {
     values: {
@@ -107,7 +106,6 @@ export const TaskItemDetails = forwardRef((props, ref) => {
 
   const count = logs.length;
 
-  console.log("row: ", row);
   return (
     <div className=" flex-1 flex flex-col">
       <div className="bg-custom-white">
