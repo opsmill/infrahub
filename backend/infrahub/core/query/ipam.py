@@ -538,8 +538,8 @@ class IPPrefixReconcileQuery(Query):
             WITH maybe_new_child, head(collect([mnc_attribute, is_active])) AS latest_mnc_details
             RETURN maybe_new_child, latest_mnc_details[0] AS latest_mnc_attribute, latest_mnc_details[1] AS mnc_is_active
         }
-        WITH ip_namespace, ip_node, current_parent, current_children, new_parent, maybe_new_child, latest_mnc_attribute, mnc_is_active
-        WHERE mnc_is_active = TRUE OR mnc_is_active IS NULL
+        WITH ip_namespace, ip_node, current_parent, current_children, new_parent, latest_mnc_attribute,
+            CASE WHEN mnc_is_active IN [TRUE, NULL] THEN maybe_new_child ELSE NULL END AS maybe_new_child
         WITH ip_namespace, ip_node, current_parent, current_children, new_parent, collect([maybe_new_child, latest_mnc_attribute]) AS maybe_children_ips
         WITH ip_namespace, ip_node, current_parent, current_children, new_parent, maybe_children_ips, range(0, size(maybe_children_ips) - 1) AS child_indices
         UNWIND child_indices as ind
