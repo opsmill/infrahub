@@ -702,9 +702,9 @@ jobs:
 
       - name: Add response delay if required
         if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=2" >> $GITHUB_ENV && invoke dev.start
+        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=1" >> $GITHUB_ENV && invoke dev.start
         env:
-          INFRAHUB_MISC_RESPONSE_DELAY: 2
+          INFRAHUB_MISC_RESPONSE_DELAY: 1
 
       - name: Set infrahub address
         if: needs.files-changed.outputs.e2e_tests == 'true'
