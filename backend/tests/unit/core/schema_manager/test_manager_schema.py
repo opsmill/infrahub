@@ -31,6 +31,7 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
+from tests.conftest import TestHelper
 from tests.helpers.schema import CHILD, THING
 
 from .conftest import _get_schema_by_kind
@@ -1316,28 +1317,29 @@ async def test_validate_default_value_error(schema_all_in_one, default_value_att
 
 
 async def test_schema_branch_load_schema_extension(
-    db: InfrahubDatabase, default_branch, organization_schema, builtin_schema, helper
+    db: InfrahubDatabase, default_branch, builtin_schema, helper: TestHelper
 ):
     schema = SchemaRoot(**core_models)
 
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema)
     schema_branch.load_schema(schema=builtin_schema)
-    schema_branch.load_schema(schema=organization_schema)
+    schema_branch.load_schema(schema=SchemaRoot(**helper.schema_file("infra_simple_01.json")))
+
     schema_branch.process()
 
-    org = schema_branch.get(name="CoreOrganization")
+    org = schema_branch.get(name="TestingOrganization")
     initial_nbr_relationships = len(org.relationships)
 
     schema_branch.load_schema(schema=SchemaRoot(**helper.schema_file("infra_w_extensions_01.json")))
 
-    org = schema_branch.get(name="CoreOrganization")
+    org = schema_branch.get(name="TestingOrganization")
     assert len(org.relationships) == initial_nbr_relationships + 1
     assert schema_branch.get(name="InfraDevice")
 
     # Load it a second time to check if it's idempotent
     schema_branch.load_schema(schema=SchemaRoot(**helper.schema_file("infra_w_extensions_01.json")))
-    org = schema_branch.get(name="CoreOrganization")
+    org = schema_branch.get(name="TestingOrganization")
     assert len(org.relationships) == initial_nbr_relationships + 1
     assert schema_branch.get(name="InfraDevice")
 

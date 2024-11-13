@@ -42,7 +42,6 @@ from .queries import (
     AccountPermissions,
     AccountToken,
     BranchQueryList,
-    DiffSummary,
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
@@ -63,7 +62,6 @@ class InfrahubBaseQuery(ObjectType):
 
     DiffTree = DiffTreeQuery
     DiffTreeSummary = DiffTreeSummaryQuery
-    DiffSummary = DiffSummary
 
     Relationship = Relationship
 

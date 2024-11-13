@@ -1,5 +1,4 @@
 import pytest
-from deepdiff import DeepDiff
 
 from infrahub.core.constants import NULL_VALUE, InfrahubKind
 from infrahub.core.diff.payload_builder import get_display_labels, get_display_labels_per_kind
@@ -200,4 +199,7 @@ async def test_diff_artifact(db: InfrahubDatabase, client, client_headers, car_p
         },
     }
 
-    assert DeepDiff(expected_response, data, ignore_order=True).to_dict() == {}
+    assert set(data.keys()) == set(expected_response.keys())
+
+    for artifact_id, serial_artifact in expected_response.items():
+        assert data[artifact_id] == serial_artifact

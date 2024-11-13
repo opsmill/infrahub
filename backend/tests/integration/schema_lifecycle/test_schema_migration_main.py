@@ -210,6 +210,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         assert not hasattr(john, "height")
 
         # Ensure that we can query the existing node with graphql endpoint
+        await client.schema.all(refresh=True)
         api_persons = await client.filters(kind=PERSON_KIND, firstname__value="John")
         assert len(api_persons) == 1
         api_john = api_persons[0]
