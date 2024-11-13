@@ -36,6 +36,11 @@ def default_cors_allow_headers() -> list[str]:
     return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"]
 
 
+class UserInfoMethod(str, Enum):
+    POST = "post"
+    GET = "get"
+
+
 class SSOProtocol(str, Enum):
     OAUTH2 = "oauth2"
     OIDC = "oidc"
@@ -421,6 +426,7 @@ class SecurityOIDCBaseSettings(BaseSettings):
 
     icon: str = Field(default="mdi:account-key")
     display_label: str = Field(default="Single Sign on")
+    userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):
@@ -464,6 +470,7 @@ class SecurityOAuth2BaseSettings(BaseSettings):
     """Baseclass for typing"""
 
     icon: str = Field(default="mdi:account-key")
+    userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
 
 
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
@@ -804,7 +811,7 @@ def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str
         config_string = Path(config_file_name).read_text(encoding="utf-8")
         config_tmp = toml.loads(config_string)
 
-        SETTINGS.settings = Settings(**config_tmp)
+        return Settings(**config_tmp)
 
     return Settings()
 

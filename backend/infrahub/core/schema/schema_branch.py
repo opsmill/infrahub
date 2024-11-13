@@ -1481,6 +1481,12 @@ class SchemaBranch:
             profile = self.generate_profile_from_node(node=node)
             self.set(name=profile.kind, schema=profile)
             profile_schema_kinds.add(profile.kind)
+
+        for previous_profile in list(self.profiles.keys()):
+            # Ensure that we remove previous profile schemas if a node has been renamed
+            if previous_profile not in profile_schema_kinds:
+                self.delete(name=previous_profile)
+
         if not profile_schema_kinds:
             return
 
