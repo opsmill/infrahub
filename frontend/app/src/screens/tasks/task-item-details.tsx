@@ -33,12 +33,9 @@ export const TaskItemDetails = forwardRef((props, ref) => {
 
   const { task: idFromParams } = useParams();
 
-  const {
-    loading,
-    error,
-    data = {},
-    refetch,
-  } = useQuery(TASK_DETAILS, { variables: { id: idFromParams || idFromQsp } });
+  const ids = idFromParams || idFromQsp ? [idFromParams || idFromQsp] : undefined;
+
+  const { loading, error, data = {}, refetch } = useQuery(TASK_DETAILS, { variables: { ids } });
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch }));
@@ -83,6 +80,7 @@ export const TaskItemDetails = forwardRef((props, ref) => {
   ];
 
   const object = edges[0].node;
+  console.log("object: ", object);
 
   const row = {
     values: {
@@ -109,6 +107,7 @@ export const TaskItemDetails = forwardRef((props, ref) => {
 
   const count = logs.length;
 
+  console.log("row: ", row);
   return (
     <div className=" flex-1 flex flex-col">
       <div className="bg-custom-white">
