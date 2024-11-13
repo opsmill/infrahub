@@ -8,8 +8,9 @@ from typing import Optional, Union
 
 from invoke import Context, UnexpectedExit
 from invoke.runners import Result
+from ruamel.yaml import YAML
 
-from .utils import str_to_bool
+from .utils import get_yamllint_rules, str_to_bool
 
 
 class DatabaseType(str, Enum):
@@ -336,3 +337,15 @@ def build_test_envs() -> str:
         return f"-e {' -e '.join(GITHUB_ENVS_TO_PASS)}"
 
     return ""
+
+
+def init_yaml_obj() -> YAML:
+    yamllint_rules: dict = get_yamllint_rules()
+
+    yaml = YAML(typ="rt")
+    yaml.preserve_quotes = True
+    yaml.indent(mapping=2, sequence=4, offset=2)
+    yaml.explicit_start = True
+    yaml.width = yamllint_rules.get("line-length", {}).get("max", 120)
+
+    return yaml
