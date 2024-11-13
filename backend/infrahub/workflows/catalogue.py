@@ -233,6 +233,14 @@ COMPUTED_ATTRIBUTE_SETUP = WorkflowDefinition(
     function="computed_attribute_setup",
 )
 
+COMPUTED_ATTRIBUTE_SETUP_PYTHON = WorkflowDefinition(
+    name="computed-attribute-setup-python",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.computed_attribute.tasks",
+    function="computed_attribute_setup_python",
+)
+
+
 UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM = WorkflowDefinition(
     name="process_computed_attribute_transform",
     type=WorkflowType.INTERNAL,
@@ -245,6 +253,13 @@ REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY = WorkflowDefinition(
     type=WorkflowType.INTERNAL,
     module="infrahub.proposed_change.tasks",
     function="run_proposed_change_data_integrity_check",
+)
+
+SCHEMA_UPDATED_SETUP = WorkflowDefinition(
+    name="schema-updated-setup",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.schema.tasks",
+    function="schema_updated_setup",
 )
 
 
@@ -282,6 +297,8 @@ workflows = [
     GIT_REPOSITORY_ADD_READ_ONLY,
     PROCESS_COMPUTED_MACRO,
     COMPUTED_ATTRIBUTE_SETUP,
+    COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
+    SCHEMA_UPDATED_SETUP,
 ]

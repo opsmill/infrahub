@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import (
     BaseModel,
     Field,
@@ -12,7 +12,7 @@ from pydantic import (
 )
 from starlette.responses import JSONResponse
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
@@ -29,13 +29,13 @@ from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, Pro
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TCH001
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.events import EventMeta
+from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.exceptions import MigrationError, PermissionDeniedError
-from infrahub.log import get_logger
-from infrahub.message_bus import Meta, messages
-from infrahub.services import services
+from infrahub.log import get_log_data, get_logger
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_SETUP, SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
+from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -239,7 +239,6 @@ async def get_json_schema_by_kind(schema_kind: str, branch: Branch = Depends(get
 async def load_schema(
     request: Request,
     schemas: SchemasLoadAPI,
-    background_tasks: BackgroundTasks,
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
     account_session: AccountSession = Depends(get_current_user),
@@ -339,17 +338,16 @@ async def load_schema(
         if migration_error_msgs:
             raise MigrationError(message=",\n".join(migration_error_msgs))
 
-        if config.SETTINGS.broker.enable:
-            message = messages.EventSchemaUpdate(
-                branch=branch.name,
-                meta=Meta(initiator_id=WORKER_IDENTITY),
-            )
-            background_tasks.add_task(services.send, message)
+    log_data = get_log_data()
+    request_id = log_data.get("request_id", "")
+    event = SchemaUpdatedEvent(
+        branch=branch.name,
+        schema_hash=branch.active_schema_hash.main,
+        meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id, account_id=account_session.account_id),
+    )
+    await service.event.send(event=event)
 
     await service.component.refresh_schema_hash(branches=[branch.name])
-
-    # Temporary workaround, we need to emit a proper event
-    await service.workflow.submit_workflow(workflow=COMPUTED_ATTRIBUTE_SETUP)
 
     return SchemaUpdate(hash=updated_hash, previous_hash=original_hash, diff=result.diff)
 

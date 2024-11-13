@@ -54,6 +54,7 @@ from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
+from .schema_branch_computed import ComputedAttributes
 
 log = get_logger()
 
@@ -77,6 +78,9 @@ class ComputedAttributeTarget(BaseModel):
             return self.filter_keys
 
         return ["ids"]
+
+    def __hash__(self):
+        return hash((self.kind, self.attribute, tuple(self.filter_keys)))
 
 
 class RegisteredNodeComputedAttribute(BaseModel):
@@ -114,6 +118,7 @@ class SchemaBranch:
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
         self.profiles: dict[str, str] = {}
+        self.computed_attributes = ComputedAttributes()
         self._computed_jinja2_attribute_map: dict[str, RegisteredNodeComputedAttribute] = {}
 
         if data:
@@ -949,6 +954,7 @@ class SchemaBranch:
                     ) from None
 
     def validate_computed_attributes(self) -> None:
+        self.computed_attributes = ComputedAttributes()
         self._computed_jinja2_attribute_map = {}
         for name in self.nodes.keys():
             node_schema = self.get_node(name=name, duplicate=False)
@@ -1016,10 +1022,13 @@ class SchemaBranch:
 
                 self._register_computed_attribute_target(node=node, attribute=attribute, schema_path=schema_path)
 
-        if attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON and not attribute.optional:
+        elif attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON and not attribute.optional:
             raise ValueError(
                 f"{node.kind}: Attribute {attribute.name!r} is a computed transform, it can't be mandatory"
             )
+
+        elif attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON:
+            self.computed_attributes.add_python_attribute(node=node, attribute=attribute)
 
     def get_impacted_macros(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         if mapping := self._computed_jinja2_attribute_map.get(kind):

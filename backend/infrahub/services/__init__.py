@@ -55,7 +55,7 @@ class InfrahubServices:
 
         return self._client
 
-    def set_client(self, client: InfrahubClient) -> None:
+    def set_client(self, client: InfrahubClient | None) -> None:
         self._client = client
 
     @property
