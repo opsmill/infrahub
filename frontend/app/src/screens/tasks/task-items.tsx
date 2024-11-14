@@ -88,13 +88,9 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
     return <ErrorScreen message="Something went wrong when fetching list." />;
   }
 
-  if (loading) {
-    return <LoadingScreen hideText />;
-  }
-
   const result = data ? (data[TASK_OBJECT] ?? {}) : {};
 
-  const { count, edges = [] } = result;
+  const { count, edges } = result;
 
   const columns = [
     {
@@ -140,7 +136,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
     return url;
   };
 
-  const rows = edges.map((edge: any) => ({
+  const rows = edges?.map((edge: any) => ({
     link: getUrl(edge.node.id),
     values: {
       title: {
@@ -177,6 +173,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
         <div className="flex items-center gap-2 p-2">
           <SearchInput
             loading={loading}
+            defaultValue={search}
             onChange={debouncedHandleSearch}
             placeholder="Search an object"
             className="border-none focus-visible:ring-0 h-7"
@@ -186,7 +183,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
           <Filters kind={TASK_OBJECT} />
         </div>
 
-        {loading && !rows && <LoadingScreen />}
+        {loading && !rows && <LoadingScreen message="Loading tasks" />}
 
         {rows && (
           <div>
