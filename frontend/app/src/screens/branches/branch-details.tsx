@@ -203,7 +203,10 @@ export const BranchDetails = () => {
           )}
         </div>
 
-        <Accordion title={<div className="font-normal text-xs">Tasks</div>}>
+        <Accordion
+          title={<div className="font-normal text-xs">Tasks</div>}
+          data-testid="tasks-accordion"
+        >
           <div className="mt-2">
             <TaskDisplay
               branch={branch?.name}
