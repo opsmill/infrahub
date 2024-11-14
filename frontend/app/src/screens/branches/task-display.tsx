@@ -1,3 +1,4 @@
+import Accordion from "@/components/display/accordion";
 import { DateDisplay } from "@/components/display/date-display";
 import { Badge } from "@/components/ui/badge";
 import { TASK_OBJECT } from "@/config/constants";
@@ -40,16 +41,51 @@ export const getLogBadge: { [key: string]: any } = {
   CRASHED: <Badge variant={"red-outline"}>CRASHED</Badge>,
 };
 
+function Task({ task }) {
+  return (
+    <div>
+      <div
+        className={classNames(
+          "flex flex-col gap-4 rounded-md p-4 m-auto",
+          "bg-gray-100",
+          background[task.state]
+        )}
+      >
+        <div className="flex justify-between">
+          <div className="flex items-center gap-4">
+            {getLogBadge[task.state] ?? <Badge variant={"gray-outline"}>UNKOWN</Badge>}
+            {task.title}
+          </div>
+
+          <DateDisplay date={task.updated_at} />
+        </div>
+
+        {!!task?.logs?.edges?.length && (
+          <Accordion title={<div className="font-normal text-xs">Logs</div>}>
+            <div className="flex flex-col gap-2 mt-2">
+              {task?.logs?.edges?.map((edge, index) => (
+                <Log key={index} {...edge.node} />
+              ))}
+            </div>
+          </Accordion>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface TaskDisplayProps {
   branch?: string;
   workflow?: Array<string>;
+  relatedNode?: string;
 }
 
-export function TaskDisplay({ branch, workflow }: TaskDisplayProps) {
+export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps) {
   const { loading, error, data } = useQuery(TASK_DETAILS, {
     variables: {
       branch,
       workflow,
+      relatedNodes: relatedNode ? [relatedNode] : undefined,
     },
     pollInterval: 5000,
   });
@@ -62,35 +98,12 @@ export function TaskDisplay({ branch, workflow }: TaskDisplayProps) {
     return <LoadingScreen message={"Loading task..."} />;
   }
 
-  const task = data[TASK_OBJECT].edges[0]?.node;
-
-  if (!task) {
-    return null;
-  }
-
+  console.log("data: ", data);
   return (
-    <div>
-      <div
-        className={classNames(
-          "flex flex-col gap-4 rounded-md p-4 m-auto",
-          task.state && background[task?.state]
-        )}
-      >
-        <div className="flex justify-between">
-          <div className="flex items-center gap-4">
-            {task.state && getLogBadge[task.state]}
-            {task.title}
-          </div>
-
-          <DateDisplay date={task.updated_at} />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          {task.logs?.edges?.map((edge, index) => (
-            <Log key={index} {...edge.node} />
-          ))}
-        </div>
-      </div>
+    <div className="flex flex-col gap-2 overflow-scroll">
+      {data[TASK_OBJECT].edges?.map((edge, index) => (
+        <Task key={index} task={edge.node} />
+      ))}
     </div>
   );
 }
