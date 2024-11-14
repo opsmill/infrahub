@@ -3,6 +3,7 @@
 from invoke import Collection, Context, task
 
 from . import backend, demo, dev, docs, main, performance, release, schema, sdk
+from .utils import ESCAPED_REPO_PATH
 
 ns = Collection()
 ns.add_collection(sdk)
