@@ -390,7 +390,8 @@ nodes:
     description: "IP Prefix"
     icon: "mdi:ip-network"
     label: "Prefix"
-    default_filter: prefix__value
+    human_friendly_id: 
+      - prefix__value
     order_by:
       - vrf__name__value
       - prefix__value
