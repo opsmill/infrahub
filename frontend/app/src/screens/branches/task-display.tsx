@@ -98,7 +98,6 @@ export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps)
     return <LoadingScreen message={"Loading task..."} />;
   }
 
-  console.log("data: ", data);
   return (
     <div className="flex flex-col gap-2 overflow-scroll">
       {data[TASK_OBJECT].edges?.map((edge, index) => (
