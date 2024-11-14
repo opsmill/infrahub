@@ -503,7 +503,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         """
 
         # TODO need to handle the exception properly
-        branch = await self.sdk.branch.create(branch_name=branch_name, background_execution=True)
+        branch = await self.sdk.branch.create(branch_name=branch_name)
 
         log.debug(f"Branch {branch_name} created in the Graph", repository=self.name, branch=branch_name)
         return branch

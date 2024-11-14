@@ -19,6 +19,7 @@ from tests.adapters.message_bus import BusRecorder
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.graphql import graphql_mutation
 from tests.helpers.test_client import InfrahubTestClient
+from tests.helpers.utils import init_global_service
 from tests.integration.conftest import IntegrationHelper
 
 if TYPE_CHECKING:
@@ -98,7 +99,7 @@ async def prepare_proposed_change(
     config = Config(api_token=admin_token, requester=test_client.async_request)
     client = InfrahubClient(config=config)
 
-    service = InfrahubServices(message_bus=bus, client=client, workflow=WorkflowLocalExecution())
+    service = InfrahubServices(message_bus=bus, client=client, workflow=WorkflowLocalExecution(), database=db)
     services.prepare(service=service)
 
     repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
@@ -132,33 +133,31 @@ async def test_run_pipeline_validate_requested_jobs(
     config = Config(api_token=admin_token, requester=test_client.async_request)
     client = InfrahubClient(config=config)
     fake_log = FakeLogger()
-    services.service._client = client
-    services.service.log = fake_log
-    services.service.message_bus = bus_pre_data_changes
-    services.service._database = db
-    services.prepare(service=services.service)
-    await pipeline(message=message, service=services.service)
+    service = InfrahubServices(
+        client=client, log=fake_log, message_bus=bus_pre_data_changes, database=db, workflow=WorkflowLocalExecution()
+    )
+    with init_global_service(service):
+        await pipeline(message=message, service=services.service)
 
-    # Add an object to the source_branch to modify the data
-    obj = await Node.init(db=db, schema=InfrahubKind.TAG, branch="change1")
-    await obj.new(db=db, name="ci-pipeline-01", description="for use within tests")
-    await obj.save(db=db)
+        # Add an object to the source_branch to modify the data
+        obj = await Node.init(db=db, schema=InfrahubKind.TAG, branch="change1")
+        await obj.new(db=db, name="ci-pipeline-01", description="for use within tests")
+        await obj.save(db=db)
 
-    bus_post_data_changes = BusRecorder()
-    services.service.message_bus = bus_post_data_changes
-    services.prepare(service=services.service)
-    await pipeline(message=message, service=services.service)
+        bus_post_data_changes = BusRecorder()
+        services.service.message_bus = bus_post_data_changes
+        await pipeline(message=message, service=services.service)
 
-    assert sorted(bus_pre_data_changes.seen_routing_keys) == [
-        "request.proposed_change.run_generators",
-        "request.proposed_change.run_tests",
-    ]
+        assert sorted(bus_pre_data_changes.seen_routing_keys) == [
+            "request.proposed_change.run_generators",
+            "request.proposed_change.run_tests",
+        ]
 
-    assert sorted(bus_post_data_changes.seen_routing_keys) == [
-        "request.proposed_change.run_generators",
-        "request.proposed_change.run_tests",
-        "request.proposed_change.schema_integrity",
-    ]
+        assert sorted(bus_post_data_changes.seen_routing_keys) == [
+            "request.proposed_change.run_generators",
+            "request.proposed_change.run_tests",
+            "request.proposed_change.schema_integrity",
+        ]
 
 
 async def test_run_generators_validate_requested_jobs(

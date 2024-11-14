@@ -168,6 +168,14 @@ BRANCH_REBASE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+BRANCH_CREATE = WorkflowDefinition(
+    name="create-branch",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.core.branch.tasks",
+    function="create_branch",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 BRANCH_MERGE = WorkflowDefinition(
     name="branch-merge",
     type=WorkflowType.INTERNAL,
@@ -290,6 +298,7 @@ workflows = [
     BRANCH_DELETE,
     BRANCH_VALIDATE,
     BRANCH_MERGE_MUTATION,
+    BRANCH_CREATE,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_GENERATOR_RUN,
     REQUEST_DIFF_UPDATE,
