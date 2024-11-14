@@ -125,3 +125,9 @@ class GeneratedRelationshipSchema(HashableModel):
         description="Set the relationship as read-only, users won't be able to change its value.",
         json_schema_extra={"update": "allowed"},
     )
+    deprecation: Optional[str] = Field(
+        default=None,
+        description="Mark relationship as deprecated and provide a user-friendly message to display",
+        max_length=128,
+        json_schema_extra={"update": "allowed"},
+    )

@@ -459,6 +459,7 @@ class SchemaBranch:
     def process_pre_validation(self) -> None:
         self.generate_identifiers()
         self.process_default_values()
+        self.process_deprecations()
         self.process_cardinality_counts()
         self.process_inheritance()
         self.process_hierarchy()
@@ -1345,6 +1346,28 @@ class SchemaBranch:
                     rel.min_count = 1
                 if not rel.optional and rel.max_count == 0:
                     rel.max_count = 1
+
+            self.set(name=name, schema=node)
+
+    def process_deprecations(self) -> None:
+        """Mark deprecated attributes and relationships as optional."""
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            change_required = False
+            for item in node.attributes + node.relationships:
+                if item.is_deprecated:
+                    change_required = True
+
+            if not change_required:
+                continue
+
+            node = node.duplicate()
+
+            for item in node.attributes + node.relationships:
+                if item.is_deprecated:
+                    item.optional = True
+                    log.warn(f"'{item.name}' for '{node.kind}' has been marked as deprecated, remember to clean it up")
 
             self.set(name=name, schema=node)
 
