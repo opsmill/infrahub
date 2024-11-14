@@ -26,7 +26,6 @@ from .models import ComputedAttributeAutomations, PythonTransformComputedAttribu
 
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
-    from infrahub.core.schema.schema_branch import ComputedAttributeTarget
 
 UPDATE_ATTRIBUTE = """
 mutation UpdateAttribute(
@@ -134,7 +133,9 @@ async def process_jinja2(
 
     computed_macros = [
         attrib
-        for attrib in schema_branch.get_impacted_macros(kind=node_kind, updates=updated_fields)
+        for attrib in schema_branch.computed_attributes.get_impacted_jinja2_targets(
+            kind=node_kind, updates=updated_fields
+        )
         if attrib.kind == computed_attribute_kind and attrib.attribute.name == computed_attribute_name
     ]
     for computed_macro in computed_macros:
@@ -192,7 +193,6 @@ async def process_jinja2(
 
 @flow(name="computed-attribute-setup", flow_run_name="Setup computed attributes in task-manager")
 async def computed_attribute_setup() -> None:
-    # service = services.service
     schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
     log = get_run_logger()
 
@@ -200,33 +200,18 @@ async def computed_attribute_setup() -> None:
         deployments = {
             item.name: item
             for item in await client.read_deployments(
-                deployment_filter=DeploymentFilter(
-                    name=DeploymentFilterName(
-                        any_=[PROCESS_COMPUTED_MACRO.name, UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM.name]
-                    )
-                )
+                deployment_filter=DeploymentFilter(name=DeploymentFilterName(any_=[PROCESS_COMPUTED_MACRO.name]))
             )
         }
         if PROCESS_COMPUTED_MACRO.name not in deployments:
             raise ValueError("Unable to find the deployment for PROCESS_COMPUTED_MACRO")
-        if UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM.name not in deployments:
-            raise ValueError("Unable to find the deployment for UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM")
 
         deployment_id_jinja = deployments[PROCESS_COMPUTED_MACRO.name].id
-        # deployment_id_python = deployments[UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM.name].id
 
         automations = await client.read_automations()
         existing_computed_attr_automations = ComputedAttributeAutomations.from_prefect(automations=automations)
 
-        mapping: dict[ComputedAttributeTarget, set[str]] = {}
-
-        for node, registered_computed_attribute in schema_branch._computed_jinja2_attribute_map.items():
-            for local_fields in registered_computed_attribute.local_fields.values():
-                for local_field in local_fields:
-                    if local_field not in mapping:
-                        mapping[local_field] = set()
-                    mapping[local_field].add(node)
-
+        mapping = schema_branch.computed_attributes.get_jinja2_target_map()
         for computed_attribute, source_node_types in mapping.items():
             log.info(f"processing {computed_attribute.key_name}")
             scope = "default"
@@ -241,7 +226,7 @@ async def computed_attribute_setup() -> None:
                     posture=Posture.Reactive,
                     expect={"infrahub.node.*"},
                     within=timedelta(0),
-                    match=ResourceSpecification({"infrahub.node.kind": list(source_node_types)}),
+                    match=ResourceSpecification({"infrahub.node.kind": source_node_types}),
                     threshold=1,
                 ),
                 actions=[

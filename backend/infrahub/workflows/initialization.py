@@ -7,7 +7,7 @@ from prefect.logging import get_run_logger
 
 from infrahub import config
 
-from .catalogue import SCHEMA_UPDATED_SETUP, worker_pools, workflows
+from .catalogue import automation_setup_workflows, worker_pools, workflows
 from .models import TASK_RESULT_STORAGE_NAME
 
 
@@ -37,8 +37,9 @@ async def setup_deployments(client: PrefectClient) -> None:
         await workflow.save(client=client, work_pool=work_pool)
         log.info(f"Flow {workflow.name}, created successfully ... ")
 
-    schema_update_setup = SCHEMA_UPDATED_SETUP.get_function()
-    await schema_update_setup()
+    for automation_setup_workflow in automation_setup_workflows:
+        automation_setup = automation_setup_workflow.get_function()
+        await automation_setup()
 
 
 @task(name="task-manager-setup-blocks", task_run_name="Setup Blocks")
