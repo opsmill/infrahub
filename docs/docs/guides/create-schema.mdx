@@ -310,7 +310,7 @@ infrahubctl schema load --branch network-device-generics /tmp/schema_guide.yml
 
 We can inspect the schema in the [Web UI](http://localhost:8000/schema?branch=network-device-generics)
 
-Use this GraphQL mutation to create a NetworkPhysicalInterface `Ethernet1`, NetworkLogicalInterface `Vlan1` and a NetworkDevice `atl1-edge1`.
+Use this GraphQL mutation to create a NetworkPhysicalInterface `Ethernet1`, NetworkLogicalInterface `Vlan1`, and a NetworkDevice `atl1-edge1`.
 
 ```graphql
 mutation {
@@ -326,7 +326,7 @@ mutation {
           id
         }
   }
-  NetworkLogicalInterfaceCreate(data: {name: {value: "Vlan1"}, description: {value: "SVI for Vlan 1"}, device: {hfid: "atl1-edge1"}}) {
+  NetworkLogicalInterfaceCreate(data: {name: {value: "Vlan1"}, description: {value: "SVI for VLAN 1"}, device: {hfid: "atl1-edge1"}}) {
         ok
         object {
           id
@@ -341,7 +341,7 @@ In the detailed view of the device in the Web UI, we can now see that the device
 
 ## 4. Improving our schema
 
-Although the schema is already a close representation of what we wanted to achieve, there is still a few improvements we would like to make. For this we are going to make use of the schema migrations feature in Infrahub. More details can be found in [the Schema topic](/topics/schema#schema-update-and-data-migrations).
+Although the schema already closely represents what we wanted to achieve, there are still a few improvements we would like to make. For this, we are going to use Infrahub's schema migrations feature. More details can be found in [the Schema topic](/topics/schema#schema-update-and-data-migrations).
 
 1. adding and `mtu` and `enabled` attribute on the generic `NetworkInterface`
 4. deleting the `description` attribute of the generic `NetworkInterface`
@@ -356,7 +356,7 @@ Overwrite the contents of the `schema_guide.yml` file with this content:
 
 :::note
 
-You will have to grab the id of the model attribute of the NetworkDevice node from the [schema page](http://localhost:8000/schema?branch=network-device-generics&kind=NetworkDevice) in the Web UI
+To do this nation, we must provide the `id` of the attribute and the new name. You will have to grab the `id` of the model attribute of the NetworkDevice node from the [schema page](http://localhost:8000/schema?branch=network-device-generics&kind=NetworkDevice) in the Web UI.
 
 :::
 
@@ -404,6 +404,7 @@ nodes:
       - name: device_type
         label: Device Type
         kind: Text
+        id: 17bcf8a7-9c03-4a6a-3295-c51345cb1c33
     relationships:
       - name: interfaces
         label: Interfaces
