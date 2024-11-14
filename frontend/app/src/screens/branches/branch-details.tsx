@@ -1,4 +1,5 @@
 import { BUTTON_TYPES, Button } from "@/components/buttons/button";
+import Accordion from "@/components/display/accordion";
 import { Badge } from "@/components/display/badge";
 import { DateDisplay } from "@/components/display/date-display";
 import SlideOver from "@/components/display/slide-over";
@@ -202,10 +203,17 @@ export const BranchDetails = () => {
           )}
         </div>
 
-        <TaskDisplay
-          branch={branch?.name}
-          workflow={[BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW]}
-        />
+        <Accordion
+          title={<div className="font-normal text-xs">Tasks</div>}
+          data-testid="tasks-accordion"
+        >
+          <div className="mt-2">
+            <TaskDisplay
+              branch={branch?.name}
+              workflow={[BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW]}
+            />
+          </div>
+        </Accordion>
       </div>
 
       <SlideOver

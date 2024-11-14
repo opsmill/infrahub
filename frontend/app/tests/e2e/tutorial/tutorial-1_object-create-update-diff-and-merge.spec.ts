@@ -128,6 +128,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await saveScreenshotForDocs(page, "tutorial_1_branch_details");
       await mergeButton.click();
       await expect(page.locator("#alert-success")).toContainText("Branch merge requested!");
+      await page.getByTestId("tasks-accordion").click();
       await expect(page.getByText("COMPLETEDMerge branch graphQL")).toBeVisible();
     });
 
