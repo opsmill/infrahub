@@ -35,9 +35,13 @@ DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
 NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.20.0-enterprise")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
-    "MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.7-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine"
+    "MESSAGE_QUEUE_DOCKER_IMAGE",
+    "rabbitmq:3.13.7-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
 )
-CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine")
+CACHE_DOCKER_IMAGE = os.getenv(
+    "CACHE_DOCKER_IMAGE",
+    "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
+)
 
 TASK_MANAGER_DOCKER_IMAGE = os.getenv("TASK_MANAGER_DOCKER_IMAGE", "prefecthq/prefect:3.0.3-python3.12")
 
@@ -54,11 +58,21 @@ GITHUB_ACTION = os.getenv("GITHUB_ACTION", False)
 
 SERVICE_SERVER_NAME = "server"
 SERVICE_WORKER_NAME = "task-worker"
-AVAILABLE_SERVICES = [SERVICE_SERVER_NAME, SERVICE_WORKER_NAME, "database", "message-queue", "task-manager", "cache"]
+AVAILABLE_SERVICES = [
+    SERVICE_SERVER_NAME,
+    SERVICE_WORKER_NAME,
+    "database",
+    "message-queue",
+    "task-manager",
+    "cache",
+]
 
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
-COMPOSE_FILES_DEPS = {False: "development/docker-compose-deps.yml", True: "development/docker-compose-deps-nats.yml"}
+COMPOSE_FILES_DEPS = {
+    False: "development/docker-compose-deps.yml",
+    True: "development/docker-compose-deps-nats.yml",
+}
 
 TEST_COMPOSE_FILE = "development/docker-compose-test.yml"
 TEST_COMPOSE_FILES_MEMGRAPH = [
@@ -339,13 +353,21 @@ def build_test_envs() -> str:
     return ""
 
 
-def init_yaml_obj() -> YAML:
+def init_yaml_obj(line_length: int | None = None) -> YAML:
+    """Instantiate a ruamel.yaml YAML object..
+
+    Args:
+        line_length (int, optional): Override the YAMLLint line length. Defaults to None.
+
+    Returns:
+        dict: Formatted YAMLLint config.
+    """
     yamllint_rules: dict = get_yamllint_rules()
 
     yaml = YAML(typ="rt")
     yaml.preserve_quotes = True
     yaml.indent(mapping=2, sequence=4, offset=2)
     yaml.explicit_start = True
-    yaml.width = yamllint_rules.get("line-length", {}).get("max", 120)
+    yaml.width = line_length or yamllint_rules.get("line-length", {}).get("max", 120)
 
     return yaml

@@ -10,7 +10,11 @@ from ruamel.yaml.main import YAML
 from semver import Version
 
 from tasks.shared import init_yaml_obj
-from tasks.utils import ESCAPED_REPO_PATH, check_if_command_available, get_version_from_pyproject
+from tasks.utils import (
+    ESCAPED_REPO_PATH,
+    check_if_command_available,
+    get_version_from_pyproject,
+)
 
 if TYPE_CHECKING:
     from ruamel.yaml.main import YAML
@@ -112,7 +116,9 @@ def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yam
 
     old_app_version: Version = Version.parse(chart_yaml["appVersion"], optional_minor_and_patch=True)
     if old_app_version == app_version:
-        print(f"{chart_file} updates not required, `appVersion` of {old_app_version} matches current from `pyproject.toml`")
+        print(
+            f"{chart_file} updates not required, `appVersion` of {old_app_version} matches current from `pyproject.toml`"
+        )
         return
 
     old_helm_version: Version = Version.parse(chart_yaml["version"], optional_minor_and_patch=True)
@@ -138,7 +144,7 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
     """Update docker-compose.yml with the current version from pyproject.toml."""
     version: Version = Version.parse(get_version_from_pyproject(), optional_minor_and_patch=True)
 
-    yaml: YAML = init_yaml_obj()
+    yaml: YAML = init_yaml_obj(line_length=4096)
 
     docker_path = Path(docker_file)
     docker_yaml: dict = yaml.load(docker_path)
@@ -281,7 +287,9 @@ def update_docker_compose_env_vars(
 
 @task
 def gen_config_env(
-    context: Context, docker_file: str | None = "docker-compose.yml", update_docker_file: bool | None = False
+    context: Context,
+    docker_file: str | None = "docker-compose.yml",
+    update_docker_file: bool | None = False,
 ) -> None:
     """Generate list of env vars required for configuration and update docker file.yml if need be."""
     from pydantic_settings import BaseSettings
@@ -323,7 +331,10 @@ def gen_config_env(
     env_vars.discard("PATH")
     if update_docker_file:
         update_docker_compose_env_vars(
-            env_vars=sorted(env_vars), env_defaults=env_defaults, enum_mappings=enum_mappings, docker_file=docker_file
+            env_vars=sorted(env_vars),
+            env_defaults=env_defaults,
+            enum_mappings=enum_mappings,
+            docker_file=docker_file,
         )
     else:
         for var in sorted(env_vars):
