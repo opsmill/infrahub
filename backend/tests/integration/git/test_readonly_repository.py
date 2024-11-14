@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 class TestCreateReadOnlyRepository(TestInfrahubApp):
     def setup_method(self):
-        lock_patcher = patch("infrahub.message_bus.operations.git.repository.lock")
+        lock_patcher = patch("infrahub.git.tasks.lock")
         self.mock_infra_lock = lock_patcher.start()
         self.mock_infra_lock.registry = AsyncMock(spec=InfrahubLockRegistry)
 

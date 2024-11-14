@@ -2,6 +2,7 @@ import pytest
 from graphql import graphql
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -282,3 +283,28 @@ def test_collapse_ipv6_address_or_network(query, expected):
 def test_collapse_ipv6_address_or_network_invalid_cases(query):
     with pytest.raises(ValueError):
         _collapse_ipv6(query)
+
+
+async def test_search_groups(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema,
+    register_builtin_models_schema,
+    car_person_data_generic,
+):
+    group1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await group1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
+    await group1.save(db=db)
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "group1"},
+    )
+    assert result.data["InfrahubSearchAnywhere"]["count"] == 1
+
+    assert result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"] == group1.id

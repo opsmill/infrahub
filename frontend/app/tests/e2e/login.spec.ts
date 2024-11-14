@@ -1,5 +1,46 @@
-import { expect, test } from "@playwright/test";
+import { Page, expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH, ADMIN_CREDENTIALS } from "../constants";
+
+const disableSSO = async (page: Page) => {
+  return page.route("*/**/api/config", async (route) => {
+    const response = await route.fetch();
+    const json = await response.json();
+    await route.fulfill({
+      json: {
+        ...json,
+        sso: {
+          providers: [],
+          enabled: false,
+        },
+      },
+    });
+  });
+};
+
+const enableSSO = async (page: Page) => {
+  return page.route("*/**/api/config", async (route) => {
+    const response = await route.fetch();
+    const json = await response.json();
+    await route.fulfill({
+      json: {
+        ...json,
+        sso: {
+          providers: [
+            {
+              name: "google",
+              display_label: "Google",
+              icon: "mdi:google",
+              protocol: "oauth2",
+              authorize_path: "/api/oauth2/google/authorize",
+              token_path: "/api/oauth2/google/token",
+            },
+          ],
+          enabled: true,
+        },
+      },
+    });
+  });
+};
 
 test.describe("/login", () => {
   test.beforeEach(async function ({ page }) {
@@ -11,7 +52,30 @@ test.describe("/login", () => {
   });
 
   test.describe("When is not logged in", () => {
+    test.describe("when SSO is enabled", () => {
+      test("should display log in using SSO", async ({ page }) => {
+        await enableSSO(page);
+        await page.goto("/login");
+
+        await test.step("should display Google SSO button", async () => {
+          await expect(page.getByRole("link", { name: "Continue with Google" })).toBeVisible();
+        });
+
+        await test.step("should display username and password fields", async () => {
+          await page.getByRole("button", { name: "Log in with your credentials" }).click();
+          await expect(page.getByLabel("Username")).toBeVisible();
+          await expect(page.getByLabel("Password")).toBeVisible();
+        });
+
+        await test.step("go back to log in with SSO", async () => {
+          await page.getByRole("button", { name: "Log in with SSO" }).click();
+          await expect(page.getByRole("link", { name: "Continue with Google" })).toBeVisible();
+        });
+      });
+    });
+
     test("should log in the user", async ({ page }) => {
+      await disableSSO(page);
       await page.goto("/");
 
       await page.getByRole("link", { name: "Log in anonymous" }).click();
@@ -25,6 +89,7 @@ test.describe("/login", () => {
     });
 
     test("should display an error message when authentication fails", async ({ page }) => {
+      await disableSSO(page);
       await page.goto("/");
 
       await page.getByRole("link", { name: "Log in anonymous" }).click();
@@ -40,6 +105,7 @@ test.describe("/login", () => {
     });
 
     test("should redirect to the initial page after login", async ({ page }) => {
+      await disableSSO(page);
       const date = encodeURIComponent(new Date().toISOString());
       const initialPage = `/objects/BuiltinTag?branch=atl1-delete-upstream&at=${date}`;
       await page.goto(initialPage);

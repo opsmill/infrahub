@@ -15,6 +15,7 @@ development/docker-compose.dev-override.yml
 .ruff_cache
 **/.ruff_cache
 **/.idea/**
+dist/*
 
 # Direnv files (https://direnv.net/)
 .direnv/
@@ -36,3 +37,4 @@ query_performance_results/
 sync/dist/
 helm/charts/
 helm/Chart.lock
+

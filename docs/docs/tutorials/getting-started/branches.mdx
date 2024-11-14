@@ -12,7 +12,7 @@ The default branch is called `main`.
 
 To get started, let's create a new **branch** that we'll call `cr1234`.
 
-You can create a new branch in the frontend by using the button with a `+ sign` in the top left corner, next to the name of the current branch, i.e., `main`.
+You can create a new branch in the frontend by clicking the branch selector in the top left corner, next click on the `+ sign` next to the search field.
 
 Branch names are fairly permissive, but must conform to [git ref format](https://git-scm.com/docs/git-check-ref-format). For example, slashes (`/`) are allowed, tildes (`~`) are not.
 
@@ -63,19 +63,19 @@ Branch names are fairly permissive, but must conform to [git ref format](https:/
 
 </details>
 
-## Modify an organization via the UI
+## Modify a tenant via the UI
 
 The name of the active branch in the top left corner should now be `cr1234`.
 
-1. Select `Organization` under Object in the left menu (near the top).
+1. Open the tenant list view by clicking on `Tenant` in the `Organization` section of the menu.
 
 ![Access the organizations](../../media/tutorial_1_organizations.png)
 
-2. Select the `my-first-tenant` organization (created in the [previous step](./creating-an-object.mdx)).
+2. Select the `my-first-tenant` tenant (created in the [previous step](./creating-an-object.mdx)).
 
 ![Select the my-first-tenant organization](../../media/tutorial_1_organization_details.png)
 
-3. Select the `edit` button on the top right corner.
+3. Click on the `Edit Tenant` button on the top right corner.
 4. Update the description attribute of the organization, for example with `Changes from branch cr1234`.
 
 ![Select the `edit` button](../../media/tutorial_1_organization_edit.png)
@@ -84,7 +84,7 @@ The name of the active branch in the top left corner should now be `cr1234`.
 
 :::success Validate that everything is correct
 
-Go back to the detailed page for the Organization `my-first-tenant` and try to switch branches with the branch selection menu at the top.
+Go back to the detailed page for the Tenant `my-first-tenant` and try to switch branches with the branch selection menu at the top.
 
 **You should be able to see the value of the label change when you change the branch.**
 
@@ -100,13 +100,13 @@ To view changes and merge a branch you need to:
 
 ![Branches list](../../media/tutorial_1_branch_list.png)
 
-2. Select the branch `cr1234` in the list of available branches.
-3. Select on the Diff button and expand the changes to view the diff between `cr1234` and `main`.
+2. Click on the `cr1234` branch.
+3. Navigate to the `Data` tab and wait for the diff to be generated. Once the diff is generated we can expand the changes to view the diff between the `cr1234` and `main` branch.
 
 ![Branch diff](../../media/tutorial_1_branch_diff.png)
 
-4. Select the `Details` button to go back.
-5. Select the `Merge` button.
+4. Navigate to the `Details` tab.
+5. Click the `Merge` button, to merge the branch into `main`.
 
 ![Branch details](../../media/tutorial_1_branch_details.png)
 
@@ -157,7 +157,7 @@ To view changes and merge a branch you need to:
 
 :::success Validate that everything is correct
 
-Go back to the detailed page for the Organization `my-first-tenant`.
+Go back to the detailed page for the Tenant `my-first-tenant`.
 
 **The object should now have the value previously defined in the branch. Try switching between the `main` branch and `cr1234`.**
 

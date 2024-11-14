@@ -78,7 +78,7 @@ class TestDiffRebase(TestInfrahubApp):
         client: InfrahubClient,
         bus_simulator: BusSimulator,
     ) -> dict[str, Node]:
-        await load_schema(db, schema=CAR_SCHEMA)
+        await load_schema(db, schema=CAR_SCHEMA, update_db=True)
         john = await Node.init(schema=TestKind.PERSON, db=db)
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")
         await john.save(db=db)

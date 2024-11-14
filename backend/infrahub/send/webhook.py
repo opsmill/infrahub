@@ -10,7 +10,7 @@ from infrahub.services import services
 from infrahub.webhook import CustomWebhook, StandardWebhook, TransformWebhook, Webhook
 
 
-@flow(name="event-send-webhook")
+@flow(name="event-send-webhook", flow_run_name="Send Webhook")
 async def send_webhook(model: SendWebhookData) -> None:
     service = services.service
     log = get_run_logger()

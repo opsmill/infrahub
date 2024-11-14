@@ -18,16 +18,21 @@ from infrahub.core.constants import (
     SchemaPathType,
 )
 from infrahub.core.schema import (
+    AttributeSchema,
     GenericSchema,
     NodeSchema,
+    RelationshipSchema,
     SchemaRoot,
     core_models,
     internal_schema,
 )
+from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
+from tests.conftest import TestHelper
+from tests.helpers.schema import CHILD, THING
 
 from .conftest import _get_schema_by_kind
 
@@ -1312,28 +1317,29 @@ async def test_validate_default_value_error(schema_all_in_one, default_value_att
 
 
 async def test_schema_branch_load_schema_extension(
-    db: InfrahubDatabase, default_branch, organization_schema, builtin_schema, helper
+    db: InfrahubDatabase, default_branch, builtin_schema, helper: TestHelper
 ):
     schema = SchemaRoot(**core_models)
 
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema)
     schema_branch.load_schema(schema=builtin_schema)
-    schema_branch.load_schema(schema=organization_schema)
+    schema_branch.load_schema(schema=SchemaRoot(**helper.schema_file("infra_simple_01.json")))
+
     schema_branch.process()
 
-    org = schema_branch.get(name="CoreOrganization")
+    org = schema_branch.get(name="TestingOrganization")
     initial_nbr_relationships = len(org.relationships)
 
     schema_branch.load_schema(schema=SchemaRoot(**helper.schema_file("infra_w_extensions_01.json")))
 
-    org = schema_branch.get(name="CoreOrganization")
+    org = schema_branch.get(name="TestingOrganization")
     assert len(org.relationships) == initial_nbr_relationships + 1
     assert schema_branch.get(name="InfraDevice")
 
     # Load it a second time to check if it's idempotent
     schema_branch.load_schema(schema=SchemaRoot(**helper.schema_file("infra_w_extensions_01.json")))
-    org = schema_branch.get(name="CoreOrganization")
+    org = schema_branch.get(name="TestingOrganization")
     assert len(org.relationships) == initial_nbr_relationships + 1
     assert schema_branch.get(name="InfraDevice")
 
@@ -1416,10 +1422,11 @@ async def test_schema_branch_validate_count_against_cardinality_invalid(relation
 
 
 async def test_schema_branch_from_dict_schema_object():
-    schema = SchemaRoot(**core_models)
-
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=schema)
+
+    # Load the core models and a model with a computed_attribute
+    schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    schema_branch.load_schema(schema=SchemaRoot(nodes=[CHILD, THING]))
 
     exported = schema_branch.to_dict_schema_object()
 
@@ -1463,6 +1470,61 @@ async def test_process_relationships_component_can_be_overridden(schema_all_in_o
     processed_criticality = schema.get(name="BuiltinCriticality", duplicate=False)
     processed_relationship = processed_criticality.get_relationship(name="tags")
     assert processed_relationship.on_delete == RelationshipDeleteBehavior.NO_ACTION
+
+
+async def test_hierarchy_update(hierarchical_location_schema_simple: SchemaRoot):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=hierarchical_location_schema_simple)
+    schema.process_inheritance()
+    schema.process_hierarchy()
+    schema.add_hierarchy_generic()
+    schema.add_hierarchy_node()
+
+    site_schema = schema.get("LocationSite", duplicate=False)
+    assert site_schema.parent == "LocationRegion"
+    parent_rel = site_schema.get_relationship(name="parent")
+    assert parent_rel.peer == "LocationRegion"
+    region_schema = schema.get("LocationRegion", duplicate=False)
+    assert region_schema.children == "LocationSite"
+    children_rel = region_schema.get_relationship(name="children")
+    assert children_rel.peer == "LocationSite"
+
+    updated_schema = hierarchical_location_schema_simple.model_copy(deep=True)
+    updated_schema.nodes.append(
+        NodeSchema(
+            name="Country",
+            namespace="Location",
+            inherit_from=["LocationGeneric"],
+            children="LocationSite",
+            parent="LocationRegion",
+        )
+    )
+    site_schema = updated_schema.get("LocationSite")
+    site_schema.parent = "LocationCountry"
+    region_schema = updated_schema.get("LocationRegion")
+    region_schema.children = "LocationCountry"
+    schema.load_schema(updated_schema)
+
+    schema.process_inheritance()
+    schema.process_hierarchy()
+    schema.add_hierarchy_generic()
+    schema.add_hierarchy_node()
+
+    site_schema = schema.get("LocationSite", duplicate=False)
+    assert site_schema.parent == "LocationCountry"
+    parent_rel = site_schema.get_relationship(name="parent")
+    assert parent_rel.peer == "LocationCountry"
+    region_schema = schema.get("LocationRegion", duplicate=False)
+    assert region_schema.children == "LocationCountry"
+    children_rel = region_schema.get_relationship(name="children")
+    assert children_rel.peer == "LocationCountry"
+    country_schema = schema.get("LocationCountry", duplicate=False)
+    children_rel = country_schema.get_relationship(name="children")
+    assert children_rel.peer == "LocationSite"
+    parent_rel = country_schema.get_relationship(name="parent")
+    assert parent_rel.peer == "LocationRegion"
+    generic_schema = schema.get("LocationGeneric", duplicate=False)
+    assert set(generic_schema.used_by) == {"LocationRegion", "LocationCountry", "LocationSite", "LocationRack"}
 
 
 async def test_schema_branch_copy(
@@ -2018,22 +2080,23 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Builtin",
-        "default_filter": "name__value",
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "level", "kind": "Number"},
-            {"name": "color", "kind": "Text", "default_value": "#444444"},
-            {"name": "description", "kind": "Text", "optional": True},
+    node = NodeSchema(
+        name="Criticality",
+        namespace="Builtin",
+        default_filter="name__value",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(name="level", kind="Number"),
+            AttributeSchema(name="color", kind="Text", default_value="default_value"),
+            AttributeSchema(
+                name="description",
+                kind="Text",
+                optional=True,
+                computed_attribute=ComputedAttribute(kind="Jinja2", jinja2_template="{{ name__value }}"),
+            ),
         ],
-        "relationships": [
-            {"name": "others", "peer": "BuiltinCriticality", "optional": True, "cardinality": "many"},
-        ],
-    }
-    node = NodeSchema(**SCHEMA)
-
+        relationships=[RelationshipSchema(name="others", peer="BuiltinCriticality", optional=True, cardinality="many")],
+    )
     await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
 
     node2 = registry.schema.get(name=node.kind, branch=default_branch)
@@ -2041,8 +2104,8 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
     assert node2.relationships[0].id
     assert node2.attributes[0].id
 
-    results = await SchemaManager.query(schema="SchemaNode", branch=default_branch, db=db)
-    assert len(results) == 1
+    node_from_db = await SchemaManager.get_one(db=db, id=node2.id, branch=default_branch)
+    assert node_from_db
 
 
 async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_branch):
@@ -2194,7 +2257,14 @@ async def test_load_schema_from_db(
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "level", "kind": "Number", "label": "Level"},
                     {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                    {
+                        "name": "description",
+                        "kind": "Text",
+                        "label": "Description",
+                        "optional": True,
+                        "read_only": True,
+                        "computed_attribute": {"kind": "Jinja2", "jinja2_template": "{{ name__value }}"},
+                    },
                 ],
                 "relationships": [
                     {
@@ -2264,6 +2334,10 @@ async def test_load_schema_from_db(
     assert schema11.get(name="TestCriticality").get_hash() == crit_schema.get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name="BuiltinTag").get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
+
+    description_schema = crit_schema.get_attribute("description")
+    assert description_schema.computed_attribute is not None
+    assert description_schema.computed_attribute.jinja2_template == "{{ name__value }}"
 
 
 async def test_load_schema(

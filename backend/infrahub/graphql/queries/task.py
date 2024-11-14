@@ -7,7 +7,7 @@ from infrahub_sdk.utils import extract_fields_first_node
 from prefect.client.schemas.objects import StateType
 
 from infrahub.core.task.task import Task as TaskNode
-from infrahub.graphql.types.task import TaskNodes
+from infrahub.graphql.types.task import TaskNodes, TaskState
 from infrahub.task_manager.task import PrefectTask
 from infrahub.workflows.constants import WorkflowTag
 
@@ -27,14 +27,25 @@ class Tasks(ObjectType):
         info: GraphQLResolveInfo,
         limit: int = 10,
         offset: int = 0,
-        ids: list | None = None,
+        ids: list[str] | None = None,
         branch: str | None = None,
+        state: list | None = None,
+        workflow: list[str] | None = None,
         related_node__ids: list | None = None,
+        q: str | None = None,
     ) -> dict[str, Any]:
         related_nodes = related_node__ids or []
         ids = ids or []
         return await Tasks.query(
-            info=info, branch=branch, limit=limit, offset=offset, ids=ids, related_nodes=related_nodes
+            info=info,
+            branch=branch,
+            limit=limit,
+            offset=offset,
+            q=q,
+            ids=ids,
+            statuses=state,
+            workflows=workflow,
+            related_nodes=related_nodes,
         )
 
     @staticmethod
@@ -53,8 +64,10 @@ class Tasks(ObjectType):
         cls,
         info: GraphQLResolveInfo,
         related_nodes: list[str] | None = None,
+        q: str | None = None,
         ids: list[str] | None = None,
         statuses: list[StateType] | None = None,
+        workflows: list[str] | None = None,
         tags: list[str] | None = None,
         branch: str | None = None,
         limit: int | None = None,
@@ -74,9 +87,11 @@ class Tasks(ObjectType):
         prefect_tasks = await PrefectTask.query(
             db=context.db,
             fields=fields,
+            q=q,
             ids=ids,
             branch=branch,
             statuses=statuses,
+            workflows=workflows,
             tags=tags,
             related_nodes=related_nodes,
             limit=limit,
@@ -97,7 +112,10 @@ Task = Field(
     offset=Int(required=False),
     related_node__ids=List(String),
     branch=String(required=False),
+    state=List(TaskState),
+    workflow=List(String),
     ids=List(String),
+    q=String(required=False),
 )
 
 TaskBranchStatus = Field(

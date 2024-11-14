@@ -1,5 +1,3 @@
-import os
-
 from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreGeneratorInstance
@@ -17,11 +15,17 @@ from infrahub.git.base import extract_repo_file_information
 from infrahub.git.repository import get_initialized_repo
 from infrahub.services import InfrahubServices, services
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_RUN, REQUEST_GENERATOR_RUN
+from infrahub.workflows.utils import add_branch_tag
 
 
-@flow(name="generator-run")
+@flow(
+    name="generator-run",
+    flow_run_name="Run generator {model.generator_definition.definition_name} for {model.target_name}",
+)
 async def run_generator(model: RequestGeneratorRun) -> None:
     service = services.service
+
+    await add_branch_tag(branch_name=model.branch_name)
 
     repository = await get_initialized_repo(
         repository_id=model.repository_id,
@@ -42,7 +46,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
     commit_worktree = repository.get_commit_worktree(commit=model.commit)
 
     file_info = extract_repo_file_information(
-        full_filename=os.path.join(commit_worktree.directory, generator_definition.file_path.as_posix()),
+        full_filename=commit_worktree.directory / generator_definition.file_path,
         repo_directory=repository.directory_root,
         worktree_directory=commit_worktree.directory,
     )
@@ -110,9 +114,12 @@ async def _define_instance(model: RequestGeneratorRun, service: InfrahubServices
     return instance
 
 
-@flow(name="generator_definition_run")
+@flow(name="generator_definition_run", flow_run_name="Run all generators")
 async def run_generator_definition(branch: str) -> None:
     service = services.service
+
+    await add_branch_tag(branch_name=branch)
+
     generators = await service.client.filters(
         kind=InfrahubKind.GENERATORDEFINITION, prefetch_relationships=True, populate_store=True, branch=branch
     )
@@ -138,9 +145,15 @@ async def run_generator_definition(branch: str) -> None:
         await service.workflow.submit_workflow(workflow=REQUEST_GENERATOR_DEFINITION_RUN, parameters={"model": model})
 
 
-@flow(name="request_generator_definition_run")
+@flow(
+    name="request_generator_definition_run",
+    flow_run_name="Execute generator {model.generator_definition.definition_name}",
+)
 async def request_generator_definition_run(model: RequestGeneratorDefinitionRun) -> None:
     service = services.service
+
+    await add_branch_tag(branch_name=model.branch)
+
     async with service.task_report(
         title="Executing Generator",
         related_node=model.generator_definition.definition_id,

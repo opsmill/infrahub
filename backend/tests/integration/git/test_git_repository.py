@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import AsyncGenerator
 
 import pytest
 import yaml
@@ -16,8 +17,10 @@ from infrahub.core.utils import count_relationships, delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.server import app, app_initialization
+from infrahub.services import services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
+from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.log import FakeTaskReportLogger
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import InfrahubTestClient
@@ -46,9 +49,10 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
 
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
-    def workflow_local(prefect_test_fixture):
+    async def workflow_local(prefect_test_fixture):
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
+        await setup_task_manager()
         config.OVERRIDE.workflow = workflow
         yield workflow
         config.OVERRIDE.workflow = original
@@ -70,11 +74,14 @@ class TestInfrahubClient:
         return InfrahubTestClient(app=app)
 
     @pytest.fixture
-    async def client(self, test_client: InfrahubTestClient, integration_helper):
+    async def client(self, test_client: InfrahubTestClient, integration_helper) -> AsyncGenerator[InfrahubClient, None]:
         admin_token = await integration_helper.create_token()
         config = Config(api_token=admin_token, requester=test_client.async_request)
-
-        return InfrahubClient(config=config)
+        sdk_client = InfrahubClient(config=config)
+        original_service_client = services.service._client
+        services.service.set_client(sdk_client)
+        yield sdk_client
+        services.service.set_client(original_service_client)
 
     @pytest.fixture(scope="class")
     async def query_99(self, db: InfrahubDatabase, test_client):

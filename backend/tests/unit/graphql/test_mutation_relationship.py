@@ -695,3 +695,54 @@ async def test_relationship_add_from_pool(
     addresses = await p1.ip_addresses.get(db=db)
     assert prefixes
     assert not addresses
+
+
+# See #4649
+async def test_add_generic_related_node_with_hfid(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    generic_car_person_schema,
+):
+    electric_car = await Node.init(db=db, schema="TestElectricCar", branch=default_branch)
+    await electric_car.new(db=db, name="testing-car", color="blue")
+    await electric_car.save(db=db)
+
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="testing-person")
+    await person.save(db=db)
+
+    query = """
+    mutation {
+        TestPersonUpdate(data: {
+            id: "%s",
+            car: {
+                hfid: ["testing-car", "blue"],
+                kind: "TestElectricCar"
+              }
+        }) {
+            ok
+            object {
+                id
+                car {
+                    node {
+                        name {
+                            value
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """ % (person.id)
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data["TestPersonUpdate"]["object"]["car"]["node"]["name"]["value"] == "testing-car"

@@ -24,7 +24,9 @@ class NodeMutatedEvent(InfrahubBranchEvent):
         return {
             "prefect.resource.id": f"infrahub.node.{self.node_id}",
             "infrahub.node.kind": self.kind,
+            "infrahub.node.id": self.node_id,
             "infrahub.node.action": self.action.value,
+            "infrahub.branch.name": self.branch,
         }
 
     def get_payload(self) -> dict[str, Any]:

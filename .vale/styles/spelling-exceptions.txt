@@ -8,6 +8,7 @@ Authentik
 boolean
 check_definitions
 class_name
+CloudFormation
 codespace
 codespaces
 config

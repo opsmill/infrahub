@@ -7,11 +7,15 @@ from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.protocols import CoreDataCheck, CoreProposedChange
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
+from infrahub.core.protocols import CoreValidator
+from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.utils import get_fixtures_dir
 from tests.constants import TestKind
@@ -113,19 +117,83 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         john_branch.age.value = 30  # type: ignore[attr-defined]
         await john_branch.save(db=db)
 
-    @pytest.mark.xfail(reason="FIXME Works locally but it's failling in Github Actions")
+    async def test_conflict_pipeline(
+        self, db: InfrahubDatabase, conflict_dataset: None, client: InfrahubClient
+    ) -> None:
+        proposed_change_create = await client.create(
+            kind=CoreProposedChange,
+            data={"source_branch": "conflict_data", "destination_branch": "main", "name": "conflict_test"},
+        )
+        await proposed_change_create.save()
+
+        # -------------------------------------------------
+        # Ensure that the data integrity validator is reporting a failure
+        # -------------------------------------------------
+        proposed_change = await NodeManager.get_one(
+            db=db, id=proposed_change_create.id, kind=InternalCoreProposedChange, raise_on_error=True
+        )
+        peers = await proposed_change.validations.get_peers(db=db, peer_type=CoreValidator)
+        assert peers
+        data_integrity = [validator for validator in peers.values() if validator.label.value == "Data Integrity"][0]
+        assert data_integrity.conclusion.value.value == ValidatorConclusion.FAILURE.value
+
+        proposed_change_create.state.value = ProposedChangeState.MERGED.value
+
+        data_checks = await client.filters(kind=CoreDataCheck, validator__ids=data_integrity.id)
+        assert len(data_checks) == 1
+        data_check = data_checks[0]
+
+        # -------------------------------------------------
+        # Try to merge and ensure the proposed change is back to open state
+        # -------------------------------------------------
+        with pytest.raises(
+            GraphQLError, match="Data conflicts found on branch and missing decisions about what branch to keep"
+        ):
+            await proposed_change_create.save()
+
+        proposed_change_after = await client.get(kind=CoreProposedChange, id=proposed_change_create.id)
+        assert proposed_change_after.state.value == ProposedChangeState.OPEN.value
+
+        # -------------------------------------------------
+        # Fix the conflict and try to merge again
+        # -------------------------------------------------
+        query = """
+        mutation ($id: String!) {
+            ResolveDiffConflict(
+                data: {
+                    conflict_id: $id
+                    selected_branch: DIFF_BRANCH
+                }
+            ){
+                ok
+            }
+        }
+        """
+        await client.execute_graphql(query=query, variables={"id": data_check.enriched_conflict_id.value})
+
+        proposed_change_after.state.value = ProposedChangeState.MERGED.value
+        await proposed_change_after.save()
+        john = await NodeManager.get_one_by_default_filter(db=db, id="John", kind=TestKind.PERSON)
+        # The value of the description should match that of the source branch that was selected
+        # as the branch to keep in the data conflict
+        assert john.description.value == "Oh boy"  # type: ignore[attr-defined]
+
     async def test_happy_pipeline(self, db: InfrahubDatabase, happy_dataset: None, client: InfrahubClient) -> None:
         proposed_change_create = await client.create(
-            kind=InfrahubKind.PROPOSEDCHANGE,
+            kind=CoreProposedChange,
             data={"source_branch": "conflict_free", "destination_branch": "main", "name": "happy-test"},
         )
         await proposed_change_create.save()
 
-        proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id=proposed_change_create.id, kind=InfrahubKind.PROPOSEDCHANGE
+        # -------------------------------------------------
+        # Ensure that all validators have been executed and aren't reporting errors
+        # -------------------------------------------------
+        proposed_change = await NodeManager.get_one(
+            db=db, id=proposed_change_create.id, kind=InternalCoreProposedChange, raise_on_error=True
         )
-        peers = await proposed_change.validations.get_peers(db=db)  # type: ignore[attr-defined]
+        peers = await proposed_change.validations.get_peers(db=db, peer_type=CoreValidator)
         assert peers
+
         data_integrity = [validator for validator in peers.values() if validator.label.value == "Data Integrity"][0]
         assert data_integrity.conclusion.value.value == ValidatorConclusion.SUCCESS.value
         ownership_artifacts = [
@@ -138,8 +206,9 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         assert description_check.conclusion.value.value == ValidatorConclusion.SUCCESS.value
         age_check = [validator for validator in peers.values() if validator.label.value == "Check: owner_age_check"][0]
         assert age_check.conclusion.value.value == ValidatorConclusion.SUCCESS.value
+
         repository_merge_conflict = [
-            validator for validator in peers.values() if validator.label.value == "Repository Validator: car-dealership"
+            validator for validator in peers.values() if validator.label.value == "Repository Validator: dealership-car"
         ][0]
         assert repository_merge_conflict.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
@@ -148,46 +217,14 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         assert "john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
         assert "InfrahubNode-john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
 
-        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+        # -------------------------------------------------
+        # Merge the proposed change and ensure everything looks good
+        # -------------------------------------------------
+        proposed_change_create.state.value = ProposedChangeState.MERGED.value
         await proposed_change_create.save()
 
-    @pytest.mark.xfail(reason="FIXME Works locally but it's failling in Github Actions")
-    async def test_conflict_pipeline(
-        self, db: InfrahubDatabase, conflict_dataset: None, client: InfrahubClient
-    ) -> None:
-        proposed_change_create = await client.create(
-            kind=InfrahubKind.PROPOSEDCHANGE,
-            data={"source_branch": "conflict_data", "destination_branch": "main", "name": "conflict_test"},
-        )
-        await proposed_change_create.save()
-
-        proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            db=db, id=proposed_change_create.id, kind=InfrahubKind.PROPOSEDCHANGE
-        )
-        peers = await proposed_change.validations.get_peers(db=db)  # type: ignore[attr-defined]
-        assert peers
-        data_integrity = [validator for validator in peers.values() if validator.label.value == "Data Integrity"][0]
-        assert data_integrity.conclusion.value.value == ValidatorConclusion.FAILURE.value
-
-        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
-
-        data_checks = await client.filters(kind=InfrahubKind.DATACHECK, validator__ids=data_integrity.id)
-        assert len(data_checks) == 1
-        data_check = data_checks[0]
-
-        with pytest.raises(
-            GraphQLError, match="Data conflicts found on branch and missing decisions about what branch to keep"
-        ):
-            await proposed_change_create.save()
-
-        data_check.keep_branch.value = "source"  # type: ignore[attr-defined]
-        await data_check.save()
-        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
-        await proposed_change_create.save()
-        john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="John", kind=TestKind.PERSON)
-        # The value of the description should match that of the source branch that was selected
-        # as the branch to keep in the data conflict
-        assert john.description.value == "Oh boy"  # type: ignore[attr-defined]
+        proposed_change_after = await client.get(kind=CoreProposedChange, id=proposed_change_create.id)
+        assert proposed_change_after.state.value == ProposedChangeState.MERGED.value
 
     async def test_connectivity(self, db: InfrahubDatabase, initial_dataset: str, client: InfrahubClient) -> None:
         """Validate that the request to check connectivity to the remote repository is successful"""
