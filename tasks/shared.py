@@ -354,13 +354,13 @@ def build_test_envs() -> str:
 
 
 def init_yaml_obj(line_length: int | None = None) -> YAML:
-    """Instantiate a ruamel.yaml YAML object..
+    """Instantiate a ruamel.yaml YAML object.
 
     Args:
-        line_length (int, optional): Override the YAMLLint line length. Defaults to None.
+        line_length (int, optional): Override the .yamllint.yml line length. Defaults to None.
 
     Returns:
-        dict: Formatted YAMLLint config.
+        YAML: Instantiated ruamel.yaml.YAML object..
     """
     yamllint_rules: dict = get_yamllint_rules()
 
