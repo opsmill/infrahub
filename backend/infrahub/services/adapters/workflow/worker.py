@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, overload
 
-from prefect.client.schemas import StateType
+from prefect.client.schemas.objects import StateType
 from prefect.deployments import run_deployment
 
 from infrahub.workflows.initialization import setup_task_manager

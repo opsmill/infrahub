@@ -6,6 +6,7 @@ import { saveScreenshotForDocs } from "../../utils";
 test.describe("Getting started with Infrahub - Object and branch creation, update, diff and merge", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+  test.slow();
 
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
@@ -126,11 +127,8 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await expect(mergeButton).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_details");
       await mergeButton.click();
-      await expect(page.locator("#alert-success")).toContainText("Branch merged successfully!");
-      await expect(page.locator("pre")).toContainText(
-        // eslint-disable-next-line quotes
-        '{ "data": { "BranchMerge": { "ok": true, "__typename": "BranchMerge" } } }'
-      );
+      await expect(page.locator("#alert-success")).toContainText("Branch merge requested!");
+      await expect(page.getByText("COMPLETEDMerge branch graphQL")).toBeVisible();
     });
 
     await test.step("Validate merged changes in main", async () => {

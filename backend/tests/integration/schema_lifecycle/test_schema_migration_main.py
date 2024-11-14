@@ -209,6 +209,13 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         john = persons[0]
         assert not hasattr(john, "height")
 
+        # Ensure that we can query the existing node with graphql endpoint
+        await client.schema.all(refresh=True)
+        api_persons = await client.filters(kind=PERSON_KIND, firstname__value="John")
+        assert len(api_persons) == 1
+        api_john = api_persons[0]
+        assert not hasattr(api_john, "height")
+
         manufacturers = await registry.manager.query(
             db=db, schema=MANUFACTURER_KIND_03, filters={"name__value": "honda"}
         )

@@ -1,11 +1,14 @@
-import Handlebars from "handlebars";
+import { gql } from "@apollo/client";
 
-export const deleteBranch = Handlebars.compile(`
-mutation {
+export const BRANCH_DELETE = gql`
+mutation BRANCH_DELETE($name: String) {
   BranchDelete (
-    data: { {{{data}}} }
+    wait_until_completion: false
+    data: {
+      name: $name
+    }
   ) {
       ok
   }
 }
-`);
+`;

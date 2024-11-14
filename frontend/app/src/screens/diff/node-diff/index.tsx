@@ -6,7 +6,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { rebaseBranch } from "@/graphql/mutations/branches/rebaseBranch";
+import { BRANCH_REBASE } from "@/graphql/mutations/branches/rebaseBranch";
 import { DIFF_UPDATE } from "@/graphql/mutations/proposed-changes/diff/diff-update";
 import { getProposedChangesDiffTree } from "@/graphql/queries/proposed-changes/getProposedChangesDiffTree";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,9 +19,9 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { classNames, objectToString } from "@/utils/common";
+import { classNames } from "@/utils/common";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/utils/date";
-import { NetworkStatus, gql, useMutation } from "@apollo/client";
+import { NetworkStatus, useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { createContext, useState } from "react";
@@ -104,18 +104,11 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
     setIsLoadingUpdate(true);
 
     try {
-      const options = {
-        name: branch,
-      };
-
-      const mutationString = rebaseBranch({ data: objectToString(options) });
-
-      const mutation = gql`
-        ${mutationString}
-      `;
-
       await graphqlClient.mutate({
-        mutation,
+        mutation: BRANCH_REBASE,
+        variables: {
+          name: branch,
+        },
         context: {
           branch: branchName,
           date,

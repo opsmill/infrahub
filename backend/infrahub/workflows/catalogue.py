@@ -233,6 +233,14 @@ COMPUTED_ATTRIBUTE_SETUP = WorkflowDefinition(
     function="computed_attribute_setup",
 )
 
+COMPUTED_ATTRIBUTE_SETUP_PYTHON = WorkflowDefinition(
+    name="computed-attribute-setup-python",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.computed_attribute.tasks",
+    function="computed_attribute_setup_python",
+)
+
+
 UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM = WorkflowDefinition(
     name="process_computed_attribute_transform",
     type=WorkflowType.INTERNAL,
@@ -247,10 +255,25 @@ REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY = WorkflowDefinition(
     function="run_proposed_change_data_integrity_check",
 )
 
+AUTOMATION_SCHEMA_UPDATED = WorkflowDefinition(
+    name="schema-updated-setup",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.schema.tasks",
+    function="schema_updated_setup",
+)
+
+AUTOMATION_GIT_UPDATED = WorkflowDefinition(
+    name="git-commit-automation-setup",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.git.tasks",
+    function="setup_commit_automation",
+)
+
 
 worker_pools = [INFRAHUB_WORKER_POOL]
 
 workflows = [
+    AUTOMATION_GIT_UPDATED,
     WEBHOOK_SEND,
     TRANSFORM_JINJA2_RENDER,
     TRANSFORM_PYTHON_RENDER,
@@ -282,6 +305,10 @@ workflows = [
     GIT_REPOSITORY_ADD_READ_ONLY,
     PROCESS_COMPUTED_MACRO,
     COMPUTED_ATTRIBUTE_SETUP,
+    COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
+    AUTOMATION_SCHEMA_UPDATED,
 ]
+
+automation_setup_workflows = [AUTOMATION_GIT_UPDATED, AUTOMATION_SCHEMA_UPDATED]

@@ -35,6 +35,7 @@ from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 
 from infrahub.core.constants import InfrahubKind, RepositorySyncStatus
+from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.exceptions import CheckError, TransformError
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
 from infrahub.log import get_logger
@@ -165,6 +166,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         if error:
             raise error
+
+        await self.service.event.send(
+            CommitUpdatedEvent(
+                branch=infrahub_branch_name, commit=commit, repository_name=self.name, repository_id=str(self.id)
+            )
+        )
 
     async def _update_sync_status(self, branch_name: str, status: RepositorySyncStatus) -> None:
         update_status = """
