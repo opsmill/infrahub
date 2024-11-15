@@ -706,6 +706,34 @@ class DatabasePath:  # pylint: disable=too-many-public-methods
             return None
         return str(self.property_node.get("kind"))
 
+    @property
+    def possible_relationship_directions(self) -> list[RelationshipDirection]:
+        path_to_node = "Node" in self.property_node.labels
+        attr_start_node = self.path_to_attribute.start_node
+        attr_end_node = self.path_to_attribute.end_node
+        prop_start_node = self.path_to_property.start_node
+        prop_end_node = self.path_to_property.end_node
+        if path_to_node and (
+            attr_start_node
+            and attr_start_node.element_id == self.node_node.element_id
+            and prop_start_node
+            and prop_start_node.element_id == self.attribute_node.element_id
+        ):
+            return [RelationshipDirection.OUTBOUND]
+        if path_to_node and (
+            attr_end_node
+            and attr_end_node.element_id == self.node_node.element_id
+            and prop_end_node
+            and prop_end_node.element_id == self.attribute_node.element_id
+        ):
+            return [RelationshipDirection.INBOUND]
+        # if we only have one Node->Relationship path, we cannot fully determine the relationship direction
+        if attr_start_node and attr_start_node.element_id == self.node_node.element_id:
+            return [RelationshipDirection.OUTBOUND, RelationshipDirection.BIDIR]
+        if attr_end_node and attr_end_node.element_id == self.node_node.element_id:
+            return [RelationshipDirection.INBOUND, RelationshipDirection.BIDIR]
+        return [RelationshipDirection.BIDIR, RelationshipDirection.INBOUND, RelationshipDirection.OUTBOUND]
+
 
 @dataclass
 class EnrichedNodeCreateRequest:
