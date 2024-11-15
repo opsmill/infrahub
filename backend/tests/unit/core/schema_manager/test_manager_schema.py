@@ -141,6 +141,26 @@ async def test_schema_process_inheritance_different_generic_attribute_types_on_n
     assert exc.value.args[0] == 'TestWidget.choice inherited from TestAdapter must be the same kind ["Text", "List"]'
 
 
+async def test_schema_process_inheritance_different_generic_attribute_optional_on_node(
+    schema_diff_attr_inheritance_types,
+):
+    """Test that we raise an exception if a node is inheriting an attribute changing its optional property value."""
+    schema = SchemaBranch(cache={}, name="test")
+    schema_new = copy.deepcopy(schema_diff_attr_inheritance_types)
+    schema_new["generics"].pop()
+    schema_new["nodes"][0]["inherit_from"].pop()
+    schema_new["nodes"][0]["attributes"].append({"name": "choice", "kind": "Text", "optional": False})
+    schema.load_schema(schema=SchemaRoot(**schema_new))
+
+    with pytest.raises(ValueError) as exc:
+        schema.process_inheritance()
+
+    assert (
+        exc.value.args[0]
+        == 'TestWidget.choice inherited from TestAdapter must have the same value for property "optional" ["True", "False"]'
+    )
+
+
 async def test_schema_branch_process_inheritance_node_level(animal_person_schema_dict):
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**animal_person_schema_dict))
