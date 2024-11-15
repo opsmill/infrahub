@@ -1,24 +1,29 @@
-from typing import TYPE_CHECKING, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Self, Union
 
 from graphene import Boolean, Field, InputObjectType, Mutation, String
-from graphql import GraphQLResolveInfo
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.core import registry
-from infrahub.core.branch import Branch
 from infrahub.core.constants import RESTRICTED_NAMESPACES
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import DropdownChoice, GenericSchema, NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
+from infrahub.events import EventMeta
+from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.exceptions import ValidationError
-from infrahub.log import get_logger
-from infrahub.message_bus import Meta, messages
-from infrahub.services import services
+from infrahub.log import get_log_data, get_logger
 from infrahub.worker import WORKER_IDENTITY
 
 from ..types import DropdownFields
 
 if TYPE_CHECKING:
+    from graphql import GraphQLResolveInfo
+
+    from infrahub.core.branch import Branch
+    from infrahub.services import InfrahubServices
+
     from ..initialization import GraphqlContext
 
 log = get_logger()
@@ -56,7 +61,7 @@ class SchemaDropdownAdd(Mutation):
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
         data: SchemaDropdownAddInput,
-    ):
+    ) -> Self:
         context: GraphqlContext = info.context
 
         kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
@@ -73,7 +78,13 @@ class SchemaDropdownAdd(Mutation):
                 )
             attrib.choices.append(choice)
 
-        await update_registry(kind=kind, branch=context.branch, db=context.db)
+        await update_registry(
+            kind=kind,
+            branch=context.branch,
+            db=context.db,
+            account_id=context.active_account_session.account_id,
+            service=context.active_service,
+        )
 
         kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
         attrib = kind.get_attribute(attribute)
@@ -130,7 +141,13 @@ class SchemaDropdownRemove(Mutation):
                 raise ValidationError(f"Unable to remove the last dropdown on {kind.kind} in attribute {attribute}")
             attrib.choices = [entry for entry in attrib.choices if dropdown != entry.name]
 
-        await update_registry(kind=kind, branch=context.branch, db=context.db)
+        await update_registry(
+            kind=kind,
+            branch=context.branch,
+            db=context.db,
+            account_id=context.active_account_session.account_id,
+            service=context.active_service,
+        )
 
         return {"ok": True}
 
@@ -165,7 +182,13 @@ class SchemaEnumAdd(Mutation):
                     )
                 attrib.enum.append(enum)
 
-        await update_registry(kind=kind, branch=context.branch, db=context.db)
+        await update_registry(
+            kind=kind,
+            branch=context.branch,
+            db=context.db,
+            account_id=context.active_account_session.account_id,
+            service=context.active_service,
+        )
 
         return {"ok": True}
 
@@ -206,7 +229,13 @@ class SchemaEnumRemove(Mutation):
                     raise ValidationError(f"Unable to remove the last enum on {kind.kind} in attribute {attribute}")
                 attrib.enum = [entry for entry in attrib.enum if entry != enum]
 
-        await update_registry(kind=kind, branch=branch, db=db)
+        await update_registry(
+            kind=kind,
+            branch=branch,
+            db=db,
+            account_id=context.active_account_session.account_id,
+            service=context.active_service,
+        )
 
         return {"ok": True}
 
@@ -237,7 +266,9 @@ def validate_kind(kind: Union[GenericSchema, NodeSchema], attribute: str) -> Non
         raise ValidationError(f"Attribute {attribute} on {kind.kind} is inherited and must be changed on the generic")
 
 
-async def update_registry(kind: NodeSchema, branch: Branch, db: InfrahubDatabase) -> None:
+async def update_registry(
+    kind: NodeSchema, db: InfrahubDatabase, branch: Branch, account_id: str, service: InfrahubServices
+) -> None:
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
@@ -256,13 +287,20 @@ async def update_registry(kind: NodeSchema, branch: Branch, db: InfrahubDatabase
                     schema=tmp_schema, db=dbt, branch=branch.name, limit=diff.all, update_db=True
                 )
                 branch.update_schema_hash()
-                log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
+                log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)
                 await branch.save(db=dbt)
 
-            if config.SETTINGS.broker.enable:
-                message = messages.EventSchemaUpdate(
-                    branch=branch.name,
-                    meta=Meta(initiator_id=WORKER_IDENTITY),
-                )
-                await services.send(message)
-            await services.service.component.refresh_schema_hash(branches=[branch.name])
+            log_data = get_log_data()
+            request_id = log_data.get("request_id", "")
+            event = SchemaUpdatedEvent(
+                branch=branch.name,
+                schema_hash=branch.active_schema_hash.main,
+                meta=EventMeta(
+                    initiator_id=WORKER_IDENTITY,
+                    request_id=request_id,
+                    account_id=account_id,
+                ),
+            )
+            await service.event.send(event=event)
+
+            await service.component.refresh_schema_hash(branches=[branch.name])

@@ -115,3 +115,5 @@ Version Control
 Vitest
 Yaml
 yamllint
+vscode
+VSCode

@@ -367,11 +367,18 @@ async def car_person_data_artifact_diff(db: InfrahubDatabase, default_branch, ca
 
     branch3 = await create_branch(branch_name="branch3", db=db)
 
-    artifacts = await NodeManager.get_many(db=db, ids=[art1.id], branch=branch3)
-
-    artifacts[art1.id].storage_id.value = "azertyui-073f-4173-aa4b-f50e1309f03c"
-    artifacts[art1.id].checksum.value = "zxcv9063c26263353de24e1b911z1x2c3v"
-    await artifacts[art1.id].save(db=db)
+    art1_branch = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=branch3)
+    await art1_branch.new(
+        db=db,
+        name="myyartifact",
+        definition=ad1,
+        status="Ready",
+        object=car_person_data_generic_diff["c1"],
+        storage_id="azertyui-073f-4173-aa4b-f50e1309f03c",
+        checksum="zxcv9063c26263353de24e1b911z1x2c3v",
+        content_type="application/json",
+    )
+    await art1_branch.save(db=db)
 
     art2 = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=branch3)
     await art2.new(
@@ -413,7 +420,7 @@ async def car_person_data_artifact_diff(db: InfrahubDatabase, default_branch, ca
     await art3_branch.save(db=db)
 
     car_person_data_generic_diff["branch3"] = branch3
-    car_person_data_generic_diff["art1"] = art1.id
+    car_person_data_generic_diff["art1"] = art1_branch.id
     car_person_data_generic_diff["art2"] = art2.id
     car_person_data_generic_diff["art3"] = art3_branch.id
 

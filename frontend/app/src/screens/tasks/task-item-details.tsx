@@ -1,6 +1,5 @@
 import { TASK_OBJECT } from "@/config/constants";
 import useQuery from "@/hooks/useQuery";
-import { gql } from "@apollo/client";
 
 import { DateDisplay } from "@/components/display/date-display";
 import { List } from "@/components/table/list";
@@ -8,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Id } from "@/components/ui/id";
 import { SearchInput } from "@/components/ui/search-input";
 import { QSP } from "@/config/qsp";
-import { getTaskItemDetails } from "@/graphql/queries/tasks/getTasksItemDetails";
+import { TASK_DETAILS } from "@/graphql/queries/tasks/getTasksItemDetails";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { forwardRef, useImperativeHandle, useState } from "react";
@@ -29,21 +28,14 @@ export const getStateBadge: { [key: string]: any } = {
 };
 
 export const TaskItemDetails = forwardRef((props, ref) => {
-  const [taskId] = useQueryParam(QSP.TASK_ID, StringParam);
+  const [idFromQsp] = useQueryParam(QSP.TASK_ID, StringParam);
   const [search, setSearch] = useState("");
 
-  const { task } = useParams();
+  const { task: idFromParams } = useParams();
 
-  const queryString = getTaskItemDetails({
-    kind: TASK_OBJECT,
-    id: taskId || task,
-  });
+  const ids = idFromParams || idFromQsp ? [idFromParams || idFromQsp] : undefined;
 
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { loading, error, data = {}, refetch } = useQuery(query);
+  const { loading, error, data = {}, refetch } = useQuery(TASK_DETAILS, { variables: { ids } });
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch }));
@@ -53,7 +45,7 @@ export const TaskItemDetails = forwardRef((props, ref) => {
   }
 
   if (loading) {
-    return <LoadingScreen hideText />;
+    return <LoadingScreen message="Loading task..." />;
   }
 
   const result = data ? (data[TASK_OBJECT] ?? {}) : {};

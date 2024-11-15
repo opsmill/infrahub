@@ -1,10 +1,17 @@
-from collections import defaultdict
+from __future__ import annotations
 
-from prefect.events.schemas.automations import Automation
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+from prefect.events.schemas.automations import Automation  # noqa: TCH002
 from pydantic import BaseModel, Field
 from typing_extensions import Self
 
 from .constants import AUTOMATION_NAME_PREFIX
+
+if TYPE_CHECKING:
+    from infrahub.core.schema.schema_branch_computed import PythonDefinition
 
 
 class ComputedAttributeAutomations(BaseModel):
@@ -37,3 +44,14 @@ class ComputedAttributeAutomations(BaseModel):
         if identifier in self.data and scope in self.data[identifier]:
             return True
         return False
+
+
+@dataclass
+class PythonTransformComputedAttribute:
+    name: str
+    repository_id: str
+    repository_name: str
+    repository_kind: str
+    query_name: str
+    query_models: list[str]
+    computed_attribute: PythonDefinition

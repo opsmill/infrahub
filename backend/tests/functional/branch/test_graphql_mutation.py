@@ -220,3 +220,34 @@ class TestBranchMutations(TestInfrahubApp):
         assert result["BranchMerge"]["ok"] is True
         assert result["BranchMerge"]["object"]["id"] == branch.id
         assert result["BranchMerge"]["task"]["id"]
+
+    async def test_branch_create(self, initial_dataset: str, client: InfrahubClient) -> None:
+        query = Mutation(
+            mutation="BranchCreate",
+            input_data={"data": {"name": "branch-2"}},
+            query={"ok": None, "task": {"id": None}, "object": {"id": None}},
+        )
+        result = await client.execute_graphql(query=query.render())
+        assert result["BranchCreate"]["ok"] is True
+        assert result["BranchCreate"]["object"]["id"] is not None
+        assert result["BranchCreate"]["task"] is None
+
+    async def test_branch_create_async(self, initial_dataset: str, client: InfrahubClient) -> None:
+        query = Mutation(
+            mutation="BranchCreate",
+            input_data={"data": {"name": "branch-3"}, "wait_until_completion": False},
+            query={"ok": None, "task": {"id": None}, "object": {"id": None}},
+        )
+        result = await client.execute_graphql(query=query.render())
+        assert result["BranchCreate"]["ok"] is True
+        assert result["BranchCreate"]["task"]["id"] is not None
+
+    async def test_branch_create_async_deprecated(self, initial_dataset: str, client: InfrahubClient) -> None:
+        query = Mutation(
+            mutation="BranchCreate",
+            input_data={"data": {"name": "branch-4"}, "background_execution": True},
+            query={"ok": None, "task": {"id": None}, "object": {"id": None}},
+        )
+        result = await client.execute_graphql(query=query.render())
+        assert result["BranchCreate"]["ok"] is True
+        assert result["BranchCreate"]["task"]["id"] is not None

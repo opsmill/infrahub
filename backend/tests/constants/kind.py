@@ -1,6 +1,8 @@
 CAR = "TestingCar"
 CHILD = "TestingChild"
+COLOR = "TestingColor"
 MANUFACTURER = "TestingManufacturer"
 PERSON = "TestingPerson"
 THING = "TestingThing"
 TICKET = "TestingTicket"
+TSHIRT = "TestingTShirt"

@@ -64,6 +64,7 @@ async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical
 
     rack1 = hierarchical_location_data["paris-r1"]
     site1 = hierarchical_location_data["paris"]
+    europe = hierarchical_location_data["europe"]
 
     diff_node = EnrichedNodeFactory.build(uuid=rack1.get_id(), kind=rack1.get_kind(), relationships=set())
     diff_root = EnrichedRootFactory.build(
@@ -76,8 +77,15 @@ async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical
 
     rack1_node = diff_root.get_node(node_uuid=rack1.get_id())
     site1_node = diff_root.get_node(node_uuid=site1.get_id())
+    europe_node = diff_root.get_node(node_uuid=europe.get_id())
 
     assert len(rack1_node.relationships) == 1
+    rack1_rel = rack1_node.relationships.pop()
+    assert rack1_rel.name == "parent"
+    assert rack1_rel.action is DiffAction.UNCHANGED
+    assert len(rack1_rel.nodes) == 1
+    rack1_parent_node = rack1_rel.nodes.pop()
+    assert rack1_parent_node.uuid == site1.id
 
     assert site1_node.action == DiffAction.UNCHANGED
     assert len(site1_node.relationships) == 1
@@ -85,3 +93,8 @@ async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical
     assert site1_rel.action == DiffAction.UNCHANGED
     assert site1_rel.name == "parent"
     assert len(site1_rel.nodes) == 1
+    site1_parent_node = site1_rel.nodes.pop()
+    assert site1_parent_node.uuid == europe.id
+
+    assert europe_node.action == DiffAction.UNCHANGED
+    assert len(europe_node.relationships) == 0

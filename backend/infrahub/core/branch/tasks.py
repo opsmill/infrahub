@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from typing import Any
+
+import pydantic
 from prefect import flow, get_run_logger
 from prefect.client.schemas.objects import State  # noqa: TCH002
 from prefect.states import Completed, Failed
@@ -20,7 +23,8 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.branch_action import BranchDeleteEvent
-from infrahub.exceptions import MergeFailedError, ValidationError
+from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
+from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TCH001
 from infrahub.log import get_log_data
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
@@ -114,17 +118,15 @@ async def rebase_branch(branch: str) -> None:
     # -------------------------------------------------------------
     # Trigger the reconciliation of IPAM data after the rebase
     # -------------------------------------------------------------
-    differ = await merger.get_graph_diff()
-    diff_parser = IpamDiffParser(
-        db=service.database,
-        differ=differ,
+    diff_parser = await component_registry.get_component(IpamDiffParser, db=service.database, branch=obj)
+    ipam_node_details = await diff_parser.get_changed_ipam_node_details(
         source_branch_name=obj.name,
         target_branch_name=registry.default_branch,
     )
-    ipam_node_details = await diff_parser.get_changed_ipam_node_details()
-    await service.workflow.submit_workflow(
-        workflow=IPAM_RECONCILIATION, parameters={"branch": obj.name, "ipam_node_details": ipam_node_details}
-    )
+    if ipam_node_details:
+        await service.workflow.submit_workflow(
+            workflow=IPAM_RECONCILIATION, parameters={"branch": obj.name, "ipam_node_details": ipam_node_details}
+        )
 
     # -------------------------------------------------------------
     # Generate an event to indicate that a branch has been rebased
@@ -187,18 +189,16 @@ async def merge_branch(branch: str) -> None:
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the merge
         # -------------------------------------------------------------
-        differ = await merger.get_graph_diff()
-        diff_parser = IpamDiffParser(
-            db=db,
-            differ=differ,
+        diff_parser = await component_registry.get_component(IpamDiffParser, db=service.database, branch=obj)
+        ipam_node_details = await diff_parser.get_changed_ipam_node_details(
             source_branch_name=obj.name,
             target_branch_name=registry.default_branch,
         )
-        ipam_node_details = await diff_parser.get_changed_ipam_node_details()
-        await service.workflow.submit_workflow(
-            workflow=IPAM_RECONCILIATION,
-            parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
-        )
+        if ipam_node_details:
+            await service.workflow.submit_workflow(
+                workflow=IPAM_RECONCILIATION,
+                parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
+            )
 
         # -------------------------------------------------------------
         # Generate an event to indicate that a branch has been merged
@@ -252,3 +252,44 @@ async def validate_branch(branch: str) -> State:
     if conflicts:
         return Failed(message="branch has some conflicts")
     return Completed(message="branch is valid")
+
+
+@flow(name="create-branch", flow_run_name="Create branch {model.name}")
+async def create_branch(model: BranchCreateModel) -> None:
+    service = services.service
+
+    await add_branch_tag(model.name)
+
+    try:
+        await Branch.get_by_name(db=service.database, name=model.name)
+        raise ValueError(f"The branch {model.name}, already exist")
+    except BranchNotFoundError:
+        pass
+
+    data_dict: dict[str, Any] = dict(model)
+    if "is_isolated" in data_dict:
+        del data_dict["is_isolated"]
+
+    try:
+        obj = Branch(**data_dict)
+    except pydantic.ValidationError as exc:
+        error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
+        raise ValueError("\n".join(error_msgs)) from exc
+
+    async with lock.registry.local_schema_lock():
+        # Copy the schema from the origin branch and set the hash and the schema_changed_at value
+        origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
+        new_schema = origin_schema.duplicate(name=obj.name)
+        registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
+        obj.update_schema_hash()
+        await obj.save(db=service.database)
+
+        # Add Branch to registry
+        registry.branch[obj.name] = obj
+
+    message = messages.EventBranchCreate(
+        branch=obj.name,
+        branch_id=str(obj.id),
+        sync_with_git=obj.sync_with_git,
+    )
+    await service.send(message=message)
