@@ -143,7 +143,7 @@ export default function ObjectItems({
           />
         </div>
 
-        {loading && !rows && <LoadingScreen message="Loading objects" />}
+        {loading && !rows && <LoadingScreen message={`Loading ${schema.label} list`} />}
 
         {/* TODO: use new Table component for list */}
         {!loading && rows && (
