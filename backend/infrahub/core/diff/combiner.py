@@ -314,22 +314,25 @@ class DiffCombiner:
             combined_relationships.add(copied)
         return combined_relationships
 
+    def _copy_node_without_parents(self, node: EnrichedDiffNode) -> EnrichedDiffNode:
+        rels_without_parents = {replace(r, nodes=set()) for r in node.relationships}
+        node_without_parents = replace(node, relationships=rels_without_parents)
+        return deepcopy(node_without_parents)
+
     def _combine_nodes(self, node_pairs: list[NodePair]) -> set[EnrichedDiffNode]:
         combined_nodes: set[EnrichedDiffNode] = set()
         for node_pair in node_pairs:
             if node_pair.earlier is None:
                 if node_pair.later is not None:
-                    copied = deepcopy(node_pair.later)
+                    copied = self._copy_node_without_parents(node_pair.later)
                     for rel in copied.relationships:
-                        rel.nodes = set()
                         rel.reset_summaries()
                     combined_nodes.add(copied)
                 continue
             if node_pair.later is None:
                 if node_pair.earlier is not None:
-                    copied = deepcopy(node_pair.earlier)
+                    copied = self._copy_node_without_parents(node_pair.earlier)
                     for rel in copied.relationships:
-                        rel.nodes = set()
                         rel.reset_summaries()
                     combined_nodes.add(copied)
                 continue
