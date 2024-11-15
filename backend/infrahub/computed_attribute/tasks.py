@@ -118,7 +118,10 @@ async def process_transform(
         )
 
 
-@flow(name="process_computed_attribute_jinja2", log_prints=True)
+@flow(
+    name="process_computed_attribute_jinja2",
+    flow_run_name="Process computed attribute on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
+)
 async def process_jinja2(
     branch_name: str,
     node_kind: str,
@@ -128,6 +131,7 @@ async def process_jinja2(
     updated_fields: list[str] | None = None,
 ) -> None:
     """Request to the creation of git branches in available repositories."""
+    log = get_run_logger()
     service = services.service
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
 
@@ -148,7 +152,7 @@ async def process_jinja2(
             found.extend(nodes)
 
         if not found:
-            print("No nodes found to apply Macro to")
+            log.debug("No nodes found that requires updates")
 
         template_string = "n/a"
         if computed_macro.attribute.computed_attribute and computed_macro.attribute.computed_attribute.jinja2_template:
@@ -174,21 +178,25 @@ async def process_jinja2(
                     except ValueError:
                         my_filter[variable] = ""
 
+            value = macro_definition.render(variables=my_filter)
+            existing_value = getattr(node, computed_macro.attribute.name).value
+            if value == existing_value:
+                log.debug(f"Ignoring to update {node} with existing value on {computed_macro.attribute.name}={value}")
+                continue
+
             await service.client.execute_graphql(
                 query=UPDATE_ATTRIBUTE,
                 variables={
                     "id": node.id,
                     "kind": computed_macro.kind,
                     "attribute": computed_macro.attribute.name,
-                    "value": macro_definition.render(variables=my_filter),
+                    "value": value,
                 },
                 branch_name=branch_name,
             )
-            print("#" * 40)
-            print(f"node: {node.id}")
-            print(f"attribute: {computed_macro.attribute.name}")
-            print(f"value: {macro_definition.render(variables=my_filter)}")
-            print()
+            log.info(
+                f"Updating computed attribute {computed_attribute_kind}.{computed_attribute_name}='{value}' ({node.id})"
+            )
 
 
 @flow(name="computed-attribute-setup", flow_run_name="Setup computed attributes in task-manager")

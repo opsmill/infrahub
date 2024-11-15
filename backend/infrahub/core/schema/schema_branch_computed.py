@@ -63,8 +63,9 @@ class RegisteredNodeComputedAttribute(BaseModel):
 
         for relationship_name, entries in self.relationships.items():
             for entry in entries:
-                if entry.key_name in targets:
-                    targets[entry.key_name].filter_keys.append(f"{relationship_name}__ids")
+                filter_key = f"{relationship_name}__ids"
+                if entry.key_name in targets and filter_key not in targets[entry.key_name].filter_keys:
+                    targets[entry.key_name].filter_keys.append(filter_key)
 
         return list(targets.values())
 

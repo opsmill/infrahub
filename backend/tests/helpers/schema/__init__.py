@@ -7,10 +7,12 @@ from infrahub.core.schema import SchemaRoot
 
 from .car import CAR
 from .child import CHILD
+from .color import COLOR
 from .manufacturer import MANUFACTURER
 from .person import PERSON
 from .thing import THING
 from .ticket import TICKET
+from .tshirt import TSHIRT
 from .widget import WIDGET
 
 if TYPE_CHECKING:
@@ -38,9 +40,11 @@ __all__ = [
     "CAR",
     "CAR_SCHEMA",
     "CHILD",
+    "COLOR",
     "MANUFACTURER",
     "PERSON",
     "THING",
     "TICKET",
+    "TSHIRT",
     "WIDGET",
 ]
