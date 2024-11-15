@@ -13,8 +13,10 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.message_bus import messages
 from infrahub.permissions.local_backend import LocalPermissionBackend
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql_mutation
+from tests.helpers.utils import init_global_service
 
 CREATE_PROPOSED_CHANGE = """
 mutation ProposedChange(
@@ -202,32 +204,34 @@ async def test_merge_proposed_change_permission_failure(
     session_first_account: AccountSession,
     session_admin: AccountSession,
 ):
-    registry.permission_backends = [LocalPermissionBackend()]
+    service = InfrahubServices(database=db, message_bus=BusRecorder(), workflow=WorkflowLocalExecution())
+    with init_global_service(service):
+        registry.permission_backends = [LocalPermissionBackend()]
 
-    branch_name = "merge-proposed-change-perm"
-    await create_branch(branch_name=branch_name, db=db)
+        branch_name = "merge-proposed-change-perm"
+        await create_branch(branch_name=branch_name, db=db)
 
-    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
-    await proposed_change.new(
-        db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
-    )
-    await proposed_change.save(db=db)
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await proposed_change.new(
+            db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
+        )
+        await proposed_change.save(db=db)
 
-    update_status = await graphql_mutation(
-        query=UPDATE_PROPOSED_CHANGE,
-        db=db,
-        variables={"proposed_change": proposed_change.id, "state": "merged"},
-        account_session=session_first_account,
-    )
+        update_status = await graphql_mutation(
+            query=UPDATE_PROPOSED_CHANGE,
+            db=db,
+            variables={"proposed_change": proposed_change.id, "state": "merged"},
+            account_session=session_first_account,
+        )
 
-    assert update_status.errors
-    assert update_status.errors[0].message == "You do not have the permission to merge proposed changes"
+        assert update_status.errors
+        assert update_status.errors[0].message == "You do not have the permission to merge proposed changes"
 
-    update_status = await graphql_mutation(
-        query=UPDATE_PROPOSED_CHANGE,
-        db=db,
-        variables={"proposed_change": proposed_change.id, "state": "merged"},
-        account_session=session_admin,
-    )
+        update_status = await graphql_mutation(
+            query=UPDATE_PROPOSED_CHANGE,
+            db=db,
+            variables={"proposed_change": proposed_change.id, "state": "merged"},
+            account_session=session_admin,
+        )
 
-    assert not update_status.errors
+        assert not update_status.errors
