@@ -164,6 +164,8 @@ rabbitmq:
     password: infrahub
   metrics:
     enabled: true
+  startupProbe:
+    enabled: true
 
 # ----------- NFS Server -----------
 nfs-server-provisioner:
