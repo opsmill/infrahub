@@ -1,12 +1,11 @@
 """Replacement for Makefile."""
 
-from typing import Optional
+# from typing import Optional
 
 from invoke.context import Context
 from invoke.tasks import task
 
 from .container_ops import (
-    build_images,
     destroy_environment,
     migrate_database,
     pull_images,
@@ -20,7 +19,6 @@ from .infra_ops import load_infrastructure_data, load_infrastructure_menu, load_
 from .shared import (
     BUILD_NAME,
     INFRAHUB_DATABASE,
-    PYTHON_VER,
     SERVICE_SERVER_NAME,
     SERVICE_WORKER_NAME,
     Namespace,
@@ -31,26 +29,6 @@ from .shared import (
 from .utils import ESCAPED_REPO_PATH
 
 NAMESPACE = Namespace.DEFAULT
-
-
-@task(optional=["database"])
-def build(
-    context: Context,
-    service: Optional[str] = None,
-    python_ver: str = PYTHON_VER,
-    nocache: bool = False,
-    database: str = INFRAHUB_DATABASE,
-) -> None:
-    """Build an image with the provided name and python version.
-
-    Args:
-        context (obj): Used to run specific commands
-        python_ver (str): Define the Python version docker image to build from
-        nocache (bool): Do not use cache when building the image
-    """
-    build_images(
-        context=context, service=service, python_ver=python_ver, nocache=nocache, database=database, namespace=NAMESPACE
-    )
 
 
 @task(optional=["database"])
