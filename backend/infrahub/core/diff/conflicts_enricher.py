@@ -39,17 +39,26 @@ class ConflictsEnricher:
 
         base_node_map = {n.uuid: n for n in base_diff_root.nodes}
         branch_node_map = {n.uuid: n for n in branch_diff_root.nodes}
-        common_node_uuids = set(base_node_map.keys()) & set(branch_node_map.keys())
+        branch_node_map_uuids = set(branch_node_map.keys())
+        common_node_uuids = set(base_node_map.keys()) & branch_node_map_uuids
         for node_uuid in common_node_uuids:
             base_node = base_node_map[node_uuid]
             branch_node = branch_node_map[node_uuid]
             self._add_node_conflicts(base_node=base_node, branch_node=branch_node)
+        # remove conflicts from branch nodes that have been manually corrected on the base branch
+        for branch_only_node_uuid in branch_node_map_uuids - common_node_uuids:
+            branch_node = branch_node_map[branch_only_node_uuid]
+            if branch_node.conflict:
+                branch_node.conflict = None
 
     def _add_node_conflicts(self, base_node: EnrichedDiffNode, branch_node: EnrichedDiffNode) -> None:
         if base_node.action != branch_node.action:
             self._add_node_conflict(base_node=base_node, branch_node=branch_node)
         elif branch_node.conflict:
             branch_node.conflict = None
+        # adding attr/rel conflicts when there is an unresolvable node-level conflict is pointless
+        if branch_node.conflict and branch_node.conflict.resolvable is False:
+            return
         base_attribute_map = {a.name: a for a in base_node.attributes}
         branch_attribute_map = {a.name: a for a in branch_node.attributes}
         common_attribute_names = set(base_attribute_map.keys()) & set(branch_attribute_map.keys())
@@ -75,6 +84,10 @@ class ConflictsEnricher:
         else:
             conflict_uuid = str(uuid4())
             selected_branch = None
+        resolvable = True
+        # this condition should always be true, but it's good to be explicit
+        if DiffAction.REMOVED in [base_node.action, branch_node.action]:
+            resolvable = False
         branch_node.conflict = EnrichedDiffConflict(
             uuid=conflict_uuid,
             base_branch_action=base_node.action,
@@ -84,6 +97,7 @@ class ConflictsEnricher:
             diff_branch_value=None,
             diff_branch_changed_at=branch_node.changed_at,
             selected_branch=selected_branch,
+            resolvable=resolvable,
         )
 
     def _add_attribute_conflicts(

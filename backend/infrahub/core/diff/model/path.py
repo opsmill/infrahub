@@ -129,6 +129,7 @@ class EnrichedDiffConflict:
     base_branch_changed_at: Timestamp | None = field(default=None, kw_only=True)
     diff_branch_changed_at: Timestamp | None = field(default=None, kw_only=True)
     selected_branch: ConflictSelection | None = field(default=None)
+    resolvable: bool = field(default=True)
 
 
 @dataclass

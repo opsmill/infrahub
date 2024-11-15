@@ -242,7 +242,7 @@ class BranchMerger:
         conflict_map = enriched_diff.get_all_conflicts()
         errors: list[str] = []
         for conflict_path, conflict in conflict_map.items():
-            if conflict.selected_branch is None:
+            if conflict.selected_branch is None or conflict.resolvable is False:
                 errors.append(conflict_path)
 
         if errors:

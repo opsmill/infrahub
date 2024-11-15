@@ -361,6 +361,7 @@ class EnrichedDiffDeserializer:
             node=diff_conflict_node, property_name="diff_branch_changed_at"
         )
         selected_branch = self._get_str_or_none_property_value(node=diff_conflict_node, property_name="selected_branch")
+        resolvable = str(diff_conflict_node.get("resolvable")).lower() == "true"
         return EnrichedDiffConflict(
             uuid=str(diff_conflict_node.get("uuid")),
             base_branch_action=DiffAction(str(diff_conflict_node.get("base_branch_action"))),
@@ -372,4 +373,5 @@ class EnrichedDiffDeserializer:
             diff_branch_label=diff_branch_label,
             diff_branch_changed_at=Timestamp(diff_timestamp_str) if diff_timestamp_str else None,
             selected_branch=ConflictSelection(selected_branch) if selected_branch else None,
+            resolvable=resolvable,
         )
