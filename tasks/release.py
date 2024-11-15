@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from invoke import Context, task
-from ruamel.yaml.main import YAML
 from semver import Version
 
 from tasks.shared import init_yaml_obj

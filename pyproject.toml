@@ -654,7 +654,8 @@ allow-dunder-method-names = [
 
 package = "infrahub"
 directory = "changelog"
-filename = "CHANGELOG.md"
+single_file = false
+filename = "changelog/infrahub-v{version}.md"
 start_string = "<!-- towncrier release notes start -->\n"
 underlines = ["", "", ""]
 title_format = "## [Infrahub - v{version}](https://github.com/opsmill/infrahub/tree/infrahub-v{version}) - {project_date}"
