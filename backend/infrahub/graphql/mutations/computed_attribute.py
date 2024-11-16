@@ -87,9 +87,9 @@ class UpdateComputedAttribute(Mutation):
                 identifier=str(data.id),
                 message="The indicated not does not have the specified attribute_name",
             )
-
-        attribute_field.value = str(data.value)
-        await target_node.save(db=context.db)
+        if attribute_field.value != str(data.value):
+            attribute_field.value = str(data.value)
+            await target_node.save(db=context.db)
 
         result: dict[str, Any] = {"ok": True}
 

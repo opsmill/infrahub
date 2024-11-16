@@ -22,6 +22,16 @@ TSHIRT = NodeSchema(
                 jinja2_template="A {{color__name__value }} {{ name__value}} t-shirt. {{ color__description__value }}",
             ),
         ),
+        AttributeSchema(
+            name="pitch",
+            kind="Text",
+            optional=True,
+            read_only=True,
+            computed_attribute=ComputedAttribute(
+                kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+                transform="TShirtPitch",
+            ),
+        ),
     ],
     relationships=[
         RelationshipSchema(

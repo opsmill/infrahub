@@ -12,17 +12,26 @@ from prefect.events.schemas.automations import EventTrigger, Posture
 from prefect.events.schemas.events import ResourceSpecification
 from prefect.logging import get_run_logger
 
-from infrahub.core.constants import ComputedAttributeKind
+from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.git.repository import get_initialized_repo
 from infrahub.services import services
 from infrahub.support.macro import MacroDefinition
 from infrahub.tasks.registry import refresh_branches
-from infrahub.workflows.catalogue import PROCESS_COMPUTED_MACRO, UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM
+from infrahub.workflows.catalogue import (
+    PROCESS_COMPUTED_MACRO,
+    QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
+    UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
+)
 from infrahub.workflows.utils import add_branch_tag
 
-from .constants import AUTOMATION_NAME, AUTOMATION_NAME_PREFIX
-from .models import ComputedAttributeAutomations, PythonTransformComputedAttribute
+from .constants import (
+    PROCESS_AUTOMATION_NAME,
+    PROCESS_AUTOMATION_NAME_PREFIX,
+    QUERY_AUTOMATION_NAME,
+    QUERY_AUTOMATION_NAME_PREFIX,
+)
+from .models import ComputedAttributeAutomations, PythonTransformComputedAttribute, PythonTransformTarget
 
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
@@ -43,7 +52,10 @@ mutation UpdateAttribute(
 """
 
 
-@flow(name="process_computed_attribute_transform", flow_run_name="Process computed attribute on branch {branch_name}")
+@flow(
+    name="process_computed_attribute_transform",
+    flow_run_name="Process computed attribute on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
+)
 async def process_transform(
     branch_name: str,
     node_kind: str,
@@ -225,8 +237,8 @@ async def computed_attribute_setup() -> None:
             scope = "default"
 
             automation = AutomationCore(
-                name=AUTOMATION_NAME.format(
-                    prefix=AUTOMATION_NAME_PREFIX, identifier=computed_attribute.key_name, scope=scope
+                name=PROCESS_AUTOMATION_NAME.format(
+                    prefix=PROCESS_AUTOMATION_NAME_PREFIX, identifier=computed_attribute.key_name, scope=scope
                 ),
                 description=f"Process value of the computed attribute for {computed_attribute.key_name} [{scope}]",
                 enabled=True,
@@ -313,25 +325,35 @@ async def computed_attribute_setup_python() -> None:
             item.name: item
             for item in await client.read_deployments(
                 deployment_filter=DeploymentFilter(
-                    name=DeploymentFilterName(any_=[UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM.name])
+                    name=DeploymentFilterName(
+                        any_=[UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM.name, QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS.name]
+                    )
                 )
             )
         }
         if UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM.name not in deployments:
             raise ValueError("Unable to find the deployment for UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM")
+        if QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS.name not in deployments:
+            raise ValueError("Unable to find the deployment for QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS")
 
         deployment_id_python = deployments[UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM.name].id
+        deployment_id_query = deployments[QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS.name].id
 
         automations = await client.read_automations()
-        existing_computed_attr_automations = ComputedAttributeAutomations.from_prefect(automations=automations)
+        existing_computed_attr_process_automations = ComputedAttributeAutomations.from_prefect(
+            automations=automations, prefix=PROCESS_AUTOMATION_NAME_PREFIX
+        )
+        existing_computed_attr_query_automations = ComputedAttributeAutomations.from_prefect(
+            automations=automations, prefix=QUERY_AUTOMATION_NAME_PREFIX
+        )
 
         for computed_attribute in computed_attributes:
             log.info(f"processing {computed_attribute.computed_attribute.key_name}")
             scope = "default"
 
             automation = AutomationCore(
-                name=AUTOMATION_NAME.format(
-                    prefix=AUTOMATION_NAME_PREFIX,
+                name=PROCESS_AUTOMATION_NAME.format(
+                    prefix=PROCESS_AUTOMATION_NAME_PREFIX,
                     identifier=computed_attribute.computed_attribute.key_name,
                     scope=scope,
                 ),
@@ -360,14 +382,115 @@ async def computed_attribute_setup_python() -> None:
                 ],
             )
 
-            if existing_computed_attr_automations.has(
+            if existing_computed_attr_process_automations.has(
                 identifier=computed_attribute.computed_attribute.key_name, scope=scope
             ):
-                existing = existing_computed_attr_automations.get(
+                existing = existing_computed_attr_process_automations.get(
                     identifier=computed_attribute.computed_attribute.key_name, scope=scope
                 )
                 await client.update_automation(automation_id=existing.id, automation=automation)
-                log.info(f"{computed_attribute.computed_attribute.key_name} Updated")
+                log.info(f"Process {computed_attribute.computed_attribute.key_name} Updated")
             else:
                 await client.create_automation(automation=automation)
-                log.info(f"{computed_attribute.computed_attribute.key_name} Created")
+                log.info(f"Process {computed_attribute.computed_attribute.key_name} Created")
+
+            automation = AutomationCore(
+                name=QUERY_AUTOMATION_NAME.format(
+                    prefix=QUERY_AUTOMATION_NAME_PREFIX,
+                    identifier=computed_attribute.computed_attribute.key_name,
+                    scope=scope,
+                ),
+                description=f"Query the computed attribute targets for {computed_attribute.computed_attribute.key_name} [{scope}]",
+                enabled=True,
+                trigger=EventTrigger(
+                    posture=Posture.Reactive,
+                    expect={"infrahub.node.*"},
+                    within=timedelta(0),
+                    match=ResourceSpecification({"infrahub.node.kind": computed_attribute.query_models}),
+                    threshold=1,
+                ),
+                actions=[
+                    RunDeployment(
+                        source="selected",
+                        deployment_id=deployment_id_query,
+                        parameters={
+                            "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                            "node_kind": "{{ event.resource['infrahub.node.kind'] }}",
+                            "object_id": "{{ event.resource['infrahub.node.id'] }}",
+                        },
+                        job_variables={},
+                    )
+                ],
+            )
+
+            if existing_computed_attr_query_automations.has(
+                identifier=computed_attribute.computed_attribute.key_name, scope=scope
+            ):
+                existing = existing_computed_attr_query_automations.get(
+                    identifier=computed_attribute.computed_attribute.key_name, scope=scope
+                )
+                await client.update_automation(automation_id=existing.id, automation=automation)
+                log.info(f"Query {computed_attribute.computed_attribute.key_name} Updated")
+            else:
+                await client.create_automation(automation=automation)
+                log.info(f"Query {computed_attribute.computed_attribute.key_name} Created")
+
+
+@flow(
+    name="query-computed-attribute-transform-targets",
+    flow_run_name="Query for potential targets of computed attributes in branch {branch_name} for {node_kind}",
+)
+async def query_transform_targets(
+    branch_name: str,
+    node_kind: str,  # pylint: disable=unused-argument
+    object_id: str,
+) -> None:
+    await add_branch_tag(branch_name=branch_name)
+    service = services.service
+    schema_branch = registry.schema.get_schema_branch(name=branch_name)
+    targets = await service.client.execute_graphql(
+        query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS, variables={"members": [object_id]}
+    )
+
+    subscribers: list[PythonTransformTarget] = []
+
+    for group in targets[InfrahubKind.GRAPHQLQUERYGROUP]["edges"]:
+        for subscriber in group["node"]["subscribers"]["edges"]:
+            subscribers.append(
+                PythonTransformTarget(object_id=subscriber["node"]["id"], kind=subscriber["node"]["__typename"])
+            )
+
+    nodes_with_computed_attributes = schema_branch.computed_attributes.get_python_attributes_per_node()
+    for subscriber in subscribers:
+        if subscriber.kind in nodes_with_computed_attributes:
+            for computed_attribute in nodes_with_computed_attributes[subscriber.kind]:
+                await service.workflow.submit_workflow(
+                    workflow=UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
+                    parameters={
+                        "branch_name": branch_name,
+                        "node_kind": subscriber.kind,
+                        "object_id": subscriber.object_id,
+                        "computed_attribute_name": computed_attribute.name,
+                        "computed_attribute_kind": subscriber.kind,
+                    },
+                )
+
+
+GATHER_GRAPHQL_QUERY_SUBSCRIBERS = """
+query GatherGraphQLQuerySubscribers($members: [ID!]) {
+  CoreGraphQLQueryGroup(members__ids: $members) {
+    edges {
+      node {
+        subscribers {
+          edges {
+            node {
+              id
+              __typename
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""

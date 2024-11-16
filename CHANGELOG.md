@@ -11,6 +11,30 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [1.0.5](https://github.com/opsmill/infrahub/tree/v1.0.5) - 2024-11-15
+
+### Fixed
+
+- Node attribute name can now be `type` ([#4381](https://github.com/opsmill/infrahub/issues/4381))
+
+## [1.0.4](https://github.com/opsmill/infrahub/tree/v1.0.4) - 2024-11-13
+
+### Fixed
+
+- Profiles now have a Human-Friendly Identifier (HFID) defined based on `profile_name` ([#4758](https://github.com/opsmill/infrahub/issues/4758))
+- Workers out of sync after deleting node from schema ([[#4836](https://github.com/opsmill/infrahub/issues/4836)])
+- Infrahub returns a proper error message when trying to load a schema with generic with the same Kind as an existing node ([#4837](https://github.com/opsmill/infrahub/issues/4837))
+- Default to using HTTP GET for UserInfo endpoints (OAuth2/OIDC) ([#4898](https://github.com/opsmill/infrahub/issues/4898))
+- Remove Profile in registry for renamed schema nodes ([#4909](https://github.com/opsmill/infrahub/issues/4909))
+
+## [1.0.3](https://github.com/opsmill/infrahub/tree/v1.0.2) - 2024-11-08
+
+### Fixed
+
+- Fix hierarchical schema update logic to correctly update peer on parent relationship of new node ([#4838](https://github.com/opsmill/infrahub/issues/4838))
+- Fix hierarchical schema update logic to correctly update peer on parent of new child node ([#4839](https://github.com/opsmill/infrahub/issues/4839))
+- Define the version of numpy to install in pyproject.toml
+
 ## [1.0.2](https://github.com/opsmill/infrahub/tree/v1.0.2) - 2024-11-06
 
 ### Fixed

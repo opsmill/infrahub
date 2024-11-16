@@ -259,7 +259,7 @@ class InfrahubMutationMixin:
             operation=cls.__name__, node_id=node_id, account_session=context.account_session, fields=fields
         )
 
-        await obj.save(db=db)
+        await obj.save(db=db, fields=fields)
         obj = await cls._refresh_for_profile_update(
             db=db, branch=branch, obj=obj, previous_profile_ids=before_mutate_profile_ids
         )

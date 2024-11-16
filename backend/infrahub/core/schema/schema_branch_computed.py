@@ -84,6 +84,9 @@ class ComputedAttributes:
         """Return kinds that have Python attributes defined"""
         return list(self._computed_python_transform_attribute_map.keys())
 
+    def get_python_attributes_per_node(self) -> dict[str, list[AttributeSchema]]:
+        return self._computed_python_transform_attribute_map
+
     @property
     def python_attributes_by_transform(self) -> dict[str, list[PythonDefinition]]:
         computed_attributes: dict[str, list[PythonDefinition]] = {}

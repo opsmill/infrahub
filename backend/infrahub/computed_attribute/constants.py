@@ -1,3 +1,5 @@
-AUTOMATION_NAME_PREFIX = "Computed-attribute-process"
+PROCESS_AUTOMATION_NAME_PREFIX = "Computed-attribute-process"
+QUERY_AUTOMATION_NAME_PREFIX = "Computed-attribute-query"
 
-AUTOMATION_NAME = AUTOMATION_NAME_PREFIX + "::{identifier}::{scope}"
+PROCESS_AUTOMATION_NAME = PROCESS_AUTOMATION_NAME_PREFIX + "::{identifier}::{scope}"
+QUERY_AUTOMATION_NAME = QUERY_AUTOMATION_NAME_PREFIX + "::{identifier}::{scope}"

@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.workflows.catalogue import workflows
+from infrahub.workflows import catalogue
+from infrahub.workflows.catalogue import automation_setup_workflows, worker_pools, workflows
 
 if TYPE_CHECKING:
     from infrahub.workflows.models import WorkflowDefinition
@@ -31,3 +32,20 @@ def test_workflow_definition_flow_names() -> None:
     name_counter = Counter(flow_names)
     duplicates = [name for name, count in name_counter.items() if count > 1]
     assert not duplicates, f"Duplicate flow names found: {', '.join(duplicates)}"
+
+
+def test_workflows_sorted() -> None:
+    workflow_names = sorted(name for name in dir(catalogue) if name.isupper())
+    ordered_workflows = [getattr(catalogue, name) for name in workflow_names]
+    for worker_pool in worker_pools:
+        if worker_pool in ordered_workflows:
+            ordered_workflows.remove(worker_pool)
+    assert ordered_workflows == workflows, "The list of workflows isn't sorted alphabetically"
+
+
+def test_automation_setup_workflows_sorted() -> None:
+    workflow_names = sorted(name for name in dir(catalogue) if name.isupper() and name.startswith("AUTOMATION_"))
+    ordered_workflows = [getattr(catalogue, name) for name in workflow_names]
+    assert (
+        ordered_workflows == automation_setup_workflows
+    ), "The list of automation workflows isn't sorted alphabetically"

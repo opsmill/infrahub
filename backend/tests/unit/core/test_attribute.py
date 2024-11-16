@@ -24,6 +24,7 @@ from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
 
 
 async def test_init(
@@ -628,7 +629,7 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, critical
         "source": {
             "id": first_account.id,
             "display_label": "First Account",
-            "type": InfrahubKind.ACCOUNT,
+            KIND_GRAPHQL_FIELD_NAME: InfrahubKind.ACCOUNT,
         },
         "value": "mystring",
     }
@@ -680,7 +681,7 @@ async def test_to_graphql_no_fields(
             "__typename": InfrahubKind.ACCOUNT,
             "display_label": "First Account",
             "id": first_account.id,
-            "type": InfrahubKind.ACCOUNT,
+            KIND_GRAPHQL_FIELD_NAME: InfrahubKind.ACCOUNT,
         },
         "value": "mystring",
     }

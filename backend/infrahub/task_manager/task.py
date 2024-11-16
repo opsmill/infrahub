@@ -245,7 +245,7 @@ class PrefectTask:
                                 "state": flow.state_type,
                                 "progress": progress_flow.data.get(flow.id, None),
                                 "parameters": flow.parameters,
-                                "branch": cls._extract_branch_name(flow=flow),
+                                "branch": await cls._extract_branch_name(flow=flow),
                                 "tags": flow.tags,
                                 "workflow": workflow_names.get(flow.flow_id, None),
                                 "related_node": related_nodes_info.id.get(flow.id, None),
