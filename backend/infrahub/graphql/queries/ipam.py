@@ -11,7 +11,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.query.ipam import get_ip_addresses, get_subnets
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.pools.address import get_available
-from infrahub.pools.prefix import get_next_available_prefix, get_prefix_type
+from infrahub.pools.prefix import get_next_available_prefix
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -97,8 +97,8 @@ class IPPrefixGetNextAvailable(ObjectType):
         for subnet in subnets:
             pool.remove(addr=str(subnet.prefix))
 
-        prefix_type = get_prefix_type(prefix.prefix.value)
-        next_available = get_next_available_prefix(pool=pool, prefix_length=prefix_length, prefix_type=prefix_type)
+        prefix_ver = ipaddress.ip_network(prefix.prefix.value).version
+        next_available = get_next_available_prefix(pool=pool, prefix_length=prefix_length, prefix_ver=prefix_ver)
 
         return {"prefix": str(next_available)}
 

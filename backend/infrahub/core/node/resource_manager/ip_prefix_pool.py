@@ -12,7 +12,7 @@ from infrahub.core.query.resource_manager import (
     PrefixPoolGetReserved,
     PrefixPoolSetReserved,
 )
-from infrahub.pools.prefix import get_next_available_prefix, get_prefix_type
+from infrahub.pools.prefix import get_next_available_prefix
 
 from .. import Node
 
@@ -102,8 +102,8 @@ class CoreIPPrefixPool(Node):
                 pool.remove(addr=str(subnet.prefix))
 
             try:
-                prefix_type = get_prefix_type(resource.prefix.value)
-                next_available = get_next_available_prefix(pool=pool, prefix_length=prefixlen, prefix_type=prefix_type)
+                prefix_ver = ipaddress.ip_network(resource.prefix.value).version
+                next_available = get_next_available_prefix(pool=pool, prefix_length=prefixlen, prefix_ver=prefix_ver)
                 return next_available
             except IndexError:
                 continue
