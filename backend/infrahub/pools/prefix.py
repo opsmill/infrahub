@@ -15,7 +15,7 @@ def get_next_available_prefix(pool: IPSet, prefix_length: int, prefix_ver: Liter
     Args:
         pool: netaddr IPSet object with available subnets
         prefix_length: length of the desired prefix
-        prefix_type: IPSet can contain a mix of IPv4 and IPv6 subnets. This parameter specifies the type of prefix to acquire.
+        prefix_ver: IPSet can contain a mix of IPv4 and IPv6 subnets. This parameter specifies the IP version of prefix to acquire.
 
     Raises:
         ValueError: If there are no available subnets in the pool
