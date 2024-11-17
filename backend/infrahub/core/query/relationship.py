@@ -439,7 +439,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         self.params["destination_id"] = self.destination_id
         self.params["rel_id"] = self.rel.id
         self.params["branch"] = self.branch.name
-        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["branch_names"] = self.branch.get_branches_in_scope()
         self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.DELETED)
         self.params["at"] = self.at.to_string()
 
@@ -455,30 +455,50 @@ class RelationshipDeleteQuery(RelationshipQuery):
         CALL {
             WITH rl
             MATCH (rl)-[edge:IS_VISIBLE]->(visible)
-            WHERE edge.to IS NULL AND edge.status = "active"
-            SET edge.to = $at
+            WHERE edge.branch IN $branch_names AND edge.to IS NULL AND edge.status = "active"
+            WITH rl, edge, visible
+            ORDER BY edge.branch_level DESC
+            LIMIT 1
             CREATE (rl)-[deleted_edge:IS_VISIBLE $rel_prop]->(visible)
+            WITH edge
+            WHERE edge.branch = $branch
+            SET edge.to = $at
         }
         CALL {
             WITH rl
             MATCH (rl)-[edge:IS_PROTECTED]->(protected)
-            WHERE edge.to IS NULL AND edge.status = "active"
-            SET edge.to = $at
+            WHERE edge.branch IN $branch_names AND edge.to IS NULL AND edge.status = "active"
+            WITH rl, edge, protected
+            ORDER BY edge.branch_level DESC
+            LIMIT 1
             CREATE (rl)-[deleted_edge:IS_PROTECTED $rel_prop]->(protected)
+            WITH edge
+            WHERE edge.branch = $branch
+            SET edge.to = $at
         }
         CALL {
             WITH rl
             MATCH (rl)-[edge:HAS_OWNER]->(owner_node)
-            WHERE edge.to IS NULL AND edge.status = "active"
-            SET edge.to = $at
+            WHERE edge.branch IN $branch_names AND edge.to IS NULL AND edge.status = "active"
+            WITH rl, edge, owner_node
+            ORDER BY edge.branch_level DESC
+            LIMIT 1
             CREATE (rl)-[deleted_edge:HAS_OWNER $rel_prop]->(owner_node)
+            WITH edge
+            WHERE edge.branch = $branch
+            SET edge.to = $at
         }
         CALL {
             WITH rl
             MATCH (rl)-[edge:HAS_SOURCE]->(source_node)
-            WHERE edge.to IS NULL AND edge.status = "active"
-            SET edge.to = $at
+            WHERE edge.branch IN $branch_names AND edge.to IS NULL AND edge.status = "active"
+            WITH rl, edge, source_node
+            ORDER BY edge.branch_level DESC
+            LIMIT 1
             CREATE (rl)-[deleted_edge:HAS_SOURCE $rel_prop]->(source_node)
+            WITH edge
+            WHERE edge.branch = $branch
+            SET edge.to = $at
         }
         """ % (
             r1,
