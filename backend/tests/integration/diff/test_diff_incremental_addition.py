@@ -264,7 +264,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             diff_branch=diff_branch,
             from_time=incremental_diff.from_time,
             to_time=incremental_diff.to_time,
-            name=str(uuid4),
+            name=str(uuid4()),
         )
         await self.validate_diff_data_02(db=db, enriched_diff=full_diff, initial_dataset=initial_dataset)
 
@@ -316,11 +316,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert protected_prop.previous_value == "True"
         assert str(protected_prop.new_value) == "False"
         assert protected_prop.action is DiffAction.UPDATED
-        assert protected_prop.conflict
-        assert protected_prop.conflict.base_branch_action is DiffAction.UPDATED
-        assert str(protected_prop.conflict.base_branch_value) == "True"
-        assert protected_prop.conflict.diff_branch_action is DiffAction.UPDATED
-        assert str(protected_prop.conflict.diff_branch_value) == "False"
+        assert not protected_prop.conflict
 
     async def test_add_new_peer_on_main(
         self,
@@ -342,7 +338,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             diff_branch=diff_branch,
             from_time=Timestamp(diff_branch.branched_from),
             to_time=Timestamp(),
-            name=str(uuid4),
+            name=str(uuid4()),
         )
         await self.validate_diff_data_03(
             db=db, default_branch=default_branch, enriched_diff=full_diff, initial_dataset=initial_dataset
@@ -384,18 +380,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert rel_element.conflict.diff_branch_value == marty.get_id()
         properties_by_type = {p.property_type: p for p in rel_element.properties}
         # is_visible is still true, although on a different peeer
-        assert set(properties_by_type.keys()) == {DatabaseEdgeType.IS_RELATED, DatabaseEdgeType.IS_PROTECTED}
+        assert set(properties_by_type.keys()) == {DatabaseEdgeType.IS_RELATED}
         related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.previous_value == doc_brown.get_id()
         assert related_prop.new_value == marty.get_id()
         assert related_prop.action is DiffAction.UPDATED
         assert related_prop.conflict is None
-        protected_prop = properties_by_type[DatabaseEdgeType.IS_PROTECTED]
-        assert protected_prop.previous_value == "True"
-        assert protected_prop.new_value == "True"
-        assert protected_prop.action is DiffAction.UPDATED
-        # no conflict b/c both have been updated to the same value
-        assert protected_prop.conflict is None
 
     async def test_update_previous_owner_protected_on_branch(
         self,
@@ -415,7 +405,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             diff_branch=diff_branch,
             from_time=Timestamp(diff_branch.branched_from),
             to_time=Timestamp(),
-            name=str(uuid4),
+            name=str(uuid4()),
         )
         await self.validate_diff_data_04(db=db, enriched_diff=full_diff, initial_dataset=initial_dataset)
 
@@ -460,21 +450,16 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             DatabaseEdgeType.IS_PROTECTED,
             DatabaseEdgeType.IS_VISIBLE,
         }
-        related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
-        assert related_prop.previous_value == doc_brown.get_id()
-        assert related_prop.new_value is None
-        assert related_prop.action is DiffAction.REMOVED
-        assert related_prop.conflict is None
-        for prop_type in (DatabaseEdgeType.IS_PROTECTED, DatabaseEdgeType.IS_VISIBLE):
-            protected_prop = properties_by_type[prop_type]
-            assert protected_prop.previous_value == "True"
-            assert protected_prop.new_value is None
-            assert protected_prop.action is DiffAction.REMOVED
-            assert protected_prop.conflict
-            assert protected_prop.conflict.base_branch_action is DiffAction.UPDATED
-            assert protected_prop.conflict.base_branch_value == "True"
-            assert protected_prop.conflict.diff_branch_action is DiffAction.REMOVED
-            assert protected_prop.conflict.diff_branch_value is None
+        for prop_type, previous_value in (
+            (DatabaseEdgeType.IS_RELATED, doc_brown.get_id()),
+            (DatabaseEdgeType.IS_VISIBLE, "True"),
+            (DatabaseEdgeType.IS_PROTECTED, "True"),
+        ):
+            diff_prop = properties_by_type[prop_type]
+            assert diff_prop.previous_value == previous_value
+            assert diff_prop.new_value is None
+            assert diff_prop.action is DiffAction.REMOVED
+            assert diff_prop.conflict is None
 
     async def test_remove_previous_owner_on_branch(
         self,
@@ -494,7 +479,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             diff_branch=diff_branch,
             from_time=Timestamp(diff_branch.branched_from),
             to_time=Timestamp(),
-            name=str(uuid4),
+            name=str(uuid4()),
         )
         await self.validate_diff_data_05(db=db, enriched_diff=full_diff, initial_dataset=initial_dataset)
 
@@ -564,6 +549,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             diff_branch=diff_branch,
             from_time=Timestamp(diff_branch.branched_from),
             to_time=Timestamp(),
-            name=str(uuid4),
+            name=str(uuid4()),
         )
         await self.validate_diff_data_06(db=db, enriched_diff=full_diff, initial_dataset=initial_dataset)

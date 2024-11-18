@@ -132,7 +132,13 @@ class TestDiffMerge(TestInfrahubApp):
         owner_peer = await delorean_main.owner.get_peer(db=db)
         assert owner_peer.get_id() == marty_id
 
-    @pytest.mark.parametrize("delete_on_branch", (True, False))
+    @pytest.mark.parametrize(
+        "delete_on_branch",
+        (
+            True,
+            False,
+        ),
+    )
     async def test_node_delete_conflict(
         self,
         db: InfrahubDatabase,

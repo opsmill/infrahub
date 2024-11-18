@@ -167,7 +167,7 @@ class DiffAttributeIntermediate(TrackedStatusUpdates):
             if include_unchanged or diff_prop.action is not DiffAction.UNCHANGED:
                 properties.append(diff_prop)
         action, changed_at = self.get_action_and_timestamp(from_time=from_time)
-        if not properties:
+        if not properties or all(p.action is DiffAction.UNCHANGED for p in properties):
             action = DiffAction.UNCHANGED
         return DiffAttribute(
             uuid=self.uuid, name=self.name, changed_at=changed_at, action=action, properties=properties
@@ -292,7 +292,7 @@ class DiffSingleRelationshipIntermediate:
         ):
             peer_final_property.action = DiffAction.UNCHANGED
             peer_final_property.new_value = peer_id
-        if last_changed_at < from_time:
+        if last_changed_at < from_time or all(fp.action is DiffAction.UNCHANGED for fp in final_properties):
             action = DiffAction.UNCHANGED
         elif peer_final_property.action in (DiffAction.ADDED, DiffAction.REMOVED):
             action = peer_final_property.action
@@ -363,7 +363,7 @@ class DiffRelationshipIntermediate:
         last_changed_relationship = max(single_relationships, key=lambda r: r.changed_at)
         last_changed_at = last_changed_relationship.changed_at
         action = DiffAction.UPDATED
-        if last_changed_at < from_time:
+        if last_changed_at < from_time or all(sr.action is DiffAction.UNCHANGED for sr in single_relationships):
             action = DiffAction.UNCHANGED
         # if parent_removed:
         #     action = DiffAction.REMOVED
@@ -403,6 +403,10 @@ class DiffNodeIntermediate(TrackedStatusUpdates):
             if include_unchanged or diff_rel.action is not DiffAction.UNCHANGED:
                 relationships.append(diff_rel)
         if not attributes and not relationships:
+            action = DiffAction.UNCHANGED
+        if all(a.action is DiffAction.UNCHANGED for a in attributes) and all(
+            r.action is DiffAction.UNCHANGED for r in relationships
+        ):
             action = DiffAction.UNCHANGED
         if self.force_action:
             action = self.force_action
@@ -695,5 +699,7 @@ class DiffQueryParser:
             else:
                 from_time = self.from_time
             self._final_diff_root_by_branch[branch] = diff_root_intermediate.to_diff_root(
-                from_time=from_time, to_time=self.to_time, include_unchanged=include_unchanged
+                from_time=from_time,
+                to_time=self.to_time,
+                include_unchanged=include_unchanged,
             )
