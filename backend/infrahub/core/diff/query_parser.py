@@ -496,7 +496,6 @@ class DiffQueryParser:
         if len(self._diff_root_by_branch) > 1:
             self._apply_base_branch_previous_values()
             self._remove_empty_base_diff_root()
-        include_unchanged = False
         self._finalize(include_unchanged=include_unchanged)
 
     def _parse_path(self, database_path: DatabasePath) -> None:
