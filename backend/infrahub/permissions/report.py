@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, InfrahubKind, PermissionDecision
+from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.permissions.constants import AssignedPermissions, BranchRelativePermissionDecision, PermissionDecisionFlag
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
@@ -29,7 +30,7 @@ def get_permission_report(  # noqa: PLR0911
 
     if action != "view":
         if node.kind in (InfrahubKind.ACCOUNTGROUP, InfrahubKind.ACCOUNTROLE, InfrahubKind.GENERICACCOUNT) or (
-            node.inherit_from and InfrahubKind.GENERICACCOUNT in node.inherit_from
+            isinstance(node, NodeSchema) and InfrahubKind.GENERICACCOUNT in node.inherit_from
         ):
             return (
                 BranchRelativePermissionDecision.ALLOW
@@ -37,7 +38,7 @@ def get_permission_report(  # noqa: PLR0911
                 else BranchRelativePermissionDecision.DENY
             )
         if node.kind in (InfrahubKind.BASEPERMISSION, InfrahubKind.GLOBALPERMISSION, InfrahubKind.OBJECTPERMISSION) or (
-            node.inherit_from and InfrahubKind.BASEPERMISSION in node.inherit_from
+            isinstance(node, NodeSchema) and InfrahubKind.BASEPERMISSION in node.inherit_from
         ):
             return (
                 BranchRelativePermissionDecision.ALLOW
@@ -45,7 +46,7 @@ def get_permission_report(  # noqa: PLR0911
                 else BranchRelativePermissionDecision.DENY
             )
         if node.kind in (InfrahubKind.GENERICREPOSITORY, InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY) or (
-            node.inherit_from and InfrahubKind.GENERICREPOSITORY in node.inherit_from
+            isinstance(node, NodeSchema) and InfrahubKind.GENERICREPOSITORY in node.inherit_from
         ):
             return (
                 BranchRelativePermissionDecision.ALLOW
