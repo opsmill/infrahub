@@ -457,7 +457,6 @@ ignore = [
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
     "ASYNC110", # Use `anyio.Event` instead of awaiting `anyio.sleep` in a `while` loop
-    "ASYNC230", # Async functions should not open files with blocking methods like `open`
     "ASYNC251", # Async functions should not call `time.sleep`
     "B007",     # Loop control variable not used within loop body
     "B008",     # Do not perform function call `Depends` in argument defaults;
