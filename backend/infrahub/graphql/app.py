@@ -5,6 +5,7 @@ This code has been forked from https://github.com/ciscorn/starlette-graphene3 in
 from __future__ import annotations
 
 import asyncio
+import time
 from inspect import isawaitable
 from typing import (
     TYPE_CHECKING,
@@ -184,7 +185,8 @@ class InfrahubGraphQLApp:
     ) -> JSONResponse:
         if request.app.state.response_delay:
             self.logger.info(f"Adding response delay of {request.app.state.response_delay} seconds")
-            await asyncio.sleep(request.app.state.response_delay)
+            # This is on purpose
+            time.sleep(request.app.state.response_delay)  # noqa: ASYNC251
 
         try:
             operations = await _get_operation_from_request(request)
