@@ -26,6 +26,9 @@ def get_permission_report(  # noqa: PLR0911
     action: str,
     global_permission_report: dict[GlobalPermissions, bool],
 ) -> BranchRelativePermissionDecision:
+    if global_permission_report[GlobalPermissions.SUPER_ADMIN]:
+        return BranchRelativePermissionDecision.ALLOW
+
     is_default_branch = branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
 
     if action != "view":
@@ -60,10 +63,6 @@ def get_permission_report(  # noqa: PLR0911
     decision = backend.report_object_permission(
         permissions=permissions["object_permissions"], namespace=node.namespace, name=node.name, action=action
     )
-
-    # What do we do if edit default branch global permission is set?
-    # if global_permission_report[GlobalPermissions.EDIT_DEFAULT_BRANCH]:
-    #     decision |= PermissionDecisionFlag.ALLOW_DEFAULT
 
     if (
         decision == PermissionDecisionFlag.ALLOW_ALL
