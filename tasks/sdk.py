@@ -5,10 +5,8 @@ from invoke import Context, task
 from invoke.runners import Result
 
 from .shared import (
-    BUILD_NAME,
     INFRAHUB_DATABASE,
     NBR_WORKERS,
-    build_test_compose_files_cmd,
     build_test_envs,
     execute_command,
     get_env_vars,
@@ -48,98 +46,65 @@ def format_all(context: Context) -> None:
 # Testing tasks
 # ----------------------------------------------------------------------------
 @task
-def ruff(context: Context, docker: bool = False) -> None:
+def ruff(context: Context) -> None:
     """Run ruff to check that Python files adherence to black standards."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_directory = MAIN_DIRECTORY_PATH
-    if not docker:
-        exec_cmd = f"ruff check --diff {exec_directory} --config {exec_directory}/pyproject.toml"
-
-    if docker:
-        exec_cmd = "ruff check --diff . --config pyproject.toml"
-        compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-            f" run --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
-        )
-        exec_directory = ESCAPED_REPO_PATH
-        print(exec_cmd)
+    exec_cmd = f"ruff check --diff {exec_directory} --config {exec_directory}/pyproject.toml"
 
     with context.cd(exec_directory):
         context.run(exec_cmd)
 
 
 @task
-def mypy(context: Context, docker: bool = False) -> None:
+def mypy(context: Context) -> None:
     """This will run mypy for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = "mypy --show-error-codes infrahub_sdk/"
     exec_directory = MAIN_DIRECTORY_PATH
 
-    if docker:
-        compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-            f" run --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
-        )
-        exec_directory = ESCAPED_REPO_PATH
-        print(exec_cmd)
-
     with context.cd(exec_directory):
         context.run(exec_cmd)
 
 
 @task
-def pylint(context: Context, docker: bool = False) -> None:
+def pylint(context: Context) -> None:
     """This will run pylint for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with pylint")
     exec_cmd = "pylint infrahub_sdk/"
     exec_directory = MAIN_DIRECTORY_PATH
 
-    if docker:
-        compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-            f" run --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
-        )
-        exec_directory = ESCAPED_REPO_PATH
-        print(exec_cmd)
-
     with context.cd(exec_directory):
         context.run(exec_cmd)
 
 
 @task
-def lint(context: Context, docker: bool = False) -> Optional[Result]:
+def lint(context: Context) -> Optional[Result]:
     """This will run all linter."""
-    ruff(context, docker=docker)
-    mypy(context, docker=docker)
-    pylint(context, docker=docker)
+    ruff(context)
+    mypy(context)
+    pylint(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 
 
 @task
 def test_unit(context: Context) -> Optional[Result]:
+    """Run unit tests for the Python SDK."""
     with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_test_compose_files_cmd(database=False)
-        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_sdk {MAIN_DIRECTORY}/tests/unit"
-        print(f"{base_cmd} {exec_cmd}")
-        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
+        return context.run(exec_cmd)
 
 
 @task(optional=["database"])
 def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
+    """Run integration tests for the Python SDK."""
     with context.cd(ESCAPED_REPO_PATH):
-        compose_files_cmd = build_test_compose_files_cmd(database=database)
-        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_sdk {MAIN_DIRECTORY}/tests/integration"
-        print(f"{base_cmd} {exec_cmd}")
-        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
+        return context.run(exec_cmd)
 
 
 @task(default=True)

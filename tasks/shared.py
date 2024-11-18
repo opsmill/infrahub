@@ -59,35 +59,6 @@ SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
 COMPOSE_FILES_DEPS = {False: "development/docker-compose-deps.yml", True: "development/docker-compose-deps-nats.yml"}
 
-TEST_COMPOSE_FILE = "development/docker-compose-test.yml"
-TEST_COMPOSE_FILES_MEMGRAPH = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-test-database-memgraph.yml",
-    "development/docker-compose-test-deps.yml",
-    TEST_COMPOSE_FILE,
-]
-TEST_COMPOSE_FILES_NEO4J = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-test-database-neo4j.yml",
-    "development/docker-compose-test-deps.yml",
-    TEST_COMPOSE_FILE,
-]
-
-TEST_SCALE_COMPOSE_FILE = "development/docker-compose-test-scale.yml"
-TEST_SCALE_COMPOSE_FILES_NEO4J = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-neo4j.yml",
-    "development/docker-compose-test-cache.yml",
-    TEST_SCALE_COMPOSE_FILE,
-]
-TEST_SCALE_COMPOSE_FILES_MEMGRAPH = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-memgraph.yml",
-    "development/docker-compose-test-cache.yml",
-    TEST_SCALE_COMPOSE_FILE,
-]
-TEST_SCALE_OVERRIDE_FILE_NAME = "development/docker-compose-test-scale-override.yml"
-
 IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
 REQUESTED_IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER")
 IMAGE_VER = REQUESTED_IMAGE_VER or "latest"
