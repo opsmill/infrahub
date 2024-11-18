@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import time
 import uuid
 from asyncio import Lock as LocalLock
@@ -127,6 +128,7 @@ class InfrahubLock:
         self.in_multi: bool = in_multi
         self.lock_type: str = "multi" if self.in_multi else "individual"
         self.acquire_time: Optional[int] = None
+        self.event = asyncio.Event()
 
         if not self.connection or (self.use_local is None and name.startswith("local.")):
             self.use_local = True
@@ -148,6 +150,7 @@ class InfrahubLock:
         traceback: Optional[TracebackType],
     ):
         await self.release()
+        self.event.set()
 
     async def acquire(self) -> None:
         with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, self.lock_type).time():
@@ -238,22 +241,13 @@ class InfrahubLockRegistry:
         return self.get(name=GLOBAL_INIT_LOCK)
 
     async def local_schema_wait(self) -> None:
-        await self.wait_until_available(name=LOCAL_SCHEMA_LOCK)
+        await self.get(name=LOCAL_SCHEMA_LOCK).event.wait()
 
     def global_schema_lock(self) -> InfrahubMultiLock:
         return InfrahubMultiLock(_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_SCHEMA_LOCK])
 
     def global_graph_lock(self) -> InfrahubMultiLock:
         return InfrahubMultiLock(_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK])
-
-    async def wait_until_available(self, name: str) -> None:
-        """Wait until a given lock is available.
-
-        This allow to block functions what shouldnt process during an event
-        but it's not a blocker if multiple of them happen at the same time.
-        """
-        while await self.get(name=name).locked():
-            await sleep(0.1)
 
 
 def initialize_lock(local_only: bool = False, service: Optional[InfrahubServices] = None) -> None:
