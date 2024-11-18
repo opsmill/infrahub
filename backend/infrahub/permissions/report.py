@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.permissions.constants import AssignedPermissions, BranchRelativePermissionDecision, PermissionDecisionFlag
 from infrahub.permissions.local_backend import LocalPermissionBackend
 
@@ -17,18 +17,43 @@ if TYPE_CHECKING:
     from infrahub.permissions.types import KindPermissions
 
 
-def get_permission_report(
+def get_permission_report(  # noqa: PLR0911
     backend: PermissionBackend,
     permissions: AssignedPermissions,
     branch: Branch,
     node: MainSchemaTypes,
     action: str,
-    is_super_admin: bool = False,
-    can_edit_default_branch: bool = False,  # pylint: disable=unused-argument
+    global_permission_report: dict[GlobalPermissions, bool],
 ) -> BranchRelativePermissionDecision:
     is_default_branch = branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
 
-    if is_super_admin:
+    if action != "view":
+        if node.kind in (InfrahubKind.ACCOUNTGROUP, InfrahubKind.ACCOUNTROLE, InfrahubKind.GENERICACCOUNT) or (
+            node.inherit_from and InfrahubKind.GENERICACCOUNT in node.inherit_from
+        ):
+            return (
+                BranchRelativePermissionDecision.ALLOW
+                if global_permission_report[GlobalPermissions.MANAGE_ACCOUNTS]
+                else BranchRelativePermissionDecision.DENY
+            )
+        if node.kind in (InfrahubKind.BASEPERMISSION, InfrahubKind.GLOBALPERMISSION, InfrahubKind.OBJECTPERMISSION) or (
+            node.inherit_from and InfrahubKind.BASEPERMISSION in node.inherit_from
+        ):
+            return (
+                BranchRelativePermissionDecision.ALLOW
+                if global_permission_report[GlobalPermissions.MANAGE_PERMISSIONS]
+                else BranchRelativePermissionDecision.DENY
+            )
+        if node.kind in (InfrahubKind.GENERICREPOSITORY, InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY) or (
+            node.inherit_from and InfrahubKind.GENERICREPOSITORY in node.inherit_from
+        ):
+            return (
+                BranchRelativePermissionDecision.ALLOW
+                if global_permission_report[GlobalPermissions.MANAGE_REPOSITORIES]
+                else BranchRelativePermissionDecision.DENY
+            )
+
+    if global_permission_report[GlobalPermissions.SUPER_ADMIN]:
         return BranchRelativePermissionDecision.ALLOW
 
     decision = backend.report_object_permission(
@@ -36,7 +61,7 @@ def get_permission_report(
     )
 
     # What do we do if edit default branch global permission is set?
-    # if can_edit_default_branch:
+    # if global_permission_report[GlobalPermissions.EDIT_DEFAULT_BRANCH]:
     #     decision |= PermissionDecisionFlag.ALLOW_DEFAULT
 
     if (
@@ -59,18 +84,12 @@ async def report_schema_permissions(
     perm_backend = LocalPermissionBackend()
     permissions = await perm_backend.load_permissions(db=db, account_session=account_session, branch=branch)
 
-    is_super_admin = perm_backend.resolve_global_permission(
-        permissions=permissions["global_permissions"],
-        permission_to_check=GlobalPermission(
-            action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
-        ),
-    )
-    can_edit_default_branch = perm_backend.resolve_global_permission(
-        permissions=permissions["global_permissions"],
-        permission_to_check=GlobalPermission(
-            action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
-        ),
-    )
+    global_permission_report: dict[GlobalPermissions, bool] = {}
+    for perm in GlobalPermissions:
+        global_permission_report[perm] = perm_backend.resolve_global_permission(
+            permissions=permissions["global_permissions"],
+            permission_to_check=GlobalPermission(action=perm.value, decision=PermissionDecision.ALLOW_ALL.value),
+        )
 
     permission_objects: list[KindPermissions] = []
     for node in schemas:
@@ -83,8 +102,7 @@ async def report_schema_permissions(
                     branch=branch,
                     node=node,
                     action="create",
-                    is_super_admin=is_super_admin,
-                    can_edit_default_branch=can_edit_default_branch,
+                    global_permission_report=global_permission_report,
                 ),
                 "delete": get_permission_report(
                     backend=perm_backend,
@@ -92,8 +110,7 @@ async def report_schema_permissions(
                     branch=branch,
                     node=node,
                     action="delete",
-                    is_super_admin=is_super_admin,
-                    can_edit_default_branch=can_edit_default_branch,
+                    global_permission_report=global_permission_report,
                 ),
                 "update": get_permission_report(
                     backend=perm_backend,
@@ -101,8 +118,7 @@ async def report_schema_permissions(
                     branch=branch,
                     node=node,
                     action="update",
-                    is_super_admin=is_super_admin,
-                    can_edit_default_branch=can_edit_default_branch,
+                    global_permission_report=global_permission_report,
                 ),
                 "view": get_permission_report(
                     backend=perm_backend,
@@ -110,8 +126,7 @@ async def report_schema_permissions(
                     branch=branch,
                     node=node,
                     action="view",
-                    is_super_admin=is_super_admin,
-                    can_edit_default_branch=can_edit_default_branch,
+                    global_permission_report=global_permission_report,
                 ),
             }
         )
