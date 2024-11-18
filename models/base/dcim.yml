@@ -184,12 +184,15 @@ nodes:
         unique: true
       - name: description
         kind: Text
-        description: "Combine device role and site name"
+        optional: true
+      - name: computed_description
+        kind: Text
+        description: Combine various attributes to provide a human frendly description of this device.
         computed_attribute:
           kind: Jinja2
           jinja2_template: "{{ type__value }} device used as {{ role__value }} on {{ site__name__value|lower }}"
         read_only: true
-        optional: true
+        optional: false
       - name: type
         kind: Text
       - name: status
