@@ -5,7 +5,6 @@ This code has been forked from https://github.com/ciscorn/starlette-graphene3 in
 from __future__ import annotations
 
 import asyncio
-import time
 from inspect import isawaitable
 from typing import (
     TYPE_CHECKING,
@@ -19,6 +18,7 @@ from typing import (
     cast,
 )
 
+import anyio
 import ujson
 from graphql import (
     ExecutionContext,
@@ -185,7 +185,7 @@ class InfrahubGraphQLApp:
     ) -> JSONResponse:
         if request.app.state.response_delay:
             self.logger.info(f"Adding response delay of {request.app.state.response_delay} seconds")
-            time.sleep(request.app.state.response_delay)
+            await anyio.sleep(request.app.state.response_delay)
 
         try:
             operations = await _get_operation_from_request(request)
