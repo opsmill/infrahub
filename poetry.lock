@@ -3480,13 +3480,13 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "prefect"
-version = "3.0.3"
+version = "3.1.2"
 description = "Workflow orchestration and management."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "prefect-3.0.3-py3-none-any.whl", hash = "sha256:3291a5e687ff968249ab8996702cbf07f665b96cc1b9b996dc4dfc975810a5bd"},
-    {file = "prefect-3.0.3.tar.gz", hash = "sha256:69759beb93f974467f13df9e31ff047b77c71b1dab5869ed67207ab477b7e1be"},
+    {file = "prefect-3.1.2-py3-none-any.whl", hash = "sha256:2d4c3e6769cc7eafb9a4d074775af40fd152d59d6ad05acb377f26691f283752"},
+    {file = "prefect-3.1.2.tar.gz", hash = "sha256:0f5f6e3396dd37cbb7b152022a37191d50f39c0cd4ee0149087ad2b752b607ea"},
 ]
 
 [package.dependencies]
@@ -3500,7 +3500,7 @@ cachetools = ">=5.3,<6.0"
 click = ">=8.0,<8.2"
 cloudpickle = ">=2.0,<4.0"
 coolname = ">=1.0.4,<3.0.0"
-croniter = ">=1.0.12,<4.0.0"
+croniter = ">=1.0.12,<5.0.0"
 cryptography = ">=36.0.1"
 dateparser = ">=1.1.1,<2.0.0"
 docker = ">=4.0,<8.0"
@@ -3516,6 +3516,7 @@ jinja2 = ">=3.0.0,<4.0.0"
 jinja2-humanize-extension = ">=0.4.0"
 jsonpatch = ">=1.32,<2.0"
 jsonschema = ">=4.0.0,<5.0.0"
+opentelemetry-api = ">=1.27.0,<2.0.0"
 orjson = ">=3.7,<4.0"
 packaging = ">=21.3,<24.3"
 pathspec = ">=0.8.0"
@@ -3524,7 +3525,7 @@ prometheus-client = ">=0.20.0"
 pydantic = ">=2.7,<3.0.0"
 pydantic-core = ">=2.12.0,<3.0.0"
 pydantic-extra-types = ">=2.8.2,<3.0.0"
-pydantic-settings = "*"
+pydantic-settings = ">2.2.1"
 python-dateutil = ">=2.8.2,<3.0.0"
 python-slugify = ">=5.0,<9.0"
 pytz = ">=2021.1,<2025"
@@ -3536,7 +3537,7 @@ rich = ">=11.0,<14.0"
 sniffio = ">=1.3.0,<2.0.0"
 sqlalchemy = {version = ">=2.0,<3.0.0", extras = ["asyncio"]}
 toml = ">=0.10.0"
-typer = ">=0.12.0,<0.12.2 || >0.12.2,<0.13.0"
+typer = ">=0.12.0,<0.12.2 || >0.12.2,<0.14.0"
 typing-extensions = ">=4.5.0,<5.0.0"
 ujson = ">=5.8.0,<6.0.0"
 uvicorn = ">=0.14.0,<0.29.0 || >0.29.0"
@@ -3549,13 +3550,14 @@ bitbucket = ["prefect-bitbucket (>=0.3.0rc1)"]
 dask = ["prefect-dask (>=0.3.0rc1)"]
 databricks = ["prefect-databricks (>=0.3.0rc1)"]
 dbt = ["prefect-dbt (>=0.6.0rc1)"]
-dev = ["cairosvg", "codespell (>=2.2.6)", "ipython", "jinja2", "mkdocs", "mkdocs-gen-files", "mkdocs-material", "mkdocstrings[python]", "moto (>=5)", "mypy (>=1.9.0)", "numpy", "pillow", "pluggy (>=1.4.0)", "pre-commit", "pytest (>7,<9)", "pytest-asyncio (>=0.18.2,!=0.22.0,<0.23.0)", "pytest-benchmark", "pytest-codspeed", "pytest-cov", "pytest-env", "pytest-flakefinder", "pytest-timeout", "pytest-xdist (>=3.6.1)", "pyyaml", "redis (>=5.0.1)", "respx", "ruff", "setuptools", "types-PyYAML", "types-cachetools", "uv (>=0.4.5)", "vale", "vermin", "virtualenv", "watchfiles"]
+dev = ["cairosvg", "codespell (>=2.2.6)", "ipython", "jinja2", "mkdocs", "mkdocs-gen-files", "mkdocs-material", "mkdocstrings[python]", "moto (>=5)", "mypy (>=1.9.0)", "numpy", "opentelemetry-distro (>=0.48b0,<1.0.0)", "opentelemetry-exporter-otlp (>=1.27.0,<2.0.0)", "opentelemetry-instrumentation (>=0.48b0,<1.0.0)", "opentelemetry-instrumentation-logging (>=0.48b0,<1.0.0)", "opentelemetry-test-utils (>=0.48b0,<1.0.0)", "pillow", "pluggy (>=1.4.0)", "pre-commit", "pytest (>=8.3)", "pytest-asyncio (>=0.24)", "pytest-benchmark", "pytest-cov", "pytest-env", "pytest-flakefinder", "pytest-timeout", "pytest-xdist (>=3.6.1)", "pyyaml", "redis (>=5.0.1)", "respx", "ruff", "setuptools", "types-PyYAML", "types-cachetools", "uv (>=0.4.5)", "vale", "vermin", "virtualenv", "watchfiles"]
 docker = ["prefect-docker (>=0.6.0rc1)"]
 email = ["prefect-email (>=0.4.0rc1)"]
 gcp = ["prefect-gcp (>=0.6.0rc1)"]
 github = ["prefect-github (>=0.3.0rc1)"]
 gitlab = ["prefect-gitlab (>=0.3.0rc1)"]
 kubernetes = ["prefect-kubernetes (>=0.4.0rc1)"]
+otel = ["opentelemetry-distro (>=0.48b0,<1.0.0)", "opentelemetry-exporter-otlp (>=1.27.0,<2.0.0)", "opentelemetry-instrumentation (>=0.48b0,<1.0.0)", "opentelemetry-instrumentation-logging (>=0.48b0,<1.0.0)"]
 ray = ["prefect-ray (>=0.4.0rc1)"]
 redis = ["prefect-redis (>=0.2.0)"]
 shell = ["prefect-shell (>=0.3.0rc1)"]
@@ -5792,4 +5794,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10, < 3.13"
-content-hash = "db497d033df0a26eab48c4ddb47c12db9c267cee79d57f712cef5e6f076aaa23"
+content-hash = "a37183a5af0dba0bb88677dcdaceef8520b19814ea9f000dfc9ebc3458c9bad6"
