@@ -29,8 +29,6 @@ def get_permission_report(  # noqa: PLR0911
     if global_permission_report[GlobalPermissions.SUPER_ADMIN]:
         return BranchRelativePermissionDecision.ALLOW
 
-    is_default_branch = branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
-
     if action != "view":
         if node.kind in (InfrahubKind.ACCOUNTGROUP, InfrahubKind.ACCOUNTROLE, InfrahubKind.GENERICACCOUNT) or (
             isinstance(node, NodeSchema) and InfrahubKind.GENERICACCOUNT in node.inherit_from
@@ -57,9 +55,7 @@ def get_permission_report(  # noqa: PLR0911
                 else BranchRelativePermissionDecision.DENY
             )
 
-    if global_permission_report[GlobalPermissions.SUPER_ADMIN]:
-        return BranchRelativePermissionDecision.ALLOW
-
+    is_default_branch = branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
     decision = backend.report_object_permission(
         permissions=permissions["object_permissions"], namespace=node.namespace, name=node.name, action=action
     )
