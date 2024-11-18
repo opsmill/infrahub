@@ -8,9 +8,7 @@ from .shared import (
     INFRAHUB_DATABASE,
     NBR_WORKERS,
     PYTHON_PRIMITIVE_MAP,
-
     execute_command,
-    get_env_vars,
 )
 from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
@@ -127,7 +125,7 @@ def test_functional(context: Context, database: str = INFRAHUB_DATABASE) -> Opti
         print(f"{exec_cmd=}")
         return execute_command(context=context, command=f"{exec_cmd}")
 
-      
+
 @task(optional=["schema", "stager", "amount", "test", "attrs", "rels", "changes"])
 def test_scale(
     context: Context,

@@ -4,7 +4,7 @@ import re
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 from invoke import Context, UnexpectedExit
 from invoke.runners import Result
@@ -258,48 +258,6 @@ def build_dev_compose_files_cmd(database: str) -> str:
         DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
 
     return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
-
-
-def build_test_compose_files_cmd(
-    database: Union[bool, str] = DatabaseType.MEMGRAPH.value,
-) -> str:
-    if database is False:
-        return f"-f {TEST_COMPOSE_FILE}"
-
-    if database not in SUPPORTED_DATABASES:
-        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
-
-    if database == DatabaseType.MEMGRAPH.value:
-        DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_MEMGRAPH.copy()
-    elif database == DatabaseType.NEO4J.value:
-        DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_NEO4J.copy()
-
-    # if os.path.exists(DEV_OVERRIDE_FILE_NAME):
-    #     print("!! Found a dev override file for docker-compose !!")
-    #     DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
-
-    return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
-
-
-def build_test_scale_compose_files_cmd(
-    database: str = DatabaseType.NEO4J.value,
-) -> str:
-    if database not in SUPPORTED_DATABASES:
-        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
-
-    if database == DatabaseType.MEMGRAPH.value:
-        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_MEMGRAPH.copy()
-    elif database == DatabaseType.NEO4J.value:
-        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_NEO4J.copy()
-
-    if os.path.exists(TEST_SCALE_OVERRIDE_FILE_NAME):
-        print("!! Found a test scale override file for docker-compose !!")
-        TEST_SCALE_COMPOSE_FILES.append(TEST_SCALE_OVERRIDE_FILE_NAME)
-
-    if os.getenv("CI") is not None:
-        TEST_SCALE_COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE_NAME)
-
-    return f"-f {' -f '.join(TEST_SCALE_COMPOSE_FILES)}"
 
 
 def build_test_envs() -> str:

@@ -7,9 +7,6 @@ from invoke.runners import Result
 from .shared import (
     INFRAHUB_DATABASE,
     NBR_WORKERS,
-    build_test_envs,
-    execute_command,
-    get_env_vars,
 )
 from .utils import ESCAPED_REPO_PATH
 
