@@ -118,6 +118,15 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
         return await objs[0].to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids)
 
 
+async def parent_field_name_resolver(parent: dict[str, dict], info: GraphQLResolveInfo) -> dict:
+    """This resolver gets used when we know that the parent resolver has already gathered the required information.
+
+    An example of this is the permissions field at the top level within default_paginated_list_resolver()
+    """
+
+    return parent[info.field_name]
+
+
 async def default_paginated_list_resolver(
     root: dict,  # pylint: disable=unused-argument
     info: GraphQLResolveInfo,
@@ -139,9 +148,15 @@ async def default_paginated_list_resolver(
         edges = fields.get("edges", {})
         node_fields = edges.get("node", {})
 
-        permissions = fields.get("permissions")
+        permission_set: Optional[dict[str, Any]] = None
+        permissions = await get_permissions(db=db, schema=schema, context=context) if context.account_session else None
+        if fields.get("permissions"):
+            response["permissions"] = permissions
+
         if permissions:
-            response["permissions"] = await get_permissions(db=db, schema=schema, context=context)
+            for edge in permissions["edges"]:
+                if edge["node"]["kind"] == schema.kind:
+                    permission_set = edge["node"]
 
         objs = []
         if edges or "hfid" in filters:
@@ -175,7 +190,14 @@ async def default_paginated_list_resolver(
 
         if objs:
             objects = [
-                {"node": await obj.to_graphql(db=db, fields=node_fields, related_node_ids=context.related_node_ids)}
+                {
+                    "node": await obj.to_graphql(
+                        db=db,
+                        fields=node_fields,
+                        related_node_ids=context.related_node_ids,
+                        permissions=permission_set,
+                    )
+                }
                 for obj in objs
             ]
             response["edges"] = objects

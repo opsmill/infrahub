@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 
 export const GET_PROPOSED_CHANGES = gql`
-  query GET_PROPOSED_CHANGES($statesVisible: [String], $statesHidden: [String], $search: String) {
+  query GET_PROPOSED_CHANGES($statesVisible: [String], $search: String) {
     CoreProposedChange(state__values: $statesVisible, any__value: $search, partial_match: true) {
       count
       edges {
@@ -69,12 +69,23 @@ export const GET_PROPOSED_CHANGES = gql`
         }
         __typename
       }
+      permissions {
+        edges {
+          node {
+            kind
+            view
+            create
+            update
+            delete
+          }
+        }
+      }
       __typename
     }
-    CoreProposedChangeVisible: CoreProposedChange(state__values: $statesVisible) {
+    CoreProposedChangeOpen: CoreProposedChange(state__values: ["open"]) {
       count
     }
-    CoreProposedChangeHidden: CoreProposedChange(state__values: $statesHidden) {
+    CoreProposedChangeClose: CoreProposedChange(state__values: ["closed", "merged", "canceled"]) {
       count
     }
   }

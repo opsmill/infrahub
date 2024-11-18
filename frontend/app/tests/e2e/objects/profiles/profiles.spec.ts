@@ -51,7 +51,10 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await expect(page.getByText("DescriptionA profile for E2E")).toBeVisible();
 
     await test.step("return to profiles list using breadcrumb", async () => {
-      await page.getByTestId("object-header").getByRole("link", { name: "All Profiles" }).click();
+      await page
+        .getByTestId("breadcrumb-navigation")
+        .getByRole("link", { name: "Profile", exact: true })
+        .click();
       expect(page.url()).toContain("/objects/CoreProfile");
     });
   });
@@ -194,11 +197,6 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
 
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
-      await page
-        .locator("div")
-        .filter({ hasText: /^Clear$/ })
-        .getByRole("combobox")
-        .fill("l2");
       await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
     });
 

@@ -1,7 +1,11 @@
+from contextlib import contextmanager
+from typing import Generator
+
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
-from tests.helpers.constants import PORT_BOLT_NEO4J
+from infrahub.services import InfrahubServices, services
+from tests.helpers.constants import PORT_BOLT_NEO4J, PORT_HTTP_NEO4J
 
 
 def get_exposed_port(container: DockerContainer, port: int) -> int:
@@ -23,8 +27,24 @@ def start_neo4j_container(neo4j_image: str) -> DockerContainer:
         .with_env("NEO4J_dbms_security_procedures_unrestricted", "apoc.*")
         .with_env("NEO4J_dbms_security_auth__minimum__password__length", "4")
         .with_exposed_ports(PORT_BOLT_NEO4J)
+        .with_exposed_ports(PORT_HTTP_NEO4J)
     )
 
     container.start()
     wait_for_logs(container, "Started.")  # wait_container_is_ready does not seem to be enough
     return container
+
+
+@contextmanager
+def init_global_service(service: InfrahubServices) -> Generator:
+    """
+    `service` needs to be accessed through a global variable within prefect tasks, this utility
+    helps for restoring original `service` values so tests do no have side effects.
+    """
+
+    original = services.service
+    services.service = service
+    try:
+        yield service
+    finally:
+        services.service = original

@@ -81,7 +81,11 @@ export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChang
         source: { type: "user" },
         value:
           initialData?.reviewers?.edges
-            .map((edge: any) => ({ id: edge?.node?.id }))
+            .map((edge: any) => ({
+              id: edge?.node?.id,
+              display_label: edge?.node?.display_label,
+              __typename: edge?.node?.__typename,
+            }))
             .filter(Boolean) ?? [],
       },
       options: initialData?.reviewers?.edges.map(({ node }) => ({

@@ -1,9 +1,22 @@
-import { Button } from "@/components/buttons/button-primitive";
-import { useAuth } from "@/hooks/useAuth";
+import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
+
+import { Permission } from "@/screens/permission/types";
+import { ReactNode, isValidElement } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
+
+export type tRowValue = {
+  value: unknown;
+  display: ReactNode;
+};
 
 export type tColumn = {
   name: string;
@@ -12,7 +25,7 @@ export type tColumn = {
 
 export type tRow = {
   link?: string;
-  values: any;
+  values: Record<string, string | number | tRowValue>;
 };
 
 type TableProps = {
@@ -20,13 +33,12 @@ type TableProps = {
   rows: tRow[];
   constructLink?: Function;
   onDelete?: (row: tRow) => void;
-  onUpdate?: Function;
+  onUpdate?: (row: tRow) => void;
   className?: string;
+  permission?: Permission;
 };
 
-export const Table = ({ columns, rows, onDelete, onUpdate, className }: TableProps) => {
-  const auth = useAuth();
-
+export const Table = ({ columns, rows, onDelete, onUpdate, className, permission }: TableProps) => {
   return (
     <>
       <table
@@ -56,50 +68,67 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
               )}
               data-cy="object-table-row"
             >
-              {columns.map((column, index) => (
-                <td key={index} className="p-0">
-                  {row.link && (
-                    <Link
-                      className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
-                      to={row.link}
-                    >
-                      {row.values[column.name] ?? "-"}
-                    </Link>
-                  )}
+              {columns.map((column, index) => {
+                return (
+                  <td key={index} className="p-0">
+                    {row.link && (
+                      <Link
+                        className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
+                        to={row.link}
+                      >
+                        {renderRowValue(row.values[column.name])}
+                      </Link>
+                    )}
 
-                  {!row.link && (
-                    <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
-                      {row.values[column.name] ?? "-"}
-                    </div>
-                  )}
-                </td>
-              ))}
+                    {!row.link && (
+                      <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center">
+                        {renderRowValue(row.values[column.name])}
+                      </div>
+                    )}
+                  </td>
+                );
+              })}
 
               {(onUpdate || onDelete) && (
                 <td className="text-right">
-                  {onUpdate && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={!auth?.permissions?.write}
-                      onClick={() => onUpdate(row)}
-                      data-testid="update-row-button"
-                    >
-                      <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                    </Button>
-                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <ButtonWithTooltip
+                        tooltipContent="Actions"
+                        tooltipEnabled
+                        variant="ghost"
+                        size="square"
+                        className="p-4"
+                        data-testid="actions-row-button"
+                      >
+                        <Icon icon="mdi:dots-vertical" className="" />
+                      </ButtonWithTooltip>
+                    </DropdownMenuTrigger>
 
-                  {onDelete && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={!auth?.permissions?.write}
-                      onClick={() => onDelete(row)}
-                      data-testid="delete-row-button"
-                    >
-                      <Icon icon="mdi:trash-outline" className="text-red-500" />
-                    </Button>
-                  )}
+                    <DropdownMenuContent align="end">
+                      {onUpdate && (
+                        <DropdownMenuItem
+                          onClick={() => onUpdate(row)}
+                          disabled={!permission?.update?.isAllowed}
+                          data-testid="update-row-button"
+                        >
+                          <Icon icon="mdi:pencil" className="text-custom-blue-500" />
+                          Edit
+                        </DropdownMenuItem>
+                      )}
+
+                      {onDelete && (
+                        <DropdownMenuItem
+                          onClick={() => onDelete(row)}
+                          disabled={!permission?.delete?.isAllowed}
+                          data-testid="delete-row-button"
+                        >
+                          <Icon icon="mdi:trash-outline" className="text-red-500" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </td>
               )}
             </tr>
@@ -107,7 +136,21 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className }: TablePro
         </tbody>
       </table>
 
-      {!rows?.length && <NoDataFound message="No items" className="m-auto w-full" />}
+      {!rows?.length && <NoDataFound message="No items" />}
     </>
   );
+};
+
+const renderRowValue = (data: string | number | tRowValue): ReactNode => {
+  if (!data) return "-";
+
+  if (typeof data === "string" || typeof data === "number") return data;
+
+  if ("display" in data) return data.display as ReactNode;
+
+  if ("value" in data) return data.value as ReactNode;
+
+  if (isValidElement(data)) return data;
+
+  return "-";
 };

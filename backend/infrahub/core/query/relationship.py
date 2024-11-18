@@ -5,7 +5,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generator, Optional, Union
 
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.constants import RelationshipDirection, RelationshipStatus
 from infrahub.core.query import Query, QueryType
@@ -128,15 +128,15 @@ class FullRelationshipIdentifier:
 class RelationshipQuery(Query):
     def __init__(
         self,
-        rel: Union[type[Relationship], Relationship] = None,
+        rel: Union[type[Relationship], Relationship] | None = None,
         rel_type: Optional[str] = None,
-        source: Node = None,
-        source_id: UUID = None,
-        destination: Node = None,
-        destination_id: UUID = None,
-        schema: RelationshipSchema = None,
-        branch: Branch = None,
-        at: Union[Timestamp, str] = None,
+        source: Node | None = None,
+        source_id: UUID | None = None,
+        destination: Node | None = None,
+        destination_id: UUID | None = None,
+        schema: RelationshipSchema | None = None,
+        branch: Branch | None = None,
+        at: Union[Timestamp, str] | None = None,
         **kwargs,
     ):
         if not source and not source_id:
@@ -196,7 +196,7 @@ class RelationshipCreateQuery(RelationshipQuery):
     def __init__(
         self,
         destination: Node = None,
-        destination_id: UUID = None,
+        destination_id: UUID | None = None,
         **kwargs,
     ):
         if not destination and not destination_id:
@@ -439,13 +439,15 @@ class RelationshipDeleteQuery(RelationshipQuery):
         self.params["destination_id"] = self.destination_id
         self.params["rel_id"] = self.rel.id
         self.params["branch"] = self.branch.name
-        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["branch_names"] = self.branch.get_branches_in_scope()
         self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.DELETED)
+        self.params["at"] = self.at.to_string()
 
         arrows = self.schema.get_query_arrows()
         r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
         r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
 
+        # Specifying relationship type might improve query performance here.
         query = """
         MATCH (s:Node { uuid: $source_id })-[]-(rl:Relationship {uuid: $rel_id})-[]-(d:Node { uuid: $destination_id })
         CREATE (s)%s(rl)
@@ -454,22 +456,50 @@ class RelationshipDeleteQuery(RelationshipQuery):
         CALL {
             WITH rl
             MATCH (rl)-[edge:IS_VISIBLE]->(visible)
+            WHERE edge.branch IN $branch_names AND edge.to IS NULL AND edge.status = "active"
+            WITH rl, edge, visible
+            ORDER BY edge.branch_level DESC
+            LIMIT 1
             CREATE (rl)-[deleted_edge:IS_VISIBLE $rel_prop]->(visible)
+            WITH edge
+            WHERE edge.branch = $branch
+            SET edge.to = $at
         }
         CALL {
             WITH rl
             MATCH (rl)-[edge:IS_PROTECTED]->(protected)
+            WHERE edge.branch IN $branch_names AND edge.to IS NULL AND edge.status = "active"
+            WITH rl, edge, protected
+            ORDER BY edge.branch_level DESC
+            LIMIT 1
             CREATE (rl)-[deleted_edge:IS_PROTECTED $rel_prop]->(protected)
+            WITH edge
+            WHERE edge.branch = $branch
+            SET edge.to = $at
         }
         CALL {
             WITH rl
             MATCH (rl)-[edge:HAS_OWNER]->(owner_node)
+            WHERE edge.branch IN $branch_names AND edge.to IS NULL AND edge.status = "active"
+            WITH rl, edge, owner_node
+            ORDER BY edge.branch_level DESC
+            LIMIT 1
             CREATE (rl)-[deleted_edge:HAS_OWNER $rel_prop]->(owner_node)
+            WITH edge
+            WHERE edge.branch = $branch
+            SET edge.to = $at
         }
         CALL {
             WITH rl
             MATCH (rl)-[edge:HAS_SOURCE]->(source_node)
+            WHERE edge.branch IN $branch_names AND edge.to IS NULL AND edge.status = "active"
+            WITH rl, edge, source_node
+            ORDER BY edge.branch_level DESC
+            LIMIT 1
             CREATE (rl)-[deleted_edge:HAS_SOURCE $rel_prop]->(source_node)
+            WITH edge
+            WHERE edge.branch = $branch
+            SET edge.to = $at
         }
         """ % (
             r1,
@@ -701,7 +731,7 @@ class RelationshipGetPeerQuery(Query):
                 rel_node_id=result.get("rl").get("uuid"),
                 updated_at=rels[0]["from"],
                 rels=[RelData.from_db(rel) for rel in rels],
-                branch=self.branch,
+                branch=self.branch.name,
                 properties={},
             )
 

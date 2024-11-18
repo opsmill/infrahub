@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
 import toml
-from infrahub_sdk import generate_uuid
+from infrahub_sdk.utils import generate_uuid
 from pydantic import AliasChoices, BaseModel, Field, PrivateAttr, ValidationError, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Self
@@ -34,6 +34,11 @@ def default_cors_allow_methods() -> list[str]:
 
 def default_cors_allow_headers() -> list[str]:
     return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"]
+
+
+class UserInfoMethod(str, Enum):
+    POST = "post"
+    GET = "get"
 
 
 class SSOProtocol(str, Enum):
@@ -119,11 +124,11 @@ class MainSettings(BaseSettings):
     allow_anonymous_access: bool = Field(
         default=True, description="Indicates if the system allows anonymous read access"
     )
+    anonymous_access_role: str = Field(
+        default="Anonymous User", description="Name of the role defining which permissions anonymous users have"
+    )
     telemetry_optout: bool = Field(default=False, description="Disable anonymous usage reporting")
     telemetry_endpoint: str = "https://telemetry.opsmill.cloud/infrahub"
-    telemetry_interval: int = Field(
-        default=3600 * 24, ge=60, description="Time (in seconds) between telemetry usage push"
-    )
     permission_backends: list[str] = Field(
         default=["infrahub.permissions.LocalPermissionBackend"],
         description="List of modules to handle permissions, they will be run in the given order",
@@ -197,9 +202,9 @@ class DatabaseSettings(BaseSettings):
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
     query_size_limit: int = Field(
-        default=5000,
+        default=5_000,
         ge=1,
-        le=20000,
+        le=20_000,
         description="The max number of records to fetch in a single query before performing internal pagination.",
     )
     max_depth_search_hierarchy: int = Field(
@@ -290,6 +295,7 @@ class WorkflowSettings(BaseSettings):
     port: Optional[int] = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     driver: WorkflowDriver = WorkflowDriver.WORKER
+    default_worker_type: str = "infrahubasync"
     worker_polling_interval: int = Field(
         default=2, ge=1, le=30, description="Specify how often the worker should poll the server for tasks (sec)"
     )
@@ -326,7 +332,10 @@ class GitSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_GIT_")
     repositories_directory: str = "repositories"
     sync_interval: int = Field(
-        default=10, ge=0, description="Time (in seconds) between git repositories synchronizations"
+        default=10,
+        ge=0,
+        description="Time (in seconds) between git repositories synchronizations",
+        deprecated="This setting is deprecated and not currently in use.",
     )
 
 
@@ -417,6 +426,7 @@ class SecurityOIDCBaseSettings(BaseSettings):
 
     icon: str = Field(default="mdi:account-key")
     display_label: str = Field(default="Single Sign on")
+    userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):
@@ -448,10 +458,19 @@ class SecurityOIDCProvider2(SecurityOIDCSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_PROVIDER2_")
 
 
+class SecurityOIDCProviderSettings(BaseModel):
+    """This class is meant to facilitate configuration of OIDC providers when loading configuration from a infrahub.toml file."""
+
+    google: Optional[SecurityOIDCGoogle] = Field(default=None)
+    provider1: Optional[SecurityOIDCProvider1] = Field(default=None)
+    provider2: Optional[SecurityOIDCProvider2] = Field(default=None)
+
+
 class SecurityOAuth2BaseSettings(BaseSettings):
     """Baseclass for typing"""
 
     icon: str = Field(default="mdi:account-key")
+    userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
 
 
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
@@ -485,6 +504,14 @@ class SecurityOAuth2Google(SecurityOAuth2Settings):
     userinfo_url: str = Field(default="https://www.googleapis.com/oauth2/v3/userinfo")
     icon: str = Field(default="mdi:google")
     display_label: str = Field(default="Google")
+
+
+class SecurityOAuth2ProviderSettings(BaseModel):
+    """This class is meant to facilitate configuration of OAuth2 providers when loading configuration from a infrahub.toml file."""
+
+    google: Optional[SecurityOAuth2Google] = Field(default=None)
+    provider1: Optional[SecurityOAuth2Provider1] = Field(default=None)
+    provider2: Optional[SecurityOAuth2Provider2] = Field(default=None)
 
 
 class MiscellaneousSettings(BaseSettings):
@@ -532,7 +559,9 @@ class SecuritySettings(BaseSettings):
         default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
     )
     oauth2_providers: list[Oauth2Provider] = Field(default_factory=list, description="The selected OAuth2 providers")
+    oauth2_provider_settings: SecurityOAuth2ProviderSettings = Field(default_factory=SecurityOAuth2ProviderSettings)
     oidc_providers: list[OIDCProvider] = Field(default_factory=list, description="The selected OIDC providers")
+    oidc_provider_settings: SecurityOIDCProviderSettings = Field(default_factory=SecurityOIDCProviderSettings)
     _oauth2_settings: dict[str, SecurityOAuth2Settings] = PrivateAttr(default_factory=dict)
     _oidc_settings: dict[str, SecurityOIDCSettings] = PrivateAttr(default_factory=dict)
 
@@ -544,9 +573,21 @@ class SecuritySettings(BaseSettings):
             Oauth2Provider.GOOGLE: SecurityOAuth2Google,
         }
         for oauth2_provider in self.oauth2_providers:
-            provider = mapped_providers[oauth2_provider]()
-            if isinstance(provider, SecurityOAuth2Settings):
-                self._oauth2_settings[oauth2_provider.value] = provider
+            match oauth2_provider:
+                case Oauth2Provider.GOOGLE:
+                    if self.oauth2_provider_settings.google:
+                        self._oauth2_settings[oauth2_provider.value] = self.oauth2_provider_settings.google
+                case Oauth2Provider.PROVIDER1:
+                    if self.oauth2_provider_settings.provider1:
+                        self._oauth2_settings[oauth2_provider.value] = self.oauth2_provider_settings.provider1
+                case Oauth2Provider.PROVIDER2:
+                    if self.oauth2_provider_settings.provider2:
+                        self._oauth2_settings[oauth2_provider.value] = self.oauth2_provider_settings.provider2
+
+            if oauth2_provider.value not in self._oauth2_settings:
+                provider = mapped_providers[oauth2_provider]()
+                if isinstance(provider, SecurityOAuth2Settings):
+                    self._oauth2_settings[oauth2_provider.value] = provider
 
         return self
 
@@ -558,9 +599,21 @@ class SecuritySettings(BaseSettings):
             OIDCProvider.PROVIDER2: SecurityOIDCProvider2,
         }
         for oidc_provider in self.oidc_providers:
-            provider = mapped_providers[oidc_provider]()
-            if isinstance(provider, SecurityOIDCSettings):
-                self._oidc_settings[oidc_provider.value] = provider
+            match oidc_provider:
+                case OIDCProvider.GOOGLE:
+                    if self.oidc_provider_settings.google:
+                        self._oidc_settings[oidc_provider.value] = self.oidc_provider_settings.google
+                case OIDCProvider.PROVIDER1:
+                    if self.oidc_provider_settings.provider1:
+                        self._oidc_settings[oidc_provider.value] = self.oidc_provider_settings.provider1
+                case OIDCProvider.PROVIDER2:
+                    if self.oidc_provider_settings.provider2:
+                        self._oidc_settings[oidc_provider.value] = self.oidc_provider_settings.provider2
+
+            if oidc_provider.value not in self._oidc_settings:
+                provider = mapped_providers[oidc_provider]()
+                if isinstance(provider, SecurityOIDCSettings):
+                    self._oidc_settings[oidc_provider.value] = provider
 
         return self
 
@@ -632,7 +685,7 @@ class ConfiguredSettings:  # pylint: disable=too-many-public-methods
         if not config_file:
             config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
             config_file = os.path.abspath(config_file_name)
-        load(config_file)
+        self.settings = load(config_file)
 
     def initialize_and_exit(self, config_file: Optional[str] = None) -> None:
         """Initialize the settings if they have not been initialized, exit on failures."""
@@ -744,7 +797,7 @@ class Settings(BaseSettings):
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
 
-def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> None:
+def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> Settings:
     """Load configuration.
 
     Configuration is loaded from a config file in toml format that contains the settings,
@@ -752,17 +805,15 @@ def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str
     """
 
     if config_data:
-        SETTINGS.settings = Settings(**config_data)
-        return
+        return Settings(**config_data)
 
     if os.path.exists(config_file_name):
         config_string = Path(config_file_name).read_text(encoding="utf-8")
         config_tmp = toml.loads(config_string)
 
-        SETTINGS.settings = Settings(**config_tmp)
-        return
+        return Settings(**config_tmp)
 
-    SETTINGS.settings = Settings()
+    return Settings()
 
 
 def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> None:
@@ -776,7 +827,7 @@ def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional
         config_data (dict, optional): [description]. Defaults to None.
     """
     try:
-        load(config_file_name=config_file_name, config_data=config_data)
+        SETTINGS.settings = load(config_file_name=config_file_name, config_data=config_data)
     except ValidationError as err:
         print(f"Configuration not valid, found {len(err.errors())} error(s)")
         for error in err.errors():

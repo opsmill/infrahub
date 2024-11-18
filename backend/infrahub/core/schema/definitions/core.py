@@ -17,7 +17,6 @@ from infrahub.core.constants import (
     InfrahubKind,
     PermissionAction,
     PermissionDecision,
-    ProposedChangeState,
     RelationshipDeleteBehavior,
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
@@ -26,6 +25,7 @@ from infrahub.core.constants import (
     ValidatorConclusion,
     ValidatorState,
 )
+from infrahub.proposed_change.constants import ProposedChangeState
 
 # pylint: disable=too-many-lines
 
@@ -64,25 +64,29 @@ generic_menu_item: dict[str, Any] = {
     "name": "Menu",
     "namespace": "Core",
     "include_in_menu": False,
-    "description": "Base node for the menu",
-    "label": "Menu Item",
+    "description": "Element of the Menu",
+    "label": "Menu",
     "hierarchical": True,
-    "uniqueness_constraints": [["namespace__value", "name__value"]],
+    "human_friendly_id": ["namespace__value", "name__value"],
+    "display_labels": ["label__value"],
+    "generate_profile": False,
     "attributes": [
         {"name": "namespace", "kind": "Text", "regex": NAMESPACE_REGEX, "order_weight": 1000},
         {"name": "name", "kind": "Text", "order_weight": 1000},
         {"name": "label", "kind": "Text", "optional": True, "order_weight": 2000},
+        {"name": "kind", "kind": "Text", "optional": True, "order_weight": 2500},
         {"name": "path", "kind": "Text", "optional": True, "order_weight": 2500},
         {"name": "description", "kind": "Text", "optional": True, "order_weight": 3000},
         {"name": "icon", "kind": "Text", "optional": True, "order_weight": 4000},
         {"name": "protected", "kind": "Boolean", "default_value": False, "read_only": True, "order_weight": 5000},
         {"name": "order_weight", "kind": "Number", "default_value": 2000, "order_weight": 6000},
+        {"name": "required_permissions", "kind": "List", "optional": True, "order_weight": 7000},
         {
             "name": "section",
             "kind": "Text",
             "enum": ["object", "internal"],
             "default_value": "object",
-            "order_weight": 7000,
+            "order_weight": 8000,
         },
     ],
 }
@@ -94,6 +98,7 @@ menu_item: dict[str, Any] = {
     "description": "Menu Item",
     "label": "Menu Item",
     "inherit_from": ["CoreMenu"],
+    "generate_profile": False,
 }
 
 core_models: dict[str, Any] = {
@@ -931,13 +936,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "generate_profile": False,
             "attributes": [
-                {
-                    "name": "decision",
-                    "kind": "Text",
-                    "enum": PermissionDecision.available_types(),
-                    "default_value": PermissionDecision.ALLOW.value,
-                    "order_weight": 5000,
-                },
+                {"name": "description", "kind": "Text", "optional": True},
                 {
                     "name": "identifier",
                     "kind": "Text",
@@ -2165,18 +2164,26 @@ core_models: dict[str, Any] = {
             "description": "A permission that grants global rights to perform actions in Infrahub",
             "label": "Global permission",
             "include_in_menu": False,
-            "order_by": ["name__value", "action__value"],
-            "display_labels": ["name__value"],
+            "order_by": ["action__value", "decision__value"],
+            "display_labels": ["action__value", "decision__value"],
+            "human_friendly_id": ["action__value", "decision__value"],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.BASEPERMISSION],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {"name": "name", "kind": "Text", "unique": True, "order_weight": 1000},
                 {
                     "name": "action",
                     "kind": "Dropdown",
                     "choices": [{"name": permission.value} for permission in GlobalPermissions],
                     "order_weight": 2000,
+                },
+                {
+                    "name": "decision",
+                    "kind": "Number",
+                    "enum": PermissionDecision.available_types(),
+                    "default_value": PermissionDecision.ALLOW_ALL.value,
+                    "order_weight": 3000,
+                    "description": "Decide to deny or allow the action at a global level",
                 },
             ],
         },
@@ -2186,15 +2193,13 @@ core_models: dict[str, Any] = {
             "description": "A permission that grants rights to perform actions on objects",
             "label": "Object permission",
             "include_in_menu": False,
-            "order_by": ["branch__value", "namespace__value", "name__value", "action__value", "decision__value"],
-            "display_labels": ["branch__value", "namespace__value", "name__value", "action__value", "decision__value"],
-            "uniqueness_constraints": [
-                ["branch__value", "namespace__value", "name__value", "action__value", "decision__value"]
-            ],
+            "order_by": ["namespace__value", "name__value", "action__value", "decision__value"],
+            "display_labels": ["namespace__value", "name__value", "action__value", "decision__value"],
+            "human_friendly_id": ["namespace__value", "name__value", "action__value", "decision__value"],
+            "uniqueness_constraints": [["namespace__value", "name__value", "action__value", "decision__value"]],
             "generate_profile": False,
             "inherit_from": [InfrahubKind.BASEPERMISSION],
             "attributes": [
-                {"name": "branch", "kind": "Text", "order_weight": 1000},
                 {"name": "namespace", "kind": "Text", "order_weight": 2000},
                 {"name": "name", "kind": "Text", "order_weight": 3000},
                 {
@@ -2203,6 +2208,17 @@ core_models: dict[str, Any] = {
                     "enum": PermissionAction.available_types(),
                     "default_value": PermissionAction.ANY.value,
                     "order_weight": 4000,
+                },
+                {
+                    "name": "decision",
+                    "kind": "Number",
+                    "enum": PermissionDecision.available_types(),
+                    "default_value": PermissionDecision.ALLOW_ALL.value,
+                    "order_weight": 5000,
+                    "description": (
+                        "Decide to deny or allow the action. If allowed, it can be configured for the default branch, any other branches or all "
+                        "branches"
+                    ),
                 },
             ],
         },
@@ -2215,6 +2231,7 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
+            "human_friendly_id": ["name__value"],
             "generate_profile": False,
             "attributes": [{"name": "name", "kind": "Text", "unique": True}],
             "relationships": [
@@ -2245,8 +2262,9 @@ core_models: dict[str, Any] = {
             "include_in_menu": False,
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
+            "human_friendly_id": ["name__value"],
             "generate_profile": False,
-            "inherit_from": [InfrahubKind.GENERICGROUP],
+            "inherit_from": [InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE, InfrahubKind.GENERICGROUP],
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {

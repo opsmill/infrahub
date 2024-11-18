@@ -1,3 +1,5 @@
+import { permissionsAllow } from "./permissions";
+
 export const taskMocksSchema = [
   {
     id: "8a4e2579-c300-48e1-b703-022bf6d224df",
@@ -13,7 +15,7 @@ export const taskMocksSchema = [
         name: "addresses",
         peer: "IpamIPAddress",
         optional: false,
-        cardinality: "many",
+        cardinality: "one",
         kind: "Attribute",
       },
     ],
@@ -36,12 +38,21 @@ query TestTask($offset: Int, $limit: Int) {
         display_label
         __typename
         addresses {
-          edges {
-            node {
-              id
-              display_label
-            }
+          node {
+            id
+            display_label
           }
+        }
+      }
+    }
+    permissions {
+      edges {
+        node {
+          kind
+          view
+          create
+          update
+          delete
         }
       }
     }
@@ -53,6 +64,7 @@ export const taskMocksData = {
   TestTask: {
     count: 0,
     edges: [],
+    permissions: permissionsAllow,
     __typename: "PaginatedTestTask",
   },
 };

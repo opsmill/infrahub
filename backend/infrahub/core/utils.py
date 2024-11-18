@@ -132,12 +132,10 @@ async def count_relationships(db: InfrahubDatabase, label: Optional[str] = None)
 async def get_nodes(db: InfrahubDatabase, label: str) -> list[Neo4jNode]:
     """Return theall nodes of a given label in the database."""
     query = """
-    MATCH (node)
-    WHERE $label IN LABELS(node)
+    MATCH (node:%(node_kind)s)
     RETURN node
-    """
-    params: dict = {"label": label}
-    results = await db.execute_query(query=query, params=params, name="get_nodes")
+    """ % {"node_kind": label}
+    results = await db.execute_query(query=query, name="get_nodes")
     return [result[0] for result in results]
 
 
@@ -186,10 +184,10 @@ def convert_ip_to_binary_str(
     obj: Union[ipaddress.IPv6Network, ipaddress.IPv4Network, ipaddress.IPv4Interface, ipaddress.IPv6Interface],
 ) -> str:
     if isinstance(obj, (ipaddress.IPv6Network, ipaddress.IPv4Network)):
-        prefix_bin = bin(int(obj.network_address))[2:]
+        prefix_bin = f"{int(obj.network_address):b}"
         return prefix_bin.zfill(obj.max_prefixlen)
 
-    ip_bin = bin(int(obj))[2:]
+    ip_bin = f"{int(obj):b}"
     return ip_bin.zfill(obj.max_prefixlen)
 
 

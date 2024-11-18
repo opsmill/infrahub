@@ -317,3 +317,11 @@ class HTTPServerTimeoutError(HTTPServerError):
 
 class HTTPServerSSLError(HTTPServerError):
     HTTP_CODE = 503
+
+
+class MergeFailedError(Error):
+    HTTP_CODE: int = 500
+
+    def __init__(self, branch_name: str) -> None:
+        self.message = f"Failed to merge branch '{branch_name}'"
+        super().__init__(self.message)

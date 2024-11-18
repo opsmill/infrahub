@@ -9,7 +9,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { INFRAHUB_DOC_LOCAL, INFRAHUB_GITHUB_URL, INFRAHUB_SWAGGER_DOC_URL } from "@/config/config";
+import {
+  INFRAHUB_DISCORD_URL,
+  INFRAHUB_DOC_LOCAL,
+  INFRAHUB_GITHUB_URL,
+  INFRAHUB_SWAGGER_DOC_URL,
+} from "@/config/config";
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,7 +24,7 @@ import { constructPath } from "@/utils/fetch";
 import { gql, useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 
@@ -42,13 +47,6 @@ export const AccountMenu = () => {
 const CommonMenuItems = () => (
   <>
     <DropdownMenuItem asChild>
-      <Link to={INFRAHUB_GITHUB_URL} target="_blank" rel="noreferrer">
-        <Icon icon="mdi:github" className="text-base" />
-        GitHub Repository
-      </Link>
-    </DropdownMenuItem>
-
-    <DropdownMenuItem asChild>
       <Link to={INFRAHUB_DOC_LOCAL} target="_blank" rel="noreferrer">
         <Icon icon="mdi:file-document" className="text-base" />
         Infrahub documentation
@@ -68,6 +66,22 @@ const CommonMenuItems = () => (
         Swagger documentation
       </Link>
     </DropdownMenuItem>
+
+    <DropdownMenuDivider />
+
+    <DropdownMenuItem asChild>
+      <Link to={INFRAHUB_GITHUB_URL} target="_blank" rel="noreferrer">
+        <Icon icon="mdi:github" className="text-base" />
+        GitHub Repository
+      </Link>
+    </DropdownMenuItem>
+
+    <DropdownMenuItem asChild>
+      <Link to={INFRAHUB_DISCORD_URL} target="_blank" rel="noreferrer">
+        <Icon icon="mdi:discord" className="text-base" />
+        Join our Discord server
+      </Link>
+    </DropdownMenuItem>
   </>
 );
 
@@ -77,17 +91,17 @@ const UnauthenticatedAccountMenu = () => {
   return (
     <DropdownMenu>
       <Link
-        className="flex items-center h-14 rounded-lg p-2 gap-2 hover:bg-indigo-50"
-        to="/signin"
+        className="flex items-center h-14 w-full rounded-lg p-2 gap-2 hover:bg-indigo-50 overflow-hidden shrink-0"
+        to="/login"
         state={{ from: location }}
       >
-        <div className="bg-indigo-50 rounded-full h-10 w-10 flex items-center justify-center overflow-hidden border border-white">
+        <div className="bg-indigo-50 rounded-full h-10 w-10 flex items-center justify-center overflow-hidden border border-white shrink-0">
           <Icon icon="mdi:user" className="text-5xl relative top-1 text-neutral-600" />
         </div>
 
-        <div className="flex flex-col items-start flex-grow">
-          <span className="font-semibold text-sm">Log in</span>
-          <span className="text-xs text-neutral-500">anonymous</span>
+        <div className="group-data-[collapsed=true]/sidebar:hidden overflow-hidden">
+          <div className="font-semibold text-sm truncate">Log in</div>
+          <div className="text-xs text-neutral-500 truncate">anonymous</div>
         </div>
 
         <DropdownMenuTrigger
@@ -100,7 +114,7 @@ const UnauthenticatedAccountMenu = () => {
             variant="ghost"
             size="square"
             data-testid="unauthenticated-menu-trigger"
-            className="hover:bg-indigo-100"
+            className="shrink-0 ml-auto hover:bg-indigo-100 group-data-[collapsed=true]/sidebar:hidden"
           >
             <Icon icon="mdi:dots-vertical" className="text-lg" />
           </Button>
@@ -111,7 +125,7 @@ const UnauthenticatedAccountMenu = () => {
         <CommonMenuItems />
         <DropdownMenuDivider />
         <DropdownMenuItem asChild>
-          <Link to="/signin" state={{ from: location }}>
+          <Link to="/login" state={{ from: location }}>
             <Icon icon="mdi:login" className="text-base" />
             Log in
           </Link>
@@ -133,12 +147,17 @@ const AuthenticatedAccountMenu = ({
   const query = gql(getProfileDetails({ ...schema }));
   const { error, loading, data } = useQuery(query);
 
+  const handleSignOut = useCallback(async () => {
+    await signOut();
+
+    toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
+      toastId: "profile-alert",
+    });
+  }, []);
+
   useEffect(() => {
     if (error) {
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
-        toastId: "profile-alert",
-      });
-      signOut();
+      handleSignOut();
     }
   }, [error, signOut]);
 
@@ -153,15 +172,19 @@ const AuthenticatedAccountMenu = ({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-auto gap-2 hover:bg-indigo-50 rounded-lg p-2"
+          className="h-auto w-full justify-start gap-2 hover:bg-indigo-50 rounded-lg p-2 overflow-hidden text-left"
           data-testid="authenticated-menu-trigger"
         >
-          <Avatar name={profile?.name?.value} className="h-10 w-10" />
-          <div className="flex flex-col items-start">
-            <span className="font-semibold text-sm">{profile?.label?.value}</span>
-            <span className="text-xs text-neutral-500">{profile?.role?.value}</span>
+          <Avatar name={profile?.name?.value} className="h-10 w-10 shrink-0" />
+
+          <div className="group-data-[collapsed=true]/sidebar:hidden overflow-hidden">
+            <div className="font-semibold text-sm truncate">{profile?.label?.value}</div>
           </div>
-          <Icon icon="mdi:dots-vertical" className="text-lg m-2 ml-auto" />
+
+          <Icon
+            icon="mdi:dots-vertical"
+            className="text-lg m-2 ml-auto group-data-[collapsed=true]/sidebar:hidden transition-all"
+          />
         </Button>
       </DropdownMenuTrigger>
 
@@ -188,10 +211,10 @@ const AuthenticatedAccountMenu = ({
 
 const AccountMenuSkeleton = () => {
   return (
-    <div className="flex items-center gap-2 p-2">
+    <div className="flex items-center gap-2 p-2 shrink-0">
       <Skeleton className="rounded-full h-10 w-10" />
 
-      <div className="flex-grow space-y-2">
+      <div className="flex-grow space-y-2 group-data-[collapsed=true]/sidebar:hidden">
         <Skeleton className="h-4 w-4/5" />
         <Skeleton className="h-2 w-3/5" />
       </div>

@@ -118,6 +118,16 @@ def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Opt
         return execute_command(context=context, command=f"{exec_cmd}")
 
 
+@task(optional=["database"])
+def test_functional(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
+    with context.cd(ESCAPED_REPO_PATH):
+        exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/functional"
+        if database == "neo4j":
+            exec_cmd += " --neo4j"
+        print(f"{exec_cmd=}")
+        return execute_command(context=context, command=f"{exec_cmd}")
+
+      
 @task(optional=["schema", "stager", "amount", "test", "attrs", "rels", "changes"])
 def test_scale(
     context: Context,

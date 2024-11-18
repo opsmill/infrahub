@@ -45,6 +45,20 @@ query {{kind}} (
         {{/each}}
       }
     }
+
+    {{#if hasPermissions}}
+      permissions {
+        edges {
+          node {
+            kind
+            view
+            create
+            update
+            delete
+          }
+        }
+      }
+    {{/if}}
   }
 }
 `);

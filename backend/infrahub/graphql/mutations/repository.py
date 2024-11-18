@@ -3,18 +3,31 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, Optional, cast
 
-from graphene import Boolean, InputObjectType, Mutation, String
+from graphene import Boolean, Field, InputObjectType, Mutation, String
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository, CoreRepository
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import ValidationError
+from infrahub.git.models import (
+    GitRepositoryAdd,
+    GitRepositoryAddReadOnly,
+    GitRepositoryImportObjects,
+    GitRepositoryPullReadOnly,
+)
 from infrahub.graphql.types.common import IdentifierInput
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import GitRepositoryConnectivityResponse
+from infrahub.workflows.catalogue import (
+    GIT_REPOSITORIES_IMPORT_OBJECTS,
+    GIT_REPOSITORIES_PULL_READ_ONLY,
+    GIT_REPOSITORY_ADD,
+    GIT_REPOSITORY_ADD_READ_ONLY,
+)
 
+from ..types.task import TaskInfo
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
 
 if TYPE_CHECKING:
@@ -88,7 +101,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             authenticated_user = context.account_session.account_id
         if obj.get_kind() == InfrahubKind.READONLYREPOSITORY:
             obj = cast(CoreReadOnlyRepository, obj)
-            message = messages.GitRepositoryAddReadOnly(
+            model = GitRepositoryAddReadOnly(
                 repository_id=obj.id,
                 repository_name=obj.name.value,
                 location=obj.location.value,
@@ -97,9 +110,14 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 internal_status=obj.internal_status.value,
                 created_by=authenticated_user,
             )
+            if context.service:
+                await context.service.workflow.submit_workflow(
+                    workflow=GIT_REPOSITORY_ADD_READ_ONLY, parameters={"model": model}
+                )
+
         else:
             obj = cast(CoreRepository, obj)
-            message = messages.GitRepositoryAdd(
+            git_repo_add_model = GitRepositoryAdd(
                 repository_id=obj.id,
                 repository_name=obj.name.value,
                 location=obj.location.value,
@@ -109,8 +127,10 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 created_by=authenticated_user,
             )
 
-        if context.service:
-            await context.service.send(message=message)
+            if context.service:
+                await context.service.workflow.submit_workflow(
+                    workflow=GIT_REPOSITORY_ADD, parameters={"model": git_repo_add_model}
+                )
 
         # TODO Validate that the creation of the repository went as expected
 
@@ -166,7 +186,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             ref=data.ref.value if data.ref else None,
         )
 
-        message = messages.GitRepositoryPullReadOnly(
+        model = GitRepositoryPullReadOnly(
             repository_id=obj.id,
             repository_name=obj.name.value,
             location=obj.location.value,
@@ -175,7 +195,9 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             infrahub_branch_name=branch.name,
         )
         if context.service:
-            await context.service.send(message=message)
+            await context.service.workflow.submit_workflow(
+                workflow=GIT_REPOSITORIES_PULL_READ_ONLY, parameters={"model": model}
+            )
         return obj, result
 
 
@@ -195,6 +217,7 @@ class ProcessRepository(Mutation):
         data = IdentifierInput(required=True)
 
     ok = Boolean()
+    task = Field(TaskInfo, required=False)
 
     @classmethod
     async def mutate(
@@ -213,16 +236,18 @@ class ProcessRepository(Mutation):
             branch=branch,
         )
 
-        message = messages.GitRepositoryImportObjects(
+        model = GitRepositoryImportObjects(
             repository_id=repository_id,
             repository_name=str(repo.name.value),
             repository_kind=repo.get_kind(),
             commit=str(repo.commit.value),
             infrahub_branch_name=branch.name,
         )
-        if context.service:
-            await context.service.send(message=message)
-        return {"ok": True}
+        workflow = await context.active_service.workflow.submit_workflow(
+            workflow=GIT_REPOSITORIES_IMPORT_OBJECTS, parameters={"model": model}
+        )
+        task = {"id": workflow.id}
+        return cls(ok=True, task=task)
 
 
 class ValidateRepositoryConnectivity(Mutation):

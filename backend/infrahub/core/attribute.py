@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 import netaddr
 import ujson
-from infrahub_sdk import UUIDT
 from infrahub_sdk.timestamp import TimestampFormatError
 from infrahub_sdk.utils import is_valid_url
+from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel, Field
 
 from infrahub import config
@@ -234,15 +234,21 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             ValidationError: Content of the attribute value is not valid
         """
         if schema.regex:
-            try:
-                is_valid = re.match(pattern=schema.regex, string=str(value))
-            except re.error as exc:
-                raise ValidationError(
-                    {name: f"The regex defined in the schema is not valid ({schema.regex!r})"}
-                ) from exc
+            if schema.kind == "List":
+                validation_values = [str(entry) for entry in value]
+            else:
+                validation_values = [str(value)]
 
-            if not is_valid:
-                raise ValidationError({name: f"{value} must be conform with the regex: {schema.regex!r}"})
+            for validation_value in validation_values:
+                try:
+                    is_valid = re.match(pattern=schema.regex, string=str(validation_value))
+                except re.error as exc:
+                    raise ValidationError(
+                        {name: f"The regex defined in the schema is not valid ({schema.regex!r})"}
+                    ) from exc
+
+                if not is_valid:
+                    raise ValidationError({name: f"{validation_value} must conform with the regex: {schema.regex!r}"})
 
         if schema.min_length:
             if len(value) < schema.min_length:
@@ -390,12 +396,15 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.validate(value=self.value, name=self.name, schema=self.schema)
 
         # Check if the current value is still the default one
-        if (
-            self.is_default
-            and (self.schema.default_value is not None and self.schema.default_value != self.value)
-            or (self.schema.default_value is None and self.value is not None)
-        ):
-            self.is_default = False
+        if self.is_default:
+            if isinstance(self.value, Enum):
+                has_default_value = self.schema.default_value == self.value.value
+            else:
+                has_default_value = self.schema.default_value == self.value
+            if (self.schema.default_value is not None and not has_default_value) or (
+                self.schema.default_value is None and self.value is not None
+            ):
+                self.is_default = False
 
         query = await NodeListGetAttributeQuery.init(
             db=db,
@@ -460,13 +469,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         fields: Optional[dict] = None,
         related_node_ids: Optional[set] = None,
         filter_sensitive: bool = False,
+        permissions: Optional[dict] = None,
     ) -> dict:
         """Generate GraphQL Payload for this attribute."""
         # pylint: disable=too-many-branches
 
-        response: dict[str, Any] = {
-            "id": self.id,
-        }
+        response: dict[str, Any] = {"id": self.id}
 
         if fields and isinstance(fields, dict):
             field_names = fields.keys()
@@ -484,6 +492,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             if field_name == "__typename":
                 response[field_name] = self.get_kind()
+                continue
+
+            if field_name == "permissions":
+                response[field_name] = {"update_value": permissions["update"]} if permissions else None
                 continue
 
             if field_name in ["source", "owner"]:
@@ -860,7 +872,7 @@ class IPNetwork(BaseAttribute):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
     def serialize_value(self) -> str:
-        """Serialize the value before storing it in the database."""
+        """Serialize the value before storing it in the database. If network is an IPv6 network, it is converted to collapsed form."""
 
         return ipaddress.ip_network(self.value).with_prefixlen
 
@@ -986,7 +998,7 @@ class IPHost(BaseAttribute):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
     def serialize_value(self) -> str:
-        """Serialize the value before storing it in the database."""
+        """Adds a prefix to address before storing it in the database. If address in an IPv6 address, it is converted to collapsed form."""
 
         return ipaddress.ip_interface(self.value).with_prefixlen
 

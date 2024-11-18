@@ -792,7 +792,6 @@ class NodeGetListQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.order_by = []
-        self.params["node_kind"] = self.schema.kind
 
         self.return_labels = ["n.uuid", "rb.branch", f"{db.get_id_function_name()}(rb) as rb_id"]
         where_clause_elements = []
@@ -803,8 +802,7 @@ class NodeGetListQuery(Query):
         self.params.update(branch_params)
 
         query = """
-        MATCH p = (n:Node)
-        WHERE $node_kind IN LABELS(n)
+        MATCH (n:%(node_kind)s)
         CALL {
             WITH n
             MATCH (root:Root)<-[r:IS_PART_OF]-(n)
@@ -815,7 +813,7 @@ class NodeGetListQuery(Query):
         }
         WITH n, r as rb
         WHERE rb.status = "active"
-        """ % {"branch_filter": branch_filter}
+        """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
         self.add_to_query(query)
         use_simple = False
         if self.filters and "id" in self.filters:
@@ -859,6 +857,7 @@ class NodeGetListQuery(Query):
                 self.order_by.append(far.final_value_query_variable)
                 continue
             self.order_by.append(far.node_value_query_variable)
+        self.order_by.append("n.uuid")
 
     async def _add_node_filter_attributes(
         self,
@@ -1207,6 +1206,7 @@ class NodeGetHierarchyQuery(Query):
             WITH %(with_clause)s
             RETURN peer as peer1, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
             ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
+            LIMIT 1
         }
         WITH peer1 as peer, is_active
         """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}

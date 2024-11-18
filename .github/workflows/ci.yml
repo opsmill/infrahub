@@ -7,6 +7,7 @@ on:
     branches:
       - develop
       - stable
+      - release-*
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -116,7 +117,7 @@ jobs:
         with:
           submodules: true
       - name: "Setup environment"
-        run: "pip install ruff==0.6.6"
+        run: "pip install ruff==0.7.1"
       - name: "Linting: ruff check"
         run: "ruff check . --exclude python_sdk"
       - name: "Linting: ruff format"
@@ -252,12 +253,12 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          poetry config virtualenvs.create false
-          pip install toml invoke
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Unit Tests"
-        run: "invoke backend.test-unit"
+        run: "poetry run invoke backend.test-unit"
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -305,16 +306,14 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          poetry config virtualenvs.create false
-          pip install toml invoke
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: "Mypy Tests"
-        run: "invoke backend.mypy"
-      - name: "Pylint Tests"
-        run: "invoke backend.pylint"
+        run: "poetry run invoke backend.mypy"
       - name: "Integration Tests"
-        run: "invoke backend.test-integration"
+        run: "poetry run invoke backend.test-integration"
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
@@ -324,7 +323,7 @@ jobs:
           flag-name: backend-integration
           parallel: true
 
-  backend-tests-memgraph:
+  backend-tests-functional:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -332,23 +331,10 @@ jobs:
       needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on:
-      group: huge-runners
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: backend-tests-unit-memgraph
-            env:
-              INFRAHUB_DB_TYPE: memgraph
-          # - name: backend-tests-unit-nats
-          #   env:
-          #     INFRAHUB_DB_TYPE: memgraph
-          #     INFRAHUB_USE_NATS: 1
-          #     INFRAHUB_BROKER_DRIVER: nats
-          #     INFRAHUB_CACHE_DRIVER: nats
-    name: ${{ matrix.name }}
-    env: ${{ matrix.env }}
+      group: "huge-runners"
+    timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -366,12 +352,77 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          poetry config virtualenvs.create false
-          pip install toml invoke
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
-      - name: "Unit Tests"
-        run: "invoke backend.test-unit"
+      - name: "Mypy Tests"
+        run: "poetry run invoke backend.mypy"
+      - name: "Pylint Tests"
+        run: "poetry run invoke backend.pylint"
+      - name: "Functional Tests"
+        run: "poetry run invoke backend.test-functional"
+      - name: "Coveralls : Functional Tests"
+        uses: coverallsapp/github-action@v2
+        continue-on-error: true
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: backend-functional
+          parallel: true
+
+  # ---------------------------------------------------
+  # DISABLING Memgraph for now :(
+  # Tests where too flaky in 2.19 and completely broken in 2.20.1
+  # ---------------------------------------------------
+  # backend-tests-memgraph:
+  #   if: |
+  #     always() && !cancelled() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled') &&
+  #     needs.files-changed.outputs.backend == 'true'
+  #   needs: ["files-changed", "yaml-lint", "python-lint"]
+  #   runs-on:
+  #     group: huge-runners
+  #   timeout-minutes: 45
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       include:
+  #         - name: backend-tests-unit-memgraph
+  #           env:
+  #             INFRAHUB_DB_TYPE: memgraph
+  #         # - name: backend-tests-unit-nats
+  #         #   env:
+  #         #     INFRAHUB_DB_TYPE: memgraph
+  #         #     INFRAHUB_USE_NATS: 1
+  #         #     INFRAHUB_BROKER_DRIVER: nats
+  #         #     INFRAHUB_CACHE_DRIVER: nats
+  #   name: ${{ matrix.name }}
+  #   env: ${{ matrix.env }}
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v4"
+  #       with:
+  #         submodules: true
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: '3.12'
+  #     - name: "Setup git credentials"
+  #       run: "git config --global user.name 'Infrahub' && \
+  #             git config --global user.email 'infrahub@opsmill.com' && \
+  #             git config --global --add safe.directory '*' && \
+  #             git config --global credential.usehttppath true && \
+  #             git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+  #     - name: "Setup Python environment"
+  #       run: |
+  #         poetry config virtualenvs.create true --local
+  #         poetry env use 3.12
+  #     - name: "Install dependencies"
+  #       run: "poetry install --no-interaction --no-ansi"
+  #     - name: "Unit Tests"
+  #       run: "poetry run invoke backend.test-unit"
 
   backend-validate-generated:
     if: |
@@ -474,7 +525,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: docs/package-lock.json
       - name: "Install dependencies"
         run: npm install
       - name: "Setup Python environment"
@@ -577,7 +628,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: frontend/app/package-lock.json
 
       - name: Install Invoke
         run: pip install toml invoke
@@ -651,9 +702,9 @@ jobs:
 
       - name: Add response delay if required
         if: needs.files-changed.outputs.e2e_tests == 'true'
-        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=2" >> $GITHUB_ENV && invoke dev.start
+        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=1" >> $GITHUB_ENV && invoke dev.start
         env:
-          INFRAHUB_MISC_RESPONSE_DELAY: 2
+          INFRAHUB_MISC_RESPONSE_DELAY: 1
 
       - name: Set infrahub address
         if: needs.files-changed.outputs.e2e_tests == 'true'
@@ -724,6 +775,79 @@ jobs:
         if: always()
         run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$JOB_NAME&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
 
+  # ------------------------------------------ E2E invoke demo ------------------------------------------------
+  E2E-testing-invoke-demo-start:
+    needs:
+      - javascript-lint
+      - files-changed
+      - yaml-lint
+      - python-lint
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      github.base_ref == 'develop'
+    runs-on:
+      group: huge-runners
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Invoke
+        run: |
+          pip install toml invoke
+
+      - name: Set job name
+        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+
+      - name: Run 'invoke demo'
+        run: |
+          unset INFRAHUB_IMAGE_VER
+          invoke demo.start demo.load-infra-schema demo.load-infra-data
+
+      - name: Display server logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
+
+      - name: Display task worker 1 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1"
+
+      - name: Display task worker 2 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2"
+
+      - name: Display task manager logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1"
+
+      - name: Display database logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
+
+      - name: Display message-queue logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1"
+
+      - name: "Clear docker environment and force vmagent to stop"
+        if: always()
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
   # ------------------------------------------ Benchmarks ------------------------------------------------
   backend-benchmark:
     needs:
@@ -757,8 +881,8 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Setup Python environment"
         run: |
-          poetry config virtualenvs.create false
-          pip install toml invoke
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
       - name: "Install dependencies"
         run: "poetry install --no-interaction --no-ansi"
       - name: Update PATH

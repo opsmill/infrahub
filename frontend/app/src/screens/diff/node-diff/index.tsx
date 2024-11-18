@@ -2,12 +2,11 @@ import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import { DateDisplay } from "@/components/display/date-display";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { rebaseBranch } from "@/graphql/mutations/branches/rebaseBranch";
+import { BRANCH_REBASE } from "@/graphql/mutations/branches/rebaseBranch";
 import { DIFF_UPDATE } from "@/graphql/mutations/proposed-changes/diff/diff-update";
 import { getProposedChangesDiffTree } from "@/graphql/queries/proposed-changes/getProposedChangesDiffTree";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,9 +19,9 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { classNames, objectToString } from "@/utils/common";
+import { classNames } from "@/utils/common";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/utils/date";
-import { NetworkStatus, gql, useMutation } from "@apollo/client";
+import { NetworkStatus, useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { createContext, useState } from "react";
@@ -55,7 +54,7 @@ const buildFilters = (filters: DiffFilter, qsp?: String | null) => {
 };
 
 export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
-  const auth = useAuth();
+  const { isAuthenticated } = useAuth();
   const [qspStatus] = useQueryParam(QSP.STATUS, StringParam);
   const date = useAtomValue(datetimeAtom);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
@@ -105,18 +104,11 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
     setIsLoadingUpdate(true);
 
     try {
-      const options = {
-        name: branch,
-      };
-
-      const mutationString = rebaseBranch({ data: objectToString(options) });
-
-      const mutation = gql`
-        ${mutationString}
-      `;
-
       await graphqlClient.mutate({
-        mutation,
+        mutation: BRANCH_REBASE,
+        variables: {
+          name: branch,
+        },
         context: {
           branch: branchName,
           date,
@@ -162,7 +154,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
 
         <RefreshButton
           onClick={handleRefresh}
-          disabled={!auth?.permissions?.write || isLoadingUpdate}
+          disabled={!isAuthenticated || isLoadingUpdate}
           isLoading={isLoadingUpdate}
         />
       </div>
@@ -192,7 +184,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
 
         <RefreshButton
           onClick={handleRefresh}
-          disabled={!auth?.permissions?.write || isLoadingUpdate}
+          disabled={!isAuthenticated || isLoadingUpdate}
           isLoading={isLoadingUpdate}
         />
       </div>
@@ -209,7 +201,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
 
   return (
     <div className="h-full overflow-hidden flex flex-col">
-      <div className="flex items-center p-2 bg-custom-white">
+      <div className="flex items-center p-2 bg-custom-white border-b">
         <ProposedChangeDiffFilter branch={branch} filters={filters} />
 
         <div className="flex flex-1 items-center gap-2 justify-end pr-2">
@@ -225,7 +217,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
               size="sm"
               variant="primary"
               onClick={handleRefresh}
-              disabled={!auth?.permissions?.write || isLoadingUpdate}
+              disabled={!isAuthenticated || isLoadingUpdate}
             >
               Refresh diff
             </Button>
@@ -243,11 +235,11 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
       </div>
 
       <div className="flex-grow grid grid-cols-4 overflow-hidden">
-        <Card className="col-span-1 my-2.5 ml-2.5 overflow-auto">
-          <DiffTree nodes={nodes} className="p-2 w-full" />
-        </Card>
+        <div className="p-4 col-span-1 overflow-auto border-r">
+          <DiffTree nodes={nodes} className="w-full" />
+        </div>
 
-        <div className="space-y-4 p-2.5 col-start-2 col-end-5 overflow-auto">
+        <div className="space-y-4 p-4 col-start-2 col-end-5 overflow-auto bg-stone-100">
           {nodes.length === 0 && qspStatus && (
             <div className="flex flex-col items-center mt-10 gap-5">
               <div className="p-3 rounded-full bg-white inline-flex">

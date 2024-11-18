@@ -15,6 +15,7 @@ from infrahub.core.constants import (
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
     BranchSupportType,
+    ComputedAttributeKind,
     HashableModelState,
     InfrahubKind,
     RelationshipCardinality,
@@ -45,20 +46,19 @@ from infrahub.core.schema import (
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
-from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
+from infrahub.support.macro import MacroDefinition
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
+from .schema_branch_computed import ComputedAttributes
 
 log = get_logger()
 
 if TYPE_CHECKING:
-    from graphql import GraphQLSchema
     from pydantic import ValidationInfo
-
 
 # pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines
 
@@ -70,8 +70,7 @@ class SchemaBranch:
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
         self.profiles: dict[str, str] = {}
-        self._graphql_schema: Optional[GraphQLSchema] = None
-        self._graphql_manager: Optional[GraphQLSchemaManager] = None
+        self.computed_attributes = ComputedAttributes()
 
         if data:
             self.nodes = data.get("nodes", {})
@@ -122,7 +121,7 @@ class SchemaBranch:
     def get_hash(self) -> str:
         """Calculate the hash for this objects based on the content of nodes and generics.
 
-        Since the object themselves are considered immuable we just need to use the hash from each object to calculate the global hash.
+        Since the object themselves are considered immutable we just need to use the hash from each object to calculate the global hash.
         """
         md5hash = hashlib.md5(usedforsecurity=False)
         for key, value in sorted(tuple(self.nodes.items()) + tuple(self.generics.items())):
@@ -164,31 +163,6 @@ class SchemaBranch:
                 cache[node_hash] = node
 
         return cls(cache=cache, data=nodes)
-
-    def clear_cache(self) -> None:
-        self._graphql_manager = None
-        self._graphql_schema = None
-
-    def get_graphql_manager(self) -> GraphQLSchemaManager:
-        if not self._graphql_manager:
-            self._graphql_manager = GraphQLSchemaManager(schema=self)
-        return self._graphql_manager
-
-    def get_graphql_schema(
-        self,
-        include_query: bool = True,
-        include_mutation: bool = True,
-        include_subscription: bool = True,
-        include_types: bool = True,
-    ) -> GraphQLSchema:
-        if not self._graphql_schema:
-            self._graphql_schema = self.get_graphql_manager().generate(
-                include_query=include_query,
-                include_mutation=include_mutation,
-                include_subscription=include_subscription,
-                include_types=include_types,
-            )
-        return self._graphql_schema
 
     def diff(self, other: SchemaBranch) -> SchemaDiff:
         # Identify the nodes or generics that have been added or removed
@@ -458,6 +432,14 @@ class SchemaBranch:
                         self.delete(name=new_item.kind)
                 else:
                     new_item = self.get(name=item.kind)
+
+                if (new_item.is_node_schema and not item.is_node_schema) or (
+                    new_item.is_generic_schema and not item.is_generic_schema
+                ):
+                    current_node_type = "Node" if new_item.is_node_schema else "Generic"
+                    raise ValidationError(
+                        f"{item.kind} already exist in the schema as a {current_node_type}. Either rename it or delete the existing one."
+                    )
                 new_item.update(item)
                 self.set(name=item.kind, schema=new_item)
             except SchemaNotFoundError:
@@ -486,8 +468,8 @@ class SchemaBranch:
 
     def process_validate(self) -> None:
         self.validate_names()
-        self.validate_menu_placements()
         self.validate_kinds()
+        self.validate_computed_attributes()
         self.validate_default_values()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
@@ -501,8 +483,10 @@ class SchemaBranch:
         self.validate_required_relationships()
 
     def process_post_validation(self) -> None:
+        self.cleanup_inherited_elements()
         self.add_groups()
-        self.add_hierarchy()
+        self.add_hierarchy_generic()
+        self.add_hierarchy_node()
         self.generate_weight()
         self.process_labels()
         self.process_dropdowns()
@@ -660,7 +644,13 @@ class SchemaBranch:
                 if len(constraint_paths) > 1:
                     continue
                 constraint_path = constraint_paths[0]
-                schema_attribute_path = node_schema.parse_schema_path(path=constraint_path, schema=self)
+                try:
+                    schema_attribute_path = node_schema.parse_schema_path(path=constraint_path, schema=self)
+                except AttributePathParsingError as exc:
+                    raise ValueError(
+                        f"{node_schema.kind}: Requested unique constraint not found within node. (`{constraint_path}`)"
+                    ) from exc
+
                 if (
                     schema_attribute_path.is_type_attribute
                     and schema_attribute_path.attribute_property_name == "value"
@@ -899,28 +889,6 @@ class SchemaBranch:
                 ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
 
-    def validate_menu_placements(self) -> None:
-        menu_placements: dict[str, str] = {}
-
-        for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name, duplicate=False)
-            if node.menu_placement:
-                try:
-                    placement_node = self.get(name=node.menu_placement, duplicate=False)
-                except SchemaNotFoundError as exc:
-                    raise SchemaNotFoundError(
-                        branch_name=self.name,
-                        identifier=node.menu_placement,
-                        message=f"{node.kind} refers to an invalid menu placement node: {node.menu_placement}.",
-                    ) from exc
-                if node == placement_node:
-                    raise ValueError(f"{node.kind}: cannot be placed under itself in the menu") from None
-
-                if menu_placements.get(placement_node.kind) == node.kind:
-                    raise ValueError(f"{node.kind}: cyclic menu placement with {placement_node.kind}") from None
-
-                menu_placements[node.kind] = placement_node.kind
-
     def validate_kinds(self) -> None:
         for name in list(self.nodes.keys()):
             node = self.get_node(name=name, duplicate=False)
@@ -943,6 +911,84 @@ class SchemaBranch:
                     raise ValueError(
                         f"{node.kind}: Relationship {rel.name!r} is referencing an invalid peer {rel.peer!r}"
                     ) from None
+
+    def validate_computed_attributes(self) -> None:
+        self.computed_attributes = ComputedAttributes()
+        for name in self.nodes.keys():
+            node_schema = self.get_node(name=name, duplicate=False)
+            for attribute in node_schema.attributes:
+                self._validate_computed_attribute(node=node_schema, attribute=attribute)
+
+        for name in self.generics.keys():
+            generic_schema = self.get_generic(name=name, duplicate=False)
+            for attribute in generic_schema.attributes:
+                if attribute.computed_attribute and attribute.computed_attribute.kind != ComputedAttributeKind.USER:
+                    raise ValueError(
+                        f"{generic_schema.kind}: Attribute {attribute.name!r} computed attributes are only allowed on nodes not generics"
+                    )
+
+    def _validate_computed_attribute(self, node: NodeSchema, attribute: AttributeSchema) -> None:
+        if not attribute.computed_attribute or attribute.computed_attribute.kind == ComputedAttributeKind.USER:
+            return
+
+        if not attribute.read_only:
+            raise ValueError(
+                f"{node.kind}: Attribute {attribute.name!r} is a computed jinja2 attribute but not marked as read_only"
+            )
+        if not attribute.kind == "Text":
+            raise ValueError(
+                f"{node.kind}: Attribute {attribute.name!r} is a computed jinja2 attribute currently only 'Text' kinds are supported."
+            )
+
+        if (
+            attribute.computed_attribute.kind == ComputedAttributeKind.JINJA2
+            and not attribute.computed_attribute.jinja2_template
+        ):
+            raise ValueError(
+                f"{node.kind}: Attribute {attribute.name!r} is a computed jinja2 attribute but no logic is defined"
+            )
+        if (
+            attribute.computed_attribute.kind == ComputedAttributeKind.JINJA2
+            and attribute.computed_attribute.jinja2_template
+        ):
+            allowed_path_types = (
+                SchemaElementPathType.ATTR_WITH_PROP
+                | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+                | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
+            )
+            try:
+                macro = MacroDefinition(macro=attribute.computed_attribute.jinja2_template)
+            except ValueError as exc:
+                raise ValueError(
+                    f"{node.kind}: Attribute {attribute.name!r} is assigned by a jinja2 template, but has an invalid template"
+                ) from exc
+
+            for variable in macro.variables:
+                try:
+                    schema_path = self.validate_schema_path(
+                        node_schema=node, path=variable, allowed_path_types=allowed_path_types
+                    )
+                except ValueError as exc:
+                    raise ValueError(
+                        f"{node.kind}: Attribute {attribute.name!r} the '{variable}' variable is not found within the schema path"
+                    ) from exc
+
+                if schema_path.is_type_attribute and schema_path.active_attribute_schema.name == attribute.name:
+                    raise ValueError(
+                        f"{node.kind}: Attribute {attribute.name!r} the '{variable}' variable is a reference to itself"
+                    )
+
+                self.computed_attributes.register_computed_jinja2(
+                    node=node, attribute=attribute, schema_path=schema_path
+                )
+
+        elif attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON and not attribute.optional:
+            raise ValueError(
+                f"{node.kind}: Attribute {attribute.name!r} is a computed transform, it can't be mandatory"
+            )
+
+        elif attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON:
+            self.computed_attributes.add_python_attribute(node=node, attribute=attribute)
 
     def validate_count_against_cardinality(self) -> None:
         """Validate every RelationshipSchema cardinality against the min_count and max_count."""
@@ -1319,6 +1365,50 @@ class SchemaBranch:
 
             self.set(name=name, schema=node)
 
+    def cleanup_inherited_elements(self) -> None:
+        # pylint: disable=too-many-branches
+        for name in self.node_names:
+            node = self.get_node(name=name, duplicate=False)
+
+            attributes_to_delete = []
+            relationships_to_delete = []
+
+            inherited_attribute_names = set(node.attribute_names) - set(node.local_attribute_names)
+            inherited_relationship_names = set(node.relationship_names) - set(node.local_relationship_names)
+            for item_name in inherited_attribute_names:
+                found = False
+                for generic_name in node.inherit_from:
+                    generic = self.get_generic(name=generic_name, duplicate=False)
+                    if item_name in generic.attribute_names:
+                        attr = generic.get_attribute(name=item_name)
+                        if attr.state != HashableModelState.ABSENT:
+                            found = True
+                if not found:
+                    attributes_to_delete.append(item_name)
+
+            for item_name in inherited_relationship_names:
+                found = False
+                for generic_name in node.inherit_from:
+                    generic = self.get_generic(name=generic_name, duplicate=False)
+                    if item_name in generic.relationship_names:
+                        rel = generic.get_relationship(name=item_name)
+                        if rel.state != HashableModelState.ABSENT:
+                            found = True
+                if not found:
+                    relationships_to_delete.append(item_name)
+
+            # If there is either an attribute or a relationship to delete
+            # We clone the node and we set the attribute / relationship as ABSENT
+            if attributes_to_delete or relationships_to_delete:
+                node_copy = self.get_node(name=name, duplicate=True)
+                for item_name in attributes_to_delete:
+                    attr = node_copy.get_attribute(name=item_name)
+                    attr.state = HashableModelState.ABSENT
+                for item_name in relationships_to_delete:
+                    rel = node_copy.get_relationship(name=item_name)
+                    rel.state = HashableModelState.ABSENT
+                self.set(name=name, schema=node_copy)
+
     def add_groups(self) -> None:
         if not self.has(name=InfrahubKind.GENERICGROUP):
             return
@@ -1369,7 +1459,34 @@ class SchemaBranch:
             if changed:
                 self.set(name=node_name, schema=schema)
 
-    def add_hierarchy(self) -> None:
+    def _get_hierarchy_child_rel(self, peer: str, hierarchical: str, read_only: bool) -> RelationshipSchema:
+        return RelationshipSchema(
+            name="children",
+            identifier="parent__child",
+            peer=peer,
+            kind=RelationshipKind.HIERARCHY,
+            cardinality=RelationshipCardinality.MANY,
+            branch=BranchSupportType.AWARE,
+            direction=RelationshipDirection.INBOUND,
+            hierarchical=hierarchical,
+            read_only=read_only,
+        )
+
+    def _get_hierarchy_parent_rel(self, peer: str, hierarchical: str, read_only: bool) -> RelationshipSchema:
+        return RelationshipSchema(
+            name="parent",
+            identifier="parent__child",
+            peer=peer,
+            kind=RelationshipKind.HIERARCHY,
+            cardinality=RelationshipCardinality.ONE,
+            max_count=1,
+            branch=BranchSupportType.AWARE,
+            direction=RelationshipDirection.OUTBOUND,
+            hierarchical=hierarchical,
+            read_only=read_only,
+        )
+
+    def add_hierarchy_generic(self) -> None:
         for generic_name in self.generics.keys():
             generic = self.get_generic(name=generic_name, duplicate=False)
 
@@ -1381,36 +1498,16 @@ class SchemaBranch:
 
             if "parent" not in generic.relationship_names:
                 generic.relationships.append(
-                    RelationshipSchema(
-                        name="parent",
-                        identifier="parent__child",
-                        peer=generic_name,
-                        kind=RelationshipKind.HIERARCHY,
-                        cardinality=RelationshipCardinality.ONE,
-                        max_count=1,
-                        branch=BranchSupportType.AWARE,
-                        direction=RelationshipDirection.OUTBOUND,
-                        hierarchical=generic_name,
-                        read_only=read_only,
-                    )
+                    self._get_hierarchy_parent_rel(peer=generic_name, hierarchical=generic_name, read_only=read_only)
                 )
             if "children" not in generic.relationship_names:
                 generic.relationships.append(
-                    RelationshipSchema(
-                        name="children",
-                        identifier="parent__child",
-                        peer=generic_name,
-                        kind=RelationshipKind.HIERARCHY,
-                        cardinality=RelationshipCardinality.MANY,
-                        branch=BranchSupportType.AWARE,
-                        direction=RelationshipDirection.INBOUND,
-                        hierarchical=generic_name,
-                        read_only=read_only,
-                    )
+                    self._get_hierarchy_child_rel(peer=generic_name, hierarchical=generic_name, read_only=read_only)
                 )
 
             self.set(name=generic_name, schema=generic)
 
+    def add_hierarchy_node(self) -> None:
         for node_name in self.nodes.keys():
             node = self.get_node(name=node_name, duplicate=False)
 
@@ -1420,36 +1517,29 @@ class SchemaBranch:
             node = node.duplicate()
             read_only = InfrahubKind.IPPREFIX in node.inherit_from
 
-            if node.parent and "parent" not in node.relationship_names:
-                node.relationships.append(
-                    RelationshipSchema(
-                        name="parent",
-                        identifier="parent__child",
-                        peer=node.parent,
-                        kind=RelationshipKind.HIERARCHY,
-                        cardinality=RelationshipCardinality.ONE,
-                        max_count=1,
-                        branch=BranchSupportType.AWARE,
-                        direction=RelationshipDirection.OUTBOUND,
-                        hierarchical=node.hierarchy,
-                        read_only=read_only,
+            if node.parent:
+                if "parent" not in node.relationship_names:
+                    node.relationships.append(
+                        self._get_hierarchy_parent_rel(
+                            peer=node.parent, hierarchical=node.hierarchy, read_only=read_only
+                        )
                     )
-                )
+                else:
+                    parent_rel = node.get_relationship(name="parent")
+                    if parent_rel.peer != node.parent:
+                        parent_rel.peer = node.parent
 
-            if node.children and "children" not in node.relationship_names:
-                node.relationships.append(
-                    RelationshipSchema(
-                        name="children",
-                        identifier="parent__child",
-                        peer=node.children,
-                        kind=RelationshipKind.HIERARCHY,
-                        cardinality=RelationshipCardinality.MANY,
-                        branch=BranchSupportType.AWARE,
-                        direction=RelationshipDirection.INBOUND,
-                        hierarchical=node.hierarchy,
-                        read_only=read_only,
+            if node.children:
+                if "children" not in node.relationship_names:
+                    node.relationships.append(
+                        self._get_hierarchy_child_rel(
+                            peer=node.children, hierarchical=node.hierarchy, read_only=read_only
+                        )
                     )
-                )
+                else:
+                    children_rel = node.get_relationship(name="children")
+                    if children_rel.peer != node.children:
+                        children_rel.peer = node.children
 
             self.set(name=node_name, schema=node)
 
@@ -1473,6 +1563,12 @@ class SchemaBranch:
             profile = self.generate_profile_from_node(node=node)
             self.set(name=profile.kind, schema=profile)
             profile_schema_kinds.add(profile.kind)
+
+        for previous_profile in list(self.profiles.keys()):
+            # Ensure that we remove previous profile schemas if a node has been renamed
+            if previous_profile not in profile_schema_kinds:
+                self.delete(name=previous_profile)
+
         if not profile_schema_kinds:
             return
 
@@ -1561,6 +1657,7 @@ class SchemaBranch:
             include_in_menu=False,
             display_labels=["profile_name__value"],
             inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.PROFILE, InfrahubKind.NODE],
+            human_friendly_id=["profile_name__value"],
             default_filter="profile_name__value",
             attributes=[profile_name_attr, profile_priority_attr],
             relationships=[

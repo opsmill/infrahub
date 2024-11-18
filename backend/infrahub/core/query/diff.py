@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
 from infrahub.core.timestamp import Timestamp
 
@@ -216,25 +216,31 @@ class DiffRelationshipQuery(DiffQuery):
         query = (
             """
         CALL {
-            MATCH p = ((src:Node)-[r1:IS_RELATED]-(rel:Relationship)-[r2:IS_RELATED]-(dst:Node))
+            MATCH p = (src:Node)-[r1:IS_RELATED]-(rel:Relationship)-[r2:IS_RELATED]-(dst:Node)
             WHERE (rel.branch_support IN $branch_support AND %s r1.branch = r2.branch AND
-                (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL)) AND r1.from = r2.from AND r1.status = r2.status
-                AND all(r IN relationships(p) WHERE (r.branch IN $branch_names AND r.from >= $diff_from AND r.from <= $diff_to
-                    AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))
+                (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL))
+                AND r1.from = r2.from AND r1.status = r2.status
+                AND r1.branch IN $branch_names
+                AND (
+                    (r1.from >= $diff_from AND r1.from <= $diff_to AND r1.to is NULL)
+                    OR (r1.to >= $diff_from AND r1.to <= $diff_to)
                 )
             )
             RETURN DISTINCT [rel.uuid, r1.branch] as identifier, rel, r1.branch as branch_name
         }
         CALL {
             WITH rel, branch_name
-            MATCH p = ((sn:Node)-[r1:IS_RELATED]-(rel:Relationship)-[r2:IS_RELATED]-(dn:Node))
+            MATCH p = (sn:Node)-[r1:IS_RELATED]-(rel:Relationship)-[r2:IS_RELATED]-(dn:Node)
             WHERE (rel.branch_support IN $branch_support AND r1.branch = r2.branch AND
-                (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL)) AND r1.from = r2.from AND r1.status = r2.status
-                AND all(r IN relationships(p) WHERE (r.branch = branch_name AND r.from >= $diff_from AND r.from <= $diff_to
-                    AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))
+                (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL))
+                AND r1.from = r2.from AND r1.status = r2.status
+                AND r1.branch = branch_name
+                AND (
+                    (r1.from >= $diff_from AND r1.from <= $diff_to AND r1.to is NULL)
+                    OR (r1.to >= $diff_from AND r1.to <= $diff_to)
                 )
+                AND sn <> dn
             )
-            AND sn <> dn
             RETURN rel as rel1, sn as sn1, dn as dn1, r1 as r11, r2 as r21
             ORDER BY r1.branch_level DESC, r1.from DESC
             LIMIT 1
@@ -266,8 +272,11 @@ class DiffRelationshipPropertyQuery(DiffQuery):
         query = """
         CALL {
             MATCH (rel:Relationship)-[r3:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-()
-            WHERE (r3.branch IN $branch_names AND r3.from >= $diff_from AND r3.from <= $diff_to
-            AND ((r3.to >= $diff_from AND r3.to <= $diff_to ) OR r3.to is NULL))
+            WHERE (
+                r3.branch IN $branch_names
+                AND (r3.from >= $diff_from AND r3.from <= $diff_to AND r3.to is NULL)
+                OR (r3.to >= $diff_from AND r3.to <= $diff_to)
+            )
             RETURN DISTINCT rel
         }
         CALL {
@@ -281,11 +290,22 @@ class DiffRelationshipPropertyQuery(DiffQuery):
             LIMIT 1
         }
         WITH rel1 as rel, sn1 as sn, dn1 as dn, r11 as r1, r21 as r2
-        MATCH (rel:Relationship)-[r3:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-(rp)
-        WHERE (
-            r3.branch IN $branch_names AND r3.from >= $diff_from AND r3.from <= $diff_to
-            AND ((r3.to >= $diff_from AND r3.to <= $diff_to) OR r3.to is NULL)
-        )
+        CALL {
+            // -----------------------
+            // group results to the latest entry for each edge type (IS_VISIBLE, etc.)
+            // -----------------------
+            WITH rel
+            MATCH (rel:Relationship)-[r3:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(prop)
+            WHERE (
+                r3.branch IN $branch_names
+                AND (r3.from >= $diff_from AND r3.from <= $diff_to AND r3.to is NULL)
+                OR (r3.to >= $diff_from AND r3.to <= $diff_to)
+            )
+            WITH r3, prop
+            ORDER BY r3.branch, type(r3), r3.from DESC
+            WITH r3.branch AS r3_branch, type(r3) AS type_r3, head(collect([r3, prop])) AS data
+            RETURN data[0] AS r3, data[1] AS rp
+        }
         """ % "\n AND ".join(rels_filter)
 
         self.add_to_query(query)
@@ -527,6 +547,7 @@ class DiffAllPathsQuery(DiffQuery):
             {
                 "base_branch_name": self.base_branch.name,
                 "branch_name": self.branch.name,
+                "global_branch_name": GLOBAL_BRANCH_NAME,
                 "branch_from_time": self.diff_branch_from_time.to_string(),
                 "from_time": from_str,
                 "to_time": self.diff_to.to_string(),
@@ -633,30 +654,31 @@ CALL {
             MATCH (root:Root)<-[r_root:IS_PART_OF]-(p:Node)-[diff_rel:HAS_ATTRIBUTE {branch: $branch_name}]->(q:Attribute)
             // exclude attributes and relationships under added/removed nodes b/c they are covered above
             WHERE (node_field_specifiers_list IS NULL OR [p.uuid, q.name] IN node_field_specifiers_list)
-            AND r_root.branch IN [$branch_name, $base_branch_name]
-            AND r_root.from < from_time
+            AND r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
+            AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
+            // if p has a different type of branch support and was addded within our timeframe
+            AND (r_root.from < from_time OR NOT (p.branch_support IN $branch_support))
             AND r_root.status = "active"
             // get attributes and relationships added on the branch during the timeframe
             AND (from_time <= diff_rel.from < $to_time)
             AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
             AND r_root.from <= diff_rel.from
             AND (r_root.to IS NULL OR r_root.to >= diff_rel.from)
-            AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
             RETURN root, r_root, p, diff_rel, q
             UNION ALL
             WITH node_field_specifiers_list, from_time
             MATCH (root:Root)<-[r_root:IS_PART_OF]-(p:Node)-[diff_rel:IS_RELATED {branch: $branch_name}]-(q:Relationship)
             // exclude attributes and relationships under added/removed nodes b/c they are covered above
             WHERE (node_field_specifiers_list IS NULL OR [p.uuid, q.name] IN node_field_specifiers_list)
-            AND r_root.branch IN [$branch_name, $base_branch_name]
-            AND r_root.from < from_time
-            AND r_root.status = "active"
+            AND r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
+            AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
+            // if p has a different type of branch support and was addded within our timeframe
+            AND (r_root.from < from_time OR NOT (p.branch_support IN $branch_support))
             // get attributes and relationships added on the branch during the timeframe
             AND (from_time <= diff_rel.from < $to_time)
             AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
             AND r_root.from <= diff_rel.from
             AND (r_root.to IS NULL OR r_root.to >= diff_rel.from)
-            AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
             RETURN root, r_root, p, diff_rel, q
         }
         WITH root, r_root, p, diff_rel, q, from_time

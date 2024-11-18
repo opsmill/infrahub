@@ -59,8 +59,8 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
 
         query = """
         // Find all the active nodes
-        MATCH (node:Node)
-        WHERE $node_kind IN LABELS(node) AND exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))
+        MATCH (node:%(node_kind)s)
+        WHERE exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))
         CALL {
             WITH node
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
@@ -102,7 +102,11 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery):
             SET rb.to = $current_time
         )
         RETURN DISTINCT active_attr
-        """ % {"branch_filter": branch_filter, "sub_query_all": sub_query_all}
+        """ % {
+            "branch_filter": branch_filter,
+            "sub_query_all": sub_query_all,
+            "node_kind": self.migration.new_schema.kind,
+        }
         self.add_to_query(query)
 
 

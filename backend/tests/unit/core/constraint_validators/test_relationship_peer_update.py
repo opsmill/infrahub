@@ -316,9 +316,6 @@ async def test_query_update_on_branch_success(
     g_car = await Node.init(db=db, schema="TestGazCar", branch=default_branch)
     await g_car.new(db=db, name="GCar", nbr_seats=3, mpg=29, owner=p_1)
     await g_car.save(db=db)
-    await p_1.cars.get_relationships(db=db)
-    await p_1.cars.update(db=db, data=[*p_1.cars, g_car])
-    await p_1.save(db=db)
 
     await branch.rebase(db=db)
     p_1 = await NodeManager.get_one(db=db, id=p_1.id, branch=branch)

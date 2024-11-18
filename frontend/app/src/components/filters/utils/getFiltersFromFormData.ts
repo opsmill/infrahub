@@ -43,7 +43,7 @@ export const getFiltersFromFormData = (formData: Record<string, FormFieldValue>)
         ...acc,
         {
           name: `${fieldName}__ids`,
-          value: fieldValue.map(({ id }) => id),
+          value: fieldValue,
         },
       ];
     }

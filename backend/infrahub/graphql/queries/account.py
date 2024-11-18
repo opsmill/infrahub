@@ -70,6 +70,7 @@ AccountToken = Field(
 
 class AccountGlobalPermissionNode(ObjectType):
     id = Field(String, required=True)
+    description = Field(String, required=False)
     name = Field(String, required=True)
     action = Field(String, required=True)
     decision = Field(String, required=True)
@@ -78,7 +79,7 @@ class AccountGlobalPermissionNode(ObjectType):
 
 class AccountObjectPermissionNode(ObjectType):
     id = Field(String, required=True)
-    branch = Field(String, required=True)
+    description = Field(String, required=False)
     namespace = Field(String, required=True)
     name = Field(String, required=True)
     action = Field(String, required=True)
@@ -122,7 +123,7 @@ async def resolve_account_permissions(
     permissions: AssignedPermissions = {"global_permissions": [], "object_permissions": []}
     for permission_backend in registry.permission_backends:
         backend_permissions = await permission_backend.load_permissions(
-            db=context.db, account_id=context.account_session.account_id, branch=context.branch
+            db=context.db, account_session=context.account_session, branch=context.branch
         )
         permissions["global_permissions"].extend(backend_permissions["global_permissions"])
         permissions["object_permissions"].extend(backend_permissions["object_permissions"])
@@ -135,7 +136,7 @@ async def resolve_account_permissions(
             {
                 "node": {
                     "id": obj.id,
-                    "name": obj.name,
+                    "description": obj.description,
                     "action": obj.action,
                     "decision": obj.decision,
                     "identifier": str(obj),
@@ -150,7 +151,7 @@ async def resolve_account_permissions(
             {
                 "node": {
                     "id": obj.id,
-                    "branch": obj.branch,
+                    "description": obj.description,
                     "namespace": obj.namespace,
                     "name": obj.name,
                     "action": obj.action,

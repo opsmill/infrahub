@@ -1,10 +1,7 @@
-from unittest.mock import AsyncMock
-
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -24,8 +21,6 @@ class TestDiffCoordinator:
 
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
-        mock_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
-        diff_coordinator.data_check_synchronizer = mock_synchronizer
         diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
 
         assert diff.base_branch_name == default_branch.name

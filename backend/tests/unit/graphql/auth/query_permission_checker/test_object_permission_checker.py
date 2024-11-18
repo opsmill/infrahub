@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -232,26 +233,21 @@ class TestObjectPermissions:
         permissions = []
         for object_permission in [
             ObjectPermission(
-                id="",
-                branch="main",
                 namespace="Builtin",
                 name="*",
                 action=PermissionAction.ANY.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
             ),
             ObjectPermission(
-                id="",
-                branch="main",
                 namespace="Core",
                 name="GraphQLQuery",
                 action=PermissionAction.VIEW.value,
-                decision=PermissionDecision.ALLOW.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
             ),
         ]:
             obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
             await obj.new(
                 db=db,
-                branch=object_permission.branch,
                 namespace=object_permission.namespace,
                 name=object_permission.name,
                 action=object_permission.action,
@@ -307,10 +303,7 @@ class TestObjectPermissions:
             auth_type=AuthType.JWT,
         )
 
-        with pytest.raises(
-            PermissionDeniedError,
-            match="You do not have the following permission: object:main:Core:Repository:view:allow",
-        ):
+        with pytest.raises(PermissionDeniedError, match=r":Repository:view:"):
             await perms.check(
                 db=db,
                 account_session=session,
@@ -357,7 +350,7 @@ class TestObjectPermissions:
             auth_type=AuthType.JWT,
         )
 
-        with pytest.raises(PermissionDeniedError, match="Repository:view:allow"):
+        with pytest.raises(PermissionDeniedError, match=r"Repository:view:"):
             await perms.check(
                 db=db,
                 account_session=session,
@@ -382,7 +375,7 @@ class TestAccountManagerPermissions:
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
-            db=db, name=GlobalPermissions.MANAGE_ACCOUNTS.value, action=GlobalPermissions.MANAGE_ACCOUNTS.value
+            db=db, action=GlobalPermissions.MANAGE_ACCOUNTS.value, decision=PermissionDecision.ALLOW_ALL.value
         )
         await permission.save(db=db)
 
@@ -411,8 +404,9 @@ class TestAccountManagerPermissions:
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ):
         checker = AccountManagerPermissionChecker()
-        is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
-        assert is_supported == user.authenticated
+        with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
+            is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
+            assert is_supported == user.authenticated
 
     @pytest.mark.parametrize("operation", [MUTATION_ACCOUNT, MUTATION_ACCOUNT_GROUP, MUTATION_ACCOUNT_ROLE])
     async def test_account_with_permission(
@@ -497,7 +491,7 @@ class TestPermissionManagerPermissions:
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
-            db=db, name=GlobalPermissions.MANAGE_PERMISSIONS.value, action=GlobalPermissions.MANAGE_PERMISSIONS.value
+            db=db, action=GlobalPermissions.MANAGE_PERMISSIONS.value, decision=PermissionDecision.ALLOW_ALL.value
         )
         await permission.save(db=db)
 
@@ -526,8 +520,9 @@ class TestPermissionManagerPermissions:
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ):
         checker = PermissionManagerPermissionChecker()
-        is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
-        assert is_supported == user.authenticated
+        with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
+            is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
+            assert is_supported == user.authenticated
 
     @pytest.mark.parametrize(
         "operation", [MUTATION_GLOBAL_PERMISSION, MUTATION_OBJECT_PERMISSION, QUERY_ACCOUNT_PERMISSIONS]
@@ -611,7 +606,7 @@ class TestRepositoryManagerPermissions:
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
-            db=db, name=GlobalPermissions.MANAGE_REPOSITORIES.value, action=GlobalPermissions.MANAGE_REPOSITORIES.value
+            db=db, action=GlobalPermissions.MANAGE_REPOSITORIES.value, decision=PermissionDecision.ALLOW_ALL.value
         )
         await permission.save(db=db)
 
@@ -640,8 +635,9 @@ class TestRepositoryManagerPermissions:
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ):
         checker = AccountManagerPermissionChecker()
-        is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
-        assert is_supported == user.authenticated
+        with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
+            is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
+            assert is_supported == user.authenticated
 
     @pytest.mark.parametrize(
         "operation", [MUTATION_REPOSITORY, MUTATION_READONLY_REPOSITORY, MUTATION_GENERIC_REPOSITORY]

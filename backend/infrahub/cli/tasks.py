@@ -46,5 +46,7 @@ async def execute(
         worker = WorkflowWorkerExecution()
         await DUMMY_FLOW.save(client=client, work_pool=WorkerPoolDefinition(name="testing", worker_type="process"))
 
-        result = await worker.execute(workflow=DUMMY_FLOW, data=DummyInput(firstname="John", lastname="Doe"))  # type: ignore[var-annotated]
+        result = await worker.execute_workflow(
+            workflow=DUMMY_FLOW, parameters={"data": DummyInput(firstname="John", lastname="Doe")}
+        )  # type: ignore[var-annotated]
         print(result)

@@ -91,7 +91,11 @@ async def token(
     payload = token_response.json()
 
     headers = {"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"}
-    userinfo_response = await service.http.post(provider.userinfo_url, headers=headers)
+    if provider.userinfo_method == config.UserInfoMethod.GET:
+        userinfo_response = await service.http.get(provider.userinfo_url, headers=headers)
+    else:
+        userinfo_response = await service.http.post(provider.userinfo_url, headers=headers)
+
     _validate_response(response=userinfo_response)
     user_info = userinfo_response.json()
     sso_groups = user_info.get("groups", [])

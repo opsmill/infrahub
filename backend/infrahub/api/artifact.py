@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from fastapi import APIRouter, Body, Depends, Request, Response
 from pydantic import BaseModel, Field
 
@@ -11,11 +9,9 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.protocols import CoreArtifactDefinition
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import NodeNotFoundError
+from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
-from infrahub.message_bus import messages
-
-if TYPE_CHECKING:
-    from infrahub.services import InfrahubServices
+from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 
 log = get_logger()
 router = APIRouter(prefix="/artifact")
@@ -68,9 +64,9 @@ async def generate_artifact(
         branch=branch_params.branch,
     )
 
-    service: InfrahubServices = request.app.state.service
-    await service.send(
-        message=messages.RequestArtifactDefinitionGenerate(
-            artifact_definition=artifact_definition.id, branch=branch_params.branch.name, limit=payload.nodes
-        )
+    service = request.app.state.service
+    model = RequestArtifactDefinitionGenerate(
+        artifact_definition=artifact_definition.id, branch=branch_params.branch.name, limit=payload.nodes
     )
+
+    await service.workflow.submit_workflow(workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model})

@@ -9,13 +9,14 @@ import JsonField from "@/components/form/fields/json.field";
 import ListField from "@/components/form/fields/list.field";
 import NumberField from "@/components/form/fields/number.field";
 import PasswordInputField from "@/components/form/fields/password-input.field";
+import RelationshipManyField from "@/components/form/fields/relationship-many.field";
 import RelationshipField from "@/components/form/fields/relationship.field";
 import TextareaField from "@/components/form/fields/textarea.field";
 import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 import { Form, FormProps, FormRef, FormSubmit } from "@/components/ui/form";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { warnUnexpectedType } from "@/utils/common";
-import React, { forwardRef } from "react";
+import { forwardRef } from "react";
 
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   fields: Array<DynamicFieldProps>;
@@ -109,6 +110,11 @@ export const DynamicInput = (props: DynamicFieldProps) => {
       return <EnumField {...otherProps} />;
     }
     case "relationship": {
+      if (props.relationship.cardinality === "many") {
+        const { type, ...otherProps } = props;
+        return <RelationshipManyField {...otherProps} />;
+      }
+
       return <RelationshipField {...props} />;
     }
     default: {

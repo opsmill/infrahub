@@ -2,8 +2,8 @@ from typing import Optional
 
 from pydantic import Field
 
+from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.message_bus import InfrahubMessage
-from infrahub.message_bus.types import ProposedChangeGeneratorDefinition
 
 
 class CheckGeneratorRun(InfrahubMessage):

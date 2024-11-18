@@ -4,6 +4,7 @@ import { FormField } from "@/components/ui/form";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
 import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
 import { IModelSchema } from "@/state/atoms/schema.atom";
+import { Node } from "@/utils/getObjectItemDisplayValue";
 import { ComponentProps } from "react";
 
 type SourceType = "schema" | "user";
@@ -30,7 +31,7 @@ export type PoolSource = {
   id: string;
 };
 
-export type AttributeValueFormPool = {
+export type AttributeValueFromPool = {
   source: PoolSource;
   value: { from_pool: { id: string } };
 };
@@ -52,24 +53,35 @@ export type AttributeValueFromUser =
 export type FormAttributeValue =
   | AttributeValueFromUser
   | AttributeValueFromProfile
-  | EmptyFieldValue
-  | AttributeValueFormPool;
+  | AttributeValueFromPool
+  | EmptyFieldValue;
 
-export type RelationshipValueFormPool = {
-  source: PoolSource;
-  value: { id: string } | { from_pool: { id: string } };
-};
-
-export type RelationshipValueFormUser = {
+export type RelationshipOneValueFromUser = {
   source: {
     type: SourceType;
   };
-  value: { id: string } | Array<{ id: string }> | null;
+  value: Node | null;
 };
 
+export type RelationshipManyValueFromUser = {
+  source: {
+    type: SourceType;
+  };
+  value: Array<Node> | null;
+};
+
+export type RelationshipValueFromPool = {
+  source: PoolSource;
+  value: Node | { from_pool: { id: string } };
+};
+
+export type RelationshipValueFromUser =
+  | RelationshipOneValueFromUser
+  | RelationshipManyValueFromUser;
+
 export type FormRelationshipValue =
-  | RelationshipValueFormUser
-  | RelationshipValueFormPool
+  | RelationshipValueFromUser
+  | RelationshipValueFromPool
   | EmptyFieldValue;
 
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
@@ -117,6 +129,7 @@ export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue">
   options?: SelectOption[];
   relationship: RelationshipSchema;
   schema: IModelSchema;
+  peerField?: string;
 };
 
 export type DynamicFieldProps =
@@ -128,7 +141,7 @@ export type DynamicFieldProps =
 
 export const isFormFieldValueFromPool = (
   fieldData: FormFieldValue
-): fieldData is RelationshipValueFormPool => fieldData.source?.type === "pool";
+): fieldData is RelationshipValueFromPool => fieldData.source?.type === "pool";
 
 export type NumberPoolData = {
   id: string;

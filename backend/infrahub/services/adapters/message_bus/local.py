@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Optional, TypeVar
 
 import ujson
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.message_bus import InfrahubMessage, Meta

@@ -1,12 +1,15 @@
 agent
+Alibaba
 Ansible
 APIs
 artifact_definitions
 artifact_name
 async
+Authentik
 boolean
 check_definitions
 class_name
+CloudFormation
 codespace
 codespaces
 config
@@ -28,6 +31,7 @@ docker
 dockerfile
 docusaurus
 e2e
+edit_default_branch
 enum
 enums
 env
@@ -81,10 +85,12 @@ Newsfragment
 Nornir
 npm
 o'brian
+order_weight
 openconfig
 opentelemetry
 order_by
 Prefetch
+profile_name
 PyPI
 query_peers
 rebase
@@ -95,6 +101,7 @@ REST
 ressources
 schema_mapping
 sdk
+subcommand
 subnet
 template_path
 toml
@@ -111,3 +118,5 @@ Version Control
 Vitest
 Yaml
 yamllint
+vscode
+VSCode

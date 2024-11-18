@@ -1,23 +1,36 @@
 import importlib
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any, Awaitable, Callable, TypeVar
 from uuid import UUID
 
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.actions import DeploymentScheduleCreate
+from prefect.client.schemas.objects import FlowRun
 from prefect.client.schemas.schedules import CronSchedule
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing_extensions import Self
 
 from infrahub import __version__
 
-from .constants import WorkflowType
+from .constants import TAG_NAMESPACE, WorkflowTag, WorkflowType
 
 TASK_RESULT_STORAGE_NAME = "infrahub-storage"
+
+WorkflowReturn = TypeVar("WorkflowReturn")
 
 
 class WorkerPoolDefinition(BaseModel):
     name: str
-    worker_type: str
+    worker_type: str | None = None
     description: str = ""
+
+
+class WorkflowInfo(BaseModel):
+    id: UUID
+    info: FlowRun | None = None
+
+    @classmethod
+    def from_flow(cls, flow_run: FlowRun) -> Self:
+        return cls(id=flow_run.id, info=flow_run)
 
 
 class WorkflowDefinition(BaseModel):
@@ -25,7 +38,8 @@ class WorkflowDefinition(BaseModel):
     type: WorkflowType = WorkflowType.INTERNAL
     module: str
     function: str
-    cron: Optional[str] = None
+    cron: str | None = None
+    tags: list[WorkflowTag] = Field(default_factory=list)
 
     @property
     def entrypoint(self) -> str:
@@ -36,15 +50,18 @@ class WorkflowDefinition(BaseModel):
         return f"{self.name}/{self.name}"
 
     def to_deployment(self) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "name": self.name,
-            "entrypoint": self.entrypoint,
-        }
+        payload: dict[str, Any] = {"name": self.name, "entrypoint": self.entrypoint, "tags": self.get_tags()}
         if self.type == WorkflowType.INTERNAL:
             payload["version"] = __version__
         if self.cron:
             payload["schedules"] = [DeploymentScheduleCreate(schedule=CronSchedule(cron=self.cron))]
+
         return payload
+
+    def get_tags(self) -> list[str]:
+        tags: list[str] = [TAG_NAMESPACE, WorkflowTag.WORKFLOWTYPE.render(identifier=self.type.value)]
+        tags += [tag.render() for tag in self.tags]
+        return tags
 
     async def save(self, client: PrefectClient, work_pool: WorkerPoolDefinition) -> UUID:
         flow_id = await client.create_flow_from_name(self.name)

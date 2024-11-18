@@ -154,41 +154,33 @@ export function Component() {
 
   if (error || !proposedChangesData) {
     return (
-      <Content>
-        <Content.Title
-          title={
-            <div className="flex items-center gap-2">
-              <Link
-                className="no-underline hover:underline"
-                to={constructPath("/proposed-changes")}
-              >
-                Proposed changes
-              </Link>
-            </div>
-          }
+      <Content.Card>
+        <Content.CardTitle
+          title="Proposed changes"
           reload={() => client.reFetchObservableQueries()}
           isReloadLoading={loading}
-        >
-          <ObjectHelpButton
-            documentationUrl={schema?.documentation}
-            kind={PROPOSED_CHANGES_OBJECT}
-            className="ml-auto"
-          />
-        </Content.Title>
+          end={
+            <ObjectHelpButton
+              documentationUrl={schema?.documentation}
+              kind={PROPOSED_CHANGES_OBJECT}
+              className="ml-auto"
+            />
+          }
+        />
 
         {error && (
           <ErrorScreen message="Something went wrong when fetching the proposed changes details." />
         )}
 
         {!proposedChangesData && <NoDataFound message="No proposed changes found." />}
-      </Content>
+      </Content.Card>
     );
   }
 
   return (
-    <Content>
-      <Content.Title
-        title={<h1>{proposedChangesData.display_label}</h1>}
+    <Content.Card className="min-h-[calc(100%-1rem)] flex flex-col">
+      <Content.CardTitle
+        title={proposedChangesData.display_label}
         description={
           <div className="inline-flex gap-1 text-xs items-center">
             <Link
@@ -220,17 +212,18 @@ export function Component() {
         }
         reload={() => client.reFetchObservableQueries()}
         isReloadLoading={loading}
-      >
-        <ObjectHelpButton
-          documentationUrl={schema?.documentation}
-          kind={PROPOSED_CHANGES_OBJECT}
-          className="ml-auto"
-        />
-      </Content.Title>
+        end={
+          <ObjectHelpButton
+            documentationUrl={schema?.documentation}
+            kind={PROPOSED_CHANGES_OBJECT}
+            className="ml-auto"
+          />
+        }
+      />
 
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
       <ProposedChangeDetailsContent proposedChangeData={proposedChangesData} />
-    </Content>
+    </Content.Card>
   );
 }

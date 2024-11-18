@@ -1,7 +1,6 @@
 import { ButtonProps, ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
-import { usePermission } from "@/hooks/usePermission";
 import { GroupsManager, GroupsManagerProps } from "@/screens/groups/groups-manager";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
@@ -10,10 +9,10 @@ type GroupsManagerTriggerProps = ButtonProps & GroupsManagerProps;
 
 export const GroupsManagerTriggerButton = ({
   schema,
+  permission,
   objectId,
   ...props
 }: GroupsManagerTriggerProps) => {
-  const permission = usePermission();
   const [isManageGroupsDrawerOpen, setIsManageGroupsDrawerOpen] = useState(false);
 
   const { data } = useObjectDetails(schema, objectId);
@@ -23,9 +22,9 @@ export const GroupsManagerTriggerButton = ({
   return (
     <>
       <ButtonWithTooltip
-        disabled={!permission.write.allow}
+        disabled={!permission.update.isAllowed}
         tooltipEnabled
-        tooltipContent={permission.write.message ?? "Manage groups"}
+        tooltipContent={permission.update.message ?? "Manage groups"}
         onClick={() => setIsManageGroupsDrawerOpen(true)}
         variant="outline"
         size="square"

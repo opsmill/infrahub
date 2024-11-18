@@ -1,19 +1,17 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
-import { ACCESS_TOKEN_KEY, ADMIN_ROLES, REFRESH_TOKEN_KEY, WRITE_ROLES } from "@/config/constants";
+import { REFRESH_TOKEN_KEY } from "@/config/constants";
+import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
+import graphqlClient from "@/graphql/graphqlClientApollo";
 import { components } from "@/infraops";
 import { configState } from "@/state/atoms/config.atom";
 import { parseJwt } from "@/utils/common";
 import { fetchUrl } from "@/utils/fetch";
+import { ObservableQuery } from "@apollo/client";
 import { useAtom } from "jotai/index";
 import { ReactElement, ReactNode, createContext, useContext, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
-
-type PermissionsType = {
-  isAdmin: boolean;
-  write: boolean;
-};
 
 type User = {
   id: string;
@@ -29,8 +27,7 @@ export type AuthContextType = {
   data?: any;
   isAuthenticated: boolean;
   isLoading: boolean;
-  permissions?: PermissionsType;
-  signIn: (data: { username: string; password: string }, callback?: () => void) => Promise<void>;
+  login: (data: { username: string; password: string }, callback?: () => void) => Promise<void>;
   signOut: (callback?: () => void) => void;
   setToken: (token: UserToken) => void;
   user: User | null;
@@ -46,9 +43,26 @@ export const saveTokensInLocalStorage = (result: any) => {
   }
 };
 
-export const removeTokensInLocalStorage = () => {
+export const removeTokensInLocalStorage = async () => {
+  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+
+  const payload = {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${localToken}`,
+    },
+  };
+
+  await fetchUrl(CONFIG.LOGOUT_URL, payload);
+
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+};
+
+const QUERY_TO_IGNORE = ["GET_PROFILE_DETAILS"];
+
+const shouldIgnoreQuery = (observableQuery: ObservableQuery) => {
+  return !!observableQuery.queryName && QUERY_TO_IGNORE.includes(observableQuery.queryName);
 };
 
 export const getNewToken = async () => {
@@ -71,7 +85,7 @@ export const getNewToken = async () => {
   );
 
   if (!result?.access_token) {
-    removeTokensInLocalStorage();
+    await removeTokensInLocalStorage();
     window.location.reload();
     return;
   }
@@ -86,11 +100,7 @@ export const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isLoading: false,
   data: undefined,
-  permissions: {
-    isAdmin: false,
-    write: false,
-  },
-  signIn: async () => {},
+  login: async () => {},
   signOut: () => {},
   setToken: () => {},
   user: null,
@@ -113,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const result: components["schemas"]["UserToken"] = await fetchUrl(
-      CONFIG.AUTH_SIGN_IN_URL,
+      CONFIG.AUTH_LOGIN_URL,
       payload
     );
 
@@ -131,9 +141,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (callback) callback();
   };
 
-  const signOut = () => {
-    removeTokensInLocalStorage();
+  const signOut = async () => {
+    await removeTokensInLocalStorage();
     setAccessToken(null);
+    graphqlClient.refetchQueries({
+      include: "active",
+      onQueryUpdated(observableQuery) {
+        return !shouldIgnoreQuery(observableQuery);
+      },
+    });
   };
 
   const data = parseJwt(accessToken);
@@ -143,11 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data,
     isAuthenticated: !!accessToken,
     isLoading,
-    permissions: {
-      write: WRITE_ROLES.includes(data?.user_claims?.role),
-      isAdmin: ADMIN_ROLES.includes(data?.user_claims?.role),
-    },
-    signIn,
+    login: signIn,
     signOut,
     setToken,
     user: data?.sub ? { id: data?.sub } : null,
@@ -167,9 +179,9 @@ export function RequireAuth({ children }: { children: ReactElement }) {
 
   if (isAuthenticated || config?.main?.allow_anonymous_access) return children;
 
-  // Redirect them to the /signin page, but save the current location they were
+  // Redirect them to the /login page, but save the current location they were
   // trying to go to when they were redirected. This allows us to send them
   // along to that page after they log in, which is a nicer user experience
   // than dropping them off on the home page.
-  return <Navigate to="/signin" state={{ from: location }} replace />;
+  return <Navigate to="/login" state={{ from: location }} replace />;
 }

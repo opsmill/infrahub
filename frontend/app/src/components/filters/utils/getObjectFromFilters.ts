@@ -2,13 +2,14 @@ import { Filter } from "@/hooks/useFilters";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import {
   AttributeType,
+  Node,
   RelationshipManyType,
   RelationshipOneType,
   RelationshipType,
 } from "@/utils/getObjectItemDisplayValue";
 
 export const getObjectFromFilters = (
-  schema: IModelSchema,
+  schema: IModelSchema | null,
   filters: Array<Filter>
 ): Record<string, AttributeType | RelationshipType> => {
   return filters.reduce(
@@ -22,7 +23,7 @@ export const getObjectFromFilters = (
         };
       }
 
-      if (fieldKey === "ids") {
+      if (fieldKey === "ids" && schema) {
         const relationshipSchema = schema.relationships?.find(({ name }) => name === fieldName);
         if (!relationshipSchema) return acc;
 
@@ -31,11 +32,11 @@ export const getObjectFromFilters = (
             ...acc,
             [fieldName]: {
               edges: filter.value.map(
-                (v: string) =>
+                (v: Node) =>
                   ({
                     node: {
-                      id: v,
-                      display_label: "",
+                      id: v.id,
+                      display_label: v.display_label,
                       __typename: relationshipSchema.peer,
                     },
                   }) satisfies RelationshipOneType

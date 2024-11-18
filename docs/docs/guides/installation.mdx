@@ -64,7 +64,7 @@ cd ~/source/infrahub/
 Next, clone the Infrahub GitHub repository into the current directory.
 
 ```shell
-git clone --recursive -b stable --depth 1 https://github.com/opsmill/infrahub.git
+git clone --recursive --depth 1 https://github.com/opsmill/infrahub.git
 ```
 
 :::note
@@ -151,11 +151,11 @@ Please reach out if you need some help and feel free to send a PR with the insta
 </TabItem>
 </Tabs>
 
-Once docker desktop and invoke are installed you can start and initialize the Infrahub demo environment with the following command:
+Once docker desktop and invoke are installed you can start and initialize Infrahub:
 
 ```shell
 cd infrahub
-invoke demo.start demo.load-infra-schema demo.load-infra-data
+invoke demo.start
 ```
 
 <ReferenceLink title="Check the documentation of the demo environment for more information" url="/topics/local-demo-environment" />
@@ -188,8 +188,8 @@ A first version of our K8S helm-chart is available in our repository.
 The following are required for production deployments using Helm:
 
 * data persistence must be enabled (except for the Infrahub API Server if using S3 storage)
-* multiple replicas of the Infrahub API Server and Infrahub Git Agents should be deployed: you can make use of the `affinity` variable to define the affinity policy for the pods
-* a shared storage should be available for use by the Git Agents (through a StorageClass that supports RWX accesses)
+* multiple replicas of the Infrahub API Server and Infrahub Task workers should be deployed: you can make use of the `affinity` variable to define the affinity policy for the pods
+* a shared storage should be available for use by the Task workers (through a StorageClass that supports RWX accesses)
 * S3 storage should be configured for the Infrahub API Server
 
 :::warning

@@ -1,6 +1,6 @@
 import { LinkButton } from "@/components/buttons/button-primitive";
 import { MarkdownEditor } from "@/components/editor";
-import { Select } from "@/components/inputs/select";
+import { RelationshipManyInput } from "@/components/inputs/relationship-many";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox-legacy";
@@ -14,14 +14,16 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
+import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { CREATE_PROPOSED_CHANGE } from "@/graphql/mutations/proposed-changes/createProposedChange";
 import { GET_ALL_ACCOUNTS } from "@/graphql/queries/accounts/getAllAccounts";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery, { useMutation } from "@/hooks/useQuery";
+import { useSchema } from "@/hooks/useSchema";
 import { branchesState } from "@/state/atoms/branches.atom";
 import { branchesToSelectOptions } from "@/utils/branches";
 import { constructPath } from "@/utils/fetch";
+import { Node } from "@/utils/getObjectItemDisplayValue";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useNavigate } from "react-router-dom";
@@ -34,11 +36,13 @@ export const ProposedChangeCreateForm = () => {
   const sourceBranches = branches.filter((branch) => !branch.is_default);
   const navigate = useNavigate();
 
+  const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGES_OBJECT);
   const { data: getAllAccountsData } = useQuery(GET_ALL_ACCOUNTS);
 
   const [createProposedChange, { error }] = useMutation(CREATE_PROPOSED_CHANGE);
 
-  if (branches.length === 0) return <Spinner className="flex justify-center" />;
+  if (branches.length === 0 || !proposedChangeSchema)
+    return <Spinner className="flex justify-center" />;
 
   return (
     <Form
@@ -49,7 +53,7 @@ export const ProposedChangeCreateForm = () => {
             destination_branch,
             name,
             description,
-            reviewers: reviewers || [],
+            reviewers: reviewers?.map((node: Node) => ({ id: node.id })) || [],
             created_by: {
               id: user?.id,
             },
@@ -151,15 +155,11 @@ export const ProposedChangeCreateForm = () => {
           <div>
             <FormLabel>Reviewers</FormLabel>
             <FormInput>
-              <Select
-                multiple
-                options={
-                  getAllAccountsData?.[ACCOUNT_GENERIC_OBJECT]?.edges.map((edge: any) => ({
-                    id: edge?.node.id,
-                    name: edge?.node?.display_label,
-                  })) ?? []
-                }
+              <RelationshipManyInput
                 {...field}
+                relationship={
+                  proposedChangeSchema.relationships?.find((rel) => rel.name === "reviewers")!
+                }
               />
             </FormInput>
           </div>

@@ -1,5 +1,5 @@
 import pytest
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch

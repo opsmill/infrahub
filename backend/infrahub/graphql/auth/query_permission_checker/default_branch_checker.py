@@ -1,5 +1,7 @@
+from infrahub import config
 from infrahub.auth import AccountSession
 from infrahub.core import registry
+from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
 from infrahub.database import InfrahubDatabase
@@ -13,11 +15,19 @@ from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     """Checker that makes sure a user account can edit data in the default branch."""
 
-    permission_required = f"global:{GlobalPermissions.EDIT_DEFAULT_BRANCH.value}:{PermissionDecision.ALLOW.value}"
-    exempt_operations = ["BranchCreate"]
+    permission_required = GlobalPermission(
+        action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
+    )
+    exempt_operations = [
+        "BranchCreate",
+        "DiffUpdate",
+        "InfrahubAccountSelfUpdate",
+        "InfrahubAccountTokenCreate",
+        "InfrahubAccountTokenDelete",
+    ]
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
-        return account_session.authenticated
+        return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
@@ -30,7 +40,7 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         can_edit_default_branch = False
         for permission_backend in registry.permission_backends:
             can_edit_default_branch = await permission_backend.has_permission(
-                db=db, account_id=account_session.account_id, permission=self.permission_required, branch=branch
+                db=db, account_session=account_session, permission=self.permission_required, branch=branch
             )
             if can_edit_default_branch:
                 break
@@ -39,9 +49,8 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
             GLOBAL_BRANCH_NAME,
             registry.default_branch,
         )
-        is_exempt_operation = analyzed_query.operation_name is not None and (
-            analyzed_query.operation_name in self.exempt_operations
-            or analyzed_query.operation_name.startswith("InfrahubAccount")  # Allow user to manage self
+        is_exempt_operation = all(
+            operation_name in self.exempt_operations for operation_name in analyzed_query.operation_names
         )
 
         if (

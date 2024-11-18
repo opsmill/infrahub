@@ -6,10 +6,11 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Link as StyledLink } from "@/components/ui/link";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import { usePermission } from "@/hooks/usePermission";
+import useQuery from "@/hooks/useQuery";
 import NoDataFound from "@/screens/errors/no-data-found";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import { ObjectItemsCell, TextCell } from "@/screens/object-items/object-items-cell";
+import { getPermission } from "@/screens/permission/utils";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
 import { schemaState } from "@/state/atoms/schema.atom";
@@ -26,6 +27,10 @@ import { useAtom, useAtomValue } from "jotai";
 import { Fragment, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import ErrorScreen from "../errors/error-screen";
+import UnauthorizedScreen from "../errors/unauthorized-screen";
+import LoadingScreen from "../loading-screen/loading-screen";
+import { getObjectPermissionsQuery } from "../permission/queries/getObjectPermissions";
 import { ObjectAttributeRow } from "./object-attribute-row";
 
 type iRelationDetailsProps = {
@@ -51,7 +56,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   } = props;
 
   const { objectKind, objectid } = useParams();
-  const permission = usePermission();
 
   const schemaList = useAtomValue(schemaState);
   const branch = useAtomValue(currentBranchAtom);
@@ -77,6 +81,24 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const [, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
+
+  const { loading, data, error } = useQuery(gql(getObjectPermissionsQuery(objectKind)));
+
+  const permission = data && getPermission(data?.[objectKind]?.permissions?.edges);
+
+  if (error) {
+    if (error.networkError?.statusCode === 403) {
+      const { message } = error.networkError?.result?.errors?.[0] ?? {};
+
+      return <UnauthorizedScreen message={message} />;
+    }
+
+    return <ErrorScreen message="Something went wrong when fetching IPAM details." />;
+  }
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   if (relationshipsData && relationshipsData?.properties?.is_visible === false) {
     return null;
@@ -178,9 +200,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             <ButtonWithTooltip
                               variant="ghost"
                               size="icon"
-                              disabled={!permission.write.allow}
-                              tooltipEnabled={!permission.write.allow}
-                              tooltipContent={permission.write.message ?? undefined}
+                              disabled={!permission?.update.isAllowed}
+                              tooltipEnabled={!permission?.update.isAllowed}
+                              tooltipContent={permission?.update.message ?? undefined}
                               onClick={() => {
                                 setMetaEditFieldDetails({
                                   type: "relationship",
@@ -255,9 +277,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         )}
 
                         <ButtonWithTooltip
-                          disabled={!permission.write.allow}
-                          tooltipEnabled={!permission.write.allow}
-                          tooltipContent={permission.write.message ?? undefined}
+                          disabled={!permission.update.isAllowed}
+                          tooltipEnabled={!permission.update.isAllowed}
+                          tooltipContent={permission.update.message ?? undefined}
                           variant="ghost"
                           size="icon"
                           onClick={() => {
@@ -269,9 +291,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         </ButtonWithTooltip>
 
                         <ButtonWithTooltip
-                          disabled={!permission.write.allow}
-                          tooltipEnabled={!permission.write.allow}
-                          tooltipContent={permission.write.message ?? undefined}
+                          disabled={!permission.update.isAllowed}
+                          tooltipEnabled={!permission.update.isAllowed}
+                          tooltipContent={permission.update.message ?? undefined}
                           variant="ghost"
                           size="icon"
                           onClick={() => {

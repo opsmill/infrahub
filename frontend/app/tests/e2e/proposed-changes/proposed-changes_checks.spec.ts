@@ -46,8 +46,9 @@ test.describe("/proposed-changes checks", () => {
       .getByRole("link", { name: "pc-checks 0 atl1-delete-" })
       .first()
       .locator("../..")
-      .getByTestId("delete-row-button")
+      .getByTestId("actions-row-button")
       .click();
+    await page.getByTestId("delete-row-button").click();
     await expect(page.getByTestId("modal-delete")).toBeVisible();
     await page.getByTestId("modal-delete-confirm").click();
     await expect(page.getByText("Proposed changes 'pc-checks' deleted")).toBeVisible();

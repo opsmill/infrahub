@@ -5,8 +5,9 @@ from graphql import GraphQLResolveInfo
 
 from infrahub.core import registry
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.message_bus import messages
+from infrahub.workflows.catalogue import REQUEST_DIFF_UPDATE
 
 if TYPE_CHECKING:
     from ..initialization import GraphqlContext
@@ -55,13 +56,13 @@ class DiffUpdateMutation(Mutation):
 
             return {"ok": True}
 
-        message = messages.RequestDiffUpdate(
+        model = RequestDiffUpdate(
             branch_name=str(data.branch),
             name=data.name,
             from_time=from_timestamp_str,
             to_time=to_timestamp_str,
         )
         if context.service:
-            await context.service.send(message=message)
+            await context.service.workflow.submit_workflow(workflow=REQUEST_DIFF_UPDATE, parameters={"model": model})
 
         return {"ok": True}

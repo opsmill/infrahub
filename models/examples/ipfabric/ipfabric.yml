@@ -365,7 +365,7 @@ nodes:
       - name__value
       - vlan_id__value
     uniqueness_constraints:
-      - ["location", "vlan_id"]
+      - ["location", "vlan_id__value"]
     attributes:
       - name: name
         kind: Text
@@ -432,8 +432,8 @@ nodes:
         label: IP Address
         peer: InfraIPAddress
         optional: true
-        cardinality: one
-        kind: Attribute
+        cardinality: many
+        kind: Component
   - name: IPAddress
     namespace: Infra
     description: "IP Address"

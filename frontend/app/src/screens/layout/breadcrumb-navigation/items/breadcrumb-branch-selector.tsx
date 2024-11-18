@@ -6,7 +6,7 @@ import { branchesState } from "@/state/atoms/branches.atom";
 import { classNames } from "@/utils/common";
 import { constructPath } from "@/utils/fetch";
 import { useAtomValue } from "jotai";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function BreadcrumbBranchSelector({

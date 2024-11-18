@@ -17,8 +17,8 @@ from typing import (
     overload,
 )
 
-from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import intersection, is_valid_uuid
+from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel, Field
 
 from infrahub.core import registry
@@ -425,8 +425,14 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 await self.set_peer(value=peer)
 
         if not self.peer_id and self.peer_hfid:
+            peer_schema = db.schema.get(name=self.schema.peer, branch=self.branch)
+            kind = (
+                self.data["kind"]
+                if isinstance(self.data, dict) and "kind" in self.data and peer_schema.is_generic_schema
+                else self.schema.peer
+            )
             peer = await registry.manager.get_one_by_hfid(
-                db=db, hfid=self.peer_hfid, branch=self.branch, kind=self.schema.peer, fields={"display_label": None}
+                db=db, hfid=self.peer_hfid, branch=self.branch, kind=kind, fields={"display_label": None}
             )
             if peer:
                 await self.set_peer(value=peer)
@@ -837,23 +843,23 @@ class RelationshipManager:
     async def get_peers(
         self,
         db: InfrahubDatabase,
-        branch_agnostic: bool,
         peer_type: type[PeerType],
+        branch_agnostic: bool = ...,
     ) -> Mapping[str, PeerType]: ...
 
     @overload
     async def get_peers(
         self,
         db: InfrahubDatabase,
-        branch_agnostic: bool,
         peer_type: Literal[None] = None,
+        branch_agnostic: bool = ...,
     ) -> Mapping[str, Node]: ...
 
     async def get_peers(
         self,
         db: InfrahubDatabase,
-        branch_agnostic: bool = False,
         peer_type: type[PeerType] | None = None,  # pylint: disable=unused-argument
+        branch_agnostic: bool = False,
     ) -> Mapping[str, Node | PeerType]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]
@@ -1081,12 +1087,17 @@ class RelationshipManager:
         remove_at = Timestamp(at)
         branch = self.get_branch_based_on_support_type()
 
-        # when we remove a relationship we need to :
         # - Update the existing relationship if we are on the same branch
-        # - Create a new rel of type DELETED in the right branch
         rel_ids_per_branch = peer_data.rel_ids_per_branch()
         if branch.name in rel_ids_per_branch:
             await update_relationships_to([str(ri) for ri in rel_ids_per_branch[self.branch.name]], to=remove_at, db=db)
+
+        # - Create a new rel of type DELETED if the existing relationship is on a different branch
+        rel_branches: set[str] = set()
+        if peer_data.rels:
+            rel_branches = {r.branch for r in peer_data.rels}
+        if rel_branches == {peer_data.branch}:
+            return
 
         query = await RelationshipDataDeleteQuery.init(
             db=db,

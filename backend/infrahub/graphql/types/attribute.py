@@ -7,6 +7,7 @@ from graphene.types.generic import GenericScalar
 
 from infrahub.core import registry
 
+from .enums import BranchRelativePermissionDecision
 from .interface import InfrahubInterface
 
 
@@ -19,6 +20,7 @@ class GenericPoolInput(InputObjectType):
 class RelatedNodeInput(InputObjectType):
     id = String(required=False)
     hfid = Field(List(of_type=String), required=False)
+    kind = String(required=False)  # Only used to resolve hfid of a related node on a generic relationship, see #4649
     from_pool = Field(GenericPoolInput, required=False)
     _relation__is_visible = Boolean(required=False)
     _relation__is_protected = Boolean(required=False)
@@ -55,6 +57,10 @@ class RelatedPrefixNodeInput(InputObjectType):
     _relation__source = String(required=False)
 
 
+class PermissionType(ObjectType):
+    update_value = Field(BranchRelativePermissionDecision, required=False)
+
+
 class AttributeInterface(InfrahubInterface):
     is_default = Field(Boolean)
     is_inherited = Field(Boolean)
@@ -70,6 +76,7 @@ class AttributeInterface(InfrahubInterface):
 class BaseAttribute(ObjectType):
     id = Field(String)
     is_from_profile = Field(Boolean)
+    permissions = Field(PermissionType, required=False)
 
     @classmethod
     def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:

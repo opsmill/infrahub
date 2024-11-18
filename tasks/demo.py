@@ -1,12 +1,11 @@
 """Replacement for Makefile."""
 
-from typing import Optional
+# from typing import Optional
 
 from invoke.context import Context
 from invoke.tasks import task
 
 from .container_ops import (
-    build_images,
     destroy_environment,
     migrate_database,
     pull_images,
@@ -16,12 +15,12 @@ from .container_ops import (
     stop_services,
     update_core_schema,
 )
-from .infra_ops import load_infrastructure_data, load_infrastructure_schema
+from .infra_ops import load_infrastructure_data, load_infrastructure_menu, load_infrastructure_schema
 from .shared import (
     BUILD_NAME,
     INFRAHUB_DATABASE,
-    PYTHON_VER,
     SERVICE_SERVER_NAME,
+    SERVICE_WORKER_NAME,
     Namespace,
     build_compose_files_cmd,
     execute_command,
@@ -30,28 +29,6 @@ from .shared import (
 from .utils import ESCAPED_REPO_PATH
 
 NAMESPACE = Namespace.DEFAULT
-
-SERVICE_WORKER_NAME = "infrahub-git"
-
-
-@task(optional=["database"])
-def build(
-    context: Context,
-    service: Optional[str] = None,
-    python_ver: str = PYTHON_VER,
-    nocache: bool = False,
-    database: str = INFRAHUB_DATABASE,
-) -> None:
-    """Build an image with the provided name and python version.
-
-    Args:
-        context (obj): Used to run specific commands
-        python_ver (str): Define the Python version docker image to build from
-        nocache (bool): Do not use cache when building the image
-    """
-    build_images(
-        context=context, service=service, python_ver=python_ver, nocache=nocache, database=database, namespace=NAMESPACE
-    )
 
 
 @task(optional=["database"])
@@ -73,7 +50,7 @@ def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = Fals
 
 @task(optional=["database"])
 def restart(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Restart Infrahub API Server and Git Agent within docker compose."""
+    """Restart Infrahub API Server and Task worker within docker compose."""
     restart_services(context=context, database=database, namespace=NAMESPACE)
 
 
@@ -128,7 +105,14 @@ def status(context: Context, database: str = INFRAHUB_DATABASE) -> None:
 def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load the base schema for infrastructure."""
     load_infrastructure_schema(context=context, database=database, namespace=NAMESPACE, add_wait=False)
+    load_infrastructure_menu(context=context, database=database, namespace=NAMESPACE)
     restart_services(context=context, database=database, namespace=NAMESPACE)
+
+
+@task(optional=["database"])
+def load_infra_menu(context: Context, database: str = INFRAHUB_DATABASE) -> None:
+    """Load the base schema for infrastructure."""
+    load_infrastructure_menu(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])

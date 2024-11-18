@@ -26,7 +26,6 @@ test.describe("/profile?tab=tokens", () => {
         await page.getByTestId("authenticated-menu-trigger").click();
         await page.getByRole("menuitem", { name: "Account settings" }).click();
         await page.getByText("Tokens").click();
-        await expect(page.getByRole("heading", { name: "Tokens" })).toBeVisible();
         await expect(page.getByTestId("create-object-button")).toBeVisible();
       });
 

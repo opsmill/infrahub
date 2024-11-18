@@ -25,11 +25,11 @@ export const getObjectDetailsUrl2 = (
   overrideParams?: overrideQueryParams[]
 ) => {
   if (objectKind === IP_PREFIX_GENERIC) {
-    return constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${objectId}`, overrideParams);
+    return constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${objectId ?? ""}`, overrideParams);
   }
 
   if (objectKind === IP_ADDRESS_GENERIC) {
-    return constructPathForIpam(`${IPAM_ROUTE.ADDRESSES}/${objectId}`, [
+    return constructPathForIpam(`${IPAM_ROUTE.ADDRESSES}/${objectId ?? ""}`, [
       { name: IPAM_QSP.TAB, value: "ip-details" },
       ...(overrideParams ?? []),
     ]);
@@ -45,18 +45,18 @@ export const getObjectDetailsUrl2 = (
     const inheritFrom = schema.inherit_from;
 
     if (inheritFrom?.includes(IP_PREFIX_GENERIC)) {
-      return constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${objectId}`, overrideParams);
+      return constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${objectId ?? ""}`, overrideParams);
     }
 
     if (inheritFrom?.includes(IP_ADDRESS_GENERIC)) {
-      return constructPathForIpam(`${IPAM_ROUTE.ADDRESSES}/${objectId}`, [
+      return constructPathForIpam(`${IPAM_ROUTE.ADDRESSES}/${objectId ?? ""}`, [
         { name: IPAM_QSP.TAB, value: "ip-details" },
         ...(overrideParams ?? []),
       ]);
     }
 
     if (inheritFrom?.includes(RESOURCE_GENERIC_KIND)) {
-      return constructPathForIpam(`/resource-manager/${objectId}`, overrideParams);
+      return constructPathForIpam(`/resource-manager/${objectId ?? ""}`, overrideParams);
     }
   }
 

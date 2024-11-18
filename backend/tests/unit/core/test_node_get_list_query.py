@@ -13,8 +13,10 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.registry import registry
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.database import InfrahubDatabase
+from tests.helpers.schema import WIDGET
 
 
 async def test_query_NodeGetListQuery(
@@ -818,3 +820,32 @@ async def test_query_NodeGetListQuery_multiple_profiles_same_priority_filter_and
     query = await NodeGetListQuery.init(db=db, branch=branch, schema=car_schema)
     await query.execute(db=db)
     assert query.get_node_ids() == [car_camry_main.id, car_accord_main.id]
+
+
+async def test_query_NodeGetListQuery_pagination_order_by(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema
+):
+    """Validate that pagination works for nodes which have an order_by clause on non unique attributes."""
+    schema_root = SchemaRoot(nodes=[WIDGET])
+
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+
+    widget_schema = registry.schema.get_node_schema("TestingWidget", branch=default_branch, duplicate=False)
+
+    for i in range(20):
+        car_profile = await Node.init(db=db, schema=widget_schema, branch=default_branch)
+        await car_profile.new(db=db, name="top-widget", description=f"widget index {i}")
+        await car_profile.save(db=db)
+
+    node_ids = set()
+    for offset in range(0, 19, 2):
+        query = await NodeGetListQuery.init(db=db, branch=default_branch, schema=widget_schema, limit=2, offset=offset)
+        await query.execute(db=db)
+
+        result_ids = query.get_node_ids()
+        node_ids.update(result_ids)
+
+    # If we don't get 20 results it means that the pagination is returning the same node multiple times
+    assert len(node_ids) == 20
+    # Validate that the order_by clause hasn't changed on the test schema which would defeat the purpose of this test
+    assert widget_schema.order_by == ["name__value"]

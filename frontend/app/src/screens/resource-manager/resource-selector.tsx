@@ -1,6 +1,6 @@
 import { PropertyList } from "@/components/table/property-list";
 import { Badge } from "@/components/ui/badge";
-import { CardWithBorder } from "@/components/ui/card";
+import { Card, CardWithBorder } from "@/components/ui/card";
 import { constructPath } from "@/utils/fetch";
 import { getObjectDetailsUrl2 } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
@@ -22,7 +22,7 @@ interface ResourcePoolSelectorProps extends HTMLAttributes<HTMLDivElement> {
 
 const ResourceSelector = ({ resources, className, ...props }: ResourcePoolSelectorProps) => {
   return (
-    <CardWithBorder className={className} {...props}>
+    <Card className={className} {...props}>
       <CardWithBorder.Title className="bg-custom-white border-b">
         Resources <Badge>{resources.length}</Badge>
       </CardWithBorder.Title>
@@ -58,7 +58,7 @@ const ResourceSelector = ({ resources, className, ...props }: ResourcePoolSelect
           ),
         }))}
       />
-    </CardWithBorder>
+    </Card>
   );
 };
 

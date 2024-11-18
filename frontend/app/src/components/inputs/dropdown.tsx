@@ -27,6 +27,7 @@ import React, { forwardRef, HTMLAttributes, useState } from "react";
 export type DropdownOption = {
   value: string;
   label: string;
+  badge?: string;
   color?: string;
   description?: string;
 };
@@ -58,10 +59,18 @@ export const DropdownItem = React.forwardRef<
 
   return (
     <ComboboxItem ref={ref} className={classNames("rounded-none", className)} {...props}>
-      <div className="overflow-hidden">
-        <Badge className="font-medium" style={getDropdownStyle(item.color)}>
-          {item.label}
-        </Badge>
+      <div className="overflow-hidden w-full">
+        <div className="flex items-center justify-between">
+          <Badge className="font-medium" style={getDropdownStyle(item.color)}>
+            {item.label}
+          </Badge>
+
+          {item.badge && (
+            <Badge className="font-medium" style={getDropdownStyle(item.color)}>
+              {item.badge}
+            </Badge>
+          )}
+        </div>
         <p className="text-xs truncate">{item.description}</p>
       </div>
 
@@ -232,7 +241,11 @@ export const Dropdown = forwardRef<HTMLButtonElement, DropdownProps>(
     return (
       <Combobox open={open} onOpenChange={setOpen}>
         <ComboboxTrigger ref={ref} style={getDropdownStyle(selectItem?.color)} {...props}>
-          {selectItem?.label}
+          <div className="flex w-full items-center justify-between">
+            {selectItem?.label}
+
+            {selectItem?.badge && <Badge>{selectItem?.badge}</Badge>}
+          </div>
         </ComboboxTrigger>
 
         <ComboboxContent>

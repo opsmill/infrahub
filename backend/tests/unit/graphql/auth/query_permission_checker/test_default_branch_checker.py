@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 
 from infrahub.auth import AccountSession, AuthType
-from infrahub.core.constants import AccountRole, GlobalPermissions, InfrahubKind
+from infrahub.core.constants import AccountRole, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.exceptions import PermissionDeniedError
@@ -39,7 +39,7 @@ class TestDefaultBranchPermission:
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
-            db=db, name=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value
+            db=db, action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
         )
         await permission.save(db=db)
 
@@ -68,8 +68,9 @@ class TestDefaultBranchPermission:
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ):
         checker = DefaultBranchPermissionChecker()
-        is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
-        assert is_supported == user.authenticated
+        with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
+            is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
+            assert is_supported == user.authenticated
 
     @pytest.mark.parametrize(
         "contains_mutation,branch_name",
@@ -87,7 +88,7 @@ class TestDefaultBranchPermission:
         graphql_query.branch = MagicMock()
         graphql_query.branch.name = branch_name
         graphql_query.contains_mutation = contains_mutation
-        graphql_query.operation_name = "CreateTags"
+        graphql_query.operation_names = ["CreateTags"]
 
         resolution = await checker.check(
             db=db,
@@ -114,7 +115,7 @@ class TestDefaultBranchPermission:
         graphql_query.branch = MagicMock()
         graphql_query.branch.name = branch_name
         graphql_query.contains_mutation = contains_mutation
-        graphql_query.operation_name = "CreateTags"
+        graphql_query.operation_names = ["CreateTags"]
 
         if not contains_mutation or branch_name != "main":
             resolution = await checker.check(

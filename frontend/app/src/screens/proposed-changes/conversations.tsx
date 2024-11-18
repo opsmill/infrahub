@@ -168,7 +168,7 @@ export const Conversations = ({ className, ...props }: HTMLAttributes<HTMLDivEle
         <Thread key={index} thread={item} refetch={refetch} displayContext />
       ))}
 
-      <Card className="border-none">
+      <Card>
         <AddComment ref={formRef} onSubmit={handleSubmit} />
       </Card>
     </div>

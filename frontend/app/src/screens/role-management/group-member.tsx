@@ -1,4 +1,6 @@
+import { Button } from "@/components/buttons/button-primitive";
 import { Avatar } from "@/components/display/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 
 interface GroupMembersProps {
@@ -7,8 +9,7 @@ interface GroupMembersProps {
 
 export function GroupMembers({ members }: GroupMembersProps) {
   const trimedMembers = members.slice(0, 5);
-
-  const lengthDiff = members.length - trimedMembers.length;
+  const remainingItems = members.slice(5);
 
   return (
     <div className="flex items-center gap-2">
@@ -25,8 +26,22 @@ export function GroupMembers({ members }: GroupMembersProps) {
         ))}
       </div>
 
-      {!!lengthDiff && (
-        <Avatar text={`+ ${lengthDiff}`} size={"md"} variant={"active"} className="z-10" />
+      {!!remainingItems?.length && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size={"icon"}>{`+${remainingItems?.length}`}</Button>
+          </PopoverTrigger>
+
+          <PopoverContent align="start">
+            <div className="flex gap-2">
+              {remainingItems.map((item, index) => (
+                <Tooltip enabled key={index} content={item}>
+                  <Avatar name={item} size={"md"} />
+                </Tooltip>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
       )}
     </div>
   );

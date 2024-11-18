@@ -49,10 +49,10 @@
       },
       "correctness": {
         "noSwitchDeclarations": "off",
-        "noUndeclaredDependencies": "off",
+        "noUndeclaredDependencies": "error",
         "noUndeclaredVariables": "off",
         "noUnusedFunctionParameters": "off",
-        "noUnusedImports": "off",
+        "noUnusedImports": "error",
         "noUnusedVariables": "off",
         "useExhaustiveDependencies": "off",
         "useHookAtTopLevel": "off",
@@ -91,8 +91,10 @@
       "suspicious": {
         "noArrayIndexKey": "off",
         "noAssignInExpressions": "off",
-        "noConsole": "off",
-        "noConsoleLog": "off",
+        "noConsole": {
+          "level": "error",
+          "options": { "allow": ["assert", "error", "info", "warn"] }
+        },
         "noDoubleEquals": "off",
         "noEmptyBlock": "off",
         "noEmptyBlockStatements": "off",
@@ -117,6 +119,14 @@
       "quoteStyle": "double",
       "attributePosition": "auto",
       "bracketSpacing": true
+    }
+  },
+  "graphql": {
+    "formatter": {
+      "enabled": true
+    },
+    "linter": {
+      "enabled": true
     }
   }
 }

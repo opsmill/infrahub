@@ -4,7 +4,7 @@ import { isRequired } from "@/components/form/utils/validation";
 import { Form, FormRef, FormSubmit } from "@/components/ui/form";
 import { useAuth } from "@/hooks/useAuth";
 import { constructPath } from "@/utils/fetch";
-import React, { forwardRef, ReactElement } from "react";
+import { ReactElement, forwardRef } from "react";
 import { useLocation } from "react-router-dom";
 
 type CommentFormData = {
@@ -60,10 +60,10 @@ export const AddComment = forwardRef<FormRef, tAddComment>(({ onSubmit, onCancel
       <LinkButton
         size="sm"
         variant="primary"
-        to={constructPath("/signin")}
+        to={constructPath("/login")}
         state={{ from: location }}
       >
-        Sign in
+        Login
       </LinkButton>{" "}
       to be able to add a comment.
     </div>

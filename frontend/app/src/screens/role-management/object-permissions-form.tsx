@@ -9,7 +9,7 @@ import { ACCOUNT_ROLE_OBJECT, OBJECT_PERMISSION_OBJECT } from "@/config/constant
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
-import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { namespacesState, schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
@@ -22,7 +22,11 @@ import { toast } from "react-toastify";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 import DropdownField from "@/components/form/fields/dropdown.field";
 import RelationshipField from "@/components/form/fields/relationship.field";
+import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
+import { useSchema } from "@/hooks/useSchema";
+import { useEffect } from "react";
+import { objectDecisionOptions } from "./constants";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -36,24 +40,31 @@ export const ObjectPermissionForm = ({
   onCancel,
   onUpdateComplete,
 }: NumberPoolFormProps) => {
-  const branches = useAtomValue(branchesState);
+  const { schema } = useSchema(OBJECT_PERMISSION_OBJECT);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
+  const roles = getRelationshipDefaultValue({
+    relationshipData: currentObject?.roles?.value,
+  });
+
   const defaultValues = {
-    branch: getCurrentFieldValue("branch", currentObject),
     namespace: getCurrentFieldValue("namespace", currentObject),
     name: getCurrentFieldValue("name", currentObject),
-    roles: getCurrentFieldValue("roles", currentObject),
+    action: getCurrentFieldValue("action", currentObject),
+    decision: getCurrentFieldValue("decision", currentObject),
+    roles,
   };
 
   const form = useForm<FieldValues>({
     defaultValues,
   });
 
-  const branchesOptions = branches.map((branch) => ({ value: branch.name, label: branch.name }));
-
   const actionOptions = [
+    {
+      value: "any",
+      label: "*",
+    },
     {
       value: "view",
       label: "View",
@@ -69,17 +80,6 @@ export const ObjectPermissionForm = ({
     {
       value: "delete",
       label: "Delete",
-    },
-  ];
-
-  const decisionOptions = [
-    {
-      value: "allow",
-      label: "Allow",
-    },
-    {
-      value: "deny",
-      label: "Deny",
     },
   ];
 
@@ -132,13 +132,6 @@ export const ObjectPermissionForm = ({
   return (
     <div className={"bg-custom-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
-        <DropdownField
-          name="branch"
-          label="Branch"
-          items={branchesOptions}
-          rules={{ required: true, validate: { required: isRequired } }}
-        />
-
         <NodeSelect />
 
         <DropdownField
@@ -151,7 +144,10 @@ export const ObjectPermissionForm = ({
         <DropdownField
           name="decision"
           label="Decision"
-          items={decisionOptions}
+          description={
+            schema?.attributes?.find((attribute) => attribute.name === "decision")?.description
+          }
+          items={objectDecisionOptions}
           rules={{ required: true, validate: { required: isRequired } }}
         />
 
@@ -163,6 +159,7 @@ export const ObjectPermissionForm = ({
             peer: ACCOUNT_ROLE_OBJECT,
             cardinality: "many",
           }}
+          options={roles.value}
         />
 
         <div className="text-right">
@@ -185,22 +182,35 @@ const NodeSelect = () => {
 
   const form = useFormContext();
   const selectedNamespaceField: FormAttributeValue = form.watch("namespace");
+  const selectedNameField: FormAttributeValue = form.watch("name");
 
   const namespaceOptions = [
     {
       value: "*",
       label: "*",
     },
-    ...namespaces.map((namespace) => ({
-      value: namespace.name,
-      label: namespace.name,
-    })),
+    ...namespaces.map((namespace) => {
+      return {
+        value: namespace.name,
+        label: namespace.name,
+      };
+    }),
   ];
 
   const selectedNamespace =
     selectedNamespaceField?.value === "*"
       ? { value: "*", name: "*" }
-      : namespaces.find((namespace) => namespace.name === selectedNamespaceField?.value);
+      : namespaces
+          .filter((namespace) => {
+            if (!selectedNameField?.value) {
+              return true;
+            }
+
+            return namespace.used_by?.includes(selectedNameField?.value);
+          })
+          .find((namespace) => {
+            return namespace.name === selectedNamespaceField?.value;
+          });
 
   const nameOptions = [
     {
@@ -208,12 +218,31 @@ const NodeSelect = () => {
       label: "*",
     },
     ...nodes
-      .filter((node) => node.namespace === selectedNamespace?.name)
+      .filter((node) => {
+        if (!selectedNamespace || selectedNamespace?.name === "*") return true;
+
+        return node.namespace === selectedNamespace?.name;
+      })
       .map((node) => ({
         value: node.name,
         label: node.label,
+        badge: node.namespace,
       })),
   ];
+
+  useEffect(() => {
+    // Break if namespace already set
+    if (selectedNamespaceField?.value) return;
+
+    // Break if no name is provided
+    if (!selectedNameField?.value) return;
+
+    // Get current node from form field value
+    const currentNode = nodes.find((node) => node.name === selectedNameField?.value);
+    if (!currentNode) return;
+
+    form.setValue("namespace", { value: currentNode.namespace, label: currentNode.namespace });
+  }, [selectedNameField?.value]);
 
   return (
     <>

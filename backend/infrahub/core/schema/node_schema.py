@@ -41,12 +41,18 @@ class NodeSchema(GeneratedNodeSchema):
                     raise ValueError(
                         f"{self.kind}'s attribute {attribute.name} inherited from {interface.kind} cannot be overriden"
                     )
+
+                interface_attr = interface.get_attribute(attribute.name)
                 # Check existing inherited attribute kind is the same as the incoming inherited attribute
-                interface_attr_kind = interface.get_attribute(attribute.name).kind
-                if attribute.kind != interface_attr_kind:
+                if attribute.kind != interface_attr.kind:
                     raise ValueError(
                         f"{self.kind}.{attribute.name} inherited from {interface.namespace}{interface.name} must be the same kind "
-                        f'["{interface_attr_kind}", "{attribute.kind}"]'
+                        f'["{interface_attr.kind}", "{attribute.kind}"]'
+                    )
+                if attribute.optional != interface_attr.optional:
+                    raise ValueError(
+                        f"{self.kind}.{attribute.name} inherited from {interface.namespace}{interface.name} must have the same value for property "
+                        f'"optional" ["{interface_attr.optional}", "{attribute.optional}"]'
                     )
 
         for relationship in self.relationships:

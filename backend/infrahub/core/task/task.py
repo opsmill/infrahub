@@ -38,11 +38,13 @@ class Task(StandardNode):
         cls,
         db: InfrahubDatabase,
         fields: dict[str, Any],
-        limit: int,
-        offset: int,
-        ids: list[str],
-        related_nodes: list[str],
+        limit: int | None = None,
+        offset: int | None = None,
+        ids: list[str] | None = None,
+        related_nodes: list[str] | None = None,
     ) -> dict[str, Any]:
+        ids = ids or []
+        related_nodes = related_nodes or []
         log_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node", "logs", "edges", "node"])
         count = None
         if "count" in fields:

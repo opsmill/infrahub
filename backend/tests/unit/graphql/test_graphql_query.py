@@ -316,6 +316,59 @@ async def test_display_hfid(db: InfrahubDatabase, default_branch: Branch, animal
     }
 
 
+async def test_display_hfid_related_node(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name="Rocky", breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+
+    query = """
+    query {
+        TestPerson {
+            edges {
+                node {
+                    hfid
+                    animals {
+                        edges {
+                            node {
+                                hfid
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["TestPerson"]["edges"]) == 1
+    assert result.data["TestPerson"]["edges"][0] == {
+        "node": {
+            "animals": {"edges": [{"node": {"hfid": ["Jack", "Rocky"]}}]},
+            "hfid": ["Jack"],
+        },
+    }
+
+
 async def test_display_label_generic(db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch):
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")

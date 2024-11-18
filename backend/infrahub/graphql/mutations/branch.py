@@ -1,30 +1,26 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING
 
-import pydantic
-from graphene import Boolean, Field, InputField, InputObjectType, List, Mutation, String
+from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
 from infrahub_sdk.utils import extract_fields, extract_fields_first_node
 from opentelemetry import trace
 from typing_extensions import Self
 
-from infrahub import config, lock
-from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.diff.branch_differ import BranchDiffer
-from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
-from infrahub.core.merge import BranchMerger
-from infrahub.core.migrations.schema.runner import schema_migrations_runner
-from infrahub.core.task import UserTask
-from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.database import retry_db_transaction
-from infrahub.exceptions import BranchNotFoundError, ValidationError
-from infrahub.log import get_log_data, get_logger
-from infrahub.message_bus import Meta, messages
-from infrahub.services import services
-from infrahub.worker import WORKER_IDENTITY
+from infrahub.log import get_logger
+from infrahub.workflows.catalogue import (
+    BRANCH_CREATE,
+    BRANCH_DELETE,
+    BRANCH_MERGE_MUTATION,
+    BRANCH_REBASE,
+    BRANCH_VALIDATE,
+)
 
 from ..types import BranchType
+from ..types.task import TaskInfo
+from .models import BranchCreateModel
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -50,66 +46,42 @@ class BranchCreateInput(InputObjectType):
 class BranchCreate(Mutation):
     class Arguments:
         data = BranchCreateInput(required=True)
-        background_execution = Boolean(required=False)
+        background_execution = Boolean(required=False, deprecation_reason="Please use `wait_until_completion` instead")
+        wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
     object = Field(BranchType)
+    task = Field(TaskInfo, required=False)
 
     @classmethod
     @retry_db_transaction(name="branch_create")
     @trace.get_tracer(__name__).start_as_current_span("branch_create")
     async def mutate(
-        cls, root: dict, info: GraphQLResolveInfo, data: BranchCreateInput, background_execution: bool = False
+        cls,
+        root: dict,
+        info: GraphQLResolveInfo,
+        data: BranchCreateInput,
+        background_execution: bool = False,
+        wait_until_completion: bool = True,
     ) -> Self:
         context: GraphqlContext = info.context
+        task: dict | None = None
 
-        async with UserTask.from_graphql_context(title=f"Create branch : {data['name']}", context=context) as task:
-            # Check if the branch already exist
-            try:
-                await Branch.get_by_name(db=context.db, name=data["name"])
-                raise ValueError(f"The branch {data['name']}, already exist")
-            except BranchNotFoundError:
-                pass
+        model = BranchCreateModel(**data)
 
-            data_dict: dict[str, Any] = dict(data)
-            if "is_isolated" in data_dict:
-                del data_dict["is_isolated"]
+        if background_execution or not wait_until_completion:
+            workflow = await context.active_service.workflow.submit_workflow(
+                workflow=BRANCH_CREATE, parameters={"model": model}
+            )
+            task = {"id": workflow.id}
+            return cls(ok=True, task=task)
 
-            try:
-                obj = Branch(**data_dict)
-            except pydantic.ValidationError as exc:
-                error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
-                raise ValueError("\n".join(error_msgs)) from exc
+        await context.active_service.workflow.execute_workflow(workflow=BRANCH_CREATE, parameters={"model": model})
 
-            async with lock.registry.local_schema_lock():
-                # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-                origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
-                new_schema = origin_schema.duplicate(name=obj.name)
-                registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
-                obj.update_schema_hash()
-                await obj.save(db=context.db)
-
-                # Add Branch to registry
-                registry.branch[obj.name] = obj
-
-            await task.info(message="created_branch", name=obj.name)
-
-            log_data = get_log_data()
-            request_id = log_data.get("request_id", "")
-
-            ok = True
-
-            fields = await extract_fields(info.field_nodes[0].selection_set)
-            if context.service:
-                message = messages.EventBranchCreate(
-                    branch=obj.name,
-                    branch_id=str(obj.id),
-                    sync_with_git=obj.sync_with_git,
-                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
-                )
-                await context.service.send(message=message)
-
-            return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        # Retrieve created branch
+        obj = await Branch.get_by_name(db=context.db, name=model.name)
+        fields = await extract_fields(info.field_nodes[0].selection_set)
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=True, task=task)
 
 
 class BranchNameInput(InputObjectType):
@@ -125,30 +97,29 @@ class BranchUpdateInput(InputObjectType):
 class BranchDelete(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
+        wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
+    task = Field(TaskInfo, required=False)
 
     @classmethod
     @retry_db_transaction(name="branch_delete")
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
+    async def mutate(
+        cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
+    ) -> Self:
         context: GraphqlContext = info.context
+        obj = await Branch.get_by_name(db=context.db, name=str(data.name))
 
-        async with UserTask.from_graphql_context(title=f"Delete branch: {data['name']}", context=context):
-            obj = await Branch.get_by_name(db=context.db, name=str(data.name))
-            await obj.delete(db=context.db)
-
-            if context.service:
-                log_data = get_log_data()
-                request_id = log_data.get("request_id", "")
-                message = messages.EventBranchDelete(
-                    branch=obj.name,
-                    branch_id=str(obj.id),
-                    sync_with_git=obj.sync_with_git,
-                    meta=Meta(request_id=request_id),
-                )
-                await context.service.send(message=message)
-
+        if wait_until_completion:
+            await context.active_service.workflow.execute_workflow(
+                workflow=BRANCH_DELETE, parameters={"branch": obj.name}
+            )
             return cls(ok=True)
+
+        workflow = await context.active_service.workflow.submit_workflow(
+            workflow=BRANCH_DELETE, parameters={"branch": obj.name}
+        )
+        return cls(ok=True, task={"id": str(workflow.id)})
 
 
 class BranchUpdate(Mutation):
@@ -178,180 +149,105 @@ class BranchUpdate(Mutation):
 class BranchRebase(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
+        wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
     object = Field(BranchType)
+    task = Field(TaskInfo, required=False)
 
     @classmethod
-    @retry_db_transaction(name="branch_rebase")
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
+    async def mutate(
+        cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
+    ) -> Self:
         context: GraphqlContext = info.context
 
-        if not context.service:
-            raise ValueError("Service must be provided to rebase a branch.")
+        obj = await Branch.get_by_name(db=context.db, name=str(data.name))
+        task: dict | None = None
 
-        async with UserTask.from_graphql_context(title=f"Rebase branch : {data.name}", context=context) as task:
+        if wait_until_completion:
+            await context.active_service.workflow.execute_workflow(
+                workflow=BRANCH_REBASE, parameters={"branch": obj.name}
+            )
+
+            # Pull the latest information about the branch from the database directly
             obj = await Branch.get_by_name(db=context.db, name=str(data.name))
-            merger = BranchMerger(db=context.db, source_branch=obj, service=context.service)
-
-            # If there are some changes related to the schema between this branch and main, we need to
-            #  - Run all the validations to ensure everything if correct before rebasing the branch
-            #  - Run all the migrations after the rebase
-            if obj.has_schema_changes:
-                candidate_schema = merger.get_candidate_schema()
-                constraints = await merger.calculate_validations(target_schema=candidate_schema)
-                error_messages, _ = await schema_validators_checker(
-                    branch=obj, schema=candidate_schema, constraints=constraints, service=context.service
-                )
-                if error_messages:
-                    raise ValidationError(",\n".join(error_messages))
-
-            schema_in_main_before = merger.destination_schema.duplicate()
-
-            async with context.db.start_transaction() as dbt:
-                await obj.rebase(db=dbt)
-                await task.info(message="Branch successfully rebased", db=dbt)
-
-            if obj.has_schema_changes:
-                # NOTE there is a bit additional work in order to calculate a proper diff that will
-                # allow us to pull only the part of the schema that has changed, for now the safest option is to pull
-                # Everything
-                # schema_diff = await merger.has_schema_changes()
-                updated_schema = await registry.schema.load_schema_from_db(
-                    db=context.db,
-                    branch=obj,
-                    # schema=merger.source_schema.duplicate(),
-                    # schema_diff=schema_diff,
-                )
-                registry.schema.set_schema_branch(name=obj.name, schema=updated_schema)
-                obj.update_schema_hash()
-                await obj.save(db=context.db)
-
-                # Execute the migrations
-                migrations = await merger.calculate_migrations(target_schema=updated_schema)
-
-                errors = await schema_migrations_runner(
-                    branch=merger.source_branch,
-                    new_schema=candidate_schema,
-                    previous_schema=schema_in_main_before,
-                    migrations=migrations,
-                    service=context.service,
-                )
-                for error in errors:
-                    context.service.log.error(error)
-
-            fields = await extract_fields_first_node(info=info)
-
-            ok = True
-
-            log_data = get_log_data()
-            request_id = log_data.get("request_id", "")
-            differ = await merger.get_graph_diff()
-            diff_parser = IpamDiffParser(
-                db=context.db,
-                differ=differ,
-                source_branch_name=obj.name,
-                target_branch_name=registry.default_branch,
+        else:
+            workflow = await context.active_service.workflow.submit_workflow(
+                workflow=BRANCH_REBASE, parameters={"branch": obj.name}
             )
-            ipam_node_details = await diff_parser.get_changed_ipam_node_details()
-            message = messages.EventBranchRebased(
-                branch=obj.name,
-                ipam_node_details=ipam_node_details,
-                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
-            )
-            await context.service.send(message=message)
+            task = {"id": workflow.id}
 
-            return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        fields = await extract_fields_first_node(info=info)
+        ok = True
+
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
 
 
 class BranchValidate(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
+        wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
-    messages = List(String)
     object = Field(BranchType)
+    task = Field(TaskInfo, required=False)
 
     @classmethod
     @retry_db_transaction(name="branch_validate")
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
+    async def mutate(
+        cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
+    ) -> Self:
         context: GraphqlContext = info.context
 
-        async with UserTask.from_graphql_context(title=f"Validate branch: {data['name']}", context=context):
-            obj = await Branch.get_by_name(db=context.db, name=data["name"])
-            ok = True
-            validation_messages = ""
+        obj = await Branch.get_by_name(db=context.db, name=str(data.name))
+        task: dict | None = None
+        ok = True
 
-            diff = await BranchDiffer.init(db=context.db, branch=obj)
-            conflicts = await diff.get_conflicts()
-
-            if conflicts:
-                ok = False
-                errors = [str(conflict) for conflict in conflicts]
-                validation_messages = ", ".join(errors)
-
-            fields = await extract_fields(info.field_nodes[0].selection_set)
-
-            return cls(
-                object=await obj.to_graphql(fields=fields.get("object", {})), messages=validation_messages, ok=ok
+        if wait_until_completion:
+            await context.active_service.workflow.execute_workflow(
+                workflow=BRANCH_VALIDATE, parameters={"branch": obj.name}
             )
+        else:
+            workflow = await context.active_service.workflow.submit_workflow(
+                workflow=BRANCH_VALIDATE, parameters={"branch": obj.name}
+            )
+            task = {"id": workflow.id}
+
+        fields = await extract_fields_first_node(info=info)
+
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)
 
 
 class BranchMerge(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
+        wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
     object = Field(BranchType)
+    task = Field(TaskInfo, required=False)
 
     @classmethod
-    @retry_db_transaction(name="branch_merge")
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
-        context: GraphqlContext = info.context
+    async def mutate(
+        cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
+    ) -> Self:
+        branch_name = data["name"]
+        task: dict | None = None
 
-        async with UserTask.from_graphql_context(title=f"Merge branch: {data['name']}", context=context) as task:
-            obj = await Branch.get_by_name(db=context.db, name=data["name"])
+        if wait_until_completion:
+            await info.context.active_service.workflow.execute_workflow(
+                workflow=BRANCH_MERGE_MUTATION, parameters={"branch": branch_name}
+            )
+        else:
+            workflow = await info.context.active_service.workflow.submit_workflow(
+                workflow=BRANCH_MERGE_MUTATION, parameters={"branch": branch_name}
+            )
+            task = {"id": workflow.id}
 
-            merger: Optional[BranchMerger] = None
-            async with lock.registry.global_graph_lock():
-                async with context.db.start_transaction() as db:
-                    merger = BranchMerger(db=db, source_branch=obj, service=context.service)
-                    await merger.merge()
-                    await merger.update_schema()
+        # Pull the latest information about the branch from the database directly
+        obj = await Branch.get_by_name(db=info.context.db, name=branch_name)
 
-            fields = await extract_fields(info.field_nodes[0].selection_set)
+        fields = await extract_fields(info.field_nodes[0].selection_set)
+        ok = True
 
-            ok = True
-
-            if merger and merger.migrations and context.service:
-                errors = await schema_migrations_runner(
-                    branch=merger.destination_branch,
-                    new_schema=merger.destination_schema,
-                    previous_schema=merger.initial_source_schema,
-                    migrations=merger.migrations,
-                    service=context.service,
-                )
-                for error in errors:
-                    await task.error(message=error)
-
-            if config.SETTINGS.broker.enable and context.background:
-                log_data = get_log_data()
-                request_id = log_data.get("request_id", "")
-
-                differ = await merger.get_graph_diff()
-                diff_parser = IpamDiffParser(
-                    db=context.db,
-                    differ=differ,
-                    source_branch_name=obj.name,
-                    target_branch_name=registry.default_branch,
-                )
-                ipam_node_details = await diff_parser.get_changed_ipam_node_details()
-                message = messages.EventBranchMerge(
-                    source_branch=obj.name,
-                    target_branch=registry.default_branch,
-                    ipam_node_details=ipam_node_details,
-                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
-                )
-                context.background.add_task(services.send, message)
-
-            return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok, task=task)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional, Union
 
 from git.exc import BadName, GitCommandError
-from infrahub_sdk import GraphQLError
+from infrahub_sdk.exceptions import GraphQLError
 from pydantic import Field
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
@@ -28,6 +28,14 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         self = cls(service=service, **kwargs)
         self.validate_local_directories()
         log.debug("Initiated the object on an existing directory.", repository=self.name)
+        return self
+
+    @classmethod
+    async def new(cls, service: Optional[InfrahubServices] = None, **kwargs: Any) -> InfrahubRepository:
+        service = service or InfrahubServices()
+        self = cls(service=service, **kwargs)
+        await self.create_locally(infrahub_branch_name=self.infrahub_branch_name)
+        log.info("Created new repository locally.", repository=self.name)
         return self
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
@@ -230,14 +238,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return response
 
-    @classmethod
-    async def new(cls, service: Optional[InfrahubServices] = None, **kwargs: Any) -> InfrahubRepository:
-        service = service or InfrahubServices()
-        self = cls(service=service, **kwargs)
-        await self.create_locally(infrahub_branch_name=self.infrahub_branch_name)
-        log.info("Created the new project locally.", repository=self.name)
-        return self
-
 
 class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
     """
@@ -264,7 +264,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
         self = cls(service=service, **kwargs)
         await self.create_locally(checkout_ref=self.ref, infrahub_branch_name=self.infrahub_branch_name)
-        log.info("Created the new project locally.", repository=self.name)
+        log.info("Created new repository locally.", repository=self.name)
         return self
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
@@ -306,6 +306,22 @@ async def get_initialized_repo(
     if repository_kind == InfrahubKind.READONLYREPOSITORY:
         return await InfrahubReadOnlyRepository.init(
             id=repository_id, name=name, client=service._client, service=service
+        )
+
+    raise NotImplementedError(f"The repository kind {repository_kind} has not been implemented")
+
+
+async def initialize_repo(
+    location: str, repository_id: str, name: str, service: InfrahubServices, repository_kind: str
+) -> Union[InfrahubReadOnlyRepository, InfrahubRepository]:
+    if repository_kind == InfrahubKind.REPOSITORY:
+        return await InfrahubRepository.new(
+            location=location, id=repository_id, name=name, client=service._client, service=service
+        )
+
+    if repository_kind == InfrahubKind.READONLYREPOSITORY:
+        return await InfrahubReadOnlyRepository.new(
+            location=location, id=repository_id, name=name, client=service._client, service=service
         )
 
     raise NotImplementedError(f"The repository kind {repository_kind} has not been implemented")

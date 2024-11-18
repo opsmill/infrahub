@@ -2,7 +2,6 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
-import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { Conversations } from "../../../src/screens/proposed-changes/conversations";
 import { proposedChangedState } from "../../../src/state/atoms/proposedChanges.atom";

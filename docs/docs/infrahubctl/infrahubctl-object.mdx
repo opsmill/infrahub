@@ -1,0 +1,40 @@
+# `infrahubctl object`
+
+Manage objects in a remote Infrahub instance.
+
+**Usage**:
+
+```console
+$ infrahubctl object [OPTIONS] COMMAND [ARGS]...
+```
+
+**Options**:
+
+* `--install-completion`: Install completion for the current shell.
+* `--show-completion`: Show completion for the current shell, to copy it or customize the installation.
+* `--help`: Show this message and exit.
+
+**Commands**:
+
+* `load`: Load one or multiple objects files into...
+
+## `infrahubctl object load`
+
+Load one or multiple objects files into Infrahub.
+
+**Usage**:
+
+```console
+$ infrahubctl object load [OPTIONS] PATHS...
+```
+
+**Arguments**:
+
+* `PATHS...`: [required]
+
+**Options**:
+
+* `--debug / --no-debug`: [default: no-debug]
+* `--branch TEXT`: Branch on which to load the objects.  [default: main]
+* `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
+* `--help`: Show this message and exit.

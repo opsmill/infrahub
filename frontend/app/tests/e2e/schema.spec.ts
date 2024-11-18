@@ -13,7 +13,7 @@ test.describe("/schema - Schema visualizer", () => {
     await page.goto("/schema");
 
     await test.step("open schema viewer", async () => {
-      await page.getByText("CoreArtifact", { exact: true }).click();
+      await page.getByText("CoreGraphQL Query", { exact: true }).click();
       await expect(page.getByTestId("schema-viewer")).toBeVisible();
     });
 
@@ -45,5 +45,14 @@ test.describe("/schema - Schema visualizer", () => {
       await expect(page.getByRole("menuitem", { name: "Documentation" })).toBeDisabled();
       await expect(page.getByRole("menuitem", { name: "Open list view" })).toBeEnabled();
     });
+  });
+
+  test("filter schema list", async ({ page }) => {
+    await page.goto("/schema");
+    await expect(page.getByRole("heading", { name: "Core Account Node" })).toBeVisible();
+
+    await page.getByPlaceholder("Search schema").fill("tag");
+    await expect(page.getByRole("heading", { name: "Builtin Tag Node" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Core Account Node" })).not.toBeVisible();
   });
 });

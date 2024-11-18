@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
-    from infrahub.core.constants import PermissionDecision
+    from infrahub.permissions.constants import BranchRelativePermissionDecision
 
 
 class KindPermissions(TypedDict):
     kind: str
-    create: PermissionDecision
-    delete: PermissionDecision
-    update: PermissionDecision
-    view: PermissionDecision
+    create: BranchRelativePermissionDecision
+    delete: BranchRelativePermissionDecision
+    update: BranchRelativePermissionDecision
+    view: BranchRelativePermissionDecision

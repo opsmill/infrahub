@@ -85,8 +85,11 @@ async def authenticate_with_password(
 
     now = datetime.now(tz=timezone.utc)
     refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
+
+    # The read-only account role is deprecated and will only be used for anonymous access
+    role = "read-write" if account.role.value.value == "read-only" else account.role.value.value
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
-    access_token = generate_access_token(account_id=account.id, role=account.role.value.value, session_id=session_id)
+    access_token = generate_access_token(account_id=account.id, role=role, session_id=session_id)
     refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
 
     return models.UserToken(access_token=access_token, refresh_token=refresh_token)
@@ -239,6 +242,9 @@ async def validate_api_key(db: InfrahubDatabase, token: str) -> AccountSession:
         raise AuthorizationError("Invalid token")
 
     await validate_active_account(db=db, account_id=str(account_id))
+
+    # The read-only account role is deprecated and will only be used for anonymous access
+    role = "read-write" if role == "read-only" else role
 
     return AccountSession(account_id=account_id, role=role, auth_type=AuthType.API)
 

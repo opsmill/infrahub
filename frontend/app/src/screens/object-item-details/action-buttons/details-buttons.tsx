@@ -3,7 +3,6 @@ import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { ARTIFACT_DEFINITION_OBJECT, GENERIC_REPOSITORY_KIND } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { usePermission } from "@/hooks/usePermission";
 import { Generate } from "@/screens/artifacts/generate";
 import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
@@ -19,8 +18,7 @@ type DetailsButtonsProps = {
   objectDetailsData: any;
 };
 
-export function DetailsButtons({ schema, objectDetailsData }: DetailsButtonsProps) {
-  const permission = usePermission();
+export function DetailsButtons({ schema, objectDetailsData, permission }: DetailsButtonsProps) {
   const location = useLocation();
   const { objectid } = useParams();
   const navigate = useNavigate();
@@ -36,9 +34,9 @@ export function DetailsButtons({ schema, objectDetailsData }: DetailsButtonsProp
         {schema.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
 
         <ButtonWithTooltip
-          disabled={!permission.write.allow}
+          disabled={!permission.update.isAllowed}
           tooltipEnabled
-          tooltipContent={permission.write.message ?? "Edit object"}
+          tooltipContent={permission.update.message ?? "Edit object"}
           onClick={() => setShowEditModal(true)}
           data-testid="edit-button"
         >
@@ -48,6 +46,7 @@ export function DetailsButtons({ schema, objectDetailsData }: DetailsButtonsProp
         {!schema.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
           <GroupsManagerTriggerButton
             schema={schema}
+            permission={permission}
             objectId={objectDetailsData.id}
             className="text-custom-blue-600 p-4"
           />
@@ -58,9 +57,9 @@ export function DetailsButtons({ schema, objectDetailsData }: DetailsButtonsProp
         )}
 
         <ButtonWithTooltip
-          disabled={!permission.write.allow}
+          disabled={!permission.delete.isAllowed}
           tooltipEnabled
-          tooltipContent={permission.write.message ?? "Delete object"}
+          tooltipContent={permission.delete.message ?? "Delete object"}
           data-testid="delete-button"
           variant={"danger"}
           size={"square"}

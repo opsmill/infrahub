@@ -1,10 +1,5 @@
 import { Root } from "@/Root";
-import {
-  ARTIFACT_OBJECT,
-  GRAPHQL_QUERY_OBJECT,
-  NODE_OBJECT,
-  PROPOSED_CHANGES_OBJECT,
-} from "@/config/constants";
+import { NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { RequireAuth } from "@/hooks/useAuth";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/screens/ipam/constants";
@@ -77,14 +72,6 @@ export const router = createBrowserRouter([
                     },
                   },
                 ],
-              },
-              {
-                path: `/objects/${ARTIFACT_OBJECT}/:objectid`,
-                lazy: () => import("@/pages/objects/CoreArtifact/artifact-details"),
-              },
-              {
-                path: `/objects/${GRAPHQL_QUERY_OBJECT}/:graphqlQueryId`,
-                lazy: () => import("@/pages/objects/CoreGraphQLQuery/graphql-query-details"),
               },
               {
                 path: "/objects",
@@ -380,7 +367,7 @@ export const router = createBrowserRouter([
                   breadcrumb: () => {
                     return {
                       type: "link",
-                      label: "Role Management",
+                      label: "Users & Permissions",
                       to: constructPath("/role-management"),
                     };
                   },
@@ -466,8 +453,8 @@ export const router = createBrowserRouter([
         ],
       },
       {
-        path: "/signin",
-        lazy: () => import("@/pages/sign-in"),
+        path: "/login",
+        lazy: () => import("@/pages/login"),
       },
       {
         path: "auth/:protocol/:provider/callback",

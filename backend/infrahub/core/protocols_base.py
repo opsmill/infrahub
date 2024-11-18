@@ -44,15 +44,15 @@ class InfrahubDatabase(Protocol):
     async def close(self) -> None: ...
 
     async def execute_query(
-        self, query: str, params: Optional[dict[str, Any]] = None, name: Optional[str] = "undefined"
+        self, query: str, params: Optional[dict[str, Any]] = None, name: str = "undefined"
     ) -> list[Record]: ...
 
     async def execute_query_with_metadata(
-        self, query: str, params: Optional[dict[str, Any]] = None, name: Optional[str] = "undefined"
+        self, query: str, params: Optional[dict[str, Any]] = None, name: str = "undefined"
     ) -> tuple[list[Record], dict[str, Any]]: ...
 
     async def run_query(
-        self, query: str, params: Optional[dict[str, Any]] = None, name: Optional[str] = "undefined"
+        self, query: str, params: Optional[dict[str, Any]] = None, name: str = "undefined"
     ) -> AsyncResult: ...
 
     def render_list_comprehension(self, items: str, item_name: str) -> str: ...
@@ -93,6 +93,7 @@ class CoreNode(Protocol):
         fields: Optional[dict] = None,
         related_node_ids: Optional[set] = None,
         filter_sensitive: bool = False,
+        permissions: Optional[dict] = None,
     ) -> dict: ...
     async def render_display_label(self, db: Optional[InfrahubDatabase] = None) -> str: ...
     async def from_graphql(self, data: dict, db: InfrahubDatabase) -> bool: ...

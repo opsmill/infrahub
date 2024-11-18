@@ -27,7 +27,7 @@ class InfrahubEvent(BaseModel):
     def get_resource(self) -> dict[str, str]:
         raise NotImplementedError
 
-    def get_message(self) -> InfrahubMessage:
+    def get_messages(self) -> list[InfrahubMessage]:
         raise NotImplementedError
 
     def get_related(self) -> list[dict[str, str]]:

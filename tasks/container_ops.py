@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from .shared import (
     AVAILABLE_SERVICES,
@@ -26,7 +26,7 @@ def build_images(
     nocache: bool,
     database: str,
     namespace: Namespace,
-    service: Optional[str] = None,
+    service: str | None = None,
 ) -> None:
     if service and service not in AVAILABLE_SERVICES:
         sys.exit(f"{service} is not a valid service ({AVAILABLE_SERVICES})")

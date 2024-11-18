@@ -3,6 +3,7 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 
 test.describe("/objects/CoreArtifact - Artifact page", () => {
   test.describe.configure({ mode: "serial" });
+  test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
@@ -49,9 +50,9 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
         await page.getByRole("button", { name: "Manage groups" }).click();
         await page.getByTestId("open-group-form-button").click();
 
-        await page.getByTestId("select-open-option-button").click();
+        await page.getByLabel("Add groups *").click();
         await page.getByRole("option", { name: "arista_devices" }).click();
-        await page.getByTestId("select-open-option-button").click();
+        await page.getByLabel("Add groups *").click();
         await page.getByRole("button", { name: "Save" }).click();
 
         await expect(page.getByText("1 group added")).toBeVisible();

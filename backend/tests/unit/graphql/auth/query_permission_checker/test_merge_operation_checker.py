@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
 
 from infrahub.auth import AccountSession, AuthType
-from infrahub.core.constants import AccountRole, GlobalPermissions, InfrahubKind
+from infrahub.core.constants import AccountRole, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.exceptions import PermissionDeniedError
@@ -39,7 +39,7 @@ class TestMergeBranchPermission:
 
         permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
         await permission.new(
-            db=db, name=GlobalPermissions.MERGE_BRANCH.value, action=GlobalPermissions.MERGE_BRANCH.value
+            db=db, action=GlobalPermissions.MERGE_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
         )
         await permission.save(db=db)
 
@@ -68,8 +68,9 @@ class TestMergeBranchPermission:
         self, user: AccountSession, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ):
         checker = MergeBranchPermissionChecker()
-        is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
-        assert is_supported == user.authenticated
+        with patch("infrahub.config.SETTINGS.main.allow_anonymous_access", False):
+            is_supported = await checker.supports(db=db, account_session=user, branch=permissions_helper.default_branch)
+            assert is_supported == user.authenticated
 
     @pytest.mark.parametrize(
         "operation_name,checker_resolution",

@@ -1,15 +1,15 @@
 import { PoolValue } from "@/components/form/pool-selector";
 import {
-  AttributeValueFormPool,
+  AttributeValueFromPool,
   FormAttributeValue,
   FormFieldValue,
   FormRelationshipValue,
-  RelationshipValueFormPool,
+  RelationshipValueFromPool,
 } from "@/components/form/type";
 import { isDeepEqual } from "remeda";
 
 export const updateFormFieldValue = (
-  newValue: Exclude<FormFieldValue, AttributeValueFormPool | RelationshipValueFormPool>["value"],
+  newValue: Exclude<FormFieldValue, AttributeValueFromPool | RelationshipValueFromPool>["value"],
   defaultValue?: FormFieldValue
 ): FormFieldValue => {
   if (defaultValue && isDeepEqual(newValue, defaultValue.value as typeof newValue)) {

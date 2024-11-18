@@ -19,10 +19,7 @@ class SchemaNodeInfo(BaseModel):
     namespace: str
     branch_support: str = BranchSupportType.AWARE.value
     labels: list[str]
-
-    @property
-    def kind(self) -> str:
-        return self.namespace + self.name
+    kind: str
 
 
 class NodeDuplicateQuery(Query):

@@ -5,13 +5,16 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql_mutation
+from tests.helpers.utils import init_global_service
 
 
 @pytest.fixture
@@ -70,101 +73,88 @@ async def test_branch_create(
     }
     """
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
+    service = InfrahubServices(message_bus=recorder, database=db, workflow=WorkflowLocalExecution())
 
-    result = await graphql_mutation(
-        query=query, db=db, service=service, branch=default_branch, account_session=session_admin
-    )
+    with init_global_service(service):
+        result = await graphql_mutation(
+            query=query, db=db, service=service, branch=default_branch, account_session=session_admin
+        )
 
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchCreate"]["ok"] is True
-    assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # length of an UUID
-    assert result.data["BranchCreate"]["object"]["name"] == "branch2"
-    assert not result.data["BranchCreate"]["object"]["description"]
-    assert result.data["BranchCreate"]["object"]["sync_with_git"] is False
-    assert result.data["BranchCreate"]["object"]["is_default"] is False
-    assert result.data["BranchCreate"]["object"]["branched_from"] is not None
-    assert recorder.seen_routing_keys == ["event.branch.create"]
-    assert recorder.messages
-    message = recorder.messages[0]
-    assert isinstance(message, messages.EventBranchCreate)
-    assert message.branch == "branch2"
+        assert result.errors is None
+        assert result.data
+        assert result.data["BranchCreate"]["ok"] is True
+        assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # length of an UUID
+        assert result.data["BranchCreate"]["object"]["name"] == "branch2"
+        assert not result.data["BranchCreate"]["object"]["description"]
+        assert result.data["BranchCreate"]["object"]["sync_with_git"] is False
+        assert result.data["BranchCreate"]["object"]["is_default"] is False
+        assert result.data["BranchCreate"]["object"]["branched_from"] is not None
+        assert recorder.seen_routing_keys == ["event.branch.create"]
+        assert recorder.messages
+        message = recorder.messages[0]
+        assert isinstance(message, messages.EventBranchCreate)
+        assert message.branch == "branch2"
 
-    branch2 = await Branch.get_by_name(db=db, name="branch2")
-    branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
+        branch2 = await Branch.get_by_name(db=db, name="branch2")
+        branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
 
-    assert branch2
-    assert branch2_schema
+        assert branch2
+        assert branch2_schema
 
-    assert branch2.schema_hash == branch2_schema.get_hash_full()
+        assert branch2.schema_hash == branch2_schema.get_hash_full()
 
-    # Validate that we can't create a branch with a name that already exist
-    gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-    assert result.errors
-    assert len(result.errors) == 1
-    assert "The branch branch2, already exist" in result.errors[0].message
+        # Validate that we can't create a branch with a name that already exist
+        gql_params = prepare_graphql_params(
+            db=db, include_subscription=False, branch=default_branch, account_session=session_admin, service=service
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+        assert result.errors
+        assert len(result.errors) == 1
+        assert "The branch branch2, already exist" in result.errors[0].message
 
-    # Create another branch with different inputs
-    query = """
-    mutation {
-        BranchCreate(data: { name: "branch3", description: "my description" }) {
-            ok
-            object {
-                id
-                name
-                description
-                sync_with_git
+        # Create another branch with different inputs
+        query = """
+        mutation {
+            BranchCreate(data: { name: "branch3", description: "my description" }) {
+                ok
+                object {
+                    id
+                    name
+                    description
+                    sync_with_git
+                }
             }
         }
-    }
-    """
-    gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+        """
+        gql_params = prepare_graphql_params(
+            db=db, include_subscription=False, branch=default_branch, account_session=session_admin, service=service
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
 
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchCreate"]["ok"] is True
-    assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # length of an UUID
-    assert result.data["BranchCreate"]["object"]["name"] == "branch3"
-    assert result.data["BranchCreate"]["object"]["description"] == "my description"
-    assert result.data["BranchCreate"]["object"]["sync_with_git"] is True
+        assert result.errors is None
+        assert result.data
+        assert result.data["BranchCreate"]["ok"] is True
+        assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # length of an UUID
+        assert result.data["BranchCreate"]["object"]["name"] == "branch3"
+        assert result.data["BranchCreate"]["object"]["description"] == "my description"
+        assert result.data["BranchCreate"]["object"]["sync_with_git"] is True
 
 
 async def test_branch_delete(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema, session_admin
 ):
-    create_query = """
-    mutation {
-        BranchCreate(data: { name: "branch3", description: "my description", sync_with_git: false }) {
-            ok
-            object {
-                id
-                name
-                description
-                sync_with_git
-            }
-        }
-    }
-    """
-
     delete_query = """
     mutation {
         BranchDelete(data: { name: "branch3" }) {
@@ -176,29 +166,9 @@ async def test_branch_delete(
     delete_before_create = await graphql_mutation(
         query=delete_query, db=db, branch=default_branch, account_session=session_admin
     )
-    recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
-
-    create = await graphql_mutation(
-        query=create_query, db=db, branch=default_branch, service=service, account_session=session_admin
-    )
-    recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
-
-    delete_after_create = await graphql_mutation(
-        query=delete_query, db=db, branch=default_branch, service=service, account_session=session_admin
-    )
-    delete_after_delete = await graphql_mutation(
-        query=delete_query, db=db, branch=default_branch, account_session=session_admin
-    )
 
     assert delete_before_create.errors
     assert delete_before_create.errors[0].message == "Branch: branch3 not found."
-    assert not create.errors
-    assert not delete_after_create.errors
-    assert delete_after_delete.errors
-    assert delete_after_delete.errors[0].message == "Branch: branch3 not found."
-    assert recorder.seen_routing_keys == ["event.branch.delete"]
 
 
 async def test_branch_create_registry(
@@ -219,23 +189,26 @@ async def test_branch_create_registry(
         }
     }
     """
-    gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
 
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchCreate"]["ok"] is True
+    service = InfrahubServices(message_bus=BusRecorder(), database=db, workflow=WorkflowLocalExecution())
+    with init_global_service(service):
+        gql_params = prepare_graphql_params(
+            db=db, include_subscription=False, branch=default_branch, account_session=session_admin, service=service
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
 
-    branch2 = await Branch.get_by_name(db=db, name="branch2")
-    assert branch2.active_schema_hash.main == default_branch.active_schema_hash.main
+        assert result.errors is None
+        assert result.data
+        assert result.data["BranchCreate"]["ok"] is True
+
+        branch2 = await Branch.get_by_name(db=db, name="branch2")
+        assert branch2.active_schema_hash.main == default_branch.active_schema_hash.main
 
 
 async def test_branch_create_invalid_names(
@@ -252,23 +225,25 @@ async def test_branch_create_invalid_names(
         }
     }
     """
-    gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"branch_name": "not valid"},
-    )
+    service = InfrahubServices(message_bus=BusRecorder(), database=db, workflow=WorkflowLocalExecution())
+    with init_global_service(service):
+        gql_params = prepare_graphql_params(
+            db=db, include_subscription=False, branch=default_branch, account_session=session_admin, service=service
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"branch_name": "not valid"},
+        )
 
-    assert result.errors
-    assert len(result.errors) == 1
-    assert (
-        result.errors[0].message
-        == "Branch name contains invalid patterns or characters: disallowed ASCII characters/patterns"
-    )
+        assert result.errors
+        assert len(result.errors) == 1
+        assert (
+            result.errors[0].message
+            == "Branch name contains invalid patterns or characters: disallowed ASCII characters/patterns"
+        )
 
 
 async def test_branch_create_short_name(
@@ -285,10 +260,14 @@ async def test_branch_create_short_name(
         }
     }
     """
-    result = await graphql_mutation(query=query, db=db, variables={"branch_name": "b"}, account_session=session_admin)
-    assert result.errors
-    assert len(result.errors) == 1
-    assert result.errors[0].message == "invalid field name: String should have at least 3 characters"
+    service = InfrahubServices(message_bus=BusRecorder(), database=db, workflow=WorkflowLocalExecution())
+    with init_global_service(service):
+        result = await graphql_mutation(
+            query=query, db=db, variables={"branch_name": "b"}, account_session=session_admin
+        )
+        assert result.errors
+        assert len(result.errors) == 1
+        assert result.errors[0].message == "invalid field name: String should have at least 3 characters"
 
 
 async def test_branch_create_with_repositories(
@@ -310,53 +289,25 @@ async def test_branch_create_with_repositories(
         }
     }
     """
-    gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=default_branch, account_session=session_admin
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    service = InfrahubServices(message_bus=BusRecorder(), database=db, workflow=WorkflowLocalExecution())
+    with init_global_service(service):
+        gql_params = prepare_graphql_params(
+            db=db, include_subscription=False, branch=default_branch, account_session=session_admin, service=service
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
 
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchCreate"]["ok"] is True
-    assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # length of an UUID
+        assert result.errors is None
+        assert result.data
+        assert result.data["BranchCreate"]["ok"] is True
+        assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # length of an UUID
 
-    assert await Branch.get_by_name(db=db, name="branch2")
-
-
-async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, car_person_schema, session_admin):
-    branch2 = await create_branch(db=db, branch_name="branch2")
-
-    query = """
-    mutation {
-        BranchRebase(data: { name: "branch2" }) {
-            ok
-            object {
-                id
-            }
-        }
-    }
-    """
-    recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
-    result = await graphql_mutation(
-        query=query, db=db, branch=default_branch, service=service, account_session=session_admin
-    )
-
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchRebase"]["ok"] is True
-    assert result.data["BranchRebase"]["object"]["id"] == str(branch2.uuid)
-
-    new_branch2 = await Branch.get_by_name(db=db, name="branch2")
-    assert new_branch2.branched_from != branch2.branched_from
-
-    assert recorder.seen_routing_keys == ["event.branch.rebased"]
+        assert await Branch.get_by_name(db=db, name="branch2")
 
 
 async def test_branch_rebase_wrong_branch(
@@ -388,36 +339,6 @@ async def test_branch_rebase_wrong_branch(
     assert result.errors
     assert len(result.errors) == 1
     assert result.errors[0].message == "Branch: branch2 not found."
-
-
-async def test_branch_validate(db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin):
-    branch1 = await Branch.get_by_name(db=db, name="branch1")
-
-    query = """
-    mutation {
-        BranchValidate(data: { name: "branch1" }) {
-            ok
-            object {
-                id
-            }
-        }
-    }
-    """
-    gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch1, account_session=session_admin
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchValidate"]["ok"] is True
-    assert result.data["BranchValidate"]["object"]["id"] == str(branch1.uuid)
 
 
 async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02):
@@ -453,12 +374,14 @@ async def test_branch_update_description(db: InfrahubDatabase, base_dataset_02):
     assert branch4_updated.description == "testing"
 
 
-async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin):
+async def test_branch_merge_wrong_branch(
+    db: InfrahubDatabase, base_dataset_02, register_core_models_schema, session_admin
+):
     branch1 = await Branch.get_by_name(db=db, name="branch1")
 
     query = """
     mutation {
-        BranchMerge(data: { name: "branch1" }) {
+        BranchMerge(data: { name: "branch99" }) {
             ok
             object {
                 id
@@ -466,18 +389,59 @@ async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core
         }
     }
     """
-    gql_params = prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch1, account_session=session_admin
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
+    recorder = BusRecorder()
+    service = InfrahubServices(message_bus=recorder, database=db, workflow=WorkflowLocalExecution())
+    with init_global_service(service):
+        gql_params = prepare_graphql_params(
+            db=db, include_subscription=False, branch=branch1, account_session=session_admin, service=service
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
 
-    assert result.errors is None
-    assert result.data
-    assert result.data["BranchMerge"]["ok"] is True
-    assert result.data["BranchMerge"]["object"]["id"] == str(branch1.uuid)
+    assert result.errors
+    assert len(result.errors) == 1
+    assert result.errors[0].message == "Branch: branch99 not found."
+
+
+async def test_branch_merge_with_conflict_fails(db: InfrahubDatabase, car_person_schema, car_camry_main, session_admin):
+    query = """
+    mutation {
+        BranchMerge(data: { name: "branch2" }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+
+    branch2 = await create_branch(db=db, branch_name="branch2")
+    car_main = await NodeManager.get_one(db=db, id=car_camry_main.id)
+    car_main.name.value += "-main"
+    await car_main.save(db=db)
+    car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_camry_main.id)
+    car_branch.name.value += "-branch"
+    await car_branch.save(db=db)
+
+    recorder = BusRecorder()
+    service = InfrahubServices(message_bus=recorder, database=db, workflow=WorkflowLocalExecution())
+    with init_global_service(service):
+        gql_params = prepare_graphql_params(
+            db=db, include_subscription=False, branch=branch2, account_session=session_admin, service=service
+        )
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert "contains conflicts with the default branch" in result.errors[0].message

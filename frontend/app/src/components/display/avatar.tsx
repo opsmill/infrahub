@@ -1,6 +1,7 @@
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { classNames } from "@/utils/common";
 import { type VariantProps, cva } from "class-variance-authority";
+import { forwardRef } from "react";
 
 export const initials = (name: string) =>
   name
@@ -34,7 +35,7 @@ interface tAvatar extends VariantProps<typeof avatarVariants> {
   isLoading?: boolean;
 }
 
-export const Avatar = (props: tAvatar) => {
+export const Avatar = forwardRef<HTMLButtonElement, tAvatar>((props: tAvatar, ref) => {
   const { name, text, variant, size, className, isLoading, ...otherProps } = props;
 
   if (isLoading) {
@@ -46,10 +47,14 @@ export const Avatar = (props: tAvatar) => {
   }
 
   return (
-    <div className={classNames(avatarVariants({ variant, size, className }))} {...otherProps}>
+    <button
+      ref={ref}
+      className={classNames(avatarVariants({ variant, size, className }))}
+      {...otherProps}
+    >
       {name && initials(name)}
       {text}
       {!name && !text && "-"}
-    </div>
+    </button>
   );
-};
+});

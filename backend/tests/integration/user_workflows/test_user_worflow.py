@@ -3,7 +3,6 @@ import pytest
 from deepdiff import DeepDiff
 from fastapi.testclient import TestClient
 
-from infrahub.core.constants import NULL_VALUE
 from infrahub.database import InfrahubDatabase
 from infrahub.server import app
 from tests.test_data import dataset01 as ds01
@@ -57,6 +56,84 @@ QUERY_SPINE1_INTF = """
         }
     }
     """
+
+DIFF_UPDATE = """
+    mutation($branch: String!) {
+        DiffUpdate(data: {branch: $branch, wait_for_completion: true}) {
+            ok
+        }
+    }
+"""
+
+DIFF_TREE_QUERY = """
+query GetDiffTree($branch: String){
+    DiffTree (branch: $branch) {
+        base_branch
+        diff_branch
+        num_added
+        num_removed
+        num_updated
+        num_conflicts
+        nodes {
+            uuid
+            kind
+            label
+            status
+            parent {
+              uuid
+              kind
+              relationship_name
+            }
+            contains_conflict
+            num_added
+            num_removed
+            num_updated
+            num_conflicts
+            attributes {
+                name
+                status
+                num_added
+                num_removed
+                num_updated
+                num_conflicts
+                contains_conflict
+                conflict { uuid }
+                properties {
+                    property_type
+                    previous_value
+                    new_value
+                    previous_label
+                    new_label
+                    status
+                    conflict { uuid }
+                }
+            }
+            relationships {
+                name
+                status
+                cardinality
+                contains_conflict
+                elements {
+                    status
+                    peer_id
+                    contains_conflict
+                    conflict { uuid }
+                    properties {
+                        property_type
+                        previous_value
+                        new_value
+                        previous_label
+                        new_label
+                        status
+                        conflict { uuid }
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
 
 BRANCH_CREATE = """
     mutation($branch: String!, $isolated: Boolean!) {
@@ -123,6 +200,7 @@ INTERFACE_CREATE = """
         {
             ok
             object {
+                id
                 name {
                     value
                 }
@@ -142,7 +220,7 @@ state = State()
 
 class TestUserWorkflow01:
     @pytest.fixture(scope="class")
-    async def client(self, redis, nats):
+    async def client(self, redis, nats, prefect_test_fixture):
         client = TestClient(app)
         return client
 
@@ -151,6 +229,7 @@ class TestUserWorkflow01:
         await ds01.load_data(db=db, nbr_devices=2)
 
     async def test_initialize_state(self):
+        state.data["spine1_id"] = None
         state.data["spine1_lo0_id"] = None
         state.data["time_start"] = None
 
@@ -171,6 +250,9 @@ class TestUserWorkflow01:
         assert "InfraDevice" in result.keys()
         assert len(result["InfraDevice"]["edges"]) == 2
 
+        for device in result["InfraDevice"]["edges"]:
+            if device["node"]["name"]["value"] == "spine1":
+                state.data["spine1_id"] = device["node"]["id"]
         # Initialize the start time
         state.data["time_start"] = pendulum.now(tz="UTC")
 
@@ -335,111 +417,97 @@ class TestUserWorkflow01:
 
         assert intfs[0]["node"]["description"]["value"] == new_description
 
-    @pytest.mark.xfail(reason="Investigate as part of the reworking of the diff payload (issue #3265)")
     async def test_validate_diff_after_description_update(self, client, dataset01, integration_helper):
         headers = await integration_helper.admin_headers()
 
         with client:
-            response = client.get(f"/api/diff/data?branch={branch1}&branch_only=false", headers=headers)
+            response = client.post(
+                "/graphql",
+                json={"query": DIFF_UPDATE, "variables": {"branch": branch1}},
+                headers=headers,
+            )
+            assert response.status_code == 200
+            result = response.json()
+            assert result.get("errors") is None
+            assert result["data"]["DiffUpdate"]["ok"] is True
 
-        assert response.status_code == 200
-        assert "errors" not in response.json()
-        assert response.json() is not None
+            response = client.post(
+                "/graphql",
+                json={"query": DIFF_TREE_QUERY, "variables": {"branch": branch1}},
+                headers=headers,
+            )
+            assert response.status_code == 200
+
         result = response.json()
+        assert "errors" not in result
+        assert result
 
-        expected_result_branch1 = {
-            "action": {"branch1": "updated"},
-            "display_label": {"branch1": "Loopback0"},
-            "elements": {
-                "description": {
-                    "change": {
-                        "action": "updated",
-                        "branches": ["branch1"],
-                        "id": "17915618-03d7-7f70-4356-1851b7247682",
-                        "properties": {},
-                        "summary": {"added": 0, "removed": 0, "updated": 1},
-                        "type": "Attribute",
-                        "value": {
-                            "changes": [
+        expected_result = {
+            "base_branch": "main",
+            "diff_branch": "branch1",
+            "num_added": 0,
+            "num_removed": 0,
+            "num_updated": 1,
+            "num_conflicts": 0,
+            "nodes": [
+                {
+                    "uuid": state.data["spine1_id"],
+                    "kind": "InfraDevice",
+                    "label": "spine1",
+                    "status": "UNCHANGED",
+                    "parent": None,
+                    "contains_conflict": False,
+                    "num_added": 0,
+                    "num_removed": 0,
+                    "num_updated": 0,
+                    "num_conflicts": 0,
+                    "attributes": [],
+                    "relationships": [],
+                },
+                {
+                    "uuid": state.data["spine1_lo0_id"],
+                    "kind": "InfraInterfaceL3",
+                    "label": "Loopback0",
+                    "status": "UPDATED",
+                    "parent": {
+                        "uuid": state.data["spine1_id"],
+                        "kind": "InfraDevice",
+                        "relationship_name": "interfaces",
+                    },
+                    "contains_conflict": False,
+                    "num_added": 0,
+                    "num_removed": 0,
+                    "num_updated": 1,
+                    "num_conflicts": 0,
+                    "relationships": [],
+                    "attributes": [
+                        {
+                            "name": "description",
+                            "status": "UPDATED",
+                            "num_added": 1,
+                            "num_removed": 0,
+                            "num_updated": 0,
+                            "num_conflicts": 0,
+                            "contains_conflict": False,
+                            "conflict": None,
+                            "properties": [
                                 {
-                                    "action": "updated",
-                                    "branch": "branch1",
-                                    "changed_at": "2023-10-25T11:26:48.387801Z",
-                                    "type": "HAS_VALUE",
-                                    "value": {"new": "New " "description " "in " "branch1", "previous": NULL_VALUE},
+                                    "property_type": "HAS_VALUE",
+                                    "previous_value": "NULL",
+                                    "new_value": "New description in branch1",
+                                    "previous_label": None,
+                                    "new_label": None,
+                                    "status": "ADDED",
+                                    "conflict": None,
                                 }
                             ],
-                            "path": "data/17915618-03d5-2db0-4358-185140cb1203/description/value",
-                        },
-                    },
-                    "name": "description",
-                    "path": "data/17915618-03d5-2db0-4358-185140cb1203/description",
-                    "type": "Attribute",
-                }
-            },
-            "id": "17915618-03d5-2db0-4358-185140cb1203",
-            "kind": "InfraInterfaceL3",
-            "path": "data/17915618-03d5-2db0-4358-185140cb1203",
-            "summary": {"added": 0, "removed": 0, "updated": 1},
+                        }
+                    ],
+                },
+            ],
         }
 
-        expected_result_main = {
-            "action": {"main": "updated"},
-            "display_label": {"main": "Ethernet1"},
-            "elements": {
-                "description": {
-                    "change": {
-                        "action": "updated",
-                        "branches": ["main"],
-                        "id": "17915618-15e5-0ca0-435e-18516f4db7c8",
-                        "properties": {},
-                        "summary": {"added": 0, "removed": 0, "updated": 1},
-                        "type": "Attribute",
-                        "value": {
-                            "changes": [
-                                {
-                                    "action": "updated",
-                                    "branch": "main",
-                                    "changed_at": "2023-10-25T11:26:49.190014Z",
-                                    "type": "HAS_VALUE",
-                                    "value": {"new": "New " "description " "in " "main", "previous": NULL_VALUE},
-                                }
-                            ],
-                            "path": "data/17915618-15e2-e1f0-435b-18517dcffdf5/description/value",
-                        },
-                    },
-                    "name": "description",
-                    "path": "data/17915618-15e2-e1f0-435b-18517dcffdf5/description",
-                    "type": "Attribute",
-                }
-            },
-            "id": "17915618-15e2-e1f0-435b-18517dcffdf5",
-            "kind": "InfraInterfaceL3",
-            "path": "data/17915618-15e2-e1f0-435b-18517dcffdf5",
-            "summary": {"added": 0, "removed": 0, "updated": 1},
-        }
-
-        paths_to_exclude = [
-            "root['id']",
-            "root['path']",
-            "root['elements']['description']['change']['id']",
-            "root['elements']['description']['change']['value']['changes'][0]['changed_at']",
-            "root['elements']['description']['change']['value']['path']",
-            "root['elements']['description']['path']",
-        ]
-
-        assert (
-            DeepDiff(
-                expected_result_branch1, result["diffs"][0], exclude_paths=paths_to_exclude, ignore_order=True
-            ).to_dict()
-            == {}
-        )
-        assert (
-            DeepDiff(
-                expected_result_main, result["diffs"][1], exclude_paths=paths_to_exclude, ignore_order=True
-            ).to_dict()
-            == {}
-        )
+        assert DeepDiff(expected_result, result["data"]["DiffTree"], ignore_order=True).to_dict() == {}
 
     async def test_update_intf_description_branch1_again(self, client, dataset01, integration_helper):
         """
@@ -481,59 +549,97 @@ class TestUserWorkflow01:
 
         assert intfs[0]["node"]["description"]["value"] == new_description
 
-    @pytest.mark.xfail(reason="FIXME: Need to investigate, Previous value is not correct")
-    def test_validate_diff_again_after_description_update(self, client, dataset01):
+    async def test_validate_diff_again_after_description_update(self, client, dataset01, integration_helper):
+        headers = await integration_helper.admin_headers()
+
         with client:
-            time_from = state.data["time_after_intf_update_branch1"]
-            time_to = pendulum.now("UTC").to_iso8601_string()
-            response = client.get(
-                f"/api/diff/data?branch={branch1}&branch_only=true&time_from={time_from}&time_to={time_to}",
+            response = client.post(
+                "/graphql",
+                json={"query": DIFF_UPDATE, "variables": {"branch": branch1}},
                 headers=headers,
             )
+            assert response.status_code == 200
+            result = response.json()
+            assert result.get("errors") is None
+            assert result["data"]["DiffUpdate"]["ok"] is True
 
-        assert response.status_code == 200
-        assert "errors" not in response.json()
-        assert response.json() is not None
+            response = client.post(
+                "/graphql",
+                json={"query": DIFF_TREE_QUERY, "variables": {"branch": branch1}},
+                headers=headers,
+            )
+            assert response.status_code == 200
+
         result = response.json()
+        assert "errors" not in result
+        assert result
 
         expected_result = {
-            "branch": "branch1",
-            "kind": "InterfaceL3",
-            "id": "8f3ed0a5-ed35-47bd-a76e-441f2d90c79a",
-            "summary": {"added": 0, "removed": 0, "updated": 1},
-            "display_label": "Loopback0",
-            "changed_at": None,
-            "action": "updated",
-            "elements": {
-                "description": {
-                    "type": "Attribute",
-                    "name": "description",
-                    "id": "fbbf4969-ef02-4428-a05f-bc3bee178f51",
-                    "changed_at": None,
-                    "summary": {"added": 0, "removed": 0, "updated": 0},
-                    "action": "updated",
-                    "value": {
-                        "branch": "branch1",
-                        "type": "HAS_VALUE",
-                        "changed_at": "2023-05-04T18:45:28.584932Z",
-                        "action": "updated",
-                        "value": {"new": "New New description in branch1", "previous": NULL_VALUE},
+            "base_branch": "main",
+            "diff_branch": "branch1",
+            "num_added": 0,
+            "num_removed": 0,
+            "num_updated": 1,
+            "num_conflicts": 0,
+            "nodes": [
+                {
+                    "uuid": state.data["spine1_id"],
+                    "kind": "InfraDevice",
+                    "label": "spine1",
+                    "status": "UNCHANGED",
+                    "parent": None,
+                    "contains_conflict": False,
+                    "num_added": 0,
+                    "num_removed": 0,
+                    "num_updated": 0,
+                    "num_conflicts": 0,
+                    "attributes": [],
+                    "relationships": [],
+                },
+                {
+                    "uuid": state.data["spine1_lo0_id"],
+                    "kind": "InfraInterfaceL3",
+                    "label": "Loopback0",
+                    "status": "UPDATED",
+                    "parent": {
+                        "uuid": state.data["spine1_id"],
+                        "kind": "InfraDevice",
+                        "relationship_name": "interfaces",
                     },
-                    "properties": [],
-                }
-            },
+                    "contains_conflict": False,
+                    "num_added": 0,
+                    "num_removed": 0,
+                    "num_updated": 1,
+                    "num_conflicts": 0,
+                    "relationships": [],
+                    "attributes": [
+                        {
+                            "name": "description",
+                            "status": "UPDATED",
+                            "num_added": 1,
+                            "num_removed": 0,
+                            "num_updated": 0,
+                            "num_conflicts": 0,
+                            "contains_conflict": False,
+                            "conflict": None,
+                            "properties": [
+                                {
+                                    "property_type": "HAS_VALUE",
+                                    "previous_value": "NULL",
+                                    "new_value": "New New description in branch1",
+                                    "previous_label": None,
+                                    "new_label": None,
+                                    "status": "ADDED",
+                                    "conflict": None,
+                                }
+                            ],
+                        }
+                    ],
+                },
+            ],
         }
 
-        paths_to_exclude = [
-            "root['id']",
-            "root['elements']['description']['id']",
-            "root['elements']['description']['value']['changed_at']",
-        ]
-
-        assert (
-            DeepDiff(expected_result, result["branch1"][0], exclude_paths=paths_to_exclude, ignore_order=True).to_dict()
-            == {}
-        )
+        assert DeepDiff(expected_result, result["data"]["DiffTree"], ignore_order=True).to_dict() == {}
 
     async def test_create_second_branch(self, client, init_db_infra, dataset01, integration_helper):
         headers = await integration_helper.admin_headers()
@@ -731,21 +837,256 @@ class TestUserWorkflow01:
             result = response.json()["data"]
             assert result["InfraInterfaceL3Create"]["ok"]
             assert result["InfraInterfaceL3Create"]["object"]["name"]["value"] == "Ethernet8"
+            state.data["spine1_ethernet8_id"] = result["InfraInterfaceL3Create"]["object"]["id"]
 
-    @pytest.mark.xfail(reason="FIXME: Need to refactor once we have the new diff API")
-    def test_validate_diff_after_new_interface(self, client, dataset01):
+    async def test_validate_diff_after_new_interface(self, client, dataset01, integration_helper):
+        headers = await integration_helper.admin_headers()
+
         with client:
-            response = client.get(f"/api/diff/data?branch={branch1}&branch_only=true", headers=headers)
+            response = client.post(
+                "/graphql",
+                json={"query": DIFF_UPDATE, "variables": {"branch": branch1}},
+                headers=headers,
+            )
+            assert response.status_code == 200
+            result = response.json()
+            assert result.get("errors") is None
+            assert result["data"]["DiffUpdate"]["ok"] is True
 
-        assert response.status_code == 200
-        assert "errors" not in response.json()
-        assert response.json() is not None
-        # result = response.json()
+            response = client.post(
+                "/graphql",
+                json={"query": DIFF_TREE_QUERY, "variables": {"branch": branch1}},
+                headers=headers,
+            )
+            assert response.status_code == 200
 
-        # assert DeepDiff(result["diff"]["nodes"], expected_result_nodes, ignore_order=True).to_dict() == {}
-        # assert (
-        #     DeepDiff(result["diff"]["relationships"], expected_result_relationships, ignore_order=True).to_dict() == {}
-        # )
+        result = response.json()
+        assert "errors" not in result
+
+        assert result
+        diff_tree = result["data"]["DiffTree"]
+        assert diff_tree["base_branch"] == "main"
+        assert diff_tree["diff_branch"] == "branch1"
+        assert diff_tree["num_added"] == 1
+        assert diff_tree["num_removed"] == 0
+        assert diff_tree["num_updated"] == 2
+        assert diff_tree["num_conflicts"] == 0
+        node_diffs_by_uuid = {n["uuid"]: n for n in diff_tree["nodes"]}
+        assert set(node_diffs_by_uuid.keys()) == {
+            state.data["spine1_lo0_id"],
+            state.data["spine1_id"],
+            state.data["spine1_ethernet8_id"],
+        }
+
+        expected_loopback_0 = {
+            "uuid": state.data["spine1_lo0_id"],
+            "kind": "InfraInterfaceL3",
+            "label": "Loopback0",
+            "status": "UPDATED",
+            "parent": {
+                "uuid": state.data["spine1_id"],
+                "kind": "InfraDevice",
+                "relationship_name": "interfaces",
+            },
+            "contains_conflict": False,
+            "num_added": 0,
+            "num_removed": 0,
+            "num_updated": 1,
+            "num_conflicts": 0,
+            "attributes": [
+                {
+                    "name": "description",
+                    "status": "UPDATED",
+                    "num_added": 1,
+                    "num_removed": 0,
+                    "num_updated": 0,
+                    "num_conflicts": 0,
+                    "contains_conflict": False,
+                    "conflict": None,
+                    "properties": [
+                        {
+                            "property_type": "HAS_VALUE",
+                            "previous_value": "NULL",
+                            "new_value": "New New description in branch1",
+                            "previous_label": None,
+                            "new_label": None,
+                            "status": "ADDED",
+                            "conflict": None,
+                        }
+                    ],
+                }
+            ],
+            "relationships": [],
+        }
+        assert node_diffs_by_uuid[state.data["spine1_lo0_id"]] == expected_loopback_0
+
+        expected_spine = {
+            "uuid": state.data["spine1_id"],
+            "kind": "InfraDevice",
+            "label": "spine1",
+            "status": "UPDATED",
+            "parent": None,
+            "contains_conflict": False,
+            "num_added": 0,
+            "num_removed": 0,
+            "num_updated": 1,
+            "num_conflicts": 0,
+            "attributes": [],
+            "relationships": [
+                {
+                    "name": "interfaces",
+                    "status": "UPDATED",
+                    "cardinality": "MANY",
+                    "contains_conflict": False,
+                    "elements": [
+                        {
+                            "status": "ADDED",
+                            "peer_id": state.data["spine1_ethernet8_id"],
+                            "contains_conflict": False,
+                            "conflict": None,
+                            "properties": [
+                                {
+                                    "property_type": "IS_RELATED",
+                                    "previous_value": None,
+                                    "new_value": state.data["spine1_ethernet8_id"],
+                                    "previous_label": None,
+                                    "new_label": "Ethernet8",
+                                    "status": "ADDED",
+                                    "conflict": None,
+                                },
+                                {
+                                    "property_type": "IS_PROTECTED",
+                                    "previous_value": None,
+                                    "new_value": "False",
+                                    "previous_label": None,
+                                    "new_label": None,
+                                    "status": "ADDED",
+                                    "conflict": None,
+                                },
+                                {
+                                    "property_type": "IS_VISIBLE",
+                                    "previous_value": None,
+                                    "new_value": "True",
+                                    "previous_label": None,
+                                    "new_label": None,
+                                    "status": "ADDED",
+                                    "conflict": None,
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+        assert DeepDiff(expected_spine, node_diffs_by_uuid[state.data["spine1_id"]], ignore_order=True).to_dict() == {}
+
+        expected_new_attributes = {
+            "mtu": "1500",
+            "description": "New interface added in Branch1",
+            "lacp_priority": "32768",
+            "enabled": "True",
+            "name": "Ethernet8",
+            "role": "leaf",
+            "speed": "1000",
+            "status": "active",
+            "lacp_rate": "Normal",
+        }
+        expected_new_interface = {
+            "uuid": state.data["spine1_ethernet8_id"],
+            "kind": "InfraInterfaceL3",
+            "label": "Ethernet8",
+            "status": "ADDED",
+            "parent": {
+                "uuid": state.data["spine1_id"],
+                "kind": "InfraDevice",
+                "relationship_name": "interfaces",
+            },
+            "contains_conflict": False,
+            "num_added": 10,
+            "num_removed": 0,
+            "num_updated": 0,
+            "num_conflicts": 0,
+            "attributes": [
+                {
+                    "name": name,
+                    "status": "ADDED",
+                    "num_added": 3,
+                    "num_removed": 0,
+                    "num_updated": 0,
+                    "num_conflicts": 0,
+                    "contains_conflict": False,
+                    "conflict": None,
+                    "properties": [
+                        {
+                            "property_type": "HAS_VALUE",
+                            "previous_value": None,
+                            "new_value": new_value,
+                            "previous_label": None,
+                            "new_label": None,
+                            "status": "ADDED",
+                            "conflict": None,
+                        },
+                        {
+                            "property_type": "IS_PROTECTED",
+                            "previous_value": None,
+                            "new_value": "False",
+                            "previous_label": None,
+                            "new_label": None,
+                            "status": "ADDED",
+                            "conflict": None,
+                        },
+                        {
+                            "property_type": "IS_VISIBLE",
+                            "previous_value": None,
+                            "new_value": "True",
+                            "previous_label": None,
+                            "new_label": None,
+                            "status": "ADDED",
+                            "conflict": None,
+                        },
+                    ],
+                }
+                for name, new_value in expected_new_attributes.items()
+            ],
+            "relationships": [
+                {
+                    "name": "device",
+                    "status": "ADDED",
+                    "cardinality": "ONE",
+                    "contains_conflict": False,
+                    "elements": [
+                        {
+                            "status": "ADDED",
+                            "peer_id": state.data["spine1_id"],
+                            "contains_conflict": False,
+                            "conflict": None,
+                            "properties": [
+                                {
+                                    "property_type": property_type,
+                                    "previous_value": None,
+                                    "new_value": new_value,
+                                    "previous_label": None,
+                                    "new_label": new_label,
+                                    "status": "ADDED",
+                                    "conflict": None,
+                                }
+                                for property_type, new_value, new_label in [
+                                    ("IS_RELATED", state.data["spine1_id"], "spine1"),
+                                    ("IS_PROTECTED", "False", None),
+                                    ("IS_VISIBLE", "True", None),
+                                ]
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+        assert (
+            DeepDiff(
+                expected_new_interface, node_diffs_by_uuid[state.data["spine1_ethernet8_id"]], ignore_order=True
+            ).to_dict()
+            == {}
+        )
 
     async def test_merge_first_branch_into_main(self, client, dataset01, integration_helper):
         # Expected description for Loopback0 after the merge

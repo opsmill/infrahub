@@ -34,41 +34,39 @@ export const Tabs = (props: TabsProps) => {
   return (
     <div
       className={classNames(
-        "bg-custom-white flex items-center border-b border-gray-200",
+        "bg-custom-white flex items-center border-b border-gray-200 px-2",
         className
       )}
     >
       <div className="flex-1">
-        <div className="">
-          <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">
-            {tabs.map((tab: Tab, index: number) => {
-              const Component = tab.component ? tab.component : () => null;
+        <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">
+          {tabs.map((tab: Tab, index: number) => {
+            const Component = tab.component ? tab.component : () => null;
 
-              return (
-                <div
-                  key={tab.name}
-                  onClick={() => handleClick(tab, index)}
-                  className={classNames(
-                    "flex items-center whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer",
-                    (qspTab && qspTab === tab.name) || (!qspTab && index === 0) // First item is active without QSP
-                      ? "border-custom-blue-500 text-custom-blue-600"
-                      : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  )}
-                >
-                  {tab.label}
+            return (
+              <div
+                key={tab.name}
+                onClick={() => handleClick(tab, index)}
+                className={classNames(
+                  "flex items-center whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer",
+                  (qspTab && qspTab === tab.name) || (!qspTab && index === 0) // First item is active without QSP
+                    ? "border-custom-blue-500 text-custom-blue-600"
+                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                )}
+              >
+                {tab.label}
 
-                  {tab.count !== undefined && (
-                    <Pill className="ml-2" data-cy="tab-counter">
-                      {JSON.stringify(tab.count)}
-                    </Pill>
-                  )}
+                {tab.count !== undefined && (
+                  <Pill className="ml-2" data-cy="tab-counter">
+                    {JSON.stringify(tab.count)}
+                  </Pill>
+                )}
 
-                  <Component />
-                </div>
-              );
-            })}
-          </nav>
-        </div>
+                <Component />
+              </div>
+            );
+          })}
+        </nav>
       </div>
       <div>{rightItems}</div>
     </div>

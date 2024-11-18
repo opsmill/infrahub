@@ -118,7 +118,7 @@ async def get_current_user(
     if config.SETTINGS.main.allow_anonymous_access and request.method.lower() in ["get", "options"]:
         return account_session
 
-    if request.method.lower() == "post" and account_session.read_only:
+    if request.method.lower() == "post" and account_session.read_only and account_session.authenticated:
         raise PermissionDeniedError("You are not allowed to perform this operation")
 
     raise AuthorizationError("Authentication is required")

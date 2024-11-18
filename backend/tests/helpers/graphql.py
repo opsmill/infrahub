@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from graphql import ExecutionResult, graphql
 
@@ -16,10 +16,10 @@ if TYPE_CHECKING:
 async def graphql_mutation(
     query: str,
     db: InfrahubDatabase,
-    branch: Optional[Branch] = None,
-    variables: Optional[dict[str, Any]] = None,
-    service: Optional[InfrahubServices] = None,
-    account_session: Optional[AccountSession] = None,
+    branch: Branch | None = None,
+    variables: dict[str, Any] | None = None,
+    service: InfrahubServices | None = None,
+    account_session: AccountSession | None = None,
 ) -> ExecutionResult:
     branch = branch or await Branch.get_by_name(name="main", db=db)
     service = service or services.service
@@ -45,8 +45,8 @@ async def graphql_query(
     query: str,
     db: InfrahubDatabase,
     branch: Branch,
-    variables: Optional[dict[str, Any]] = None,
-    service: Optional[InfrahubServices] = None,
+    variables: dict[str, Any] | None = None,
+    service: InfrahubServices | None = None,
 ) -> ExecutionResult:
     service = service or services.service
 

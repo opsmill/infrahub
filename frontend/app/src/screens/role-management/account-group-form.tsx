@@ -1,8 +1,14 @@
 import { Button } from "@/components/buttons/button-primitive";
+import DropdownField from "@/components/form/fields/dropdown.field";
+import InputField from "@/components/form/fields/input.field";
+import RelationshipField from "@/components/form/fields/relationship.field";
 import { NodeFormProps } from "@/components/form/node-form";
 import { FormFieldValue } from "@/components/form/type";
 import { getCurrentFieldValue } from "@/components/form/utils/getFieldDefaultValue";
+import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
+import { isRequired } from "@/components/form/utils/validation";
+import { DropdownOption } from "@/components/inputs/dropdown";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Form, FormSubmit } from "@/components/ui/form";
 import {
@@ -14,6 +20,7 @@ import {
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import { useSchema } from "@/hooks/useSchema";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
@@ -22,13 +29,6 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
-
-import DropdownField from "@/components/form/fields/dropdown.field";
-import InputField from "@/components/form/fields/input.field";
-import RelationshipField from "@/components/form/fields/relationship.field";
-import { isRequired } from "@/components/form/utils/validation";
-import { DropdownOption } from "@/components/inputs/dropdown";
-import { useSchema } from "@/hooks/useSchema";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -46,13 +46,21 @@ export const AccountGroupForm = ({
   const date = useAtomValue(datetimeAtom);
   const { schema } = useSchema(ACCOUNT_GROUP_OBJECT);
 
+  const roles = getRelationshipDefaultValue({
+    relationshipData: currentObject?.roles?.value,
+  });
+
+  const members = getRelationshipDefaultValue({
+    relationshipData: currentObject?.members?.value,
+  });
+
   const defaultValues = {
     name: getCurrentFieldValue("name", currentObject),
     description: getCurrentFieldValue("description", currentObject),
     label: getCurrentFieldValue("label", currentObject),
     group_type: getCurrentFieldValue("group_type", currentObject),
-    roles: getCurrentFieldValue("roles", currentObject),
-    accounts: getCurrentFieldValue("accounts", currentObject),
+    roles,
+    members,
   };
 
   const form = useForm<FieldValues>({
@@ -138,18 +146,18 @@ export const AccountGroupForm = ({
             peer: ACCOUNT_ROLE_OBJECT,
             cardinality: "many",
           }}
-          schema={schema}
+          options={roles.value}
         />
 
         <RelationshipField
-          name="accounts"
-          label="Accounts"
+          name="members"
+          label="Members"
           relationship={{
-            name: "accounts",
+            name: "members",
             peer: ACCOUNT_OBJECT,
             cardinality: "many",
           }}
-          schema={schema}
+          options={members.value}
         />
 
         <div className="text-right">

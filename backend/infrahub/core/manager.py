@@ -372,6 +372,12 @@ class NodeManager:
             if display_label_fields:
                 fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
+        if fields and "hfid" in fields:
+            peer_schema = schema.get_peer_schema(db=db, branch=branch)
+            hfid_fields = peer_schema.generate_fields_for_hfid()
+            if hfid_fields:
+                fields = deep_merge_dict(dicta=fields, dictb=hfid_fields)
+
         if fetch_peers:
             peer_ids = [peer.peer_id for peer in peers_info]
             peer_nodes = await cls.get_many(

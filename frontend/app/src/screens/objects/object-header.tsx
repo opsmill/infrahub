@@ -1,16 +1,12 @@
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { Skeleton } from "@/components/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { PROFILE_KIND } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import useFilters from "@/hooks/useFilters";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import { useObjectItems } from "@/hooks/useObjectItems";
 import Content from "@/screens/layout/content";
+import { getPermission } from "@/screens/permission/utils";
 import { IModelSchema } from "@/state/atoms/schema.atom";
-import { constructPath } from "@/utils/fetch";
-import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router-dom";
 
 type ObjectHeaderProps = {
   schema: IModelSchema;
@@ -31,35 +27,29 @@ const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
   const kindFilter = filters?.find((filter) => filter.name == "kind__value");
 
   const schemaKind = kindFilter?.value || (schema.kind as string);
-  const isProfile = schema.namespace === "Profile" || schemaKind === PROFILE_KIND;
-  const breadcrumbModelLabel = isProfile ? "All Profiles" : schema.label || schema.name;
+  const { count, permissions } = data?.[schemaKind] ?? { count: undefined, permissions: undefined };
+  const currentPermission = getPermission(permissions?.edges);
+
+  if (!currentPermission.view.isAllowed) {
+    return null;
+  }
 
   return (
-    <Content.Title
-      title={
-        <div className="text-md flex gap-2 items-center">
-          <Link
-            to={constructPath(`/objects/${isProfile ? PROFILE_KIND : schemaKind}`)}
-            className="flex items-center cursor-pointer"
-          >
-            <h1 className="font-semibold text-gray-900 mr-2 hover:underline">
-              {breadcrumbModelLabel}
-            </h1>
-            <Badge>{loading && !error ? "..." : data?.[schemaKind]?.count}</Badge>
-          </Link>
-        </div>
-      }
+    <Content.CardTitle
+      title={schema.label || schema.name}
+      badgeContent={loading && !error ? "..." : count}
       description={schema.description}
       isReloadLoading={loading}
       reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
       data-testid="object-header"
-    >
-      <ObjectHelpButton
-        kind={schema.kind}
-        documentationUrl={schema.documentation}
-        className="ml-auto"
-      />
-    </Content.Title>
+      end={
+        <ObjectHelpButton
+          kind={schema.kind}
+          documentationUrl={schema.documentation}
+          className="ml-auto"
+        />
+      }
+    />
   );
 };
 
@@ -68,47 +58,29 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
 
   if (error) return null;
 
-  const schemaKind = schema.kind as string;
-  const isProfile = schema.namespace === "Profile" || schemaKind === PROFILE_KIND;
-  const breadcrumbModelLabel = isProfile ? "All Profiles" : schema.label || schema.name;
-
   const objectDetailsData = data?.[schema.kind!]?.edges[0]?.node;
 
   return (
-    <Content.Title
+    <Content.CardTitle
       title={
-        <div className="text-md flex gap-2 items-center">
-          <Link
-            to={constructPath(`/objects/${isProfile ? PROFILE_KIND : schemaKind}`)}
-            className="flex items-center cursor-pointer"
-          >
-            <h1 className="font-semibold text-gray-900 hover:underline">{breadcrumbModelLabel}</h1>
-          </Link>
-
-          {loading ? (
-            <>
-              <Icon icon="mdi:chevron-right" />
-              <Skeleton className="h-6 w-60" />
-            </>
-          ) : (
-            <>
-              <Icon icon="mdi:chevron-right" />
-              <p>{objectDetailsData?.display_label ?? "not found"}</p>
-            </>
-          )}
-        </div>
+        loading ? (
+          <Skeleton className="h-6 w-60" />
+        ) : (
+          (objectDetailsData?.display_label ?? `${schema.label} not found`)
+        )
       }
       description={schema.description}
       isReloadLoading={loading}
       reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
+      end={
+        <ObjectHelpButton
+          kind={schema.kind}
+          documentationUrl={schema.documentation}
+          className="ml-auto"
+        />
+      }
       data-testid="object-header"
-    >
-      <ObjectHelpButton
-        kind={schema.kind}
-        documentationUrl={schema.documentation}
-        className="ml-auto"
-      />
-    </Content.Title>
+    />
   );
 };
 

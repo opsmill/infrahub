@@ -60,11 +60,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 interface ButtonWithTooltipProps extends ButtonProps {
   tooltipContent?: TooltipProps["content"];
   tooltipEnabled?: TooltipProps["enabled"];
+  side?: TooltipProps["side"];
 }
 
 export const ButtonWithTooltip = forwardRef<HTMLButtonElement, ButtonWithTooltipProps>(
-  ({ tooltipContent, tooltipEnabled, ...props }, ref) => (
-    <Tooltip enabled={tooltipEnabled} content={tooltipContent}>
+  ({ tooltipContent, tooltipEnabled, side, ...props }, ref) => (
+    <Tooltip enabled={tooltipEnabled} content={tooltipContent} side={side}>
       <Button ref={ref} {...props} />
     </Tooltip>
   )

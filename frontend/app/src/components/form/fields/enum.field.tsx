@@ -1,7 +1,6 @@
 import { LabelFormField } from "@/components/form/fields/common";
 import { DynamicEnumFieldProps, FormAttributeValue } from "@/components/form/type";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import React from "react";
 
 import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";

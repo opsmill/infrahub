@@ -2,7 +2,6 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
-import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { ObjectDetailsPage } from "../../../src/pages/objects/object-details";
 import { genericsState, schemaState } from "../../../src/state/atoms/schema.atom";
@@ -14,6 +13,8 @@ import {
   deviceDetailsMocksId,
   deviceDetailsMocksQuery,
   deviceDetailsMocksSchema,
+  getPermissionsData,
+  getPermissionsQuery,
   interfaceDescription,
   interfaceLabelName,
   interfacesArrayCount,
@@ -63,6 +64,30 @@ const mocks: any[] = [
       data: deviceDetailsMocksData,
     },
   },
+  // Permissions
+  {
+    request: {
+      query: gql`
+            ${getPermissionsQuery}
+          `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: getPermissionsData,
+    },
+  },
+  // Permissions
+  {
+    request: {
+      query: gql`
+              ${getPermissionsQuery}
+            `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: getPermissionsData,
+    },
+  },
   // Relationships view
   {
     request: {
@@ -73,6 +98,18 @@ const mocks: any[] = [
     },
     result: {
       data: deviceDetailsInterfacesMocksData,
+    },
+  },
+  // Permissions
+  {
+    request: {
+      query: gql`
+            ${getPermissionsQuery}
+          `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: getPermissionsData,
     },
   },
   {

@@ -101,6 +101,20 @@ query {{kind}} {
         {{/if}}
       }
     }
+
+    {{#if hasPermissions}}
+      permissions {
+        edges {
+          node {
+            kind
+            view
+            create
+            update
+            delete
+          }
+        }
+      }
+    {{/if}}
   }
 
   {{#if taskKind}}

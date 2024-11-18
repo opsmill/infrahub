@@ -1,5 +1,5 @@
-import { Card } from "@/components/ui/card";
-import { ACCESS_TOKEN_KEY, ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
+import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
@@ -9,7 +9,6 @@ import { genericsState } from "@/state/atoms/schema.atom";
 import { parseJwt } from "@/utils/common";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import Content from "../layout/content";
 
 export default function TabProfile() {
   const nodes = useAtomValue(genericsState);
@@ -19,7 +18,7 @@ export default function TabProfile() {
   const tokenData = parseJwt(localToken);
   const accountId = tokenData?.sub;
 
-  const { data, error, networkStatus } = useObjectDetails(schema, accountId);
+  const { data, error, networkStatus, permission } = useObjectDetails(schema, accountId);
 
   const objectDetailsData = schema && data && data[schema.kind!]?.edges[0]?.node;
 
@@ -40,10 +39,11 @@ export default function TabProfile() {
   }
 
   return (
-    <Content className="p-2">
-      <Card>
-        <ObjectItemDetails schema={schema} objectDetailsData={objectDetailsData} hideHeaders />
-      </Card>
-    </Content>
+    <ObjectItemDetails
+      schema={schema}
+      objectDetailsData={objectDetailsData}
+      permission={permission}
+      hideHeaders
+    />
   );
 }

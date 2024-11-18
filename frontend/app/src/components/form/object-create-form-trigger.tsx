@@ -1,10 +1,9 @@
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
-import { ACCOUNT_GENERIC_OBJECT, ARTIFACT_OBJECT } from "@/config/constants";
+import { ARTIFACT_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { usePermission } from "@/hooks/usePermission";
+import { Permission } from "@/screens/permission/types";
 import { IModelSchema } from "@/state/atoms/schema.atom";
-import { isGeneric } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { Button, ButtonProps } from "../buttons/button-primitive";
@@ -13,32 +12,27 @@ import { Tooltip } from "../ui/tooltip";
 interface ObjectCreateFormTriggerProps extends ButtonProps {
   schema: IModelSchema;
   onSuccess?: (newObject: any) => void;
+  permission: Permission;
 }
 
 export const ObjectCreateFormTrigger = ({
   schema,
   onSuccess,
   isLoading,
+  permission,
   ...props
 }: ObjectCreateFormTriggerProps) => {
-  const permission = usePermission();
-
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   if (schema.kind === ARTIFACT_OBJECT) {
     return null;
   }
 
-  const isAccount: boolean =
-    schema.kind === ACCOUNT_GENERIC_OBJECT ||
-    (!isGeneric(schema) && !!schema.inherit_from?.includes(ACCOUNT_GENERIC_OBJECT));
-
-  const isAllowed = isAccount ? permission.isAdmin.allow : permission.write.allow;
-  const tooltipMessage = isAccount ? permission.isAdmin.message : permission.isAdmin.message;
+  const isAllowed = permission.create.isAllowed;
 
   return (
     <>
-      <Tooltip enabled={!isAllowed} content={tooltipMessage}>
+      <Tooltip enabled={!isAllowed} content={!isAllowed && permission.create.message}>
         <Button
           data-cy="create"
           data-testid="create-object-button"

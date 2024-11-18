@@ -7,6 +7,7 @@ import NoDataFound from "@/screens/errors/no-data-found";
 import { IpDetailsCard } from "@/screens/ipam/common/ip-details-card";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/screens/ipam/constants";
+import { getPermission } from "@/screens/permission/utils";
 import { genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
@@ -73,6 +74,7 @@ const PrefixSummaryContent = ({ prefixId, prefixKind }: PrefixSummaryContentProp
       kind: prefixKind,
       columns,
       filters,
+      hasPermissions: true,
     })
   );
 
@@ -85,13 +87,20 @@ const PrefixSummaryContent = ({ prefixId, prefixKind }: PrefixSummaryContentProp
 
   const prefixData = data[prefixKind]?.edges?.length && data[prefixKind]?.edges[0].node;
 
+  const permission = getPermission(data[prefixKind]?.permissions?.edges);
+
   if (!prefixData) {
     return <NoDataFound />;
   }
 
   return (
     <div className="flex flex-wrap items-start gap-2">
-      <IpDetailsCard schema={prefixSchema} data={prefixData} refetch={refetch} />
+      <IpDetailsCard
+        schema={prefixSchema}
+        data={prefixData}
+        refetch={refetch}
+        permission={permission}
+      />
     </div>
   );
 };

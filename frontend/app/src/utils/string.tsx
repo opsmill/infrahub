@@ -14,15 +14,9 @@ export const stringifyWithoutQuotes = (obj: object): string => {
   return JSON.stringify(obj, null, 4).replace(/"([^"]+)":/g, "$1:");
 };
 
-export const cleanTabsAndNewLines = (string: string) => {
-  return string.replaceAll(/\t*\n*/g, "").replaceAll(/\s+/g, " ");
-};
-
 export const capitalizeFirstLetter = (string: string) => {
   return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
 };
-
-export const concatString = (acc: string, elem: string) => `${acc}${elem}`;
 
 export const pluralize = (count: number, word: string, suffix = "s") =>
   `${count} ${word}${count > 1 ? suffix : ""}`;

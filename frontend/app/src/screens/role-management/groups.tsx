@@ -2,30 +2,58 @@ import { Button } from "@/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
-import { Table } from "@/components/table/table";
+import { Table, tRowValue } from "@/components/table/table";
 import { Pagination } from "@/components/ui/pagination";
+import { SearchInput } from "@/components/ui/search-input";
 import { ACCOUNT_GROUP_OBJECT } from "@/config/constants";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { GET_ROLE_MANAGEMENT_GROUPS } from "@/graphql/queries/role-management/getGroups";
+import { useDebounce } from "@/hooks/useDebounce";
+import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import { useQuery } from "@apollo/client";
+import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import ErrorScreen from "../errors/error-screen";
+import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
+import { getPermission } from "../permission/utils";
 import { GroupMembers } from "./group-member";
+import { RelationshipDisplay } from "./relationship-display";
 
 function Groups() {
-  const { loading, data, error, refetch } = useQuery(GET_ROLE_MANAGEMENT_GROUPS);
+  const [search, setSearch] = useState("");
+  const searchDebounced = useDebounce(search, 300);
+  const {
+    loading,
+    networkStatus,
+    data: latestData,
+    previousData,
+    error,
+    refetch,
+  } = useQuery(GET_ROLE_MANAGEMENT_GROUPS, {
+    variables: { search: searchDebounced },
+    notifyOnNetworkStatusChange: true,
+  });
+  const data = latestData || previousData;
   const schemaKindName = useAtomValue(schemaKindNameState);
   const { schema } = useSchema(ACCOUNT_GROUP_OBJECT);
-  const [rowToDelete, setRowToDelete] = useState(null);
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const [rowToDelete, setRowToDelete] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
+  const [rowToUpdate, setRowToUpdate] = useState<Record<
+    string,
+    string | number | tRowValue
+  > | null>(null);
+  const [showDrawer, setShowDrawer] = useState(false);
+
+  const permission = getPermission(data?.[ACCOUNT_GROUP_OBJECT]?.permissions?.edges);
 
   const columns = [
     {
-      name: "display_label",
+      name: "name",
       label: "Name",
     },
     {
@@ -40,6 +68,10 @@ function Groups() {
       name: "members",
       label: "Members",
     },
+    {
+      name: "roles",
+      label: "Roles",
+    },
   ];
 
   const rows =
@@ -48,21 +80,46 @@ function Groups() {
       id: edge?.node?.id,
       values: {
         id: edge?.node?.id,
-        display_label: edge?.node?.display_label,
-        description: edge?.node?.description?.value,
-        group_type: edge?.node?.group_type?.value,
-        members: (
-          <GroupMembers
-            members={edge?.node?.members?.edges?.map((edge) => edge?.node?.display_label) ?? []}
-          />
-        ),
+        name: { value: edge?.node?.name?.value },
+        description: { value: edge?.node?.description?.value },
+        group_type: { value: edge?.node?.group_type?.value },
+        members: {
+          value: { edges: edge?.node?.members?.edges },
+          display: (
+            <GroupMembers
+              members={edge?.node?.members?.edges?.map((edge) => edge?.node?.display_label) ?? []}
+            />
+          ),
+        },
+        roles: {
+          value: { edges: edge?.node?.roles?.edges },
+          display: (
+            <RelationshipDisplay
+              items={edge?.node?.roles?.edges?.map((edge) => edge?.node?.display_label)}
+            />
+          ),
+        },
         __typename: edge?.node?.__typename,
       },
     }));
 
-  if (error) return <ErrorScreen message="An error occured while retrieving the accounts." />;
+  if (error) {
+    if (error.networkError?.statusCode === 403) {
+      const { message } = error.networkError?.result?.errors?.[0] ?? {};
 
-  if (loading) return <LoadingScreen message="Retrieving accounts..." />;
+      return <UnauthorizedScreen message={message} />;
+    }
+
+    return <ErrorScreen message="An error occured while retrieving the accounts." />;
+  }
+
+  if (networkStatus === NetworkStatus.loading) {
+    return <LoadingScreen message="Retrieving groups..." />;
+  }
+
+  if (!permission?.view.isAllowed) {
+    return <UnauthorizedScreen message={permission?.view?.message} />;
+  }
 
   const globalRefetch = () => {
     graphqlClient.refetchQueries({ include: ["GET_ROLE_MANAGEMENT_COUNTS"] });
@@ -72,18 +129,23 @@ function Groups() {
   return (
     <>
       <div>
-        <div className="flex items-center justify-between p-2">
-          <div>{/* Search input + filter button */}</div>
+        <div className="flex items-center justify-between gap-2 p-2 border-b">
+          <SearchInput
+            loading={loading}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search groups"
+            className="border-none focus-visible:ring-0"
+            containerClassName="flex-grow"
+          />
 
-          <div>
-            <Button
-              variant={"primary"}
-              onClick={() => setShowCreateDrawer(true)}
-              disabled={!schema}
-            >
-              Create {schema?.label}
-            </Button>
-          </div>
+          <Button
+            variant={"primary"}
+            onClick={() => setShowDrawer(true)}
+            disabled={!schema || !permission?.create.isAllowed}
+          >
+            Create {schema?.label}
+          </Button>
         </div>
 
         <Table
@@ -91,6 +153,11 @@ function Groups() {
           rows={rows ?? []}
           className="border-0"
           onDelete={(data) => setRowToDelete(data.values)}
+          onUpdate={(row) => {
+            setRowToUpdate(row.values);
+            setShowDrawer(true);
+          }}
+          permission={permission}
         />
 
         <Pagination count={data && data[ACCOUNT_GROUP_OBJECT]?.count} />
@@ -114,14 +181,19 @@ function Groups() {
               subtitle={schema.description}
             />
           }
-          open={showCreateDrawer}
-          setOpen={(value) => setShowCreateDrawer(value)}
+          open={showDrawer}
+          setOpen={(value) => setShowDrawer(value)}
+          onClose={() => setRowToUpdate(null)}
         >
           <ObjectForm
             kind={ACCOUNT_GROUP_OBJECT}
-            onCancel={() => setShowCreateDrawer(false)}
+            currentObject={rowToUpdate}
+            onCancel={() => {
+              setRowToUpdate(null);
+              setShowDrawer(false);
+            }}
             onSuccess={() => {
-              setShowCreateDrawer(false);
+              setShowDrawer(false);
               globalRefetch();
             }}
           />

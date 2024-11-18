@@ -84,8 +84,6 @@ spec:
           volumeMounts:
             - mountPath: /opt/infrahub/storage
               name: infrahub-server-storage-data
-            - name: workflow-data
-              mountPath: /opt/infrahub/workflow
       restartPolicy: Always
       volumes:
         {{- if and .Values.infrahubServer.persistence.enabled }}
@@ -94,14 +92,6 @@ spec:
             claimName: {{ tpl (.Values.infrahubServer.persistence.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "infrahub-server-storage-data")) . }}
         {{- else }}
         - name: infrahub-server-storage-data
-          emptyDir: {}
-        {{- end }}
-        {{- if and .Values.infrahubTaskRunner.persistence.enabled }}
-        - name: workflow-data
-          persistentVolumeClaim:
-            claimName: {{ tpl (.Values.infrahubTaskRunner.persistence.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "workflow-data")) . }}
-        {{- else }}
-        - name: workflow-data
           emptyDir: {}
         {{- end }}
 

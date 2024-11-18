@@ -3,7 +3,7 @@
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
-import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
+import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
 import { withSchemaContext } from "../../../src/decorators/withSchemaContext";
 import { AuthProvider } from "../../../src/hooks/useAuth";
 import { ArtifactsDiff } from "../../../src/screens/diff/artifact-diff/artifacts-diff";
@@ -12,6 +12,8 @@ import { schemaState } from "../../../src/state/atoms/schema.atom";
 import { encodeJwt } from "../../../src/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
+  artifactPermissionsData,
+  artifactPermissionsQuery,
   artifactThreadMockData,
   artifactThreadMockQuery,
   artifactThreadSchema,
@@ -37,6 +39,17 @@ const mocks = [
     },
     result: {
       data: artifactThreadMockData,
+    },
+  },
+  {
+    request: {
+      query: gql`
+        ${artifactPermissionsQuery}
+      `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: artifactPermissionsData,
     },
   },
 ];
@@ -169,9 +182,6 @@ describe("Artifact Diff", () => {
     before(() => {
       const data = {
         sub: profileId,
-        user_claims: {
-          role: "admin",
-        },
       };
 
       const token = encodeJwt(data);

@@ -3,7 +3,7 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { resolveConflict } from "@/graphql/mutations/diff/resolveConflict";
-import { usePermission } from "@/hooks/usePermission";
+import { useAuth } from "@/hooks/useAuth";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { proposedChangedState } from "@/state/atoms/proposedChanges.atom";
@@ -17,9 +17,10 @@ import { toast } from "react-toastify";
 export const Conflict = ({ conflict }: any) => {
   const currentBranch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const permission = usePermission();
   const [isLoading, setIsLoading] = useState(false);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
+
+  const { isAuthenticated } = useAuth();
 
   const handleAccept = async (conflictValue: string) => {
     try {
@@ -66,7 +67,7 @@ export const Conflict = ({ conflict }: any) => {
         <div className="flex items-center gap-2">
           <Checkbox
             id={"base"}
-            disabled={isLoading || !permission.write.allow}
+            disabled={isLoading || !isAuthenticated}
             checked={conflict.selected_branch === "BASE_BRANCH"}
             onChange={() => handleAccept("BASE_BRANCH")}
           />
@@ -86,7 +87,7 @@ export const Conflict = ({ conflict }: any) => {
         <div className="flex items-center gap-2">
           <Checkbox
             id={"diff"}
-            disabled={isLoading || !permission.write.allow}
+            disabled={isLoading || !isAuthenticated}
             checked={conflict.selected_branch === "DIFF_BRANCH"}
             onChange={() => handleAccept("DIFF_BRANCH")}
           />

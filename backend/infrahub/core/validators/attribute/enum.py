@@ -25,13 +25,11 @@ class AttributeEnumUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.node_schema.kind
         self.params["attr_name"] = self.attribute_schema.name
         self.params["allowed_values"] = self.attribute_schema.enum
         self.params["null_value"] = NULL_VALUE
         query = """
-        MATCH p = (n:Node)
-        WHERE $node_kind IN LABELS(n)
+        MATCH (n:%(node_kind)s)
         CALL {
             WITH n
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
@@ -49,7 +47,7 @@ class AttributeEnumUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         AND attribute_value IS NOT NULL
         AND attribute_value <> $null_value
         AND NOT (attribute_value IN $allowed_values)
-        """ % {"branch_filter": branch_filter}
+        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "attribute_value", "value_relationship"]

@@ -1,26 +1,37 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { QSP } from "@/config/qsp";
 import { Branch } from "@/generated/graphql";
-import { usePermission } from "@/hooks/usePermission";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { branchesToSelectOptions } from "@/utils/branches";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
-import React, { useEffect, useState } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
 import { ComboboxItem } from "@/components/ui/combobox";
-import { Command, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import graphqlClient from "@/graphql/graphqlClientApollo";
+import { useAuth } from "@/hooks/useAuth";
 import { constructPath } from "@/utils/fetch";
-import { useSetAtom } from "jotai";
+import { useCommandState } from "cmdk";
 import { Button, ButtonWithTooltip, LinkButton } from "./buttons/button-primitive";
 import BranchCreateForm from "./form/branch-create-form";
+
+type DisplayForm = {
+  open: boolean;
+  defaultBranchName?: string;
+};
 
 export default function BranchSelector() {
   const currentBranch = useAtomValue(currentBranchAtom);
   const [isOpen, setIsOpen] = useState(false);
-  const [displayForm, setDisplayForm] = useState(false);
+  const [displayForm, setDisplayForm] = useState<DisplayForm>({ open: false });
 
   useEffect(() => {
     if (isOpen) graphqlClient.refetchQueries({ include: ["GetBranches"] });
@@ -30,7 +41,7 @@ export default function BranchSelector() {
     <Popover
       open={isOpen}
       onOpenChange={(open) => {
-        setDisplayForm(false);
+        setDisplayForm({ open: false });
         setIsOpen(open);
       }}
     >
@@ -50,15 +61,14 @@ export default function BranchSelector() {
       </PopoverTrigger>
 
       <PopoverContent align="start">
-        {displayForm ? (
+        {displayForm.open ? (
           <BranchCreateForm
-            onCancel={() => {
-              setDisplayForm(false);
-            }}
+            onCancel={() => setDisplayForm({ open: false })}
             onSuccess={() => {
-              setDisplayForm(false);
+              setDisplayForm({ open: false });
               setIsOpen(false);
             }}
+            defaultBranchName={displayForm.defaultBranchName}
             data-testid="branch-create-form"
           />
         ) : (
@@ -74,18 +84,14 @@ function BranchSelect({
   setFormOpen,
 }: {
   setPopoverOpen: (open: boolean) => void;
-  setFormOpen: (open: boolean) => void;
+  setFormOpen: (displayForm: DisplayForm) => void;
 }) {
   const branches = useAtomValue(branchesState);
   const setCurrentBranch = useSetAtom(currentBranchAtom);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
   const handleBranchChange = (branch: Branch) => {
-    if (branch.is_default) {
-      setBranchInQueryString(undefined); // undefined is needed to remove a parameter from the QSP
-    } else {
-      setBranchInQueryString(branch.name);
-    }
+    setBranchInQueryString(branch.is_default ? undefined : branch.name);
     setCurrentBranch(branch);
     setPopoverOpen(false);
   };
@@ -110,7 +116,10 @@ function BranchSelect({
         </div>
 
         <CommandList className="p-0" data-testid="branch-list">
-          <CommandEmpty>No branch found</CommandEmpty>
+          <BranchNotFound
+            onSelect={(defaultBranchName) => setFormOpen({ open: true, defaultBranchName })}
+          />
+
           {branchesToSelectOptions(branches).map((branch) => (
             <BranchOption
               key={branch.name}
@@ -161,28 +170,56 @@ function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => vo
   );
 }
 
-export const BranchFormTriggerButton = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
-  const permission = usePermission();
+export const BranchFormTriggerButton = ({
+  setOpen,
+}: {
+  setOpen: (displayForm: DisplayForm) => void;
+}) => {
+  const { isAuthenticated } = useAuth();
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpen({ open: true });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.stopPropagation();
+      setOpen({ open: true });
+    }
+  };
 
   return (
     <ButtonWithTooltip
-      disabled={!permission.write.allow}
-      tooltipEnabled={!permission.write.allow}
-      tooltipContent={permission.write.message ?? undefined}
+      disabled={!isAuthenticated}
+      tooltipEnabled={!isAuthenticated}
+      tooltipContent="You need to be authenticated."
       className="h-8 w-8 shadow-none"
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.stopPropagation();
-          setOpen(true);
-        }
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        setOpen(true);
-      }}
+      onKeyDown={handleKeyDown}
+      onClick={handleClick}
       data-testid="create-branch-button"
     >
       <Icon icon="mdi:plus" />
     </ButtonWithTooltip>
+  );
+};
+
+const BranchNotFound = ({ onSelect }: { onSelect: (branchName: string) => void }) => {
+  const filteredCount = useCommandState((state) => state.filtered.count);
+  const search = useCommandState((state) => state.search);
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) return <CommandEmpty>No branch found</CommandEmpty>;
+  if (filteredCount !== 0) return null;
+
+  return (
+    <CommandItem
+      forceMount
+      value="create"
+      onSelect={() => onSelect(search)}
+      className="text-neutral-600 truncate gap-1"
+    >
+      Create branch <span className="font-semibold text-neutral-800">{search}</span>
+    </CommandItem>
   );
 };

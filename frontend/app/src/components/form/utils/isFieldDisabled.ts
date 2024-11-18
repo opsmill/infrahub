@@ -1,11 +1,15 @@
 import { LineageOwner } from "@/generated/graphql";
 import { AuthContextType } from "@/hooks/useAuth";
+import { PermissionDecisionData } from "@/screens/permission/types";
+import { store } from "@/state";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
 
 export type IsFieldDisabledParams = {
   owner?: LineageOwner | null;
   auth?: AuthContextType;
   isProtected?: boolean;
   isReadOnly?: boolean;
+  permissions?: { update?: PermissionDecisionData | null };
 };
 
 export const isFieldDisabled = ({
@@ -13,12 +17,27 @@ export const isFieldDisabled = ({
   auth,
   isProtected,
   isReadOnly,
+  permissions,
 }: IsFieldDisabledParams) => {
-  if (isReadOnly) return true;
+  const currentBranch = store.get(currentBranchAtom);
 
-  // Field is available if there is no owner and if is_protected is not set to true
-  if (!isProtected || !owner || auth?.permissions?.isAdmin) return false;
+  switch (permissions?.update) {
+    case "ALLOW":
+      return false;
+    case "ALLOW_DEFAULT":
+      return !currentBranch?.is_default;
+    case "ALLOW_OTHER":
+      return !!currentBranch?.is_default;
+    case "DENY":
+      return true;
+    default: {
+      if (isReadOnly) return true;
 
-  // Field is available only if is_protected is set to true and if the owner is the user
-  return owner?.id !== auth?.user?.id;
+      // Field is available if there is no owner and if is_protected is not set to true
+      if (!isProtected || !owner) return false;
+
+      // Field is available only if is_protected is set to true and if the owner is the user
+      return owner?.id !== auth?.user?.id;
+    }
+  }
 };

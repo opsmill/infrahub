@@ -15,6 +15,7 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffRoot,
     EnrichedDiffs,
     NameTrackingId,
+    NodeDiffFieldSummary,
 )
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -43,7 +44,7 @@ class TestDiffRepositorySaveAndLoad:
         config.SETTINGS.database.max_depth_search_hierarchy = 10
         return DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
 
-    def build_diff_node(self, num_sub_fields=2) -> EnrichedDiffNode:
+    def build_diff_node(self, num_sub_fields=2, no_recurse=False) -> EnrichedDiffNode:
         enriched_node = EnrichedNodeFactory.build(
             attributes={
                 EnrichedAttributeFactory.build(
@@ -70,6 +71,8 @@ class TestDiffRepositorySaveAndLoad:
                 for _ in range(num_sub_fields)
             },
         )
+        if no_recurse:
+            return enriched_node
         if num_sub_fields > 1 and len(enriched_node.relationships) > 0:
             for relationship_group in enriched_node.relationships:
                 relationship_group.nodes = {
@@ -455,167 +458,6 @@ class TestDiffRepositorySaveAndLoad:
         assert len(retrieved) == 1
         assert retrieved[0] == replace(this_diff, nodes={parent_node, thin_middle_node, expected_leaf_node})
 
-    # async def test_filter_limit_and_offset_flat(self, diff_repository: DiffRepository, reset_database):
-    #     ordered_nodes = []
-    #     for kind, label in (("A", "a"), ("A", "b"), ("B", "a"), ("B", "b")):
-    #         ordered_nodes.append(EnrichedNodeFactory.build(kind=kind, label=label, relationships=set()))
-    #     enriched_diff = EnrichedRootFactory.build(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_name=self.diff_branch_name,
-    #         from_time=Timestamp(self.diff_from_time),
-    #         to_time=Timestamp(self.diff_to_time),
-    #         nodes=set(ordered_nodes),
-    #     )
-    #     await diff_repository.save(enriched_diff=enriched_diff)
-
-    #     retrieved = await diff_repository.get(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_names=[self.diff_branch_name],
-    #         from_time=Timestamp(self.diff_from_time),
-    #         to_time=Timestamp(self.diff_to_time),
-    #         limit=2,
-    #     )
-    #     assert len(retrieved) == 1
-    #     assert retrieved[0].nodes == set(ordered_nodes[:2])
-
-    #     retrieved = await diff_repository.get(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_names=[self.diff_branch_name],
-    #         from_time=Timestamp(self.diff_from_time),
-    #         to_time=Timestamp(self.diff_to_time),
-    #         limit=2,
-    #         offset=2,
-    #     )
-    #     assert len(retrieved) == 1
-    #     assert retrieved[0].nodes == set(ordered_nodes[2:])
-
-    # async def test_filter_limit_and_offset_with_nested_nodes(self, diff_repository: DiffRepository, reset_database):
-    #     nodes = self._build_nodes(num_nodes=10, num_sub_fields=3)
-    #     enriched_diff = EnrichedRootFactory.build(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_name=self.diff_branch_name,
-    #         from_time=Timestamp(self.diff_from_time),
-    #         to_time=Timestamp(self.diff_to_time),
-    #         nodes=nodes,
-    #     )
-    #     root_nodes = enriched_diff.get_nodes_without_parents()
-    #     ordered_nodes = list(root_nodes)
-    #     kinds = sorted(random.sample(string.ascii_uppercase, k=5))
-    #     for i in range(5):
-    #         kind = kinds[i]
-    #         labels = sorted(random.sample(string.ascii_lowercase, k=2))
-    #         ordered_nodes[2 * i].kind = kind
-    #         ordered_nodes[2 * i + 1].kind = kind
-    #         ordered_nodes[2 * i].label = labels[0]
-    #         ordered_nodes[2 * i + 1].label = labels[1]
-    #     await diff_repository.save(enriched_diff=enriched_diff)
-
-    #     retrieved = await diff_repository.get(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_names=[self.diff_branch_name],
-    #         from_time=Timestamp(self.diff_from_time),
-    #         to_time=Timestamp(self.diff_to_time),
-    #         limit=2,
-    #     )
-    #     expected_root_nodes = set(ordered_nodes[:2])
-    #     all_expected_nodes = set(expected_root_nodes)
-    #     for n in expected_root_nodes:
-    #         all_expected_nodes |= n.get_all_child_nodes()
-    #     assert len(retrieved) == 1
-    #     assert retrieved[0].get_nodes_without_parents() == expected_root_nodes
-    #     assert retrieved[0].nodes == all_expected_nodes
-
-    #     retrieved = await diff_repository.get(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_names=[self.diff_branch_name],
-    #         from_time=Timestamp(self.diff_from_time),
-    #         to_time=Timestamp(self.diff_to_time),
-    #         limit=4,
-    #         offset=2,
-    #     )
-    #     expected_root_nodes = set(ordered_nodes[2:6])
-    #     all_expected_nodes = set(expected_root_nodes)
-    #     for n in expected_root_nodes:
-    #         all_expected_nodes |= n.get_all_child_nodes()
-    #     assert len(retrieved) == 1
-    #     assert retrieved[0].get_nodes_without_parents() == set(ordered_nodes[2:6])
-    #     assert retrieved[0].nodes == all_expected_nodes
-
-    # async def test_filter_limit_and_offset_across_multiple_roots(self, diff_repository: DiffRepository, reset_database):
-    #     enriched_diffs = []
-    #     node_uuids = [str(uuid4()) for _ in range(3)]
-    #     first_nodes = []
-    #     second_nodes = []
-    #     third_nodes = []
-    #     start_time = self.diff_from_time.add(minutes=1)
-    #     for i in range(3):
-    #         nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
-    #         enriched_diff = EnrichedRootFactory.build(
-    #             base_branch_name=self.base_branch_name,
-    #             diff_branch_name=self.diff_branch_name,
-    #             from_time=Timestamp(start_time.add(minutes=i * 30)),
-    #             to_time=Timestamp(start_time.add(minutes=(i * 30) + 29)),
-    #             nodes=nodes,
-    #         )
-    #         enriched_diffs.append(enriched_diff)
-    #         root_nodes = enriched_diff.get_nodes_without_parents()
-    #         ordered_nodes = list(root_nodes)
-    #         first_node, second_node, third_node = ordered_nodes
-    #         first_node.kind = "A"
-    #         first_node.label = "a"
-    #         first_node.uuid = node_uuids[0]
-    #         first_nodes.append(first_node)
-    #         second_node.kind = "B"
-    #         second_node.label = "b"
-    #         second_node.uuid = node_uuids[1]
-    #         second_nodes.append(second_node)
-    #         third_node.kind = "C"
-    #         third_node.label = "c"
-    #         third_node.uuid = node_uuids[2]
-    #         third_nodes.append(third_node)
-    #         await diff_repository.save(enriched_diff=enriched_diff)
-
-    #     retrieved = await diff_repository.get(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_names=[self.diff_branch_name],
-    #         from_time=Timestamp(start_time),
-    #         to_time=Timestamp(start_time.add(minutes=100)),
-    #         limit=1,
-    #     )
-    #     assert len(retrieved) == 3
-    #     for index, retrieved_root in enumerate(retrieved):
-    #         root_nodes = retrieved_root.get_nodes_without_parents()
-    #         assert len(root_nodes) == 1
-    #         assert root_nodes == {first_nodes[index]}
-
-    #     retrieved = await diff_repository.get(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_names=[self.diff_branch_name],
-    #         from_time=Timestamp(start_time),
-    #         to_time=Timestamp(start_time.add(minutes=100)),
-    #         limit=1,
-    #         offset=1,
-    #     )
-    #     assert len(retrieved) == 3
-    #     for index, retrieved_root in enumerate(retrieved):
-    #         root_nodes = retrieved_root.get_nodes_without_parents()
-    #         assert len(root_nodes) == 1
-    #         assert root_nodes == {second_nodes[index]}
-
-    #     retrieved = await diff_repository.get(
-    #         base_branch_name=self.base_branch_name,
-    #         diff_branch_names=[self.diff_branch_name],
-    #         from_time=Timestamp(start_time),
-    #         to_time=Timestamp(start_time.add(minutes=100)),
-    #         limit=1,
-    #         offset=2,
-    #     )
-    #     assert len(retrieved) == 3
-    #     for index, retrieved_root in enumerate(retrieved):
-    #         root_nodes = retrieved_root.get_nodes_without_parents()
-    #         assert len(root_nodes) == 1
-    #         assert root_nodes == {third_nodes[index]}
-
     async def test_save_and_retrieve_many_diffs(self, diff_repository: DiffRepository, reset_database):
         diffs_to_retrieve: list[EnrichedDiffRoot] = []
         start_time = self.diff_from_time.add(seconds=1)
@@ -729,3 +571,46 @@ class TestDiffRepositorySaveAndLoad:
                 tracking_id=BranchTrackingId(name="not a branch"),
                 diff_branch_name=self.diff_branch_name,
             )
+
+    async def test_get_node_field_summaries(self, diff_repository: DiffRepository):
+        diff_nodes = self._build_nodes(num_nodes=5, num_sub_fields=2)
+        for diff_node in list(diff_nodes)[:3]:
+            same_kind_diff_node = self.build_diff_node(num_sub_fields=3, no_recurse=True)
+            same_kind_diff_node.kind = diff_node.kind
+            same_attr_names = random.sample([a.name for a in diff_node.attributes], k=min(len(diff_node.attributes), 2))
+            for attr_diff, attr_name in zip(list(same_kind_diff_node.attributes)[:2], same_attr_names):
+                attr_diff.name = attr_name
+            same_rel_names = random.sample(
+                [r.name for r in diff_node.relationships], k=min(len(diff_node.relationships), 2)
+            )
+            for rel_diff, rel_name in zip(list(same_kind_diff_node.relationships)[:2], same_rel_names):
+                rel_diff.name = rel_name
+            diff_nodes.add(same_kind_diff_node)
+        diff_root = EnrichedRootFactory.build(nodes=diff_nodes)
+        diff_root.tracking_id = BranchTrackingId(name=diff_root.diff_branch_name)
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=diff_root)
+
+        expected_map: dict[str, NodeDiffFieldSummary] = {}
+        for node in diff_root.nodes:
+            if node.action is DiffAction.UNCHANGED:
+                continue
+            if node.kind not in expected_map:
+                expected_map[node.kind] = NodeDiffFieldSummary(kind=node.kind)
+            field_summary = expected_map[node.kind]
+            attr_names = {a.name for a in node.attributes if a.action is not DiffAction.UNCHANGED}
+            field_summary.attribute_names.update(attr_names)
+            rel_names = {r.name for r in node.relationships if r.action is not DiffAction.UNCHANGED}
+            field_summary.relationship_names.update(rel_names)
+        expected_map = {k: v for k, v in expected_map.items() if v.relationship_names or v.attribute_names}
+
+        retrieved_node_field_summaries = await diff_repository.get_node_field_summaries(
+            diff_branch_name=diff_root.diff_branch_name, tracking_id=diff_root.tracking_id
+        )
+        retrieved_map = {summary.kind: summary for summary in retrieved_node_field_summaries}
+        assert expected_map == retrieved_map
+
+        retrieved_node_field_summaries = await diff_repository.get_node_field_summaries(
+            diff_branch_name=diff_root.diff_branch_name, diff_id=diff_root.uuid
+        )
+        retrieved_map = {summary.kind: summary for summary in retrieved_node_field_summaries}
+        assert expected_map == retrieved_map

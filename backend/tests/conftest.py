@@ -48,6 +48,7 @@ from tests.helpers.constants import (
     NEO4J_IMAGE,
     PORT_BOLT_NEO4J,
     PORT_CLIENT_RABBITMQ,
+    PORT_HTTP_NEO4J,
     PORT_HTTP_RABBITMQ,
     PORT_MEMGRAPH,
     PORT_NATS,
@@ -183,7 +184,10 @@ def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> Optio
     container = start_neo4j_container(NEO4J_IMAGE)
     request.addfinalizer(container.stop)
 
-    return {PORT_BOLT_NEO4J: get_exposed_port(container, PORT_BOLT_NEO4J)}
+    return {
+        PORT_BOLT_NEO4J: get_exposed_port(container, PORT_BOLT_NEO4J),
+        PORT_HTTP_NEO4J: get_exposed_port(container, PORT_HTTP_NEO4J),
+    }
 
 
 @pytest.fixture(scope="session")
@@ -375,6 +379,7 @@ def reload_settings_before_each_module(tmpdir_factory):
 
     # Other settings
     config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
+    config.SETTINGS.workflow.driver = config.WorkflowDriver.LOCAL
 
     storage_dir = tmpdir_factory.mktemp("storage")
     config.SETTINGS.storage.local.path_ = str(storage_dir)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import (
     BaseModel,
     Field,
@@ -12,12 +12,13 @@ from pydantic import (
 )
 from starlette.responses import JSONResponse
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
+from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch  # noqa: TCH001
-from infrahub.core.constants import GlobalPermissions, PermissionDecision
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.models import (  # noqa: TCH001
     SchemaBranchHash,
@@ -28,10 +29,10 @@ from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, Pro
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TCH001
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.events import EventMeta
+from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.exceptions import MigrationError, PermissionDeniedError
-from infrahub.log import get_logger
-from infrahub.message_bus import Meta, messages
-from infrahub.services import services
+from infrahub.log import get_log_data, get_logger
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
@@ -238,7 +239,6 @@ async def get_json_schema_by_kind(schema_kind: str, branch: Branch = Depends(get
 async def load_schema(
     request: Request,
     schemas: SchemasLoadAPI,
-    background_tasks: BackgroundTasks,
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
     account_session: AccountSession = Depends(get_current_user),
@@ -246,11 +246,29 @@ async def load_schema(
     for permission_backend in registry.permission_backends:
         if not await permission_backend.has_permission(
             db=db,
-            account_id=account_session.account_id,
-            permission=f"global:{GlobalPermissions.MANAGE_SCHEMA.value}:{PermissionDecision.ALLOW.value}",
+            account_session=account_session,
+            permission=GlobalPermission(
+                action=GlobalPermissions.MANAGE_SCHEMA.value,
+                decision=(
+                    PermissionDecision.ALLOW_DEFAULT
+                    if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+                    else PermissionDecision.ALLOW_OTHER
+                ).value,
+            ),
             branch=branch,
         ):
             raise PermissionDeniedError("You are not allowed to manage the schema")
+
+        if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch) and not await permission_backend.has_permission(
+            db=db,
+            account_session=account_session,
+            permission=GlobalPermission(
+                action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            ),
+            branch=branch,
+        ):
+            raise PermissionDeniedError("You are not allowed to edit the schema in the default branch")
 
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
@@ -279,11 +297,13 @@ async def load_schema(
             schema_branch=candidate_schema,
             constraints=result.constraints,
         )
-        error_messages = await service.workflow.execute(  # type: ignore[var-annotated]
-            workflow=SCHEMA_VALIDATE_MIGRATION, message=validate_migration_data
+        error_messages = await service.workflow.execute_workflow(
+            workflow=SCHEMA_VALIDATE_MIGRATION,
+            expected_return=list[str],
+            parameters={"message": validate_migration_data},
         )
-        if error_messages:  # type: ignore[has-type]
-            raise SchemaNotValidError(message=",\n".join(error_messages))  # type: ignore[has-type]
+        if error_messages:
+            raise SchemaNotValidError(message=",\n".join(error_messages))
 
         # ----------------------------------------------------------
         # Update the schema
@@ -320,21 +340,25 @@ async def load_schema(
             previous_schema=origin_schema,
             migrations=result.migrations,
         )
-        migration_error_msgs = await service.workflow.execute(  # type: ignore[var-annotated]
-            workflow=SCHEMA_APPLY_MIGRATION, message=apply_migration_data
+        migration_error_msgs = await service.workflow.execute_workflow(
+            workflow=SCHEMA_APPLY_MIGRATION,
+            expected_return=list[str],
+            parameters={"message": apply_migration_data},
         )
 
         if migration_error_msgs:
             raise MigrationError(message=",\n".join(migration_error_msgs))
 
-        if config.SETTINGS.broker.enable:
-            message = messages.EventSchemaUpdate(
-                branch=branch.name,
-                meta=Meta(initiator_id=WORKER_IDENTITY),
-            )
-            background_tasks.add_task(services.send, message)
-
     await service.component.refresh_schema_hash(branches=[branch.name])
+
+    log_data = get_log_data()
+    request_id = log_data.get("request_id", "")
+    event = SchemaUpdatedEvent(
+        branch=branch.name,
+        schema_hash=branch.active_schema_hash.main,
+        meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id, account_id=account_session.account_id),
+    )
+    await service.event.send(event=event)
 
     return SchemaUpdate(hash=updated_hash, previous_hash=original_hash, diff=result.diff)
 
@@ -368,8 +392,10 @@ async def check_schema(
         schema_branch=candidate_schema,
         constraints=result.constraints,
     )
-    error_messages = await service.workflow.execute(  # type: ignore[var-annotated]
-        workflow=SCHEMA_VALIDATE_MIGRATION, message=validate_migration_data
+    error_messages = await service.workflow.execute_workflow(
+        workflow=SCHEMA_VALIDATE_MIGRATION,
+        expected_return=list[str],
+        parameters={"message": validate_migration_data},
     )
     if error_messages:
         raise SchemaNotValidError(message=",\n".join(error_messages))

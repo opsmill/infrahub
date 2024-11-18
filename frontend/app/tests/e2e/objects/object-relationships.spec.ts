@@ -66,6 +66,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
         await page.goto("/objects/InfraPlatform");
         await page.getByRole("link", { name: "Cisco IOS", exact: true }).click();
         await page.getByText("Devices9").click();
+        await expect(page.getByText("Just a moment")).not.toBeVisible();
       });
 
       await test.step("Add a new relationship", async () => {

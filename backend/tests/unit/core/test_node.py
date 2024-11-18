@@ -1,5 +1,5 @@
 import pytest
-from infrahub_sdk import UUIDT
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -12,6 +12,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_relationships, get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
 
 
 async def test_node_init(
@@ -337,7 +338,7 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_pers
             "id": c1.nbr_seats.id,
             "value": 4,
         },
-        "type": "TestCar",
+        KIND_GRAPHQL_FIELD_NAME: "TestCar",
     }
     assert await c1.to_graphql(db=db, fields={"nbr_seats": {"value": None}}) == expected_data
 
@@ -348,7 +349,7 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_pers
             "id": c1.name.id,
             "is_protected": False,
         },
-        "type": "TestCar",
+        KIND_GRAPHQL_FIELD_NAME: "TestCar",
     }
 
     assert await c1.to_graphql(db=db, fields={"display_label": None, "name": {"is_protected": None}}) == expected_data
@@ -414,7 +415,7 @@ async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch
             "owner": None,
             "source": None,
         },
-        "type": "TestCar",
+        KIND_GRAPHQL_FIELD_NAME: "TestCar",
     }
     assert await c1.to_graphql(db=db) == expected_data
 
@@ -445,7 +446,17 @@ async def test_node_create_local_attrs(db: InfrahubDatabase, default_branch: Bra
     assert obj.json_no_default.value is None
 
     obj = await Node.init(db=db, schema=criticality_schema)
-    await obj.new(db=db, name="medium", level=3, description="My desc", is_true=False, is_false=True, color="#333333")
+    await obj.new(
+        db=db,
+        name="medium",
+        level=3,
+        description="My desc",
+        is_true=False,
+        is_false=True,
+        color="#333333",
+        json_default={"value": {"value": "xxxxx"}},
+        json_no_default={"value": {"testing": True}},
+    )
     await obj.save(db=db)
 
     assert obj.id
@@ -460,6 +471,8 @@ async def test_node_create_local_attrs(db: InfrahubDatabase, default_branch: Bra
     assert obj.color.id
     assert obj.is_true.value is False
     assert obj.is_false.value is True
+    assert obj.json_default.value == {"value": "xxxxx"}
+    assert obj.json_no_default.value == {"testing": True}
 
 
 async def test_node_create_attribute_with_source(

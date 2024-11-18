@@ -6,7 +6,8 @@ from typing import Any, Dict
 
 import pendulum
 import pytest
-from infrahub_sdk import UUIDT, Config, InfrahubClient
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
 from pytest_httpx import HTTPXMock
 
@@ -54,7 +55,8 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
-from infrahub.utils import format_label
+from infrahub.services import InfrahubServices, services
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
 from tests.test_data import dataset01 as ds01
@@ -110,7 +112,7 @@ async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> Infrah
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name="test_basename",
-        location=f"{git_sources_dir}/test_base",
+        location=str(git_sources_dir / "test_base"),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
@@ -1163,6 +1165,7 @@ async def car_person_data_generic(db: InfrahubDatabase, register_core_models_sch
         "c1": c1,
         "c2": c2,
         "c3": c3,
+        "c4": c4,
         "q1": q1,
         "r1": r1,
     }
@@ -2009,7 +2012,7 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
 
 
 @pytest.fixture
-async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -2070,6 +2073,7 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
 
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    return schema
 
 
 @pytest.fixture
@@ -2540,10 +2544,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
     permissions: list[Node] = []
     global_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await global_permission.new(
-        db=db,
-        name=format_label(GlobalPermissions.SUPER_ADMIN.value),
-        action=GlobalPermissions.SUPER_ADMIN.value,
-        decision=PermissionDecision.ALLOW.value,
+        db=db, action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
     )
     await global_permission.save(db=db)
     permissions.append(global_permission)
@@ -2551,11 +2552,10 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
     object_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
     await object_permission.new(
         db=db,
-        branch="*",
         namespace="*",
         name="*",
         action=PermissionAction.ANY.value,
-        decision=PermissionDecision.ALLOW.value,
+        decision=PermissionDecision.ALLOW_ALL.value,
     )
     await object_permission.save(db=db)
     permissions.append(object_permission)
@@ -2622,6 +2622,14 @@ async def second_account(db: InfrahubDatabase, data_schema, node_group_schema, r
     await obj.new(db=db, name="Second Account", account_type="Git", password="SecondPassword123")
     await obj.save(db=db)
     return obj
+
+
+@pytest.fixture
+async def session_second_account(db: InfrahubDatabase, second_account) -> AccountSession:
+    session = AccountSession(
+        authenticated=True, auth_type=AuthType.API, account_id=second_account.id, role="read-write"
+    )
+    return session
 
 
 @pytest.fixture
@@ -2923,3 +2931,81 @@ async def prefix_pool_01(
     ip_dataset_prefix_v4["prefix_pool"] = prefix_pool
 
     return ip_dataset_prefix_v4
+
+
+@pytest.fixture()
+def workflow_local():
+    original = config.OVERRIDE.workflow
+    workflow = WorkflowLocalExecution()
+    config.OVERRIDE.workflow = workflow
+    yield workflow
+    config.OVERRIDE.workflow = original
+
+
+@pytest.fixture
+def init_service(db: InfrahubDatabase):
+    original = services.service
+    services.service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    yield services.service
+    services.service = original
+
+
+@pytest.fixture
+async def generic_car_person_schema(default_branch: Branch, data_schema):
+    schema: dict[str, Any] = {
+        "generics": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                ],
+                "relationships": [
+                    {
+                        "cardinality": "one",
+                        "identifier": "person__car",
+                        "name": "owner",
+                        "optional": True,
+                        "peer": "TestPerson",
+                    }
+                ],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "ElectricCar",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value", "color__value"],
+                "inherit_from": ["TestCar"],
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                    {
+                        "kind": "Text",
+                        "name": "color",
+                    },
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                ],
+                "relationships": [
+                    {"cardinality": "one", "identifier": "person__car", "name": "car", "peer": "TestCar"}
+                ],
+            },
+        ],
+    }
+
+    schema_root = SchemaRoot(**schema)
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
