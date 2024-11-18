@@ -18,7 +18,6 @@ from typing import (
     cast,
 )
 
-import anyio
 import ujson
 from graphql import (
     ExecutionContext,
@@ -185,7 +184,7 @@ class InfrahubGraphQLApp:
     ) -> JSONResponse:
         if request.app.state.response_delay:
             self.logger.info(f"Adding response delay of {request.app.state.response_delay} seconds")
-            await anyio.sleep(request.app.state.response_delay)
+            await asyncio.sleep(request.app.state.response_delay)
 
         try:
             operations = await _get_operation_from_request(request)
