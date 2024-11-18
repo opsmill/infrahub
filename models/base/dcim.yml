@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
-version: '1.0'
+version: "1.0"
 generics:
   - name: Interface
     namespace: Infra
@@ -184,6 +184,11 @@ nodes:
         unique: true
       - name: description
         kind: Text
+        description: "Combine device role and site name"
+        computed_attribute:
+          kind: Jinja2
+          jinja2_template: "{{ role__value }} device on {{ site__name__value|lower }}"
+        read_only: true
         optional: true
       - name: type
         kind: Text
