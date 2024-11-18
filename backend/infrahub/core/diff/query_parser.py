@@ -365,8 +365,6 @@ class DiffRelationshipIntermediate:
         action = DiffAction.UPDATED
         if last_changed_at < from_time or all(sr.action is DiffAction.UNCHANGED for sr in single_relationships):
             action = DiffAction.UNCHANGED
-        # if parent_removed:
-        #     action = DiffAction.REMOVED
         if (
             self.cardinality is RelationshipCardinality.ONE
             and len(single_relationships) == 1
@@ -498,6 +496,7 @@ class DiffQueryParser:
         if len(self._diff_root_by_branch) > 1:
             self._apply_base_branch_previous_values()
             self._remove_empty_base_diff_root()
+        include_unchanged = False
         self._finalize(include_unchanged=include_unchanged)
 
     def _parse_path(self, database_path: DatabasePath) -> None:
