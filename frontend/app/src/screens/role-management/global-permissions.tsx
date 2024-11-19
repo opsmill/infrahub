@@ -94,6 +94,7 @@ function GlobalPermissions() {
             value: { edges: edge?.node?.roles?.edges },
           },
           identifier: { display: <BadgeCopy value={edge?.node?.identifier?.value} /> },
+          __typename: edge.node.__typename,
         },
       };
     });
