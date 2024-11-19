@@ -35,6 +35,7 @@ def upload_content(
     item: UploadContentPayload,
     _: str = Depends(get_current_user),
 ) -> UploadResponse:
+    # FIXME: Lock with permission?
     # TODO need to optimized how we read the content of the file, especially if the file is really large
     # Check this discussion for more details
     # https://stackoverflow.com/questions/63048825/how-to-upload-file-using-fastapi
@@ -52,6 +53,7 @@ def upload_file(
     file: UploadFile = File(...),
     _: str = Depends(get_current_user),
 ) -> UploadResponse:
+    # FIXME: Lock with permission?
     # TODO need to optimized how we read the content of the file, especially if the file is really large
     # Check this discussion for more details
     # https://stackoverflow.com/questions/63048825/how-to-upload-file-using-fastapi

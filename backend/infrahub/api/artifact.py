@@ -56,6 +56,7 @@ async def generate_artifact(
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ) -> None:
+    # FIXME: Lock with permission?
     # Verify that the artifact definition exists for the requested branch
     artifact_definition = await registry.manager.get_one_by_id_or_default_filter(
         db=db,
