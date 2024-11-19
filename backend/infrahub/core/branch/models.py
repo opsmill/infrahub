@@ -311,7 +311,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
         at_str = at.to_string()
         if branch_agnostic:
             filter_str = (
-                "{variable_name}.from <= $time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= $time1)"
+                f"{variable_name}.from <= $time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= $time1)"
             )
             params["time1"] = at_str
             return filter_str, params
