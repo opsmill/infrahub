@@ -167,7 +167,8 @@ class NATSMessageBus(InfrahubMessageBus):
         self.message_enrichers.append(_add_request_id)
 
     async def _initialize_git_worker(self) -> None:
-        await self._subscribe_events(self.event_bindings, f"git-worker-{WORKER_IDENTITY}")
+        bindings = self.event_bindings + self.broadcasted_event_bindings
+        await self._subscribe_events(bindings, f"git-worker-{WORKER_IDENTITY}")
 
         consumer_config = nats.js.api.ConsumerConfig(
             ack_policy=nats.js.api.AckPolicy.EXPLICIT,
@@ -177,7 +178,7 @@ class NATSMessageBus(InfrahubMessageBus):
             # max_ack_pending=self.settings.maximum_concurrent_messages,
             # flow_control=True,
             # idle_heartbeat=5.0,  # default value
-            filter_subjects=self.worker_bindings,
+            filter_subjects=bindings,
             durable_name="git-workers",
             deliver_group="git-workers",
             deliver_subject=self.connection.new_inbox(),
@@ -189,7 +190,7 @@ class NATSMessageBus(InfrahubMessageBus):
             if exc.err_code != 10013:  # consumer name already in use
                 raise
 
-        for subject in self.worker_bindings:
+        for subject in bindings:
             await self.jetstream.subscribe(
                 subject=subject,
                 queue="git-workers",

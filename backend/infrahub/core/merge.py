@@ -10,8 +10,9 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
-from infrahub.message_bus import messages
 
+from ..git.models import GitRepositoryMerge
+from ..workflows.catalogue import GIT_REPOSITORIES_MERGE
 from .diff.branch_differ import BranchDiffer
 
 if TYPE_CHECKING:
@@ -43,6 +44,7 @@ class BranchMerger:
         self.diff_coordinator = diff_coordinator
         self.diff_merger = diff_merger
         self.migrations: list[SchemaUpdateMigrationInfo] = []
+        self._merge_at = Timestamp()
         self._graph_diff: Optional[BranchDiffer] = None
 
         self._source_schema: Optional[SchemaBranch] = None
@@ -229,7 +231,6 @@ class BranchMerger:
     async def merge(
         self,
         at: Optional[Union[str, Timestamp]] = None,
-        conflict_resolution: Optional[dict[str, bool]] = None,  # pylint: disable=unused-argument
     ) -> None:
         """Merge the current branch into main."""
         if self.source_branch.name == registry.default_branch:
@@ -241,7 +242,7 @@ class BranchMerger:
         conflict_map = enriched_diff.get_all_conflicts()
         errors: list[str] = []
         for conflict_path, conflict in conflict_map.items():
-            if conflict.selected_branch is None:
+            if conflict.selected_branch is None or conflict.resolvable is False:
                 errors.append(conflict_path)
 
         if errors:
@@ -251,9 +252,12 @@ class BranchMerger:
 
         # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
         # From the Graph or From the repositories
-        at = Timestamp(at)
-        await self.diff_merger.merge_graph(at=at)
+        self._merge_at = Timestamp(at)
+        await self.diff_merger.merge_graph(at=self._merge_at)
         await self.merge_repositories()
+
+    async def rollback(self) -> None:
+        await self.diff_merger.rollback(at=self._merge_at)
 
     async def merge_repositories(self) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
@@ -261,7 +265,6 @@ class BranchMerger:
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
 
         repos_in_branch_list = await NodeManager.query(schema=CoreRepository, db=self.db, branch=self.source_branch)
-        events = []
         for repo in repos_in_branch_list:
             # Check if the repo, exist in main, if not ignore this repo
             if repo.id not in repos_in_main:
@@ -271,16 +274,14 @@ class BranchMerger:
                 continue
 
             if self.source_branch.sync_with_git or repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
-                events.append(
-                    messages.GitRepositoryMerge(
-                        repository_id=repo.id,
-                        repository_name=repo.name.value,
-                        internal_status=repo.internal_status.value,
-                        source_branch=self.source_branch.name,
-                        destination_branch=registry.default_branch,
-                        default_branch=repo.default_branch.value,
-                    )
+                model = GitRepositoryMerge(
+                    repository_id=repo.id,
+                    repository_name=repo.name.value,
+                    internal_status=repo.internal_status.value,
+                    source_branch=self.source_branch.name,
+                    destination_branch=registry.default_branch,
+                    default_branch=repo.default_branch.value,
                 )
-
-        for event in events:
-            await self.service.send(message=event)
+                await self.service.workflow.submit_workflow(
+                    workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model}
+                )

@@ -48,6 +48,7 @@ class ConflictDetails(ObjectType):
     diff_branch_changed_at = DateTime(required=True)
     diff_branch_label = String()
     selected_branch = Field(GraphQLConflictSelection)
+    resolvable = Boolean()
 
 
 class DiffSummaryCounts(ObjectType):
@@ -310,6 +311,7 @@ class DiffTreeResolver:
             else None,
             diff_branch_label=enriched_conflict.diff_branch_label,
             selected_branch=enriched_conflict.selected_branch.value if enriched_conflict.selected_branch else None,
+            resolvable=enriched_conflict.resolvable,
         )
 
     async def to_graphql(

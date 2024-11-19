@@ -37,11 +37,6 @@ from .mutations.repository import InfrahubRepositoryMutation
 from .mutations.resource_manager import (
     InfrahubNumberPoolMutation,
 )
-from .queries.diff.diff import (
-    DiffSummaryElementAttribute,
-    DiffSummaryElementRelationshipMany,
-    DiffSummaryElementRelationshipOne,
-)
 from .resolver import (
     account_resolver,
     ancestors_resolver,
@@ -107,11 +102,7 @@ class BranchDetails:
 
 
 class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
-    _extra_types: dict[str, GraphQLTypes] = {
-        "DiffSummaryElementAttribute": DiffSummaryElementAttribute,
-        "DiffSummaryElementRelationshipOne": DiffSummaryElementRelationshipOne,
-        "DiffSummaryElementRelationshipMany": DiffSummaryElementRelationshipMany,
-    }
+    _extra_types: dict[str, GraphQLTypes] = {}
     _branch_details_by_name: dict[str, BranchDetails] = {}
 
     @classmethod

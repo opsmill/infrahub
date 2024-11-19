@@ -1,6 +1,6 @@
-import { BADGE_TYPES, Badge } from "@/components/display/badge";
 import { DateDisplay } from "@/components/display/date-display";
 import { Table } from "@/components/table/table";
+import { Badge } from "@/components/ui/badge";
 
 export type tLog = {
   id: string;
@@ -9,21 +9,19 @@ export type tLog = {
   timestamp: string;
 };
 
-type tLogsProps = {
+type LogsProps = {
   logs: tLog[];
 };
 
 export const getSeverityBadge: { [key: string]: any } = {
-  success: <Badge type={BADGE_TYPES.VALIDATE}>success</Badge>,
-  info: <Badge type={BADGE_TYPES.LIGHT}>info</Badge>,
-  warning: <Badge type={BADGE_TYPES.WARNING}>warning</Badge>,
-  error: <Badge type={BADGE_TYPES.CANCEL}>error</Badge>,
-  critical: <Badge type={BADGE_TYPES.CANCEL}>critical</Badge>,
+  success: <Badge variant={"green"}>success</Badge>,
+  info: <Badge variant={"yellow"}>info</Badge>,
+  warning: <Badge variant={"yellow"}>warning</Badge>,
+  error: <Badge variant={"red"}>error</Badge>,
+  critical: <Badge variant={"red"}>critical</Badge>,
 };
 
-export const Logs = (props: tLogsProps) => {
-  const { logs } = props;
-
+export const Logs = ({ logs }: LogsProps) => {
   const columns = [
     {
       name: "message",

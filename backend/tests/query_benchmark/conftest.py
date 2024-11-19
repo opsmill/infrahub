@@ -3,6 +3,7 @@ from typing import Any
 
 import pytest
 
+from infrahub import config
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.schema import SchemaRoot
 from tests.helpers.query_benchmark.db_query_profiler import GraphProfileGenerator
@@ -40,6 +41,14 @@ async def car_person_schema_root() -> SchemaRoot:
                         "peer": "TestPerson",
                         "cardinality": "one",
                     },
+                    {
+                        "name": "drivers",
+                        "label": "Who already drove the car",
+                        "peer": "TestPerson",
+                        "identifier": "testcar__drivers",
+                        "cardinality": "many",
+                    },
+                    {"name": "engine", "label": "engine of the car", "peer": "TestEngine", "cardinality": "one"},
                 ],
             },
             {
@@ -54,7 +63,32 @@ async def car_person_schema_root() -> SchemaRoot:
                     {"name": "height", "kind": "Number", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "cars", "peer": "TestCar", "cardinality": "many"},
+                    {
+                        "name": "cars",
+                        "peer": "TestCar",
+                        "cardinality": "many",
+                    },
+                    {
+                        "name": "driven_cars",
+                        "label": "Already driven by the Person",
+                        "peer": "TestCar",
+                        "identifier": "testcar__drivers",
+                        "cardinality": "many",
+                    },
+                ],
+            },
+            {
+                "name": "Engine",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "uniqueness_constraints": [["name__value"]],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "car", "peer": "TestCar", "cardinality": "one"},
                 ],
             },
         ],
@@ -71,3 +105,11 @@ async def graph_generator() -> GraphProfileGenerator:
     """
 
     return GraphProfileGenerator()
+
+
+@pytest.fixture(scope="function")
+async def increase_query_size_limit() -> None:
+    original_query_size_limit = config.SETTINGS.database.query_size_limit
+    config.SETTINGS.database.query_size_limit = 1_000_000
+    yield
+    config.SETTINGS.database.query_size_limit = original_query_size_limit

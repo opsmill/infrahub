@@ -20,6 +20,7 @@ class GenericPoolInput(InputObjectType):
 class RelatedNodeInput(InputObjectType):
     id = String(required=False)
     hfid = Field(List(of_type=String), required=False)
+    kind = String(required=False)  # Only used to resolve hfid of a related node on a generic relationship, see #4649
     from_pool = Field(GenericPoolInput, required=False)
     _relation__is_visible = Boolean(required=False)
     _relation__is_protected = Boolean(required=False)

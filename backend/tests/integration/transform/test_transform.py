@@ -10,11 +10,9 @@ from infrahub.core.initialization import first_time_initialization, initializati
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.server import app, app_initialization
 from infrahub.services import InfrahubServices, services
-from tests.adapters.log import FakeTaskReportLogger
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -115,7 +113,6 @@ class TestTransforms(TestInfrahubApp):
             id=obj.id,
             name=git_repo_car_dealership.name,
             location=git_repo_car_dealership.path,
-            task_report=FakeTaskReportLogger(),
             client=client,
         )
 

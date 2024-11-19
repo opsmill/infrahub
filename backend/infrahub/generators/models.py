@@ -1,8 +1,8 @@
+from __future__ import annotations
+
 from typing import Optional
 
-from pydantic import BaseModel, Field
-
-from infrahub.message_bus.types import ProposedChangeGeneratorDefinition
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RequestGeneratorRun(BaseModel):
@@ -21,3 +21,25 @@ class RequestGeneratorRun(BaseModel):
     target_name: str = Field(..., description="Name of the generator target")
     query: str = Field(..., description="The name of the query to use when collecting data")
     variables: dict = Field(..., description="Input variables when running the generator")
+
+
+class RequestGeneratorDefinitionRun(BaseModel):
+    """Sent to trigger a Generator to run on a specific branch."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    generator_definition: ProposedChangeGeneratorDefinition = Field(..., description="The Generator Definition")
+    branch: str = Field(..., description="The branch to target")
+
+
+class ProposedChangeGeneratorDefinition(BaseModel):
+    definition_id: str
+    definition_name: str
+    query_name: str
+    convert_query_response: bool
+    query_models: list[str]
+    repository_id: str
+    class_name: str
+    file_path: str
+    parameters: dict
+    group_id: str

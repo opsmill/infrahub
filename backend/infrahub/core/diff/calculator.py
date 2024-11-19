@@ -18,6 +18,7 @@ class DiffCalculator:
         diff_branch: Branch,
         from_time: Timestamp,
         to_time: Timestamp,
+        include_unchanged: bool = True,
         previous_node_specifiers: set[NodeFieldSpecifier] | None = None,
     ) -> CalculatedDiffs:
         if diff_branch.name == registry.default_branch:
@@ -62,8 +63,7 @@ class DiffCalculator:
             await base_diff_query.execute(db=self.db)
             for query_result in base_diff_query.get_results():
                 diff_parser.read_result(query_result=query_result)
-
-        diff_parser.parse()
+        diff_parser.parse(include_unchanged=include_unchanged)
         return CalculatedDiffs(
             base_branch_name=base_branch.name,
             diff_branch_name=diff_branch.name,

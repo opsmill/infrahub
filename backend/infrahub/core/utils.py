@@ -184,10 +184,10 @@ def convert_ip_to_binary_str(
     obj: Union[ipaddress.IPv6Network, ipaddress.IPv4Network, ipaddress.IPv4Interface, ipaddress.IPv6Interface],
 ) -> str:
     if isinstance(obj, (ipaddress.IPv6Network, ipaddress.IPv4Network)):
-        prefix_bin = bin(int(obj.network_address))[2:]
+        prefix_bin = f"{int(obj.network_address):b}"
         return prefix_bin.zfill(obj.max_prefixlen)
 
-    ip_bin = bin(int(obj))[2:]
+    ip_bin = f"{int(obj):b}"
     return ip_bin.zfill(obj.max_prefixlen)
 
 

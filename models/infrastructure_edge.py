@@ -87,11 +87,11 @@ class GlobalConfig:
 
     def load_config(
         self,
-        profile: str = None,
-        num_sites: int = None,
-        num_device_per_site: int = None,
-        has_bgp_mesh: bool = None,
-        has_branch: bool = None,
+        profile: str | None = None,
+        num_sites: int | None = None,
+        num_device_per_site: int | None = None,
+        has_bgp_mesh: bool | None = None,
+        has_branch: bool | None = None,
     ) -> None:
         if profile:
             # Warn user that we are going to ignore his input
@@ -2077,11 +2077,11 @@ async def run(
     client: InfrahubClient,
     log: logging.Logger,
     branch: str,
-    profile: str = None,
-    num_sites: int = None,
-    num_device_per_site: int = None,
-    has_bgp_mesh: str = None,
-    has_branch: str = None,
+    profile: str | None = None,
+    num_sites: int | None = None,
+    num_device_per_site: int | None = None,
+    has_bgp_mesh: str | None = None,
+    has_branch: str | None = None,
 ) -> None:
     # Create timer to keep track of time elapsed
     start: float = time.time()
@@ -2093,11 +2093,11 @@ async def run(
     config = GlobalConfig()
 
     # Translate str to bool
-    bool_has_bgp_mesh: bool = None
+    bool_has_bgp_mesh: bool | None = None
     if has_bgp_mesh is not None:
         bool_has_bgp_mesh = translate_str_to_bool("has_bgp_mesh", has_bgp_mesh)
 
-    bool_has_branch: bool = None
+    bool_has_branch: bool | None = None
     if has_branch is not None:
         bool_has_branch = translate_str_to_bool("has_branch", has_branch)
 

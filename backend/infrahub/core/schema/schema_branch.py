@@ -15,6 +15,7 @@ from infrahub.core.constants import (
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
     BranchSupportType,
+    ComputedAttributeKind,
     HashableModelState,
     InfrahubKind,
     RelationshipCardinality,
@@ -46,17 +47,18 @@ from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
+from infrahub.support.macro import MacroDefinition
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
+from .schema_branch_computed import ComputedAttributes
 
 log = get_logger()
 
 if TYPE_CHECKING:
     from pydantic import ValidationInfo
-
 
 # pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines
 
@@ -68,6 +70,7 @@ class SchemaBranch:
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
         self.profiles: dict[str, str] = {}
+        self.computed_attributes = ComputedAttributes()
 
         if data:
             self.nodes = data.get("nodes", {})
@@ -466,6 +469,7 @@ class SchemaBranch:
     def process_validate(self) -> None:
         self.validate_names()
         self.validate_kinds()
+        self.validate_computed_attributes()
         self.validate_default_values()
         self.validate_count_against_cardinality()
         self.validate_identifiers()
@@ -907,6 +911,84 @@ class SchemaBranch:
                     raise ValueError(
                         f"{node.kind}: Relationship {rel.name!r} is referencing an invalid peer {rel.peer!r}"
                     ) from None
+
+    def validate_computed_attributes(self) -> None:
+        self.computed_attributes = ComputedAttributes()
+        for name in self.nodes.keys():
+            node_schema = self.get_node(name=name, duplicate=False)
+            for attribute in node_schema.attributes:
+                self._validate_computed_attribute(node=node_schema, attribute=attribute)
+
+        for name in self.generics.keys():
+            generic_schema = self.get_generic(name=name, duplicate=False)
+            for attribute in generic_schema.attributes:
+                if attribute.computed_attribute and attribute.computed_attribute.kind != ComputedAttributeKind.USER:
+                    raise ValueError(
+                        f"{generic_schema.kind}: Attribute {attribute.name!r} computed attributes are only allowed on nodes not generics"
+                    )
+
+    def _validate_computed_attribute(self, node: NodeSchema, attribute: AttributeSchema) -> None:
+        if not attribute.computed_attribute or attribute.computed_attribute.kind == ComputedAttributeKind.USER:
+            return
+
+        if not attribute.read_only:
+            raise ValueError(
+                f"{node.kind}: Attribute {attribute.name!r} is a computed jinja2 attribute but not marked as read_only"
+            )
+        if not attribute.kind == "Text":
+            raise ValueError(
+                f"{node.kind}: Attribute {attribute.name!r} is a computed jinja2 attribute currently only 'Text' kinds are supported."
+            )
+
+        if (
+            attribute.computed_attribute.kind == ComputedAttributeKind.JINJA2
+            and not attribute.computed_attribute.jinja2_template
+        ):
+            raise ValueError(
+                f"{node.kind}: Attribute {attribute.name!r} is a computed jinja2 attribute but no logic is defined"
+            )
+        if (
+            attribute.computed_attribute.kind == ComputedAttributeKind.JINJA2
+            and attribute.computed_attribute.jinja2_template
+        ):
+            allowed_path_types = (
+                SchemaElementPathType.ATTR_WITH_PROP
+                | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+                | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
+            )
+            try:
+                macro = MacroDefinition(macro=attribute.computed_attribute.jinja2_template)
+            except ValueError as exc:
+                raise ValueError(
+                    f"{node.kind}: Attribute {attribute.name!r} is assigned by a jinja2 template, but has an invalid template"
+                ) from exc
+
+            for variable in macro.variables:
+                try:
+                    schema_path = self.validate_schema_path(
+                        node_schema=node, path=variable, allowed_path_types=allowed_path_types
+                    )
+                except ValueError as exc:
+                    raise ValueError(
+                        f"{node.kind}: Attribute {attribute.name!r} the '{variable}' variable is not found within the schema path"
+                    ) from exc
+
+                if schema_path.is_type_attribute and schema_path.active_attribute_schema.name == attribute.name:
+                    raise ValueError(
+                        f"{node.kind}: Attribute {attribute.name!r} the '{variable}' variable is a reference to itself"
+                    )
+
+                self.computed_attributes.register_computed_jinja2(
+                    node=node, attribute=attribute, schema_path=schema_path
+                )
+
+        elif attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON and not attribute.optional:
+            raise ValueError(
+                f"{node.kind}: Attribute {attribute.name!r} is a computed transform, it can't be mandatory"
+            )
+
+        elif attribute.computed_attribute.kind == ComputedAttributeKind.TRANSFORM_PYTHON:
+            self.computed_attributes.add_python_attribute(node=node, attribute=attribute)
 
     def validate_count_against_cardinality(self) -> None:
         """Validate every RelationshipSchema cardinality against the min_count and max_count."""

@@ -68,6 +68,7 @@ async def load_data_and_profile(
         )
 
         for i, nb_elem_to_load in enumerate(nb_elem_per_batch):
+            print(f"Before loading batch {i=}. Current elements: {i * nb_elem_to_load=}")
             await data_generator.load_data(nb_elements=nb_elem_to_load)
             db_profiling_queries.increase_nb_elements_loaded(nb_elem_to_load)
             profile_memory = i % memory_profiling_rate == 0 if memory_profiling_rate is not None else False

@@ -15,6 +15,7 @@ from infrahub.workflows.catalogue import (
     REQUEST_DIFF_REFRESH,
     REQUEST_DIFF_UPDATE,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+    TRIGGER_GENERATOR_DEFINITION_RUN,
 )
 
 log = get_logger()
@@ -36,27 +37,12 @@ async def create(message: messages.EventBranchCreate, service: InfrahubServices)
         await service.send(message=event)
 
 
-@flow(name="event-branch-delete")
-async def delete(message: messages.EventBranchDelete, service: InfrahubServices) -> None:
-    log.info("Branch was deleted", branch=message.branch)
-
-    events: List[InfrahubMessage] = [
-        messages.RefreshRegistryBranches(),
-        messages.TriggerProposedChangeCancel(branch=message.branch),
-    ]
-
-    for event in events:
-        event.assign_meta(parent=message)
-        await service.send(message=event)
-
-
 @flow(name="branch-event-merge")
 async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -> None:
     log.info("Branch merged", source_branch=message.source_branch, target_branch=message.target_branch)
 
     events: List[InfrahubMessage] = [
         messages.RefreshRegistryBranches(),
-        messages.TriggerGeneratorDefinitionRun(branch=message.target_branch),
     ]
     component_registry = get_component_registry()
     default_branch = registry.get_branch_from_registry()
@@ -66,6 +52,11 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
 
     await service.workflow.submit_workflow(
         workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+        parameters={"branch": message.target_branch},
+    )
+
+    await service.workflow.submit_workflow(
+        workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
         parameters={"branch": message.target_branch},
     )
 

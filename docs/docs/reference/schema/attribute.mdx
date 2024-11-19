@@ -18,6 +18,7 @@ Below is the list of all available options to define an Attribute in the schema
 | [**allow_override**](#allow_override) | Attribute | Type of allowed override for the attribute. | False |
 | [**branch**](#branch) | Attribute | Type of branch support for the attribute, if not defined it will be inherited from the node. | False |
 | [**choices**](#choices) | Attribute | Define a list of valid choices for a dropdown attribute. | False |
+| [**computed_attribute**](#computed_attribute) | Attribute | Defines how the value of this attribute will be populated. | False |
 | [**default_value**](#default_value) | Attribute | Default value of the attribute. | False |
 | [**description**](#description) | Attribute | Short description of the attribute. | False |
 | [**enum**](#enum) | Attribute | Define a list of valid values for the attribute. | False |
@@ -87,6 +88,17 @@ extensions:
 | **Name** | choices |
 | **Kind** | `List` |
 | **Description** | Define a list of valid choices for a dropdown attribute. |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
+### computed_attribute
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | computed_attribute |
+| **Kind** | `JSON` |
+| **Description** | Defines how the value of this attribute will be populated. |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |

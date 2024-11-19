@@ -112,7 +112,7 @@ async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> Infrah
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name="test_basename",
-        location=f"{git_sources_dir}/test_base",
+        location=str(git_sources_dir / "test_base"),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
@@ -1165,6 +1165,7 @@ async def car_person_data_generic(db: InfrahubDatabase, register_core_models_sch
         "c1": c1,
         "c2": c2,
         "c3": c3,
+        "c4": c4,
         "q1": q1,
         "r1": r1,
     }
@@ -2944,9 +2945,67 @@ def workflow_local():
 @pytest.fixture
 def init_service(db: InfrahubDatabase):
     original = services.service
-    database = db
-    workflow = WorkflowLocalExecution()
-    service = InfrahubServices(database=database, workflow=workflow)
-    services.service = service
-    yield service
+    services.service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    yield services.service
     services.service = original
+
+
+@pytest.fixture
+async def generic_car_person_schema(default_branch: Branch, data_schema):
+    schema: dict[str, Any] = {
+        "generics": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                ],
+                "relationships": [
+                    {
+                        "cardinality": "one",
+                        "identifier": "person__car",
+                        "name": "owner",
+                        "optional": True,
+                        "peer": "TestPerson",
+                    }
+                ],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "ElectricCar",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value", "color__value"],
+                "inherit_from": ["TestCar"],
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                    {
+                        "kind": "Text",
+                        "name": "color",
+                    },
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                ],
+                "relationships": [
+                    {"cardinality": "one", "identifier": "person__car", "name": "car", "peer": "TestCar"}
+                ],
+            },
+        ],
+    }
+
+    schema_root = SchemaRoot(**schema)
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)

@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import anyio
 import pytest
 from git import Repo
 from infrahub_sdk import Config, InfrahubClient
@@ -29,88 +30,89 @@ from infrahub.git.integrator import (
 )
 from infrahub.git.worktree import Worktree
 from infrahub.utils import find_first_file_in_directory
+from tests.conftest import TestHelper
 from tests.helpers.test_client import dummy_async_request
 
 
-async def test_directories_props(git_upstream_repo_01, git_repos_dir):
+async def test_directories_props(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path):
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
-        location=git_upstream_repo_01["path"],
+        location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
-    assert repo.directory_root == os.path.join(git_repos_dir, git_upstream_repo_01["name"])
-    assert repo.directory_branches == os.path.join(git_repos_dir, git_upstream_repo_01["name"], BRANCHES_DIRECTORY_NAME)
-    assert repo.directory_commits == os.path.join(git_repos_dir, git_upstream_repo_01["name"], COMMITS_DIRECTORY_NAME)
-    assert repo.directory_temp == os.path.join(git_repos_dir, git_upstream_repo_01["name"], TEMPORARY_DIRECTORY_NAME)
+    assert repo.directory_root == git_repos_dir / str(repo.id)
+    assert repo.directory_branches == git_repos_dir / str(repo.id) / BRANCHES_DIRECTORY_NAME
+    assert repo.directory_commits == git_repos_dir / str(repo.id) / COMMITS_DIRECTORY_NAME
+    assert repo.directory_temp == git_repos_dir / str(repo.id) / TEMPORARY_DIRECTORY_NAME
 
 
-async def test_new_empty_dir(git_upstream_repo_01, git_repos_dir):
+async def test_new_empty_dir(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path):
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
-        location=git_upstream_repo_01["path"],
+        location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     # Check if all the directories are present
-    assert os.path.isdir(repo.directory_root)
-    assert os.path.isdir(repo.directory_branches)
-    assert os.path.isdir(repo.directory_commits)
-    assert os.path.isdir(repo.directory_temp)
+    assert repo.directory_root.is_dir()
+    assert repo.directory_branches.is_dir()
+    assert repo.directory_commits.is_dir()
+    assert repo.directory_temp.is_dir()
 
 
-async def test_new_existing_directory(git_upstream_repo_01, git_repos_dir):
+async def test_new_existing_directory(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path):
     # Create a directory and a file where the repository will be created
-    os.mkdir(os.path.join(git_repos_dir, git_upstream_repo_01["name"]))
-    Path(os.path.join(git_repos_dir, git_upstream_repo_01["name"], "file1.txt")).touch()
+    (git_repos_dir / git_upstream_repo_01["name"]).mkdir()
+    (git_repos_dir / git_upstream_repo_01["name"] / "file1.txt").touch()
 
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
-        location=git_upstream_repo_01["path"],
+        location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     # Check if all the directories are present
-    assert os.path.isdir(repo.directory_root)
-    assert os.path.isdir(repo.directory_branches)
-    assert os.path.isdir(repo.directory_commits)
-    assert os.path.isdir(repo.directory_temp)
+    assert repo.directory_root.is_dir()
+    assert repo.directory_branches.is_dir()
+    assert repo.directory_commits.is_dir()
+    assert repo.directory_temp.is_dir()
 
 
-async def test_new_existing_file(git_upstream_repo_01, git_repos_dir):
+async def test_new_existing_file(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path):
     # Create a file where the repository will be created
-    Path(os.path.join(git_repos_dir, git_upstream_repo_01["name"])).touch()
+    (git_repos_dir / git_upstream_repo_01["name"]).touch()
 
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
-        location=git_upstream_repo_01["path"],
+        location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
     # Check if all the directories are present
-    assert os.path.isdir(repo.directory_root)
-    assert os.path.isdir(repo.directory_branches)
-    assert os.path.isdir(repo.directory_commits)
-    assert os.path.isdir(repo.directory_temp)
+    assert repo.directory_root.is_dir()
+    assert repo.directory_branches.is_dir()
+    assert repo.directory_commits.is_dir()
+    assert repo.directory_temp.is_dir()
 
 
-async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmp_path):
+async def test_new_wrong_location(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path, tmp_path: Path):
     with pytest.raises(RepositoryError) as exc:
         await InfrahubRepository.new(id=UUIDT.new(), name=git_upstream_repo_01["name"], location=str(tmp_path))
 
     assert f"fatal: repository '{tmp_path}' does not exist" in str(exc.value)
 
 
-async def test_new_wrong_branch(git_upstream_repo_01, git_repos_dir, tmp_path):
+async def test_new_wrong_branch(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path, tmp_path: Path):
     with pytest.raises(RepositoryError) as exc:
         await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
-            location=git_upstream_repo_01["path"],
+            location=str(git_upstream_repo_01["path"]),
             default_branch_name="notvalid",
         )
 
@@ -142,7 +144,8 @@ async def test_create_commit_worktree(git_repo_01: InfrahubRepository):
 
     # Modify the first file in the main branch to create a new commit
     first_file = find_first_file_in_directory(repo.directory_default)
-    with Path(os.path.join(repo.directory_default, first_file)).open(mode="a", encoding="utf-8") as file:
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -172,7 +175,7 @@ async def test_get_worktrees(git_repo_01: InfrahubRepository):
 
     assert len(worktrees) == 2
     assert isinstance(worktrees[0], Worktree)
-    assert worktrees[0].directory.startswith(repo.directory_root)
+    assert worktrees[0].directory.is_relative_to(repo.directory_root)
     assert worktrees[0].identifier == "main"
     assert len(worktrees[1].identifier) == 40
 
@@ -190,7 +193,8 @@ async def test_get_commit_worktree(git_repo_01: InfrahubRepository):
 
     # Modify the first file in the main branch to create a new commit
     first_file = find_first_file_in_directory(repo.directory_default)
-    with Path(os.path.join(repo.directory_default, first_file)).open(mode="a", encoding="utf-8") as file:
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -231,7 +235,10 @@ async def test_get_branches_from_remote(git_repo_01: InfrahubRepository):
 
 
 async def test_get_branches_from_graph(
-    git_repo_01_w_client: InfrahubRepository, mock_branches_list_query, mock_schema_query_01, mock_repositories_query
+    git_repo_01_w_client: InfrahubRepository,
+    mock_branches_list_query: HTTPXMock,
+    mock_schema_query_01: HTTPXMock,
+    mock_repositories_query: HTTPXMock,
 ):
     repo = git_repo_01_w_client
 
@@ -359,7 +366,8 @@ async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData):
     # Add a new commit in the main branch to have something to rebase.
     git_repo = repo.get_git_repo_main()
     first_file = find_first_file_in_directory(repo.directory_default)
-    with Path(os.path.join(repo.directory_default, first_file)).open("a", encoding="utf-8") as file:
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
         file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
@@ -380,7 +388,9 @@ async def test_sync_no_update(git_repo_02: InfrahubRepository):
     assert True
 
 
-async def test_sync_new_branch(client, git_repo_03: InfrahubRepository, httpx_mock: HTTPXMock, mock_add_branch01_query):
+async def test_sync_new_branch(
+    client: InfrahubClient, git_repo_03: InfrahubRepository, httpx_mock: HTTPXMock, mock_add_branch01_query: HTTPXMock
+):
     repo = git_repo_03
 
     await repo.fetch()
@@ -452,7 +462,7 @@ async def test_render_jinja2_template_error(git_repo_jinja: InfrahubRepository):
     assert "The innermost block that needs to be closed" in str(exc.value)
 
 
-async def test_render_jinja2_template_missing(client, git_repo_jinja: InfrahubRepository):
+async def test_render_jinja2_template_missing(client: InfrahubClient, git_repo_jinja: InfrahubRepository):
     repo = git_repo_jinja
 
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -461,7 +471,9 @@ async def test_render_jinja2_template_missing(client, git_repo_jinja: InfrahubRe
         await repo.render_jinja2_template(commit=commit_main, location="notthere.tpl.j2", data={})
 
 
-async def test_execute_python_check_valid(client, git_repo_checks: InfrahubRepository, mock_gql_query_my_query):
+async def test_execute_python_check_valid(
+    client: InfrahubClient, git_repo_checks: InfrahubRepository, mock_gql_query_my_query: HTTPXMock
+):
     repo = git_repo_checks
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
@@ -472,7 +484,7 @@ async def test_execute_python_check_valid(client, git_repo_checks: InfrahubRepos
     assert check.passed is False
 
 
-async def test_execute_python_check_file_missing(client, git_repo_checks: InfrahubRepository):
+async def test_execute_python_check_file_missing(client: InfrahubClient, git_repo_checks: InfrahubRepository):
     repo = git_repo_checks
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
@@ -482,7 +494,7 @@ async def test_execute_python_check_file_missing(client, git_repo_checks: Infrah
         )
 
 
-async def test_execute_python_check_class_missing(client, git_repo_checks: InfrahubRepository):
+async def test_execute_python_check_class_missing(client: InfrahubClient, git_repo_checks: InfrahubRepository):
     repo = git_repo_checks
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
@@ -492,7 +504,7 @@ async def test_execute_python_check_class_missing(client, git_repo_checks: Infra
         )
 
 
-async def test_execute_python_transform_w_data(client, git_repo_transforms: InfrahubRepository):
+async def test_execute_python_transform_w_data(client: InfrahubClient, git_repo_transforms: InfrahubRepository):
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
@@ -511,7 +523,7 @@ async def test_execute_python_transform_w_data(client, git_repo_transforms: Infr
 
 
 async def test_execute_python_transform_w_query(
-    client, git_repo_transforms: InfrahubRepository, mock_gql_query_my_query
+    client: InfrahubClient, git_repo_transforms: InfrahubRepository, mock_gql_query_my_query: HTTPXMock
 ):
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -526,16 +538,16 @@ async def test_execute_python_transform_w_query(
 
 
 async def test_artifact_generate_python_new(
-    client,
+    client: InfrahubClient,
     git_repo_transforms_w_client: InfrahubRepository,
     transformation_node_01: InfrahubNode,
     artifact_definition_node_01: InfrahubNode,
     gql_query_node_03: InfrahubNode,
     car_node_01: InfrahubNode,
     artifact_node_01: InfrahubNode,
-    mock_gql_query_03,
-    mock_upload_content,
-    mock_update_artifact,
+    mock_gql_query_03: HTTPXMock,
+    mock_upload_content: HTTPXMock,
+    mock_update_artifact: HTTPXMock,
 ):
     repo = git_repo_transforms_w_client
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -560,14 +572,14 @@ async def test_artifact_generate_python_new(
 
 
 async def test_artifact_generate_python_existing_same(
-    client,
+    client: InfrahubClient,
     git_repo_transforms_w_client: InfrahubRepository,
     transformation_node_01: InfrahubNode,
     artifact_definition_node_01: InfrahubNode,
     gql_query_node_03: InfrahubNode,
     car_node_01: InfrahubNode,
     artifact_node_02: InfrahubNode,
-    mock_gql_query_03,
+    mock_gql_query_03: HTTPXMock,
 ):
     repo = git_repo_transforms_w_client
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -592,16 +604,16 @@ async def test_artifact_generate_python_existing_same(
 
 
 async def test_artifact_generate_python_existing_different(
-    client,
+    client: InfrahubClient,
     git_repo_transforms_w_client: InfrahubRepository,
     transformation_node_01: InfrahubNode,
     artifact_definition_node_01: InfrahubNode,
     gql_query_node_03: InfrahubNode,
     artifact_node_01: InfrahubNode,
     car_node_01: InfrahubNode,
-    mock_gql_query_03,
-    mock_upload_content,
-    mock_update_artifact,
+    mock_gql_query_03: HTTPXMock,
+    mock_upload_content: HTTPXMock,
+    mock_update_artifact: HTTPXMock,
 ):
     repo = git_repo_transforms_w_client
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -626,16 +638,16 @@ async def test_artifact_generate_python_existing_different(
 
 
 async def test_artifact_generate_jinja2_new(
-    client,
+    client: InfrahubClient,
     git_repo_jinja_w_client: InfrahubRepository,
     transformation_node_02: InfrahubNode,
     artifact_definition_node_02: InfrahubNode,
     gql_query_node_03: InfrahubNode,
     car_node_01: InfrahubNode,
     artifact_node_01: InfrahubNode,
-    mock_gql_query_04,
-    mock_update_artifact,
-    mock_upload_content,
+    mock_gql_query_04: HTTPXMock,
+    mock_update_artifact: HTTPXMock,
+    mock_upload_content: HTTPXMock,
 ):
     repo = git_repo_jinja_w_client
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -659,7 +671,7 @@ async def test_artifact_generate_jinja2_new(
     assert result == expected_data
 
 
-async def test_execute_python_transform_file_missing(client, git_repo_transforms: InfrahubRepository):
+async def test_execute_python_transform_file_missing(client: InfrahubClient, git_repo_transforms: InfrahubRepository):
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
@@ -814,9 +826,11 @@ async def test_list_all_files(git_repo_01: InfrahubRepository, branch01: BranchD
     ]
 
 
-def test_extract_repo_file_information():
+def test_extract_repo_file_information(tmp_path_module_scope: Path):
     file_info = extract_repo_file_information(
-        full_filename="/tmp/dir1/dir2/dir3/myfile.py", repo_directory="/tmp", worktree_directory="/tmp/dir1"
+        full_filename=tmp_path_module_scope / "dir1/dir2/dir3/myfile.py",
+        repo_directory=tmp_path_module_scope,
+        worktree_directory=tmp_path_module_scope / "dir1",
     )
 
     assert isinstance(file_info, RepoFileInformation)
@@ -825,25 +839,31 @@ def test_extract_repo_file_information():
     assert file_info.filename_wo_ext == "myfile"
     assert file_info.relative_path_dir == "dir2/dir3"
     assert file_info.relative_repo_path_dir == "dir1/dir2/dir3"
-    assert file_info.absolute_path_dir == "/tmp/dir1/dir2/dir3"
+    assert file_info.absolute_path_dir == str(tmp_path_module_scope / "dir1/dir2/dir3")
     assert file_info.relative_path_file == "dir2/dir3/myfile.py"
     assert file_info.module_name == "dir1.dir2.dir3.myfile"
 
-    file_info = extract_repo_file_information(full_filename="/tmp/dir1/dir2/dir3/myfile.py", repo_directory="/tmp/dir1")
+    file_info = extract_repo_file_information(
+        full_filename=tmp_path_module_scope / "dir1/dir2/dir3/myfile.py", repo_directory=tmp_path_module_scope / "dir1"
+    )
 
     assert isinstance(file_info, RepoFileInformation)
     assert file_info.filename == "myfile.py"
     assert file_info.extension == ".py"
     assert file_info.filename_wo_ext == "myfile"
     assert file_info.relative_repo_path_dir == "dir2/dir3"
-    assert file_info.relative_path_dir == "/tmp/dir1/dir2/dir3"
-    assert file_info.absolute_path_dir == "/tmp/dir1/dir2/dir3"
-    assert file_info.relative_path_file == "/tmp/dir1/dir2/dir3/myfile.py"
+    assert file_info.relative_path_dir == str(tmp_path_module_scope / "dir1/dir2/dir3")
+    assert file_info.absolute_path_dir == str(tmp_path_module_scope / "dir1/dir2/dir3")
+    assert file_info.relative_path_file == str(tmp_path_module_scope / "dir1/dir2/dir3/myfile.py")
     assert file_info.module_name == "dir2.dir3.myfile"
 
 
 async def test_create_python_check_definition(
-    helper, git_repo_03_w_client: InfrahubRepository, mock_schema_query_01, gql_query_data_01, mock_check_create
+    helper: TestHelper,
+    git_repo_03_w_client: InfrahubRepository,
+    mock_schema_query_01: HTTPXMock,
+    gql_query_data_01: dict,
+    mock_check_create: HTTPXMock,
 ):
     repo = git_repo_03_w_client
 
@@ -869,12 +889,12 @@ async def test_create_python_check_definition(
 
 
 async def test_compare_python_check(
-    helper,
+    helper: TestHelper,
     git_repo_03_w_client: InfrahubRepository,
-    mock_schema_query_01,
-    gql_query_data_01,
-    gql_query_data_02,
-    check_definition_data_01,
+    mock_schema_query_01: HTTPXMock,
+    gql_query_data_01: dict,
+    gql_query_data_02: dict,
+    check_definition_data_01: dict,
 ):
     repo = git_repo_03_w_client
 

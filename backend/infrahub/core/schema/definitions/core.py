@@ -17,7 +17,6 @@ from infrahub.core.constants import (
     InfrahubKind,
     PermissionAction,
     PermissionDecision,
-    ProposedChangeState,
     RelationshipDeleteBehavior,
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
@@ -26,6 +25,7 @@ from infrahub.core.constants import (
     ValidatorConclusion,
     ValidatorState,
 )
+from infrahub.proposed_change.constants import ProposedChangeState
 
 # pylint: disable=too-many-lines
 

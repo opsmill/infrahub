@@ -21,7 +21,6 @@ class MutationNodeGetterByDefaultFilter(MutationNodeGetterInterface):
         node_schema: MainSchemaTypes,
         data: InputObjectType,
         branch: Branch,
-        at: str,
     ) -> Optional[Node]:
         node = None
         default_filter_value = None
@@ -43,5 +42,4 @@ class MutationNodeGetterByDefaultFilter(MutationNodeGetterInterface):
             id=default_filter_value,
             kind=node_schema.kind,
             branch=branch,
-            at=at,
         )

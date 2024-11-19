@@ -2,6 +2,7 @@ import pytest
 from infrahub_sdk import InfrahubClient
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import DiffAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.model.path import ConflictSelection
@@ -130,3 +131,83 @@ class TestDiffMerge(TestInfrahubApp):
         delorean_main = await NodeManager.get_one(db=db, branch=default_branch, id=delorean_id)
         owner_peer = await delorean_main.owner.get_peer(db=db)
         assert owner_peer.get_id() == marty_id
+
+    @pytest.mark.parametrize(
+        "delete_on_branch",
+        (
+            True,
+            False,
+        ),
+    )
+    async def test_node_delete_conflict(
+        self,
+        db: InfrahubDatabase,
+        initial_dataset,
+        default_branch: Branch,
+        diff_coordinator: DiffCoordinator,
+        delete_on_branch: bool,
+    ):
+        new_person = await Node.init(db=db, schema=PERSON_KIND)
+        await new_person.new(db=db, name="Chuck Berry")
+        await new_person.save(db=db)
+        diff_branch = await create_branch(db=db, branch_name="branch2")
+        if delete_on_branch:
+            delete_branch = default_branch
+            update_branch = diff_branch
+        else:
+            delete_branch = diff_branch
+            update_branch = default_branch
+        person_main = await NodeManager.get_one(db=db, id=new_person.id, branch=delete_branch)
+        await person_main.delete(db=db)
+
+        # updates on branch for node deleted on main
+        person_branch = await NodeManager.get_one(db=db, id=new_person.id, branch=update_branch)
+        person_branch.description.value = "musician"
+        await person_branch.save(db=db)
+        new_car = await Node.init(schema=TestKind.CAR, db=db, branch=update_branch)
+        await new_car.new(
+            db=db,
+            name="Pinto",
+            color="charred",
+            owner=person_branch,
+            manufacturer=initial_dataset["dmc"].id,
+        )
+        await new_car.save(db=db)
+
+        # check that the expected node-level conflict exists
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+        conflicts_map = enriched_diff.get_all_conflicts()
+        assert set(conflicts_map.keys()) == {f"data/{person_branch.id}"}
+        conflict = conflicts_map[f"data/{person_branch.id}"]
+        if delete_on_branch:
+            assert conflict.base_branch_action is DiffAction.REMOVED
+            assert conflict.diff_branch_action is DiffAction.UPDATED
+        else:
+            assert conflict.base_branch_action is DiffAction.UPDATED
+            assert conflict.diff_branch_action is DiffAction.REMOVED
+        assert conflict.resolvable is False
+
+        # manually undo updates on branch to resolve conflict
+        person_branch = await NodeManager.get_one(db=db, id=new_person.id, branch=update_branch)
+        person_branch.description.value = None
+        await person_branch.save(db=db)
+        car_branch = await NodeManager.get_one(db=db, id=new_car.id, branch=update_branch)
+        await car_branch.owner.update(db=db, data=initial_dataset["biff"].id)
+        await car_branch.save(db=db)
+
+        # check that the conflict is gone
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+        conflicts_map = enriched_diff.get_all_conflicts()
+        assert len(conflicts_map) == 0
+
+        # merge the branch
+        right_now = Timestamp()
+        diff_merger = await self._get_diff_merger(db=db, diff_branch=diff_branch)
+        await diff_merger.merge_graph(at=right_now)
+
+        # check that the person is deleted on main
+        person_main = await NodeManager.get_one(db=db, id=new_person.id)
+        assert person_main is None
+        car_main = await NodeManager.get_one(db=db, id=new_car.id)
+        owner_peer = await car_main.owner.get_peer(db=db)
+        assert owner_peer.id == initial_dataset["biff"].id

@@ -39,34 +39,46 @@ class ConflictsEnricher:
 
         base_node_map = {n.uuid: n for n in base_diff_root.nodes}
         branch_node_map = {n.uuid: n for n in branch_diff_root.nodes}
-        common_node_uuids = set(base_node_map.keys()) & set(branch_node_map.keys())
+        branch_node_map_uuids = set(branch_node_map.keys())
+        common_node_uuids = set(base_node_map.keys()) & branch_node_map_uuids
         for node_uuid in common_node_uuids:
             base_node = base_node_map[node_uuid]
             branch_node = branch_node_map[node_uuid]
             self._add_node_conflicts(base_node=base_node, branch_node=branch_node)
+        # remove conflicts from branch nodes that have been manually corrected on the base branch
+        for branch_only_node_uuid in branch_node_map_uuids - common_node_uuids:
+            branch_node = branch_node_map[branch_only_node_uuid]
+            branch_node.clear_conflicts()
 
     def _add_node_conflicts(self, base_node: EnrichedDiffNode, branch_node: EnrichedDiffNode) -> None:
         if base_node.action != branch_node.action:
             self._add_node_conflict(base_node=base_node, branch_node=branch_node)
         elif branch_node.conflict:
             branch_node.conflict = None
+        # adding attr/rel conflicts when there is an unresolvable node-level conflict is pointless
+        if branch_node.conflict and branch_node.conflict.resolvable is False:
+            return
         base_attribute_map = {a.name: a for a in base_node.attributes}
         branch_attribute_map = {a.name: a for a in branch_node.attributes}
         common_attribute_names = set(base_attribute_map.keys()) & set(branch_attribute_map.keys())
-        for attr_name in common_attribute_names:
-            base_attribute = base_attribute_map[attr_name]
-            branch_attribute = branch_attribute_map[attr_name]
-            self._add_attribute_conflicts(base_attribute=base_attribute, branch_attribute=branch_attribute)
+        for branch_attribute in branch_node.attributes:
+            if branch_attribute.name in common_attribute_names:
+                base_attribute = base_attribute_map[branch_attribute.name]
+                self._add_attribute_conflicts(base_attribute=base_attribute, branch_attribute=branch_attribute)
+            else:
+                branch_attribute.clear_conflicts()
         base_relationship_map = {r.name: r for r in base_node.relationships}
         branch_relationship_map = {r.name: r for r in branch_node.relationships}
         common_relationship_names = set(base_relationship_map.keys()) & set(branch_relationship_map.keys())
-        for relationship_name in common_relationship_names:
-            base_relationship = base_relationship_map[relationship_name]
-            branch_relationship = branch_relationship_map[relationship_name]
-            self._add_relationship_conflicts(
-                base_relationship=base_relationship,
-                branch_relationship=branch_relationship,
-            )
+        for branch_relationship in branch_node.relationships:
+            if branch_relationship.name in common_relationship_names:
+                base_relationship = base_relationship_map[branch_relationship.name]
+                self._add_relationship_conflicts(
+                    base_relationship=base_relationship,
+                    branch_relationship=branch_relationship,
+                )
+            else:
+                branch_relationship.clear_conflicts()
 
     def _add_node_conflict(self, base_node: EnrichedDiffNode, branch_node: EnrichedDiffNode) -> None:
         if branch_node.conflict:
@@ -75,6 +87,10 @@ class ConflictsEnricher:
         else:
             conflict_uuid = str(uuid4())
             selected_branch = None
+        resolvable = True
+        # this condition should always be true, but it's good to be explicit
+        if DiffAction.REMOVED in [base_node.action, branch_node.action]:
+            resolvable = False
         branch_node.conflict = EnrichedDiffConflict(
             uuid=conflict_uuid,
             base_branch_action=base_node.action,
@@ -84,6 +100,7 @@ class ConflictsEnricher:
             diff_branch_value=None,
             diff_branch_changed_at=branch_node.changed_at,
             selected_branch=selected_branch,
+            resolvable=resolvable,
         )
 
     def _add_attribute_conflicts(
@@ -94,16 +111,18 @@ class ConflictsEnricher:
         base_property_map = {p.property_type: p for p in base_attribute.properties}
         branch_property_map = {p.property_type: p for p in branch_attribute.properties}
         common_property_types = set(base_property_map.keys()) & set(branch_property_map.keys())
-        for property_type in common_property_types:
-            base_property = base_property_map[property_type]
-            branch_property = branch_property_map[property_type]
-            same_value = self._have_same_value(base_property=base_property, branch_property=branch_property)
-            if not same_value:
-                self._add_property_conflict(
-                    base_property=base_property,
-                    branch_property=branch_property,
-                )
-            elif branch_property.conflict:
+        for branch_property in branch_attribute.properties:
+            if branch_property.property_type in common_property_types:
+                base_property = base_property_map[branch_property.property_type]
+                same_value = self._have_same_value(base_property=base_property, branch_property=branch_property)
+                if not same_value:
+                    self._add_property_conflict(
+                        base_property=base_property,
+                        branch_property=branch_property,
+                    )
+                elif branch_property.conflict:
+                    branch_property.conflict = None
+            else:
                 branch_property.conflict = None
 
     def _add_relationship_conflicts(
@@ -114,21 +133,29 @@ class ConflictsEnricher:
         is_cardinality_one = branch_relationship.cardinality is RelationshipCardinality.ONE
         if is_cardinality_one:
             if not base_relationship.relationships or not branch_relationship.relationships:
+                branch_relationship.clear_conflicts()
                 return
             base_element = next(iter(base_relationship.relationships))
             branch_element = next(iter(branch_relationship.relationships))
-            element_tuples = [(base_element, branch_element)]
-        else:
-            base_peer_id_map = {element.peer_id: element for element in base_relationship.relationships}
-            branch_peer_id_map = {element.peer_id: element for element in branch_relationship.relationships}
-            common_peer_ids = set(base_peer_id_map.keys()) & set(branch_peer_id_map.keys())
-            element_tuples = [(base_peer_id_map[peer_id], branch_peer_id_map[peer_id]) for peer_id in common_peer_ids]
-        for base_element, branch_element in element_tuples:
             self._add_relationship_conflicts_for_one_peer(
                 base_element=base_element,
                 branch_element=branch_element,
                 is_cardinality_one=is_cardinality_one,
             )
+            return
+        base_peer_id_map = {element.peer_id: element for element in base_relationship.relationships}
+        branch_peer_id_map = {element.peer_id: element for element in branch_relationship.relationships}
+        common_peer_ids = set(base_peer_id_map.keys()) & set(branch_peer_id_map.keys())
+        for branch_element in branch_relationship.relationships:
+            if branch_element.peer_id in common_peer_ids:
+                base_element = base_peer_id_map[branch_element.peer_id]
+                self._add_relationship_conflicts_for_one_peer(
+                    base_element=base_element,
+                    branch_element=branch_element,
+                    is_cardinality_one=is_cardinality_one,
+                )
+            else:
+                branch_element.clear_conflicts()
 
     def _add_relationship_conflicts_for_one_peer(
         self,
@@ -139,11 +166,11 @@ class ConflictsEnricher:
         base_properties_by_type = {p.property_type: p for p in base_element.properties}
         branch_properties_by_type = {p.property_type: p for p in branch_element.properties}
         common_property_types = set(base_properties_by_type.keys()) & set(branch_properties_by_type.keys())
-        if not common_property_types:
-            return
-        for property_type in common_property_types:
-            base_property = base_properties_by_type[property_type]
-            branch_property = branch_properties_by_type[property_type]
+        for branch_property in branch_element.properties:
+            if branch_property.property_type not in common_property_types:
+                branch_property.conflict = None
+                continue
+            base_property = base_properties_by_type[branch_property.property_type]
             same_value = self._have_same_value(base_property=base_property, branch_property=branch_property)
             # special handling for cardinality-one peer ID conflict
             if branch_property.property_type is DatabaseEdgeType.IS_RELATED and is_cardinality_one:

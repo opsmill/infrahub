@@ -15,5 +15,4 @@ class MutationNodeGetterInterface(ABC):
         node_schema: MainSchemaTypes,
         data: InputObjectType,
         branch: Branch,
-        at: str,
     ) -> Optional[Node]: ...

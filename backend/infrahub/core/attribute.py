@@ -872,7 +872,7 @@ class IPNetwork(BaseAttribute):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
     def serialize_value(self) -> str:
-        """Serialize the value before storing it in the database."""
+        """Serialize the value before storing it in the database. If network is an IPv6 network, it is converted to collapsed form."""
 
         return ipaddress.ip_network(self.value).with_prefixlen
 
@@ -998,7 +998,7 @@ class IPHost(BaseAttribute):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
     def serialize_value(self) -> str:
-        """Serialize the value before storing it in the database."""
+        """Adds a prefix to address before storing it in the database. If address in an IPv6 address, it is converted to collapsed form."""
 
         return ipaddress.ip_interface(self.value).with_prefixlen
 

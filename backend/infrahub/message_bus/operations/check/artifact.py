@@ -16,7 +16,6 @@ log = get_logger()
 
 @flow(name="git-repository-check-artifact-create")
 async def create(message: messages.CheckArtifactCreate, service: InfrahubServices) -> None:
-    log.debug("Creating artifact", message=message)
     validator = await service.client.get(
         kind=InfrahubKind.ARTIFACTVALIDATOR, id=message.validator_id, include=["checks"]
     )

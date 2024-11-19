@@ -10,7 +10,7 @@ import { classNames, isGeneric } from "@/utils/common";
 import { forwardRef } from "react";
 
 export interface FilterFormProps extends FormProps {
-  schema: IModelSchema;
+  schema: IModelSchema | null;
   filters: Array<Filter>;
   onCancel?: () => void;
 }
