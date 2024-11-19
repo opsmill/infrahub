@@ -28,8 +28,8 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
   const { objectKind } = useParams();
 
   const objectDisplay =
-    rowToDelete?.display_label ||
     rowToDelete?.display_label?.value ||
+    rowToDelete?.display_label ||
     rowToDelete?.name?.value ||
     rowToDelete?.name;
 
