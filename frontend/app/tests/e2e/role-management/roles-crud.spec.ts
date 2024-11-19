@@ -56,7 +56,7 @@ test.describe("Role management - Roles CRUD", () => {
         .click();
       await page.getByTestId("update-row-button").click();
       await page.getByLabel("Name *").click();
-      await page.getByLabel("Name *").fill("test role update");
+      await page.getByLabel("Name *").fill("test role 2");
       await page.getByLabel("Groups").click();
       await page.getByLabel("", { exact: true }).getByText("Infrahub Users").click();
       await page.getByTestId("side-panel-container").getByText("Super Administrators").click();
@@ -73,7 +73,7 @@ test.describe("Role management - Roles CRUD", () => {
     });
 
     await test.step("verify role update", async () => {
-      await expect(page.getByText("test role update")).toBeVisible();
+      await expect(page.getByText("test role 2")).toBeVisible();
       await expect(page.getByText("Super Administrators").nth(1)).toBeVisible();
       await expect(
         page.getByRole("cell", {
@@ -91,16 +91,16 @@ test.describe("Role management - Roles CRUD", () => {
 
     await test.step("delete role", async () => {
       await page
-        .getByRole("row", { name: "test role update Super" })
+        .getByRole("row", { name: "test role 2" })
         .getByTestId("actions-row-button")
         .click();
       await page.getByTestId("delete-row-button").click();
       await page.getByTestId("modal-delete-confirm").click();
-      await expect(page.getByText("Object test role update")).toBeVisible();
+      await expect(page.getByText("Object test role 2 deleted")).toBeVisible();
     });
 
     await test.step("verify role delete", async () => {
-      await expect(page.getByText("test role update")).not.toBeVisible();
+      await expect(page.getByText("test role 2")).not.toBeVisible();
     });
   });
 });
