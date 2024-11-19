@@ -13,7 +13,7 @@ from prefect.states import Completed, Failed
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import merge_branch
-from infrahub.core.constants import InfrahubKind, ValidatorConclusion
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
@@ -28,11 +28,13 @@ from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.operations.requests.proposed_change import DefinitionSelect
 from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.proposed_change.models import (
-    RequestProposedChangeDataIntegrity,  # noqa: TCH001. as symbol is required by prefect flow
-    RequestProposedChangeRunGenerators,  # noqa: TCH001. as symbol is required by prefect flow
-    RequestProposedChangeSchemaIntegrity,  # noqa: TCH001
+    RequestProposedChangeDataIntegrity,
+    RequestProposedChangeRepositoryChecks,
+    RequestProposedChangeRunGenerators,
+    RequestProposedChangeSchemaIntegrity,
 )
 from infrahub.services import services
+from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS
 
 if TYPE_CHECKING:
     from infrahub.core.models import SchemaUpdateConstraintInfo
@@ -244,14 +246,15 @@ async def run_generators(model: RequestProposedChangeRunGenerators) -> None:
         )
 
     if model.do_repository_checks:
-        next_messages.append(
-            messages.RequestProposedChangeRepositoryChecks(
-                proposed_change=model.proposed_change,
-                source_branch=model.source_branch,
-                source_branch_sync_with_git=model.source_branch_sync_with_git,
-                destination_branch=model.destination_branch,
-                branch_diff=model.branch_diff,
-            )
+        model_proposed_change_repo_checks = RequestProposedChangeRepositoryChecks(
+            proposed_change=model.proposed_change,
+            source_branch=model.source_branch,
+            source_branch_sync_with_git=model.source_branch_sync_with_git,
+            destination_branch=model.destination_branch,
+            branch_diff=model.branch_diff,
+        )
+        await service.workflow.submit_workflow(
+            workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS, parameters={"model": model_proposed_change_repo_checks}
         )
 
     for next_msg in next_messages:
@@ -346,3 +349,40 @@ async def _get_proposed_change_schema_integrity_constraints(
 
     determiner = ConstraintValidatorDeterminer(schema_branch=schema)
     return await determiner.get_constraints(node_diffs=list(node_diff_field_summary_map.values()))
+
+
+@flow(
+    name="proposed-changed-repository-checks",
+    flow_run_name="Process checks defined in proposed change: {model.proposed_change}",
+)
+async def repository_checks(model: RequestProposedChangeRepositoryChecks) -> None:
+    service = services.service
+    events: list[InfrahubMessage] = []
+    for repository in model.branch_diff.repositories:
+        if (
+            model.source_branch_sync_with_git
+            and not repository.read_only
+            and repository.internal_status == RepositoryInternalStatus.ACTIVE.value
+        ):
+            events.append(
+                messages.RequestRepositoryChecks(
+                    proposed_change=model.proposed_change,
+                    repository=repository.repository_id,
+                    source_branch=model.source_branch,
+                    target_branch=model.destination_branch,
+                )
+            )
+
+        events.append(
+            messages.RequestRepositoryUserChecks(
+                proposed_change=model.proposed_change,
+                repository=repository.repository_id,
+                source_branch=model.source_branch,
+                source_branch_sync_with_git=model.source_branch_sync_with_git,
+                target_branch=model.destination_branch,
+                branch_diff=model.branch_diff,
+            )
+        )
+    for event in events:
+        event.assign_meta(parent=model)
+        await service.send(message=event)

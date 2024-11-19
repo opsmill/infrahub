@@ -309,6 +309,7 @@ GIT_REPOSITORIES_DIFF_NAMES_ONLY = WorkflowDefinition(
     module="infrahub.git.tasks",
     function="git_repository_diff_names_only",
 )
+
 GIT_REPOSITORIES_IMPORT_OBJECTS = WorkflowDefinition(
     name="git-repository-import-object",
     type=WorkflowType.INTERNAL,
@@ -323,6 +324,13 @@ REQUEST_PROPOSED_CHANGE_RUN_GENERATORS = WorkflowDefinition(
     module="infrahub.proposed_change.tasks",
     function="run_generators",
     tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS = WorkflowDefinition(
+    name="proposed-changed-repository-checks",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="repository_checks",
 )
 
 
@@ -360,6 +368,7 @@ workflows = [
     REQUEST_GENERATOR_DEFINITION_RUN,
     REQUEST_GENERATOR_RUN,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
+    REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
     REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
     SCHEMA_APPLY_MIGRATION,
