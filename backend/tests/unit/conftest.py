@@ -2568,9 +2568,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
     await group.save(db=db)
 
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await account.new(
-        db=db, name="test-admin", account_type="User", password=config.SETTINGS.initial.admin_password, role="admin"
-    )
+    await account.new(db=db, name="test-admin", account_type="User", password=config.SETTINGS.initial.admin_password)
     await account.save(db=db)
 
     await group.members.add(db=db, data=account)
@@ -2585,7 +2583,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
 
 @pytest.fixture
 async def session_admin(db: InfrahubDatabase, create_test_admin) -> AccountSession:
-    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id, role="admin")
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id)
     return session
 
 
@@ -2604,14 +2602,14 @@ async def authentication_base(
 @pytest.fixture
 async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await obj.new(db=db, name="First Account", account_type="Git", password="FirstPassword123", role="read-write")
+    await obj.new(db=db, name="First Account", account_type="Git", password="FirstPassword123")
     await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
 async def session_first_account(db: InfrahubDatabase, first_account) -> AccountSession:
-    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id, role="read-write")
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id)
     return session
 
 
@@ -2625,9 +2623,7 @@ async def second_account(db: InfrahubDatabase, data_schema, node_group_schema, r
 
 @pytest.fixture
 async def session_second_account(db: InfrahubDatabase, second_account) -> AccountSession:
-    session = AccountSession(
-        authenticated=True, auth_type=AuthType.API, account_id=second_account.id, role="read-write"
-    )
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=second_account.id)
     return session
 
 
