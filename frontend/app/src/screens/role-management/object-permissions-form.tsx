@@ -118,9 +118,15 @@ export const ObjectPermissionForm = ({
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Object permission created"} />, {
-        toastId: "alert-success-object-permission-created",
-      });
+      if (currentObject) {
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Object permission updated!"} />, {
+          toastId: "alert-success-object-permission-updated",
+        });
+      } else {
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Object permission created!"} />, {
+          toastId: "alert-success-object-permission-created",
+        });
+      }
 
       if (onSuccess) await onSuccess(result?.data?.[`${OBJECT_PERMISSION_OBJECT}Create`]);
       if (onUpdateComplete) await onUpdateComplete();
