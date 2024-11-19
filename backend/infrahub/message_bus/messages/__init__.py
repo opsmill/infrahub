@@ -13,7 +13,6 @@ from .event_node_mutated import EventNodeMutated
 from .event_schema_update import EventSchemaUpdate
 from .event_worker_newprimaryapi import EventWorkerNewPrimaryAPI
 from .finalize_validator_execution import FinalizeValidatorExecution
-from .git_diff_namesonly import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_connectivity import GitRepositoryConnectivity
 from .proposed_change.request_proposedchange_refreshartifacts import RequestProposedChangeRefreshArtifacts
@@ -49,7 +48,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "event.schema.update": EventSchemaUpdate,
     "event.worker.new_primary_api": EventWorkerNewPrimaryAPI,
     "finalize.validator.execution": FinalizeValidatorExecution,
-    "git.diff.names_only": GitDiffNamesOnly,
     "git.file.get": GitFileGet,
     "git.repository.connectivity": GitRepositoryConnectivity,
     "schema.migration.path": SchemaMigrationPath,
@@ -73,7 +71,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
 }
 
 RESPONSE_MAP: dict[str, type[InfrahubResponse]] = {
-    "git.diff.names_only": GitDiffNamesOnlyResponse,
     "git.file.get": GitFileGetResponse,
     "send.echo.request": SendEchoRequestResponse,
     "schema.migration.path": SchemaMigrationPathResponse,

@@ -25,6 +25,8 @@ from ..workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, REQUEST_
 from ..workflows.utils import add_branch_tag
 from .constants import AUTOMATION_NAME
 from .models import (
+    GitDiffNamesOnly,
+    GitDiffNamesOnlyResponse,
     GitRepositoryAdd,
     GitRepositoryAddReadOnly,
     GitRepositoryImportObjects,
@@ -486,3 +488,32 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
         repository_kind=model.repository_kind,
     )
     await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
+
+
+@flow(
+    name="git-repository-diff-names-only",
+    flow_run_name="Collecting modifications between commits {model.first_commit} and {model.second_commit}",
+)
+async def git_repository_diff_names_only(model: GitDiffNamesOnly) -> GitDiffNamesOnlyResponse:
+    service = services.service
+
+    repo = await get_initialized_repo(
+        repository_id=model.repository_id,
+        name=model.repository_name,
+        service=service,
+        repository_kind=model.repository_kind,
+    )
+    files_changed: list[str] = []
+    files_removed: list[str] = []
+
+    if model.second_commit:
+        files_changed, files_added, files_removed = await repo.calculate_diff_between_commits(
+            first_commit=model.first_commit, second_commit=model.second_commit
+        )
+    else:
+        files_added = await repo.list_all_files(commit=model.first_commit)
+
+    response = GitDiffNamesOnlyResponse(
+        files_added=files_added, files_changed=files_changed, files_removed=files_removed
+    )
+    return response

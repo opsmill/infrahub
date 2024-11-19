@@ -89,3 +89,19 @@ class GitRepositoryImportObjects(BaseModel):
     repository_kind: str = Field(..., description="The type of repository")
     commit: str = Field(..., description="Specific commit to pull")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
+
+
+class GitDiffNamesOnly(BaseModel):
+    """Request a list of modified files between two commits."""
+
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the repository")
+    repository_kind: str = Field(..., description="The kind of the repository")
+    first_commit: str = Field(..., description="The first commit")
+    second_commit: Optional[str] = Field(None, description="The second commit")
+
+
+class GitDiffNamesOnlyResponse(BaseModel):
+    files_added: list[str] = Field(..., description="Files added")
+    files_changed: list[str] = Field(..., description="Files changed")
+    files_removed: list[str] = Field(..., description="Files removed")
