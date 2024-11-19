@@ -76,7 +76,7 @@ function GlobalPermissions() {
     data[GLOBAL_PERMISSION_OBJECT]?.edges.map((edge) => {
       return {
         values: {
-          id: { value: edge?.node?.id },
+          id: edge?.node?.id,
           display_label: { value: edge?.node?.display_label },
           action: { value: edge?.node?.action?.value },
           decision: {
