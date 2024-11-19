@@ -24,7 +24,7 @@ import { constructPath } from "@/utils/fetch";
 import { gql, useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 
@@ -147,12 +147,17 @@ const AuthenticatedAccountMenu = ({
   const query = gql(getProfileDetails({ ...schema }));
   const { error, loading, data } = useQuery(query);
 
+  const handleSignOut = useCallback(async () => {
+    await signOut();
+
+    toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
+      toastId: "profile-alert",
+    });
+  }, []);
+
   useEffect(() => {
     if (error) {
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
-        toastId: "profile-alert",
-      });
-      signOut();
+      handleSignOut();
     }
   }, [error, signOut]);
 
