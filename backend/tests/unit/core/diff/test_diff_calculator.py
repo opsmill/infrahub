@@ -32,7 +32,11 @@ async def test_diff_attribute_branch_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     main_root_path = calculated_diffs.base_branch_diff
@@ -90,7 +94,7 @@ async def test_attribute_property_main_update(
         diff_branch=default_branch,
         from_time=from_time,
         to_time=Timestamp(),
-        is_first_diff=True,
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -133,7 +137,11 @@ async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: B
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -170,7 +178,11 @@ async def test_node_delete(db: InfrahubDatabase, default_branch: Branch, car_acc
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -236,7 +248,11 @@ async def test_node_base_delete_branch_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -279,7 +295,11 @@ async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -321,7 +341,11 @@ async def test_attribute_property_multiple_branch_updates(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -368,7 +392,11 @@ async def test_relationship_one_peer_branch_and_main_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     # check branch
@@ -579,7 +607,11 @@ async def test_relationship_one_property_branch_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     branch_root_path = calculated_diffs.diff_branch_diff
@@ -731,7 +763,11 @@ async def test_add_node_branch(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -813,7 +849,11 @@ async def test_many_relationship_property_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -887,7 +927,11 @@ async def test_cardinality_one_peer_conflicting_updates(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     # check branch
@@ -1111,7 +1155,11 @@ async def test_relationship_property_owner_conflicting_updates(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     # check branch
@@ -1235,7 +1283,11 @@ async def test_agnostic_source_relationship_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1284,7 +1336,11 @@ async def test_agnostic_owner_relationship_added(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1369,7 +1425,11 @@ async def test_update_attribute_under_agnostic_node(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1427,7 +1487,7 @@ async def test_diff_attribute_branch_update_with_previous_base_update_ignored(
         from_time=from_time,
         to_time=Timestamp(),
         previous_node_specifiers={NodeFieldSpecifier(node_uuid=alfred_main.id, field_name="name")},
-        is_first_diff=True,
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1480,7 +1540,7 @@ async def test_diff_attribute_branch_update_with_concurrent_base_update_captured
         from_time=from_time,
         to_time=Timestamp(),
         previous_node_specifiers={NodeFieldSpecifier(node_uuid=alfred_main.id, field_name="name")},
-        is_first_diff=True,
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1543,7 +1603,11 @@ async def test_diff_attribute_branch_update_with_previous_base_update_captured(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1614,7 +1678,7 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
             NodeFieldSpecifier(node_uuid=car_accord_main.id, field_name="color"),
             NodeFieldSpecifier(node_uuid=person_alfred_main.id, field_name="name"),
         },
-        is_first_diff=True,
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1673,7 +1737,11 @@ async def test_branch_node_delete_with_base_updates(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1839,7 +1907,11 @@ async def test_branch_relationship_delete_with_property_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_diff = calculated_diffs.base_branch_diff
@@ -1941,7 +2013,11 @@ async def test_node_deleted_on_both(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     for diff_root in (calculated_diffs.base_branch_diff, calculated_diffs.diff_branch_diff):
@@ -1986,7 +2062,11 @@ async def test_relationship_updated_then_node_deleted(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     branch_diff_root = calculated_diffs.diff_branch_diff
@@ -2159,7 +2239,11 @@ async def test_node_added_and_deleted_on_branch(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     branch_diff_root = calculated_diffs.diff_branch_diff
@@ -2188,7 +2272,11 @@ async def test_property_update_then_relationship_deleted(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     branch_diff_root = calculated_diffs.diff_branch_diff
@@ -2325,7 +2413,11 @@ async def test_hierarchy_with_same_kind_parent_and_child(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp(), is_first_diff=True
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     branch_root_path = calculated_diffs.diff_branch_diff
@@ -2471,7 +2563,7 @@ async def test_diff_unchanged_included_when_not_first_diff(
             NodeFieldSpecifier(node_uuid=car_accord_main.id, field_name="color"),
             NodeFieldSpecifier(node_uuid=person_alfred_main.id, field_name="name"),
         },
-        is_first_diff=False,
+        include_unchanged=True,
     )
 
     base_root_path = calculated_diffs.base_branch_diff

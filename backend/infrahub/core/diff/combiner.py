@@ -85,6 +85,11 @@ class DiffCombiner:
             filtered_node_pairs.append(NodePair(later=later_node))
         return filtered_node_pairs
 
+    def _get_parent_relationship_name(self, node_id: str) -> str | None:
+        if node_id not in self._child_parent_uuid_map:
+            return None
+        return self._child_parent_uuid_map[node_id][1]
+
     def _should_include(self, earlier: DiffAction, later: DiffAction) -> bool:
         actions = {earlier, later}
         if actions == {DiffAction.UNCHANGED}:
@@ -294,7 +299,8 @@ class DiffCombiner:
                     earlier_elements=earlier_relationship.relationships, later_elements=later_relationship.relationships
                 )
             combined_relationship_elements = {cre for cre in combined_relationship_elements if cre.properties}
-            includes_parent = self._child_parent_uuid_map.get(node_id, (None, None))[1] == later_relationship.name
+            parent_rel_name = self._get_parent_relationship_name(node_id=node_id)
+            includes_parent = parent_rel_name == later_relationship.name
             if combined_relationship_elements or includes_parent:
                 combined_relationship = EnrichedDiffRelationship(
                     name=later_relationship.name,
