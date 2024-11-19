@@ -63,7 +63,10 @@ export const getCreateMutationFromFormDataOnly = (
 
       return {
         ...acc,
-        [name]: Array.isArray(fieldValue) ? fieldValue : { value: fieldValue },
+        [name]: Array.isArray(fieldValue)
+          ? // Uses array of ids for relationships
+            fieldValue.map((value) => ({ id: value.id }))
+          : { value: fieldValue },
       };
     }
 
