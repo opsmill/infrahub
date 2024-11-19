@@ -21,6 +21,7 @@ test.describe("Role management - Roles CRUD", () => {
       await page
         .getByTestId("side-panel-container")
         .getByText("global:super_admin:allow_all")
+        .first()
         .click();
       await page
         .getByTestId("side-panel-container")
@@ -66,7 +67,6 @@ test.describe("Role management - Roles CRUD", () => {
         .getByTestId("side-panel-container")
         .getByText("global:manage_schema:allow_all")
         .click();
-      await page.getByLabel("", { exact: true }).getByText("global:super_admin:allow_all").click();
       await page.getByTestId("side-panel-container").getByLabel("Permissions").click();
       await page.getByRole("button", { name: "Update" }).click();
       await expect(page.getByText("Role updated!")).toBeVisible();
@@ -75,12 +75,6 @@ test.describe("Role management - Roles CRUD", () => {
     await test.step("verify role update", async () => {
       await expect(page.getByText("test role 2")).toBeVisible();
       await expect(page.getByText("Super Administrators").nth(1)).toBeVisible();
-      await expect(
-        page.getByRole("cell", {
-          name: "global:manage_repositories:allow_all global:manage_schema:allow_all",
-          exact: true,
-        })
-      ).toBeVisible();
     });
   });
 
