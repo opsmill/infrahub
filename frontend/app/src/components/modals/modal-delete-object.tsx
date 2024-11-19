@@ -27,7 +27,11 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
   const date = useAtomValue(datetimeAtom);
   const { objectKind } = useParams();
 
-  const objectDisplay = rowToDelete?.display_label || rowToDelete?.name?.value || rowToDelete?.name;
+  const objectDisplay =
+    rowToDelete?.display_label ||
+    rowToDelete?.display_label?.value ||
+    rowToDelete?.name?.value ||
+    rowToDelete?.name;
 
   const handleDeleteObject = async () => {
     if (!rowToDelete?.id) {
