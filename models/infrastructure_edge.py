@@ -157,7 +157,6 @@ class Account(BaseModel):
     label: str
     password: str
     account_type: str
-    role: str
 
 
 class GlobalPermission(BaseModel):
