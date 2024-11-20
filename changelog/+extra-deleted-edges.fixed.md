@@ -1,1 +1,0 @@
-Fix a bug in the query to delete a relationship that could create unnecessary "deleted" edges on the database
