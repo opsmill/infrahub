@@ -481,7 +481,9 @@ class TestDiffCombiner:
         removed_props_2 = set()
         expected_removed_props = set()
         for rpt in rel_prop_types:
-            r1 = EnrichedPropertyFactory.build(action=DiffAction.UPDATED, property_type=rpt)
+            r1 = EnrichedPropertyFactory.build(
+                action=DiffAction.UPDATED, previous_value=str(uuid4()), property_type=rpt
+            )
             r2 = EnrichedPropertyFactory.build(action=DiffAction.REMOVED, property_type=rpt, new_value=None)
             removed_props_1.add(r1)
             removed_props_2.add(r2)
@@ -506,8 +508,10 @@ class TestDiffCombiner:
         added_props_2 = set()
         expected_added_props = set()
         for rpt in rel_prop_types:
-            a1 = EnrichedPropertyFactory.build(action=DiffAction.ADDED, previous_value=None, property_type=rpt)
-            a2 = EnrichedPropertyFactory.build(action=DiffAction.UPDATED, property_type=rpt)
+            a1 = EnrichedPropertyFactory.build(
+                action=DiffAction.ADDED, previous_value=None, new_value=str(uuid4()), property_type=rpt
+            )
+            a2 = EnrichedPropertyFactory.build(action=DiffAction.UPDATED, property_type=rpt, new_value=str(uuid4()))
             added_props_1.add(a1)
             added_props_2.add(a2)
             expected_added_props.add(
@@ -527,24 +531,23 @@ class TestDiffCombiner:
             action=DiffAction.UPDATED, peer_id=added_element_peer_id, properties=added_props_2
         )
         updated_property_1 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.HAS_OWNER, action=DiffAction.UPDATED
+            property_type=DatabaseEdgeType.HAS_OWNER, previous_value=str(uuid4()), action=DiffAction.UPDATED
         )
         updated_element_1 = EnrichedRelationshipElementFactory.build(
             action=DiffAction.UPDATED, peer_id=updated_element_peer_id, properties={updated_property_1}
         )
         updated_property_2 = EnrichedPropertyFactory.build(
-            property_type=DatabaseEdgeType.HAS_OWNER, action=DiffAction.UPDATED
+            property_type=DatabaseEdgeType.HAS_OWNER, new_value=str(uuid4()), action=DiffAction.UPDATED
         )
         updated_element_2 = EnrichedRelationshipElementFactory.build(
             action=DiffAction.UPDATED, peer_id=updated_element_peer_id, properties={updated_property_2}
         )
+        canceled_property = EnrichedPropertyFactory.build()
         canceled_element_1 = EnrichedRelationshipElementFactory.build(
-            action=DiffAction.ADDED,
-            peer_id=canceled_element_peer_id,
+            action=DiffAction.ADDED, peer_id=canceled_element_peer_id, properties={canceled_property}
         )
         canceled_element_2 = EnrichedRelationshipElementFactory.build(
-            action=DiffAction.REMOVED,
-            peer_id=canceled_element_peer_id,
+            action=DiffAction.REMOVED, peer_id=canceled_element_peer_id, properties={canceled_property}
         )
         relationship_group_1 = EnrichedRelationshipGroupFactory.build(
             name=relationship_name,
@@ -929,3 +932,228 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         self.expected_combined.nodes = {expected_parent_1, expected_parent_2, expected_child_node}
         assert combined == self.expected_combined
+
+    async def test_resetting_attr_removes_it_from_diff(self):
+        updated_attr_name = "length"
+        updated_attr_value_property_1 = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_VALUE,
+            action=DiffAction.UPDATED,
+            previous_value=str(uuid4()),
+            new_value=str(uuid4()),
+        )
+        updated_attr_value_property_2 = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_VALUE,
+            action=DiffAction.UPDATED,
+            previous_value=updated_attr_value_property_1.new_value,
+            new_value=updated_attr_value_property_1.previous_value,
+        )
+        updated_attribute_1 = EnrichedAttributeFactory.build(
+            name=updated_attr_name,
+            action=DiffAction.UPDATED,
+            properties={updated_attr_value_property_1},
+        )
+        updated_attribute_2 = EnrichedAttributeFactory.build(
+            name=updated_attr_name, action=DiffAction.UPDATED, properties={updated_attr_value_property_2}
+        )
+        earlier_node_2 = EnrichedNodeFactory.build(
+            action=DiffAction.UPDATED, attributes={updated_attribute_1}, relationships=set()
+        )
+        later_node_2 = EnrichedNodeFactory.build(
+            uuid=earlier_node_2.uuid,
+            kind=earlier_node_2.kind,
+            action=DiffAction.UPDATED,
+            attributes={updated_attribute_2},
+            relationships=set(),
+            changed_at=Timestamp(),
+        )
+
+        self.diff_root_1.nodes = {earlier_node_2}
+        self.diff_root_2.nodes = {later_node_2}
+
+        self.expected_combined.nodes = set()
+
+        combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
+
+        self.expected_combined.uuid = combined.uuid
+        self.expected_combined.partner_uuid = combined.partner_uuid
+        assert combined == self.expected_combined
+
+    async def test_resetting_relationship_one_removes_it_from_diff(self, with_schema_manager):
+        relationship_name = "owner"
+        old_peer_id = str(uuid4())
+        intermediate_peer_id = str(uuid4())
+        early_only_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_OWNER, action=DiffAction.UPDATED
+        )
+        early_peer_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.IS_RELATED,
+            action=DiffAction.UPDATED,
+            previous_value=old_peer_id,
+            new_value=intermediate_peer_id,
+        )
+        later_peer_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.IS_RELATED,
+            action=DiffAction.UPDATED,
+            previous_value=intermediate_peer_id,
+            new_value=old_peer_id,
+        )
+        later_only_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_SOURCE, action=DiffAction.UPDATED
+        )
+        early_element = EnrichedRelationshipElementFactory.build(
+            action=DiffAction.UPDATED,
+            peer_id=intermediate_peer_id,
+            properties={early_only_property, early_peer_property},
+        )
+        later_element = EnrichedRelationshipElementFactory.build(
+            action=DiffAction.UPDATED,
+            peer_id=old_peer_id,
+            changed_at=early_element.changed_at.add_delta(minutes=1),
+            properties={later_only_property, later_peer_property},
+        )
+        early_relationship = EnrichedRelationshipGroupFactory.build(
+            name=relationship_name,
+            action=DiffAction.UPDATED,
+            relationships={early_element},
+            nodes=set(),
+            cardinality=RelationshipCardinality.ONE,
+        )
+        later_relationship = EnrichedRelationshipGroupFactory.build(
+            name=relationship_name,
+            action=DiffAction.UPDATED,
+            cardinality=RelationshipCardinality.ONE,
+            relationships={later_element},
+            nodes=set(),
+            changed_at=Timestamp(),
+        )
+        early_node = EnrichedNodeFactory.build(
+            kind="TestCar", action=DiffAction.UPDATED, relationships={early_relationship}
+        )
+        later_node = EnrichedNodeFactory.build(
+            uuid=early_node.uuid,
+            kind="TestCar",
+            action=DiffAction.UPDATED,
+            relationships={later_relationship},
+            changed_at=Timestamp(),
+        )
+        self.diff_root_1.nodes = {early_node}
+        self.diff_root_2.nodes = {later_node}
+
+        expected_relationship_element = EnrichedDiffSingleRelationship(
+            changed_at=later_element.changed_at,
+            action=DiffAction.UPDATED,
+            peer_id=old_peer_id,
+            peer_label=later_element.peer_label,
+            path_identifier=later_element.path_identifier,
+            properties={early_only_property, later_only_property},
+            conflict=later_element.conflict,
+        )
+        expected_relationship = EnrichedDiffRelationship(
+            name=relationship_name,
+            label=later_relationship.label,
+            cardinality=RelationshipCardinality.ONE,
+            changed_at=later_relationship.changed_at,
+            action=DiffAction.UPDATED,
+            path_identifier=later_relationship.path_identifier,
+            relationships={expected_relationship_element},
+        )
+        expected_node = EnrichedDiffNode(
+            uuid=later_node.uuid,
+            kind="TestCar",
+            label=later_node.label,
+            changed_at=later_node.changed_at,
+            action=DiffAction.UPDATED,
+            path_identifier=later_node.path_identifier,
+            relationships={expected_relationship},
+            attributes=(early_node.attributes | later_node.attributes),
+        )
+        self.expected_combined.nodes = {expected_node}
+
+        combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
+
+        self.expected_combined.uuid = combined.uuid
+        self.expected_combined.partner_uuid = combined.partner_uuid
+        assert combined == self.expected_combined
+
+    async def test_resetting_relationship_many_removes_it_from_diff(self, with_schema_manager):
+        rel_prop_types = [DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.HAS_SOURCE, DatabaseEdgeType.IS_RELATED]
+        relationship_name = "cars"
+        peer_id_1 = str(uuid4())
+        peer_id_2 = str(uuid4())
+
+        peer_1_props_1 = set()
+        peer_1_props_2 = set()
+        for rpt in rel_prop_types:
+            a1 = EnrichedPropertyFactory.build(
+                action=DiffAction.UPDATED, previous_value=str(uuid4()), new_value=str(uuid4()), property_type=rpt
+            )
+            a2 = EnrichedPropertyFactory.build(
+                action=DiffAction.UPDATED, property_type=rpt, new_value=a1.previous_value
+            )
+            peer_1_props_1.add(a1)
+            peer_1_props_2.add(a2)
+        updated_element_1_1 = EnrichedRelationshipElementFactory.build(
+            action=DiffAction.ADDED, peer_id=peer_id_1, properties=peer_1_props_1
+        )
+        updated_element_2_2 = EnrichedRelationshipElementFactory.build(
+            action=DiffAction.UPDATED, peer_id=peer_id_1, properties=peer_1_props_2
+        )
+        updated_property_1 = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_OWNER, previous_value=str(uuid4()), action=DiffAction.UPDATED
+        )
+        updated_element_1 = EnrichedRelationshipElementFactory.build(
+            action=DiffAction.UPDATED, peer_id=peer_id_2, properties={updated_property_1}
+        )
+        updated_property_2 = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_OWNER,
+            new_value=updated_property_1.previous_value,
+            action=DiffAction.UPDATED,
+        )
+        updated_element_2 = EnrichedRelationshipElementFactory.build(
+            action=DiffAction.UPDATED, peer_id=peer_id_2, properties={updated_property_2}
+        )
+        relationship_group_1 = EnrichedRelationshipGroupFactory.build(
+            name=relationship_name,
+            action=DiffAction.UPDATED,
+            cardinality=RelationshipCardinality.MANY,
+            relationships={updated_element_1_1, updated_element_1},
+            nodes=set(),
+        )
+        relationship_group_2 = EnrichedRelationshipGroupFactory.build(
+            name=relationship_name,
+            action=DiffAction.UPDATED,
+            cardinality=RelationshipCardinality.MANY,
+            relationships={updated_element_2_2, updated_element_2},
+            changed_at=Timestamp(),
+            nodes=set(),
+        )
+        node_1 = EnrichedNodeFactory.build(
+            kind="TestPerson", action=DiffAction.UPDATED, relationships={relationship_group_1}
+        )
+        node_2 = EnrichedNodeFactory.build(
+            uuid=node_1.uuid,
+            kind=node_1.kind,
+            action=DiffAction.UPDATED,
+            relationships={relationship_group_2},
+            changed_at=Timestamp(),
+        )
+        self.diff_root_1.nodes = {node_1}
+        self.diff_root_2.nodes = {node_2}
+
+        self.expected_combined.nodes = set()
+
+        combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
+
+        self.expected_combined.uuid = combined.uuid
+        self.expected_combined.partner_uuid = combined.partner_uuid
+        expected_node = EnrichedDiffNode(
+            uuid=node_1.uuid,
+            kind="TestPerson",
+            label=node_2.label,
+            changed_at=node_2.changed_at,
+            action=DiffAction.UPDATED,
+            path_identifier=node_2.path_identifier,
+            relationships=set(),
+            attributes=(node_1.attributes | node_2.attributes),
+        )
+        self.expected_combined.nodes = {expected_node}

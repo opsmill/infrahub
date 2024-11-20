@@ -43,7 +43,18 @@ export const saveTokensInLocalStorage = (result: any) => {
   }
 };
 
-export const removeTokensInLocalStorage = () => {
+export const removeTokensInLocalStorage = async () => {
+  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+
+  const payload = {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${localToken}`,
+    },
+  };
+
+  await fetchUrl(CONFIG.LOGOUT_URL, payload);
+
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 };
@@ -74,7 +85,7 @@ export const getNewToken = async () => {
   );
 
   if (!result?.access_token) {
-    removeTokensInLocalStorage();
+    await removeTokensInLocalStorage();
     window.location.reload();
     return;
   }
@@ -130,8 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (callback) callback();
   };
 
-  const signOut = () => {
-    removeTokensInLocalStorage();
+  const signOut = async () => {
+    await removeTokensInLocalStorage();
     setAccessToken(null);
     graphqlClient.refetchQueries({
       include: "active",

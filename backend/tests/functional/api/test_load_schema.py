@@ -71,6 +71,40 @@ class TestLoadSchemaAPI(TestInfrahubApp):
 
         assert len(generic_schemas) == len(core_models["generics"]) + 1
 
+    async def test_schema_load_existing_node_different_kind(
+        self,
+        initial_dataset: str,
+        client: InfrahubClient,
+        helper: TestHelper,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+    ) -> None:
+        schema = registry.schema.get_schema_branch(name=default_branch.name)
+        await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+        creation = await client.schema.load(schemas=[helper.schema_file("infra_simple_01.json")])
+        assert not creation.errors
+
+        modified_schema = helper.schema_file("infra_simple_01.json")
+        modified_schema["nodes"].pop(0)
+        modified_schema["generics"] = [
+            {
+                "name": "Device",
+                "namespace": "Infra",
+                "label": "A generic with the same kind as an existing node in the schema",
+            }
+        ]
+
+        modification = await client.schema.load(schemas=[modified_schema])
+        assert modification.errors
+        assert modification.errors["errors"]
+        assert len(modification.errors["errors"]) == 1
+        error = modification.errors["errors"][0]
+        assert (
+            error["message"]
+            == "InfraDevice already exist in the schema as a Node. Either rename it or delete the existing one."
+        )
+        assert error["extensions"]["code"] == 422
+
     async def test_schema_load_endpoint_valid_with_extensions(
         self,
         initial_dataset: str,

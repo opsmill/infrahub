@@ -66,8 +66,8 @@ authlib = "1.3.2"
 rich = "^13"
 pyarrow = "^14"
 numpy = [
-    { version = "^1.24.2", optional = true, python = ">=3.9,<3.12" },
-    { version = "^1.26.2", optional = true, python = ">=3.12" },
+    { version = "^1.24.2", python = ">=3.9,<3.12" },
+    { version = "^1.26.2", python = ">=3.12" },
 ]
 
 
@@ -78,10 +78,6 @@ pylint = "~3.1"
 mypy = "*"
 ipython = "~8"
 pytest-asyncio = "^0.21.1"
-pytest-httpx = [
-    { version = "~0.21", python = "<3.9" },
-    { version = ">=0.30", python = ">=3.9" },
-]
 pytest-clarity = "~1.0"
 pytest-cov = "~4.1"
 pytest-xdist = "~3.4"
@@ -108,6 +104,7 @@ pandas = "^2.2.3"
 # docker = "^7.0.0"
 # matplotlib = "^3.8"
 # pandas = "^2.2"
+pytest-httpx = ">=0.30"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
@@ -202,7 +199,13 @@ pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
 disable_error_code = ["type-abstract"]
-exclude = ["^backend/tests/scale", "^backend/tests/unit", "^backend/tests/test_data", "^backend/tests/query_benchmark"]
+exclude = [
+    "^backend/tests/fixtures/repos/*", # To avoid 'Duplicate module named "transforms"'
+    "^backend/tests/scale",
+    "^backend/tests/unit",
+    "^backend/tests/test_data",
+    "^backend/tests/query_benchmark"
+]
 
 [[tool.mypy.overrides]]
 module = "infrahub.*"
@@ -387,30 +390,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations.schema.validator"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.test_data.dataset03"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.test_data.dataset04"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.test_data.gen_connected_nodes"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.test_data.gen_isolated_node"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.test_data.gen_node_profile_node"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.test_data.shared"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

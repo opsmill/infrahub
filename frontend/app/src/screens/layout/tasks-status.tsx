@@ -2,6 +2,7 @@ import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import { Pulse } from "@/components/ui/pulse";
 import { Spinner } from "@/components/ui/spinner";
 import { TASKS_STATUS_OBJECT } from "@/config/constants";
+import { QSP } from "@/config/qsp";
 import { TASKS_STATUS } from "@/graphql/queries/tasks/getTasksStatus";
 import useQuery from "@/hooks/useQuery";
 import { ReactComponent as TasksStatusIcon } from "@/images/icons/tasks-status.svg";
@@ -25,8 +26,13 @@ export function TaskStatus() {
 
   const count = data && data[TASKS_STATUS_OBJECT]?.count;
 
+  const filter = {
+    name: "branch__value",
+    value: branch?.name,
+  };
+
   return (
-    <Link to={constructPath("/tasks")}>
+    <Link to={constructPath("/tasks", [{ name: QSP.FILTER, value: JSON.stringify([filter]) }])}>
       <ButtonWithTooltip
         size="square"
         variant="ghost"

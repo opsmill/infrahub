@@ -36,6 +36,11 @@ def default_cors_allow_headers() -> list[str]:
     return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"]
 
 
+class UserInfoMethod(str, Enum):
+    POST = "post"
+    GET = "get"
+
+
 class SSOProtocol(str, Enum):
     OAUTH2 = "oauth2"
     OIDC = "oidc"
@@ -290,6 +295,7 @@ class WorkflowSettings(BaseSettings):
     port: Optional[int] = Field(default=None, ge=1, le=65535, description="Specified if running on a non default port.")
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     driver: WorkflowDriver = WorkflowDriver.WORKER
+    default_worker_type: str = "infrahubasync"
     worker_polling_interval: int = Field(
         default=2, ge=1, le=30, description="Specify how often the worker should poll the server for tasks (sec)"
     )
@@ -420,6 +426,7 @@ class SecurityOIDCBaseSettings(BaseSettings):
 
     icon: str = Field(default="mdi:account-key")
     display_label: str = Field(default="Single Sign on")
+    userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):
@@ -463,6 +470,7 @@ class SecurityOAuth2BaseSettings(BaseSettings):
     """Baseclass for typing"""
 
     icon: str = Field(default="mdi:account-key")
+    userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
 
 
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
@@ -803,7 +811,7 @@ def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str
         config_string = Path(config_file_name).read_text(encoding="utf-8")
         config_tmp = toml.loads(config_string)
 
-        SETTINGS.settings = Settings(**config_tmp)
+        return Settings(**config_tmp)
 
     return Settings()
 

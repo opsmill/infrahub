@@ -17,7 +17,7 @@ async def setup_worker_pools(client: PrefectClient) -> None:
     for worker in worker_pools:
         wp = WorkPoolCreate(
             name=worker.name,
-            type=worker.worker_type,
+            type=worker.worker_type or config.SETTINGS.workflow.default_worker_type,
             description=worker.description,
         )
         try:

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export WEB_CONCURRENCY=2
-invoke demo.build demo.start
+invoke demo.start
 sleep 120
 docker logs infrahub-server-1
 invoke demo.load-infra-schema

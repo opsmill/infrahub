@@ -289,7 +289,11 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
         return filters, params
 
     def get_query_filter_path(
-        self, at: Optional[Union[Timestamp, str]] = None, is_isolated: bool = True, branch_agnostic: bool = False
+        self,
+        at: Optional[Union[Timestamp, str]] = None,
+        is_isolated: bool = True,
+        branch_agnostic: bool = False,
+        variable_name: str = "r",
     ) -> tuple[str, dict]:
         """
         Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
@@ -306,7 +310,9 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
         at = Timestamp(at)
         at_str = at.to_string()
         if branch_agnostic:
-            filter_str = "r.from <= $time1 AND (r.to IS NULL or r.to >= $time1)"
+            filter_str = (
+                f"{variable_name}.from <= $time1 AND ({variable_name}.to IS NULL or {variable_name}.to >= $time1)"
+            )
             params["time1"] = at_str
             return filter_str, params
 
@@ -318,8 +324,12 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
 
         filters = []
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
-            filters.append(f"(r.branch IN $branch{idx} AND r.from <= $time{idx} AND r.to IS NULL)")
-            filters.append(f"(r.branch IN $branch{idx} AND r.from <= $time{idx} AND r.to >= $time{idx})")
+            filters.append(
+                f"({variable_name}.branch IN $branch{idx} AND {variable_name}.from <= $time{idx} AND {variable_name}.to IS NULL)"
+            )
+            filters.append(
+                f"({variable_name}.branch IN $branch{idx} AND {variable_name}.from <= $time{idx} AND {variable_name}.to >= $time{idx})"
+            )
 
         filter_str = "(" + "\n OR ".join(filters) + ")"
 

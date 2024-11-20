@@ -435,12 +435,14 @@ class RelationshipDeleteQuery(RelationshipQuery):
             raise TypeError("An instance of Relationship must be provided to RelationshipDeleteQuery")
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+        rel_filter, rel_params = self.branch.get_query_filter_path(at=self.at, variable_name="edge")
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["rel_id"] = self.rel.id
         self.params["branch"] = self.branch.name
-        self.params["branch_level"] = self.branch.hierarchy_level
         self.params["rel_prop"] = self.get_relationship_properties_dict(status=RelationshipStatus.DELETED)
+        self.params["at"] = self.at.to_string()
+        self.params.update(rel_params)
 
         arrows = self.schema.get_query_arrows()
         r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
@@ -448,34 +450,61 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
         # Specifying relationship type might improve query performance here.
         query = """
-        MATCH (s:Node { uuid: $source_id })-[]-(rl:Relationship {uuid: $rel_id})-[]-(d:Node { uuid: $destination_id })
-        CREATE (s)%s(rl)
-        CREATE (rl)%s(d)
+        MATCH (s:Node { uuid: $source_id })-[:IS_RELATED]-(rl:Relationship {uuid: $rel_id})-[:IS_RELATED]-(d:Node { uuid: $destination_id })
+        WITH s, rl, d
+        LIMIT 1
+        CREATE (s)%(r1)s(rl)
+        CREATE (rl)%(r2)s(d)
         WITH rl
         CALL {
             WITH rl
             MATCH (rl)-[edge:IS_VISIBLE]->(visible)
+            WHERE %(rel_filter)s AND edge.status = "active"
+            WITH rl, edge, visible
+            ORDER BY edge.branch_level DESC
+            LIMIT 1
             CREATE (rl)-[deleted_edge:IS_VISIBLE $rel_prop]->(visible)
+            WITH edge
+            WHERE edge.branch = $branch
+            SET edge.to = $at
         }
         CALL {
             WITH rl
             MATCH (rl)-[edge:IS_PROTECTED]->(protected)
+            WHERE %(rel_filter)s AND edge.status = "active"
+            WITH rl, edge, protected
+            ORDER BY edge.branch_level DESC
+            LIMIT 1
             CREATE (rl)-[deleted_edge:IS_PROTECTED $rel_prop]->(protected)
+            WITH edge
+            WHERE edge.branch = $branch
+            SET edge.to = $at
         }
         CALL {
             WITH rl
             MATCH (rl)-[edge:HAS_OWNER]->(owner_node)
+            WHERE %(rel_filter)s AND edge.status = "active"
+            WITH rl, edge, owner_node
+            ORDER BY edge.branch_level DESC
+            LIMIT 1
             CREATE (rl)-[deleted_edge:HAS_OWNER $rel_prop]->(owner_node)
+            WITH edge
+            WHERE edge.branch = $branch
+            SET edge.to = $at
         }
         CALL {
             WITH rl
             MATCH (rl)-[edge:HAS_SOURCE]->(source_node)
+            WHERE %(rel_filter)s AND edge.status = "active"
+            WITH rl, edge, source_node
+            ORDER BY edge.branch_level DESC
+            LIMIT 1
             CREATE (rl)-[deleted_edge:HAS_SOURCE $rel_prop]->(source_node)
+            WITH edge
+            WHERE edge.branch = $branch
+            SET edge.to = $at
         }
-        """ % (
-            r1,
-            r2,
-        )
+        """ % {"r1": r1, "r2": r2, "rel_filter": rel_filter}
 
         self.params["at"] = self.at.to_string()
         self.return_labels = ["rl"]

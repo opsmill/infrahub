@@ -1,11 +1,17 @@
-import Handlebars from "handlebars";
+import { gql } from "@apollo/client";
 
-export const validateBranch = Handlebars.compile(`
-mutation {
+export const BRANCH_VALIDATE = gql`
+mutation BRANCH_VALIDATE($name: String) {
   BranchValidate (
-    data: { {{{data}}} }
+    wait_until_completion: false
+    data: {
+      name: $name
+    }
   ) {
       ok
+      task {
+        id
+      }
   }
 }
-`);
+`;

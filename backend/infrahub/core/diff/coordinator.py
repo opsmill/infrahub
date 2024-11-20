@@ -270,7 +270,7 @@ class DiffCoordinator:
         self, diff_request: EnrichedDiffRequest, partial_enriched_diffs: list[EnrichedDiffs]
     ) -> EnrichedDiffs:
         if not partial_enriched_diffs:
-            return await self._get_enriched_diff(diff_request=diff_request)
+            return await self._get_enriched_diff(diff_request=diff_request, is_incremental_diff=False)
 
         remaining_diffs = sorted(partial_enriched_diffs, key=lambda d: d.diff_branch_diff.from_time)
         current_time = diff_request.from_time
@@ -296,7 +296,10 @@ class DiffCoordinator:
                     to_time=end_time,
                     node_field_specifiers=node_field_specifiers,
                 )
-                current_diffs = await self._get_enriched_diff(diff_request=inner_diff_request)
+                is_incremental_diff = current_time != diff_request.from_time
+                current_diffs = await self._get_enriched_diff(
+                    diff_request=inner_diff_request, is_incremental_diff=is_incremental_diff
+                )
 
             if previous_diffs:
                 current_diffs = await self.diff_combiner.combine(
@@ -311,12 +314,13 @@ class DiffCoordinator:
     async def _update_core_data_checks(self, enriched_diff: EnrichedDiffRoot) -> list[Node]:
         return await self.data_check_synchronizer.synchronize(enriched_diff=enriched_diff)
 
-    async def _get_enriched_diff(self, diff_request: EnrichedDiffRequest) -> EnrichedDiffs:
+    async def _get_enriched_diff(self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool) -> EnrichedDiffs:
         calculated_diff_pair = await self.diff_calculator.calculate_diff(
             base_branch=diff_request.base_branch,
             diff_branch=diff_request.diff_branch,
             from_time=diff_request.from_time,
             to_time=diff_request.to_time,
+            include_unchanged=is_incremental_diff,
             previous_node_specifiers=diff_request.node_field_specifiers,
         )
         enriched_diff_pair = await self.diff_enricher.enrich(calculated_diffs=calculated_diff_pair)

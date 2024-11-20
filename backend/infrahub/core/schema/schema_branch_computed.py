@@ -63,8 +63,9 @@ class RegisteredNodeComputedAttribute(BaseModel):
 
         for relationship_name, entries in self.relationships.items():
             for entry in entries:
-                if entry.key_name in targets:
-                    targets[entry.key_name].filter_keys.append(f"{relationship_name}__ids")
+                filter_key = f"{relationship_name}__ids"
+                if entry.key_name in targets and filter_key not in targets[entry.key_name].filter_keys:
+                    targets[entry.key_name].filter_keys.append(filter_key)
 
         return list(targets.values())
 
@@ -82,6 +83,9 @@ class ComputedAttributes:
     def get_kinds_python_attributes(self) -> list[str]:
         """Return kinds that have Python attributes defined"""
         return list(self._computed_python_transform_attribute_map.keys())
+
+    def get_python_attributes_per_node(self) -> dict[str, list[AttributeSchema]]:
+        return self._computed_python_transform_attribute_map
 
     @property
     def python_attributes_by_transform(self) -> dict[str, list[PythonDefinition]]:

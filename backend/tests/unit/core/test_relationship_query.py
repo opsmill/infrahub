@@ -37,6 +37,7 @@ class DatabaseRelationshipProperty:
     branch: str
     status: str
     changed_at: Timestamp
+    end_at: Timestamp | None
     value: Any
     property_is_end_node: bool
 
@@ -70,12 +71,18 @@ async def get_relationship_properties(
     for record in records:
         neo4j_edge = record.get("edge")
         property_node = record.get("p")
+        end_at_raw = neo4j_edge.get("to")
+        if end_at_raw:
+            end_at = Timestamp(end_at_raw)
+        else:
+            end_at = None
         relationship_properties.append(
             DatabaseRelationshipProperty(
                 property_type=neo4j_edge.type,
                 branch=neo4j_edge.get("branch"),
                 status=neo4j_edge.get("status"),
                 changed_at=Timestamp(neo4j_edge.get("from")),
+                end_at=end_at,
                 value=property_node.get("value"),
                 property_is_end_node=neo4j_edge.end_node.element_id == property_node.element_id,
             )
@@ -336,6 +343,119 @@ async def test_relationship_delete_peer(db: InfrahubDatabase, default_branch, ta
             assert create_before < database_rel.changed_at < create_after
         elif database_rel.status == "deleted":
             assert create_after < database_rel.changed_at < update_after
+
+
+async def test_branch_delete_with_updated_main_relationship(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_jack_primary_tag_main: Node,
+    tag_blue_main: Node,
+    tag_black_main: Node,
+):
+    branch = await create_branch(db=db, branch_name="branch2")
+    before_main_update = Timestamp()
+    person_main = await NodeManager.get_one(db=db, id=person_jack_primary_tag_main.id)
+    await person_main.primary_tag.update(db=db, data={"id": tag_black_main.id, "_relation__is_protected": True})
+    await person_main.save(db=db)
+    after_main_update = Timestamp()
+    person_branch = await NodeManager.get_one(db=db, branch=branch, id=person_jack_primary_tag_main.id)
+    await person_branch.delete(db=db)
+    after_branch_delete = Timestamp()
+
+    # test edges for tag blue relationship
+    database_relationships_tag_blue = await get_relationship_properties(
+        db=db, source_uuid=person_jack_primary_tag_main.get_id(), destination_uuid=tag_blue_main.get_id()
+    )
+    expected_relationships_tag_blue = {
+        ("IS_VISIBLE", default_branch.name, "active", True, True),
+        ("IS_VISIBLE", branch.name, "deleted", True, True),
+        ("IS_PROTECTED", default_branch.name, "active", False, True),
+        ("IS_PROTECTED", branch.name, "deleted", False, True),
+    }
+    assert len(database_relationships_tag_blue) == 4
+    assert {dr.to_comparison_tuple() for dr in database_relationships_tag_blue} == expected_relationships_tag_blue
+    for database_rel in database_relationships_tag_blue:
+        if database_rel.status == "active":
+            assert database_rel.changed_at < before_main_update < database_rel.end_at < after_main_update
+        elif database_rel.status == "deleted":
+            assert not database_rel.end_at
+            assert after_main_update < database_rel.changed_at < after_branch_delete
+
+    # test edges for tag black relationship
+    database_relationships_tag_black = await get_relationship_properties(
+        db=db, source_uuid=person_jack_primary_tag_main.get_id(), destination_uuid=tag_black_main.get_id()
+    )
+    expected_relationships_tag_black = {
+        ("IS_VISIBLE", default_branch.name, "active", True, True),
+        ("IS_PROTECTED", default_branch.name, "active", True, True),
+    }
+    assert len(database_relationships_tag_black) == 2
+    assert {dr.to_comparison_tuple() for dr in database_relationships_tag_black} == expected_relationships_tag_black
+    for database_rel in database_relationships_tag_black:
+        assert not database_rel.end_at
+        assert before_main_update < database_rel.changed_at < after_main_update
+
+
+async def test_main_delete_with_updated_branch_relationship(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_jack_primary_tag_main: Node,
+    tag_blue_main: Node,
+    tag_black_main: Node,
+):
+    branch = await create_branch(db=db, branch_name="branch2")
+    before_branch_update = Timestamp()
+    person_branch = await NodeManager.get_one(db=db, branch=branch, id=person_jack_primary_tag_main.id)
+    await person_branch.primary_tag.update(db=db, data={"id": tag_black_main.id, "_relation__is_protected": True})
+    await person_branch.save(db=db)
+    after_branch_update = Timestamp()
+    person_main = await NodeManager.get_one(db=db, id=person_jack_primary_tag_main.id)
+    await person_main.delete(db=db)
+    after_main_delete = Timestamp()
+
+    # test edges for tag blue relationship
+    database_relationships_tag_blue = await get_relationship_properties(
+        db=db, source_uuid=person_jack_primary_tag_main.get_id(), destination_uuid=tag_blue_main.get_id()
+    )
+    expected_relationships_tag_blue = {
+        ("IS_VISIBLE", default_branch.name, "active", True, True),
+        ("IS_VISIBLE", default_branch.name, "deleted", True, True),
+        ("IS_VISIBLE", branch.name, "deleted", True, True),
+        ("IS_PROTECTED", default_branch.name, "active", False, True),
+        ("IS_PROTECTED", default_branch.name, "deleted", False, True),
+        ("IS_PROTECTED", branch.name, "deleted", False, True),
+    }
+    assert len(database_relationships_tag_blue) == 6
+    assert {dr.to_comparison_tuple() for dr in database_relationships_tag_blue} == expected_relationships_tag_blue
+    for database_rel in database_relationships_tag_blue:
+        if database_rel.status == "active" and database_rel.branch == default_branch.name:
+            assert (
+                database_rel.changed_at
+                < before_branch_update
+                < after_branch_update
+                < database_rel.end_at
+                < after_main_delete
+            )
+        elif database_rel.status == "deleted" and database_rel.branch == default_branch.name:
+            assert not database_rel.end_at
+            assert after_branch_update < database_rel.changed_at < after_main_delete
+        elif database_rel.status == "deleted" and database_rel.branch == branch.name:
+            assert not database_rel.end_at
+            assert before_branch_update < database_rel.changed_at < after_branch_update
+
+    # test edges for tag black relationship
+    database_relationships_tag_black = await get_relationship_properties(
+        db=db, source_uuid=person_jack_primary_tag_main.get_id(), destination_uuid=tag_black_main.get_id()
+    )
+    expected_relationships_tag_black = {
+        ("IS_VISIBLE", branch.name, "active", True, True),
+        ("IS_PROTECTED", branch.name, "active", True, True),
+    }
+    assert len(database_relationships_tag_black) == 2
+    assert {dr.to_comparison_tuple() for dr in database_relationships_tag_black} == expected_relationships_tag_black
+    for database_rel in database_relationships_tag_black:
+        assert not database_rel.end_at
+        assert before_branch_update < database_rel.changed_at < after_branch_update
 
 
 async def test_relationship_update_with_delete_peer(

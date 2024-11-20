@@ -21,7 +21,6 @@ from infrahub.services import services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
 from infrahub.workflows.initialization import setup_task_manager
-from tests.adapters.log import FakeTaskReportLogger
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import InfrahubTestClient
 
@@ -113,7 +112,6 @@ class TestInfrahubClient:
             id=obj.id,
             name=git_repo_infrahub_demo_edge.name,
             location=git_repo_infrahub_demo_edge.path,
-            task_report=FakeTaskReportLogger(),
             client=client,
         )
 

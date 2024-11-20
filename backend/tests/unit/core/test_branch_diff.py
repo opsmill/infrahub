@@ -1,4 +1,5 @@
 from typing import Dict
+from unittest.mock import patch
 
 import pendulum
 import pytest
@@ -16,8 +17,10 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus import messages
-from infrahub.services import services
+from infrahub.git.models import GitDiffNamesOnly, GitDiffNamesOnlyResponse
+from infrahub.services import InfrahubServices, services
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from tests.helpers.utils import init_global_service
 
 
 async def test_diff_has_conflict_graph(db: InfrahubDatabase, base_dataset_02):
@@ -111,161 +114,177 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
     assert modified_branch1 == sorted(expected_paths_branch1)
 
 
-async def test_diff_get_files_repository(db: InfrahubDatabase, repos_in_main, base_dataset_02, patch_services):
-    mock_response = messages.GitDiffNamesOnlyResponse(
-        data={
-            "files_changed": ["readme.md", "mydir/myfile.py"],
-            "files_removed": ["notthere.md"],
-            "files_added": ["newandshiny.md"],
-        },
-    )
+async def test_diff_get_files_repository(db: InfrahubDatabase, repos_in_main, base_dataset_02):
+    def execute_workflow_side_effect(workflow, parameters):
+        model = GitDiffNamesOnlyResponse(
+            files_changed=["readme.md", "mydir/myfile.py"],
+            files_removed=["notthere.md"],
+            files_added=["newandshiny.md"],
+        )
+        return model
 
-    patch_services.add_mock_reply(response=mock_response)
+    service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    with patch(
+        "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
+        side_effect=execute_workflow_side_effect,
+    ), init_global_service(service):
+        branch2 = await create_branch(branch_name="branch2", db=db)
 
-    branch2 = await create_branch(branch_name="branch2", db=db)
+        diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
 
-    diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
+        resp = await diff.get_files_repository(
+            branch_name=branch2.name,
+            repository=repos_in_main["repo01"],
+            commit_from="aaaaaa",
+            commit_to="ccccccc",
+        )
 
-    resp = await diff.get_files_repository(
-        branch_name=branch2.name,
-        repository=repos_in_main["repo01"],
-        commit_from="aaaaaa",
-        commit_to="ccccccc",
-    )
-
-    assert len(resp) == 4
-    assert isinstance(resp, list)
-    assert sorted([fde.location for fde in resp]) == [
-        "mydir/myfile.py",
-        "newandshiny.md",
-        "notthere.md",
-        "readme.md",
-    ]
+        assert len(resp) == 4
+        assert isinstance(resp, list)
+        assert sorted([fde.location for fde in resp]) == [
+            "mydir/myfile.py",
+            "newandshiny.md",
+            "notthere.md",
+            "readme.md",
+        ]
 
 
 async def test_diff_get_files_repositories_for_branch_case01(
-    db: InfrahubDatabase, default_branch: Branch, repos_in_main, patch_services
+    db: InfrahubDatabase, default_branch: Branch, repos_in_main
 ):
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     but only one has a different commit value between 2 and from so we expect only 2 files"""
 
-    mock_response = messages.GitDiffNamesOnlyResponse(
-        data={
-            "files_changed": ["readme.md", "mydir/myfile.py"],
-            "files_removed": [],
-            "files_added": [],
-        },
-    )
+    def execute_workflow_side_effect(workflow, parameters):
+        model = GitDiffNamesOnlyResponse(
+            files_changed=["readme.md", "mydir/myfile.py"],
+            files_removed=[],
+            files_added=[],
+        )
+        return model
 
-    patch_services.add_mock_reply(response=mock_response)
+    service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    with patch(
+        "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
+        side_effect=execute_workflow_side_effect,
+    ), init_global_service(service):
+        branch2 = await create_branch(branch_name="branch2", db=db)
 
-    branch2 = await create_branch(branch_name="branch2", db=db)
+        repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
+        repos = {repo.name.value: repo for repo in repos_list}
 
-    repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
-    repos = {repo.name.value: repo for repo in repos_list}
+        repo01 = repos["repo01"]
+        repo01.commit.value = "dddddddddd"
+        await repo01.save(db=db)
 
-    repo01 = repos["repo01"]
-    repo01.commit.value = "dddddddddd"
-    await repo01.save(db=db)
+        diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
 
-    diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
+        resp = await diff.get_files_repositories_for_branch(branch=branch2)
 
-    resp = await diff.get_files_repositories_for_branch(branch=branch2)
-
-    assert len(resp) == 2
-    assert isinstance(resp, list)
-    assert sorted([fde.location for fde in resp]) == ["mydir/myfile.py", "readme.md"]
+        assert len(resp) == 2
+        assert isinstance(resp, list)
+        assert sorted([fde.location for fde in resp]) == ["mydir/myfile.py", "readme.md"]
 
 
 async def test_diff_get_files_repositories_for_branch_case02(
-    db: InfrahubDatabase, default_branch: Branch, repos_in_main, patch_services
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    repos_in_main,
 ):
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     both repositories have a new commit value so we expect both to return something"""
 
-    mock_response = messages.GitDiffNamesOnlyResponse(
-        data={
-            "files_changed": ["readme.md", "mydir/myfile.py"],
-            "files_removed": [],
-            "files_added": [],
-        },
-    )
-    patch_services.add_mock_reply(response=mock_response)
+    def execute_workflow_side_effect(workflow, parameters):
+        model = parameters["model"]
+        assert isinstance(model, GitDiffNamesOnly)
+        if model.repository_name == "repo01":
+            return GitDiffNamesOnlyResponse(
+                files_changed=["readme.md", "mydir/myfile.py"],
+                files_removed=[],
+                files_added=[],
+            )
+        if model.repository_name == "repo02":
+            return GitDiffNamesOnlyResponse(
+                files_changed=["anotherfile.rb"],
+                files_removed=[],
+                files_added=[],
+            )
+        raise ValueError(f"Should not reach here: {model}")
 
-    mock_response = messages.GitDiffNamesOnlyResponse(
-        data={
-            "files_changed": ["anotherfile.rb"],
-            "files_removed": [],
-            "files_added": [],
-        },
-    )
-    patch_services.add_mock_reply(response=mock_response)
+    service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    with init_global_service(service):
+        branch2 = await create_branch(branch_name="branch2", db=db)
 
-    branch2 = await create_branch(branch_name="branch2", db=db)
+        repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
+        repos = {repo.name.value: repo for repo in repos_list}
 
-    repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
-    repos = {repo.name.value: repo for repo in repos_list}
+        repo01 = repos["repo01"]
+        repo01.commit.value = "dddddddddd"
+        await repo01.save(db=db)
 
-    repo01 = repos["repo01"]
-    repo01.commit.value = "dddddddddd"
-    await repo01.save(db=db)
+        repo02 = repos["repo02"]
+        repo02.commit.value = "eeeeeeeeee"
+        await repo02.save(db=db)
 
-    repo02 = repos["repo02"]
-    repo02.commit.value = "eeeeeeeeee"
-    await repo02.save(db=db)
+        diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
+        with patch(
+            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
+            side_effect=execute_workflow_side_effect,
+        ):
+            resp = await diff.get_files_repositories_for_branch(branch=branch2)
 
-    diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
-
-    resp = await diff.get_files_repositories_for_branch(branch=branch2)
-
-    assert len(resp) == 3
-    assert isinstance(resp, list)
-    assert sorted([fde.location for fde in resp]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
+        assert len(resp) == 3
+        assert isinstance(resp, list)
+        assert sorted([fde.location for fde in resp]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
 
 
-async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repos_in_main, patch_services):
+async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repos_in_main):
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     both repositories have a new commit value so we expect both to return something"""
 
-    mock_response = messages.GitDiffNamesOnlyResponse(
-        data={
-            "files_changed": ["readme.md", "mydir/myfile.py"],
-            "files_removed": [],
-            "files_added": [],
-        },
-    )
-    patch_services.add_mock_reply(response=mock_response)
+    def execute_workflow_side_effect(workflow, parameters):
+        model = parameters["model"]
+        assert isinstance(model, GitDiffNamesOnly)
+        if model.repository_name == "repo01":
+            return GitDiffNamesOnlyResponse(
+                files_changed=["readme.md", "mydir/myfile.py"],
+                files_removed=[],
+                files_added=[],
+            )
+        if model.repository_name == "repo02":
+            return GitDiffNamesOnlyResponse(
+                files_changed=["anotherfile.rb"],
+                files_removed=[],
+                files_added=[],
+            )
+        raise ValueError(f"Should not reach here: {model}")
 
-    mock_response = messages.GitDiffNamesOnlyResponse(
-        data={
-            "files_changed": ["anotherfile.rb"],
-            "files_removed": [],
-            "files_added": [],
-        },
-    )
-    patch_services.add_mock_reply(response=mock_response)
+    service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    with init_global_service(service):
+        branch2 = await create_branch(branch_name="branch2", db=db)
 
-    branch2 = await create_branch(branch_name="branch2", db=db)
+        repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
+        repos = {repo.name.value: repo for repo in repos_list}
 
-    repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
-    repos = {repo.name.value: repo for repo in repos_list}
+        repo01 = repos["repo01"]
+        repo01.commit.value = "dddddddddd"
+        await repo01.save(db=db)
 
-    repo01 = repos["repo01"]
-    repo01.commit.value = "dddddddddd"
-    await repo01.save(db=db)
+        repo02 = repos["repo02"]
+        repo02.commit.value = "eeeeeeeeee"
+        await repo02.save(db=db)
 
-    repo02 = repos["repo02"]
-    repo02.commit.value = "eeeeeeeeee"
-    await repo02.save(db=db)
+        diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
+        with patch(
+            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
+            side_effect=execute_workflow_side_effect,
+        ):
+            resp = await diff.get_files()
 
-    diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
-
-    resp = await diff.get_files()
-
-    assert len(resp) == 2
-    assert "branch2" in resp
-    assert isinstance(resp["branch2"], list)
-    assert sorted([fde.location for fde in resp["branch2"]]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
+        assert len(resp) == 2
+        assert "branch2" in resp
+        assert isinstance(resp["branch2"], list)
+        assert sorted([fde.location for fde in resp["branch2"]]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
 
 
 async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch, read_only_repos_in_main):

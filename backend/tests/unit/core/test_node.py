@@ -12,6 +12,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_relationships, get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
 
 
 async def test_node_init(
@@ -337,7 +338,7 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_pers
             "id": c1.nbr_seats.id,
             "value": 4,
         },
-        "type": "TestCar",
+        KIND_GRAPHQL_FIELD_NAME: "TestCar",
     }
     assert await c1.to_graphql(db=db, fields={"nbr_seats": {"value": None}}) == expected_data
 
@@ -348,7 +349,7 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_pers
             "id": c1.name.id,
             "is_protected": False,
         },
-        "type": "TestCar",
+        KIND_GRAPHQL_FIELD_NAME: "TestCar",
     }
 
     assert await c1.to_graphql(db=db, fields={"display_label": None, "name": {"is_protected": None}}) == expected_data
@@ -414,7 +415,7 @@ async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch
             "owner": None,
             "source": None,
         },
-        "type": "TestCar",
+        KIND_GRAPHQL_FIELD_NAME: "TestCar",
     }
     assert await c1.to_graphql(db=db) == expected_data
 
