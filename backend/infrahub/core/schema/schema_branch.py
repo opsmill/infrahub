@@ -1357,7 +1357,9 @@ class SchemaBranch:
             change_required = False
             for item in node.attributes + node.relationships:
                 if item.is_deprecated:
-                    change_required = True
+                    log.warn(f"'{item.name}' for '{node.kind}' has been marked as deprecated, remember to clean it up")
+                    if not item.optional:
+                        change_required = True
 
             if not change_required:
                 continue
@@ -1365,9 +1367,8 @@ class SchemaBranch:
             node = node.duplicate()
 
             for item in node.attributes + node.relationships:
-                if item.is_deprecated:
+                if item.is_deprecated and not item.optional:
                     item.optional = True
-                    log.warn(f"'{item.name}' for '{node.kind}' has been marked as deprecated, remember to clean it up")
 
             self.set(name=name, schema=node)
 
