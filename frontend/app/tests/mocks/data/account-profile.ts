@@ -261,15 +261,6 @@ export const profileDetailsMocksData = {
       owner: null,
       __typename: "TextAttribute",
     },
-    role: {
-      value: "read-write",
-      updated_at: "2023-07-10T15:01:26.568139+00:00",
-      is_protected: false,
-      is_visible: true,
-      source: null,
-      owner: null,
-      __typename: "TextAttribute",
-    },
     __typename: "CoreAccount",
   },
 };
