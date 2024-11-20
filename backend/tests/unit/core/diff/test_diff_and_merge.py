@@ -266,3 +266,36 @@ class TestDiffAndMerge:
 
         updated_person = await NodeManager.get_one(db=db, id=person_jane_main.id)
         assert updated_person.height.value == new_height
+
+    async def test_relationship_set_to_null(self, db: InfrahubDatabase, default_branch: Branch, animal_person_schema):
+        person_main = await Node.init(db=db, schema="TestPerson")
+        await person_main.new(db=db, name="Dude")
+        await person_main.save(db=db)
+        friend_main = await Node.init(db=db, schema="TestPerson")
+        await friend_main.new(db=db, name="Friend")
+        await friend_main.save(db=db)
+        dog_main = await Node.init(db=db, schema="TestDog")
+        await dog_main.new(db=db, name="good dog", breed="mixed", owner=person_main, best_friend=friend_main)
+        await dog_main.save(db=db)
+
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        dog_branch = await NodeManager.get_one(db=db, branch=branch2, id=dog_main.id)
+        await dog_branch.best_friend.update(db=db, data=None)
+        await dog_branch.save(db=db)
+
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        dog_node = enriched_diff.get_node(node_uuid=dog_main.id)
+        assert dog_node.action is DiffAction.UPDATED
+        friend_node = enriched_diff.get_node(node_uuid=friend_main.id)
+        assert friend_node.action is DiffAction.UPDATED
+
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=Timestamp())
+
+        updated_dog = await NodeManager.get_one(db=db, id=dog_main.id)
+        best_friend_rels = await updated_dog.best_friend.get_relationships(db=db)
+        assert len(best_friend_rels) == 0
+        updated_friend = await NodeManager.get_one(db=db, id=friend_main.id)
+        best_friend_rels = await updated_friend.best_friends.get_relationships(db=db)
+        assert len(best_friend_rels) == 0
