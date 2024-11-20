@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-import shutil
 from typing import TYPE_CHECKING
 
 import pytest
-
-from infrahub.git.directory import get_repositories_directory
 from infrahub_sdk.exceptions import BranchNotFoundError, GraphQLError
 from infrahub_sdk.graphql import Mutation
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.git.directory import get_repositories_directory
 from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
@@ -29,19 +27,20 @@ if TYPE_CHECKING:
 
 from git import Repo
 
-def delete_git_worktree_branch(repository_id: str, branch_id: str):
-    # path = get_repositories_directory() / repository_id / "branches" / branch_id
+
+def remove_git_worktree_branch(repository_id: str, branch_id: str) -> None:
+    """
+    Removing git worktree branches is needed after a test delete a branch, because when a new branch is then created,
+    Neo4j might reuse branch id of the deleted one for the new one, and as worktree branch of the deleted branch
+    has not been removed, we try to re-recreate a worktree branch already existing (having the id of the previously
+    deleted branch), and thus is breaks.
+    TODO A solution might be to have worktree branches written in temporary folders while testing so they are automatically deleted.
+    """
+
     repo_path = get_repositories_directory() / repository_id / "main"
     worktree_path = get_repositories_directory() / repository_id / "branches" / branch_id
     repo = Repo(repo_path)
-
-    # worktree_list = repo.git.worktree("list")
-    # print("Worktree List:\n", worktree_list)
-
     repo.git.worktree("remove", worktree_path)
-
-    # if assert path.exists(), f"Git worktree has not been created or its path has changed from {path=}"
-    # shutil.rmtree(path)
 
 
 class TestBranchMutations(TestInfrahubApp):
@@ -91,6 +90,7 @@ class TestBranchMutations(TestInfrahubApp):
 
     async def test_branch_delete_async(self, initial_dataset: str, client: InfrahubClient) -> None:
         from infrahub.core import registry
+
         branch = await client.branch.create(branch_name="branch_to_delete")
         branch_server_id = registry.branch[branch.name].id
 
@@ -106,7 +106,8 @@ class TestBranchMutations(TestInfrahubApp):
         with pytest.raises(BranchNotFoundError):
             await client.branch.get(branch_name=branch.name)
 
-        delete_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
+        assert isinstance(branch_server_id, str)
+        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
 
     async def test_branch_delete(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch = await client.branch.create(branch_name="branch_to_delete_sync")
@@ -123,7 +124,8 @@ class TestBranchMutations(TestInfrahubApp):
         with pytest.raises(BranchNotFoundError):
             await client.branch.get(branch_name=branch.name)
 
-        delete_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
+        assert isinstance(branch_server_id, str)
+        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
 
     async def test_branch_rebase_async(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch = await client.branch.create(branch_name="branch_to_rebase")
@@ -218,7 +220,6 @@ class TestBranchMutations(TestInfrahubApp):
         """
 
         branch = await client.branch.create(branch_name="branch_to_merge_sync")
-        branch_server_id = registry.branch[branch.name].id
 
         query = Mutation(
             mutation="BranchMerge",
@@ -230,15 +231,12 @@ class TestBranchMutations(TestInfrahubApp):
         assert result["BranchMerge"]["object"]["id"] == branch.id
         assert result["BranchMerge"]["task"] is None
 
-        delete_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
-
     async def test_branch_merge_async(self, initial_dataset: str, client: InfrahubClient) -> None:
         """
         Test BranchMerge graphql endpoint with asynchronous feature, not actual merge logic.
         """
 
         branch = await client.branch.create(branch_name="branch_to_merge")
-        branch_server_id = registry.branch[branch.name].id
 
         query = Mutation(
             mutation="BranchMerge",
@@ -249,8 +247,6 @@ class TestBranchMutations(TestInfrahubApp):
         assert result["BranchMerge"]["ok"] is True
         assert result["BranchMerge"]["object"]["id"] == branch.id
         assert result["BranchMerge"]["task"]["id"]
-
-        delete_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
 
     async def test_branch_create(self, initial_dataset: str, client: InfrahubClient) -> None:
         query = Mutation(

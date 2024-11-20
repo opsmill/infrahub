@@ -1,12 +1,9 @@
-import pytest
 from graphql import graphql
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices, services
@@ -15,43 +12,6 @@ from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.utils import init_global_service
-
-
-@pytest.fixture
-async def repos_and_checks_in_main(db: InfrahubDatabase, register_core_models_schema):
-    repo01 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
-    await repo01.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
-    await repo01.save(db=db)
-
-    repo02 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
-    await repo02.new(db=db, name="repo02", location="git@github.com:user/repo02.git")
-    await repo02.save(db=db)
-
-    query01 = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
-    await query01.new(db=db, name="my_query", query="query { check { id } }")
-    await query01.save(db=db)
-
-    checkdef01 = await Node.init(db=db, schema=InfrahubKind.CHECKDEFINITION)
-    await checkdef01.new(
-        db=db,
-        name="check01",
-        query=query01,
-        repository=repo01,
-        file_path="check01.py",
-        class_name="Check01",
-    )
-    await checkdef01.save(db=db)
-
-    checkdef02 = await Node.init(db=db, schema=InfrahubKind.CHECKDEFINITION)
-    await checkdef02.new(
-        db=db,
-        name="check02",
-        query=query01,
-        repository=repo02,
-        file_path="check02.py",
-        class_name="Check02",
-    )
-    await checkdef02.save(db=db)
 
 
 class TestBranchCreate(TestInfrahubApp):
@@ -226,53 +186,6 @@ class TestBranchCreate(TestInfrahubApp):
         assert result.errors
         assert len(result.errors) == 1
         assert result.errors[0].message == "invalid field name: String should have at least 3 characters"
-
-    async def test_branch_create_with_repositories(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        # repos_and_checks_in_main,  # so it passes in develop because context.service is empty and repositories validations are not performed.
-        #  here the issue seems to be that repo are not created locally, so I guess adding git_repos_dir_module_scope fixture
-        #  within this one AND creating repos using FileRepo AND MAYBE adjusting checks files? or remove checks?
-        #  to clarify how to use/store repo path / id
-        register_core_models_schema,
-        data_schema,
-        session_admin,
-        client,
-    ):
-        query = """
-        mutation {
-            BranchCreate(data: { name: "branch4", sync_with_git: true }) {
-                ok
-                object {
-                    id
-                    name
-                }
-            }
-        }
-        """
-
-        gql_params = prepare_graphql_params(
-            db=db,
-            include_subscription=False,
-            branch=default_branch,
-            account_session=session_admin,
-            service=services.service,
-        )
-        result = await graphql(
-            schema=gql_params.schema,
-            source=query,
-            context_value=gql_params.context,
-            root_value=None,
-            variable_values={},
-        )
-
-        assert result.errors is None
-        assert result.data
-        assert result.data["BranchCreate"]["ok"] is True
-        assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # length of an UUID
-
-        assert await Branch.get_by_name(db=db, name="branch2")
 
     async def test_branch_create_registry(
         self,

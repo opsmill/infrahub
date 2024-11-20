@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import traceback
 from typing import TYPE_CHECKING
 
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
@@ -65,34 +64,24 @@ class BranchCreate(Mutation):
         background_execution: bool = False,
         wait_until_completion: bool = True,
     ) -> Self:
-        try:
-            context: GraphqlContext = info.context
-            task: dict | None = None
+        context: GraphqlContext = info.context
+        task: dict | None = None
 
-            print(
-                f"in mutate and {context.active_service._client=} and {id(context.active_service._client)=} and {id(context.active_service)=}"
+        model = BranchCreateModel(**data)
+
+        if background_execution or not wait_until_completion:
+            workflow = await context.active_service.workflow.submit_workflow(
+                workflow=BRANCH_CREATE, parameters={"model": model}
             )
+            task = {"id": workflow.id}
+            return cls(ok=True, task=task)
 
-            model = BranchCreateModel(**data)
+        await context.active_service.workflow.execute_workflow(workflow=BRANCH_CREATE, parameters={"model": model})
 
-            if background_execution or not wait_until_completion:
-                workflow = await context.active_service.workflow.submit_workflow(
-                    workflow=BRANCH_CREATE, parameters={"model": model}
-                )
-                task = {"id": workflow.id}
-                return cls(ok=True, task=task)
-
-            await context.active_service.workflow.execute_workflow(workflow=BRANCH_CREATE, parameters={"model": model})
-
-            # Retrieve created branch
-            obj = await Branch.get_by_name(db=context.db, name=model.name)
-            fields = await extract_fields(info.field_nodes[0].selection_set)
-            return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=True, task=task)
-
-        except Exception as e:
-            stack_trace = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-            print(stack_trace)
-            raise ValueError(e) from e
+        # Retrieve created branch
+        obj = await Branch.get_by_name(db=context.db, name=model.name)
+        fields = await extract_fields(info.field_nodes[0].selection_set)
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=True, task=task)
 
 
 class BranchNameInput(InputObjectType):
