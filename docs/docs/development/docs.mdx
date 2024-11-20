@@ -1,34 +1,72 @@
 ---
 title: Documentation guide
 ---
+import ReferenceLink from "../../src/components/Card";
+import SnippetBaseReqs from "../snippets/pre-reqs-base.mdx"
+import SnippetFrontendReqs from "../snippets/pre-reqs-frontend.mdx"
 
 # Documentation guide
 
 Welcome to the Infrahub documentation guide. This document aims to answer any questions that may come up when creating or updating documentation.
 
+## Base prerequisites
+
+<SnippetBaseReqs />
+
+## Frontend prerequisites
+
+<SnippetFrontendReqs />
+
 ## Working with the docs site locally
 
-The recommended way to run and build the docs locally is with Infrahub's suite of `invoke`-driven tasks. To run the commands, you should:
+The recommended way to run and build the docs locally is with Infrahub's suite of `invoke`-driven tasks.
 
-1. Install [`python`](https://www.python.org/).
-2. Install [`invoke`](https://www.pyinvoke.org/).
-3. Install [`poetry`](https://python-poetry.org/).
-4. Run `poetry install` from the Infrahub project directory.
-5. Install [Node.js (and npm)](https://nodejs.org/en).
+Use the Invoke tasks to build the documentation and generate source code derived documentation.
 
-Once these requirements are met, you'll have access to the doc task list.
+```shell
+invoke docs.build docs.generate
+```
+
+Once the documentation has been built, make sure to validate the documentation.
+
+```shell
+invoke docs.validate
+```
+
+After the documentation has been validated, it can be served locally on port **3000**.
+
+```shell
+invoke docs.serve
+```
+
+<ReferenceLink title="Explore the local documentation" url="http://localhost:3000/" openInNewTab />
+
+To see more documentation Invoke tasks use the help functionality.
 
 ```shell
 invoke -l docs
 ```
 
-The primary commands are as follows:
+```shell
+Available 'docs' tasks:
 
-- `invoke docs.install`: Install the documentation dependencies via `npm`.
-- `invoke docs.build`: Build the documentation website.
-- `invoke docs.generate`: Generate source-derived documentation pages (such as the schema and Jinja templates).
-- `invoke docs.serve`: Run a local development server for the documentation website.
-- `invoke docs.validate`: Validate that the generated documentation has been committed to git.
+  .build                   Build documentation website.
+  .format                  This will run all formatter.
+  .format-markdownlint     Run markdownlint-cli2 to format all .md/mdx files.
+  .generate                Generate all documentation output from code.
+  .generate-bus-events     Generate documentation for the Bus events.
+  .generate-infrahub-cli   Generate documentation for the infrahub cli.
+  .generate-infrahubctl    Generate documentation for the infrahubctl cli.
+  .generate-python-sdk     Generate documentation for the Python SDK.
+  .generate-repository     Generate documentation for the repository configuration file.
+  .generate-schema         Generate documentation for the schema.
+  .install                 Install documentation dependencies.
+  .lint                    This will run all linter.
+  .markdownlint
+  .serve                   Run documentation server in development mode.
+  .vale                    Run vale to validate the documentation.
+  .validate                Validate that the generated documentation is committed to Git.
+```
 
 ## Linting and automation
 
@@ -38,9 +76,12 @@ Infrahub uses [Vale](https://vale.sh) to check grammar, style, and word usage. Y
 
 Most Vale warnings match up with the [style guide](#style-guide) explanations below. Other warnings often fall into the `Infrahub.spelling` rule. These are caused by misspellings, product names, names of people, or otherwise unknown technical terms. See the [procedures for updating rules](#spelling-errors) below for details on adding terms to the approved list.
 
-### Install linters locally
+### Install vscode linting extensions
 
-The preferred way to work on the documentation with Vale and markdownlint is directly in an editor. Install the [Vale](https://marketplace.visualstudio.com/items?itemName=chrischinchilla.vale-vscode) and [markdownlint](https://marketplace.visualstudio.com/items?itemName=DavidAnson.vscode-markdownlint) VS Code plugins to enable in-editor warnings.
+It is preferred to install extensions into VSCode so that you can see the visual errors and fix them as you write documentation.
+
+- [Vale](https://marketplace.visualstudio.com/items?itemName=chrischinchilla.vale-vscode)
+- [markdownlint](https://marketplace.visualstudio.com/items?itemName=DavidAnson.vscode-markdownlint)
 
 ### Disabling Vale and markdownlint
 
@@ -91,26 +132,42 @@ When writing documentation, it's essential to guide the reader's attention to sp
 - **Info:** Use info blocks for additional, helpful information that isn't required to complete the task but offers more context or useful tips.
 
   ```markdown
-  > **Info**: This feature is available in version 2.1 and later.
+  :::info
   ```
+
+  **Example**
+  :::info This feature is available in version 2.1 and later.
+  :::
 
 - **Success:** Use success blocks to highlight expected outcomes and "status checks" to ensure the reader is on track with the guide. These blocks can reinforce the reader's progress and provide positive feedback.
 
   ```markdown
-  > **Success**: If you've followed the steps correctly, your installation should now be complete.
+  :::success
   ```
+
+  **Example**
+  :::success If you've followed the steps correctly, your installation should now be complete.
+  :::
 
 - **Warning:** Warning blocks should be used to highlight common errors or mistakes that may occur during the process. They serve as preventive measures to help the reader avoid potential pitfalls.
 
   ```markdown
-  > **Warning**: Ensure you've backed up your files before proceeding with this step to prevent data loss.
+  :::warning
   ```
+
+  **Example**
+  :::warning Ensure you've backed up your files before proceeding with this step to prevent data loss.
+  :::
 
 - **Danger:** Use danger blocks to highlight irreversible or breaking actions. These notifications are critical for steps that could significantly affect the system or data if mishandled.
 
   ```markdown
-  > **Danger**: This action will permanently delete your data and cannot be undone.
+  :::danger
   ```
+
+  **Example**
+  :::danger This action will permanently delete your data and cannot be undone.
+  :::
 
 Incorporating these blocks into your documentation makes it more interactive and user-friendly, guiding the reader through different stages of their learning or implementation process with visual cues that emphasize the significance of each piece of information.
 
