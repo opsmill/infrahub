@@ -368,7 +368,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def _process_macros(self, db: InfrahubDatabase) -> None:
         schema_branch = registry.schema.get_schema_branch(name=self._branch.name)
         allowed_path_types = (
-            SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+            SchemaElementPathType.ATTR_WITH_PROP
+            | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+            | SchemaElementPathType.REL_ONE_OPTIONAL_ATTR_WITH_PROP
         )
         errors = []
         for macro in self._computed_jinja2_attributes:

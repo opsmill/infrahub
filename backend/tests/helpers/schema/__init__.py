@@ -8,6 +8,7 @@ from infrahub.core.schema import SchemaRoot
 from .car import CAR
 from .child import CHILD
 from .color import COLOR
+from .location import CONTINENT, COUNTRY, LOCATION, SITE
 from .manufacturer import MANUFACTURER
 from .person import PERSON
 from .thing import THING
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
 
 
 CAR_SCHEMA = SchemaRoot(nodes=[CAR, MANUFACTURER, PERSON])
+LOCATION_SCHEMA = SchemaRoot(generics=[LOCATION], nodes=[CONTINENT, COUNTRY, SITE])
 
 
 async def load_schema(
@@ -41,8 +43,13 @@ __all__ = [
     "CAR_SCHEMA",
     "CHILD",
     "COLOR",
+    "CONTINENT",
+    "COUNTRY",
+    "LOCATION",
+    "LOCATION_SCHEMA",
     "MANUFACTURER",
     "PERSON",
+    "SITE",
     "THING",
     "TICKET",
     "TSHIRT",
