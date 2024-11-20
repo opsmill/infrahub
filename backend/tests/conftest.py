@@ -138,12 +138,12 @@ async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema)
 
 
 @pytest.fixture
-def local_storage_dir(tmp_path) -> str:
-    storage_dir = os.path.join(str(tmp_path), "storage")
-    os.mkdir(storage_dir)
+def local_storage_dir(tmp_path: Path) -> Path:
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir()
 
     config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
-    config.SETTINGS.storage.local.path_ = storage_dir
+    config.SETTINGS.storage.local.path_ = str(storage_dir)
 
     return storage_dir
 
@@ -719,9 +719,7 @@ class TestHelper:
     @staticmethod
     def schema_file(file_name: str) -> dict:
         """Return the contents of a schema file as a dictionary"""
-        file_content = Path(os.path.join(TestHelper.get_fixtures_dir(), f"schemas/{file_name}")).read_text(
-            encoding="utf-8"
-        )
+        file_content = (TestHelper.get_fixtures_dir() / "schemas" / file_name).read_text(encoding="utf-8")
 
         return ujson.loads(file_content)
 
