@@ -11,6 +11,15 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [1.0.7](https://github.com/opsmill/infrahub/tree/v1.0.7) - 2024-11-20
+
+### Fixed
+
+- Fix permission issue with Repository management ([#4976](https://github.com/opsmill/infrahub/issues/4976))
+- Fix bug that prevented setting an attribute to NULL as part of a merge ([#4996](https://github.com/opsmill/infrahub/issues/4996))
+- Fix a bug in the query to delete a relationship that could create unnecessary "deleted" edges on the database
+- Fix bug in incremental diff addition for nodes within a hierarchy
+
 ## [1.0.6](https://github.com/opsmill/infrahub/tree/v1.0.6) - 2024-11-18
 
 ### Fixed
