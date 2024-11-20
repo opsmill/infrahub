@@ -17,6 +17,7 @@ export function TaskStatus() {
 
   const { error, loading, data } = useQuery(TASKS_STATUS, {
     variables: { branch: branch?.name },
+    skip: !branch?.name,
     pollInterval: 1000,
   });
 
