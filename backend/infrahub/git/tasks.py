@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from infrahub_sdk import InfrahubClient
+from infrahub_sdk.protocols import CoreRepository
 from prefect import flow, task
 from prefect.automations import AutomationCore
 from prefect.client.orchestration import get_client
@@ -11,7 +12,6 @@ from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
-from infrahub.core.protocols import CoreRepository
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
 from infrahub.message_bus import Meta, messages
@@ -19,10 +19,10 @@ from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_SETUP_PYTHON
 
-from ..log import get_log_data, get_logger
+from ..log import get_log_data
 from ..tasks.artifact import define_artifact
 from ..workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, REQUEST_ARTIFACT_GENERATE
-from ..workflows.utils import add_branch_tag
+from ..workflows.utils import add_branch_tag, add_tags
 from .constants import AUTOMATION_NAME
 from .models import (
     GitDiffNamesOnly,
@@ -37,8 +37,6 @@ from .models import (
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
 
-log = get_logger()
-
 
 @flow(
     name="git-repository-add-read-write",
@@ -46,7 +44,7 @@ log = get_logger()
 )
 async def add_git_repository(model: GitRepositoryAdd) -> None:
     service = services.service
-    await add_branch_tag(model.infrahub_branch_name)
+    await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
         repo = await InfrahubRepository.new(
@@ -82,7 +80,8 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
 )
 async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
     service = services.service
-    await add_branch_tag(model.infrahub_branch_name)
+    await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
+
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
         repo = await InfrahubReadOnlyRepository.new(
             id=model.repository_id,
@@ -108,7 +107,7 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
             await service.send(message=notification)
 
 
-@flow(name="git_repositories_create_branch")
+@flow(name="git_repositories_create_branch", flow_run_name="Create branch in Git Repositories")
 async def create_branch(branch: str, branch_id: str) -> None:
     """Request to the creation of git branches in available repositories."""
     service = services.service
@@ -129,9 +128,11 @@ async def create_branch(branch: str, branch_id: str) -> None:
         pass
 
 
-@flow(name="git_repositories_sync")
+@flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
 async def sync_remote_repositories() -> None:
     service = services.service
+
+    log = get_run_logger()
 
     branches = await service.client.branch.all()
     repositories = await service.client.get_list_repositories(branches=branches, kind=InfrahubKind.REPOSITORY)
@@ -196,7 +197,7 @@ async def sync_remote_repositories() -> None:
                 log.info(exc.message)
 
 
-@task
+@task(name="git-branch-create", task_run_name="Create Branch {branch} in repository {repository_name}")
 async def git_branch_create(
     client: InfrahubClient, branch: str, branch_id: str, repository_id: str, repository_name: str
 ) -> None:
@@ -238,8 +239,8 @@ async def generate_artifact_definition(branch: str) -> None:
 async def generate_artifact(model: RequestArtifactGenerate) -> None:
     service = services.service
 
-    await add_branch_tag(branch_name=model.branch_name)
-
+    await add_tags(branches=[model.branch_name], nodes=[model.repository_id])
+    log = get_run_logger()
     repo = await get_initialized_repo(
         repository_id=model.repository_id,
         name=model.repository_name,
@@ -252,15 +253,10 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
     try:
         result = await repo.render_artifact(artifact=artifact, message=model)
         log.debug(
-            "Generated artifact",
-            name=model.artifact_name,
-            changed=result.changed,
-            checksum=result.checksum,
-            artifact_id=result.artifact_id,
-            storage_id=result.storage_id,
+            f"Generated artifact | changed: {result.changed} | {result.checksum} | {result.storage_id}",
         )
-    except Exception as exc:  # pylint: disable=broad-except
-        log.exception("Failed to generate artifact", error=exc)
+    except Exception:  # pylint: disable=broad-except
+        log.exception("Failed to generate artifact")
         artifact.status.value = "Error"
         await artifact.save()
 
@@ -342,12 +338,12 @@ async def generate_request_artifact_definition(model: RequestArtifactDefinitionG
 @flow(name="git-repository-pull-read-only", flow_run_name="Pull latest commit on {model.repository_name}")
 async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
     service = services.service
+
+    await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
+    log = get_run_logger()
+
     if not model.ref and not model.commit:
-        log.warning(
-            "No commit or ref in GitRepositoryPullReadOnly message",
-            name=model.repository_name,
-            repository_id=model.repository_id,
-        )
+        log.warning("No commit or ref in GitRepositoryPullReadOnly message")
         return
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
         init_failed = False
@@ -388,11 +384,14 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
         await service.send(message=message)
 
 
-@flow(name="git-repository-merge")
+@flow(
+    name="git-repository-merge",
+    flow_run_name="Merge {model.source_branch} > {model.destination_branch} in git repository",
+)
 async def merge_git_repository(model: GitRepositoryMerge) -> None:
     service = services.service
-    await add_branch_tag(branch_name=model.source_branch)
-    await add_branch_tag(branch_name=model.destination_branch)
+
+    await add_tags(branches=[model.source_branch, model.destination_branch], nodes=[model.repository_id])
 
     repo = await InfrahubRepository.init(
         id=model.repository_id,
@@ -431,7 +430,7 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
 
 @flow(name="git-commit-automation-setup", flow_run_name="Setup git commit updated event in task-manager")
 async def setup_commit_automation() -> None:
-    run_log = get_run_logger()
+    log = get_run_logger()
 
     async with get_client(sync_client=False) as client:
         deployments = {
@@ -471,10 +470,10 @@ async def setup_commit_automation() -> None:
 
         if schema_update_automation:
             await client.update_automation(automation_id=schema_update_automation.id, automation=automation)
-            run_log.info(f"{AUTOMATION_NAME} Updated")
+            log.info(f"{AUTOMATION_NAME} Updated")
         else:
             await client.create_automation(automation=automation)
-            run_log.info(f"{AUTOMATION_NAME} Created")
+            log.info(f"{AUTOMATION_NAME} Created")
 
 
 @flow(name="git-repository-import-object", flow_run_name="Import objects from git repository")
