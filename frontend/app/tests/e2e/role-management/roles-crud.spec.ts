@@ -90,6 +90,7 @@ test.describe("Role management - Roles CRUD", () => {
         .click();
       await page.getByTestId("delete-row-button").click();
       await page.getByTestId("modal-delete-confirm").click();
+      await expect(page.getByText("Are you sure you want to remove")).not.toBeVisible();
       await expect(page.getByText("Object test role 2 deleted")).toBeVisible();
     });
 
