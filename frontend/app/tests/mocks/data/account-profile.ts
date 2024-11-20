@@ -87,22 +87,6 @@ export const profileDetailsMocksQuery = gql`
           __typename
         }
       }
-      role {
-        value
-        updated_at
-        is_protected
-        is_visible
-        source {
-          id
-          display_label
-          __typename
-        }
-        owner {
-          id
-          display_label
-          __typename
-        }
-      }
     }
   }
 `;
@@ -177,22 +161,6 @@ query($offset: Int, $limit: Int) {
           }
       }
       account_type {
-          value
-          updated_at
-          is_protected
-          is_visible
-          source {
-            id
-            display_label
-            __typename
-          }
-          owner {
-            id
-            display_label
-            __typename
-          }
-      }
-      role {
           value
           updated_at
           is_protected
