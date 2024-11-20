@@ -150,7 +150,6 @@ class InfrahubLock:
         traceback: Optional[TracebackType],
     ):
         await self.release()
-        self.event.set()
 
     async def acquire(self) -> None:
         with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, self.lock_type).time():
@@ -159,6 +158,7 @@ class InfrahubLock:
             else:
                 await self.local.acquire()
         self.acquire_time = time.time_ns()
+        self.event.clear()
 
     async def release(self) -> None:
         duration_ns = time.time_ns() - self.acquire_time
@@ -167,6 +167,7 @@ class InfrahubLock:
             await self.remote.release()
         else:
             self.local.release()
+        self.event.set()
 
     async def locked(self) -> bool:
         if not self.use_local:
