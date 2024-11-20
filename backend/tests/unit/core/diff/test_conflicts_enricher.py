@@ -5,13 +5,14 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.conflicts_enricher import ConflictsEnricher
-from infrahub.core.diff.model.path import EnrichedDiffConflict, EnrichedDiffRoot
+from infrahub.core.diff.model.path import EnrichedDiffConflict
 from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 from .factories import (
     EnrichedAttributeFactory,
+    EnrichedConflictFactory,
     EnrichedNodeFactory,
     EnrichedPropertyFactory,
     EnrichedRelationshipElementFactory,
@@ -26,18 +27,6 @@ class TestConflictsEnricher:
         self.diff_branch = Branch(name="branch")
         self.from_time = Timestamp("2024-07-28T13:45:22Z")
         self.to_time = Timestamp()
-
-    def _set_conflicts_to_none(self, enriched_diff: EnrichedDiffRoot):
-        for node in enriched_diff.nodes:
-            node.conflict = None
-            for attribute in node.attributes:
-                for attr_prop in attribute.properties:
-                    attr_prop.conflict = None
-            for relationship in node.relationships:
-                for element in relationship.relationships:
-                    element.conflict = None
-                    for element_prop in element.properties:
-                        element_prop.conflict = None
 
     async def __call_system_under_test(self, db: InfrahubDatabase, base_enriched_diff, branch_enriched_diff) -> None:
         conflicts_enricher = ConflictsEnricher()
@@ -55,8 +44,6 @@ class TestConflictsEnricher:
             }
             attribute = EnrichedAttributeFactory.build(properties=properties)
             diff_root.nodes = {EnrichedNodeFactory.build(attributes={attribute}, relationships=set())}
-        self._set_conflicts_to_none(base_root)
-        self._set_conflicts_to_none(branch_root)
 
         await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
 
@@ -84,8 +71,6 @@ class TestConflictsEnricher:
         branch_nodes = {branch_conflict_node, EnrichedNodeFactory.build(relationships=set())}
         base_root = EnrichedRootFactory.build(nodes=base_nodes)
         branch_root = EnrichedRootFactory.build(nodes=branch_nodes)
-        self._set_conflicts_to_none(base_root)
-        self._set_conflicts_to_none(branch_root)
 
         await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
 
@@ -101,6 +86,7 @@ class TestConflictsEnricher:
                     diff_branch_value=None,
                     diff_branch_changed_at=branch_conflict_node.changed_at,
                     selected_branch=None,
+                    resolvable=False,
                 )
             else:
                 assert node.conflict is None
@@ -154,8 +140,6 @@ class TestConflictsEnricher:
             EnrichedNodeFactory.build(relationships=set()),
         }
         branch_root = EnrichedRootFactory.build(nodes=branch_nodes)
-        self._set_conflicts_to_none(base_root)
-        self._set_conflicts_to_none(branch_root)
 
         await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
 
@@ -249,8 +233,6 @@ class TestConflictsEnricher:
             EnrichedNodeFactory.build(relationships=set()),
         }
         branch_root = EnrichedRootFactory.build(nodes=branch_nodes, diff_branch_name=branch.name)
-        self._set_conflicts_to_none(base_root)
-        self._set_conflicts_to_none(branch_root)
 
         await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
 
@@ -373,8 +355,6 @@ class TestConflictsEnricher:
             EnrichedNodeFactory.build(),
         }
         branch_root = EnrichedRootFactory.build(nodes=branch_nodes, diff_branch_name=branch.name)
-        self._set_conflicts_to_none(base_root)
-        self._set_conflicts_to_none(branch_root)
 
         await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
 
@@ -423,3 +403,257 @@ class TestConflictsEnricher:
                             )
                         else:
                             assert element_prop.conflict is None
+
+    async def test_manually_fixed_attribute_property_conflict_cleared(self, db: InfrahubDatabase):
+        attribute_name = "smell"
+        node_uuid = str(uuid4())
+        node_kind = "SomethingSmelly"
+        base_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_VALUE, action=DiffAction.UPDATED, new_value="potato salad"
+        )
+        base_properties = {
+            base_property,
+            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_SOURCE),
+        }
+        base_attributes = {
+            EnrichedAttributeFactory.build(),
+            EnrichedAttributeFactory.build(properties=base_properties, name=attribute_name),
+        }
+        base_nodes = {
+            EnrichedNodeFactory.build(
+                uuid=node_uuid,
+                kind=node_kind,
+                action=DiffAction.UPDATED,
+                attributes=base_attributes,
+                relationships=set(),
+            ),
+            EnrichedNodeFactory.build(relationships=set()),
+        }
+        base_root = EnrichedRootFactory.build(nodes=base_nodes)
+        branch_conflict_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_OWNER,
+            action=DiffAction.UPDATED,
+            new_value="ham sandwich",
+            conflict=EnrichedConflictFactory.build(),
+        )
+        branch_properties = {
+            branch_conflict_property,
+            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),
+        }
+        branch_attributes = {
+            EnrichedAttributeFactory.build(),
+            EnrichedAttributeFactory.build(properties=branch_properties, name=attribute_name),
+        }
+        branch_nodes = {
+            EnrichedNodeFactory.build(
+                uuid=node_uuid,
+                kind=node_kind,
+                action=DiffAction.UPDATED,
+                attributes=branch_attributes,
+                relationships=set(),
+            ),
+            EnrichedNodeFactory.build(relationships=set()),
+        }
+        branch_root = EnrichedRootFactory.build(nodes=branch_nodes)
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        for node in branch_root.nodes:
+            assert node.conflict is None
+            for attribute in node.attributes:
+                for prop in attribute.properties:
+                    assert prop.conflict is None
+
+    async def test_manually_fixed_cardinality_one_conflict_cleared(self, db: InfrahubDatabase, car_person_schema):
+        branch = await create_branch(db=db, branch_name="branch")
+        property_type = DatabaseEdgeType.IS_RELATED
+        relationship_name = "owner"
+        node_uuid = str(uuid4())
+        node_kind = "TestCar"
+        previous_peer_id = str(uuid4())
+        new_base_peer_id = str(uuid4())
+        base_properties = {
+            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),
+        }
+        base_relationships = {
+            EnrichedRelationshipGroupFactory.build(
+                name=relationship_name,
+                relationships={
+                    EnrichedRelationshipElementFactory.build(
+                        peer_id=new_base_peer_id, properties=base_properties, action=DiffAction.UPDATED
+                    )
+                },
+                cardinality=RelationshipCardinality.ONE,
+            )
+        }
+        base_nodes = {
+            EnrichedNodeFactory.build(
+                uuid=node_uuid,
+                kind=node_kind,
+                action=DiffAction.UPDATED,
+                relationships=base_relationships,
+            ),
+            EnrichedNodeFactory.build(relationships=set()),
+        }
+        base_root = EnrichedRootFactory.build(nodes=base_nodes)
+        branch_conflict_property = EnrichedPropertyFactory.build(
+            property_type=property_type,
+            previous_value=previous_peer_id,
+            new_value=None,
+            action=DiffAction.REMOVED,
+            conflict=EnrichedConflictFactory.build(),
+        )
+        branch_properties = {
+            branch_conflict_property,
+            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_OWNER),
+        }
+        branch_relationships = {
+            EnrichedRelationshipGroupFactory.build(
+                name=relationship_name,
+                relationships={
+                    EnrichedRelationshipElementFactory.build(
+                        peer_id=previous_peer_id, properties=branch_properties, action=DiffAction.REMOVED
+                    )
+                },
+                cardinality=RelationshipCardinality.ONE,
+            )
+        }
+        branch_nodes = {
+            EnrichedNodeFactory.build(
+                uuid=node_uuid,
+                kind=node_kind,
+                action=DiffAction.UPDATED,
+                relationships=branch_relationships,
+            ),
+            EnrichedNodeFactory.build(relationships=set()),
+        }
+        branch_root = EnrichedRootFactory.build(nodes=branch_nodes, diff_branch_name=branch.name)
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        for node in branch_root.nodes:
+            assert node.conflict is None
+            for attribute in node.attributes:
+                for prop in attribute.properties:
+                    assert prop.conflict is None
+            for rel in node.relationships:
+                for rel_element in rel.relationships:
+                    assert rel_element.conflict is None
+
+    async def test_manually_fixed_cardinality_many_conflicts_cleared(self, db: InfrahubDatabase, car_person_schema):
+        branch = await create_branch(db=db, branch_name="branch")
+        peer_id_1 = str(uuid4())
+        peer_id_2 = str(uuid4())
+        conflict_property_type_1 = DatabaseEdgeType.HAS_SOURCE
+        conflict_property_type_2 = DatabaseEdgeType.HAS_OWNER
+        previous_property_value_1 = str(uuid4())
+        branch_property_value_1 = str(uuid4())
+        previous_property_value_2 = str(uuid4())
+        branch_property_value_2 = str(uuid4())
+        relationship_name = "cars"
+        node_uuid = str(uuid4())
+        node_kind = "TestPerson"
+        base_properties_1 = {
+            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_VISIBLE),
+        }
+        base_properties_2 = {
+            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_PROTECTED),
+        }
+        base_relationships = {
+            EnrichedRelationshipGroupFactory.build(
+                name=relationship_name,
+                relationships={
+                    EnrichedRelationshipElementFactory.build(peer_id=peer_id_1, properties=base_properties_1),
+                    EnrichedRelationshipElementFactory.build(peer_id=peer_id_2, properties=base_properties_2),
+                },
+                cardinality=RelationshipCardinality.MANY,
+            )
+        }
+        base_nodes = {
+            EnrichedNodeFactory.build(
+                uuid=node_uuid,
+                kind=node_kind,
+                action=DiffAction.UPDATED,
+                relationships=base_relationships,
+            ),
+            EnrichedNodeFactory.build(),
+        }
+        base_root = EnrichedRootFactory.build(nodes=base_nodes)
+        branch_conflict_property_1 = EnrichedPropertyFactory.build(
+            property_type=conflict_property_type_1,
+            previous_value=previous_property_value_1,
+            new_value=branch_property_value_1,
+            action=DiffAction.UPDATED,
+            conflict=EnrichedConflictFactory.build(),
+        )
+        branch_properties_1 = {
+            branch_conflict_property_1,
+            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.IS_PART_OF),
+        }
+        branch_conflict_property_2 = EnrichedPropertyFactory.build(
+            property_type=conflict_property_type_2,
+            previous_value=previous_property_value_2,
+            new_value=branch_property_value_2,
+            action=DiffAction.REMOVED,
+            conflict=EnrichedConflictFactory.build(),
+        )
+        branch_properties_2 = {
+            branch_conflict_property_2,
+            EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_ATTRIBUTE),
+        }
+        branch_relationships = {
+            EnrichedRelationshipGroupFactory.build(
+                name=relationship_name,
+                relationships={
+                    EnrichedRelationshipElementFactory.build(peer_id=peer_id_1, properties=branch_properties_1),
+                    EnrichedRelationshipElementFactory.build(peer_id=peer_id_2, properties=branch_properties_2),
+                },
+                cardinality=RelationshipCardinality.MANY,
+            )
+        }
+        branch_nodes = {
+            EnrichedNodeFactory.build(
+                uuid=node_uuid,
+                kind=node_kind,
+                action=DiffAction.UPDATED,
+                relationships=branch_relationships,
+            ),
+            EnrichedNodeFactory.build(),
+        }
+        branch_root = EnrichedRootFactory.build(nodes=branch_nodes, diff_branch_name=branch.name)
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        for node in branch_root.nodes:
+            assert node.conflict is None
+            for attribute in node.attributes:
+                for attr_prop in attribute.properties:
+                    assert attr_prop.conflict is None
+            for relationship in node.relationships:
+                for element in relationship.relationships:
+                    assert element.conflict is None
+                    for element_prop in element.properties:
+                        assert element_prop.conflict is None
+
+    async def test_manually_fixed_node_conflict_cleared(self, db: InfrahubDatabase):
+        node_uuid = str(uuid4())
+        node_kind = "SomethingSmelly"
+        base_node = EnrichedNodeFactory.build(
+            uuid=str(uuid4()), kind=node_kind, action=DiffAction.UPDATED, relationships=set()
+        )
+        base_nodes = {base_node, EnrichedNodeFactory.build(relationships=set())}
+        branch_conflict_node = EnrichedNodeFactory.build(
+            uuid=node_uuid,
+            kind=node_kind,
+            action=DiffAction.REMOVED,
+            relationships=set(),
+            conflict=EnrichedConflictFactory.build(),
+        )
+        branch_nodes = {branch_conflict_node, EnrichedNodeFactory.build(relationships=set())}
+        base_root = EnrichedRootFactory.build(nodes=base_nodes)
+        branch_root = EnrichedRootFactory.build(nodes=branch_nodes)
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        for node in branch_root.nodes:
+            assert node.conflict is None

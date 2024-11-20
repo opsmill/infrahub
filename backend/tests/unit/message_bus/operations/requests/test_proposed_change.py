@@ -13,14 +13,19 @@ from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.messages import RequestProposedChangeSchemaIntegrity
-from infrahub.message_bus.operations.requests import proposed_change
 from infrahub.message_bus.types import ProposedChangeBranchDiff
+from infrahub.proposed_change.models import RequestProposedChangeSchemaIntegrity
+from infrahub.proposed_change.tasks import (
+    _get_proposed_change_schema_integrity_constraints,
+    run_proposed_change_schema_integrity_check,
+)
 from infrahub.services import InfrahubServices
+from tests.conftest import TestHelper
+from tests.helpers.utils import init_global_service
 
 
 @pytest.fixture
-def service_all(db: InfrahubDatabase, helper):
+def service_all(db: InfrahubDatabase, helper: TestHelper) -> InfrahubServices:
     config = Config(address="http://mock", insert_tracker=True)
     client = InfrahubClient(config=config)
     bus_simulator = helper.get_message_bus_simulator()
@@ -35,7 +40,7 @@ DST_BRANCH_A = "main"
 
 
 @pytest.fixture
-async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
+async def mock_schema_query_02(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = Path(os.path.join(helper.get_fixtures_dir(), "schemas", "schema_02.json")).read_text(
         encoding="UTF-8"
     )
@@ -104,28 +109,25 @@ async def branch2(db: InfrahubDatabase):
 @pytest.fixture
 async def schema_integrity_01(
     db: InfrahubDatabase, default_branch, register_core_models_schema, branch_diff_01: ProposedChangeBranchDiff
-):
+) -> RequestProposedChangeSchemaIntegrity:
     obj = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE, branch=default_branch)
     await obj.new(db=db, name="pc1", source_branch=SOURCE_BRANCH_A, destination_branch="main")
     await obj.save(db=db)
 
-    message = RequestProposedChangeSchemaIntegrity(
+    return RequestProposedChangeSchemaIntegrity(
         proposed_change=obj.id,
         source_branch=SOURCE_BRANCH_A,
         source_branch_sync_with_git=False,
         destination_branch="main",
         branch_diff=branch_diff_01,
     )
-    return message
 
 
 async def test_get_proposed_change_schema_integrity_constraints(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, schema_integrity_01
 ):
     schema = registry.schema.get_schema_branch(name=default_branch.name)
-    constraints = await proposed_change._get_proposed_change_schema_integrity_constraints(
-        message=schema_integrity_01, schema=schema
-    )
+    constraints = await _get_proposed_change_schema_integrity_constraints(model=schema_integrity_01, schema=schema)
     non_generate_profile_constraints = [c for c in constraints if c.constraint_name != "node.generate_profile.update"]
     # should be updated/removed when ConstraintValidatorDeterminer is updated (#2592)
     assert len(constraints) == 181
@@ -274,34 +276,35 @@ async def test_schema_integrity(
     car_volt_main: Node,
     person_john_main,
 ):
-    branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
+    with init_global_service(service_all):
+        branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
 
-    person = await Node.init(db=db, schema="TestPerson", branch=branch2)
-    await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
-    await person.save(db=db)
+        person = await Node.init(db=db, schema="TestPerson", branch=branch2)
+        await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
+        await person.save(db=db)
 
-    branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
-    person_schema = branch2_schema.get(name="TestPerson")
-    name_attr = person_schema.get_attribute(name="name")
-    name_attr.regex = r"^[A-Z]+$"
-    branch2_schema.set(name="TestPerson", schema=person_schema)
+        branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
+        person_schema = branch2_schema.get(name="TestPerson")
+        name_attr = person_schema.get_attribute(name="name")
+        name_attr.regex = r"^[A-Z]+$"
+        branch2_schema.set(name="TestPerson", schema=person_schema)
 
-    await proposed_change.schema_integrity.fn(message=schema_integrity_01, service=service_all)
+        await run_proposed_change_schema_integrity_check(model=schema_integrity_01)
 
-    checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
-    assert len(checks) == 1
-    check = checks[0]
-    assert check.conclusion.value.value == "failure"
+        checks = await registry.manager.query(db=db, schema=InfrahubKind.SCHEMACHECK)
+        assert len(checks) == 1
+        check = checks[0]
+        assert check.conclusion.value.value == "failure"
 
-    assert check.conflicts.value == [
-        {
-            "branch": "placeholder",
-            "id": person_john_main.id,
-            "kind": "TestPerson",
-            "name": "schema/TestPerson/name/regex",
-            "path": "schema/TestPerson/name/regex",
-            "type": "attribute.regex.update",
-            # ruff: noqa: E501
-            "value": f"Node (TestPerson: {person_john_main.id}) is not compatible with the constraint 'attribute.regex.update' at 'schema/TestPerson/name/regex'",
-        }
-    ]
+        assert check.conflicts.value == [
+            {
+                "branch": "placeholder",
+                "id": person_john_main.id,
+                "kind": "TestPerson",
+                "name": "schema/TestPerson/name/regex",
+                "path": "schema/TestPerson/name/regex",
+                "type": "attribute.regex.update",
+                # ruff: noqa: E501
+                "value": f"Node (TestPerson: {person_john_main.id}) is not compatible with the constraint 'attribute.regex.update' at 'schema/TestPerson/name/regex'",
+            }
+        ]

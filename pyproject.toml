@@ -78,10 +78,6 @@ pylint = "~3.1"
 mypy = "*"
 ipython = "~8"
 pytest-asyncio = "^0.21.1"
-pytest-httpx = [
-    { version = "~0.21", python = "<3.9" },
-    { version = ">=0.30", python = ">=3.9" },
-]
 pytest-clarity = "~1.0"
 pytest-cov = "~4.1"
 pytest-xdist = "~3.4"
@@ -108,6 +104,7 @@ pandas = "^2.2.3"
 # docker = "^7.0.0"
 # matplotlib = "^3.8"
 # pandas = "^2.2"
+pytest-httpx = ">=0.30"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
@@ -393,30 +390,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations.schema.validator"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.test_data.dataset03"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.test_data.dataset04"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.test_data.gen_connected_nodes"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.test_data.gen_isolated_node"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.test_data.gen_node_profile_node"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.test_data.shared"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

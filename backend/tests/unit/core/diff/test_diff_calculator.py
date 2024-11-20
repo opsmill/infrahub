@@ -32,7 +32,11 @@ async def test_diff_attribute_branch_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     main_root_path = calculated_diffs.base_branch_diff
@@ -86,7 +90,11 @@ async def test_attribute_property_main_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=default_branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=default_branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -129,7 +137,11 @@ async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: B
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -166,7 +178,11 @@ async def test_node_delete(db: InfrahubDatabase, default_branch: Branch, car_acc
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -232,7 +248,11 @@ async def test_node_base_delete_branch_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -275,7 +295,11 @@ async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -317,7 +341,11 @@ async def test_attribute_property_multiple_branch_updates(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -364,7 +392,11 @@ async def test_relationship_one_peer_branch_and_main_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     # check branch
@@ -575,7 +607,11 @@ async def test_relationship_one_property_branch_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     branch_root_path = calculated_diffs.diff_branch_diff
@@ -727,7 +763,11 @@ async def test_add_node_branch(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -809,7 +849,11 @@ async def test_many_relationship_property_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -883,7 +927,11 @@ async def test_cardinality_one_peer_conflicting_updates(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     # check branch
@@ -1107,7 +1155,11 @@ async def test_relationship_property_owner_conflicting_updates(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     # check branch
@@ -1231,7 +1283,11 @@ async def test_agnostic_source_relationship_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1280,7 +1336,11 @@ async def test_agnostic_owner_relationship_added(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1365,7 +1425,11 @@ async def test_update_attribute_under_agnostic_node(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1423,6 +1487,7 @@ async def test_diff_attribute_branch_update_with_previous_base_update_ignored(
         from_time=from_time,
         to_time=Timestamp(),
         previous_node_specifiers={NodeFieldSpecifier(node_uuid=alfred_main.id, field_name="name")},
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1475,6 +1540,7 @@ async def test_diff_attribute_branch_update_with_concurrent_base_update_captured
         from_time=from_time,
         to_time=Timestamp(),
         previous_node_specifiers={NodeFieldSpecifier(node_uuid=alfred_main.id, field_name="name")},
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1541,6 +1607,7 @@ async def test_diff_attribute_branch_update_with_previous_base_update_captured(
         diff_branch=branch,
         from_time=from_time,
         to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1611,12 +1678,14 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
             NodeFieldSpecifier(node_uuid=car_accord_main.id, field_name="color"),
             NodeFieldSpecifier(node_uuid=person_alfred_main.id, field_name="name"),
         },
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
     assert base_root_path.branch == default_branch.name
-    assert len(base_root_path.nodes) == 1
     nodes_by_id = {n.uuid: n for n in base_root_path.nodes}
+    assert set(nodes_by_id.keys()) == {car_accord_main.id}
+    # car on main
     node_diff = nodes_by_id[car_accord_main.id]
     assert node_diff.uuid == car_accord_main.id
     assert node_diff.kind == "TestCar"
@@ -1632,6 +1701,7 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     assert property_diff.new_value == "BLURPLE"
     assert property_diff.action is DiffAction.UPDATED
     assert base_before_change < property_diff.changed_at < base_after_change
+
     branch_root_path = calculated_diffs.diff_branch_diff
     assert branch_root_path.branch == branch.name
     assert len(branch_root_path.nodes) == 1
@@ -1667,7 +1737,11 @@ async def test_branch_node_delete_with_base_updates(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_root_path = calculated_diffs.base_branch_diff
@@ -1744,11 +1818,11 @@ async def test_branch_node_delete_with_base_updates(
         assert diff_prop.previous_value == previous_value
         assert diff_prop.new_value is None
     attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
-    assert len(attributes_by_name) == 1
+    assert set(attributes_by_name.keys()) == {"color"}
     attribute_diff = attributes_by_name["color"]
     assert attribute_diff.action is DiffAction.UPDATED
     properties_by_type = {prop.property_type: prop for prop in attribute_diff.properties}
-    assert len(properties_by_type) == 1
+    assert set(properties_by_type.keys()) == {DatabaseEdgeType.HAS_VALUE}
     diff_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
     assert diff_property.action is DiffAction.UPDATED
     assert diff_property.previous_value == "#444444"
@@ -1833,7 +1907,11 @@ async def test_branch_relationship_delete_with_property_update(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     base_diff = calculated_diffs.base_branch_diff
@@ -1854,17 +1932,20 @@ async def test_branch_relationship_delete_with_property_update(
     rel_element_diff = rel_elements_by_peer_id[persons[0].id]
     assert rel_element_diff.action is DiffAction.UPDATED
     prop_diff_by_type = {p.property_type: p for p in rel_element_diff.properties}
-    assert set(prop_diff_by_type.keys()) == {DatabaseEdgeType.IS_RELATED, DatabaseEdgeType.IS_VISIBLE}
+    assert set(prop_diff_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+    }
     visible_prop = prop_diff_by_type[DatabaseEdgeType.IS_VISIBLE]
     assert visible_prop.action is DiffAction.UPDATED
     assert visible_prop.new_value is False
     assert visible_prop.previous_value is True
     assert before_main_change < visible_prop.changed_at < after_main_change
-    related_prop = prop_diff_by_type[DatabaseEdgeType.IS_RELATED]
-    assert related_prop.action is DiffAction.UNCHANGED
-    assert related_prop.new_value == persons[0].id
-    assert related_prop.previous_value == persons[0].id
-    assert related_prop.changed_at < from_time
+    diff_prop = prop_diff_by_type[DatabaseEdgeType.IS_RELATED]
+    assert diff_prop.action is DiffAction.UNCHANGED
+    assert diff_prop.new_value == persons[0].id
+    assert diff_prop.previous_value == persons[0].id
+    assert diff_prop.changed_at < from_time
 
     branch_diff = calculated_diffs.diff_branch_diff
     assert branch_diff.branch == branch.name
@@ -1932,7 +2013,11 @@ async def test_node_deleted_on_both(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     for diff_root in (calculated_diffs.base_branch_diff, calculated_diffs.diff_branch_diff):
@@ -1977,7 +2062,11 @@ async def test_relationship_updated_then_node_deleted(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     branch_diff_root = calculated_diffs.diff_branch_diff
@@ -2150,7 +2239,11 @@ async def test_node_added_and_deleted_on_branch(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     branch_diff_root = calculated_diffs.diff_branch_diff
@@ -2179,7 +2272,11 @@ async def test_property_update_then_relationship_deleted(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     branch_diff_root = calculated_diffs.diff_branch_diff
@@ -2316,7 +2413,11 @@ async def test_hierarchy_with_same_kind_parent_and_child(
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
-        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
     )
 
     branch_root_path = calculated_diffs.diff_branch_diff
@@ -2427,3 +2528,93 @@ async def test_hierarchy_with_same_kind_parent_and_child(
         assert diff_prop.action is DiffAction.ADDED
         assert diff_prop.previous_value is None
         assert diff_prop.new_value == new_value
+
+
+async def test_diff_unchanged_included_when_not_first_diff(
+    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    alfred_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_alfred_main.id)
+    alfred_main.name.value = "Big Alfred"
+    await alfred_main.save(db=db)
+    from_time = Timestamp()
+    car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    car_main.color.value = "BLURPLE"
+    base_before_change = Timestamp()
+    await car_main.save(db=db)
+    base_after_change = Timestamp()
+    alfred_branch = await NodeManager.get_one(db=db, branch=branch, id=person_alfred_main.id)
+    alfred_branch.name.value = "Little Alfred"
+    branch_before_change = Timestamp()
+    await alfred_branch.save(db=db)
+    branch_after_change = Timestamp()
+    alfred_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_alfred_main.id)
+    alfred_main.name.value = "Alfred"
+    await alfred_main.save(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        previous_node_specifiers={
+            NodeFieldSpecifier(node_uuid=car_accord_main.id, field_name="color"),
+            NodeFieldSpecifier(node_uuid=person_alfred_main.id, field_name="name"),
+        },
+        include_unchanged=True,
+    )
+
+    base_root_path = calculated_diffs.base_branch_diff
+    assert base_root_path.branch == default_branch.name
+    assert len(base_root_path.nodes) == 2
+    nodes_by_id = {n.uuid: n for n in base_root_path.nodes}
+    # car on main
+    node_diff = nodes_by_id[car_accord_main.id]
+    assert node_diff.kind == "TestCar"
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 1
+    attribute_diff = node_diff.attributes[0]
+    assert attribute_diff.name == "color"
+    assert attribute_diff.action is DiffAction.UPDATED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == "#444444"
+    assert property_diff.new_value == "BLURPLE"
+    assert property_diff.action is DiffAction.UPDATED
+    assert base_before_change < property_diff.changed_at < base_after_change
+    # person on main
+    node_diff = nodes_by_id[person_alfred_main.id]
+    assert node_diff.kind == "TestPerson"
+    assert node_diff.action is DiffAction.UNCHANGED
+    assert len(node_diff.attributes) == 1
+    attribute_diff = node_diff.attributes[0]
+    assert attribute_diff.name == "name"
+    assert attribute_diff.action is DiffAction.UNCHANGED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == "Alfred"
+    assert property_diff.new_value == "Alfred"
+    assert property_diff.action is DiffAction.UNCHANGED
+
+    branch_root_path = calculated_diffs.diff_branch_diff
+    assert branch_root_path.branch == branch.name
+    assert len(branch_root_path.nodes) == 1
+    # person on branch
+    node_diff = branch_root_path.nodes[0]
+    assert node_diff.kind == "TestPerson"
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 1
+    attribute_diff = node_diff.attributes[0]
+    assert attribute_diff.name == "name"
+    assert attribute_diff.action is DiffAction.UPDATED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == "Alfred"
+    assert property_diff.new_value == "Little Alfred"
+    assert property_diff.action is DiffAction.UPDATED
+    assert branch_before_change < property_diff.changed_at < branch_after_change

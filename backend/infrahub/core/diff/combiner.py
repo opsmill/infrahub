@@ -85,6 +85,11 @@ class DiffCombiner:
             filtered_node_pairs.append(NodePair(later=later_node))
         return filtered_node_pairs
 
+    def _get_parent_relationship_name(self, node_id: str) -> str | None:
+        if node_id not in self._child_parent_uuid_map:
+            return None
+        return self._child_parent_uuid_map[node_id][1]
+
     def _should_include(self, earlier: DiffAction, later: DiffAction) -> bool:
         actions = {earlier, later}
         if actions == {DiffAction.UNCHANGED}:
@@ -145,16 +150,9 @@ class DiffCombiner:
             later_property = later_props_by_type[earlier_property.property_type]
             if not self._should_include(earlier=earlier_property.action, later=later_property.action):
                 continue
+            if earlier_property.previous_value == later_property.new_value:
+                continue
             combined_conflict = self.combine_conflicts(earlier=earlier_property.conflict, later=later_property.conflict)
-            combined_properties.add(
-                replace(
-                    later_property,
-                    previous_label=earlier_property.previous_label,
-                    previous_value=earlier_property.previous_value,
-                    action=self._combine_actions(earlier=earlier_property.action, later=later_property.action),
-                    conflict=combined_conflict,
-                )
-            )
             combined_properties.add(
                 replace(
                     later_property,
@@ -184,16 +182,20 @@ class DiffCombiner:
             if not self._should_include(earlier=earlier_attribute.action, later=later_attribute.action):
                 continue
             combined_action = self._combine_actions(earlier=earlier_attribute.action, later=later_attribute.action)
-            combined_attribute = EnrichedDiffAttribute(
-                name=later_attribute.name,
-                changed_at=later_attribute.changed_at,
-                action=combined_action,
-                path_identifier=later_attribute.path_identifier,
-                properties=self._combine_properties(
-                    earlier_properties=earlier_attribute.properties, later_properties=later_attribute.properties
-                ),
+            combined_properties = self._combine_properties(
+                earlier_properties=earlier_attribute.properties, later_properties=later_attribute.properties
             )
-            combined_attributes.add(combined_attribute)
+            if combined_properties:
+                combined_attribute = EnrichedDiffAttribute(
+                    name=later_attribute.name,
+                    changed_at=later_attribute.changed_at,
+                    action=combined_action,
+                    path_identifier=later_attribute.path_identifier,
+                    properties=self._combine_properties(
+                        earlier_properties=earlier_attribute.properties, later_properties=later_attribute.properties
+                    ),
+                )
+                combined_attributes.add(combined_attribute)
         combined_attributes |= {
             deepcopy(attribute) for attribute in later_attributes if attribute.name not in common_attr_names
         }
@@ -271,6 +273,7 @@ class DiffCombiner:
         self,
         earlier_relationships: set[EnrichedDiffRelationship],
         later_relationships: set[EnrichedDiffRelationship],
+        node_id: str,
     ) -> set[EnrichedDiffRelationship]:
         earlier_rels_by_name = {rel.name: rel for rel in earlier_relationships}
         later_rels_by_name = {rel.name: rel for rel in later_relationships}
@@ -295,17 +298,21 @@ class DiffCombiner:
                 combined_relationship_elements = self._combined_cardinality_many_relationship_elements(
                     earlier_elements=earlier_relationship.relationships, later_elements=later_relationship.relationships
                 )
-            combined_relationship = EnrichedDiffRelationship(
-                name=later_relationship.name,
-                label=later_relationship.label,
-                cardinality=later_relationship.cardinality,
-                changed_at=later_relationship.changed_at or earlier_relationship.changed_at,
-                action=self._combine_actions(earlier=earlier_relationship.action, later=later_relationship.action),
-                path_identifier=later_relationship.path_identifier,
-                relationships=combined_relationship_elements,
-                nodes=set(),
-            )
-            combined_relationships.add(combined_relationship)
+            combined_relationship_elements = {cre for cre in combined_relationship_elements if cre.properties}
+            parent_rel_name = self._get_parent_relationship_name(node_id=node_id)
+            includes_parent = parent_rel_name == later_relationship.name
+            if combined_relationship_elements or includes_parent:
+                combined_relationship = EnrichedDiffRelationship(
+                    name=later_relationship.name,
+                    label=later_relationship.label,
+                    cardinality=later_relationship.cardinality,
+                    changed_at=later_relationship.changed_at or earlier_relationship.changed_at,
+                    action=self._combine_actions(earlier=earlier_relationship.action, later=later_relationship.action),
+                    path_identifier=later_relationship.path_identifier,
+                    relationships=combined_relationship_elements,
+                    nodes=set(),
+                )
+                combined_relationships.add(combined_relationship)
         for later_relationship in later_relationships:
             if later_relationship.name in common_rel_names:
                 continue
@@ -342,21 +349,31 @@ class DiffCombiner:
             combined_relationships = self._combine_relationships(
                 earlier_relationships=node_pair.earlier.relationships,
                 later_relationships=node_pair.later.relationships,
+                node_id=node_pair.later.uuid,
             )
             combined_action = self._combine_actions(earlier=node_pair.earlier.action, later=node_pair.later.action)
-            combined_nodes.add(
-                EnrichedDiffNode(
-                    uuid=node_pair.later.uuid,
-                    kind=node_pair.later.kind,
-                    label=node_pair.later.label,
-                    changed_at=node_pair.later.changed_at or node_pair.earlier.changed_at,
-                    action=combined_action,
-                    path_identifier=node_pair.later.path_identifier,
-                    attributes=combined_attributes,
-                    relationships=combined_relationships,
-                    conflict=self.combine_conflicts(earlier=node_pair.earlier.conflict, later=node_pair.later.conflict),
-                )
+            combined_conflict = self.combine_conflicts(
+                earlier=node_pair.earlier.conflict, later=node_pair.later.conflict
             )
+            if (
+                combined_attributes
+                or combined_relationships
+                or combined_conflict
+                or node_pair.later.uuid in self._parent_node_uuids
+            ):
+                combined_nodes.add(
+                    EnrichedDiffNode(
+                        uuid=node_pair.later.uuid,
+                        kind=node_pair.later.kind,
+                        label=node_pair.later.label,
+                        changed_at=node_pair.later.changed_at or node_pair.earlier.changed_at,
+                        action=combined_action,
+                        path_identifier=node_pair.later.path_identifier,
+                        attributes=combined_attributes,
+                        relationships=combined_relationships,
+                        conflict=combined_conflict,
+                    )
+                )
         return combined_nodes
 
     def _link_child_nodes(self, nodes: Iterable[EnrichedDiffNode]) -> None:

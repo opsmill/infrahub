@@ -20,6 +20,8 @@ from infrahub.support.macro import MacroDefinition
 from infrahub.workflows.catalogue import (
     PROCESS_COMPUTED_MACRO,
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
+    TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
+    TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
 )
 from infrahub.workflows.utils import add_branch_tag, wait_for_schema_to_converge
@@ -130,6 +132,31 @@ async def process_transform(
 
 
 @flow(
+    name="trigger_update_python_computed_attributes",
+    flow_run_name="Trigger updates for computed attributes on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
+)
+async def trigger_update_python_computed_attributes(
+    branch_name: str,
+    computed_attribute_name: str,
+    computed_attribute_kind: str,
+) -> None:
+    service = services.service
+    nodes = await service.client.all(kind=computed_attribute_kind, branch=branch_name)
+
+    for node in nodes:
+        await service.workflow.submit_workflow(
+            workflow=UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
+            parameters={
+                "branch_name": branch_name,
+                "node_kind": computed_attribute_kind,
+                "object_id": node.id,
+                "computed_attribute_name": computed_attribute_name,
+                "computed_attribute_kind": computed_attribute_kind,
+            },
+        )
+
+
+@flow(
     name="process_computed_attribute_jinja2",
     flow_run_name="Process computed attribute on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
 )
@@ -210,6 +237,31 @@ async def process_jinja2(
             )
 
 
+@flow(
+    name="trigger_update_jinja2_computed_attributes",
+    flow_run_name="Trigger updates for computed attributes on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
+)
+async def trigger_update_jinja2_computed_attributes(
+    branch_name: str,
+    computed_attribute_name: str,
+    computed_attribute_kind: str,
+) -> None:
+    service = services.service
+    nodes = await service.client.all(kind=computed_attribute_kind, branch=branch_name)
+
+    for node in nodes:
+        await service.workflow.submit_workflow(
+            workflow=PROCESS_COMPUTED_MACRO,
+            parameters={
+                "branch_name": branch_name,
+                "computed_attribute_name": computed_attribute_name,
+                "computed_attribute_kind": computed_attribute_kind,
+                "node_kind": computed_attribute_kind,
+                "object_id": node.id,
+            },
+        )
+
+
 @flow(name="computed-attribute-setup", flow_run_name="Setup computed attributes in task-manager")
 async def computed_attribute_setup() -> None:
     service = services.service
@@ -274,6 +326,15 @@ async def computed_attribute_setup() -> None:
             else:
                 await client.create_automation(automation=automation)
                 log.info(f"{computed_attribute.key_name} Created")
+
+            await service.workflow.submit_workflow(
+                workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
+                parameters={
+                    "branch_name": registry.default_branch,
+                    "computed_attribute_name": computed_attribute.attribute.name,
+                    "computed_attribute_kind": computed_attribute.kind,
+                },
+            )
 
 
 @flow(
@@ -435,6 +496,15 @@ async def computed_attribute_setup_python() -> None:
             else:
                 await client.create_automation(automation=automation)
                 log.info(f"Query {computed_attribute.computed_attribute.key_name} Created")
+
+            await service.workflow.submit_workflow(
+                workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+                parameters={
+                    "branch_name": registry.default_branch,
+                    "computed_attribute_name": computed_attribute.computed_attribute.attribute.name,
+                    "computed_attribute_kind": computed_attribute.computed_attribute.kind,
+                },
+            )
 
 
 @flow(

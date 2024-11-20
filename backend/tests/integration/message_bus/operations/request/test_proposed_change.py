@@ -9,13 +9,15 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
 from infrahub.message_bus import messages
-from infrahub.message_bus.operations.requests.proposed_change import pipeline, run_generators
+from infrahub.message_bus.operations.requests.proposed_change import pipeline
 from infrahub.message_bus.types import ProposedChangeBranchDiff
+from infrahub.proposed_change.models import RequestProposedChangeRunGenerators
+from infrahub.proposed_change.tasks import run_generators
 from infrahub.server import app, app_initialization
 from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.log import FakeLogger
-from tests.adapters.message_bus import BusRecorder
+from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.graphql import graphql_mutation
 from tests.helpers.test_client import InfrahubTestClient
@@ -144,19 +146,22 @@ async def test_run_pipeline_validate_requested_jobs(
         await obj.new(db=db, name="ci-pipeline-01", description="for use within tests")
         await obj.save(db=db)
 
-        bus_post_data_changes = BusRecorder()
+        bus_post_data_changes = BusSimulator(database=services.service.database)
         services.service.message_bus = bus_post_data_changes
+
         await pipeline(message=message, service=services.service)
 
         assert sorted(bus_pre_data_changes.seen_routing_keys) == [
-            "request.proposed_change.run_generators",
+            "request.proposed_change.refresh_artifacts",
             "request.proposed_change.run_tests",
+            "request.repository.user_checks",
         ]
 
         assert sorted(bus_post_data_changes.seen_routing_keys) == [
-            "request.proposed_change.run_generators",
+            "request.proposed_change.refresh_artifacts",
             "request.proposed_change.run_tests",
-            "request.proposed_change.schema_integrity",
+            "request.repository.user_checks",
+            "schema.validator.path",
         ]
 
 
@@ -165,7 +170,7 @@ async def test_run_generators_validate_requested_jobs(
     db: InfrahubDatabase,
     test_client: InfrahubTestClient,
 ):
-    message = messages.RequestProposedChangeRunGenerators(
+    model = RequestProposedChangeRunGenerators(
         source_branch="change1",
         source_branch_sync_with_git=True,
         destination_branch="main",
@@ -179,14 +184,10 @@ async def test_run_generators_validate_requested_jobs(
     admin_token = await integration_helper.create_token()
     config = Config(api_token=admin_token, requester=test_client.async_request)
     client = InfrahubClient(config=config)
-    fake_log = FakeLogger()
-    services.service._client = client
-    services.service.log = fake_log
-    services.service.message_bus = bus
-    services.prepare(service=services.service)
-    await run_generators(message=message, service=services.service)
+    service = InfrahubServices(client=client, message_bus=bus, log=FakeLogger(), workflow=WorkflowLocalExecution())
+    with init_global_service(service):
+        await run_generators(model=model)
 
     assert sorted(bus.seen_routing_keys) == [
         "request.proposed_change.refresh_artifacts",
-        "request.proposed_change.repository_checks",
     ]

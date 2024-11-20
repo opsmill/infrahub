@@ -187,6 +187,7 @@ CALL {
             else None,
             "diff_branch_label": enriched_conflict.diff_branch_label,
             "selected_branch": enriched_conflict.selected_branch.value if enriched_conflict.selected_branch else None,
+            "resolvable": enriched_conflict.resolvable,
         }
 
     def _build_diff_property_params(self, enriched_property: EnrichedDiffProperty) -> dict[str, Any]:
