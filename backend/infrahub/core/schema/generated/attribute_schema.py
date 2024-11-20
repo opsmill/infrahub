@@ -115,3 +115,9 @@ class GeneratedAttributeSchema(HashableModel):
         description="Type of allowed override for the attribute.",
         json_schema_extra={"update": "allowed"},
     )
+    deprecation: Optional[str] = Field(
+        default=None,
+        description="Mark attribute as deprecated and provide a user-friendly message to display",
+        max_length=128,
+        json_schema_extra={"update": "allowed"},
+    )
