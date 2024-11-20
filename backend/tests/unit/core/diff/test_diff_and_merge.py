@@ -4,6 +4,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import DiffAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -245,3 +246,23 @@ class TestDiffAndMerge:
             assert owner_prop.id == person_alfred_main.id
         if conflict_selection is ConflictSelection.DIFF_BRANCH:
             assert owner_prop.id == person_jane_main.id
+
+    @pytest.mark.parametrize("new_height", (0, 1000, None))
+    async def test_single_attribute_update(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main, new_height
+    ):
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        person_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_jane_main.id)
+        person_branch.height.value = new_height
+        await person_branch.save(db=db)
+
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        node = enriched_diff.get_node(node_uuid=person_jane_main.id)
+        assert node.action is DiffAction.UPDATED
+
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=Timestamp())
+
+        updated_person = await NodeManager.get_one(db=db, id=person_jane_main.id)
+        assert updated_person.height.value == new_height

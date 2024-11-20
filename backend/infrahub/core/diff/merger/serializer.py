@@ -1,6 +1,6 @@
 from typing import AsyncGenerator
 
-from infrahub.core.constants import DiffAction, RelationshipCardinality
+from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.schema import MainSchemaTypes
 from infrahub.database import InfrahubDatabase
@@ -208,6 +208,9 @@ class DiffMergeSerializer:
         for action in actions:
             if action not in (DiffAction.ADDED, DiffAction.REMOVED):
                 continue
+            if action is DiffAction.REMOVED and new_value == NULL_VALUE:
+                actions_and_values.append((DiffAction.ADDED, NULL_VALUE))
+                continue
             if action is DiffAction.ADDED:
                 raw_value = new_value
             else:
@@ -234,6 +237,8 @@ class DiffMergeSerializer:
                 # we only delete attributes when the whole attribute is deleted
                 if action is DiffAction.REMOVED and attribute_diff.action is not DiffAction.REMOVED:
                     continue
+                    # action = DiffAction.ADDED
+                    # value = "NULL"
                 prop_dicts.append(
                     PropertyMergeDict(
                         property_type=property_diff.property_type.value,
