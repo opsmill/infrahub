@@ -112,5 +112,17 @@ test.describe("Branches creation and deletion", () => {
       await page.getByRole("option", { name: "Create branch quick-branch-form" }).click();
       await expect(page.getByLabel("New branch name *")).toHaveValue("quick-branch-form");
     });
+
+    test("verify if the current branch exists correctly and redirects to home on main branch", async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await expect(page.getByRole("button", { name: "Other" })).toBeVisible();
+      await page.goto("/?branch=unknown-branch-for-testing");
+      expect(page.url()).toContain("/?branch=unknown-branch-for-testing");
+      await expect(page.getByText("Current branch not found.")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Other" })).toBeVisible();
+      expect(page.url()).not.toContain("/?branch=unknown-branch-for-testing");
+    });
   });
 });
