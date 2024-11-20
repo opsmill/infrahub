@@ -3,3 +3,5 @@ QUERY_AUTOMATION_NAME_PREFIX = "Computed-attribute-query"
 
 PROCESS_AUTOMATION_NAME = PROCESS_AUTOMATION_NAME_PREFIX + "::{identifier}::{scope}"
 QUERY_AUTOMATION_NAME = QUERY_AUTOMATION_NAME_PREFIX + "::{identifier}::{scope}"
+
+VALID_KINDS = ["Text", "URL"]

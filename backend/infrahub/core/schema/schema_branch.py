@@ -10,6 +10,7 @@ from infrahub_sdk.topological_sort import DependencyCycleExistsError, topologica
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from typing_extensions import Self
 
+from infrahub.computed_attribute.constants import VALID_KINDS as VALID_COMPUTED_ATTRIBUTE_KINDS
 from infrahub.core.constants import (
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
@@ -933,11 +934,11 @@ class SchemaBranch:
 
         if not attribute.read_only:
             raise ValueError(
-                f"{node.kind}: Attribute {attribute.name!r} is a computed jinja2 attribute but not marked as read_only"
+                f"{node.kind}: Attribute {attribute.name!r} is a computed attribute but not marked as read_only"
             )
-        if not attribute.kind == "Text":
+        if attribute.kind not in VALID_COMPUTED_ATTRIBUTE_KINDS:
             raise ValueError(
-                f"{node.kind}: Attribute {attribute.name!r} is a computed jinja2 attribute currently only 'Text' kinds are supported."
+                f"{node.kind}: Attribute {attribute.name!r} is a computed attribute only {VALID_COMPUTED_ATTRIBUTE_KINDS} kinds are supported."
             )
 
         if (

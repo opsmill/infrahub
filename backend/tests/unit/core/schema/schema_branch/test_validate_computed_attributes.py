@@ -1,5 +1,6 @@
 import pytest
 
+from infrahub.computed_attribute.constants import VALID_KINDS
 from infrahub.core.constants import ComputedAttributeKind, RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute
@@ -54,7 +55,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
                     ),
                 ],
             ),
-            "TestingPerson: Attribute 'computed' is a computed jinja2 attribute but not marked as read_only",
+            "TestingPerson: Attribute 'computed' is a computed attribute but not marked as read_only",
             id="missing_read_only",
         ),
         pytest.param(
@@ -227,7 +228,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
                     ),
                 ],
             ),
-            "TestingPerson: Attribute 'computed' is a computed jinja2 attribute currently only 'Text' kinds are supported.",
+            f"TestingPerson: Attribute 'computed' is a computed attribute only {VALID_KINDS!r} kinds are supported.",
             id="wrong_kind",
         ),
         pytest.param(
@@ -258,9 +259,11 @@ from infrahub.core.schema.schema_branch import SchemaBranch
         ),
     ],
 )
-async def test_schema_protected_generics(schema_root: SchemaRoot, expected_error: str):
+async def test_schema_computed_attribute_violations(schema_root: SchemaRoot, expected_error: str):
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=schema_root)
 
-    with pytest.raises(ValueError, match=expected_error):
+    with pytest.raises(ValueError) as exc:
         schema.validate_computed_attributes()
+
+    assert str(exc.value) == expected_error
