@@ -117,7 +117,6 @@ services:
         condition: service_healthy
       task-manager:
         condition: service_healthy
-        required: false
     environment:
       <<: *infrahub_config
       INFRAHUB_INTERNAL_ADDRESS: "http://server:8000"
