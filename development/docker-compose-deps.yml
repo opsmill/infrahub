@@ -35,7 +35,8 @@ services:
       retries: 20
       start_period: 10s
     depends_on:
-      - task-manager-db
+      task-manager-db:
+        condition: service_healthy
   task-manager-db:
     profiles: [demo, dev]
     image: postgres:16-alpine
