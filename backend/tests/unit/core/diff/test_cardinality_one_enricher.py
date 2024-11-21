@@ -1,4 +1,5 @@
 from copy import deepcopy
+from dataclasses import replace
 from uuid import uuid4
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
@@ -254,6 +255,12 @@ class TestDiffCardinalityOneEnricher:
 
         await enricher.enrich(enriched_diff_root=diff_root, calculated_diffs=None)
 
+        expected_related_prop = replace(
+            is_related_prop_2,
+            action=DiffAction.UNCHANGED,
+            previous_value=is_related_prop_1.previous_value,
+            path_identifier="",
+        )
         assert len(diff_root.nodes) == 1
         diff_node = diff_root.nodes.pop()
         assert len(diff_node.relationships) == 1
@@ -266,6 +273,7 @@ class TestDiffCardinalityOneEnricher:
         assert diff_rel_element.peer_label == diff_rel_element_2.peer_label
         assert diff_rel_element.conflict is None
         diff_properties = diff_rel_element.properties
-        assert len(diff_properties) == 2
+        assert len(diff_properties) == 3
         assert has_owner_prop_1 in diff_properties
         assert has_source_prop_2 in diff_properties
+        assert expected_related_prop in diff_properties

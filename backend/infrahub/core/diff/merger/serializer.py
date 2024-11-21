@@ -156,6 +156,10 @@ class DiffMergeSerializer:
         serialized_node_diffs = []
         serialized_property_diffs: list[AttributePropertyMergeDict | RelationshipPropertyMergeDict] = []
         for node in diff.nodes:
+            # if there is a node-level conflict and the base branch version is selected
+            # then we don't need to alter this node during the merge
+            if node.conflict and node.conflict.selected_branch is ConflictSelection.BASE_BRANCH:
+                continue
             node_action = self._get_action(action=node.action, conflict=node.conflict)
             serial_attr_diffs = []
             for attr_diff in node.attributes:
@@ -303,11 +307,13 @@ class DiffMergeSerializer:
         relationship_dicts = []
         added_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.ADDED)
         removed_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.REMOVED)
-        other_property_dicts: dict[DatabaseEdgeType, PropertyMergeDict] = {}
         actions_and_peers = self._get_actions_and_peers(relationship_diff=relationship_diff)
         added_peer_ids = [peer_id for action, peer_id in actions_and_peers if action is DiffAction.ADDED]
         removed_peer_ids = [peer_id for action, peer_id in actions_and_peers if action is DiffAction.REMOVED]
-
+        if not added_peer_ids:
+            added_peer_ids = [relationship_diff.peer_id]
+        if not removed_peer_ids:
+            removed_peer_ids = [relationship_diff.peer_id]
         for action, peer_id in actions_and_peers:
             if (
                 peer_id
@@ -334,17 +340,14 @@ class DiffMergeSerializer:
                     action=self._to_action_str(action=action),
                     value=value,
                 )
-                if added_peer_ids and action is DiffAction.ADDED:
+                if action is DiffAction.ADDED:
                     added_property_dicts[property_diff.property_type] = property_dict
-                elif removed_peer_ids and action is DiffAction.REMOVED:
+                elif action is DiffAction.REMOVED:
                     removed_property_dicts[property_diff.property_type] = property_dict
-                else:
-                    other_property_dicts[property_diff.property_type] = property_dict
         relationship_property_dicts = []
-        peers_and_property_dics = [(peer_id, added_property_dicts) for peer_id in added_peer_ids]
-        peers_and_property_dics += [(peer_id, removed_property_dicts) for peer_id in removed_peer_ids]
-        peers_and_property_dics += [(relationship_diff.peer_id, other_property_dicts)]
-        for peer_id, property_dicts in peers_and_property_dics:
+        peers_and_property_dicts = [(peer_id, added_property_dicts) for peer_id in added_peer_ids]
+        peers_and_property_dicts += [(peer_id, removed_property_dicts) for peer_id in removed_peer_ids]
+        for peer_id, property_dicts in peers_and_property_dicts:
             if (
                 peer_id
                 and property_dicts

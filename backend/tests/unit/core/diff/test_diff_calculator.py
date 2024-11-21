@@ -2765,7 +2765,69 @@ async def test_diff_relationship_update_includes_unchanged_properties(
         DatabaseEdgeType.IS_VISIBLE,
         DatabaseEdgeType.IS_PROTECTED,
     }
-    # TODO: finish or remove test
+    related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
+    assert related_prop.action is DiffAction.ADDED
+    assert related_prop.previous_value is None
+    assert related_prop.new_value == person_alfred_main.id
+    for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, True), (DatabaseEdgeType.IS_PROTECTED, False)):
+        prop_diff = properties_by_type[prop_type]
+        assert prop_diff.action is DiffAction.ADDED
+        assert prop_diff.previous_value is None
+        assert prop_diff.new_value == value
+    # john on branch
+    node_diff = nodes_by_id[person_john_main.id]
+    assert node_diff.kind == "TestPerson"
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 0
+    assert len(node_diff.relationships) == 1
+    diff_rel = node_diff.relationships.pop()
+    assert diff_rel.name == "cars"
+    assert diff_rel.action is DiffAction.UPDATED
+    elements_by_peer_id = {e.peer_id: e for e in diff_rel.relationships}
+    assert set(elements_by_peer_id.keys()) == {car_accord_main.id}
+    accord_cars_diff = elements_by_peer_id[car_accord_main.id]
+    properties_by_type = {p.property_type: p for p in accord_cars_diff.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
+    assert related_prop.action is DiffAction.REMOVED
+    assert related_prop.previous_value == car_accord_main.id
+    assert related_prop.new_value is None
+    for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, True), (DatabaseEdgeType.IS_PROTECTED, False)):
+        prop_diff = properties_by_type[prop_type]
+        assert prop_diff.action is DiffAction.REMOVED
+        assert prop_diff.previous_value == value
+        assert prop_diff.new_value is None
+    # alfred on branch
+    node_diff = nodes_by_id[person_alfred_main.id]
+    assert node_diff.kind == "TestPerson"
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 0
+    assert len(node_diff.relationships) == 1
+    diff_rel = node_diff.relationships.pop()
+    assert diff_rel.name == "cars"
+    assert diff_rel.action is DiffAction.UPDATED
+    elements_by_peer_id = {e.peer_id: e for e in diff_rel.relationships}
+    assert set(elements_by_peer_id.keys()) == {car_accord_main.id}
+    accord_cars_diff = elements_by_peer_id[car_accord_main.id]
+    properties_by_type = {p.property_type: p for p in accord_cars_diff.properties}
+    assert set(properties_by_type.keys()) == {
+        DatabaseEdgeType.IS_RELATED,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
+    assert related_prop.action is DiffAction.ADDED
+    assert related_prop.previous_value is None
+    assert related_prop.new_value == car_accord_main.id
+    for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, True), (DatabaseEdgeType.IS_PROTECTED, False)):
+        prop_diff = properties_by_type[prop_type]
+        assert prop_diff.action is DiffAction.ADDED
+        assert prop_diff.previous_value is None
+        assert prop_diff.new_value == value
 
 
 async def test_diff_relationship_property_update_on_main(
@@ -2812,4 +2874,4 @@ async def test_diff_relationship_property_update_on_main(
     assert len(node_diff.relationships) == 1
     diff_rel = node_diff.relationships.pop()
     assert diff_rel.name == "owner"
-    assert diff_rel.action is DiffAction.UPDATED
+    assert diff_rel.action is DiffAction.ADDED
