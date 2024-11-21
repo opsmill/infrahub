@@ -481,3 +481,57 @@ class TestDiffAndMerge:
         )
         assert len(owner_rels) == 1
         assert owner_rels[0].peer_id == person.id
+
+    async def test_branch_delete_with_added_base_relationship(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        person_john_main,
+        person_jane_main,
+        person_alfred_main,
+        car_accord_main,
+        car_camry_main,
+    ):
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
+        await car_main.owner.update(db=db, data={"id": person_alfred_main.id, "_relation__is_protected": True})
+        await car_main.save(db=db)
+        car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
+        await car_branch.delete(db=db)
+
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        conflicts_map = enriched_diff.get_all_conflicts()
+        # check the conflict
+        assert len(conflicts_map) == 1
+        conflict_node = enriched_diff.get_node(node_uuid=car_main.id)
+        assert conflict_node.conflict
+        assert conflict_node.conflict.base_branch_action is DiffAction.UPDATED
+        assert conflict_node.conflict.diff_branch_action is DiffAction.REMOVED
+
+        # manually resolve the conflict
+        car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
+        await car_main.owner.update(db=db, data={"id": person_john_main.id, "_relation__is_protected": False})
+        await car_main.save(db=db)
+
+        # check that the conflict is removed
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        conflicts_map = enriched_diff.get_all_conflicts()
+        assert len(conflicts_map) == 0
+
+        at = Timestamp()
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=at)
+
+        # validate that the car was deleted
+        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
+        assert updated_car is None
+
+        await diff_merger.rollback(at=at)
+
+        rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id, include_owner=True)
+        owner_rel = await rolled_back_car.owner.get(db=db)
+        assert owner_rel.peer_id == person_john_main.id
+        assert owner_rel.is_protected is False
+        assert owner_rel.is_visible is True

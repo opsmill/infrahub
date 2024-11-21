@@ -132,13 +132,7 @@ class TestDiffMerge(TestInfrahubApp):
         owner_peer = await delorean_main.owner.get_peer(db=db)
         assert owner_peer.get_id() == marty_id
 
-    @pytest.mark.parametrize(
-        "delete_on_branch",
-        (
-            True,
-            False,
-        ),
-    )
+    @pytest.mark.parametrize("delete_on_branch", (True, False))
     async def test_node_delete_conflict(
         self,
         db: InfrahubDatabase,
@@ -157,19 +151,19 @@ class TestDiffMerge(TestInfrahubApp):
         else:
             delete_branch = diff_branch
             update_branch = default_branch
-        person_main = await NodeManager.get_one(db=db, id=new_person.id, branch=delete_branch)
-        await person_main.delete(db=db)
+        person_deleted = await NodeManager.get_one(db=db, id=new_person.id, branch=delete_branch)
+        await person_deleted.delete(db=db)
 
         # updates on branch for node deleted on main
-        person_branch = await NodeManager.get_one(db=db, id=new_person.id, branch=update_branch)
-        person_branch.description.value = "musician"
-        await person_branch.save(db=db)
+        person_updated = await NodeManager.get_one(db=db, id=new_person.id, branch=update_branch)
+        person_updated.description.value = "musician"
+        await person_updated.save(db=db)
         new_car = await Node.init(schema=TestKind.CAR, db=db, branch=update_branch)
         await new_car.new(
             db=db,
             name="Pinto",
             color="charred",
-            owner=person_branch,
+            owner=person_updated,
             manufacturer=initial_dataset["dmc"].id,
         )
         await new_car.save(db=db)
@@ -177,8 +171,8 @@ class TestDiffMerge(TestInfrahubApp):
         # check that the expected node-level conflict exists
         enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
         conflicts_map = enriched_diff.get_all_conflicts()
-        assert set(conflicts_map.keys()) == {f"data/{person_branch.id}"}
-        conflict = conflicts_map[f"data/{person_branch.id}"]
+        assert set(conflicts_map.keys()) == {f"data/{person_updated.id}"}
+        conflict = conflicts_map[f"data/{person_updated.id}"]
         if delete_on_branch:
             assert conflict.base_branch_action is DiffAction.REMOVED
             assert conflict.diff_branch_action is DiffAction.UPDATED
@@ -188,9 +182,9 @@ class TestDiffMerge(TestInfrahubApp):
         assert conflict.resolvable is False
 
         # manually undo updates on branch to resolve conflict
-        person_branch = await NodeManager.get_one(db=db, id=new_person.id, branch=update_branch)
-        person_branch.description.value = None
-        await person_branch.save(db=db)
+        person_updated = await NodeManager.get_one(db=db, id=new_person.id, branch=update_branch)
+        person_updated.description.value = None
+        await person_updated.save(db=db)
         car_branch = await NodeManager.get_one(db=db, id=new_car.id, branch=update_branch)
         await car_branch.owner.update(db=db, data=initial_dataset["biff"].id)
         await car_branch.save(db=db)
@@ -206,8 +200,8 @@ class TestDiffMerge(TestInfrahubApp):
         await diff_merger.merge_graph(at=right_now)
 
         # check that the person is deleted on main
-        person_main = await NodeManager.get_one(db=db, id=new_person.id)
-        assert person_main is None
+        person_deleted = await NodeManager.get_one(db=db, id=new_person.id)
+        assert person_deleted is None
         car_main = await NodeManager.get_one(db=db, id=new_car.id)
         owner_peer = await car_main.owner.get_peer(db=db)
         assert owner_peer.id == initial_dataset["biff"].id
