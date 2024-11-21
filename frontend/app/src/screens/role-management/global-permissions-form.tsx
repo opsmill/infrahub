@@ -101,9 +101,15 @@ export const GlobalPermissionForm = ({
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Object permission created"} />, {
-        toastId: "alert-success-object-permission-created",
-      });
+      if (currentObject) {
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Global permission updated!"} />, {
+          toastId: "alert-success-global-permission-updated",
+        });
+      } else {
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Global permission created!"} />, {
+          toastId: "alert-success-global-permission-created",
+        });
+      }
 
       if (onSuccess) await onSuccess(result?.data?.[`${GLOBAL_PERMISSION_OBJECT}Create`]);
       if (onUpdateComplete) await onUpdateComplete();

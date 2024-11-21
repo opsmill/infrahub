@@ -90,9 +90,15 @@ export const AccountForm = ({
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Account created"} />, {
-        toastId: "alert-success-account-created",
-      });
+      if (currentObject) {
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Account updated!"} />, {
+          toastId: "alert-success-account-updated",
+        });
+      } else {
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Account created!"} />, {
+          toastId: "alert-success-account-created",
+        });
+      }
 
       if (onSuccess) await onSuccess(result?.data?.[`${OBJECT_PERMISSION_OBJECT}Create`]);
       if (onUpdateComplete) await onUpdateComplete();
