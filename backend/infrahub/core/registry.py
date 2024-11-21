@@ -39,9 +39,6 @@ class Registry:
     graphql_type: dict = field(default_factory=lambda: defaultdict(dict))
     data_type: dict[str, type[InfrahubDataType]] = field(default_factory=dict)
     input_type: dict[str, type[BaseAttributeCreate | BaseAttributeUpdate]] = field(default_factory=dict)
-    account: dict = field(default_factory=dict)
-    account_id: dict = field(default_factory=dict)
-    node_group: dict = field(default_factory=dict)
     attr_group: dict = field(default_factory=dict)
     _branch_object: Optional[type[Branch]] = None
     _manager: Optional[type[NodeManager]] = None
@@ -137,9 +134,6 @@ class Registry:
         self.node = {}
         self._schema = None
         self._default_ipnamespace = None
-        self.account = {}
-        self.account_id = {}
-        self.node_group = {}
         self.attr_group = {}
         self.data_type = {}
         self.attribute = {}
