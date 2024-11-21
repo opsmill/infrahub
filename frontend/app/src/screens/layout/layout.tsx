@@ -35,7 +35,12 @@ function Layout() {
       const selectedBranch = findSelectedBranch(branches, branchInQueryString);
 
       if (branchInQueryString && !selectedBranch) {
-        toast(<Alert type={ALERT_TYPES.ERROR} message="Current branch not found." />);
+        toast(
+          <Alert
+            type={ALERT_TYPES.ERROR}
+            message={`Branch ${branchInQueryString} not found, you have been redirected to the main branch.`}
+          />
+        );
         navigate("/");
         return;
       }
