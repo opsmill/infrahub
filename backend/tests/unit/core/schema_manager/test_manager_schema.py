@@ -2571,3 +2571,48 @@ def test_schema_branch_conflicting_required_relationships(schema_all_in_one):
     assert "BuiltinTag" in exc.value.args[0]
     assert "BuiltinCriticality" in exc.value.args[0]
     assert "cannot both have required relationships" in exc.value.args[0]
+
+
+async def test_process_deprecations(organization_schema):
+    SCHEMA1 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "description", "kind": "Text", "deprecation": "I'm not used anymore"},
+        ],
+        "relationships": [
+            {
+                "name": "first",
+                "peer": "CoreOrganization",
+                "cardinality": "one",
+                "optional": False,
+                "deprecation": "Use the second one instead",
+            },
+            {"name": "second", "peer": "CoreOrganization", "cardinality": "one", "optional": False},
+        ],
+    }
+
+    copy_core_models = copy.deepcopy(core_models)
+    copy_core_models["nodes"].append(SCHEMA1)
+    schema = SchemaRoot(**copy_core_models)
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema)
+    schema_branch.load_schema(schema=organization_schema)
+
+    schema_branch.process_deprecations()
+
+    test_criticality = schema_branch.get_node(name="TestCriticality", duplicate=False)
+
+    assert not test_criticality.get_attribute(name="name").is_deprecated
+    assert test_criticality.get_attribute(name="description").is_deprecated
+    assert test_criticality.get_relationship(name="first").is_deprecated
+    assert not test_criticality.get_relationship(name="second").is_deprecated
+
+    assert not test_criticality.get_attribute(name="name").optional
+    assert test_criticality.get_attribute(name="description").optional
+    assert test_criticality.get_relationship(name="first").optional
+    assert not test_criticality.get_relationship(name="second").optional

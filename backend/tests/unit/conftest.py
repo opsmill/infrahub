@@ -1,4 +1,3 @@
-import os
 import shutil
 from itertools import islice
 from pathlib import Path
@@ -135,14 +134,14 @@ def s3_storage_bucket() -> str:
 
 
 @pytest.fixture
-def file1_in_storage(local_storage_dir, helper) -> str:
+def file1_in_storage(local_storage_dir: Path, helper) -> str:
     fixture_dir = helper.get_fixtures_dir()
     file1_identifier = str(UUIDT())
 
-    files_dir = os.path.join(fixture_dir, "schemas")
+    files_dir = fixture_dir / "schemas"
 
-    filenames = [item.name for item in os.scandir(files_dir) if item.is_file()]
-    shutil.copyfile(os.path.join(files_dir, filenames[0]), os.path.join(local_storage_dir, file1_identifier))
+    filenames = [item.name for item in files_dir.iterdir() if item.is_file()]
+    shutil.copyfile(files_dir / filenames[0], local_storage_dir / file1_identifier)
 
     return file1_identifier
 

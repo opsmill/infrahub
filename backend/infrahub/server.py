@@ -15,7 +15,8 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from infrahub_sdk.timestamp import TimestampFormatError
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor, Span
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.trace import Span
 from pydantic import ValidationError
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
