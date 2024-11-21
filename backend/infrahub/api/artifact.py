@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.core.protocols import CoreArtifactDefinition
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
@@ -69,8 +69,8 @@ async def generate_artifact(
         else PermissionDecisionFlag.ALLOW_OTHER
     )
     for permission in [
-        ObjectPermission(namespace="Core", name="Artifact", action=action, decision=permission_decision)
-        for action in ("create", "update")
+        ObjectPermission(namespace="Core", name="Artifact", action=action.value, decision=permission_decision)
+        for action in (PermissionAction.CREATE, PermissionAction.UPDATE)
     ]:
         has_permission = False
         for permission_backend in registry.permission_backends:
