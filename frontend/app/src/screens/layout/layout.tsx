@@ -38,7 +38,12 @@ function Layout() {
         toast(
           <Alert
             type={ALERT_TYPES.ERROR}
-            message={`Branch ${branchInQueryString} not found, you have been redirected to the main branch.`}
+            message={
+              <div>
+                Branch <b>{branchInQueryString}</b> not found, you have been redirected to the main
+                branch.
+              </div>
+            }
           />
         );
         navigate("/");
