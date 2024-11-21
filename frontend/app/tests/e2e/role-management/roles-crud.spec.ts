@@ -11,6 +11,7 @@ test.describe("Role management - Roles CRUD", () => {
     });
 
     await test.step("create role", async () => {
+      await expect(page.getByText("Retrieving roles...")).not.toBeVisible();
       await page.getByRole("button", { name: "Create Account role" }).click();
       await page.getByLabel("Name *").click();
       await page.getByLabel("Name *").fill("test role");
@@ -95,6 +96,7 @@ test.describe("Role management - Roles CRUD", () => {
     });
 
     await test.step("verify role delete", async () => {
+      await expect(page.getByTestId("objects-search-input-loader")).not.toBeVisible();
       await expect(page.getByText("test role 2")).not.toBeVisible();
     });
   });
