@@ -120,7 +120,7 @@ test.describe("Branches creation and deletion", () => {
       await expect(page.getByRole("button", { name: "Other" })).toBeVisible();
       await page.goto("/?branch=unknown-branch-for-testing");
       expect(page.url()).toContain("/?branch=unknown-branch-for-testing");
-      await expect(page.getByText("Current branch not found.")).toBeVisible();
+      await expect(page.getByText("you have been redirected to the main branch")).toBeVisible();
       await expect(page.getByRole("button", { name: "Other" })).toBeVisible();
       expect(page.url()).not.toContain("/?branch=unknown-branch-for-testing");
     });
