@@ -2618,3 +2618,83 @@ async def test_diff_unchanged_included_when_not_first_diff(
     assert property_diff.new_value == "Little Alfred"
     assert property_diff.action is DiffAction.UPDATED
     assert branch_before_change < property_diff.changed_at < branch_after_change
+
+
+async def test_create_local_and_aware_nodes_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local: SchemaBranch
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp()
+    person = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await person.new(db=db, name="Guy", height=180)
+    await person.save(db=db)
+    # car is a local node
+    car = await Node.init(db=db, schema="TestCar", branch=branch)
+    await car.new(db=db, name="camry", owner=person.id)
+    await car.save(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+    )
+
+    base_branch_diff = calculated_diffs.base_branch_diff
+    assert len(base_branch_diff.nodes) == 0
+
+    diff_branch_diff = calculated_diffs.diff_branch_diff
+    nodes_by_id = {n.uuid: n for n in diff_branch_diff.nodes}
+    assert set(nodes_by_id.keys()) == {person.id}
+    node_diff = nodes_by_id[person.id]
+    assert node_diff.action is DiffAction.ADDED
+    assert len(node_diff.relationships) == 0
+    attrs_by_name = {a.name: a for a in node_diff.attributes}
+    assert set(attrs_by_name.keys()) == {"name", "height"}
+    for attr_diff in node_diff.attributes:
+        assert attr_diff.action is DiffAction.ADDED
+
+
+async def test_create_aware_and_agnostic_nodes_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_global
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp()
+    # person is an agnostic node
+    person = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await person.new(db=db, name="Guy", height=180)
+    await person.save(db=db)
+    # nbr_seats is an agnostic attr
+    car = await Node.init(db=db, schema="TestCar", branch=branch)
+    await car.new(db=db, name="camry", nbr_seats=3, is_electric=True, owner=person.id)
+    await car.save(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
+    )
+
+    base_branch_diff = calculated_diffs.base_branch_diff
+    assert len(base_branch_diff.nodes) == 0
+
+    diff_branch_diff = calculated_diffs.diff_branch_diff
+    nodes_by_id = {n.uuid: n for n in diff_branch_diff.nodes}
+    assert set(nodes_by_id.keys()) == {car.id, person.id}
+    # check car attributes and relationship
+    node_diff = nodes_by_id[car.id]
+    assert node_diff.action is DiffAction.ADDED
+    assert len(node_diff.relationships) == 1
+    rel_diff = node_diff.relationships.pop()
+    assert rel_diff.name == "owner"
+    assert rel_diff.action is DiffAction.ADDED
+    attrs_by_name = {a.name: a for a in node_diff.attributes}
+    # nbr_seats is agnostic, so is not included
+    assert set(attrs_by_name.keys()) == {"name", "color", "is_electric"}
+    for attr_diff in node_diff.attributes:
+        assert attr_diff.action is DiffAction.ADDED
+    # check person relationship
+    node_diff = nodes_by_id[person.id]
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 0
+    assert len(node_diff.relationships) == 1
+    rel_diff = node_diff.relationships.pop()
+    assert rel_diff.name == "cars"
+    assert rel_diff.action is DiffAction.UPDATED

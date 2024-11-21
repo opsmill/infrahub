@@ -22,7 +22,7 @@ from infrahub import config
 from infrahub.config import load_and_exit
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, InfrahubKind
+from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality, RelationshipDirection
 from infrahub.core.initialization import (
     create_default_branch,
     create_global_branch,
@@ -31,8 +31,11 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
+from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema.manager import SchemaManager
+from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
@@ -511,6 +514,63 @@ async def car_person_schema(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered
 ) -> SchemaBranch:
     return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+
+
+@pytest.fixture
+async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
+    schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Car",
+                namespace="Test",
+                default_filter="name__value",
+                display_labels=["name__value", "color__value"],
+                uniqueness_constraints=[["name__value"]],
+                branch=BranchSupportType.LOCAL,
+                attributes=[
+                    AttributeSchema(name="name", kind="Text", unique=True),
+                    AttributeSchema(name="color", kind="Text", default_value="#444444", optional=True),
+                ],
+                relationships=[
+                    RelationshipSchema(
+                        name="owner",
+                        peer="TestPerson",
+                        optional=False,
+                        cardinality=RelationshipCardinality.ONE,
+                        direction=RelationshipDirection.OUTBOUND,
+                    ),
+                ],
+            ),
+            NodeSchema(
+                name="Person",
+                namespace="Test",
+                default_filter="name__value",
+                display_labels=["name__value"],
+                branch=BranchSupportType.AWARE,
+                uniqueness_constraints=[["name__value"]],
+                attributes=[
+                    AttributeSchema(name="name", kind="Text", unique=True),
+                    AttributeSchema(name="height", kind="Number", optional=True),
+                ],
+                relationships=[
+                    RelationshipSchema(
+                        name="cars",
+                        peer="TestCar",
+                        cardinality=RelationshipCardinality.MANY,
+                        direction=RelationshipDirection.INBOUND,
+                    )
+                ],
+            ),
+        ],
+    )
+    return schema
+
+
+@pytest.fixture
+async def car_person_schema_branch_local(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local_root
+) -> SchemaBranch:
+    return registry.schema.register_schema(schema=car_person_schema_branch_local_root, branch=default_branch.name)
 
 
 @pytest.fixture
