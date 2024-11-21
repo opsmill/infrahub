@@ -22,3 +22,7 @@ class RequestProposedChangeRepositoryChecks(BaseProposedChangeWithDiffMessage):
 
 class RequestProposedChangeSchemaIntegrity(BaseProposedChangeWithDiffMessage):
     """Sent trigger schema integrity checks for a proposed change"""
+
+
+class RequestProposedChangeUserTests(BaseProposedChangeWithDiffMessage):
+    """Sent trigger to run tests (smoke, units, integrations) for a proposed change."""

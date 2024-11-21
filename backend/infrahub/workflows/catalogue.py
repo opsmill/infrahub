@@ -289,6 +289,13 @@ REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY = WorkflowDefinition(
     function="run_proposed_change_schema_integrity_check",
 )
 
+REQUEST_PROPOSED_CHANGE_USER_TESTS = WorkflowDefinition(
+    name="proposed-changed-user-tests",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="run_proposed_change_user_tests",
+)
+
 AUTOMATION_SCHEMA_UPDATED = WorkflowDefinition(
     name="schema-updated-setup",
     type=WorkflowType.INTERNAL,
@@ -371,6 +378,7 @@ workflows = [
     REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
     REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
+    REQUEST_PROPOSED_CHANGE_USER_TESTS,
     SCHEMA_APPLY_MIGRATION,
     SCHEMA_VALIDATE_MIGRATION,
     TRANSFORM_JINJA2_RENDER,
