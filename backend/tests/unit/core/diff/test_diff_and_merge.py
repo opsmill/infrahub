@@ -1,3 +1,4 @@
+from typing import Literal
 from unittest.mock import AsyncMock
 
 import pytest
@@ -56,7 +57,11 @@ class TestDiffAndMerge:
         assert updated_node.mylist.value == ["c", "d", 3, 4]
 
     async def test_diff_and_merge_schema_with_default_values(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, car_person_schema: SchemaBranch
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        car_person_schema: SchemaBranch,
     ):
         schema_main = registry.schema.get_schema_branch(name=default_branch.name)
         await registry.schema.update_schema_branch(
@@ -98,12 +103,12 @@ class TestDiffAndMerge:
         db: InfrahubDatabase,
         default_branch: Branch,
         diff_repository: DiffRepository,
-        person_john_main,
-        person_jane_main,
-        person_alfred_main,
-        car_accord_main,
-        conflict_selection,
-        expected_value,
+        person_john_main: Node,
+        person_jane_main: Node,
+        person_alfred_main: Node,
+        car_accord_main: Node,
+        conflict_selection: ConflictSelection,
+        expected_value: Literal["John-main", "John-branch"],
     ):
         branch2 = await create_branch(db=db, branch_name="branch2")
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
@@ -134,12 +139,12 @@ class TestDiffAndMerge:
         db: InfrahubDatabase,
         default_branch: Branch,
         diff_repository: DiffRepository,
-        person_john_main,
-        person_jane_main,
-        person_alfred_main,
-        car_accord_main,
-        car_camry_main,
-        conflict_selection,
+        person_john_main: Node,
+        person_jane_main: Node,
+        person_alfred_main: Node,
+        car_accord_main: Node,
+        car_camry_main: Node,
+        conflict_selection: ConflictSelection,
     ):
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
@@ -174,11 +179,11 @@ class TestDiffAndMerge:
         db: InfrahubDatabase,
         default_branch: Branch,
         diff_repository: DiffRepository,
-        person_john_main,
-        person_jane_main,
-        person_alfred_main,
-        car_accord_main,
-        conflict_selection,
+        person_john_main: Node,
+        person_jane_main: Node,
+        person_alfred_main: Node,
+        car_accord_main: Node,
+        conflict_selection: ConflictSelection,
     ):
         branch2 = await create_branch(db=db, branch_name="branch2")
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
@@ -214,12 +219,12 @@ class TestDiffAndMerge:
         db: InfrahubDatabase,
         default_branch: Branch,
         diff_repository: DiffRepository,
-        person_john_main,
-        person_jane_main,
-        person_alfred_main,
-        car_accord_main,
-        car_camry_main,
-        conflict_selection,
+        person_john_main: Node,
+        person_jane_main: Node,
+        person_alfred_main: Node,
+        car_accord_main: Node,
+        car_camry_main: Node,
+        conflict_selection: ConflictSelection,
     ):
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
@@ -299,3 +304,142 @@ class TestDiffAndMerge:
         updated_friend = await NodeManager.get_one(db=db, id=friend_main.id)
         best_friend_rels = await updated_friend.best_friends.get_relationships(db=db)
         assert len(best_friend_rels) == 0
+
+    async def test_local_and_aware_nodes_added_on_branch(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local: SchemaBranch
+    ):
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        person = await Node.init(db=db, schema="TestPerson", branch=branch2)
+        await person.new(db=db, name="Guy", height=180)
+        await person.save(db=db)
+        car = await Node.init(db=db, schema="TestCar", branch=branch2)
+        await car.new(db=db, name="camry", owner=person.id)
+        await car.save(db=db)
+
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        diff_person = enriched_diff.get_node(node_uuid=person.id)
+        assert diff_person.action is DiffAction.ADDED
+        # validate car is not in the diff
+        with pytest.raises(ValueError, match=rf"No node {car.id}"):
+            enriched_diff.get_node(node_uuid=car.id)
+
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=Timestamp())
+
+        # validate person update on main
+        updated_person = await NodeManager.get_one(db=db, id=person.id)
+        assert updated_person.height.value == 180
+        assert updated_person.name.value == "Guy"
+        # validate car (branch=local) not merged to main
+        updated_car = await NodeManager.get_one(db=db, id=car.id)
+        assert updated_car is None
+        person_schema = registry.schema.get(name="TestPerson", duplicate=False)
+        cars_rel_schema = person_schema.get_relationship(name="cars")
+        cars_rels = await NodeManager.query_peers(
+            db=db, ids=[person.id], source_kind="TestPerson", schema=cars_rel_schema, filters={}, fetch_peers=True
+        )
+        assert len(cars_rels) == 0
+        car_schema = registry.schema.get(name="TestCar", duplicate=False)
+        owner_rel_schema = car_schema.get_relationship(name="owner")
+        owner_rels = await NodeManager.query_peers(
+            db=db, ids=[car.id], source_kind="TestCar", schema=owner_rel_schema, filters={}, fetch_peers=True
+        )
+        assert len(owner_rels) == 0
+        # validate relationship still exists on branch
+        cars_rels = await NodeManager.query_peers(
+            db=db,
+            branch=branch2,
+            ids=[person.id],
+            source_kind="TestPerson",
+            schema=cars_rel_schema,
+            filters={},
+            fetch_peers=True,
+        )
+        assert len(cars_rels) == 1
+        assert cars_rels[0].peer_id == car.id
+        owner_rels = await NodeManager.query_peers(
+            db=db,
+            branch=branch2,
+            ids=[car.id],
+            source_kind="TestCar",
+            schema=owner_rel_schema,
+            filters={},
+            fetch_peers=True,
+        )
+        assert len(owner_rels) == 1
+        assert owner_rels[0].peer_id == person.id
+
+    async def test_agnostic_and_aware_nodes_added_on_branch(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_global
+    ):
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        person = await Node.init(db=db, schema="TestPerson", branch=branch2)
+        await person.new(db=db, name="Guy", height=180)
+        await person.save(db=db)
+        car = await Node.init(db=db, schema="TestCar", branch=branch2)
+        await car.new(db=db, name="camry", nbr_seats=3, is_electric=False, owner=person.id)
+        await car.save(db=db)
+
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        diff_person = enriched_diff.get_node(node_uuid=person.id)
+        assert diff_person.action is DiffAction.UPDATED
+        diff_car = enriched_diff.get_node(node_uuid=car.id)
+        assert diff_car.action is DiffAction.ADDED
+
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=Timestamp())
+
+        # validate person (agnostic) exists on main
+        updated_person = await NodeManager.get_one(db=db, id=person.id)
+        assert updated_person.height.value == 180
+        assert updated_person.name.value == "Guy"
+        cars_rels = await updated_person.cars.get(db=db)
+        assert len(cars_rels) == 1
+        assert cars_rels[0].peer_id == car.id
+        # validate car merged to main
+        updated_car = await NodeManager.get_one(db=db, id=car.id)
+        assert updated_car.name.value == "camry"
+        assert updated_car.nbr_seats.value == 3
+        assert updated_car.is_electric.value is False
+        owner_rel = await updated_car.owner.get(db=db)
+        assert owner_rel.peer_id == person.id
+
+        person_schema = registry.schema.get(name="TestPerson", duplicate=False)
+        cars_rel_schema = person_schema.get_relationship(name="cars")
+        cars_rels = await NodeManager.query_peers(
+            db=db, ids=[person.id], source_kind="TestPerson", schema=cars_rel_schema, filters={}, fetch_peers=True
+        )
+        assert len(cars_rels) == 1
+        assert cars_rels[0].peer_id == car.id
+        car_schema = registry.schema.get(name="TestCar", duplicate=False)
+        owner_rel_schema = car_schema.get_relationship(name="owner")
+        owner_rels = await NodeManager.query_peers(
+            db=db, ids=[car.id], source_kind="TestCar", schema=owner_rel_schema, filters={}, fetch_peers=True
+        )
+        assert len(owner_rels) == 1
+        assert owner_rels[0].peer_id == person.id
+        # validate relationship still exists on branch
+        cars_rels = await NodeManager.query_peers(
+            db=db,
+            branch=branch2,
+            ids=[person.id],
+            source_kind="TestPerson",
+            schema=cars_rel_schema,
+            filters={},
+            fetch_peers=True,
+        )
+        assert len(cars_rels) == 1
+        assert cars_rels[0].peer_id == car.id
+        owner_rels = await NodeManager.query_peers(
+            db=db,
+            branch=branch2,
+            ids=[car.id],
+            source_kind="TestCar",
+            schema=owner_rel_schema,
+            filters={},
+            fetch_peers=True,
+        )
+        assert len(owner_rels) == 1
+        assert owner_rels[0].peer_id == person.id

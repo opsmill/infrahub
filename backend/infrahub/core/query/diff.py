@@ -528,14 +528,12 @@ class DiffAllPathsQuery(DiffQuery):
         self,
         base_branch: Branch,
         diff_branch_from_time: Timestamp,
-        branch_support: list[BranchSupportType] | None = None,
         current_node_field_specifiers: list[tuple[str, str]] | None = None,
         new_node_field_specifiers: list[tuple[str, str]] | None = None,
         **kwargs: Any,
     ):
         self.base_branch = base_branch
         self.diff_branch_from_time = diff_branch_from_time
-        self.branch_support = branch_support or [BranchSupportType.AWARE]
         self.current_node_field_specifiers = current_node_field_specifiers
         self.new_node_field_specifiers = new_node_field_specifiers
 
@@ -551,7 +549,9 @@ class DiffAllPathsQuery(DiffQuery):
                 "branch_from_time": self.diff_branch_from_time.to_string(),
                 "from_time": from_str,
                 "to_time": self.diff_to.to_string(),
-                "branch_support": [item.value for item in self.branch_support],
+                "branch_local": BranchSupportType.LOCAL.value,
+                "branch_aware": BranchSupportType.AWARE.value,
+                "branch_agnostic": BranchSupportType.AGNOSTIC.value,
                 "new_node_field_specifiers": self.new_node_field_specifiers,
                 "current_node_field_specifiers": self.current_node_field_specifiers,
             }
@@ -577,7 +577,7 @@ CALL {
         WHERE (node_ids_list IS NULL OR p.uuid IN node_ids_list)
         AND (from_time <= diff_rel.from < $to_time)
         AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
-        AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
+        AND p.branch_support = $branch_aware
         WITH p, q, diff_rel, from_time
         // -------------------------------------
         // Exclude nodes added then removed on branch within timeframe
@@ -603,6 +603,7 @@ CALL {
             WHERE %(id_func)s(diff_rel) = %(id_func)s(top_diff_rel)
             AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
             AND any(l in labels(node) WHERE l in ["Attribute", "Relationship"])
+            AND node.branch_support IN [$branch_aware, $branch_agnostic]
             AND type(r_prop) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE", "IS_RELATED"]
             AND any(l in labels(prop) WHERE l in ["Boolean", "Node", "AttributeValue"])
             AND ALL(
@@ -655,9 +656,9 @@ CALL {
             // exclude attributes and relationships under added/removed nodes b/c they are covered above
             WHERE (node_field_specifiers_list IS NULL OR [p.uuid, q.name] IN node_field_specifiers_list)
             AND r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
-            AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
+            AND q.branch_support = $branch_aware
             // if p has a different type of branch support and was addded within our timeframe
-            AND (r_root.from < from_time OR NOT (p.branch_support IN $branch_support))
+            AND (r_root.from < from_time OR p.branch_support = $branch_agnostic)
             AND r_root.status = "active"
             // get attributes and relationships added on the branch during the timeframe
             AND (from_time <= diff_rel.from < $to_time)
@@ -671,9 +672,9 @@ CALL {
             // exclude attributes and relationships under added/removed nodes b/c they are covered above
             WHERE (node_field_specifiers_list IS NULL OR [p.uuid, q.name] IN node_field_specifiers_list)
             AND r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
-            AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
+            AND q.branch_support = $branch_aware
             // if p has a different type of branch support and was addded within our timeframe
-            AND (r_root.from < from_time OR NOT (p.branch_support IN $branch_support))
+            AND (r_root.from < from_time OR p.branch_support = $branch_agnostic)
             // get attributes and relationships added on the branch during the timeframe
             AND (from_time <= diff_rel.from < $to_time)
             AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
@@ -773,7 +774,7 @@ CALL {
             r in [r_root, r_node]
             WHERE r.from <= from_time AND r.branch IN [$branch_name, $base_branch_name]
         )
-        AND (p.branch_support IN $branch_support OR q.branch_support IN $branch_support)
+        AND p.branch_support = $branch_aware
         AND any(l in labels(p) WHERE l in ["Attribute", "Relationship"])
         AND type(diff_rel) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE"]
         AND any(l in labels(q) WHERE l in ["Boolean", "Node", "AttributeValue"])
