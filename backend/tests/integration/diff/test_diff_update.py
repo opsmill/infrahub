@@ -1075,9 +1075,10 @@ class TestDiffUpdateConflict(TestInfrahubApp):
 
         # check EnrichedDiff
         diff = await self.get_branch_diff(db=db, branch=diff_branch)
-        assert len(diff.nodes) == 8
+        assert len(diff.nodes) == 9
         nodes_by_id = {n.uuid: n for n in diff.nodes}
-        assert kara_main.get_id() not in nodes_by_id
+        resolved_kara_node = nodes_by_id[kara_main.id]
+        assert resolved_kara_node.action is DiffAction.UNCHANGED
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]

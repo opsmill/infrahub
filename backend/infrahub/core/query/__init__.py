@@ -648,9 +648,9 @@ class Query(ABC):
             attrs_info[tuple(identifier)].append(info)
 
         for values in attrs_info.values():
-            attr_info = sorted(values, key=lambda i: (i["branch_score"], i["time_score"], i["deleted"]), reverse=True)[
-                0
-            ]
+            attr_info = sorted(
+                values, key=lambda i: (i["branch_score"], i["time_score"], not i["deleted"]), reverse=True
+            )[0]
             if attr_info["deleted"]:
                 continue
 
