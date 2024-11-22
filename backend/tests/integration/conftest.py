@@ -65,8 +65,8 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
 async def init_db_infra(db: InfrahubDatabase):
     await delete_all_nodes(db=db)
     await first_time_initialization(db=db)
-    await initialization(db=db)
     await load_infrastructure_schema(db=db)
+    await initialization(db=db)
 
 
 @pytest.fixture(scope="module")
