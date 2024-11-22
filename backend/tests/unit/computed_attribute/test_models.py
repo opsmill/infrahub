@@ -34,10 +34,22 @@ def generate_automation(
 
 async def test_load_from_prefect():
     automations: list[Automation] = [
-        generate_automation(name=PROCESS_AUTOMATION_NAME.format(identifier="AAAAA", scope="default")),
-        generate_automation(name=PROCESS_AUTOMATION_NAME.format(identifier="AAAAA", scope="yyyy")),
-        generate_automation(name=PROCESS_AUTOMATION_NAME.format(identifier="BBBBB", scope="default")),
-        generate_automation(name=QUERY_AUTOMATION_NAME.format(identifier="CCCCC", scope="default")),
+        generate_automation(
+            name=PROCESS_AUTOMATION_NAME.format(
+                prefix=PROCESS_AUTOMATION_NAME_PREFIX, identifier="AAAAA", scope="default"
+            )
+        ),
+        generate_automation(
+            name=PROCESS_AUTOMATION_NAME.format(prefix=PROCESS_AUTOMATION_NAME_PREFIX, identifier="AAAAA", scope="yyyy")
+        ),
+        generate_automation(
+            name=PROCESS_AUTOMATION_NAME.format(
+                prefix=PROCESS_AUTOMATION_NAME_PREFIX, identifier="BBBBB", scope="default"
+            )
+        ),
+        generate_automation(
+            name=QUERY_AUTOMATION_NAME.format(prefix=QUERY_AUTOMATION_NAME_PREFIX, identifier="CCCCC", scope="default")
+        ),
         generate_automation(name="anothername"),
     ]
 

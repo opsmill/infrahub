@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 from typing_extensions import Self
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from infrahub.core.schema.schema_branch_computed import PythonDefinition
 
 
@@ -42,6 +44,14 @@ class ComputedAttributeAutomations(BaseModel):
         if identifier in self.data and scope in self.data[identifier]:
             return True
         return False
+
+    def return_obsolete(self, keep: list[UUID]) -> list[UUID]:
+        remove = []
+        for identifier in self.data.values():
+            for automation in identifier.values():
+                if automation.id not in keep:
+                    remove.append(automation.id)
+        return remove
 
 
 @dataclass

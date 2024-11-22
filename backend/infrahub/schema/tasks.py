@@ -52,13 +52,17 @@ async def schema_updated_setup() -> None:
                 RunDeployment(
                     source="selected",
                     deployment_id=deployment_id_computed_attribute_setup,
-                    parameters={},
+                    parameters={
+                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                    },
                     job_variables={},
                 ),
                 RunDeployment(
                     source="selected",
                     deployment_id=deployment_id_computed_attribute_setup_python,
-                    parameters={},
+                    parameters={
+                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                    },
                     job_variables={},
                 ),
             ],
