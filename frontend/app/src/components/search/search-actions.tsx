@@ -20,26 +20,29 @@ export const SearchActions = ({ query }: SearchProps) => {
   const resultsMenu = menuItems.filter(({ label }) =>
     label.toLowerCase().includes(queryLowerCased)
   );
-  const resultsSchema = models.filter(
-    ({ kind, label, description }) =>
+  const resultsSchema = models.filter(({ kind, label, description }) => {
+    return (
       kind?.toLowerCase().includes(queryLowerCased) ||
       label?.toLowerCase().includes(queryLowerCased) ||
       description?.toLowerCase().includes(queryLowerCased)
-  );
+    );
+  });
 
   const results = [...resultsMenu, ...resultsSchema];
+
   if (results.length === 0) return null;
 
   const firstThreeMatches = results.slice(0, 3);
+
   return (
     <SearchGroup>
       <SearchGroupTitle>Go to</SearchGroupTitle>
 
-      {firstThreeMatches.map((result) => {
+      {firstThreeMatches.map((result, index) => {
         return "namespace" in result ? (
-          <ActionOnSchema key={result.kind} model={result} />
+          <ActionOnSchema key={index} model={result} />
         ) : (
-          <ActionOnMenu key={result.path} menuItem={result} />
+          <ActionOnMenu key={index} menuItem={result} />
         );
       })}
     </SearchGroup>
