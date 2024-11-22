@@ -2,4 +2,270 @@
 title: Creating a Computed Attribute
 ---
 
-TODO
+# Creating a Computed Attribute in Infrahub
+
+Infrahub supports two different types of computed attributes:
+
+- [**Jinja2**](/topics/computed-attributes#jinja-computed-attribute) uses a concise Jinja2 template directly within the schema definition.
+- [**Python**](/topics/computed-attributes#python-computed-attribute) leverages Infrahub's [Python transform](/topics/transformation) feature.
+
+
+## Recommendations
+
+- We recommend to keep python transform simple to not impact system performance.
+- Use `Jinja2` preferably for simple computation.
+
+## Adding a Jinja2 computed attribute
+
+To create a Jinja2 computed attribute everything happens directly in the schema definition. Refer to this guide to find further information about [Schema Creation](/guides/create-schema)
+
+In the following example we will create a computed attribute `description` for our `NetworkDevice` node. The value will be a combination of the device's role and related site name.
+
+```yaml
+---
+version: "1.0"
+nodes:
+  - name: Site
+    namespace: Location
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+    relationships:
+      - name: devices
+        cardinality: many
+        peer: NetworkDevice
+        kind: Component
+
+  - name: Device
+    namespace: Network
+    attributes:
+      - name: hostname
+        kind: Text
+        unique: true
+      - name: role
+        kind: Dropdown
+        choices:
+          - name: core
+          - name: edge
+          - name: spine
+          - name: leaf
+      - name: description
+        kind: Text
+        computed_attribute:
+          kind: Jinja2
+          jinja2_template: "{{ role__value|title }} device located on {{ site__name__value|lower }}"
+        read_only: true
+        optional: false
+    relationships:
+      - name: site
+        peer: LocationSite
+        optional: false
+        cardinality: one
+        kind: Attribute
+```
+
+:::success
+
+You can use most of the filters coming out of the box with Jinja2!
+
+:::
+
+Please refer to the [Schema Reference](/reference) for further details.
+
+## Adding Python computed attribute
+
+Creating a Python computed attribute is a two step process. Assuming the following schema:
+
+```yml
+---
+version: "1.0"
+nodes:
+  - name: Site
+    namespace: Location
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+    relationships:
+      - name: circuit_endpoints
+        cardinality: many
+        optional: true
+        peer: InfraCircuitEndpoint
+        kind: Component
+
+  - name: Circuit
+    namespace: Infra
+    display_labels:
+      - circuit_id__value
+    attributes:
+      - name: circuit_id
+        kind: Text
+        unique: true
+    relationships:
+      - name: endpoints
+        peer: InfraCircuitEndpoint
+        optional: true
+        cardinality: many
+        kind: Component
+
+  - name: CircuitEndpoint
+    namespace: Infra
+    label: Circuit endpoint
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+    relationships:
+      - name: circuit
+        peer: InfraCircuit
+        cardinality: one
+        kind: Attribute
+      - name: location
+        peer: LocationSite
+        cardinality: one
+        kind: Attribute
+```
+
+In the following example we will create a computed attribute `description` for our `InfraCircuit` node. The value will be a combination of all endpoints locations.
+
+### Create the Python transform
+
+Please refer to the [Python transform guide](/guides/python-transform) for further details.
+
+1. First we prepare a GraphQL that returns the data need
+
+:::info
+
+GraphQL query used to compute attribute value expect ID as parameter.
+
+```graphql
+query MyQuery($id: ID!) {
+  MyNode(ids: [$id]) {
+    # ...
+  }
+}
+```
+
+:::
+
+```graphql
+query CircuitDescriptionQuery($id: ID!) {
+  InfraCircuit(ids: [$id]) {
+    edges {
+      node {
+        circuit_id {
+          value
+        }
+        endpoints {
+          edges {
+            node {
+              name { value }
+              location {
+                node {
+                  name {
+                    value
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+2. Then the Python script that implement the logic
+
+:::info
+
+Make sure that the script returns a string.
+
+:::
+
+```python
+from infrahub_sdk.transforms import InfrahubTransform
+
+
+class ComputedCircuitDescription(InfrahubTransform):
+    query = "computed_circuit_description"
+    url = "computed_circuit_description"
+
+    async def transform(self, data):
+        circuit_dict: dict = data["InfraCircuit"]["edges"][0]["node"]
+
+        detailed_endpoints: list[str] = []
+
+        for endpoint in circuit_dict["endpoints"]["edges"]:
+            detailed_endpoints.append(
+                f'{endpoint["node"]["location"]["node"]["name"]["value"]}::{endpoint["node"]["name"]["value"]}'
+            )
+
+        return f' <- {circuit_dict["circuit_id"]["value"]} -> '.join(detailed_endpoints)
+```
+
+3. Tie everything together into `.infrahub.yml` file
+
+```yaml
+---
+python_transforms:
+  - name: computed_circuit_description
+    class_name: ComputedCircuitDescription
+    file_path: computed_circuit_description.py
+
+queries:
+  - name: computed_circuit_description
+    file_path: computed_circuit_description.gql
+```
+
+At this stage you should be able to test your transform using `infrahubctl`
+
+```console
+
+```shell title="❯ infrahubctl transform computed_circuit_description id=here_goes_a_circuit_id"
+"site1::endpoint-a <- circuit1 -> site2::endpoint-b"
+```
+
+4. Load you transform in Infrahub
+
+You need to commit these files on a git repository and connect this repository with Infrahub. In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](/guides/repository) in order to sync the repository you created and make it available within Infrahub.
+
+### Create the schema
+
+:::info
+
+Make sure that the transform is imported in Infrahub before adding the computed attribute in the schema.
+
+:::
+
+We will now add the Python computed attribute to the schema
+
+```diff
+---
+version: "1.0"
+nodes:
+  - name: Circuit
+    namespace: Infra
+    display_labels:
+      - circuit_id__value
+    attributes:
++       - name: computed_description
++         kind: Text
++         computed_attribute:
++           kind: TransformPython
++           transform: computed_circuit_description # Should point to the transform created before
++         read_only: true
++         optional: true
+```
+
+:::success
+
+Circuit's description is now automatically computed (this could take a few seconds). Changing any related attribute (e.g. endpoint name) will trigger a new evaluation and update the value.
+
+:::
