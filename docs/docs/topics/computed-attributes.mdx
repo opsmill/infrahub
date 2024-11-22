@@ -4,9 +4,9 @@ title: Computed attributes
 
 The computed attributes feature enables the dynamic calculation of attribute values based on user-defined logic. Currently, Infrahub supports two main types of computed attributes: Jinja2 and Python.
 
-## Jinja2 Computed Attributes
+## Jinja2 Computed Attributes {#jinja-computed-attribute}
 
-Users can input a concise Jinja2 template directly within the schema definition. The logic provided in the Jinja2 code determines the computed value.
+Users can input a concise Jinja2 template directly within the schema definition.
 
 - The computation takes place synchronously within the same transaction. This means any change to the field's input will trigger an immediate update of the computed field.
 - Suitable for use in mandatory attributes because of its immediate processing nature.
@@ -17,8 +17,9 @@ See the [guide](/guides/computed-attributes) for instructions on creating Jinja2
 
 - Jinja2 computed attributes cannot reference relationships with cardinality “many”.
 - Only direct relationships can be used (e.g., a relationship of a relationship is not accessible).
+- Only `URL` and `Text` attribute kinds are supported at the moment.
 
-## Python Computed Attributes
+## Python Computed Attributes {#python-computed-attribute}
 
 Python computed attributes leverage Infrahub's [Python transform](./transformation.mdx) feature. Users can define which transformation to apply directly within the schema.
 
@@ -31,6 +32,7 @@ See the [guide](/guides/computed-attributes) for instructions on creating Python
 
 - Python computed attributes cannot be used on mandatory attribute.
 - Complex scripts can impact system performance.
+- Only `URL` and `Text` attribute kinds are supported at the moment.
 
 ## Choosing Between Jinja2 and Python
 
