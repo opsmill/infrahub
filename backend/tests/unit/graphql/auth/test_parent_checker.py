@@ -4,7 +4,6 @@ import pytest
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.branch import Branch
-from infrahub.core.constants import AccountRole
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
@@ -18,7 +17,7 @@ from infrahub.graphql.initialization import GraphqlParams
 
 class TestParentAuthChecker:
     def setup_method(self):
-        self.account_session = AccountSession(account_id="abc", auth_type=AuthType.JWT, role=AccountRole.ADMIN)
+        self.account_session = AccountSession(account_id="abc", auth_type=AuthType.JWT)
         self.graphql_query = AsyncMock(spec=InfrahubGraphQLQueryAnalyzer)
         self.query_parameters = MagicMock(spec=GraphqlParams)
         self.sub_auth_checker_one = AsyncMock(spec=GraphQLQueryPermissionCheckerInterface)

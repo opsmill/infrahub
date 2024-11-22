@@ -58,7 +58,10 @@ async def test_access_resource_using_refresh_token(db: InfrahubDatabase, default
         response = client.get("/api/transform/jinja2/testing", cookies={"access_token": refresh_token})
 
     assert response.status_code == 401
-    assert response.json() == {"data": None, "errors": [{"message": "Invalid token", "extensions": {"code": 401}}]}
+    assert response.json() == {
+        "data": None,
+        "errors": [{"message": "Invalid token, current token is not an access token", "extensions": {"code": 401}}],
+    }
 
 
 async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, create_test_admin):

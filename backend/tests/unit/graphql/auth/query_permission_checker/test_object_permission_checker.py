@@ -8,13 +8,7 @@ import pytest
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import (
-    AccountRole,
-    GlobalPermissions,
-    InfrahubKind,
-    PermissionAction,
-    PermissionDecision,
-)
+from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionAction, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.exceptions import PermissionDeniedError
@@ -396,7 +390,7 @@ class TestAccountManagerPermissions:
     @pytest.mark.parametrize(
         "user",
         [
-            AccountSession(account_id="abc", auth_type=AuthType.JWT, role=AccountRole.ADMIN),
+            AccountSession(account_id="abc", auth_type=AuthType.JWT),
             AccountSession(authenticated=False, account_id="anonymous", auth_type=AuthType.NONE),
         ],
     )
@@ -512,7 +506,7 @@ class TestPermissionManagerPermissions:
     @pytest.mark.parametrize(
         "user",
         [
-            AccountSession(account_id="abc", auth_type=AuthType.JWT, role=AccountRole.ADMIN),
+            AccountSession(account_id="abc", auth_type=AuthType.JWT),
             AccountSession(authenticated=False, account_id="anonymous", auth_type=AuthType.NONE),
         ],
     )
@@ -627,7 +621,7 @@ class TestRepositoryManagerPermissions:
     @pytest.mark.parametrize(
         "user",
         [
-            AccountSession(account_id="abc", auth_type=AuthType.JWT, role=AccountRole.ADMIN),
+            AccountSession(account_id="abc", auth_type=AuthType.JWT),
             AccountSession(authenticated=False, account_id="anonymous", auth_type=AuthType.NONE),
         ],
     )

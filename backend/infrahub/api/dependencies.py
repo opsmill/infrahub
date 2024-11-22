@@ -12,7 +12,7 @@ from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub.exceptions import AuthorizationError, PermissionDeniedError
+from infrahub.exceptions import AuthorizationError
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -112,13 +112,11 @@ async def get_current_user(
 
     account_session = await authentication_token(db=db, jwt_token=jwt_token, api_key=api_key)
 
-    if account_session.authenticated or request.url.path.startswith("/graphql"):
+    if (
+        account_session.authenticated
+        or request.url.path.startswith("/graphql")
+        or (config.SETTINGS.main.allow_anonymous_access and request.method.lower() in ["get", "options"])
+    ):
         return account_session
-
-    if config.SETTINGS.main.allow_anonymous_access and request.method.lower() in ["get", "options"]:
-        return account_session
-
-    if request.method.lower() == "post" and account_session.read_only and account_session.authenticated:
-        raise PermissionDeniedError("You are not allowed to perform this operation")
 
     raise AuthorizationError("Authentication is required")

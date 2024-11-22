@@ -77,12 +77,6 @@ class PermissionDecision(InfrahubNumberEnum):
     ALLOW_ALL = 6
 
 
-class AccountRole(InfrahubStringEnum):
-    ADMIN = "admin"
-    READ_ONLY = "read-only"
-    READ_WRITE = "read-write"
-
-
 class AccountType(InfrahubStringEnum):
     USER = "User"
     SCRIPT = "Script"

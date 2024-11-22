@@ -1,17 +1,24 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Body, Depends, Request, Response
 from pydantic import BaseModel, Field
 
 from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.account import ObjectPermission
+from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.core.protocols import CoreArtifactDefinition
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub.exceptions import NodeNotFoundError
+from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
+from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
+
+if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
 
 log = get_logger()
 router = APIRouter(prefix="/artifact")
@@ -54,8 +61,25 @@ async def generate_artifact(
     ),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
-    _: str = Depends(get_current_user),
+    account_session: AccountSession = Depends(get_current_user),
 ) -> None:
+    permission_decision = (
+        PermissionDecisionFlag.ALLOW_DEFAULT
+        if branch_params.branch.name == registry.default_branch
+        else PermissionDecisionFlag.ALLOW_OTHER
+    )
+    for permission in [
+        ObjectPermission(namespace="Core", name="Artifact", action=action.value, decision=permission_decision)
+        for action in (PermissionAction.CREATE, PermissionAction.UPDATE)
+    ]:
+        has_permission = False
+        for permission_backend in registry.permission_backends:
+            has_permission = await permission_backend.has_permission(
+                db=db, account_session=account_session, permission=permission, branch=branch_params.branch
+            )
+        if not has_permission:
+            raise PermissionDeniedError(f"You do not have the following permission: {permission}")
+
     # Verify that the artifact definition exists for the requested branch
     artifact_definition = await registry.manager.get_one_by_id_or_default_filter(
         db=db,
