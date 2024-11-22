@@ -305,8 +305,6 @@ class DiffMergeSerializer:
         if relationship_diff.conflict and relationship_diff.conflict.selected_branch is ConflictSelection.BASE_BRANCH:
             return ([], [])
         relationship_dicts = []
-        added_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.ADDED)
-        removed_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.REMOVED)
         actions_and_peers = self._get_actions_and_peers(relationship_diff=relationship_diff)
         added_peer_ids = [peer_id for action, peer_id in actions_and_peers if action is DiffAction.ADDED]
         removed_peer_ids = [peer_id for action, peer_id in actions_and_peers if action is DiffAction.REMOVED]
@@ -324,7 +322,26 @@ class DiffMergeSerializer:
                         peer_id=peer_id, name=relationship_identifier, action=self._to_action_str(action=action)
                     )
                 )
-        for property_diff in relationship_diff.properties:
+        relationship_property_dicts = self._serialize_relationship_properties(
+            node_uuid=node_uuid,
+            relationship_identifier=relationship_identifier,
+            relationship_diff_properties=relationship_diff.properties,
+            added_peer_ids=added_peer_ids,
+            removed_peer_ids=removed_peer_ids,
+        )
+        return relationship_dicts, relationship_property_dicts
+
+    def _serialize_relationship_properties(
+        self,
+        node_uuid: str,
+        relationship_identifier: str,
+        relationship_diff_properties: set[EnrichedDiffProperty],
+        added_peer_ids: list[str],
+        removed_peer_ids: list[str],
+    ) -> list[RelationshipPropertyMergeDict]:
+        added_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.ADDED)
+        removed_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.REMOVED)
+        for property_diff in relationship_diff_properties:
             if property_diff.property_type is DatabaseEdgeType.IS_RELATED:
                 # handled above
                 continue
@@ -345,8 +362,10 @@ class DiffMergeSerializer:
                 elif action is DiffAction.REMOVED:
                     removed_property_dicts[property_diff.property_type] = property_dict
         relationship_property_dicts = []
-        peers_and_property_dicts = [(peer_id, added_property_dicts) for peer_id in added_peer_ids]
-        peers_and_property_dicts += [(peer_id, removed_property_dicts) for peer_id in removed_peer_ids]
+        if added_property_dicts:
+            peers_and_property_dicts = [(peer_id, added_property_dicts) for peer_id in added_peer_ids]
+        if removed_property_dicts:
+            peers_and_property_dicts += [(peer_id, removed_property_dicts) for peer_id in removed_peer_ids]
         for peer_id, property_dicts in peers_and_property_dicts:
             if (
                 peer_id
@@ -361,4 +380,4 @@ class DiffMergeSerializer:
                         properties=list(property_dicts.values()),
                     )
                 )
-        return relationship_dicts, relationship_property_dicts
+        return relationship_property_dicts
