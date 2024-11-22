@@ -191,9 +191,8 @@ addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope --jun
 junit_duration_report = "call"
 
 [tool.pytest_env]
-PREFECT_LOGGING_LEVEL = "INFO"
-INFRAHUB_LOG_LEVEL = "INFO"
-INFRAHUB_PRODUCTION = false
+PREFECT_LOGGING_LEVEL = "ERROR"
+INFRAHUB_LOG_LEVEL = "ERROR"
 
 [tool.mypy]
 pretty = true
