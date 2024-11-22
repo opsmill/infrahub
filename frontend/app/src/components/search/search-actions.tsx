@@ -38,11 +38,11 @@ export const SearchActions = ({ query }: SearchProps) => {
     <SearchGroup>
       <SearchGroupTitle>Go to</SearchGroupTitle>
 
-      {firstThreeMatches.map((result, index) => {
+      {firstThreeMatches.map((result) => {
         return "namespace" in result ? (
-          <ActionOnSchema key={index} model={result} />
+          <ActionOnSchema key={result.id} model={result} />
         ) : (
-          <ActionOnMenu key={index} menuItem={result} />
+          <ActionOnMenu key={result.identifier} menuItem={result} />
         );
       })}
     </SearchGroup>
