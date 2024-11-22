@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import InfrahubKind, PermissionAction
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
 from infrahub.core.protocols import CoreArtifactDefinition
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
@@ -65,7 +65,7 @@ async def generate_artifact(
 ) -> None:
     permission_decision = (
         PermissionDecisionFlag.ALLOW_DEFAULT
-        if branch_params.branch.name == registry.default_branch
+        if branch_params.branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
         else PermissionDecisionFlag.ALLOW_OTHER
     )
     for permission in [
@@ -74,9 +74,10 @@ async def generate_artifact(
     ]:
         has_permission = False
         for permission_backend in registry.permission_backends:
-            has_permission = await permission_backend.has_permission(
+            if has_permission := await permission_backend.has_permission(
                 db=db, account_session=account_session, permission=permission, branch=branch_params.branch
-            )
+            ):
+                break
         if not has_permission:
             raise PermissionDeniedError(f"You do not have the following permission: {permission}")
 
