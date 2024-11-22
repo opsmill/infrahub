@@ -56,9 +56,8 @@ export function SearchAnywhere({ className = "", isCollapsed }: SearchModalProps
 
   useEffect(() => {
     const onSearchAnywhereShortcut = (event: KeyboardEvent) => {
-      event.preventDefault();
-
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
         openModal();
       }
     };
