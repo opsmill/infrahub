@@ -22,14 +22,18 @@ from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.events.branch_action import BranchDeleteEvent
+from infrahub.events.branch_action import BranchCreateEvent, BranchDeleteEvent
 from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TCH001
 from infrahub.log import get_log_data
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workflows.catalogue import BRANCH_CANCEL_PROPOSED_CHANGES, IPAM_RECONCILIATION
+from infrahub.workflows.catalogue import (
+    BRANCH_CANCEL_PROPOSED_CHANGES,
+    GIT_REPOSITORIES_CREATE_BRANCH,
+    IPAM_RECONCILIATION,
+)
 from infrahub.workflows.utils import add_branch_tag
 
 
@@ -257,7 +261,6 @@ async def validate_branch(branch: str) -> State:
 @flow(name="create-branch", flow_run_name="Create branch {model.name}")
 async def create_branch(model: BranchCreateModel) -> None:
     service = services.service
-
     await add_branch_tag(model.name)
 
     try:
@@ -287,9 +290,11 @@ async def create_branch(model: BranchCreateModel) -> None:
         # Add Branch to registry
         registry.branch[obj.name] = obj
 
-    message = messages.EventBranchCreate(
-        branch=obj.name,
-        branch_id=str(obj.id),
-        sync_with_git=obj.sync_with_git,
-    )
-    await service.send(message=message)
+    event = BranchCreateEvent(branch=obj.name, branch_id=str(obj.id), sync_with_git=obj.sync_with_git)
+    await service.event.send(event=event)
+
+    if obj.sync_with_git:
+        await service.workflow.submit_workflow(
+            workflow=GIT_REPOSITORIES_CREATE_BRANCH,
+            parameters={"branch": obj.name, "branch_id": str(obj.id)},
+        )

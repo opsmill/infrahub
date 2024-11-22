@@ -102,10 +102,10 @@ async def prepare_proposed_change(
     client = InfrahubClient(config=config)
 
     service = InfrahubServices(message_bus=bus, client=client, workflow=WorkflowLocalExecution(), database=db)
+    await service.event.initialize(service)
     services.prepare(service=service)
 
     repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
-
     await repo.sync()
 
     result = await graphql_mutation(

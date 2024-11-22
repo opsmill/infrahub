@@ -113,11 +113,8 @@ async def create_branch(branch: str, branch_id: str) -> None:
     """Request to the creation of git branches in available repositories."""
     service = services.service
     await add_branch_tag(branch_name=branch)
-
     repositories: list[CoreRepository] = await service.client.filters(kind=CoreRepository)
-
     batch = await service.client.create_batch()
-
     for repository in repositories:
         batch.add(
             task=git_branch_create,
@@ -206,8 +203,10 @@ async def git_branch_create(
     service = services.service
 
     repo = await InfrahubRepository.init(id=repository_id, name=repository_name, client=client)
+
     async with lock.registry.get(name=repository_name, namespace="repository"):
         await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id)
+
         if repo.location:
             # New branch has been pushed remotely, tell workers to fetch it
             message = messages.RefreshGitFetch(
