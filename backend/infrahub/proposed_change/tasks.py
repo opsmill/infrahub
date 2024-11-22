@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+import os
+import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
 from infrahub_sdk.protocols import CoreProposedChange
 from prefect import flow, task
 from prefect.client.schemas.objects import (
@@ -10,6 +15,7 @@ from prefect.client.schemas.objects import (
 from prefect.logging import get_run_logger
 from prefect.states import Completed, Failed
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import merge_branch
@@ -24,6 +30,8 @@ from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
+from infrahub.git.repository import get_initialized_repo
+from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.operations.requests.proposed_change import DefinitionSelect
 from infrahub.proposed_change.constants import ProposedChangeState
@@ -32,13 +40,18 @@ from infrahub.proposed_change.models import (
     RequestProposedChangeRepositoryChecks,
     RequestProposedChangeRunGenerators,
     RequestProposedChangeSchemaIntegrity,
+    RequestProposedChangeUserTests,
 )
+from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import services
 from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS
 
 if TYPE_CHECKING:
+    from infrahub_sdk.node import InfrahubNode
+
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.message_bus.types import ProposedChangeRepository
 
 
 async def _proposed_change_transition_state(
@@ -386,3 +399,68 @@ async def repository_checks(model: RequestProposedChangeRepositoryChecks) -> Non
     for event in events:
         event.assign_meta(parent=model)
         await service.send(message=event)
+
+
+@flow(
+    name="proposed-changed-user-tests",
+    flow_run_name="Running_repository_tests on proposed change {model.proposed_change}",
+)
+async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) -> None:
+    service = services.service
+    log = get_run_logger()
+    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+
+    def _execute(
+        directory: Path, repository: ProposedChangeRepository, proposed_change: InfrahubNode
+    ) -> int | pytest.ExitCode:
+        config_file = str(directory / ".infrahub.yml")
+        test_directory = directory / "tests"
+        log = get_logger()
+
+        if not test_directory.is_dir():
+            log.debug(
+                event="repository_tests_ignored",
+                proposed_change=proposed_change,
+                repository=repository.repository_name,
+                message="tests directory not found",
+            )
+            return 1
+
+        # Redirect stdout/stderr to avoid showing pytest lines in the git agent
+        old_out = sys.stdout
+        old_err = sys.stderr
+
+        with Path(os.devnull).open(mode="w", encoding="utf-8") as devnull:
+            sys.stdout = devnull
+            sys.stderr = devnull
+
+            exit_code = pytest.main(
+                [
+                    str(test_directory),
+                    f"--infrahub-repo-config={config_file}",
+                    f"--infrahub-address={config.SETTINGS.main.internal_address}",
+                    "-qqqq",
+                    "-s",
+                ],
+                plugins=[InfrahubBackendPlugin(service.client.config, repository.repository_id, proposed_change.id)],
+            )
+
+        # Restore stdout/stderr back to their orignal states
+        sys.stdout = old_out
+        sys.stderr = old_err
+
+        return exit_code
+
+    for repository in model.branch_diff.repositories:
+        if model.source_branch_sync_with_git:
+            repo = await get_initialized_repo(
+                repository_id=repository.repository_id,
+                name=repository.repository_name,
+                service=service,
+                repository_kind=repository.kind,
+            )
+            commit = repo.get_commit_value(proposed_change.source_branch.value)
+            worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
+
+            return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
+            log.info(msg=f"repository_tests_completed return_code={return_code}")

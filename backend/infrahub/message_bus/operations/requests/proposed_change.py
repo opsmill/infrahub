@@ -1,22 +1,16 @@
 from __future__ import annotations
 
-import asyncio
-import os
-import sys
 from enum import IntFlag
-from pathlib import Path
-from typing import TYPE_CHECKING, Union
 
-import pytest
 from prefect import flow
 from pydantic import BaseModel
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.core.constants import CheckType, InfrahubKind, RepositoryInternalStatus
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.registry import registry
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.git.repository import InfrahubRepository, get_initialized_repo
+from infrahub.git.repository import InfrahubRepository
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import (
@@ -30,19 +24,16 @@ from infrahub.proposed_change.models import (
     RequestProposedChangeRepositoryChecks,
     RequestProposedChangeRunGenerators,
     RequestProposedChangeSchemaIntegrity,
+    RequestProposedChangeUserTests,
 )
-from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import InfrahubServices  # noqa: TCH001
 from infrahub.workflows.catalogue import (
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
     REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
+    REQUEST_PROPOSED_CHANGE_USER_TESTS,
 )
-
-if TYPE_CHECKING:
-    from infrahub_sdk.node import InfrahubNode
-
 
 log = get_logger()
 
@@ -175,14 +166,17 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
         )
 
     if message.check_type in [CheckType.ALL, CheckType.TEST]:
-        events.append(
-            messages.RequestProposedChangeRunTests(
-                proposed_change=message.proposed_change,
-                source_branch=message.source_branch,
-                source_branch_sync_with_git=message.source_branch_sync_with_git,
-                destination_branch=message.destination_branch,
-                branch_diff=branch_diff,
-            )
+        await service.workflow.submit_workflow(
+            workflow=REQUEST_PROPOSED_CHANGE_USER_TESTS,
+            parameters={
+                "model": RequestProposedChangeUserTests(
+                    proposed_change=message.proposed_change,
+                    source_branch=message.source_branch,
+                    source_branch_sync_with_git=message.source_branch_sync_with_git,
+                    destination_branch=message.destination_branch,
+                    branch_diff=branch_diff,
+                )
+            },
         )
 
     for event in events:
@@ -317,73 +311,6 @@ query GatherGraphQLQuerySubscribers($members: [ID!]) {
   }
 }
 """
-
-
-@flow(
-    name="proposed-changed-run-tests",
-    flow_run_name="Running_repository_tests on proposed change {message.proposed_change}",
-)
-async def run_tests(message: messages.RequestProposedChangeRunTests, service: InfrahubServices) -> None:
-    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
-
-    def _execute(
-        directory: Path, repository: ProposedChangeRepository, proposed_change: InfrahubNode
-    ) -> Union[int, pytest.ExitCode]:
-        config_file = str(directory / ".infrahub.yml")
-        test_directory = directory / "tests"
-
-        if not test_directory.is_dir():
-            log.debug(
-                event="repository_tests_ignored",
-                proposed_change=proposed_change,
-                repository=repository.repository_name,
-                message="tests directory not found",
-            )
-            return 1
-
-        # Redirect stdout/stderr to avoid showing pytest lines in the git agent
-        old_out = sys.stdout
-        old_err = sys.stderr
-
-        with Path(os.devnull).open(mode="w", encoding="utf-8") as devnull:
-            sys.stdout = devnull
-            sys.stderr = devnull
-
-            exit_code = pytest.main(
-                [
-                    str(test_directory),
-                    f"--infrahub-repo-config={config_file}",
-                    f"--infrahub-address={config.SETTINGS.main.internal_address}",
-                    "-qqqq",
-                    "-s",
-                ],
-                plugins=[InfrahubBackendPlugin(service.client.config, repository.repository_id, proposed_change.id)],
-            )
-
-        # Restore stdout/stderr back to their orignal states
-        sys.stdout = old_out
-        sys.stderr = old_err
-
-        return exit_code
-
-    for repository in message.branch_diff.repositories:
-        if message.source_branch_sync_with_git:
-            repo = await get_initialized_repo(
-                repository_id=repository.repository_id,
-                name=repository.repository_name,
-                service=service,
-                repository_kind=repository.kind,
-            )
-            commit = repo.get_commit_value(proposed_change.source_branch.value)
-            worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
-
-            return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
-            log.info(
-                event="repository_tests_completed",
-                proposed_change=message.proposed_change,
-                repository=repository.repository_name,
-                return_code=return_code,
-            )
 
 
 DESTINATION_ALLREPOSITORIES = """

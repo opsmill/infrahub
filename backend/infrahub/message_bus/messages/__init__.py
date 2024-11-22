@@ -16,7 +16,6 @@ from .finalize_validator_execution import FinalizeValidatorExecution
 from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_connectivity import GitRepositoryConnectivity
 from .proposed_change.request_proposedchange_refreshartifacts import RequestProposedChangeRefreshArtifacts
-from .proposed_change.request_proposedchange_runtests import RequestProposedChangeRunTests
 from .refresh_git_fetch import RefreshGitFetch
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
@@ -57,7 +56,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
     "request.proposed_change.pipeline": RequestProposedChangePipeline,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
-    "request.proposed_change.run_tests": RequestProposedChangeRunTests,
     "request.repository.checks": RequestRepositoryChecks,
     "request.repository.user_checks": RequestRepositoryUserChecks,
     "send.echo.request": SendEchoRequest,
