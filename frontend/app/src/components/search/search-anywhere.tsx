@@ -13,6 +13,8 @@ import { SearchDocs } from "./search-docs";
 import { SearchNodes } from "./search-nodes";
 
 const SearchAnywhereTriggerButton = ({ className, ...props }: ButtonProps) => {
+  const command = navigator.userAgent.includes("Macintosh") ? "command" : "ctrl";
+
   return (
     <Button
       variant="ghost"
@@ -30,7 +32,7 @@ const SearchAnywhereTriggerButton = ({ className, ...props }: ButtonProps) => {
         </span>
       </div>
 
-      <Kbd keys="command" className="group-data-[collapsed=true]/sidebar:hidden transition-all">
+      <Kbd keys={command} className="group-data-[collapsed=true]/sidebar:hidden transition-all">
         K
       </Kbd>
     </Button>
@@ -54,6 +56,8 @@ export function SearchAnywhere({ className = "", isCollapsed }: SearchModalProps
 
   useEffect(() => {
     const onSearchAnywhereShortcut = (event: KeyboardEvent) => {
+      event.preventDefault();
+
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         openModal();
       }
