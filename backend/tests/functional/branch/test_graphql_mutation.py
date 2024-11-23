@@ -8,7 +8,9 @@ from infrahub_sdk.graphql import Mutation
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.node import Node
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.git.directory import get_repositories_directory
 from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
@@ -189,6 +191,7 @@ class TestBranchMutations(TestInfrahubApp):
         self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: str, client: InfrahubClient
     ) -> None:
         branch = await client.branch.create(branch_name="branch_to_validate_failed")
+        branch_obj = await registry.get_branch(db=db, branch=branch.name)
 
         john_main = await registry.manager.query(
             db=db, schema=TestKind.PERSON, filters={"name__value": "John"}, branch=default_branch
@@ -204,6 +207,10 @@ class TestBranchMutations(TestInfrahubApp):
         await john_main[0].save(db=db)
         john_branch[0].description.value = "description in branch"
         await john_branch[0].save(db=db)
+
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch_obj)
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch_obj)
 
         query = Mutation(
             mutation="BranchValidate",

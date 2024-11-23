@@ -221,6 +221,18 @@ class DiffRepository:
             diff_roots.append(self.deserializer.build_diff_root(root_node=neo4j_node))
         return diff_roots
 
+    async def diff_has_conflicts(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+    ) -> bool:
+        query = await EnrichedDiffHasConflictQuery.init(
+            db=self.db, diff_branch_name=diff_branch_name, tracking_id=tracking_id, diff_id=diff_id
+        )
+        await query.execute(db=self.db)
+        return await query.has_conflict()
+
     async def get_conflict_by_id(self, conflict_id: str) -> EnrichedDiffConflict:
         query = await EnrichedDiffConflictQuery.init(db=self.db, conflict_id=conflict_id)
         await query.execute(db=self.db)
