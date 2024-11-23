@@ -53,12 +53,11 @@ class InfrahubCoreMenuMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
     ) -> tuple[Node, Self]:
         validate_namespace(data=data)
 
-        obj, result = await super().mutate_create(info=info, data=data, branch=branch, at=at)
+        obj, result = await super().mutate_create(info=info, data=data, branch=branch)
 
         return obj, result
 
@@ -68,21 +67,20 @@ class InfrahubCoreMenuMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
 
         obj = await NodeManager.find_object(
-            db=context.db, kind=CoreMenuItem, id=data.get("id"), hfid=data.get("hfid"), branch=branch, at=at
+            db=context.db, kind=CoreMenuItem, id=data.get("id"), hfid=data.get("hfid"), branch=branch
         )
         validate_namespace(data=data)
 
         if obj.protected.value:
             raise ValidationError(input_value="This object is protected, it can't be modified.")
 
-        obj, result = await super().mutate_update(info=info, data=data, branch=branch, at=at, node=obj)  # type: ignore[assignment]
+        obj, result = await super().mutate_update(info=info, data=data, branch=branch, node=obj)  # type: ignore[assignment]
         return obj, result  # type: ignore[return-value]
 
     @classmethod
@@ -91,13 +89,12 @@ class InfrahubCoreMenuMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         obj = await NodeManager.find_object(
-            db=context.db, kind=CoreMenuItem, id=data.get("id"), hfid=data.get("hfid"), branch=branch, at=at
+            db=context.db, kind=CoreMenuItem, id=data.get("id"), hfid=data.get("hfid"), branch=branch
         )
         if obj.protected.value:
             raise ValidationError(input_value="This object is protected, it can't be deleted.")
 
-        return await super().mutate_delete(info=info, data=data, branch=branch, at=at)
+        return await super().mutate_delete(info=info, data=data, branch=branch)

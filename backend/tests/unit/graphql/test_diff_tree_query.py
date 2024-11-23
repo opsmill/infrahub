@@ -33,7 +33,7 @@ IS_VISIBLE_TYPE = "IS_VISIBLE"
 
 DIFF_TREE_QUERY = """
 query GetDiffTree($branch: String){
-    DiffTree (branch: $branch) {
+    DiffTree (branch: $branch, filters: {status: {excludes: UNCHANGED}}) {
         base_branch
         diff_branch
         from_time
@@ -494,7 +494,20 @@ async def test_diff_tree_one_relationship_change(
         "conflict": None,
     }
     owner_properties_by_type = {p["property_type"]: p for p in owner_properties}
-    assert set(owner_properties_by_type.keys()) == {IS_RELATED_TYPE}
+    assert set(owner_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_PROTECTED_TYPE, IS_VISIBLE_TYPE}
+    owner_prop = owner_properties_by_type[IS_RELATED_TYPE]
+    owner_prop_changed_at = owner_prop["last_changed_at"]
+    assert before_change_datetime < datetime.fromisoformat(owner_prop_changed_at) < after_change_datetime
+    assert owner_prop == {
+        "property_type": IS_RELATED_TYPE,
+        "last_changed_at": owner_prop_changed_at,
+        "previous_value": person_john_main.id,
+        "new_value": person_jane_main.id,
+        "previous_label": john_label,
+        "new_label": jane_label,
+        "status": UPDATED_ACTION,
+        "conflict": None,
+    }
     owner_prop = owner_properties_by_type[IS_RELATED_TYPE]
     owner_prop_changed_at = owner_prop["last_changed_at"]
     assert before_change_datetime < datetime.fromisoformat(owner_prop_changed_at) < after_change_datetime

@@ -11,6 +11,7 @@ from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.models import (
+    GitDiffNamesOnly,
     GitRepositoryAdd,
     GitRepositoryAddReadOnly,
     GitRepositoryMerge,
@@ -19,13 +20,13 @@ from infrahub.git.models import (
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.git.tasks import add_git_repository, add_git_repository_read_only, pull_read_only
 from infrahub.lock import InfrahubLockRegistry
-from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
+from infrahub.workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY, GIT_REPOSITORIES_MERGE
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.test_client import dummy_async_request
+from tests.helpers.utils import init_global_service
 
 # pylint: disable=redefined-outer-name
 
@@ -57,11 +58,9 @@ class TestAddRepository:
     def setup_method(self):
         self.default_branch_name = "default-branch"
         self.client = AsyncMock(spec=InfrahubClient)
-        self.git_report = AsyncContextManagerMock()
         self.original_services = services.service
         self.recorder = BusSimulator()
         services.service = InfrahubServices(client=self.client, message_bus=self.recorder)
-        services.service.git_report = self.git_report
 
         self.mock_repo = AsyncMock(spec=InfrahubRepository)
         self.mock_repo.default_branch = self.default_branch_name
@@ -101,7 +100,6 @@ class TestAddRepository:
                 name=git_upstream_repo_01["name"],
                 location=str(git_upstream_repo_01["path"]),
                 client=self.client,
-                task_report=self.git_report,
                 infrahub_branch_name=self.default_branch_name,
                 internal_status="active",
                 default_branch_name=self.default_branch_name,
@@ -163,42 +161,42 @@ async def test_git_rpc_diff(
     commit_branch02 = repo.get_commit_value(branch_name=branch02.name, remote=False)
 
     # Diff Between Branch01 and Branch02
-    correlation_id = str(UUIDT())
-    message = messages.GitDiffNamesOnly(
+    model = GitDiffNamesOnly(
         repository_id=str(repo.id),
         repository_name=repo.name,
         repository_kind=InfrahubKind.REPOSITORY,
         first_commit=commit_branch01,
         second_commit=commit_branch02,
-        meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
     )
 
     bus_simulator = helper.get_message_bus_simulator()
-    service = InfrahubServices(client=InfrahubClient(), message_bus=bus_simulator)
+    service = InfrahubServices(client=InfrahubClient(), message_bus=bus_simulator, workflow=WorkflowLocalExecution())
     bus_simulator.service = service
-    result = await service.message_bus.rpc(message=message, response_class=messages.GitDiffNamesOnlyResponse)
-    assert result.data.files_changed == ["README.md", "test_files/sports.yml"]
+    with init_global_service(service):
+        diff = await service.workflow.execute_workflow(
+            workflow=GIT_REPOSITORIES_DIFF_NAMES_ONLY, parameters={"model": model}
+        )
+        assert diff.files_changed == ["README.md", "test_files/sports.yml"]
 
-    message = messages.GitDiffNamesOnly(
-        repository_id=str(repo.id),
-        repository_name=repo.name,
-        repository_kind=InfrahubKind.REPOSITORY,
-        first_commit=commit_branch01,
-        second_commit=commit_main,
-        meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
-    )
-    result = await service.message_bus.rpc(message=message, response_class=messages.GitDiffNamesOnlyResponse)
-    assert result.data.files_changed == ["test_files/sports.yml"]
+        model = GitDiffNamesOnly(
+            repository_id=str(repo.id),
+            repository_name=repo.name,
+            repository_kind=InfrahubKind.REPOSITORY,
+            first_commit=commit_branch01,
+            second_commit=commit_main,
+        )
+        diff = await service.workflow.execute_workflow(
+            workflow=GIT_REPOSITORIES_DIFF_NAMES_ONLY, parameters={"model": model}
+        )
+        assert diff.files_changed == ["test_files/sports.yml"]
 
 
 class TestAddReadOnly:
     def setup_method(self):
         self.client = AsyncMock(spec=InfrahubClient)
-        self.git_report = AsyncContextManagerMock()
         self.original_services = services.service
         self.recorder = BusSimulator()
         services.service = InfrahubServices(client=self.client, message_bus=self.recorder)
-        services.service.git_report = self.git_report
 
         lock_patcher = patch("infrahub.git.tasks.lock")
         self.mock_infra_lock = lock_patcher.start()
@@ -233,7 +231,6 @@ class TestAddReadOnly:
             client=self.client,
             ref="branch01",
             infrahub_branch_name="read-only-branch",
-            task_report=self.git_report,
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(infrahub_branch_name="read-only-branch")
         self.mock_repo.sync_from_remote.assert_awaited_once_with()
@@ -245,13 +242,11 @@ class TestAddReadOnly:
 class TestPullReadOnly:
     def setup_method(self):
         self.client = AsyncMock(spec=InfrahubClient)
-        self.git_report = AsyncContextManagerMock()
         self.original_services = services.service
         self.recorder = BusSimulator()
         services.service = InfrahubServices(
             client=self.client, workflow=WorkflowLocalExecution(), message_bus=self.recorder
         )
-        services.service.git_report = self.git_report
 
         self.commit = str(UUIDT())
         self.infrahub_branch_name = "read-only-branch"
@@ -302,7 +297,6 @@ class TestPullReadOnly:
             client=self.client,
             ref=self.ref,
             infrahub_branch_name=self.infrahub_branch_name,
-            task_report=self.git_report,
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(
             infrahub_branch_name=self.infrahub_branch_name, commit=self.commit
@@ -325,7 +319,6 @@ class TestPullReadOnly:
             client=self.client,
             ref=self.ref,
             infrahub_branch_name=self.infrahub_branch_name,
-            task_report=self.git_report,
         )
         self.mock_repo_class.new.assert_awaited_once_with(
             id=self.repo_id,
@@ -334,7 +327,6 @@ class TestPullReadOnly:
             client=self.client,
             ref=self.ref,
             infrahub_branch_name=self.infrahub_branch_name,
-            task_report=self.git_report,
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(
             infrahub_branch_name=self.infrahub_branch_name, commit=self.commit

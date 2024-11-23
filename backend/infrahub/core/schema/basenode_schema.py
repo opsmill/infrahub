@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Optional, Un
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import field_validator
 
-from infrahub.core.constants import RelationshipKind
+from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.models import HashableModelDiff
 
 from .attribute_schema import AttributeSchema
@@ -385,13 +385,22 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         elif path_parts[0] in self.attribute_names:
             attribute_piece = path_parts[0]
             property_piece = path_parts[1] if len(path_parts) > 1 else None
+        elif path_parts[0] == "parent" and schema:
+            relationship_piece = path_parts[0]
+            peer_schema_name = getattr(self, path_parts[0])
+            schema_path.relationship_schema = RelationshipSchema(
+                name="parent", peer=peer_schema_name, cardinality=RelationshipCardinality.ONE, optional=True
+            )
+            schema_path.related_schema = schema.get(name=peer_schema_name, duplicate=True)
+            attribute_piece = path_parts[1] if len(path_parts) > 1 else None
+            property_piece = path_parts[2] if len(path_parts) > 2 else None
         else:
             raise AttributePathParsingError(f"{path} is invalid on schema {self.kind}")
 
         if relationship_piece and not schema:
             raise AttributePathParsingError("schema must be provided in order to check a path with a relationship")
 
-        if relationship_piece:
+        if relationship_piece and not schema_path.related_schema:
             relationship_schema = self.get_relationship(name=path_parts[0])
             schema_path.relationship_schema = relationship_schema
             schema_path.related_schema = schema.get(name=relationship_schema.peer, duplicate=True)

@@ -11,7 +11,6 @@ from git import Blob, Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
 from infrahub_sdk import InfrahubClient  # noqa: TCH002
-from infrahub_sdk.task_report import InfrahubTaskReportLogger  # noqa: TCH002
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
@@ -21,7 +20,6 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CommitNotFoundError,
     FileOutOfRepositoryError,
-    InitializationError,
     RepositoryError,
     RepositoryFileNotFoundError,
 )
@@ -153,7 +151,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         ..., description="Service object with access to the message queue, the database etc.."
     )
     is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
-    task_report: Optional[InfrahubTaskReportLogger] = Field(default=None)
 
     internal_status: str = Field("active", description="Internal status: Active, Inactive, Staging")
     infrahub_branch_name: Optional[str] = Field(
@@ -171,12 +168,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     @property
     def default_branch(self) -> str:
         return self.default_branch_name or registry.default_branch
-
-    @property
-    def log(self) -> InfrahubTaskReportLogger:
-        if self.task_report:
-            return self.task_report
-        raise InitializationError("The repository has not been initialized with a TaskReport")
 
     @property
     def legacy_directory_root(self) -> Path:

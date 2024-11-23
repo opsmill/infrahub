@@ -25,8 +25,9 @@ from infrahub.core.query.diff import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import DiffFromRequiredOnDefaultBranchError, DiffRangeValidationError
-from infrahub.message_bus.messages import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 
+from ...git.models import GitDiffNamesOnly
+from ...workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY
 from .model.diff import (
     BranchChanges,
     DataConflict,
@@ -965,7 +966,7 @@ class BranchDiffer:
 
         files = []
 
-        message = GitDiffNamesOnly(
+        model = GitDiffNamesOnly(
             repository_id=repository.id,
             repository_name=repository.name.value,  # type: ignore[attr-defined]
             repository_kind=repository.get_kind(),
@@ -973,8 +974,9 @@ class BranchDiffer:
             second_commit=commit_to,
         )
 
-        reply = await self.service.message_bus.rpc(message=message, response_class=GitDiffNamesOnlyResponse)
-        diff = reply.data
+        diff = await self.service.workflow.execute_workflow(
+            workflow=GIT_REPOSITORIES_DIFF_NAMES_ONLY, parameters={"model": model}
+        )
 
         actions = {
             "files_changed": DiffAction.UPDATED,

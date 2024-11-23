@@ -58,6 +58,7 @@ export default function ObjectItems({
 
   // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns({ schema: schema, forListView: true });
+  const search = filters.find((filter) => filter.name === SEARCH_ANY_FILTER)?.value;
 
   const {
     loading,
@@ -122,6 +123,7 @@ export default function ObjectItems({
         <div className="flex items-center gap-2 p-2">
           <SearchInput
             loading={loading}
+            defaultValue={search}
             onChange={debouncedHandleSearch}
             placeholder="Search an object"
             className="border-none focus-visible:ring-0 h-7"
@@ -141,7 +143,7 @@ export default function ObjectItems({
           />
         </div>
 
-        {loading && !rows && <LoadingScreen />}
+        {loading && !rows && <LoadingScreen message={`Loading ${schema.label} list`} />}
 
         {/* TODO: use new Table component for list */}
         {!loading && rows && (

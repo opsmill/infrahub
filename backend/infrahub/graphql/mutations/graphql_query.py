@@ -63,14 +63,13 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
 
         data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
 
-        obj, result = await super().mutate_create(info=info, data=data, branch=branch, at=at)
+        obj, result = await super().mutate_create(info=info, data=data, branch=branch)
 
         return obj, result
 
@@ -80,7 +79,6 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ) -> tuple[Node, Self]:
@@ -88,6 +86,6 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
 
         data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
 
-        obj, result = await super().mutate_update(info=info, data=data, branch=branch, at=at)
+        obj, result = await super().mutate_update(info=info, data=data, branch=branch)
 
         return obj, result

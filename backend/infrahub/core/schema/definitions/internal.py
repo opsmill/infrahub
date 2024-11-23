@@ -608,6 +608,14 @@ attribute_schema = SchemaNode(
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
+        SchemaAttribute(
+            name="deprecation",
+            kind="Text",
+            optional=True,
+            description="Mark attribute as deprecated and provide a user-friendly message to display",
+            max_length=DEFAULT_DESCRIPTION_LENGTH,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
     ],
     relationships=[
         SchemaRelationship(
@@ -801,6 +809,14 @@ relationship_schema = SchemaNode(
             description="Set the relationship as read-only, users won't be able to change its value.",
             default_value=False,
             optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="deprecation",
+            kind="Text",
+            optional=True,
+            description="Mark relationship as deprecated and provide a user-friendly message to display",
+            max_length=DEFAULT_DESCRIPTION_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
     ],

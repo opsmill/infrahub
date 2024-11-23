@@ -259,6 +259,17 @@ async def load_schema(
         ):
             raise PermissionDeniedError("You are not allowed to manage the schema")
 
+        if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch) and not await permission_backend.has_permission(
+            db=db,
+            account_session=account_session,
+            permission=GlobalPermission(
+                action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            ),
+            branch=branch,
+        ):
+            raise PermissionDeniedError("You are not allowed to edit the schema in the default branch")
+
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
 
@@ -338,6 +349,8 @@ async def load_schema(
         if migration_error_msgs:
             raise MigrationError(message=",\n".join(migration_error_msgs))
 
+    await service.component.refresh_schema_hash(branches=[branch.name])
+
     log_data = get_log_data()
     request_id = log_data.get("request_id", "")
     event = SchemaUpdatedEvent(
@@ -346,8 +359,6 @@ async def load_schema(
         meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id, account_id=account_session.account_id),
     )
     await service.event.send(event=event)
-
-    await service.component.refresh_schema_hash(branches=[branch.name])
 
     return SchemaUpdate(hash=updated_hash, previous_hash=original_hash, diff=result.diff)
 

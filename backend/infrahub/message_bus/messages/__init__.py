@@ -13,15 +13,9 @@ from .event_node_mutated import EventNodeMutated
 from .event_schema_update import EventSchemaUpdate
 from .event_worker_newprimaryapi import EventWorkerNewPrimaryAPI
 from .finalize_validator_execution import FinalizeValidatorExecution
-from .git_diff_namesonly import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_connectivity import GitRepositoryConnectivity
-from .git_repository_importobjects import GitRepositoryImportObjects
 from .proposed_change.request_proposedchange_refreshartifacts import RequestProposedChangeRefreshArtifacts
-from .proposed_change.request_proposedchange_repositorychecks import RequestProposedChangeRepositoryChecks
-from .proposed_change.request_proposedchange_rungenerators import RequestProposedChangeRunGenerators
-from .proposed_change.request_proposedchange_runtests import RequestProposedChangeRunTests
-from .proposed_change.request_proposedchange_schemaintegrity import RequestProposedChangeSchemaIntegrity
 from .refresh_git_fetch import RefreshGitFetch
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
@@ -50,10 +44,8 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "event.schema.update": EventSchemaUpdate,
     "event.worker.new_primary_api": EventWorkerNewPrimaryAPI,
     "finalize.validator.execution": FinalizeValidatorExecution,
-    "git.diff.names_only": GitDiffNamesOnly,
     "git.file.get": GitFileGet,
     "git.repository.connectivity": GitRepositoryConnectivity,
-    "git.repository.import_objects": GitRepositoryImportObjects,
     "schema.migration.path": SchemaMigrationPath,
     "schema.validator.path": SchemaValidatorPath,
     "refresh.git.fetch": RefreshGitFetch,
@@ -64,10 +56,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
     "request.proposed_change.pipeline": RequestProposedChangePipeline,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
-    "request.proposed_change.repository_checks": RequestProposedChangeRepositoryChecks,
-    "request.proposed_change.run_generators": RequestProposedChangeRunGenerators,
-    "request.proposed_change.schema_integrity": RequestProposedChangeSchemaIntegrity,
-    "request.proposed_change.run_tests": RequestProposedChangeRunTests,
     "request.repository.checks": RequestRepositoryChecks,
     "request.repository.user_checks": RequestRepositoryUserChecks,
     "send.echo.request": SendEchoRequest,
@@ -75,7 +63,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
 }
 
 RESPONSE_MAP: dict[str, type[InfrahubResponse]] = {
-    "git.diff.names_only": GitDiffNamesOnlyResponse,
     "git.file.get": GitFileGetResponse,
     "send.echo.request": SendEchoRequestResponse,
     "schema.migration.path": SchemaMigrationPathResponse,
@@ -95,7 +82,6 @@ PRIORITY_MAP = {
     "request.artifact.generate": 2,
     "request.git.sync": 4,
     "request.proposed_change.pipeline": 5,
-    "request.proposed_change.repository_checks": 5,
     "transform.jinja.template": 4,
     "transform.python.data": 4,
 }

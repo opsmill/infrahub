@@ -31,6 +31,7 @@ docker
 dockerfile
 docusaurus
 e2e
+edit_default_branch
 enum
 enums
 env

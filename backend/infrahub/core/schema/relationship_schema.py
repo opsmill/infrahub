@@ -30,6 +30,10 @@ class RelationshipSchema(GeneratedRelationshipSchema):
     def is_relationship(self) -> bool:
         return True
 
+    @property
+    def is_deprecated(self) -> bool:
+        return bool(self.deprecation)
+
     def get_class(self) -> type[Relationship]:
         return Relationship
 

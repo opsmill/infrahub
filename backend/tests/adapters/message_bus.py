@@ -40,6 +40,7 @@ class BusSimulator(InfrahubMessageBus):
     def __init__(self, database: InfrahubDatabase | None = None, workflow: InfrahubWorkflow | None = None) -> None:
         self.messages: list[InfrahubMessage] = []
         self.messages_per_routing_key: dict[str, list[InfrahubMessage]] = {}
+
         self.service: InfrahubServices = InfrahubServices(database=database, message_bus=self, workflow=workflow)
         self.replies: dict[str, list[InfrahubMessage]] = defaultdict(list)
         build_component_registry()
@@ -73,3 +74,6 @@ class BusSimulator(InfrahubMessageBus):
     @property
     def seen_routing_keys(self) -> list[str]:
         return list(self.messages_per_routing_key.keys())
+
+    async def initialize(self, service: InfrahubServices) -> None:
+        self.service = service

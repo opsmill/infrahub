@@ -22,7 +22,7 @@ from infrahub import config
 from infrahub.config import load_and_exit
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, InfrahubKind
+from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality, RelationshipDirection
 from infrahub.core.initialization import (
     create_default_branch,
     create_global_branch,
@@ -31,8 +31,11 @@ from infrahub.core.initialization import (
 )
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
+from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema.manager import SchemaManager
+from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
@@ -138,12 +141,12 @@ async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema)
 
 
 @pytest.fixture
-def local_storage_dir(tmp_path) -> str:
-    storage_dir = os.path.join(str(tmp_path), "storage")
-    os.mkdir(storage_dir)
+def local_storage_dir(tmp_path: Path) -> Path:
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir()
 
     config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
-    config.SETTINGS.storage.local.path_ = storage_dir
+    config.SETTINGS.storage.local.path_ = str(storage_dir)
 
     return storage_dir
 
@@ -514,6 +517,63 @@ async def car_person_schema(
 
 
 @pytest.fixture
+async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
+    schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Car",
+                namespace="Test",
+                default_filter="name__value",
+                display_labels=["name__value", "color__value"],
+                uniqueness_constraints=[["name__value"]],
+                branch=BranchSupportType.LOCAL,
+                attributes=[
+                    AttributeSchema(name="name", kind="Text", unique=True),
+                    AttributeSchema(name="color", kind="Text", default_value="#444444", optional=True),
+                ],
+                relationships=[
+                    RelationshipSchema(
+                        name="owner",
+                        peer="TestPerson",
+                        optional=False,
+                        cardinality=RelationshipCardinality.ONE,
+                        direction=RelationshipDirection.OUTBOUND,
+                    ),
+                ],
+            ),
+            NodeSchema(
+                name="Person",
+                namespace="Test",
+                default_filter="name__value",
+                display_labels=["name__value"],
+                branch=BranchSupportType.AWARE,
+                uniqueness_constraints=[["name__value"]],
+                attributes=[
+                    AttributeSchema(name="name", kind="Text", unique=True),
+                    AttributeSchema(name="height", kind="Number", optional=True),
+                ],
+                relationships=[
+                    RelationshipSchema(
+                        name="cars",
+                        peer="TestCar",
+                        cardinality=RelationshipCardinality.MANY,
+                        direction=RelationshipDirection.INBOUND,
+                    )
+                ],
+            ),
+        ],
+    )
+    return schema
+
+
+@pytest.fixture
+async def car_person_schema_branch_local(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local_root
+) -> SchemaBranch:
+    return registry.schema.register_schema(schema=car_person_schema_branch_local_root, branch=default_branch.name)
+
+
+@pytest.fixture
 async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
     schema: dict[str, Any] = {
         "generics": [
@@ -719,9 +779,7 @@ class TestHelper:
     @staticmethod
     def schema_file(file_name: str) -> dict:
         """Return the contents of a schema file as a dictionary"""
-        file_content = Path(os.path.join(TestHelper.get_fixtures_dir(), f"schemas/{file_name}")).read_text(
-            encoding="utf-8"
-        )
+        file_content = (TestHelper.get_fixtures_dir() / "schemas" / file_name).read_text(encoding="utf-8")
 
         return ujson.loads(file_content)
 

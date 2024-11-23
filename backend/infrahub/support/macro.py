@@ -5,7 +5,28 @@ from typing import Any
 from jinja2 import TemplateSyntaxError, meta, nodes
 from jinja2.sandbox import SandboxedEnvironment
 
-ALLOWED_FILTERS = ["lower", "upper"]
+ALLOWED_FILTERS = [
+    "abs",
+    "capitalize",
+    "center",
+    "default",
+    "escape",
+    "filesizeformat",
+    "join",
+    "length",
+    "list",
+    "lower",
+    "replace",
+    "reverse",
+    "round",
+    "sort",
+    "sum",
+    "title",
+    "trim",
+    "truncate",
+    "upper",
+    "wordcount",
+]
 
 
 class MacroDefinition:

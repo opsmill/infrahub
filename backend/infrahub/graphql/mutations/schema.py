@@ -290,6 +290,8 @@ async def update_registry(
                 log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)
                 await branch.save(db=dbt)
 
+            await service.component.refresh_schema_hash(branches=[branch.name])
+
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
             event = SchemaUpdatedEvent(
@@ -302,5 +304,3 @@ async def update_registry(
                 ),
             )
             await service.event.send(event=event)
-
-            await service.component.refresh_schema_hash(branches=[branch.name])

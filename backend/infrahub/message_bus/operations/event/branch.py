@@ -11,7 +11,6 @@ from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.services import InfrahubServices
 from infrahub.workflows.catalogue import (
-    GIT_REPOSITORIES_CREATE_BRANCH,
     REQUEST_DIFF_REFRESH,
     REQUEST_DIFF_UPDATE,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
@@ -19,22 +18,6 @@ from infrahub.workflows.catalogue import (
 )
 
 log = get_logger()
-
-
-@flow(name="event-branch-create")
-async def create(message: messages.EventBranchCreate, service: InfrahubServices) -> None:
-    log.info("run_message", branch=message.branch)
-
-    events: List[InfrahubMessage] = [messages.RefreshRegistryBranches()]
-    if message.sync_with_git:
-        await service.workflow.submit_workflow(
-            workflow=GIT_REPOSITORIES_CREATE_BRANCH,
-            parameters={"branch": message.branch, "branch_id": message.branch_id},
-        )
-
-    for event in events:
-        event.assign_meta(parent=message)
-        await service.send(message=event)
 
 
 @flow(name="branch-event-merge")

@@ -5,11 +5,14 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, InputObjectType, Mutation, String
 
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import ComputedAttributeKind, PermissionAction, PermissionDecision
+from infrahub.core.constants import ComputedAttributeKind, MutationAction, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
+from infrahub.events import EventMeta, NodeMutatedEvent
 from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError, ValidationError
+from infrahub.log import get_log_data
+from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -90,6 +93,21 @@ class UpdateComputedAttribute(Mutation):
         if attribute_field.value != str(data.value):
             attribute_field.value = str(data.value)
             await target_node.save(db=context.db)
+
+            log_data = get_log_data()
+            request_id = log_data.get("request_id", "")
+
+            graphql_payload = await target_node.to_graphql(db=context.db, filter_sensitive=True)
+
+            event = NodeMutatedEvent(
+                branch=context.branch.name,
+                kind=node_schema.kind,
+                node_id=target_node.get_id(),
+                data=graphql_payload,
+                action=MutationAction.UPDATED,
+                meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+            )
+            await context.active_service.event.send(event=event)
 
         result: dict[str, Any] = {"ok": True}
 

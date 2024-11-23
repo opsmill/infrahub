@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from infrahub_sdk.protocols import CoreProposedChange
+import asyncio
+import os
+import sys
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+import pytest
+from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreProposedChange
 from prefect import flow, task
 from prefect.client.schemas.objects import (
     State,  # noqa: TCH002
@@ -8,19 +15,44 @@ from prefect.client.schemas.objects import (
 from prefect.logging import get_run_logger
 from prefect.states import Completed, Failed
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import merge_branch
-from infrahub.core.constants import InfrahubKind, ValidatorConclusion
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
+from infrahub.core.diff.model.path import NodeDiffFieldSummary
+from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.protocols import CoreDataCheck, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
+from infrahub.core.validators.checker import schema_validators_checker
+from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.generators.models import ProposedChangeGeneratorDefinition
+from infrahub.git.repository import get_initialized_repo
+from infrahub.log import get_logger
+from infrahub.message_bus import InfrahubMessage, messages
+from infrahub.message_bus.operations.requests.proposed_change import DefinitionSelect
 from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.proposed_change.models import (
-    RequestProposedChangeDataIntegrity,  # noqa: TCH001. as symbol is required by prefect flow
+    RequestProposedChangeDataIntegrity,
+    RequestProposedChangeRepositoryChecks,
+    RequestProposedChangeRunGenerators,
+    RequestProposedChangeSchemaIntegrity,
+    RequestProposedChangeUserTests,
 )
+from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import services
+from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS
+from infrahub.workflows.utils import add_tags
+
+if TYPE_CHECKING:
+    from infrahub_sdk.node import InfrahubNode
+
+    from infrahub.core.models import SchemaUpdateConstraintInfo
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.message_bus.types import ProposedChangeRepository
 
 
 async def _proposed_change_transition_state(
@@ -64,6 +96,8 @@ async def _proposed_change_transition_state(
 async def merge_proposed_change(proposed_change_id: str, proposed_change_name: str) -> State:  # pylint: disable=unused-argument
     service = services.service
     log = get_run_logger()
+
+    await add_tags(nodes=[proposed_change_id])
 
     async with service.database.start_session() as db:
         proposed_change = await registry.manager.get_one(
@@ -110,6 +144,9 @@ async def merge_proposed_change(proposed_change_id: str, proposed_change_name: s
 )
 async def cancel_proposed_changes_branch(branch_name: str) -> None:
     service = services.service
+
+    await add_tags(branches=[branch_name])
+
     proposed_changed_opened = await service.client.filters(
         kind=CoreProposedChange,
         include=["id", "source_branch"],
@@ -130,6 +167,8 @@ async def cancel_proposed_changes_branch(branch_name: str) -> None:
 @task(name="Cancel a propose change", description="Cancel a propose change")
 async def cancel_proposed_change(proposed_change: CoreProposedChange) -> None:
     service = services.service
+
+    await add_tags(nodes=[proposed_change.id])
     log = get_run_logger()
 
     log.info("Canceling proposed change as the source branch was deleted")
@@ -146,9 +185,298 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
     """Triggers a data integrity validation check on the provided proposed change to start."""
 
     service = services.service
+    await add_tags(nodes=[model.proposed_change])
+
     destination_branch = await registry.get_branch(db=service.database, branch=model.destination_branch)
     source_branch = await registry.get_branch(db=service.database, branch=model.source_branch)
     component_registry = get_component_registry()
     async with service.database.start_transaction() as dbt:
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
         await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
+
+
+@flow(
+    name="proposed-changed-run-generator",
+    flow_run_name="Run generators",
+)
+async def run_generators(model: RequestProposedChangeRunGenerators) -> None:
+    service = services.service
+    await add_tags(nodes=[model.proposed_change])
+
+    generators = await service.client.filters(
+        kind=CoreGeneratorDefinition,
+        prefetch_relationships=True,
+        populate_store=True,
+        branch=model.source_branch,
+    )
+    generator_definitions = [
+        ProposedChangeGeneratorDefinition(
+            definition_id=generator.id,
+            definition_name=generator.name.value,
+            class_name=generator.class_name.value,
+            file_path=generator.file_path.value,
+            query_name=generator.query.peer.name.value,
+            query_models=generator.query.peer.models.value,
+            repository_id=generator.repository.peer.id,
+            parameters=generator.parameters.value,
+            group_id=generator.targets.peer.id,
+            convert_query_response=generator.convert_query_response.value,
+        )
+        for generator in generators
+    ]
+
+    for generator_definition in generator_definitions:
+        # Request generator definitions if the source branch that is managed in combination
+        # to the Git repository containing modifications which could indicate changes to the transforms
+        # in code
+        # Alternatively if the queries used touches models that have been modified in the path
+        # impacted artifact definitions will be included for consideration
+
+        select = DefinitionSelect.NONE
+        select = select.add_flag(
+            current=select,
+            flag=DefinitionSelect.FILE_CHANGES,
+            condition=model.source_branch_sync_with_git and model.branch_diff.has_file_modifications,
+        )
+
+        for changed_model in model.branch_diff.modified_kinds(branch=model.source_branch):
+            select = select.add_flag(
+                current=select,
+                flag=DefinitionSelect.MODIFIED_KINDS,
+                condition=changed_model in generator_definition.query_models,
+            )
+
+        if select:
+            msg = messages.RequestGeneratorDefinitionCheck(
+                generator_definition=generator_definition,
+                branch_diff=model.branch_diff,
+                proposed_change=model.proposed_change,
+                source_branch=model.source_branch,
+                source_branch_sync_with_git=model.source_branch_sync_with_git,
+                destination_branch=model.destination_branch,
+            )
+            msg.assign_meta(parent=model)
+            await service.send(message=msg)
+
+    next_messages: list[InfrahubMessage] = []
+    if model.refresh_artifacts:
+        next_messages.append(
+            messages.RequestProposedChangeRefreshArtifacts(
+                proposed_change=model.proposed_change,
+                source_branch=model.source_branch,
+                source_branch_sync_with_git=model.source_branch_sync_with_git,
+                destination_branch=model.destination_branch,
+                branch_diff=model.branch_diff,
+            )
+        )
+
+    if model.do_repository_checks:
+        model_proposed_change_repo_checks = RequestProposedChangeRepositoryChecks(
+            proposed_change=model.proposed_change,
+            source_branch=model.source_branch,
+            source_branch_sync_with_git=model.source_branch_sync_with_git,
+            destination_branch=model.destination_branch,
+            branch_diff=model.branch_diff,
+        )
+        await service.workflow.submit_workflow(
+            workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS, parameters={"model": model_proposed_change_repo_checks}
+        )
+
+    for next_msg in next_messages:
+        next_msg.assign_meta(parent=model)
+        await service.send(message=next_msg)
+
+
+@flow(
+    name="proposed-changed-schema-integrity",
+    flow_run_name="Process schema integrity",
+)
+async def run_proposed_change_schema_integrity_check(
+    model: RequestProposedChangeSchemaIntegrity,
+) -> None:
+    # For now, we retrieve the latest schema for each branch from the registry
+    # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
+    service = services.service
+    await add_tags(nodes=[model.proposed_change])
+
+    source_schema = registry.schema.get_schema_branch(name=model.source_branch).duplicate()
+    dest_schema = registry.schema.get_schema_branch(name=model.destination_branch).duplicate()
+
+    candidate_schema = dest_schema.duplicate()
+    candidate_schema.update(schema=source_schema)
+    validation_result = dest_schema.validate_update(other=candidate_schema)
+
+    constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
+        model=model, schema=candidate_schema
+    )
+    constraints_from_schema_diff = validation_result.constraints
+    constraints = set(constraints_from_data_diff + constraints_from_schema_diff)
+
+    if not constraints:
+        return
+
+    # ----------------------------------------------------------
+    # Validate if the new schema is valid with the content of the database
+    # ----------------------------------------------------------
+    source_branch = registry.get_branch_from_registry(branch=model.source_branch)
+    _, responses = await schema_validators_checker(
+        branch=source_branch, schema=candidate_schema, constraints=list(constraints), service=service
+    )
+
+    # TODO we need to report a failure if an error happened during the execution of a validator
+    conflicts: list[SchemaConflict] = []
+    for response in responses:
+        for violation in response.data.violations:
+            conflicts.append(
+                SchemaConflict(
+                    name=response.data.schema_path.get_path(),
+                    type=response.data.constraint_name,
+                    kind=violation.node_kind,
+                    id=violation.node_id,
+                    path=response.data.schema_path.get_path(),
+                    value=violation.message,
+                    branch="placeholder",
+                )
+            )
+
+    if not conflicts:
+        return
+
+    async with service.database.start_transaction() as db:
+        object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
+            db=db,
+            validator_kind=InfrahubKind.SCHEMAVALIDATOR,
+            validator_label="Schema Integrity",
+            check_schema_kind=InfrahubKind.SCHEMACHECK,
+        )
+        await object_conflict_validator_recorder.record_conflicts(
+            proposed_change_id=model.proposed_change, conflicts=conflicts
+        )
+
+
+async def _get_proposed_change_schema_integrity_constraints(
+    model: RequestProposedChangeSchemaIntegrity, schema: SchemaBranch
+) -> list[SchemaUpdateConstraintInfo]:
+    node_diff_field_summary_map: dict[str, NodeDiffFieldSummary] = {}
+    for node_diff in model.branch_diff.diff_summary:
+        node_kind = node_diff["kind"]
+        if node_kind not in node_diff_field_summary_map:
+            node_diff_field_summary_map[node_kind] = NodeDiffFieldSummary(kind=node_kind)
+        field_summary = node_diff_field_summary_map[node_kind]
+        for element in node_diff["elements"]:
+            element_name = element["name"]
+            element_type = element["element_type"]
+            if element_type.lower() in (
+                DiffElementType.RELATIONSHIP_MANY.value.lower(),
+                DiffElementType.RELATIONSHIP_ONE.value.lower(),
+            ):
+                field_summary.relationship_names.add(element_name)
+            elif element_type.lower() in (DiffElementType.ATTRIBUTE.value.lower(),):
+                field_summary.attribute_names.add(element_name)
+
+    determiner = ConstraintValidatorDeterminer(schema_branch=schema)
+    return await determiner.get_constraints(node_diffs=list(node_diff_field_summary_map.values()))
+
+
+@flow(
+    name="proposed-changed-repository-checks",
+    flow_run_name="Process checks defined in proposed change: {model.proposed_change}",
+)
+async def repository_checks(model: RequestProposedChangeRepositoryChecks) -> None:
+    service = services.service
+    await add_tags(nodes=[model.proposed_change])
+
+    events: list[InfrahubMessage] = []
+    for repository in model.branch_diff.repositories:
+        if (
+            model.source_branch_sync_with_git
+            and not repository.read_only
+            and repository.internal_status == RepositoryInternalStatus.ACTIVE.value
+        ):
+            events.append(
+                messages.RequestRepositoryChecks(
+                    proposed_change=model.proposed_change,
+                    repository=repository.repository_id,
+                    source_branch=model.source_branch,
+                    target_branch=model.destination_branch,
+                )
+            )
+
+        events.append(
+            messages.RequestRepositoryUserChecks(
+                proposed_change=model.proposed_change,
+                repository=repository.repository_id,
+                source_branch=model.source_branch,
+                source_branch_sync_with_git=model.source_branch_sync_with_git,
+                target_branch=model.destination_branch,
+                branch_diff=model.branch_diff,
+            )
+        )
+    for event in events:
+        event.assign_meta(parent=model)
+        await service.send(message=event)
+
+
+@flow(
+    name="proposed-changed-user-tests",
+    flow_run_name="Running_repository_tests on proposed change {model.proposed_change}",
+)
+async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) -> None:
+    service = services.service
+    log = get_run_logger()
+    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+
+    def _execute(
+        directory: Path, repository: ProposedChangeRepository, proposed_change: InfrahubNode
+    ) -> int | pytest.ExitCode:
+        config_file = str(directory / ".infrahub.yml")
+        test_directory = directory / "tests"
+        log = get_logger()
+
+        if not test_directory.is_dir():
+            log.debug(
+                event="repository_tests_ignored",
+                proposed_change=proposed_change,
+                repository=repository.repository_name,
+                message="tests directory not found",
+            )
+            return 1
+
+        # Redirect stdout/stderr to avoid showing pytest lines in the git agent
+        old_out = sys.stdout
+        old_err = sys.stderr
+
+        with Path(os.devnull).open(mode="w", encoding="utf-8") as devnull:
+            sys.stdout = devnull
+            sys.stderr = devnull
+
+            exit_code = pytest.main(
+                [
+                    str(test_directory),
+                    f"--infrahub-repo-config={config_file}",
+                    f"--infrahub-address={config.SETTINGS.main.internal_address}",
+                    "-qqqq",
+                    "-s",
+                ],
+                plugins=[InfrahubBackendPlugin(service.client.config, repository.repository_id, proposed_change.id)],
+            )
+
+        # Restore stdout/stderr back to their orignal states
+        sys.stdout = old_out
+        sys.stderr = old_err
+
+        return exit_code
+
+    for repository in model.branch_diff.repositories:
+        if model.source_branch_sync_with_git:
+            repo = await get_initialized_repo(
+                repository_id=repository.repository_id,
+                name=repository.repository_name,
+                service=service,
+                repository_kind=repository.kind,
+            )
+            commit = repo.get_commit_value(proposed_change.source_branch.value)
+            worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
+
+            return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
+            log.info(msg=f"repository_tests_completed return_code={return_code}")

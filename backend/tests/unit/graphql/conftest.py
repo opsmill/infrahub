@@ -18,9 +18,9 @@ def load_component_dependency_registry():
 
 class PermissionsHelper:
     def __init__(self) -> None:
-        self._first: None | CoreAccount = None
-        self._second: None | CoreAccount = None
-        self._default_branch: None | Branch = None
+        self._first: CoreAccount | None = None
+        self._second: CoreAccount | None = None
+        self._default_branch: Branch | None = None
 
     @property
     def first(self) -> CoreAccount:

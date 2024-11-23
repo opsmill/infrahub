@@ -31,22 +31,6 @@ async def connectivity(message: messages.GitRepositoryConnectivity, service: Inf
         await service.reply(message=response, initiator=message)
 
 
-@flow(name="git-repository-import-object")
-async def import_objects(message: messages.GitRepositoryImportObjects, service: InfrahubServices) -> None:
-    async with service.git_report(
-        related_node=message.repository_id,
-        title=f"Processing repository ({message.repository_name})",
-    ) as git_report:
-        repo = await get_initialized_repo(
-            repository_id=message.repository_id,
-            name=message.repository_name,
-            service=service,
-            repository_kind=message.repository_kind,
-        )
-        repo.task_report = git_report
-        await repo.import_objects_from_files(infrahub_branch_name=message.infrahub_branch_name, commit=message.commit)
-
-
 @flow(name="refresh-git-fetch", flow_run_name="Fetch git repository {message.repository_name} on " + WORKER_IDENTITY)
 async def fetch(message: messages.RefreshGitFetch, service: InfrahubServices) -> None:
     if message.meta and message.meta.initiator_id == WORKER_IDENTITY:

@@ -102,9 +102,15 @@ export const AccountGroupForm = ({
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Group created"} />, {
-        toastId: "alert-success-group-created",
-      });
+      if (currentObject) {
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Group updated!"} />, {
+          toastId: "alert-success-group-updated",
+        });
+      } else {
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Group created!"} />, {
+          toastId: "alert-success-group-created",
+        });
+      }
 
       if (onSuccess) await onSuccess(result?.data?.[`${OBJECT_PERMISSION_OBJECT}Create`]);
       if (onUpdateComplete) await onUpdateComplete();

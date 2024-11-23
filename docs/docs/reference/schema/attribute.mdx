@@ -20,6 +20,7 @@ Below is the list of all available options to define an Attribute in the schema
 | [**choices**](#choices) | Attribute | Define a list of valid choices for a dropdown attribute. | False |
 | [**computed_attribute**](#computed_attribute) | Attribute | Defines how the value of this attribute will be populated. | False |
 | [**default_value**](#default_value) | Attribute | Default value of the attribute. | False |
+| [**deprecation**](#deprecation) | Attribute | Mark attribute as deprecated and provide a user-friendly message to display | False |
 | [**description**](#description) | Attribute | Short description of the attribute. | False |
 | [**enum**](#enum) | Attribute | Define a list of valid values for the attribute. | False |
 | [**kind**](#kind) | Attribute | Defines the type of the attribute. | True |
@@ -113,6 +114,17 @@ extensions:
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |
+
+### deprecation
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | deprecation |
+| **Kind** | `Text` |
+| **Description** | Mark attribute as deprecated and provide a user-friendly message to display |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  Length: min -, max 128 |
 
 ### description
 

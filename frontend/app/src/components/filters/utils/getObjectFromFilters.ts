@@ -9,7 +9,7 @@ import {
 } from "@/utils/getObjectItemDisplayValue";
 
 export const getObjectFromFilters = (
-  schema: IModelSchema,
+  schema: IModelSchema | null,
   filters: Array<Filter>
 ): Record<string, AttributeType | RelationshipType> => {
   return filters.reduce(
@@ -23,7 +23,7 @@ export const getObjectFromFilters = (
         };
       }
 
-      if (fieldKey === "ids") {
+      if (fieldKey === "ids" && schema) {
         const relationshipSchema = schema.relationships?.find(({ name }) => name === fieldName);
         if (!relationshipSchema) return acc;
 

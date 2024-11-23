@@ -157,7 +157,6 @@ class Account(BaseModel):
     label: str
     password: str
     account_type: str
-    role: str
 
 
 class GlobalPermission(BaseModel):
@@ -679,19 +678,17 @@ ACCOUNT_ROLES = (
 )
 
 ACCOUNTS = (
-    Account(name="pop-builder", label="pop-builder", account_type="Script", password="Password123", role="read-write"),
-    Account(
-        name="crm-sync", label="CRM Synchronization", account_type="Script", password="Password123", role="read-write"
-    ),
-    Account(name="jbauer", label="Jack Bauer", account_type="User", password="Password123", role="read-only"),
-    Account(name="cobrian", label="Chloe O'Brian", account_type="User", password="Password123", role="read-write"),
-    Account(name="dpalmer", label="David Palmer", account_type="User", password="Password123", role="read-write"),
-    Account(name="sudo", label="Sue Dough", password="Password123", role="admin", account_type="User"),
-    Account(name="elawson", label="Emily Lawson", password="Password123", role="read-write", account_type="User"),
-    Account(name="jthompson", label="Jacob Thompson", password="Password123", role="read-write", account_type="User"),
-    Account(name="shernandez", label="Sofia Hernandez", password="Password123", role="read-write", account_type="User"),
-    Account(name="rpatel", label="Ryan Patel", password="Password123", role="read-only", account_type="User"),
-    Account(name="ocarter", label="Olivia Carter", password="Password123", role="read-only", account_type="User"),
+    Account(name="pop-builder", label="pop-builder", account_type="Script", password="Password123"),
+    Account(name="crm-sync", label="CRM Synchronization", account_type="Script", password="Password123"),
+    Account(name="jbauer", label="Jack Bauer", account_type="User", password="Password123"),
+    Account(name="cobrian", label="Chloe O'Brian", account_type="User", password="Password123"),
+    Account(name="dpalmer", label="David Palmer", account_type="User", password="Password123"),
+    Account(name="sudo", label="Sue Dough", password="Password123", account_type="User"),
+    Account(name="elawson", label="Emily Lawson", password="Password123", account_type="User"),
+    Account(name="jthompson", label="Jacob Thompson", password="Password123", account_type="User"),
+    Account(name="shernandez", label="Sofia Hernandez", password="Password123", account_type="User"),
+    Account(name="rpatel", label="Ryan Patel", password="Password123", account_type="User"),
+    Account(name="ocarter", label="Olivia Carter", password="Password123", account_type="User"),
 )
 
 ACCOUNT_GROUPS = {
