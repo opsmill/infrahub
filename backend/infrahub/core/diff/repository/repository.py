@@ -23,6 +23,7 @@ from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
 from ..query.empty_roots import EnrichedDiffEmptyRootsQuery
 from ..query.filters import EnrichedDiffQueryFilters
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
+from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
 from ..query.save import EnrichedDiffRootsCreateQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
