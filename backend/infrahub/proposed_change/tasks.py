@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.protocols import CoreProposedChange
+from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreProposedChange
 from prefect import flow, task
 from prefect.client.schemas.objects import (
     State,  # noqa: TCH002
@@ -24,7 +24,7 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
-from infrahub.core.protocols import CoreDataCheck, CoreGeneratorDefinition, CoreValidator
+from infrahub.core.protocols import CoreDataCheck, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
@@ -45,6 +45,7 @@ from infrahub.proposed_change.models import (
 from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import services
 from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS
+from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
     from infrahub_sdk.node import InfrahubNode
@@ -96,6 +97,8 @@ async def merge_proposed_change(proposed_change_id: str, proposed_change_name: s
     service = services.service
     log = get_run_logger()
 
+    await add_tags(nodes=[proposed_change_id])
+
     async with service.database.start_session() as db:
         proposed_change = await registry.manager.get_one(
             db=db, id=proposed_change_id, kind=InternalCoreProposedChange, raise_on_error=True
@@ -141,6 +144,9 @@ async def merge_proposed_change(proposed_change_id: str, proposed_change_name: s
 )
 async def cancel_proposed_changes_branch(branch_name: str) -> None:
     service = services.service
+
+    await add_tags(branches=[branch_name])
+
     proposed_changed_opened = await service.client.filters(
         kind=CoreProposedChange,
         include=["id", "source_branch"],
@@ -161,6 +167,8 @@ async def cancel_proposed_changes_branch(branch_name: str) -> None:
 @task(name="Cancel a propose change", description="Cancel a propose change")
 async def cancel_proposed_change(proposed_change: CoreProposedChange) -> None:
     service = services.service
+
+    await add_tags(nodes=[proposed_change.id])
     log = get_run_logger()
 
     log.info("Canceling proposed change as the source branch was deleted")
@@ -177,6 +185,8 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
     """Triggers a data integrity validation check on the provided proposed change to start."""
 
     service = services.service
+    await add_tags(nodes=[model.proposed_change])
+
     destination_branch = await registry.get_branch(db=service.database, branch=model.destination_branch)
     source_branch = await registry.get_branch(db=service.database, branch=model.source_branch)
     component_registry = get_component_registry()
@@ -187,10 +197,12 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
 
 @flow(
     name="proposed-changed-run-generator",
-    flow_run_name="Run generators related to proposed change {model.proposed_change}",
+    flow_run_name="Run generators",
 )
 async def run_generators(model: RequestProposedChangeRunGenerators) -> None:
     service = services.service
+    await add_tags(nodes=[model.proposed_change])
+
     generators = await service.client.filters(
         kind=CoreGeneratorDefinition,
         prefetch_relationships=True,
@@ -277,7 +289,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators) -> None:
 
 @flow(
     name="proposed-changed-schema-integrity",
-    flow_run_name="Got a request to process schema integrity defined in proposed_change: {model.proposed_change}",
+    flow_run_name="Process schema integrity",
 )
 async def run_proposed_change_schema_integrity_check(
     model: RequestProposedChangeSchemaIntegrity,
@@ -285,6 +297,8 @@ async def run_proposed_change_schema_integrity_check(
     # For now, we retrieve the latest schema for each branch from the registry
     # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
     service = services.service
+    await add_tags(nodes=[model.proposed_change])
+
     source_schema = registry.schema.get_schema_branch(name=model.source_branch).duplicate()
     dest_schema = registry.schema.get_schema_branch(name=model.destination_branch).duplicate()
 
@@ -370,6 +384,8 @@ async def _get_proposed_change_schema_integrity_constraints(
 )
 async def repository_checks(model: RequestProposedChangeRepositoryChecks) -> None:
     service = services.service
+    await add_tags(nodes=[model.proposed_change])
+
     events: list[InfrahubMessage] = []
     for repository in model.branch_diff.repositories:
         if (
