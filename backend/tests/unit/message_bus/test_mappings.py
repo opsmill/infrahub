@@ -20,9 +20,12 @@ def test_message_command_overlap():
     assert messages == commands
 
 
+operations_without_flows = ["event.node.mutated", "refresh.registry.branches", "refresh.registry.rebased_branch"]
+
+
 @pytest.mark.parametrize(
     "operation",
-    [pytest.param(function, id=key) for key, function in COMMAND_MAP.items() if not key.startswith("refresh.registry")],
+    [pytest.param(function, id=key) for key, function in COMMAND_MAP.items() if key not in operations_without_flows],
 )
 def test_operations_decorated(operation: Callable):
     if callable(operation) and hasattr(operation, "__name__") and "Flow" not in type(operation).__name__:
