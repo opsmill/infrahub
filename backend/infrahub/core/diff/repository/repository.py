@@ -172,17 +172,19 @@ class DiffRepository:
         self,
         base_branch_name: str,
         diff_branch_names: list[str],
-        from_time: Timestamp,
-        to_time: Timestamp,
+        from_time: Timestamp | None = None,
+        to_time: Timestamp | None = None,
+        tracking_id: TrackingId | None = None,
         filters: dict | None = None,
     ) -> DiffSummaryCounters | None:
         query = await DiffSummaryQuery.init(
             db=self.db,
             base_branch_name=base_branch_name,
             diff_branch_names=diff_branch_names,
+            filters=EnrichedDiffQueryFilters(**dict(filters or {})),
             from_time=from_time,
             to_time=to_time,
-            filters=EnrichedDiffQueryFilters(**dict(filters or {})),
+            tracking_id=tracking_id,
         )
         await query.execute(db=self.db)
         return query.get_summary()
