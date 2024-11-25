@@ -98,9 +98,10 @@ const SearchAnywhereDialog = ({ className }: SearchAnywhereProps) => {
   return (
     <div
       className={classNames(
-        "p-2 w-full max-w-screen-md rounded-xl bg-stone-100 shadow-xl space-y-2",
+        "p-2 w-full max-w-screen-md rounded-xl bg-stone-100 shadow-xl",
         className
       )}
+      onClick={(event) => event.stopPropagation()}
     >
       <div className="relative bg-white">
         <div className="absolute top-2.5 pl-2.5">
