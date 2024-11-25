@@ -1,7 +1,5 @@
 from uuid import uuid4
 
-from graphql import graphql
-
 from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind
@@ -15,7 +13,7 @@ from infrahub.permissions.local_backend import LocalPermissionBackend
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.message_bus import BusRecorder
-from tests.helpers.graphql import graphql_mutation
+from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.utils import init_global_service
 
 CREATE_PROPOSED_CHANGE = """
