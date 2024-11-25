@@ -244,22 +244,25 @@ async def load_schema(
     account_session: AccountSession = Depends(get_current_user),
 ) -> SchemaUpdate:
     has_permission = False
+    has_branch_permission = branch.name not in (GLOBAL_BRANCH_NAME, registry.default_branch)
     for permission_backend in registry.permission_backends:
-        has_permission = await permission_backend.has_permission(
-            db=db,
-            account_session=account_session,
-            permission=GlobalPermission(
-                action=GlobalPermissions.MANAGE_SCHEMA.value,
-                decision=(
-                    PermissionDecision.ALLOW_DEFAULT
-                    if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
-                    else PermissionDecision.ALLOW_OTHER
-                ).value,
-            ),
-            branch=branch,
-        )
-        if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch):
-            has_permission &= await permission_backend.has_permission(
+        if not has_permission:
+            has_permission = await permission_backend.has_permission(
+                db=db,
+                account_session=account_session,
+                permission=GlobalPermission(
+                    action=GlobalPermissions.MANAGE_SCHEMA.value,
+                    decision=(
+                        PermissionDecision.ALLOW_DEFAULT
+                        if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+                        else PermissionDecision.ALLOW_OTHER
+                    ).value,
+                ),
+                branch=branch,
+            )
+
+        if not has_branch_permission:
+            has_branch_permission = permission_backend.has_permission(
                 db=db,
                 account_session=account_session,
                 permission=GlobalPermission(
@@ -269,10 +272,10 @@ async def load_schema(
                 branch=branch,
             )
 
-        if has_permission:
+        if has_permission and has_branch_permission:
             break
 
-    if not has_permission:
+    if not has_permission or not has_branch_permission:
         raise PermissionDeniedError("You are not allowed to manage the schema")
 
     service: InfrahubServices = request.app.state.service
