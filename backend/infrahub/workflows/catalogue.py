@@ -6,7 +6,7 @@ INFRAHUB_WORKER_POOL = WorkerPoolDefinition(name="infrahub-worker", description=
 WEBHOOK_SEND = WorkflowDefinition(
     name="event-send-webhook",
     type=WorkflowType.USER,
-    module="infrahub.send.webhook",
+    module="infrahub.webhook.tasks",
     function="send_webhook",
 )
 
@@ -340,6 +340,27 @@ REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS = WorkflowDefinition(
     function="repository_checks",
 )
 
+WEBHOOK_CONFIGURE = WorkflowDefinition(
+    name="webhook-setup-automations",
+    type=WorkflowType.USER,
+    module="infrahub.webhook.tasks",
+    function="configure_webhooks",
+)
+
+WEBHOOK_TRIGGER = WorkflowDefinition(
+    name="webhook-trigger-actions",
+    type=WorkflowType.USER,
+    module="infrahub.webhook.tasks",
+    function="trigger_webhooks",
+)
+
+AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER = WorkflowDefinition(
+    name="webhook-setup-configuration-trigger",
+    type=WorkflowType.USER,
+    module="infrahub.webhook.tasks",
+    function="trigger_webhook_configuration",
+)
+
 
 worker_pools = [INFRAHUB_WORKER_POOL]
 
@@ -347,6 +368,7 @@ workflows = [
     ANONYMOUS_TELEMETRY_SEND,
     AUTOMATION_GIT_UPDATED,
     AUTOMATION_SCHEMA_UPDATED,
+    AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER,
     BRANCH_CANCEL_PROPOSED_CHANGES,
     BRANCH_CREATE,
     BRANCH_DELETE,
@@ -389,7 +411,13 @@ workflows = [
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
     UPDATE_GRAPHQL_QUERY_GROUP,
+    WEBHOOK_CONFIGURE,
     WEBHOOK_SEND,
+    WEBHOOK_TRIGGER,
 ]
 
-automation_setup_workflows = [AUTOMATION_GIT_UPDATED, AUTOMATION_SCHEMA_UPDATED]
+automation_setup_workflows = [
+    AUTOMATION_GIT_UPDATED,
+    AUTOMATION_SCHEMA_UPDATED,
+    AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER,
+]

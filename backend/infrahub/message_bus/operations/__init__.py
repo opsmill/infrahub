@@ -13,7 +13,6 @@ from infrahub.message_bus.operations import (
     requests,
     schema,
     send,
-    trigger,
 )
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
@@ -36,7 +35,6 @@ COMMAND_MAP = {
     "refresh.git.fetch": git.repository.fetch,
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
-    "refresh.webhook.configuration": refresh.webhook.configuration,
     "request.generator_definition.check": requests.generator_definition.check,
     "request.artifact_definition.check": requests.artifact_definition.check,
     "request.proposed_change.pipeline": requests.proposed_change.pipeline,
@@ -46,7 +44,6 @@ COMMAND_MAP = {
     "send.echo.request": send.echo.request,
     "schema.migration.path": schema.migration.path,
     "schema.validator.path": schema.validator.path,
-    "trigger.webhook.actions": trigger.webhook.actions,
 }
 
 
