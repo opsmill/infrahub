@@ -73,13 +73,16 @@ export function SearchAnywhere() {
         onOpenChange={closeDrawer}
         data-testid="search-anywhere"
         shouldFilter={false}
-        className="fixed w-full h-full top-0 left-0"
+        className="fixed inset-0"
       >
-        <div className="fixed inset-0 bg-gray-600/25 animate-in fade-in" onClick={closeDrawer} />
-
-        <SearchAnywhereContext.Provider value={{ closeDrawer }}>
-          <SearchAnywhereDialog className="fixed mt-1 left-1/2 -translate-x-1/2 animate-in fade-in" />
-        </SearchAnywhereContext.Provider>
+        <div
+          className="fixed inset-0 flex flex-col items-center bg-gray-600/25 animate-in fade-in"
+          onClick={closeDrawer}
+        >
+          <SearchAnywhereContext.Provider value={{ closeDrawer }}>
+            <SearchAnywhereDialog className="mt-1 left-1/2 animate-in fade-in" />
+          </SearchAnywhereContext.Provider>
+        </div>
       </Command.Dialog>
     </>
   );
