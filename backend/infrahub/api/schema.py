@@ -262,7 +262,7 @@ async def load_schema(
             )
 
         if not has_branch_permission:
-            has_branch_permission = permission_backend.has_permission(
+            has_branch_permission = await permission_backend.has_permission(
                 db=db,
                 account_session=account_session,
                 permission=GlobalPermission(
