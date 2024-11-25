@@ -190,10 +190,6 @@ filterwarnings = [
 addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope --junitxml=pytest-junit.xml"
 junit_duration_report = "call"
 
-[tool.pytest_env]
-PREFECT_LOGGING_LEVEL = "ERROR"
-INFRAHUB_LOG_LEVEL = "ERROR"
-
 [tool.mypy]
 pretty = true
 ignore_missing_imports = true
