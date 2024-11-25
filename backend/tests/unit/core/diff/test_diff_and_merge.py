@@ -695,3 +695,44 @@ class TestDiffAndMerge:
         # including the relationship connecting car_1 and person_1 is deleted,
         # requires a special query b/c TestCar has no relationship to TestPerson in the schema
         await verify_all_linked_edges_deleted(db=db, node_uuid=person_1.id, branch_name=default_branch.name)
+
+    @pytest.mark.parametrize("selection", [ConflictSelection.BASE_BRANCH, ConflictSelection.DIFF_BRANCH])
+    async def test_attribute_update_with_conflict(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        person_john_main: Node,
+        selection: ConflictSelection,
+    ):
+        main_value = 200
+        branch_value = 150
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        person_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_john_main.id)
+        person_main.height.value = main_value
+        await person_main.save(db=db)
+        person_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_john_main.id)
+        person_branch.height.value = branch_value
+        await person_branch.save(db=db)
+
+        # set the conflict resolution
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        conflicts_map = enriched_diff.get_all_conflicts()
+        assert len(conflicts_map) == 1
+        expected_path = f"data/{person_john_main.id}/height/value"
+        assert expected_path in conflicts_map
+        conflict = conflicts_map[expected_path]
+        await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=selection)
+
+        # merge the branch
+        at = Timestamp()
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=at)
+
+        # validate that person has correct age
+        updated_person = await NodeManager.get_one(db=db, branch=default_branch, id=person_john_main.id)
+        if selection is ConflictSelection.DIFF_BRANCH:
+            assert updated_person.height.value == branch_value
+        else:
+            assert updated_person.height.value == main_value

@@ -161,7 +161,7 @@ class DiffMergeSerializer:
             if node.conflict and node.conflict.selected_branch is ConflictSelection.BASE_BRANCH:
                 continue
             node_action = self._get_action(action=node.action, conflict=node.conflict)
-            if node.action is DiffAction.REMOVED:
+            if node_action is DiffAction.REMOVED:
                 serialized_node_diffs.append(
                     NodeMergeDict(
                         uuid=node.uuid,
