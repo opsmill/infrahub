@@ -560,8 +560,6 @@ jobs:
         run: "poetry install --no-interaction --no-ansi"
       - name: "Setup environment"
         run: "pip install invoke toml"
-      - name: "Build Test Image"
-        run: "poetry run invoke dev.build"
       - name: "Validate generated documentation"
         run: "poetry run invoke docs.validate"
 
