@@ -1,1 +1,0 @@
-Fix permission check when using multiple backends, if one grants a permission the next ones must not be queried.
