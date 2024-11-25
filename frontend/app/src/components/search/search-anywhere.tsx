@@ -189,7 +189,7 @@ export const SearchResultItem = ({
       <Button
         variant={"ghost"}
         className={classNames(
-          "flex justify-start w-full gap-1 text-xs p-2 m-0 rounded text-wrap text-left hover:bg-gray-100",
+          "flex justify-start w-full h-min gap-1 text-xs p-2 m-0 rounded text-wrap text-left hover:bg-gray-100",
           className
         )}
       >
