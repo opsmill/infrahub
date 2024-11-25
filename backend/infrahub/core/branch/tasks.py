@@ -10,10 +10,10 @@ from prefect.states import Completed, Failed
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
+from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
@@ -242,18 +242,17 @@ async def delete_branch(branch: str) -> None:
 )
 async def validate_branch(branch: str) -> State:
     service = services.service
-    log = get_run_logger()
     await add_branch_tag(branch_name=branch)
 
     obj = await Branch.get_by_name(db=service.database, name=branch)
 
-    diff = await BranchDiffer.init(db=service.database, branch=obj)
-    conflicts = await diff.get_conflicts()
+    component_registry = get_component_registry()
+    diff_repo = await component_registry.get_component(DiffRepository, db=service.database, branch=obj)
+    has_conflicts = await diff_repo.diff_has_conflicts(
+        diff_branch_name=obj.name, tracking_id=BranchTrackingId(name=obj.name)
+    )
 
-    for conflict in conflicts:
-        log.error(conflict)
-
-    if conflicts:
+    if has_conflicts:
         return Failed(message="branch has some conflicts")
     return Completed(message="branch is valid")
 
