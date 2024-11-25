@@ -187,7 +187,7 @@ filterwarnings = [
     "ignore:Deprecated call to",
     "ignore:pkg_resources is deprecated as an API",          # Remove on https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2181 has been fixed
 ]
-addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope --junitxml=pytest-junit.xml"
+addopts = "-v --cov-report term-missing --cov-report xml --dist loadscope --junitxml=pytest-junit.xml"
 junit_duration_report = "call"
 
 [tool.mypy]
