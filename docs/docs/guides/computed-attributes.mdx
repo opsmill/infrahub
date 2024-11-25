@@ -55,7 +55,7 @@ nodes:
         computed_attribute:
           kind: Jinja2
           jinja2_template: "{{ role__value|title }} device located on {{ site__name__value|lower }}"
-        read_only: true  # You must set the attribute as read-only as the value will be handled by the system.
+        read_only: true  # You must set the attribute to read-only as the value will be handled by the system
         optional: false  # As it's a Jinja2 kind of attribute you can make it mandatory
     relationships:
       - name: site
@@ -77,9 +77,14 @@ You can now load this schema into your Infrahub instance. For more details, refe
 
 ## Adding Python computed attribute
 
-Creating a Python computed attribute is a two steps process.
+Creating a Python computed attribute is a two-step process:
+
+1. Add the attribute to the schema.
+2. Prepare a Python Transform to implement the logic.
 
 In the following example we will create a computed attribute `description` for our `InfraCircuit` node. The value will be a combination of all endpoints locations.
+
+### Add the attribute to the schema
 
 Here's the schema we'll use as a starting point:
 
@@ -110,6 +115,13 @@ nodes:
       - name: circuit_id
         kind: Text
         unique: true
+      - name: computed_description
+        kind: Text
+        computed_attribute:
+          kind: TransformPython
+          transform: computed_circuit_description # Transform's name
+        read_only: true  # You must set the attribute to read-only as the value will be handled by the system.
+        optional: true   # As it's a Python kind of attribute it must be optional
     relationships:
       - name: endpoints
         peer: InfraCircuitEndpoint
@@ -136,6 +148,14 @@ nodes:
         cardinality: one
         kind: Attribute
 ```
+
+Once completed, you can load this schema into Infrahub.
+
+:::note
+
+You can specify a transform that doesn't yet exist in Infrahub, attribute will just remain empty. Once the transform is loaded, Infrahub will automatically catch up and compute the value of this attribute.
+
+:::
 
 ### Create the Python transform
 
@@ -208,7 +228,7 @@ class ComputedCircuitDescription(InfrahubTransform):
         return f' <- {circuit_dict["circuit_id"]["value"]} -> '.join(detailed_endpoints)
 ```
 
-:::info
+:::note
 
 Make sure that the script returns a string!
 
@@ -237,36 +257,6 @@ At this stage you should be able to test your transform using `infrahubctl`
 4. Load the transform in Infrahub
 
 You need to commit these files to a Git repository and link the repository to Infrahub. In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](/guides/repository) in order to sync the repository you created and make it accessible within Infrahub.
-
-### Extend the schema
-
-:::warning
-
-Make sure that the transform is imported in Infrahub before adding the computed attribute in the schema.
-
-:::
-
-We will now append the Python computed attribute to the schema
-
-```diff
----
-version: "1.0"
-nodes:
-  - name: Circuit
-    namespace: Infra
-    display_labels:
-      - circuit_id__value
-    attributes:
-+       - name: computed_description
-+         kind: Text
-+         computed_attribute:
-+           kind: TransformPython
-+           transform: computed_circuit_description # Should point to the transform created before
-+         read_only: true
-+         optional: true
-```
-
-Once completed, you can load the updated schema into Infrahub.
 
 :::success
 
