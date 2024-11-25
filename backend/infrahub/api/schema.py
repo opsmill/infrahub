@@ -275,8 +275,10 @@ async def load_schema(
         if has_permission and has_branch_permission:
             break
 
-    if not has_permission or not has_branch_permission:
+    if not has_permission:
         raise PermissionDeniedError("You are not allowed to manage the schema")
+    if not has_branch_permission:
+        raise PermissionDeniedError("You are not allowed to edit the schema in the default branch")
 
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
