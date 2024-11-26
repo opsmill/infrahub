@@ -23,6 +23,7 @@ from prefect.client.schemas.sorting import (
     FlowRunSort,
 )
 
+from infrahub.core.constants import TaskConclusion
 from infrahub.core.query.node import NodeGetKindQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
@@ -241,7 +242,9 @@ class PrefectTask:
                         {
                             "node": {
                                 "title": flow.name,
-                                "conclusion": CONCLUSION_STATE_MAPPING[flow.state_name].value,
+                                "conclusion": CONCLUSION_STATE_MAPPING.get(
+                                    flow.state_name, TaskConclusion.UNKNOWN
+                                ).value,
                                 "state": flow.state_type,
                                 "progress": progress_flow.data.get(flow.id, None),
                                 "parameters": flow.parameters,
