@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import logging
 import os
 import sys
 import time
@@ -61,6 +62,7 @@ from tests.helpers.constants import (
 from tests.helpers.utils import get_exposed_port, start_neo4j_container
 
 ResponseClass = TypeVar("ResponseClass")
+DEFAULT_TESTING_LOG_LEVEL = "WARNING"
 
 
 def pytest_addoption(parser):
@@ -77,6 +79,15 @@ def pytest_configure(config):
 
     if not config.option.neo4j:
         setattr(config.option, "markexpr", markexpr)
+
+    log_level = config.option.log_level
+    log_level = log_level if log_level is not None else DEFAULT_TESTING_LOG_LEVEL
+
+    # We can't control logging through INFRAHUB_LOG_LEVEL and PREFECT_LOGGING_LEVEL here
+    # because logging configuration has already been setup when `log.py` is imported,
+    # thus we directly set level of corresponding loggers.
+    logging.getLogger().setLevel(log_level)  # root logger
+    logging.getLogger("prefect").setLevel(log_level)  # prefect logger
 
 
 @pytest.fixture(scope="session", autouse=True)
