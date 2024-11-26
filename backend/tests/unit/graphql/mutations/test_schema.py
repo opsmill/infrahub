@@ -1,11 +1,11 @@
 import pytest
-from graphql import graphql
 
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.mutations.schema import validate_kind, validate_kind_dropdown, validate_kind_enum
+from tests.helpers.graphql import graphql
 
 
 async def test_delete_last_dropdown_option(db: InfrahubDatabase, default_branch, choices_schema):
