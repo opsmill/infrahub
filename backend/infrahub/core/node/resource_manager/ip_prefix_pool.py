@@ -72,7 +72,7 @@ class CoreIPPrefixPool(Node):
         try:
             await node.new(db=db, prefix=str(next_prefix), member_type=member_type, ip_namespace=ip_namespace, **data)
         except ValidationError as exc:
-            raise ValueError(f"IPPrefixPool: {self.name.value} | {exc!s}")  # type: ignore[attr-defined]
+            raise ValueError(f"IPPrefixPool: {self.name.value} | {exc!s}") from exc  # type: ignore[attr-defined]
         await node.save(db=db)
         reconciler = IpamReconciler(db=db, branch=branch)
         await reconciler.reconcile(ip_value=next_prefix, namespace=ip_namespace.id, node_uuid=node.get_id())

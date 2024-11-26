@@ -67,7 +67,7 @@ class CoreIPAddressPool(Node):
         try:
             await node.new(db=db, address=str(next_address), ip_namespace=ip_namespace, **data)
         except ValidationError as exc:
-            raise ValueError(f"IPAddressPool: {self.name.value} | {exc!s}")  # type: ignore[attr-defined]
+            raise ValueError(f"IPAddressPool: {self.name.value} | {exc!s}") from exc  # type: ignore[attr-defined]
         await node.save(db=db)
         reconciler = IpamReconciler(db=db, branch=branch)
         await reconciler.reconcile(ip_value=next_address, namespace=ip_namespace.id, node_uuid=node.get_id())
