@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from prefect import flow
 from prefect.automations import AutomationCore
@@ -295,6 +295,10 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:
             log.info(f"processing {computed_attribute.key_name}")
             scope = registry.default_branch
 
+            match_criteria: dict[str, Any] = {"infrahub.node.kind": source_node_types}
+            if branches_with_diff_from_main:
+                match_criteria["infrahub.branch.name"] = [f"!{branch}" for branch in branches_with_diff_from_main]
+
             automation = AutomationCore(
                 name=PROCESS_AUTOMATION_NAME.format(
                     prefix=PROCESS_JINJA2_AUTOMATION_NAME_PREFIX, identifier=computed_attribute.key_name, scope=scope
@@ -305,12 +309,7 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:
                     posture=Posture.Reactive,
                     expect={"infrahub.node.*"},
                     within=timedelta(0),
-                    match=ResourceSpecification(
-                        {
-                            "infrahub.node.kind": source_node_types,
-                            "infrahub.branch.name": [f"!{branch}" for branch in branches_with_diff_from_main],
-                        }
-                    ),
+                    match=ResourceSpecification(match_criteria),
                     threshold=1,
                 ),
                 actions=[
@@ -355,15 +354,14 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:
             mapping = schema_branch.computed_attributes.get_jinja2_target_map()
             for computed_attribute, source_node_types in mapping.items():
                 log.info(f"processing {computed_attribute.key_name}")
-                scope = diff_branch
 
                 automation = AutomationCore(
                     name=PROCESS_AUTOMATION_NAME.format(
                         prefix=PROCESS_PYTHON_AUTOMATION_NAME_PREFIX,
                         identifier=computed_attribute.key_name,
-                        scope=scope,
+                        scope=diff_branch,
                     ),
-                    description=f"Process value of the computed attribute for {computed_attribute.key_name} [{scope}]",
+                    description=f"Process value of the computed attribute for {computed_attribute.key_name} [{diff_branch}]",
                     enabled=True,
                     trigger=EventTrigger(
                         posture=Posture.Reactive,
@@ -372,7 +370,7 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:
                         match=ResourceSpecification(
                             {
                                 "infrahub.node.kind": source_node_types,
-                                "infrahub.branch.name": scope,
+                                "infrahub.branch.name": diff_branch,
                             }
                         ),
                         threshold=1,
@@ -393,9 +391,9 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:
                     ],
                 )
 
-                if existing_computed_attr_automations.has(identifier=computed_attribute.key_name, scope=scope):
+                if existing_computed_attr_automations.has(identifier=computed_attribute.key_name, scope=diff_branch):
                     existing = existing_computed_attr_automations.get(
-                        identifier=computed_attribute.key_name, scope=scope
+                        identifier=computed_attribute.key_name, scope=diff_branch
                     )
                     await client.update_automation(automation_id=existing.id, automation=automation)
                     automations_to_keep.append(existing.id)
