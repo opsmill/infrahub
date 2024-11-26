@@ -2,7 +2,7 @@ from typing import Any, Dict
 from uuid import uuid4
 
 import pytest
-from graphql import ExecutionResult, graphql
+from graphql import ExecutionResult
 from infrahub_sdk.graphql import Query
 from prefect.artifacts import ArtifactRequest
 from prefect.client.orchestration import PrefectClient, get_client
@@ -16,6 +16,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.tasks.dummy import dummy_flow, dummy_flow_broken
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
+from tests.helpers.graphql import graphql
 
 CREATE_TASK = """
 mutation CreateTask(

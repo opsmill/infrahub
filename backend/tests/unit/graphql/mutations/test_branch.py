@@ -1,5 +1,3 @@
-from graphql import graphql
-
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
@@ -9,7 +7,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.message_bus import BusRecorder
-from tests.helpers.graphql import graphql_mutation
+from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.utils import init_global_service
 

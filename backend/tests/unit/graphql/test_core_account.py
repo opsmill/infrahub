@@ -1,5 +1,4 @@
 import bcrypt
-from graphql import graphql
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core import registry
@@ -10,6 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.permissions.local_backend import LocalPermissionBackend
+from tests.helpers.graphql import graphql
 
 
 async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch: Branch, first_account):

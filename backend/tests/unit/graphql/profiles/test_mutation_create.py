@@ -1,8 +1,7 @@
-from graphql import graphql
-
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 
 
 async def test_create_profile(db: InfrahubDatabase, default_branch, car_person_schema):

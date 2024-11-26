@@ -1,5 +1,4 @@
 import pytest
-from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -7,6 +6,7 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.queries.search import _collapse_ipv6
+from tests.helpers.graphql import graphql
 
 SEARCH_QUERY = """
 query ($search: String!) {
