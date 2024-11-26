@@ -250,7 +250,13 @@ queries:
 
 At this stage you should be able to test your transform using `infrahubctl`
 
-```shell title="❯ infrahubctl transform computed_circuit_description id=here_goes_a_circuit_id"
+:::note
+
+To create a meaningful test, you may want to create: two sites, one circuit, and two endpoints connecting the circuit to the two sites.
+
+:::
+
+```shell title="❯ infrahubctl transform computed_circuit_description id=180b4900-7ea4-f4b3-3b5f-c519831a4b93"
 "site1::endpoint-a <- circuit1 -> site2::endpoint-b"
 ```
 
