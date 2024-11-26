@@ -60,14 +60,17 @@ class CoreIPAddressPool(Node):
 
         prefixlen = prefixlen or data.get("prefixlen") or self.default_prefix_length.value  # type: ignore[attr-defined]
 
-        next_prefix = await self.get_next(db=db, prefixlen=prefixlen)
+        next_address = await self.get_next(db=db, prefixlen=prefixlen)
 
         target_schema = registry.get_node_schema(name=address_type, branch=branch)
         node = await Node.init(db=db, schema=target_schema, branch=branch)
-        await node.new(db=db, address=str(next_prefix), ip_namespace=ip_namespace, **data)
+        try:
+            await node.new(db=db, address=str(next_address), ip_namespace=ip_namespace, **data)
+        except ValidationError as exc:
+            raise ValueError(f"IPAddressPool: {self.name.value} | {exc!s}")  # type: ignore[attr-defined]
         await node.save(db=db)
         reconciler = IpamReconciler(db=db, branch=branch)
-        await reconciler.reconcile(ip_value=next_prefix, namespace=ip_namespace.id, node_uuid=node.get_id())
+        await reconciler.reconcile(ip_value=next_address, namespace=ip_namespace.id, node_uuid=node.get_id())
 
         if identifier:
             query_set = await IPAddressPoolSetReserved.init(

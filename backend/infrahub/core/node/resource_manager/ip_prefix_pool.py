@@ -52,7 +52,7 @@ class CoreIPPrefixPool(Node):
         prefixlen = prefixlen or data.get("prefixlen", None) or self.default_prefix_length.value  # type: ignore[attr-defined]
         if not prefixlen:
             raise ValueError(
-                f"PrefixPool: {self.name.value} | "  # type: ignore[attr-defined]
+                f"IPPrefixPool: {self.name.value} | "  # type: ignore[attr-defined]
                 "A prefixlen or a default_value must be provided to allocate a new prefix"
             )
 
@@ -61,7 +61,7 @@ class CoreIPPrefixPool(Node):
         prefix_type = prefix_type or data.get("prefix_type", None) or self.default_prefix_type.value  # type: ignore[attr-defined]
         if not prefix_type:
             raise ValueError(
-                f"PrefixPool: {self.name.value} | "  # type: ignore[attr-defined]
+                f"IPPrefixPool: {self.name.value} | "  # type: ignore[attr-defined]
                 "A prefix_type or a default_value type must be provided to allocate a new prefix"
             )
 
@@ -72,7 +72,7 @@ class CoreIPPrefixPool(Node):
         try:
             await node.new(db=db, prefix=str(next_prefix), member_type=member_type, ip_namespace=ip_namespace, **data)
         except ValidationError as exc:
-            raise ValueError(f"PrefixPool: {self.name.value} | {exc!s}")  # type: ignore[attr-defined]
+            raise ValueError(f"IPPrefixPool: {self.name.value} | {exc!s}")  # type: ignore[attr-defined]
         await node.save(db=db)
         reconciler = IpamReconciler(db=db, branch=branch)
         await reconciler.reconcile(ip_value=next_prefix, namespace=ip_namespace.id, node_uuid=node.get_id())
