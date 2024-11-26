@@ -1,5 +1,4 @@
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
-import { Card } from "@/components/ui/card";
 import Kbd from "@/components/ui/kbd";
 import { CollapsedButton } from "@/screens/layout/menu-navigation/components/collapsed-button";
 import { classNames } from "@/utils/common";
@@ -117,7 +116,7 @@ const SearchAnywhereDialog = ({ className }: SearchAnywhereProps) => {
       )}
       onClick={(event) => event.stopPropagation()}
     >
-      <div className="relative bg-white">
+      <div className="relative">
         <div className="absolute top-2.5 pl-2.5">
           <Icon icon="mdi:magnify" className="text-xl text-custom-blue-600" />
         </div>
@@ -133,19 +132,13 @@ const SearchAnywhereDialog = ({ className }: SearchAnywhereProps) => {
       </div>
 
       {query && (
-        <Command.List>
+        <Command.List className="pt-2">
           <div className="overflow-x-hidden overflow-y-auto space-y-2">
-            <Command.Group>
-              <SearchActions query={query} />
-            </Command.Group>
+            <SearchActions query={query} />
 
-            <Command.Group>
-              <SearchNodes query={query} />
-            </Command.Group>
+            <SearchNodes query={query} />
 
-            <Command.Group>
-              <SearchDocs query={query} />
-            </Command.Group>
+            <SearchDocs query={query} />
           </div>
         </Command.List>
       )}
@@ -158,7 +151,7 @@ type SearchGroupProps = {
 };
 
 export const SearchGroup = ({ children }: SearchGroupProps) => {
-  return <Card className="p-2">{children}</Card>;
+  return <Command.Group className="bg-custom-white rounded-lg border">{children}</Command.Group>;
 };
 
 export const SearchGroupTitle = ({ children }: SearchGroupProps) => {
