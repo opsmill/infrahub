@@ -10,6 +10,7 @@ from infrahub.core.query.resource_manager import (
     PrefixPoolGetReserved,
     PrefixPoolSetReserved,
 )
+from infrahub.exceptions import ValidationError
 from infrahub.pools.prefix import PrefixPool
 
 from .. import Node
@@ -68,7 +69,10 @@ class CoreIPPrefixPool(Node):
 
         target_schema = registry.get_node_schema(name=prefix_type, branch=branch)
         node = await Node.init(db=db, schema=target_schema, branch=branch)
-        await node.new(db=db, prefix=str(next_prefix), member_type=member_type, ip_namespace=ip_namespace, **data)
+        try:
+            await node.new(db=db, prefix=str(next_prefix), member_type=member_type, ip_namespace=ip_namespace, **data)
+        except ValidationError as exc:
+            raise ValueError(f"PrefixPool: {self.name.value} | {exc!s}")  # type: ignore[attr-defined]
         await node.save(db=db)
         reconciler = IpamReconciler(db=db, branch=branch)
         await reconciler.reconcile(ip_value=next_prefix, namespace=ip_namespace.id, node_uuid=node.get_id())
