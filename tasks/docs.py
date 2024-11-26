@@ -6,12 +6,6 @@ from typing import Any
 
 from invoke import Context, task
 
-from .shared import (
-    BUILD_NAME,
-    build_test_compose_files_cmd,
-    build_test_envs,
-    get_env_vars,
-)
 from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
@@ -85,17 +79,8 @@ def install(context: Context) -> None:
 
 
 @task
-def validate(context: Context, docker: bool = False) -> None:
+def validate(context: Context) -> None:
     """Validate that the generated documentation is committed to Git."""
-
-    if docker:
-        compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run "
-        exec_cmd += f"{build_test_envs()} infrahub-test inv docs.validate"
-        with context.cd(ESCAPED_REPO_PATH):
-            context.run(exec_cmd)
-        return
-
     _generate(context=context)
     exec_cmd = "git diff --exit-code docs"
     with context.cd(ESCAPED_REPO_PATH):
