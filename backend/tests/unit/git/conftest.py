@@ -79,9 +79,9 @@ def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
     fixture_repo = fixtures_dir / "infrahub-test-fixture-01-0b341c0.tar.gz"
 
     # Extract the fixture package in the source directory
-    file = tarfile.open(fixture_repo)
-    file.extractall(git_sources_dir)
-    file.close()
+
+    with tarfile.open(fixture_repo) as file:
+        file.extractall(git_sources_dir)
 
     return {"name": name, "path": git_sources_dir / name}
 
@@ -122,9 +122,8 @@ def git_upstream_repo_10(helper: TestHelper, git_sources_dir: Path) -> dict[str,
     fixtures_dir = helper.get_fixtures_dir()
 
     # Extract the fixture package in the source directory
-    file = tarfile.open(fixtures_dir / "infrahub-demo-edge-cff6665.tar.gz")
-    file.extractall(git_sources_dir)
-    file.close()
+    with tarfile.open(fixtures_dir / "infrahub-demo-edge-cff6665.tar.gz") as file:
+        file.extractall(git_sources_dir)
 
     return {"name": name, "path": git_sources_dir / name}
 

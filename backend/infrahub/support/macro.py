@@ -45,7 +45,7 @@ class MacroDefinition:
                 raise ValueError("Forbidden code found in the macro")
 
         except TemplateSyntaxError as exc:
-            raise ValueError("Failed to parse the macro: {exc}") from exc
+            raise ValueError(f"Failed to parse the macro: {exc}") from exc
 
         for node in template.find_all(nodes.Filter):
             if node.name not in ALLOWED_FILTERS:

@@ -48,7 +48,7 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
 
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
-    async def workflow_local(prefect_test_fixture):
+    async def workflow_local(self, prefect_test_fixture):
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
         await setup_task_manager()

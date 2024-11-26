@@ -472,9 +472,7 @@ ignore = [
     "FURB192", # Prefer `min` over `sorted()` to compute the minimum value in a sequence
     "N801",    # Class name should use CapWords convention
     "N802",    # Function name should be lowercase
-    "N805",    # First argument of a method should be named self
     "N806",    # Variable in function should be lowercase
-    "N812",    # Lowercase imported as non-lowercase
     "PERF203", # `try`-`except` within a loop incurs performance overhead
     "PERF401", # Use a list comprehension to create a transformed list
     "PERF402", # Use `list` or `list.copy` to create a copy of a list
@@ -511,7 +509,6 @@ ignore = [
     "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF015",  # Prefer `next(...)` over single element slice
     "RUF021",  # Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear
-    "RUF027",  # Possible f-string without an `f` prefix
     "RUF029",  # Function is declared `async`, but doesn't `await` or use `async` features.
     "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned to: "REGEX_PASSWORD"
@@ -525,7 +522,6 @@ ignore = [
     "SIM105",  # Use `contextlib.suppress(SchemaNotFoundError)` instead of `try`-`except`-`pass`
     "SIM110",  # Use `return any(worktree.identifier == identifier for worktree in worktrees)` instead of `for` loop
     "SIM114",  # Combine `if` branches using logical `or` operator
-    "SIM115",  # Use a context manager for opening files
     "SIM117",  # Use a single `with` statement with multiple contexts instead of nested `with` statements
     "SIM118",  # Use `key in dict` instead of `key in dict.keys()`
     "SIM201",  # Use `backup_path.suffix != ".backup"` instead of `not backup_path.suffix == ".backup"`
