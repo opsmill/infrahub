@@ -447,24 +447,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **branch** | The branch that was rebased | string | None |
 <!-- vale on -->
 
-<!-- vale off -->
-### Refresh Webhook
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event refresh.webhook.configuration
-<!-- vale on -->
-
-**Description**: Sent to indicate that configuration in the cache for webhooks should be refreshed.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-<!-- vale on -->
-
 
 <!-- vale off -->
 ### Request Artifact Definition
@@ -554,80 +536,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **destination_branch** | The destination branch of the proposed change | string | None |
 | **branch_diff** | The calculated diff between the two branches | N/A | None |
 <!-- vale on -->
-<!-- vale off -->
-#### Event request.proposed_change.repository_checks
-<!-- vale on -->
-
-**Description**: Sent when a proposed change is created to trigger additional checks
-
-**Priority**: 5
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch of the proposed change | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The destination branch of the proposed change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event request.proposed_change.run_generators
-<!-- vale on -->
-
-**Description**: Sent trigger the generators that are impacted by the proposed change to run.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch of the proposed change | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The destination branch of the proposed change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-| **refresh_artifacts** | Whether to regenerate artifacts after the generators are run | boolean | None |
-| **do_repository_checks** | Whether to run repository and user checks after the generators are run | boolean | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event request.proposed_change.schema_integrity
-<!-- vale on -->
-
-**Description**: Sent trigger schema integrity checks for a proposed change
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch of the proposed change | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The destination branch of the proposed change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event request.proposed_change.run_tests
-<!-- vale on -->
-
-**Description**: Sent trigger to run tests (smoke, units, integrations) for a proposed change.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch of the proposed change | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The destination branch of the proposed change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
 
 <!-- vale off -->
 ### Request Repository
@@ -688,27 +596,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
 | **message** | The message to send | string | None |
-<!-- vale on -->
-
-
-<!-- vale off -->
-### Trigger Webhook
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event trigger.webhook.actions
-<!-- vale on -->
-
-**Description**: Triggers webhooks to be sent for the given action
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **event_type** | The event type | string | None |
-| **event_data** | The webhook payload | object | None |
 <!-- vale on -->
 
 
@@ -1169,25 +1056,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **branch** | The branch that was rebased | string | None |
 <!-- vale on -->
 
-<!-- vale off -->
-### Refresh Webhook
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event refresh.webhook.configuration
-<!-- vale on -->
-
-**Description**: Sent to indicate that configuration in the cache for webhooks should be refreshed.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-<!-- vale on -->
-
 
 <!-- vale off -->
 ### Request Artifact Definition
@@ -1281,84 +1149,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **destination_branch** | The destination branch of the proposed change | string | None |
 | **branch_diff** | The calculated diff between the two branches | N/A | None |
 <!-- vale on -->
-<!-- vale off -->
-#### Event request.proposed_change.repository_checks
-<!-- vale on -->
-
-**Description**: Sent when a proposed change is created to trigger additional checks
-
-**Priority**: 5
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch of the proposed change | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The destination branch of the proposed change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event request.proposed_change.run_generators
-<!-- vale on -->
-
-**Description**: Sent trigger the generators that are impacted by the proposed change to run.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch of the proposed change | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The destination branch of the proposed change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-| **refresh_artifacts** | Whether to regenerate artifacts after the generators are run | boolean | None |
-| **do_repository_checks** | Whether to run repository and user checks after the generators are run | boolean | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event request.proposed_change.schema_integrity
-<!-- vale on -->
-
-**Description**: Sent trigger schema integrity checks for a proposed change
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch of the proposed change | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The destination branch of the proposed change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event request.proposed_change.run_tests
-<!-- vale on -->
-
-**Description**: Sent trigger to run tests (smoke, units, integrations) for a proposed change.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch of the proposed change | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The destination branch of the proposed change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
 
 <!-- vale off -->
 ### Request Repository
@@ -1422,28 +1212,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
 | **message** | The message to send | string | None |
-<!-- vale on -->
-
-
-<!-- vale off -->
-### Trigger Webhook
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event trigger.webhook.actions
-<!-- vale on -->
-
-**Description**: Triggers webhooks to be sent for the given action
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **event_type** | The event type | string | None |
-| **event_data** | The webhook payload | object | None |
 <!-- vale on -->
 
 

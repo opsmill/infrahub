@@ -243,21 +243,42 @@ async def load_schema(
     branch: Branch = Depends(get_branch_dep),
     account_session: AccountSession = Depends(get_current_user),
 ) -> SchemaUpdate:
+    has_permission = False
+    has_branch_permission = branch.name not in (GLOBAL_BRANCH_NAME, registry.default_branch)
     for permission_backend in registry.permission_backends:
-        if not await permission_backend.has_permission(
-            db=db,
-            account_session=account_session,
-            permission=GlobalPermission(
-                action=GlobalPermissions.MANAGE_SCHEMA.value,
-                decision=(
-                    PermissionDecision.ALLOW_DEFAULT
-                    if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
-                    else PermissionDecision.ALLOW_OTHER
-                ).value,
-            ),
-            branch=branch,
-        ):
-            raise PermissionDeniedError("You are not allowed to manage the schema")
+        if not has_permission:
+            has_permission = await permission_backend.has_permission(
+                db=db,
+                account_session=account_session,
+                permission=GlobalPermission(
+                    action=GlobalPermissions.MANAGE_SCHEMA.value,
+                    decision=(
+                        PermissionDecision.ALLOW_DEFAULT
+                        if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+                        else PermissionDecision.ALLOW_OTHER
+                    ).value,
+                ),
+                branch=branch,
+            )
+
+        if not has_branch_permission:
+            has_branch_permission = await permission_backend.has_permission(
+                db=db,
+                account_session=account_session,
+                permission=GlobalPermission(
+                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
+                    decision=PermissionDecision.ALLOW_DEFAULT.value,
+                ),
+                branch=branch,
+            )
+
+        if has_permission and has_branch_permission:
+            break
+
+    if not has_permission:
+        raise PermissionDeniedError("You are not allowed to manage the schema")
+    if not has_branch_permission:
+        raise PermissionDeniedError("You are not allowed to edit the schema in the default branch")
 
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)

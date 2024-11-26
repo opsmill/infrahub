@@ -6,7 +6,7 @@ INFRAHUB_WORKER_POOL = WorkerPoolDefinition(name="infrahub-worker", description=
 WEBHOOK_SEND = WorkflowDefinition(
     name="event-send-webhook",
     type=WorkflowType.USER,
-    module="infrahub.send.webhook",
+    module="infrahub.webhook.tasks",
     function="send_webhook",
 )
 
@@ -232,6 +232,20 @@ PROCESS_COMPUTED_MACRO = WorkflowDefinition(
     function="process_jinja2",
 )
 
+TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES = WorkflowDefinition(
+    name="trigger_update_jinja2_computed_attributes",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.computed_attribute.tasks",
+    function="trigger_update_jinja2_computed_attributes",
+)
+
+TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES = WorkflowDefinition(
+    name="trigger_update_python_computed_attributes",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.computed_attribute.tasks",
+    function="trigger_update_python_computed_attributes",
+)
+
 COMPUTED_ATTRIBUTE_SETUP = WorkflowDefinition(
     name="computed-attribute-setup",
     type=WorkflowType.INTERNAL,
@@ -268,6 +282,20 @@ REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY = WorkflowDefinition(
     function="run_proposed_change_data_integrity_check",
 )
 
+REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY = WorkflowDefinition(
+    name="proposed-changed-schema-integrity",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="run_proposed_change_schema_integrity_check",
+)
+
+REQUEST_PROPOSED_CHANGE_USER_TESTS = WorkflowDefinition(
+    name="proposed-changed-user-tests",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="run_proposed_change_user_tests",
+)
+
 AUTOMATION_SCHEMA_UPDATED = WorkflowDefinition(
     name="schema-updated-setup",
     type=WorkflowType.INTERNAL,
@@ -288,12 +316,49 @@ GIT_REPOSITORIES_DIFF_NAMES_ONLY = WorkflowDefinition(
     module="infrahub.git.tasks",
     function="git_repository_diff_names_only",
 )
+
 GIT_REPOSITORIES_IMPORT_OBJECTS = WorkflowDefinition(
     name="git-repository-import-object",
     type=WorkflowType.INTERNAL,
     module="infrahub.git.tasks",
     function="import_objects_from_git_repository",
     tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+REQUEST_PROPOSED_CHANGE_RUN_GENERATORS = WorkflowDefinition(
+    name="proposed-changed-run-generator",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="run_generators",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
+REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS = WorkflowDefinition(
+    name="proposed-changed-repository-checks",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="repository_checks",
+)
+
+WEBHOOK_CONFIGURE = WorkflowDefinition(
+    name="webhook-setup-automations",
+    type=WorkflowType.USER,
+    module="infrahub.webhook.tasks",
+    function="configure_webhooks",
+)
+
+WEBHOOK_TRIGGER = WorkflowDefinition(
+    name="webhook-trigger-actions",
+    type=WorkflowType.USER,
+    module="infrahub.webhook.tasks",
+    function="trigger_webhooks",
+)
+
+AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER = WorkflowDefinition(
+    name="webhook-setup-configuration-trigger",
+    type=WorkflowType.USER,
+    module="infrahub.webhook.tasks",
+    function="trigger_webhook_configuration",
 )
 
 
@@ -303,6 +368,7 @@ workflows = [
     ANONYMOUS_TELEMETRY_SEND,
     AUTOMATION_GIT_UPDATED,
     AUTOMATION_SCHEMA_UPDATED,
+    AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER,
     BRANCH_CANCEL_PROPOSED_CHANGES,
     BRANCH_CREATE,
     BRANCH_DELETE,
@@ -331,15 +397,27 @@ workflows = [
     REQUEST_GENERATOR_DEFINITION_RUN,
     REQUEST_GENERATOR_RUN,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
+    REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
+    REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
+    REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
+    REQUEST_PROPOSED_CHANGE_USER_TESTS,
     SCHEMA_APPLY_MIGRATION,
     SCHEMA_VALIDATE_MIGRATION,
     TRANSFORM_JINJA2_RENDER,
     TRANSFORM_PYTHON_RENDER,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
     TRIGGER_GENERATOR_DEFINITION_RUN,
+    TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
+    TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
     UPDATE_GRAPHQL_QUERY_GROUP,
+    WEBHOOK_CONFIGURE,
     WEBHOOK_SEND,
+    WEBHOOK_TRIGGER,
 ]
 
-automation_setup_workflows = [AUTOMATION_GIT_UPDATED, AUTOMATION_SCHEMA_UPDATED]
+automation_setup_workflows = [
+    AUTOMATION_GIT_UPDATED,
+    AUTOMATION_SCHEMA_UPDATED,
+    AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER,
+]

@@ -117,7 +117,6 @@ services:
         condition: service_healthy
       task-manager:
         condition: service_healthy
-        required: false
     environment:
       <<: *infrahub_config
       INFRAHUB_INTERNAL_ADDRESS: "http://server:8000"
@@ -162,7 +161,8 @@ services:
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     environment:
       <<: *infrahub_config
       INFRAHUB_ADDRESS: http://server:8000

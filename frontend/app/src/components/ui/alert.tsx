@@ -10,6 +10,7 @@ import {
   XCircleIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { ReactNode } from "react";
 
 export enum ALERT_TYPES {
   SUCCESS,
@@ -21,7 +22,7 @@ export enum ALERT_TYPES {
 type AlertProps = {
   closeToast?: Function;
   onDismiss?: Function;
-  message?: string;
+  message?: ReactNode;
   details?: string;
   type?: ALERT_TYPES;
 };

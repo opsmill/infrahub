@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable
 
 import bcrypt
 import jwt
@@ -34,13 +34,8 @@ class AuthType(str, Enum):
 class AccountSession(BaseModel):
     authenticated: bool = True
     account_id: str
-    session_id: Optional[str] = None
-    role: str = "read-only"
+    session_id: str | None = None
     auth_type: AuthType
-
-    @property
-    def read_only(self) -> bool:
-        return self.role == "read-only"
 
     @property
     def authenticated_by_jwt(self) -> bool:
@@ -54,7 +49,7 @@ async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None
 
 
 async def authenticate_with_password(
-    db: InfrahubDatabase, credentials: models.PasswordCredential, branch: Optional[str] = None
+    db: InfrahubDatabase, credentials: models.PasswordCredential, branch: str | None = None
 ) -> models.UserToken:
     selected_branch = await registry.get_branch(db=db, branch=branch)
 
@@ -86,10 +81,8 @@ async def authenticate_with_password(
     now = datetime.now(tz=timezone.utc)
     refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
 
-    # The read-only account role is deprecated and will only be used for anonymous access
-    role = "read-write" if account.role.value.value == "read-only" else account.role.value.value
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
-    access_token = generate_access_token(account_id=account.id, role=role, session_id=session_id)
+    access_token = generate_access_token(account_id=account.id, session_id=session_id)
     refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
 
     return models.UserToken(access_token=access_token, refresh_token=refresh_token)
@@ -111,7 +104,7 @@ async def create_fresh_access_token(
     if not refresh_token:
         raise AuthorizationError("The provided refresh token has been invalidated in the database")
 
-    account: Optional[CoreGenericAccount] = await NodeManager.get_one(id=refresh_data.account_id, db=db)
+    account: CoreGenericAccount | None = await NodeManager.get_one(id=refresh_data.account_id, db=db)
     if not account:
         raise NodeNotFoundError(
             branch_name=selected_branch.name,
@@ -120,9 +113,7 @@ async def create_fresh_access_token(
             message="That login user doesn't exist in the system",
         )
 
-    access_token = generate_access_token(
-        account_id=account.id, role=account.role.value.value, session_id=refresh_data.session_id
-    )
+    access_token = generate_access_token(account_id=account.id, session_id=refresh_data.session_id)
 
     return models.AccessTokenResponse(access_token=access_token)
 
@@ -132,7 +123,7 @@ async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups
 
     if not account:
         account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-        await account.new(db=db, name=account_name, account_type="User", role="admin", password=str(uuid.uuid4()))
+        await account.new(db=db, name=account_name, account_type="User", password=str(uuid.uuid4()))
         await account.save(db=db)
 
     if sso_groups:
@@ -151,12 +142,12 @@ async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups
     now = datetime.now(tz=timezone.utc)
     refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
-    access_token = generate_access_token(account_id=account.id, role=account.role.value.value, session_id=session_id)
+    access_token = generate_access_token(account_id=account.id, session_id=session_id)
     refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
     return models.UserToken(access_token=access_token, refresh_token=refresh_token)
 
 
-def generate_access_token(account_id: str, role: str, session_id: uuid.UUID) -> str:
+def generate_access_token(account_id: str, session_id: uuid.UUID) -> str:
     now = datetime.now(tz=timezone.utc)
 
     access_expires = now + timedelta(seconds=config.SETTINGS.security.access_token_lifetime)
@@ -168,7 +159,6 @@ def generate_access_token(account_id: str, role: str, session_id: uuid.UUID) -> 
         "fresh": False,
         "type": "access",
         "session_id": str(session_id),
-        "user_claims": {"role": role},
     }
     access_token = jwt.encode(access_data, config.SETTINGS.security.secret_key, algorithm="HS256")
     return access_token
@@ -191,7 +181,7 @@ def generate_refresh_token(account_id: str, session_id: uuid.UUID, expiration: d
 
 
 async def authentication_token(
-    db: InfrahubDatabase, jwt_token: Optional[str] = None, api_key: Optional[str] = None
+    db: InfrahubDatabase, jwt_token: str | None = None, api_key: str | None = None
 ) -> AccountSession:
     if api_key:
         return await validate_api_key(db=db, token=api_key)
@@ -205,7 +195,6 @@ async def validate_jwt_access_token(token: str) -> AccountSession:
     try:
         payload = jwt.decode(token, config.SETTINGS.security.secret_key, algorithms=["HS256"])
         account_id = payload["sub"]
-        role = payload["user_claims"]["role"]
         session_id = payload["session_id"]
     except jwt.ExpiredSignatureError:
         raise AuthorizationError("Expired Signature") from None
@@ -213,7 +202,7 @@ async def validate_jwt_access_token(token: str) -> AccountSession:
         raise AuthorizationError("Invalid token") from None
 
     if payload["type"] == "access":
-        return AccountSession(account_id=account_id, role=role, session_id=session_id, auth_type=AuthType.JWT)
+        return AccountSession(account_id=account_id, session_id=session_id, auth_type=AuthType.JWT)
 
     raise AuthorizationError("Invalid token, current token is not an access token")
 
@@ -237,27 +226,16 @@ async def validate_jwt_refresh_token(db: InfrahubDatabase, token: str) -> models
 
 
 async def validate_api_key(db: InfrahubDatabase, token: str) -> AccountSession:
-    account_id, role = await validate_token(token=token, db=db)
+    account_id = await validate_token(token=token, db=db)
     if not account_id:
         raise AuthorizationError("Invalid token")
 
     await validate_active_account(db=db, account_id=str(account_id))
 
-    # The read-only account role is deprecated and will only be used for anonymous access
-    role = "read-write" if role == "read-only" else role
-
-    return AccountSession(account_id=account_id, role=role, auth_type=AuthType.API)
-
-
-def _validate_is_admin(account_session: AccountSession) -> None:
-    if account_session.role != "admin":
-        raise PermissionError("You are not authorized to perform this operation")
+    return AccountSession(account_id=account_id, auth_type=AuthType.API)
 
 
 def _validate_update_account(account_session: AccountSession, node_id: str, fields: list[str]) -> None:
-    if account_session.role == "admin":
-        return
-
     if account_session.account_id != node_id:
         # A regular account is not allowed to modify another account
         raise PermissionError("You are not allowed to modify this account")
@@ -266,16 +244,6 @@ def _validate_update_account(account_session: AccountSession, node_id: str, fiel
     for field in fields:
         if field not in allowed_fields:
             raise PermissionError(f"You are not allowed to modify '{field}'")
-
-
-def validate_mutation_permissions(operation: str, account_session: AccountSession) -> None:
-    validation_map: dict[str, Callable[[AccountSession], None]] = {
-        f"{InfrahubKind.ACCOUNT}Create": _validate_is_admin,
-        f"{InfrahubKind.ACCOUNT}Delete": _validate_is_admin,
-        f"{InfrahubKind.ACCOUNT}Upsert": _validate_is_admin,
-    }
-    if validator := validation_map.get(operation):
-        validator(account_session)
 
 
 def validate_mutation_permissions_update_node(

@@ -20,13 +20,16 @@ from infrahub.support.macro import MacroDefinition
 from infrahub.workflows.catalogue import (
     PROCESS_COMPUTED_MACRO,
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
+    TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
+    TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
 )
 from infrahub.workflows.utils import add_branch_tag, wait_for_schema_to_converge
 
 from .constants import (
     PROCESS_AUTOMATION_NAME,
-    PROCESS_AUTOMATION_NAME_PREFIX,
+    PROCESS_JINJA2_AUTOMATION_NAME_PREFIX,
+    PROCESS_PYTHON_AUTOMATION_NAME_PREFIX,
     QUERY_AUTOMATION_NAME,
     QUERY_AUTOMATION_NAME_PREFIX,
 )
@@ -130,6 +133,31 @@ async def process_transform(
 
 
 @flow(
+    name="trigger_update_python_computed_attributes",
+    flow_run_name="Trigger updates for computed attributes on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
+)
+async def trigger_update_python_computed_attributes(
+    branch_name: str,
+    computed_attribute_name: str,
+    computed_attribute_kind: str,
+) -> None:
+    service = services.service
+    nodes = await service.client.all(kind=computed_attribute_kind, branch=branch_name)
+
+    for node in nodes:
+        await service.workflow.submit_workflow(
+            workflow=UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
+            parameters={
+                "branch_name": branch_name,
+                "node_kind": computed_attribute_kind,
+                "object_id": node.id,
+                "computed_attribute_name": computed_attribute_name,
+                "computed_attribute_kind": computed_attribute_kind,
+            },
+        )
+
+
+@flow(
     name="process_computed_attribute_jinja2",
     flow_run_name="Process computed attribute on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
 )
@@ -210,13 +238,40 @@ async def process_jinja2(
             )
 
 
-@flow(name="computed-attribute-setup", flow_run_name="Setup computed attributes in task-manager")
-async def computed_attribute_setup() -> None:
+@flow(
+    name="trigger_update_jinja2_computed_attributes",
+    flow_run_name="Trigger updates for computed attributes on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
+)
+async def trigger_update_jinja2_computed_attributes(
+    branch_name: str,
+    computed_attribute_name: str,
+    computed_attribute_kind: str,
+) -> None:
     service = services.service
-    log = get_run_logger()
-    await wait_for_schema_to_converge(branch_name=registry.default_branch, service=service, log=log)
+    nodes = await service.client.all(kind=computed_attribute_kind, branch=branch_name)
 
-    schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
+    for node in nodes:
+        await service.workflow.submit_workflow(
+            workflow=PROCESS_COMPUTED_MACRO,
+            parameters={
+                "branch_name": branch_name,
+                "computed_attribute_name": computed_attribute_name,
+                "computed_attribute_kind": computed_attribute_kind,
+                "node_kind": computed_attribute_kind,
+                "object_id": node.id,
+            },
+        )
+
+
+@flow(name="computed-attribute-setup", flow_run_name="Setup computed attributes in task-manager")
+async def computed_attribute_setup(branch_name: str | None = None) -> None:
+    service = services.service
+    branch_name = branch_name or registry.default_branch
+    log = get_run_logger()
+    await wait_for_schema_to_converge(branch_name=branch_name, service=service, log=log)
+
+    branches_with_diff_from_main = registry.get_altered_schema_branches()
+    schema_branch = registry.schema.get_schema_branch(name=branch_name)
 
     async with get_client(sync_client=False) as client:
         deployments = {
@@ -231,24 +286,31 @@ async def computed_attribute_setup() -> None:
         deployment_id_jinja = deployments[PROCESS_COMPUTED_MACRO.name].id
 
         automations = await client.read_automations()
-        existing_computed_attr_automations = ComputedAttributeAutomations.from_prefect(automations=automations)
-
+        existing_computed_attr_automations = ComputedAttributeAutomations.from_prefect(
+            automations=automations, prefix=PROCESS_JINJA2_AUTOMATION_NAME_PREFIX
+        )
+        automations_to_keep = []
         mapping = schema_branch.computed_attributes.get_jinja2_target_map()
         for computed_attribute, source_node_types in mapping.items():
             log.info(f"processing {computed_attribute.key_name}")
-            scope = "default"
+            scope = registry.default_branch
 
             automation = AutomationCore(
                 name=PROCESS_AUTOMATION_NAME.format(
-                    prefix=PROCESS_AUTOMATION_NAME_PREFIX, identifier=computed_attribute.key_name, scope=scope
+                    prefix=PROCESS_JINJA2_AUTOMATION_NAME_PREFIX, identifier=computed_attribute.key_name, scope=scope
                 ),
-                description=f"Process value of the computed attribute for {computed_attribute.key_name} [{scope}]",
+                description=f"Process value of the computed attribute for {computed_attribute.key_name} [{scope}] and branches with the same schema",
                 enabled=True,
                 trigger=EventTrigger(
                     posture=Posture.Reactive,
                     expect={"infrahub.node.*"},
                     within=timedelta(0),
-                    match=ResourceSpecification({"infrahub.node.kind": source_node_types}),
+                    match=ResourceSpecification(
+                        {
+                            "infrahub.node.kind": source_node_types,
+                            "infrahub.branch.name": [f"!{branch}" for branch in branches_with_diff_from_main],
+                        }
+                    ),
                     threshold=1,
                 ),
                 actions=[
@@ -270,17 +332,101 @@ async def computed_attribute_setup() -> None:
             if existing_computed_attr_automations.has(identifier=computed_attribute.key_name, scope=scope):
                 existing = existing_computed_attr_automations.get(identifier=computed_attribute.key_name, scope=scope)
                 await client.update_automation(automation_id=existing.id, automation=automation)
+                automations_to_keep.append(existing.id)
                 log.info(f"{computed_attribute.key_name} Updated")
             else:
-                await client.create_automation(automation=automation)
+                automation_id = await client.create_automation(automation=automation)
+                automations_to_keep.append(automation_id)
                 log.info(f"{computed_attribute.key_name} Created")
+
+            if branch_name == registry.default_branch:
+                await service.workflow.submit_workflow(
+                    workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
+                    parameters={
+                        "branch_name": registry.default_branch,
+                        "computed_attribute_name": computed_attribute.attribute.name,
+                        "computed_attribute_kind": computed_attribute.kind,
+                    },
+                )
+
+        for diff_branch in branches_with_diff_from_main:
+            schema_branch = registry.schema.get_schema_branch(name=diff_branch)
+
+            mapping = schema_branch.computed_attributes.get_jinja2_target_map()
+            for computed_attribute, source_node_types in mapping.items():
+                log.info(f"processing {computed_attribute.key_name}")
+                scope = diff_branch
+
+                automation = AutomationCore(
+                    name=PROCESS_AUTOMATION_NAME.format(
+                        prefix=PROCESS_PYTHON_AUTOMATION_NAME_PREFIX,
+                        identifier=computed_attribute.key_name,
+                        scope=scope,
+                    ),
+                    description=f"Process value of the computed attribute for {computed_attribute.key_name} [{scope}]",
+                    enabled=True,
+                    trigger=EventTrigger(
+                        posture=Posture.Reactive,
+                        expect={"infrahub.node.*"},
+                        within=timedelta(0),
+                        match=ResourceSpecification(
+                            {
+                                "infrahub.node.kind": source_node_types,
+                                "infrahub.branch.name": scope,
+                            }
+                        ),
+                        threshold=1,
+                    ),
+                    actions=[
+                        RunDeployment(
+                            source="selected",
+                            deployment_id=deployment_id_jinja,
+                            parameters={
+                                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                                "node_kind": "{{ event.resource['infrahub.node.kind'] }}",
+                                "object_id": "{{ event.resource['infrahub.node.id'] }}",
+                                "computed_attribute_name": computed_attribute.attribute.name,
+                                "computed_attribute_kind": computed_attribute.kind,
+                            },
+                            job_variables={},
+                        )
+                    ],
+                )
+
+                if existing_computed_attr_automations.has(identifier=computed_attribute.key_name, scope=scope):
+                    existing = existing_computed_attr_automations.get(
+                        identifier=computed_attribute.key_name, scope=scope
+                    )
+                    await client.update_automation(automation_id=existing.id, automation=automation)
+                    automations_to_keep.append(existing.id)
+                    log.info(f"{computed_attribute.key_name} Updated")
+                else:
+                    automation_id = await client.create_automation(automation=automation)
+                    automations_to_keep.append(automation_id)
+                    log.info(f"{computed_attribute.key_name} Created")
+
+                if branch_name == diff_branch:
+                    await service.workflow.submit_workflow(
+                        workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
+                        parameters={
+                            "branch_name": branch_name,
+                            "computed_attribute_name": computed_attribute.attribute.name,
+                            "computed_attribute_kind": computed_attribute.kind,
+                        },
+                    )
+
+        automations_to_remove = existing_computed_attr_automations.return_obsolete(keep=automations_to_keep)
+        for automation_to_remove in automations_to_remove:
+            await client.delete_automation(automation_id=automation_to_remove)
 
 
 @flow(
     name="computed-attribute-setup-python",
     flow_run_name="Setup computed attributes for Python transforms in task-manager",
 )
-async def computed_attribute_setup_python() -> None:
+async def computed_attribute_setup_python(
+    branch_name: str | None = None,  # pylint: disable=unused-argument
+) -> None:
     log = get_run_logger()
     service = services.service
     await wait_for_schema_to_converge(branch_name=registry.default_branch, service=service, log=log)
@@ -342,7 +488,7 @@ async def computed_attribute_setup_python() -> None:
 
         automations = await client.read_automations()
         existing_computed_attr_process_automations = ComputedAttributeAutomations.from_prefect(
-            automations=automations, prefix=PROCESS_AUTOMATION_NAME_PREFIX
+            automations=automations, prefix=PROCESS_PYTHON_AUTOMATION_NAME_PREFIX
         )
         existing_computed_attr_query_automations = ComputedAttributeAutomations.from_prefect(
             automations=automations, prefix=QUERY_AUTOMATION_NAME_PREFIX
@@ -354,7 +500,7 @@ async def computed_attribute_setup_python() -> None:
 
             automation = AutomationCore(
                 name=PROCESS_AUTOMATION_NAME.format(
-                    prefix=PROCESS_AUTOMATION_NAME_PREFIX,
+                    prefix=PROCESS_PYTHON_AUTOMATION_NAME_PREFIX,
                     identifier=computed_attribute.computed_attribute.key_name,
                     scope=scope,
                 ),
@@ -435,6 +581,15 @@ async def computed_attribute_setup_python() -> None:
             else:
                 await client.create_automation(automation=automation)
                 log.info(f"Query {computed_attribute.computed_attribute.key_name} Created")
+
+            await service.workflow.submit_workflow(
+                workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+                parameters={
+                    "branch_name": registry.default_branch,
+                    "computed_attribute_name": computed_attribute.computed_attribute.attribute.name,
+                    "computed_attribute_kind": computed_attribute.computed_attribute.kind,
+                },
+            )
 
 
 @flow(

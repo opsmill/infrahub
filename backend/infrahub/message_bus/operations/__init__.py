@@ -13,7 +13,6 @@ from infrahub.message_bus.operations import (
     requests,
     schema,
     send,
-    trigger,
 )
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
@@ -25,7 +24,6 @@ COMMAND_MAP = {
     "check.repository.check_definition": check.repository.check_definition,
     "check.repository.merge_conflicts": check.repository.merge_conflicts,
     "check.repository.user_check": check.repository.user_check,
-    "event.branch.create": event.branch.create,
     "event.branch.merge": event.branch.merge,
     "event.branch.rebased": event.branch.rebased,
     "event.node.mutated": event.node.mutated,
@@ -37,21 +35,15 @@ COMMAND_MAP = {
     "refresh.git.fetch": git.repository.fetch,
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
-    "refresh.webhook.configuration": refresh.webhook.configuration,
     "request.generator_definition.check": requests.generator_definition.check,
     "request.artifact_definition.check": requests.artifact_definition.check,
     "request.proposed_change.pipeline": requests.proposed_change.pipeline,
     "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
-    "request.proposed_change.repository_checks": requests.proposed_change.repository_checks,
-    "request.proposed_change.run_generators": requests.proposed_change.run_generators,
-    "request.proposed_change.run_tests": requests.proposed_change.run_tests,
-    "request.proposed_change.schema_integrity": requests.proposed_change.schema_integrity,
     "request.repository.checks": requests.repository.checks,
     "request.repository.user_checks": requests.repository.user_checks,
     "send.echo.request": send.echo.request,
     "schema.migration.path": schema.migration.path,
     "schema.validator.path": schema.validator.path,
-    "trigger.webhook.actions": trigger.webhook.actions,
 }
 
 

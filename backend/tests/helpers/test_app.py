@@ -102,7 +102,7 @@ class TestInfrahubApp(TestInfrahub):
         # while services.service.client is not set. There might be a design issue here: a client is needed while
         # the app is being initialized.
         await app_initialization(app)
-        return InfrahubTestClient(app=app)
+        return InfrahubTestClient(app=app, base_url="http://testserver")
 
     @pytest.fixture(scope="class")
     async def client(

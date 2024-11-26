@@ -16,14 +16,9 @@ from .finalize_validator_execution import FinalizeValidatorExecution
 from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_connectivity import GitRepositoryConnectivity
 from .proposed_change.request_proposedchange_refreshartifacts import RequestProposedChangeRefreshArtifacts
-from .proposed_change.request_proposedchange_repositorychecks import RequestProposedChangeRepositoryChecks
-from .proposed_change.request_proposedchange_rungenerators import RequestProposedChangeRunGenerators
-from .proposed_change.request_proposedchange_runtests import RequestProposedChangeRunTests
-from .proposed_change.request_proposedchange_schemaintegrity import RequestProposedChangeSchemaIntegrity
 from .refresh_git_fetch import RefreshGitFetch
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
-from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
@@ -32,7 +27,6 @@ from .request_repository_userchecks import RequestRepositoryUserChecks
 from .schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
 from .schema_validator_path import SchemaValidatorPath, SchemaValidatorPathResponse
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
-from .trigger_webhook_actions import TriggerWebhookActions
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "check.artifact.create": CheckArtifactCreate,
@@ -55,19 +49,13 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "refresh.git.fetch": RefreshGitFetch,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
-    "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
     "request.proposed_change.pipeline": RequestProposedChangePipeline,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
-    "request.proposed_change.repository_checks": RequestProposedChangeRepositoryChecks,
-    "request.proposed_change.run_generators": RequestProposedChangeRunGenerators,
-    "request.proposed_change.schema_integrity": RequestProposedChangeSchemaIntegrity,
-    "request.proposed_change.run_tests": RequestProposedChangeRunTests,
     "request.repository.checks": RequestRepositoryChecks,
     "request.repository.user_checks": RequestRepositoryUserChecks,
     "send.echo.request": SendEchoRequest,
-    "trigger.webhook.actions": TriggerWebhookActions,
 }
 
 RESPONSE_MAP: dict[str, type[InfrahubResponse]] = {
@@ -90,7 +78,6 @@ PRIORITY_MAP = {
     "request.artifact.generate": 2,
     "request.git.sync": 4,
     "request.proposed_change.pipeline": 5,
-    "request.proposed_change.repository_checks": 5,
     "transform.jinja.template": 4,
     "transform.python.data": 4,
 }

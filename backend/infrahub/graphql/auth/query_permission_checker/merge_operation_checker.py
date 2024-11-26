@@ -31,15 +31,14 @@ class MergeBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         branch: Branch,
     ) -> CheckerResolution:
         if "BranchMerge" in [operation.name for operation in analyzed_query.operations]:
-            can_merge_branch = False
+            has_permission = False
             for permission_backend in registry.permission_backends:
-                can_merge_branch = await permission_backend.has_permission(
+                if has_permission := await permission_backend.has_permission(
                     db=db, account_session=account_session, permission=self.permission_required, branch=branch
-                )
-                if can_merge_branch:
+                ):
                     break
 
-            if not can_merge_branch:
+            if not has_permission:
                 raise PermissionDeniedError("You are not allowed to merge a branch")
 
             return CheckerResolution.TERMINATE

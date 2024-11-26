@@ -1,1 +1,0 @@
-Update the api/diff/artifacts endpoint to use a dedicated query

@@ -17,22 +17,22 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
 
-async def add_tags(tags: list[str]) -> None:
+async def add_tags(branches: list[str] | None = None, nodes: list[str] | None = None) -> None:
     client = get_client(sync_client=False)
     current_flow_run_id = flow_run.id
     current_tags: list[str] = flow_run.tags
-    new_tags = current_tags + tags
+    branch_tags = [WorkflowTag.BRANCH.render(identifier=branch_name) for branch_name in branches] if branches else []
+    node_tags = [WorkflowTag.RELATED_NODE.render(identifier=node_id) for node_id in nodes] if nodes else []
+    new_tags = set(current_tags + branch_tags + node_tags)
     await client.update_flow_run(current_flow_run_id, tags=list(new_tags))
 
 
 async def add_branch_tag(branch_name: str) -> None:
-    tag = WorkflowTag.BRANCH.render(identifier=branch_name)
-    await add_tags(tags=[tag])
+    await add_tags(branches=[branch_name])
 
 
 async def add_related_node_tag(node_id: str) -> None:
-    tag = WorkflowTag.RELATED_NODE.render(identifier=node_id)
-    await add_tags(tags=[tag])
+    await add_tags(nodes=[node_id])
 
 
 async def wait_for_schema_to_converge(
@@ -57,7 +57,7 @@ async def wait_for_schema_to_converge(
 
         if iteration >= max_iterations:
             log.warning(
-                f"Schema had not converged after {delay * iteration} seconds, refreshing schema on local worker manually"
+                f"Schema had not converged after {delay * iteration:.2f} seconds, refreshing schema on local worker manually"
             )
             async with service.database.start_session() as db:
                 await refresh_branches(db=db)

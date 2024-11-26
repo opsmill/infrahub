@@ -1,5 +1,5 @@
 ---
-title: Release 1.0.6 - DEVELOPMENT
+title: Release 1.0.6
 ---
 <table>
   <tbody>
@@ -9,7 +9,7 @@ title: Release 1.0.6 - DEVELOPMENT
     </tr>
     <tr>
       <th>Release Date</th>
-      <td>TBD</td>
+      <td>November 18th, 2024</td>
     </tr>
     <tr>
       <th>Release Codename</th>
@@ -29,6 +29,13 @@ This release is a bug-fix release to resolve issues found in Infrahub v1.0.5 and
 ## Main changes
 
 The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Fixed
+
+- Forbid changing the "optional" property of an inherited attribute to not break GraphQL schema generation ([#4936](https://github.com/opsmill/infrahub/issues/4936))
+- Permission edit_default_branch is now enforced properly when loading a schema ([#4958](https://github.com/opsmill/infrahub/issues/4958))
+- Session is now correctly cleared when logging out from the web UI ([#4962](https://github.com/opsmill/infrahub/issues/4962))
+- Anonymous user will get a 401 response when trying to load a schema
 
 ## Migration guide
 

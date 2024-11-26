@@ -150,8 +150,7 @@ async def start(
 
     log.info("Initialized Git Agent ...")
 
-    while not shutdown_event.is_set():
-        await asyncio.sleep(1)
+    await shutdown_event.wait()
 
     log.info("Shutdown of Git agent requested")
 

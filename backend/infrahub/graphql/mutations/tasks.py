@@ -46,6 +46,7 @@ async def merge_branch_mutation(branch: str) -> None:
         db=db,
         diff_coordinator=diff_coordinator,
         diff_merger=diff_merger,
+        diff_repository=diff_repository,
         source_branch=obj,
         service=service,
     )

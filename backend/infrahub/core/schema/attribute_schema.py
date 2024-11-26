@@ -32,6 +32,10 @@ class AttributeSchema(GeneratedAttributeSchema):
     def is_relationship(self) -> bool:
         return False
 
+    @property
+    def is_deprecated(self) -> bool:
+        return bool(self.deprecation)
+
     @field_validator("kind")
     @classmethod
     def kind_options(cls, v: str) -> str:

@@ -1,6 +1,6 @@
 import { QSP } from "@/config/qsp";
 
-export const fetchUrl = async (url: string, payload?: any) => {
+export const fetchUrl = async (url: string, payload?: RequestInit) => {
   const newPayload = {
     headers: {
       Accept: "application/json",

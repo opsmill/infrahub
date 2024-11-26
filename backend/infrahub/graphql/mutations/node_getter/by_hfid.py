@@ -22,7 +22,6 @@ class MutationNodeGetterByHfid(MutationNodeGetterInterface):
         node_schema: MainSchemaTypes,
         data: InputObjectType,
         branch: Branch,
-        at: str,
     ) -> Optional[Node]:
         if not node_schema.human_friendly_id:
             return None
@@ -33,7 +32,6 @@ class MutationNodeGetterByHfid(MutationNodeGetterInterface):
                 hfid=data["hfid"],
                 kind=node_schema.kind,
                 branch=branch,
-                at=at,
             )
 
         for component in node_schema.human_friendly_id:
@@ -61,7 +59,6 @@ class MutationNodeGetterByHfid(MutationNodeGetterInterface):
                     db=self.db,
                     kind=attribute_path.relationship_schema.peer,
                     branch=branch,
-                    at=at,
                     id=data[attribute_path.relationship_schema.name].get("id"),
                     hfid=data[attribute_path.relationship_schema.name].get("hfid"),
                 )
@@ -78,7 +75,6 @@ class MutationNodeGetterByHfid(MutationNodeGetterInterface):
                 hfid=hfid,
                 kind=node_schema.kind,
                 branch=branch,
-                at=at,
             )
 
         return None

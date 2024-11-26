@@ -67,12 +67,11 @@ class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
     ):
         if data["id"] == registry.default_ipnamespace:
             raise ValueError("Cannot delete default IPAM namespace")
 
-        return await super().mutate_delete(info=info, data=data, branch=branch, at=at)
+        return await super().mutate_delete(info=info, data=data, branch=branch)
 
 
 class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
@@ -100,7 +99,6 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
@@ -109,7 +107,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         namespace_id = await validate_namespace(db=db, data=data)
 
         async with db.start_transaction() as dbt:
-            address = await cls.mutate_create_object(data=data, db=dbt, branch=branch, at=at)
+            address = await cls.mutate_create_object(data=data, db=dbt, branch=branch)
             reconciler = IpamReconciler(db=dbt, branch=branch)
             reconciled_address = await reconciler.reconcile(
                 ip_value=ip_address, namespace=namespace_id, node_uuid=address.get_id()
@@ -126,7 +124,6 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ) -> tuple[Node, Self]:
@@ -138,7 +135,6 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            at=at,
             include_owner=True,
             include_source=True,
         )
@@ -165,7 +161,6 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         node_getters: list[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
     ) -> tuple[Node, Self, bool]:
@@ -174,7 +169,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
 
         await validate_namespace(db=db, data=data)
         prefix, result, created = await super().mutate_upsert(
-            info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=db
+            info=info, data=data, branch=branch, node_getters=node_getters, database=db
         )
 
         return prefix, result, created
@@ -185,9 +180,8 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
     ):
-        return await super().mutate_delete(info=info, data=data, branch=branch, at=at)
+        return await super().mutate_delete(info=info, data=data, branch=branch)
 
 
 class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
@@ -215,7 +209,6 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
@@ -224,7 +217,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         namespace_id = await validate_namespace(db=db, data=data)
 
         async with db.start_transaction() as dbt:
-            prefix = await cls.mutate_create_object(data=data, db=dbt, branch=branch, at=at)
+            prefix = await cls.mutate_create_object(data=data, db=dbt, branch=branch)
             reconciler = IpamReconciler(db=dbt, branch=branch)
             reconciled_prefix = await reconciler.reconcile(
                 ip_value=ip_network, namespace=namespace_id, node_uuid=prefix.get_id()
@@ -241,7 +234,6 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ) -> tuple[Node, Self]:
@@ -253,7 +245,6 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            at=at,
             include_owner=True,
             include_source=True,
         )
@@ -280,7 +271,6 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         node_getters: list[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
     ):
@@ -289,7 +279,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
 
         await validate_namespace(db=db, data=data)
         prefix, result, created = await super().mutate_upsert(
-            info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=db
+            info=info, data=data, branch=branch, node_getters=node_getters, database=db
         )
 
         return prefix, result, created
@@ -301,14 +291,11 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = context.db
 
-        prefix = await NodeManager.get_one(
-            data.get("id"), context.db, branch=branch, at=at, prefetch_relationships=True
-        )
+        prefix = await NodeManager.get_one(data.get("id"), context.db, branch=branch, prefetch_relationships=True)
         if not prefix:
             raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
 

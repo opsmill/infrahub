@@ -1,5 +1,4 @@
 import importlib
-from typing import Optional
 from uuid import uuid4
 
 from infrahub import config, lock
@@ -8,7 +7,6 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     DEFAULT_IP_NAMESPACE,
     GLOBAL_BRANCH_NAME,
-    AccountRole,
     GlobalPermissions,
     InfrahubKind,
     PermissionAction,
@@ -54,7 +52,7 @@ async def get_root_node(db: InfrahubDatabase, initialize: bool = False) -> Root:
     return roots[0]
 
 
-async def get_default_ipnamespace(db: InfrahubDatabase) -> Optional[Node]:
+async def get_default_ipnamespace(db: InfrahubDatabase) -> Node | None:
     if not registry.schema._branches or not registry.schema.has(name=InfrahubKind.NAMESPACE):
         return None
 
@@ -232,7 +230,7 @@ async def create_global_branch(db: InfrahubDatabase) -> Branch:
 
 
 async def create_branch(
-    branch_name: str, db: InfrahubDatabase, description: str = "", isolated: bool = True, at: Optional[str] = None
+    branch_name: str, db: InfrahubDatabase, description: str = "", isolated: bool = True, at: str | None = None
 ) -> Branch:
     """Create a new Branch, currently all the branches are based on Main
 
@@ -266,13 +264,12 @@ async def create_branch(
 async def create_account(
     db: InfrahubDatabase,
     name: str = "admin",
-    role: str = "admin",
-    password: Optional[str] = None,
-    token_value: Optional[str] = None,
+    password: str | None = None,
+    token_value: str | None = None,
 ) -> CoreAccount:
     token_schema = db.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN)
     obj = await Node.init(db=db, schema=CoreAccount)
-    await obj.new(db=db, name=name, account_type="User", role=role, password=password)
+    await obj.new(db=db, name=name, account_type="User", password=password)
     await obj.save(db=db)
     log.info(f"Created Account: {name}", account_name=name)
 
@@ -501,11 +498,7 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
 
         admin_accounts.append(
             await create_account(
-                db=db,
-                name="agent",
-                password=password,
-                role=AccountRole.READ_WRITE.value,
-                token_value=config.SETTINGS.initial.agent_token,
+                db=db, name="agent", password=password, token_value=config.SETTINGS.initial.agent_token
             )
         )
 

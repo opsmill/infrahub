@@ -8,7 +8,10 @@ from infrahub_sdk.graphql import Mutation
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.node import Node
+from infrahub.dependencies.registry import get_component_registry
+from infrahub.git.directory import get_repositories_directory
 from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
@@ -23,6 +26,23 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
+
+from git import Repo
+
+
+def remove_git_worktree_branch(repository_id: str, branch_id: str) -> None:
+    """
+    Removing git worktree branches is needed after a test delete a branch, because when a new branch is then created,
+    Neo4j might reuse branch id of the deleted one for the new one, and as worktree branch of the deleted branch
+    has not been removed, we try to re-recreate a worktree branch already existing (having the id of the previously
+    deleted branch), and thus is breaks.
+    TODO A solution might be to have worktree branches written in temporary folders while testing so they are automatically deleted.
+    """
+
+    repo_path = get_repositories_directory() / repository_id / "main"
+    worktree_path = get_repositories_directory() / repository_id / "branches" / branch_id
+    repo = Repo(repo_path)
+    repo.git.worktree("remove", worktree_path)
 
 
 class TestBranchMutations(TestInfrahubApp):
@@ -71,7 +91,10 @@ class TestBranchMutations(TestInfrahubApp):
         return client_repository.id
 
     async def test_branch_delete_async(self, initial_dataset: str, client: InfrahubClient) -> None:
+        from infrahub.core import registry
+
         branch = await client.branch.create(branch_name="branch_to_delete")
+        branch_server_id = registry.branch[branch.name].id
 
         query = Mutation(
             mutation="BranchDelete",
@@ -85,9 +108,12 @@ class TestBranchMutations(TestInfrahubApp):
         with pytest.raises(BranchNotFoundError):
             await client.branch.get(branch_name=branch.name)
 
+        assert isinstance(branch_server_id, str)
+        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
+
     async def test_branch_delete(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch = await client.branch.create(branch_name="branch_to_delete_sync")
-
+        branch_server_id = registry.branch[branch.name].id
         query = Mutation(
             mutation="BranchDelete",
             input_data={"data": {"name": branch.name}},
@@ -99,6 +125,9 @@ class TestBranchMutations(TestInfrahubApp):
 
         with pytest.raises(BranchNotFoundError):
             await client.branch.get(branch_name=branch.name)
+
+        assert isinstance(branch_server_id, str)
+        remove_git_worktree_branch(repository_id=initial_dataset, branch_id=branch_server_id)
 
     async def test_branch_rebase_async(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch = await client.branch.create(branch_name="branch_to_rebase")
@@ -162,6 +191,7 @@ class TestBranchMutations(TestInfrahubApp):
         self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: str, client: InfrahubClient
     ) -> None:
         branch = await client.branch.create(branch_name="branch_to_validate_failed")
+        branch_obj = await registry.get_branch(db=db, branch=branch.name)
 
         john_main = await registry.manager.query(
             db=db, schema=TestKind.PERSON, filters={"name__value": "John"}, branch=default_branch
@@ -177,6 +207,10 @@ class TestBranchMutations(TestInfrahubApp):
         await john_main[0].save(db=db)
         john_branch[0].description.value = "description in branch"
         await john_branch[0].save(db=db)
+
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch_obj)
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch_obj)
 
         query = Mutation(
             mutation="BranchValidate",

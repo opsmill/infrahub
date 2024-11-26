@@ -130,7 +130,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
         await service.send(message=event)
 
 
-def _render_artifact(artifact_id: Optional[str], managed_branch: bool, impacted_artifacts: list[str]) -> bool:
+def _render_artifact(artifact_id: Optional[str], managed_branch: bool, impacted_artifacts: list[str]) -> bool:  # pylint: disable=unused-argument
     """Returns a boolean to indicate if an artifact should be generated or not.
     Will return true if:
         * The artifact_id wasn't set which could be that it's a new object that doesn't have a previous artifact
@@ -139,6 +139,9 @@ def _render_artifact(artifact_id: Optional[str], managed_branch: bool, impacted_
     Will return false if:
         * The source branch is a data only branch and the artifact_id exists and is not in the impacted list
     """
-    if not artifact_id or managed_branch:
-        return True
-    return artifact_id in impacted_artifacts
+
+    # if not artifact_id or managed_branch:
+    #    return True
+    # return artifact_id in impacted_artifacts
+    # Temporary workaround tracked in https://github.com/opsmill/infrahub/issues/4991
+    return True

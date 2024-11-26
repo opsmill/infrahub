@@ -68,6 +68,7 @@ exceptions:
   - TLS
   - Tony Stark
   - TransformPython
+  - Trusted Root Certificate Store
   - UI
   - Vale
   - VS Code

@@ -10,10 +10,10 @@ from prefect.states import Completed, Failed
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
+from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
@@ -22,14 +22,18 @@ from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.events.branch_action import BranchDeleteEvent
+from infrahub.events.branch_action import BranchCreateEvent, BranchDeleteEvent
 from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TCH001
 from infrahub.log import get_log_data
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workflows.catalogue import BRANCH_CANCEL_PROPOSED_CHANGES, IPAM_RECONCILIATION
+from infrahub.workflows.catalogue import (
+    BRANCH_CANCEL_PROPOSED_CHANGES,
+    GIT_REPOSITORIES_CREATE_BRANCH,
+    IPAM_RECONCILIATION,
+)
 from infrahub.workflows.utils import add_branch_tag
 
 
@@ -42,12 +46,14 @@ async def rebase_branch(branch: str) -> None:
     obj = await Branch.get_by_name(db=service.database, name=branch)
     base_branch = await Branch.get_by_name(db=service.database, name=registry.default_branch)
     component_registry = get_component_registry()
+    diff_repository = await component_registry.get_component(DiffRepository, db=service.database, branch=obj)
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=service.database, branch=obj)
     diff_merger = await component_registry.get_component(DiffMerger, db=service.database, branch=obj)
     merger = BranchMerger(
         db=service.database,
         diff_coordinator=diff_coordinator,
         diff_merger=diff_merger,
+        diff_repository=diff_repository,
         source_branch=obj,
         service=service,
     )
@@ -158,12 +164,14 @@ async def merge_branch(branch: str) -> None:
         async with lock.registry.global_graph_lock():
             # await update_diff(model=RequestDiffUpdate(branch_name=obj.name))
 
+            diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
             diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
             diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
             merger = BranchMerger(
                 db=db,
                 diff_coordinator=diff_coordinator,
                 diff_merger=diff_merger,
+                diff_repository=diff_repository,
                 source_branch=obj,
                 service=service,
             )
@@ -238,18 +246,17 @@ async def delete_branch(branch: str) -> None:
 )
 async def validate_branch(branch: str) -> State:
     service = services.service
-    log = get_run_logger()
     await add_branch_tag(branch_name=branch)
 
     obj = await Branch.get_by_name(db=service.database, name=branch)
 
-    diff = await BranchDiffer.init(db=service.database, branch=obj)
-    conflicts = await diff.get_conflicts()
+    component_registry = get_component_registry()
+    diff_repo = await component_registry.get_component(DiffRepository, db=service.database, branch=obj)
+    has_conflicts = await diff_repo.diff_has_conflicts(
+        diff_branch_name=obj.name, tracking_id=BranchTrackingId(name=obj.name)
+    )
 
-    for conflict in conflicts:
-        log.error(conflict)
-
-    if conflicts:
+    if has_conflicts:
         return Failed(message="branch has some conflicts")
     return Completed(message="branch is valid")
 
@@ -257,7 +264,6 @@ async def validate_branch(branch: str) -> State:
 @flow(name="create-branch", flow_run_name="Create branch {model.name}")
 async def create_branch(model: BranchCreateModel) -> None:
     service = services.service
-
     await add_branch_tag(model.name)
 
     try:
@@ -287,9 +293,11 @@ async def create_branch(model: BranchCreateModel) -> None:
         # Add Branch to registry
         registry.branch[obj.name] = obj
 
-    message = messages.EventBranchCreate(
-        branch=obj.name,
-        branch_id=str(obj.id),
-        sync_with_git=obj.sync_with_git,
-    )
-    await service.send(message=message)
+    event = BranchCreateEvent(branch=obj.name, branch_id=str(obj.id), sync_with_git=obj.sync_with_git)
+    await service.event.send(event=event)
+
+    if obj.sync_with_git:
+        await service.workflow.submit_workflow(
+            workflow=GIT_REPOSITORIES_CREATE_BRANCH,
+            parameters={"branch": obj.name, "branch_id": str(obj.id)},
+        )

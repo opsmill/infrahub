@@ -10,6 +10,7 @@ from infrahub_sdk.topological_sort import DependencyCycleExistsError, topologica
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from typing_extensions import Self
 
+from infrahub.computed_attribute.constants import VALID_KINDS as VALID_COMPUTED_ATTRIBUTE_KINDS
 from infrahub.core.constants import (
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
@@ -459,6 +460,7 @@ class SchemaBranch:
     def process_pre_validation(self) -> None:
         self.generate_identifiers()
         self.process_default_values()
+        self.process_deprecations()
         self.process_cardinality_counts()
         self.process_inheritance()
         self.process_hierarchy()
@@ -933,11 +935,11 @@ class SchemaBranch:
 
         if not attribute.read_only:
             raise ValueError(
-                f"{node.kind}: Attribute {attribute.name!r} is a computed jinja2 attribute but not marked as read_only"
+                f"{node.kind}: Attribute {attribute.name!r} is a computed attribute but not marked as read_only"
             )
-        if not attribute.kind == "Text":
+        if attribute.kind not in VALID_COMPUTED_ATTRIBUTE_KINDS:
             raise ValueError(
-                f"{node.kind}: Attribute {attribute.name!r} is a computed jinja2 attribute currently only 'Text' kinds are supported."
+                f"{node.kind}: Attribute {attribute.name!r} is a computed attribute only {VALID_COMPUTED_ATTRIBUTE_KINDS} kinds are supported."
             )
 
         if (
@@ -1345,6 +1347,29 @@ class SchemaBranch:
                     rel.min_count = 1
                 if not rel.optional and rel.max_count == 0:
                     rel.max_count = 1
+
+            self.set(name=name, schema=node)
+
+    def process_deprecations(self) -> None:
+        """Mark deprecated attributes and relationships as optional."""
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            change_required = False
+            for item in node.attributes + node.relationships:
+                if item.is_deprecated:
+                    log.warn(f"'{item.name}' for '{node.kind}' has been marked as deprecated, remember to clean it up")
+                    if not item.optional:
+                        change_required = True
+
+            if not change_required:
+                continue
+
+            node = node.duplicate()
+
+            for item in node.attributes + node.relationships:
+                if item.is_deprecated and not item.optional:
+                    item.optional = True
 
             self.set(name=name, schema=node)
 

@@ -5,18 +5,18 @@ from infrahub.database import InfrahubDatabase
 
 EXPIRED_ACCESS_TOKEN = (
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1YTVjYmNlZS1mN2IwLTRmNzc"
-    + "tYjk1Yi1jMjAwODYwOGU5MDAiLCJpYXQiOjE2ODYyMjIzNjUsIm5iZiI6MTY4NjIyMjM2N"
-    + "SwiZXhwIjoxNjg2MjIyNDI1LCJmcmVzaCI6ZmFsc2UsInR5cGUiOiJhY2Nlc3MiLCJ1c2V"
-    + "yX2NsYWltcyI6eyJyb2xlcyI6WyJyZWFkLXdyaXRlIl19fQ.7d2wSrrTkdAc2ZYjZwOgjR"
-    + "jr3c6n9_iN3Miei_zXJ-0"
+    "tYjk1Yi1jMjAwODYwOGU5MDAiLCJpYXQiOjE2ODYyMjIzNjUsIm5iZiI6MTY4NjIyMjM2N"
+    "SwiZXhwIjoxNjg2MjIyNDI1LCJmcmVzaCI6ZmFsc2UsInR5cGUiOiJhY2Nlc3MiLCJ1c2V"
+    "yX2NsYWltcyI6eyJyb2xlcyI6WyJyZWFkLXdyaXRlIl19fQ.7d2wSrrTkdAc2ZYjZwOgjR"
+    "jr3c6n9_iN3Miei_zXJ-0"
 )
 
 EXPIRED_REFRESH_TOKEN = (
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1N2EzZGNjMi0yYzY0LTQ4MGE"
-    + "tOTAyYi1jMzJjZDY0ZDg0NDgiLCJpYXQiOjE2ODY3MjMwMTMsIm5iZiI6MTY4NjcyMzAxM"
-    + "ywiZXhwIjoxNjg2NzIzMDczLCJmcmVzaCI6ZmFsc2UsInR5cGUiOiJyZWZyZXNoIiwic2V"
-    + "zc2lvbl9pZCI6IjNjY2Q3OTZlLTk0NzUtNGQ2MC05NDQ4LTYyOWVkY2E0NGRiMyJ9.uYjo"
-    + "x3qqqr1iPLTkDDCWGUsiuFXFyGjXezt_Vf8Ibf4"
+    "tOTAyYi1jMzJjZDY0ZDg0NDgiLCJpYXQiOjE2ODY3MjMwMTMsIm5iZiI6MTY4NjcyMzAxM"
+    "ywiZXhwIjoxNjg2NzIzMDczLCJmcmVzaCI6ZmFsc2UsInR5cGUiOiJyZWZyZXNoIiwic2V"
+    "zc2lvbl9pZCI6IjNjY2Q3OTZlLTk0NzUtNGQ2MC05NDQ4LTYyOWVkY2E0NGRiMyJ9.uYjo"
+    "x3qqqr1iPLTkDDCWGUsiuFXFyGjXezt_Vf8Ibf4"
 )
 
 
@@ -196,7 +196,10 @@ async def test_access_resource_using_refresh_token(db: InfrahubDatabase, default
         response = client.get("/api/transform/jinja2/testing", headers={"Authorization": f"Bearer {refresh_token}"})
 
     assert response.status_code == 401
-    assert response.json() == {"data": None, "errors": [{"message": "Invalid token", "extensions": {"code": 401}}]}
+    assert response.json() == {
+        "data": None,
+        "errors": [{"message": "Invalid token, current token is not an access token", "extensions": {"code": 401}}],
+    }
 
 
 async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, create_test_admin):
@@ -204,10 +207,7 @@ async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, 
     with client:
         login_response = client.post(
             "/api/auth/login",
-            json={
-                "username": "test-admin",
-                "password": config.SETTINGS.initial.admin_password,
-            },
+            json={"username": "test-admin", "password": config.SETTINGS.initial.admin_password},
         )
 
     assert login_response.status_code == 200
