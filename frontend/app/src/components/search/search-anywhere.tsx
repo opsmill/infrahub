@@ -1,6 +1,7 @@
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import { Card } from "@/components/ui/card";
 import Kbd from "@/components/ui/kbd";
+import { CollapsedButton } from "@/screens/layout/menu-navigation/components/collapsed-button";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Command } from "cmdk";
@@ -42,7 +43,11 @@ interface SearchAnywhereContextProps {
 
 export const SearchAnywhereContext = React.createContext<SearchAnywhereContextProps>({});
 
-export function SearchAnywhere() {
+type SearchModalProps = {
+  isCollapsed?: boolean;
+};
+
+export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
   let [isOpen, setIsOpen] = useState(false);
 
   function closeDrawer() {
@@ -66,7 +71,16 @@ export function SearchAnywhere() {
 
   return (
     <>
-      <SearchAnywhereTriggerButton onClick={openModal} />
+      {isCollapsed ? (
+        <CollapsedButton
+          tooltipContent="Search anywhere"
+          icon="mdi:search"
+          onClick={openModal}
+          onChange={openModal}
+        />
+      ) : (
+        <SearchAnywhereTriggerButton onClick={openModal} />
+      )}
 
       <Command.Dialog
         open={isOpen}
@@ -80,7 +94,7 @@ export function SearchAnywhere() {
           onClick={closeDrawer}
         >
           <SearchAnywhereContext.Provider value={{ closeDrawer }}>
-            <SearchAnywhereDialog className="mt-1 left-1/2 animate-in fade-in" />
+            <SearchAnywhereDialog className="mt-1 animate-in fade-in" />
           </SearchAnywhereContext.Provider>
         </div>
       </Command.Dialog>
