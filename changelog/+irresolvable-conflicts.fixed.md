@@ -1,0 +1,1 @@
+Add support for irresolvable conflicts to the diff logic and DiffTree GraphQL query
