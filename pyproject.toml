@@ -193,6 +193,7 @@ junit_duration_report = "call"
 [tool.pytest_env]
 PREFECT_LOGGING_LEVEL = "CRITICAL"
 INFRAHUB_LOG_LEVEL = "CRITICAL"
+INFRAHUB_PRODUCTION = false
 
 [tool.mypy]
 pretty = true
