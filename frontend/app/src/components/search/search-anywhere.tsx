@@ -6,6 +6,7 @@ import { Icon } from "@iconify-icon/react";
 import { Command } from "cmdk";
 import React, { ReactNode, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { CommandItem } from "../ui/command";
 import { Input } from "../ui/input";
 import { SearchActions } from "./search-actions";
 import { SearchDocs } from "./search-docs";
@@ -180,7 +181,7 @@ export const SearchResultItem = ({
   const { closeDrawer } = useContext(SearchAnywhereContext);
 
   return (
-    <Command.Item
+    <CommandItem
       {...props}
       onSelect={() => {
         if (to.length === 0) return;
@@ -205,6 +206,6 @@ export const SearchResultItem = ({
       >
         {children}
       </Button>
-    </Command.Item>
+    </CommandItem>
   );
 };
