@@ -81,6 +81,7 @@ const sidebars: SidebarsConfig = {
         'guides/check',
         'guides/resource-manager',
         'guides/managing-api-tokens',
+        'guides/computed-attributes',
       ],
     },
     {
@@ -114,6 +115,7 @@ const sidebars: SidebarsConfig = {
         'topics/schema',
         'topics/transformation',
         'topics/auth',
+        'topics/computed-attributes',
       ],
     },
     {
