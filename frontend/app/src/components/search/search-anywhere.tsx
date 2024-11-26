@@ -151,7 +151,9 @@ type SearchGroupProps = {
 };
 
 export const SearchGroup = ({ children }: SearchGroupProps) => {
-  return <Command.Group className="bg-custom-white rounded-lg border">{children}</Command.Group>;
+  return (
+    <Command.Group className="bg-custom-white rounded-lg border p-2">{children}</Command.Group>
+  );
 };
 
 export const SearchGroupTitle = ({ children }: SearchGroupProps) => {
