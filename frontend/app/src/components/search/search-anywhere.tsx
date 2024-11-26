@@ -83,7 +83,7 @@ export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
 
       <Command.Dialog
         open={isOpen}
-        onOpenChange={closeDrawer}
+        onOpenChange={setIsOpen}
         data-testid="search-anywhere"
         shouldFilter={false}
         className="fixed inset-0"
