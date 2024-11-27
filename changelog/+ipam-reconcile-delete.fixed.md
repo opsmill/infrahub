@@ -1,0 +1,1 @@
+Fix bug in IP reconciliation query around deleted nodes and relationships
