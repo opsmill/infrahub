@@ -163,8 +163,18 @@ async def run(message: messages.RequestGeneratorDefinitionRun, service: Infrahub
             instance_by_member[instance.object.peer.id] = instance.id
 
         repository = await service.client.get(
-            kind=InfrahubKind.REPOSITORY, branch=message.branch, id=message.generator_definition.repository_id
+            kind=InfrahubKind.REPOSITORY,
+            branch=message.branch,
+            id=message.generator_definition.repository_id,
+            raise_when_missing=False,
         )
+        if not repository:
+            repository = await service.client.get(
+                kind=InfrahubKind.READONLYREPOSITORY,
+                branch=message.branch,
+                id=message.generator_definition.repository_id,
+                raise_when_missing=True,
+            )
 
         for relationship in group.members.peers:
             member = relationship.peer
