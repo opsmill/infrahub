@@ -8,6 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
+from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
@@ -185,6 +186,11 @@ async def merge_branch(branch: str, conflict_resolution: dict[str, bool] | None 
         workflow=IPAM_RECONCILIATION,
         parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
     )
+    # -------------------------------------------------------------
+    # remove tracking ID from the diff because there is no diff after the merge
+    # -------------------------------------------------------------
+    diff_repository = await component_registry.get_component(DiffRepository, db=service.database, branch=obj)
+    await diff_repository.drop_tracking_ids(tracking_ids=[BranchTrackingId(name=obj.name)])
 
     # -------------------------------------------------------------
     # Generate an event to indicate that a branch has been merged
