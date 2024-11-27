@@ -24,7 +24,7 @@ from infrahub.workflows.catalogue import (
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
 )
-from infrahub.workflows.utils import add_branch_tag, wait_for_schema_to_converge
+from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .constants import (
     PROCESS_AUTOMATION_NAME,
@@ -56,7 +56,7 @@ mutation UpdateAttribute(
 
 @flow(
     name="process_computed_attribute_transform",
-    flow_run_name="Process computed attribute on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
+    flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
 )
 async def process_transform(
     branch_name: str,
@@ -66,8 +66,7 @@ async def process_transform(
     computed_attribute_kind: str,  # pylint: disable=unused-argument
     updated_fields: list[str] | None = None,  # pylint: disable=unused-argument
 ) -> None:
-    """Request to the creation of git branches in available repositories."""
-    await add_branch_tag(branch_name=branch_name)
+    await add_tags(branches=[branch_name])
 
     service = services.service
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
@@ -142,6 +141,8 @@ async def trigger_update_python_computed_attributes(
     computed_attribute_kind: str,
 ) -> None:
     service = services.service
+    await add_tags(branches=[branch_name])
+
     nodes = await service.client.all(kind=computed_attribute_kind, branch=branch_name)
 
     for node in nodes:
@@ -159,7 +160,7 @@ async def trigger_update_python_computed_attributes(
 
 @flow(
     name="process_computed_attribute_jinja2",
-    flow_run_name="Process computed attribute on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
+    flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
 )
 async def process_jinja2(
     branch_name: str,
@@ -169,9 +170,11 @@ async def process_jinja2(
     computed_attribute_kind: str,
     updated_fields: list[str] | None = None,
 ) -> None:
-    """Request to the creation of git branches in available repositories."""
     log = get_run_logger()
     service = services.service
+
+    await add_tags(branches=[branch_name])
+
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
 
     computed_macros = [
@@ -240,7 +243,7 @@ async def process_jinja2(
 
 @flow(
     name="trigger_update_jinja2_computed_attributes",
-    flow_run_name="Trigger updates for computed attributes on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
+    flow_run_name="Trigger updates for computed attributes for {computed_attribute_kind}.{computed_attribute_name}",
 )
 async def trigger_update_jinja2_computed_attributes(
     branch_name: str,
@@ -248,6 +251,8 @@ async def trigger_update_jinja2_computed_attributes(
     computed_attribute_kind: str,
 ) -> None:
     service = services.service
+    await add_tags(branches=[branch_name])
+
     nodes = await service.client.all(kind=computed_attribute_kind, branch=branch_name)
 
     for node in nodes:
@@ -264,9 +269,12 @@ async def trigger_update_jinja2_computed_attributes(
 
 
 @flow(name="computed-attribute-setup", flow_run_name="Setup computed attributes in task-manager")
-async def computed_attribute_setup(branch_name: str | None = None) -> None:
+async def computed_attribute_setup(branch_name: str | None = None) -> None:  # pylint: disable=too-many-statements
     service = services.service
     branch_name = branch_name or registry.default_branch
+
+    await add_tags(branches=[branch_name])
+
     log = get_run_logger()
     await wait_for_schema_to_converge(branch_name=branch_name, service=service, log=log)
 
@@ -427,6 +435,10 @@ async def computed_attribute_setup_python(
 ) -> None:
     log = get_run_logger()
     service = services.service
+
+    if branch_name:
+        await add_tags(branches=[branch_name])
+
     await wait_for_schema_to_converge(branch_name=registry.default_branch, service=service, log=log)
 
     schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
@@ -592,14 +604,14 @@ async def computed_attribute_setup_python(
 
 @flow(
     name="query-computed-attribute-transform-targets",
-    flow_run_name="Query for potential targets of computed attributes in branch {branch_name} for {node_kind}",
+    flow_run_name="Query for potential targets of computed attributes for {node_kind}",
 )
 async def query_transform_targets(
     branch_name: str,
     node_kind: str,  # pylint: disable=unused-argument
     object_id: str,
 ) -> None:
-    await add_branch_tag(branch_name=branch_name)
+    await add_tags(branches=[branch_name])
     service = services.service
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     targets = await service.client.execute_graphql(
