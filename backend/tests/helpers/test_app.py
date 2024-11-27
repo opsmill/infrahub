@@ -107,7 +107,10 @@ class TestInfrahubApp(TestInfrahub):
         self, test_client: InfrahubTestClient, api_token: str, bus_simulator: BusSimulator
     ) -> InfrahubClient:
         config = Config(
-            api_token=api_token, requester=test_client.async_request, sync_requester=test_client.sync_request
+            api_token=api_token,
+            requester=test_client.async_request,
+            sync_requester=test_client.sync_request,
+            schema_converge_timeout=5,
         )
 
         sdk_client = InfrahubClient(config=config)
