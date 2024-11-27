@@ -216,7 +216,8 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
         )
         await check.save()
 
-    await NodeManager.delete(db=service.database, nodes=list(existing_checks.values()))
+    async with service.database.start_session() as db:
+        await NodeManager.delete(db=db, nodes=list(existing_checks.values()))
 
     await service.cache.set(
         key=f"validator_execution_id:{message.validator_execution_id}:check_execution_id:{message.check_execution_id}",
