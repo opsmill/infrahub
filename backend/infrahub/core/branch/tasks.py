@@ -207,6 +207,11 @@ async def merge_branch(branch: str) -> None:
                 workflow=IPAM_RECONCILIATION,
                 parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
             )
+        # -------------------------------------------------------------
+        # remove tracking ID from the diff because there is no diff after the merge
+        # -------------------------------------------------------------
+        diff_repository = await component_registry.get_component(DiffRepository, db=service.database, branch=obj)
+        await diff_repository.drop_tracking_ids(tracking_ids=[BranchTrackingId(name=obj.name)])
 
         # -------------------------------------------------------------
         # Generate an event to indicate that a branch has been merged
@@ -255,7 +260,6 @@ async def validate_branch(branch: str) -> State:
     has_conflicts = await diff_repo.diff_has_conflicts(
         diff_branch_name=obj.name, tracking_id=BranchTrackingId(name=obj.name)
     )
-
     if has_conflicts:
         return Failed(message="branch has some conflicts")
     return Completed(message="branch is valid")

@@ -20,6 +20,7 @@ from ..model.path import (
 from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
+from ..query.drop_tracking_id import EnrichedDiffDropTrackingIdQuery
 from ..query.empty_roots import EnrichedDiffEmptyRootsQuery
 from ..query.filters import EnrichedDiffQueryFilters
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
@@ -262,3 +263,7 @@ class DiffRepository:
         )
         await query.execute(db=self.db)
         return await query.get_field_summaries()
+
+    async def drop_tracking_ids(self, tracking_ids: list[TrackingId]) -> None:
+        query = await EnrichedDiffDropTrackingIdQuery.init(db=self.db, tracking_ids=tracking_ids)
+        await query.execute(db=self.db)

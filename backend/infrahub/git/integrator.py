@@ -383,7 +383,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         existing_artifact_definition: CoreArtifactDefinition,
         local_artifact_definition: InfrahubRepositoryArtifactDefinitionConfig,
     ) -> bool:
-        # pylint: disable=no-member
         if (
             existing_artifact_definition.artifact_name.value != local_artifact_definition.artifact_name
             or existing_artifact_definition.parameters.value != local_artifact_definition.parameters
@@ -398,7 +397,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         existing_artifact_definition: CoreArtifactDefinition,
         local_artifact_definition: InfrahubRepositoryArtifactDefinitionConfig,
     ) -> None:
-        # pylint: disable=no-member
         if existing_artifact_definition.artifact_name.value != local_artifact_definition.artifact_name:
             existing_artifact_definition.artifact_name.value = local_artifact_definition.artifact_name
 
@@ -1358,6 +1356,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         resp = await self.sdk.object_store.upload(content=artifact_content_str, tracker="artifact-upload-content")
         storage_id = resp["identifier"]
 
+        artifact.content_type.value = message.content_type
         artifact.checksum.value = checksum
         artifact.storage_id.value = storage_id
         artifact.status.value = "Ready"
