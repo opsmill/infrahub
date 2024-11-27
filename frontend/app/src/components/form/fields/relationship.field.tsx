@@ -1,20 +1,16 @@
 import { LabelFormField } from "@/components/form/fields/common";
-import {
-  DynamicRelationshipFieldProps,
-  FormFieldProps,
-  FormRelationshipValue,
-} from "@/components/form/type";
+import { DynamicRelationshipFieldProps, FormRelationshipValue } from "@/components/form/type";
 import { updateRelationshipFieldValue } from "@/components/form/utils/updateFormFieldValue";
-import { Select, SelectOption } from "@/components/inputs/select";
+import { RelationshipInput } from "@/components/inputs/relationship-one";
+import { SelectOption } from "@/components/inputs/select";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { getRelationshipParent } from "@/graphql/queries/objects/getRelationshipParent";
 import useQuery from "@/hooks/useQuery";
-import { components } from "@/infraops";
 import { store } from "@/state";
-import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { ElementRef, forwardRef, useState } from "react";
+import { useState } from "react";
 
 const getGenericParentRelationship = (kind?: string) => {
   if (!kind) return;
@@ -322,29 +318,5 @@ const RelationshipField = ({
     </div>
   );
 };
-
-interface RelationshipInputProps extends FormFieldProps, RelationshipFieldProps {
-  relationship: components["schemas"]["RelationshipSchema-Output"];
-  schema: IModelSchema;
-  onChange: (value: any) => void;
-  value?: string | number;
-  multiple?: boolean;
-  className?: string;
-}
-
-// Select parent if needed
-const RelationshipInput = forwardRef<ElementRef<typeof Select>, RelationshipInputProps>(
-  ({ options, relationship, ...props }, ref) => {
-    return (
-      <Select
-        ref={ref}
-        {...props}
-        options={options ?? []}
-        field={relationship}
-        className="w-full"
-      />
-    );
-  }
-);
 
 export default RelationshipField;
