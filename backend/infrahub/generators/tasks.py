@@ -174,8 +174,18 @@ async def request_generator_definition_run(model: RequestGeneratorDefinitionRun)
         instance_by_member[instance.object.peer.id] = instance.id
 
     repository = await service.client.get(
-        kind=InfrahubKind.REPOSITORY, branch=model.branch, id=model.generator_definition.repository_id
+        kind=InfrahubKind.REPOSITORY,
+        branch=model.branch,
+        id=model.generator_definition.repository_id,
+        raise_when_missing=False,
     )
+    if not repository:
+        repository = await service.client.get(
+            kind=InfrahubKind.READONLYREPOSITORY,
+            branch=model.branch,
+            id=model.generator_definition.repository_id,
+            raise_when_missing=True,
+        )
 
     for relationship in group.members.peers:
         member = relationship.peer

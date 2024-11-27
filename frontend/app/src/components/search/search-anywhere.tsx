@@ -1,13 +1,13 @@
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import Kbd from "@/components/ui/kbd";
 import { CollapsedButton } from "@/screens/layout/menu-navigation/components/collapsed-button";
 import { classNames } from "@/utils/common";
-import { Combobox, Dialog } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import { ReactNode, forwardRef, useEffect, useState } from "react";
-import { Link, LinkProps, useNavigate } from "react-router-dom";
+import { Command } from "cmdk";
+import React, { ReactNode, useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { CommandItem } from "../ui/command";
+import { Input } from "../ui/input";
 import { SearchActions } from "./search-actions";
 import { SearchDocs } from "./search-docs";
 import { SearchNodes } from "./search-nodes";
@@ -39,11 +39,17 @@ const SearchAnywhereTriggerButton = ({ className, ...props }: ButtonProps) => {
   );
 };
 
+interface SearchAnywhereContextProps {
+  closeDrawer?: () => void;
+}
+
+export const SearchAnywhereContext = React.createContext<SearchAnywhereContextProps>({});
+
 type SearchModalProps = {
-  className?: string;
   isCollapsed?: boolean;
 };
-export function SearchAnywhere({ className = "", isCollapsed }: SearchModalProps) {
+
+export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
   let [isOpen, setIsOpen] = useState(false);
 
   function closeDrawer() {
@@ -74,126 +80,135 @@ export function SearchAnywhere({ className = "", isCollapsed }: SearchModalProps
           icon="mdi:search"
           onClick={openModal}
           onChange={openModal}
-          className={className}
         />
       ) : (
-        <SearchAnywhereTriggerButton
-          onClick={openModal}
-          onChange={openModal}
-          className={className}
-        />
+        <SearchAnywhereTriggerButton onClick={openModal} />
       )}
 
-      <Dialog open={isOpen} onClose={closeDrawer}>
-        <div className="fixed inset-0 bg-gray-600/25 animate-in fade-in" />
-
-        <div className="fixed inset-0">
-          <div className="flex items-center justify-center p-4 pt-1">
-            <SearchAnywhereDialog
-              onSelection={closeDrawer}
-              className="animate-in fade-in zoom-in-95"
-            />
-          </div>
+      <Command.Dialog
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        data-testid="search-anywhere"
+        shouldFilter={false}
+        className="fixed inset-0"
+      >
+        <div
+          className="fixed inset-0 flex flex-col items-center bg-gray-600/25 animate-in fade-in"
+          onClick={closeDrawer}
+        >
+          <SearchAnywhereContext.Provider value={{ closeDrawer }}>
+            <SearchAnywhereDialog className="mt-1 animate-in fade-in" />
+          </SearchAnywhereContext.Provider>
         </div>
-      </Dialog>
+      </Command.Dialog>
     </>
   );
 }
 
 type SearchAnywhereProps = {
   className?: string;
-  onSelection: (url?: string) => void;
 };
 
-const SearchAnywhereDialog = forwardRef<HTMLDivElement, SearchAnywhereProps>(
-  ({ className, onSelection }, forwardedRef) => {
-    const navigate = useNavigate();
-    const [query, setQuery] = useState("");
+const SearchAnywhereDialog = ({ className }: SearchAnywhereProps) => {
+  const [query, setQuery] = useState("");
 
-    return (
-      <Dialog.Panel
-        ref={forwardedRef}
-        className={classNames(
-          "p-2 w-full max-w-screen-md rounded-xl bg-stone-100 shadow-xl space-y-2",
-          className
-        )}
-        data-testid="search-anywhere"
-      >
-        <Combobox
-          onChange={(url: string) => {
-            if (url.length === 0) return;
+  return (
+    <div
+      className={classNames(
+        "p-2 w-full max-w-screen-md rounded-xl bg-stone-100 shadow-xl",
+        className
+      )}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="relative">
+        <div className="absolute top-2.5 pl-2.5">
+          <Icon icon="mdi:magnify" className="text-xl text-custom-blue-600" />
+        </div>
 
-            if (url.startsWith("http")) {
-              window.open(url, "_blank", "rel=noopener noreferrer, popup=false");
-            } else {
-              navigate(url);
-            }
-
-            onSelection(url);
+        <Input
+          placeholder="Search anywhere"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
           }}
-        >
-          <div className="relative">
-            <Combobox.Button className="absolute top-2.5 pl-2.5">
-              <Icon icon="mdi:magnify" className="text-xl text-custom-blue-600" />
-            </Combobox.Button>
+          className="px-9 py-2"
+        />
+      </div>
 
-            <Combobox.Input
-              as={Input}
-              placeholder="Search anywhere"
-              onChange={(e) => setQuery(e.target.value)}
-              value={query}
-              className="w-full px-9 py-2"
-            />
+      {query && (
+        <Command.List className="pt-2">
+          <div className="overflow-x-hidden overflow-y-auto space-y-2">
+            <SearchActions query={query} />
+
+            <SearchNodes query={query} />
+
+            <SearchDocs query={query} />
           </div>
-
-          {query && (
-            <Combobox.Options static className="overflow-x-hidden overflow-y-auto space-y-2">
-              <SearchActions query={query} />
-              <SearchNodes query={query} />
-              <SearchDocs query={query} />
-            </Combobox.Options>
-          )}
-        </Combobox>
-      </Dialog.Panel>
-    );
-  }
-);
+        </Command.List>
+      )}
+    </div>
+  );
+};
 
 type SearchGroupProps = {
   children: ReactNode;
 };
 
 export const SearchGroup = ({ children }: SearchGroupProps) => {
-  return <Card className="p-2">{children}</Card>;
+  return (
+    <Command.Group className="bg-custom-white rounded-lg border p-2">{children}</Command.Group>
+  );
 };
 
 export const SearchGroupTitle = ({ children }: SearchGroupProps) => {
   return (
-    <Combobox.Option
-      value=""
-      disabled
-      className="text-xs mb-0.5 pl-1.5 font-semibold text-neutral-600 flex items-center"
-    >
+    <div className="text-xs mb-0.5 pl-1.5 font-semibold text-neutral-600 flex items-center">
       {children}
-    </Combobox.Option>
+    </div>
   );
 };
 
-export const SearchResultItem = ({ className = "", children, to, ...props }: LinkProps) => {
+type SearchResultItemProps = {
+  children: ReactNode;
+  className?: string;
+  to: string;
+};
+
+export const SearchResultItem = ({
+  className = "",
+  children,
+  to,
+  ...props
+}: SearchResultItemProps) => {
+  const navigate = useNavigate();
+  const { closeDrawer } = useContext(SearchAnywhereContext);
+
   return (
-    <Combobox.Option
-      as={Link}
-      value={to}
-      to={to}
+    <CommandItem
       {...props}
-      className={({ active }) =>
-        classNames(
-          `flex items-center gap-1 text-xs p-2 rounded ${active ? "bg-gray-100" : ""}`,
-          className
-        )
-      }
+      onSelect={() => {
+        if (to.length === 0) return;
+
+        if (to.startsWith("http")) {
+          window.open(to, "_blank", "rel=noopener noreferrer, popup=false");
+        } else {
+          navigate(to);
+        }
+
+        if (closeDrawer) {
+          closeDrawer();
+        }
+      }}
     >
-      {children}
-    </Combobox.Option>
+      <Button
+        variant={"ghost"}
+        className={classNames(
+          "flex justify-start w-full h-min gap-1 text-xs p-2 m-0 rounded text-wrap text-left hover:bg-gray-100",
+          className
+        )}
+      >
+        {children}
+      </Button>
+    </CommandItem>
   );
 };

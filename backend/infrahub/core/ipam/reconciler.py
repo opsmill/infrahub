@@ -7,7 +7,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import IPPrefixReconcileQuery
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
+from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError
 
 from .constants import AllIPTypes
@@ -85,6 +85,7 @@ class IpamReconciler:
         self.branch = branch
         self.at: Optional[Timestamp] = None
 
+    @retry_db_transaction(name="ipam_reconcile")
     async def reconcile(
         self,
         ip_value: AllIPTypes,
