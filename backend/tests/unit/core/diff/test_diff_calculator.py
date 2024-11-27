@@ -12,6 +12,12 @@ from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
+
+
+async def _get_diff_calculator(db: InfrahubDatabase, branch: Branch) -> DiffCalculator:
+    component_registry = get_component_registry()
+    return await component_registry.get_component(DiffCalculator, db=db, branch=branch)
 
 
 async def test_diff_attribute_branch_update(
@@ -30,7 +36,7 @@ async def test_diff_attribute_branch_update(
     await alfred_branch.save(db=db)
     branch_after_change = Timestamp()
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -88,7 +94,7 @@ async def test_attribute_property_main_update(
     await alfred_main.save(db=db)
     after_change = Timestamp()
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=default_branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=default_branch,
@@ -135,7 +141,7 @@ async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: B
     await car_branch.save(db=db)
     after_change = Timestamp()
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -176,7 +182,7 @@ async def test_node_delete(db: InfrahubDatabase, default_branch: Branch, car_acc
     car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
     await car_branch.delete(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -246,7 +252,7 @@ async def test_node_base_delete_branch_update(
     car_branch.nbr_seats.value = 10
     await car_branch.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -293,7 +299,7 @@ async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car
     await new_person.save(db=db)
     after_change = Timestamp()
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -339,7 +345,7 @@ async def test_attribute_property_multiple_branch_updates(
     await alfred_branch.save(db=db)
     after_last_change = Timestamp()
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -390,7 +396,7 @@ async def test_relationship_one_peer_branch_and_main_update(
     await car_branch.save(db=db)
     after_branch_change = Timestamp()
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -605,7 +611,7 @@ async def test_relationship_one_property_branch_update(
     await car_branch.save(db=db)
     after_branch_change = Timestamp()
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -761,7 +767,7 @@ async def test_add_node_branch(
     await new_car.new(db=db, name="Batmobile", color="#000000", owner=person_jane_main)
     await new_car.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -847,7 +853,7 @@ async def test_many_relationship_property_update(
     await branch_car.owner.update(db=db, data={"id": person_john_main.id, "_relation__source": person_jane_main.id})
     await branch_car.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -925,7 +931,7 @@ async def test_cardinality_one_peer_conflicting_updates(
     await main_car.save(db=db)
     main_update_done = Timestamp()
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -1153,7 +1159,7 @@ async def test_relationship_property_owner_conflicting_updates(
     await branch_john.cars.update(db=db, data={"id": car_accord_main.id, "_relation__owner": car_accord_main.id})
     await branch_john.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -1281,7 +1287,7 @@ async def test_agnostic_source_relationship_update(
     await branch_car.owner.update(db=db, data={"id": person_1.id, "_relation__source": person_1.id})
     await branch_car.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -1334,7 +1340,7 @@ async def test_agnostic_owner_relationship_added(
     await new_car.owner.update(db=db, data={"id": person_1.id, "_relation__owner": person_1.id})
     await new_car.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -1423,7 +1429,7 @@ async def test_update_attribute_under_agnostic_node(
     await fruit_1.new(db=db, name="blueberry", branch_aware_attr="branchval")
     await fruit_1.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -1480,7 +1486,7 @@ async def test_diff_attribute_branch_update_with_previous_base_update_ignored(
     await alfred_branch.save(db=db)
     branch_after_change = Timestamp()
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -1533,7 +1539,7 @@ async def test_diff_attribute_branch_update_with_concurrent_base_update_captured
     await alfred_branch.save(db=db)
     branch_after_change = Timestamp()
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -1601,7 +1607,7 @@ async def test_diff_attribute_branch_update_with_previous_base_update_captured(
     await alfred_branch.save(db=db)
     branch_after_change = Timestamp()
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -1667,7 +1673,7 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
     await alfred_branch.save(db=db)
     branch_after_change = Timestamp()
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
 
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
@@ -1750,7 +1756,7 @@ async def test_branch_node_delete_with_base_updates(
     await car_main.owner.update(db=db, data={"id": person_jane_main.id})
     await car_main.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -1920,7 +1926,7 @@ async def test_branch_relationship_delete_with_property_update(
     await dog_main.save(db=db)
     after_main_change = Timestamp()
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -2026,7 +2032,7 @@ async def test_node_deleted_on_both(
     alfred_branch = await NodeManager.get_one(db=db, branch=branch, id=person_alfred_main.id)
     await alfred_branch.delete(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -2075,7 +2081,7 @@ async def test_relationship_updated_then_node_deleted(
     car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
     await car_branch.delete(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -2252,7 +2258,7 @@ async def test_node_added_and_deleted_on_branch(
     retrieved_car = await NodeManager.get_one(db=db, branch=branch, id=new_car.id)
     await retrieved_car.delete(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -2285,7 +2291,7 @@ async def test_property_update_then_relationship_deleted(
     await car_branch.owner.update(db=db, data={"id": person_john_main.id})
     await car_branch.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -2426,7 +2432,7 @@ async def test_hierarchy_with_same_kind_parent_and_child(
     await bottom_branch.parent.update(db=db, data=mid_node.id)
     await bottom_branch.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
         diff_branch=branch,
@@ -2567,7 +2573,7 @@ async def test_diff_unchanged_included_when_not_first_diff(
     alfred_main.name.value = "Alfred"
     await alfred_main.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
 
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
@@ -2648,7 +2654,7 @@ async def test_create_local_and_aware_nodes_on_branch(
     await car.new(db=db, name="camry", owner=person.id)
     await car.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
     )
@@ -2682,7 +2688,7 @@ async def test_create_aware_and_agnostic_nodes_on_branch(
     await car.new(db=db, name="camry", nbr_seats=3, is_electric=True, owner=person.id)
     await car.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch, diff_branch=branch, from_time=from_time, to_time=Timestamp()
     )
@@ -2728,7 +2734,7 @@ async def test_diff_relationship_update_includes_unchanged_properties(
     await car_branch.owner.update(db=db, data=person_alfred_main)
     await car_branch.save(db=db)
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
 
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,
@@ -2849,7 +2855,7 @@ async def test_diff_relationship_property_update_on_main(
     car_schema = car_main.get_schema()
     owner_rel_schema = car_schema.get_relationship(name="owner")
 
-    diff_calculator = DiffCalculator(db=db)
+    diff_calculator = await _get_diff_calculator(db=db, branch=branch)
 
     calculated_diffs = await diff_calculator.calculate_diff(
         base_branch=default_branch,

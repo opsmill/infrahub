@@ -36,10 +36,10 @@ class IpamDiffParser:
     async def get_changed_ipam_node_details(
         self, source_branch_name: str, target_branch_name: str
     ) -> list[IpamNodeDetails]:
-        ip_address_kinds = await self.ip_kinds_getter.get_ipam_address_kinds(
+        ip_address_kinds = self.ip_kinds_getter.get_ipam_address_kinds(
             branch_names=[source_branch_name, target_branch_name]
         )
-        ip_prefix_kinds = await self.ip_kinds_getter.get_ipam_prefix_kinds(
+        ip_prefix_kinds = self.ip_kinds_getter.get_ipam_prefix_kinds(
             branch_names=[source_branch_name, target_branch_name]
         )
         if not ip_address_kinds and not ip_prefix_kinds:

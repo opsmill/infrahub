@@ -23,8 +23,10 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.query import QueryResult
     from infrahub.core.schema import MainSchemaTypes
-    from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.relationship_schema import RelationshipSchema
+    from infrahub.database import InfrahubDatabase
+
+    from .managed_relationship_checker import ManagedRelationshipChecker
 
 
 class DiffNoChildPathError(Exception): ...
@@ -308,6 +310,7 @@ class DiffRelationshipIntermediate:
     name: str
     identifier: str
     cardinality: RelationshipCardinality
+    is_managed: bool
     properties_by_db_id: dict[str, set[DiffRelationshipPropertyIntermediate]] = field(default_factory=dict)
     _single_relationship_list: list[DiffSingleRelationshipIntermediate] = field(default_factory=list)
 
@@ -354,6 +357,21 @@ class DiffRelationshipIntermediate:
             for single_relationship_properties in self.properties_by_db_id.values()
         ]
 
+    def _get_action(
+        self, from_time: Timestamp, last_changed_at: Timestamp, single_relationships: list[DiffSingleRelationship]
+    ) -> DiffAction:
+        if self.is_managed or all(sr.action is DiffAction.UNCHANGED for sr in single_relationships):
+            return DiffAction.UNCHANGED
+        if last_changed_at < from_time:
+            return DiffAction.UNCHANGED
+        if (
+            self.cardinality is RelationshipCardinality.ONE
+            and len(single_relationships) == 1
+            and single_relationships[0].action in (DiffAction.ADDED, DiffAction.REMOVED)
+        ):
+            return single_relationships[0].action
+        return DiffAction.UPDATED
+
     def to_diff_relationship(self, from_time: Timestamp, include_unchanged: bool) -> DiffRelationship:
         self._index_relationships()
         single_relationships = [
@@ -362,15 +380,9 @@ class DiffRelationshipIntermediate:
         ]
         last_changed_relationship = max(single_relationships, key=lambda r: r.changed_at)
         last_changed_at = last_changed_relationship.changed_at
-        action = DiffAction.UPDATED
-        if last_changed_at < from_time or all(sr.action is DiffAction.UNCHANGED for sr in single_relationships):
-            action = DiffAction.UNCHANGED
-        if (
-            self.cardinality is RelationshipCardinality.ONE
-            and len(single_relationships) == 1
-            and single_relationships[0].action in (DiffAction.ADDED, DiffAction.REMOVED)
-        ):
-            action = single_relationships[0].action
+        action = self._get_action(
+            from_time=from_time, last_changed_at=last_changed_at, single_relationships=single_relationships
+        )
         return DiffRelationship(
             name=self.name,
             changed_at=last_changed_at,
@@ -442,24 +454,68 @@ class DiffRootIntermediate:
 class DiffQueryParser:
     def __init__(
         self,
-        base_branch: Branch,
-        diff_branch: Branch,
-        schema_manager: SchemaManager,
-        from_time: Timestamp,
-        to_time: Optional[Timestamp] = None,
+        db: InfrahubDatabase,
+        managed_relationship_checker: ManagedRelationshipChecker,
     ) -> None:
-        self.base_branch_name = base_branch.name
-        self.diff_branch_name = diff_branch.name
-        self.schema_manager = schema_manager
-        self.from_time = from_time
-        self.to_time = to_time or Timestamp()
-        # if this diff is for the base branch, use from_time b/c create_time would be too much
-        if diff_branch.name == base_branch.name:
-            self.diff_branched_from_time = from_time
-        else:
-            self.diff_branched_from_time = Timestamp(diff_branch.get_branched_from())
+        self.db = db
+        self.managed_relationship_checker = managed_relationship_checker
+        self._base_branch_name: str | None = None
+        self._diff_branch_name: str | None = None
+        self._from_time: Timestamp | None = None
+        self._to_time: Timestamp | None = None
+        self._diff_branched_from_time: Timestamp | None = None
         self._diff_root_by_branch: dict[str, DiffRootIntermediate] = {}
         self._final_diff_root_by_branch: dict[str, DiffRoot] = {}
+
+    def initialize(
+        self,
+        base_branch: Branch,
+        diff_branch: Branch,
+        from_time: Timestamp,
+        to_time: Timestamp | None = None,
+    ) -> None:
+        self._base_branch_name = base_branch.name
+        self._diff_branch_name = diff_branch.name
+        self.managed_relationship_checker.reset()
+        self._from_time = from_time
+        self._to_time = to_time or Timestamp()
+        # if this diff is for the base branch, use from_time b/c create_time would be too much
+        if diff_branch.name == base_branch.name:
+            self._diff_branched_from_time = from_time
+        else:
+            self._diff_branched_from_time = Timestamp(diff_branch.get_branched_from())
+        self._diff_root_by_branch = {}
+        self._final_diff_root_by_branch = {}
+
+    @property
+    def base_branch_name(self) -> str:
+        if not self._base_branch_name:
+            raise RuntimeError("DiffQueryParser is not initialized")
+        return self._base_branch_name
+
+    @property
+    def diff_branch_name(self) -> str:
+        if not self._diff_branch_name:
+            raise RuntimeError("DiffQueryParser is not initialized")
+        return self._diff_branch_name
+
+    @property
+    def from_time(self) -> Timestamp:
+        if not self._from_time:
+            raise RuntimeError("DiffQueryParser is not initialized")
+        return self._from_time
+
+    @property
+    def to_time(self) -> Timestamp:
+        if not self._to_time:
+            raise RuntimeError("DiffQueryParser is not initialized")
+        return self._to_time
+
+    @property
+    def diff_branched_from_time(self) -> Timestamp:
+        if not self._diff_branched_from_time:
+            raise RuntimeError("DiffQueryParser is not initialized")
+        return self._diff_branched_from_time
 
     def get_branches(self) -> set[str]:
         return set(self._final_diff_root_by_branch.keys())
@@ -501,7 +557,10 @@ class DiffQueryParser:
     def _parse_path(self, database_path: DatabasePath) -> None:
         diff_root = self._get_diff_root(database_path=database_path)
         diff_node = self._get_diff_node(database_path=database_path, diff_root=diff_root)
-        self._update_attribute_level(database_path=database_path, diff_node=diff_node)
+        is_base_branch = False
+        if self.base_branch_name != self.diff_branch_name and diff_root.branch == self.base_branch_name:
+            is_base_branch = True
+        self._update_attribute_level(database_path=database_path, diff_node=diff_node, is_base_branch=is_base_branch)
 
     def _get_diff_root(self, database_path: DatabasePath) -> DiffRootIntermediate:
         branch = database_path.deepest_branch
@@ -535,8 +594,10 @@ class DiffQueryParser:
                 return rel_schema
         return None
 
-    def _update_attribute_level(self, database_path: DatabasePath, diff_node: DiffNodeIntermediate) -> None:
-        node_schema = self.schema_manager.get(
+    def _update_attribute_level(
+        self, database_path: DatabasePath, diff_node: DiffNodeIntermediate, is_base_branch: bool
+    ) -> None:
+        node_schema = self.db.schema.get(
             name=database_path.node_kind, branch=database_path.deepest_branch, duplicate=False
         )
         if "Attribute" in database_path.attribute_node.labels:
@@ -546,7 +607,9 @@ class DiffQueryParser:
         relationship_schema = self._get_relationship_schema(database_path=database_path, node_schema=node_schema)
         if not relationship_schema:
             return
-        diff_relationship = self._get_diff_relationship(diff_node=diff_node, relationship_schema=relationship_schema)
+        diff_relationship = self._get_diff_relationship(
+            diff_node=diff_node, relationship_schema=relationship_schema, is_base_branch=is_base_branch
+        )
         diff_relationship.add_path(
             database_path=database_path, diff_from_time=self.from_time, diff_to_time=self.to_time
         )
@@ -583,14 +646,20 @@ class DiffQueryParser:
         )
 
     def _get_diff_relationship(
-        self, diff_node: DiffNodeIntermediate, relationship_schema: RelationshipSchema
+        self, diff_node: DiffNodeIntermediate, relationship_schema: RelationshipSchema, is_base_branch: bool
     ) -> DiffRelationshipIntermediate:
         diff_relationship = diff_node.relationships_by_name.get(relationship_schema.name)
         if not diff_relationship:
+            is_managed = False
+            if is_base_branch and self.managed_relationship_checker.check(
+                node_kind=diff_node.kind, relationship_name=relationship_schema.name
+            ):
+                is_managed = True
             diff_relationship = DiffRelationshipIntermediate(
                 name=relationship_schema.name,
                 cardinality=relationship_schema.cardinality,
                 identifier=relationship_schema.get_identifier(),
+                is_managed=is_managed,
             )
             diff_node.relationships_by_name[relationship_schema.name] = diff_relationship
         return diff_relationship

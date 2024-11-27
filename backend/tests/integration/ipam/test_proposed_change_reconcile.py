@@ -3,36 +3,67 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from graphql import graphql
 
-from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.services.adapters.cache.redis import RedisCache
+from infrahub.graphql.initialization import prepare_graphql_params
 
 from .base import TestIpamReconcileBase
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from infrahub_sdk import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
 
 
+CREATE_IPPREFIX = """
+mutation CreatePrefix($prefix: String!, $namespace_id: String!) {
+    IpamIPPrefixCreate(
+        data: {
+            prefix: {
+                value: $prefix
+            }
+            ip_namespace: {
+                id: $namespace_id
+            }
+        }
+    ) {
+        ok
+        object {
+            id
+        }
+    }
+}
+"""
+
+DELETE_IPPREFIX = """
+mutation DeletePrefix($id: String!) {
+    IpamIPPrefixDelete(
+        data: {
+            id: $id
+        }
+    ) {
+        ok
+    }
+}
+"""
+
+
 class TestProposedChangeReconcile(TestIpamReconcileBase):
-    @pytest.fixture(scope="class", autouse=True)
-    def enable_broker_settings(self):
-        config.SETTINGS.broker.enable = True
+    # @pytest.fixture(scope="class", autouse=True)
+    # def enable_broker_settings(self):
+    #     config.SETTINGS.broker.enable = True
 
-    @pytest.fixture(scope="class", autouse=True)
-    def bus_simulator_cache(self, bus_simulator):
-        bus_simulator.service.cache = RedisCache()
+    # @pytest.fixture(scope="class", autouse=True)
+    # def bus_simulator_cache(self, bus_simulator):
+    #     bus_simulator.service.cache = RedisCache()
 
-    @pytest.fixture(scope="class", autouse=True)
-    def git_repos_dir(self, git_repos_source_dir_module_scope: Path): ...
+    # @pytest.fixture(scope="class", autouse=True)
+    # def git_repos_dir(self, git_repos_source_dir_module_scope: Path): ...
 
     @pytest.fixture(scope="class")
     async def branch_1(self, db: InfrahubDatabase):
@@ -71,7 +102,7 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
         assert len(parent_rels) == 1
         assert parent_rels[0].peer_id == initial_dataset["net140"].id
 
-    @pytest.mark.skip(reason="broken for now, will be fixed in #4922")
+    # @pytest.mark.skip(reason="broken for now, will be fixed in #4922")
     async def test_step02_add_delete_prefix(
         self,
         db: InfrahubDatabase,
@@ -85,10 +116,21 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
             data={"source_branch": branch_2.name, "destination_branch": "main", "name": "delete_prefix_pc"},
         )
         await proposed_change_create.save()
-        prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=branch_2)
-        new_prefix = await Node.init(schema=prefix_schema, db=db, branch=registry.default_branch)
-        await new_prefix.new(db=db, prefix="10.10.0.0/17", ip_namespace=initial_dataset["ns1"].id)
-        await new_prefix.save(db=db)
+
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=registry.default_branch)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_IPPREFIX,
+            context_value=gql_params.context,
+            variable_values={"prefix": "10.10.0.0/17", "namespace_id": initial_dataset["ns1"].id},
+        )
+        assert not result.errors
+        assert result.data
+        assert result.data["IpamIPPrefixCreate"]
+        assert result.data["IpamIPPrefixCreate"]["ok"]
+        assert result.data["IpamIPPrefixCreate"]["object"]["id"]
+        new_prefix_id = result.data["IpamIPPrefixCreate"]["object"]["id"]
+
         deleted_prefix_branch = await NodeManager.get_one(db=db, branch=branch_2, id=initial_dataset["net140"].id)
         assert deleted_prefix_branch
         await deleted_prefix_branch.delete(db=db)
@@ -98,7 +140,7 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
 
         deleted_prefix = await NodeManager.get_one(db=db, id=deleted_prefix_branch.id)
         assert deleted_prefix is None
-        new_prefix_branch = await NodeManager.get_one(db=db, id=new_prefix.id)
+        new_prefix_branch = await NodeManager.get_one(db=db, id=new_prefix_id)
         parent_rels = await new_prefix_branch.parent.get_relationships(db=db)  # type: ignore[union-attr]
         assert len(parent_rels) == 1
         assert parent_rels[0].peer_id == initial_dataset["net146"].id
@@ -112,3 +154,14 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
         address_rels = await new_prefix_branch.ip_addresses.get_relationships(db=db)  # type: ignore[union-attr]
         assert len(address_rels) == 2
         assert {ar.peer_id for ar in address_rels} == {new_address_1.id, initial_dataset["address10"].id}
+
+
+"""
+MATCH p1 = (av:AttributeValue)-[:HAS_VALUE]-(:Attribute {name: "prefix"})-[:HAS_ATTRIBUTE]-(n:BuiltinIPPrefix)
+WHERE av.value IN ["10.10.0.0/16", "10.10.0.0/17"]
+OPTIONAL MATCH p2 = (n)-[:IS_RELATED]-(r:Relationship)
+    -[:IS_RELATED]-(:BuiltinIPPrefix|BuiltinIPAddress)-[:HAS_ATTRIBUTE]-(a:Attribute)-[:HAS_VALUE]-(:AttributeValue)
+WHERE r.name in ["parent__child", "ip_prefix__ip_address"]
+AND a.name in ["prefix", "address"]
+RETURN p1, p2
+"""

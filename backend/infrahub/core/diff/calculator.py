@@ -9,8 +9,9 @@ from .model.path import CalculatedDiffs, NodeFieldSpecifier
 
 
 class DiffCalculator:
-    def __init__(self, db: InfrahubDatabase) -> None:
+    def __init__(self, db: InfrahubDatabase, diff_query_parser: DiffQueryParser) -> None:
         self.db = db
+        self.query_parser = diff_query_parser
 
     async def calculate_diff(
         self,
@@ -25,13 +26,19 @@ class DiffCalculator:
             diff_branch_from_time = from_time
         else:
             diff_branch_from_time = Timestamp(diff_branch.get_branched_from())
-        diff_parser = DiffQueryParser(
+        self.query_parser.initialize(
             base_branch=base_branch,
             diff_branch=diff_branch,
-            schema_manager=registry.schema,
             from_time=from_time,
             to_time=to_time,
         )
+        # diff_parser = DiffQueryParser(
+        #     base_branch=base_branch,
+        #     diff_branch=diff_branch,
+        #     schema_manager=registry.schema,
+        #     from_time=from_time,
+        #     to_time=to_time,
+        # )
         branch_diff_query = await DiffAllPathsQuery.init(
             db=self.db,
             branch=diff_branch,
@@ -42,10 +49,12 @@ class DiffCalculator:
         )
         await branch_diff_query.execute(db=self.db)
         for query_result in branch_diff_query.get_results():
-            diff_parser.read_result(query_result=query_result)
+            self.query_parser.read_result(query_result=query_result)
 
         if base_branch.name != diff_branch.name:
-            branch_node_specifiers = diff_parser.get_node_field_specifiers_for_branch(branch_name=diff_branch.name)
+            branch_node_specifiers = self.query_parser.get_node_field_specifiers_for_branch(
+                branch_name=diff_branch.name
+            )
             new_node_field_specifiers = branch_node_specifiers - (previous_node_specifiers or set())
             current_node_field_specifiers = (previous_node_specifiers or set()) - new_node_field_specifiers
             base_diff_query = await DiffAllPathsQuery.init(
@@ -62,11 +71,11 @@ class DiffCalculator:
             )
             await base_diff_query.execute(db=self.db)
             for query_result in base_diff_query.get_results():
-                diff_parser.read_result(query_result=query_result)
-        diff_parser.parse(include_unchanged=include_unchanged)
+                self.query_parser.read_result(query_result=query_result)
+        self.query_parser.parse(include_unchanged=include_unchanged)
         return CalculatedDiffs(
             base_branch_name=base_branch.name,
             diff_branch_name=diff_branch.name,
-            base_branch_diff=diff_parser.get_diff_root_for_branch(branch=base_branch.name),
-            diff_branch_diff=diff_parser.get_diff_root_for_branch(branch=diff_branch.name),
+            base_branch_diff=self.query_parser.get_diff_root_for_branch(branch=base_branch.name),
+            diff_branch_diff=self.query_parser.get_diff_root_for_branch(branch=diff_branch.name),
         )

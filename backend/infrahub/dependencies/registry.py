@@ -19,6 +19,7 @@ from .builder.diff.enricher.aggregated import DiffAggregatedEnricherDependency
 from .builder.diff.enricher.cardinality_one import DiffCardinalityOneEnricherDependency
 from .builder.diff.enricher.hierarchy import DiffHierarchyEnricherDependency
 from .builder.diff.ipam_diff_parser import IpamDiffParserDependency
+from .builder.diff.managed_relationship_checker import ManagedRelationshipCheckerDependency
 from .builder.diff.repository import DiffRepositoryDependency
 from .builder.ip.kinds_getter import IpamKindsGetterDependency
 from .builder.node.delete_validator import NodeDeleteValidatorDependency
@@ -41,6 +42,7 @@ def build_component_registry() -> ComponentDependencyRegistry:
     component_registry.track_dependency(NodeDeleteValidatorDependency)
     component_registry.track_dependency(IpamKindsGetterDependency)
     component_registry.track_dependency(IpamDiffParserDependency)
+    component_registry.track_dependency(ManagedRelationshipCheckerDependency)
     component_registry.track_dependency(DiffCardinalityOneEnricherDependency)
     component_registry.track_dependency(DiffHierarchyEnricherDependency)
     component_registry.track_dependency(DiffAggregatedEnricherDependency)
