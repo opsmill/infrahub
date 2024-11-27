@@ -207,6 +207,10 @@ async def merge_branch(branch: str) -> None:
                 workflow=IPAM_RECONCILIATION,
                 parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
             )
+        # -------------------------------------------------------------
+        # remove tracking ID from the diff because there is no diff after the merge
+        # -------------------------------------------------------------
+        await diff_repository.drop_tracking_ids(tracking_ids=[BranchTrackingId(name=obj.name)])
 
         # -------------------------------------------------------------
         # Generate an event to indicate that a branch has been merged
