@@ -53,7 +53,7 @@ jobs:
         with:
           submodules: true
       - name: Check for file changes
-        uses: dorny/paths-filter@v3
+        uses: opsmill/paths-filter@v3.0.2
         id: changes
         with:
           token: ${{ github.token }}
