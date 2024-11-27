@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
-version: '1.0'
+version: "1.0"
 generics:
   - name: Interface
     namespace: Infra
@@ -185,6 +185,14 @@ nodes:
       - name: description
         kind: Text
         optional: true
+      - name: computed_description
+        kind: Text
+        description: Combine various attributes to provide a human frendly description of this device.
+        computed_attribute:
+          kind: Jinja2
+          jinja2_template: "{{ type__value }} device used as {{ role__value }} on {{ site__name__value|lower }}"
+        read_only: true
+        optional: false
       - name: type
         kind: Text
       - name: status
@@ -519,6 +527,13 @@ nodes:
             label: Peering
             description: "Connect with other networks via an IX"
             color: "#85db9b"
+      - name: computed_description
+        kind: Text
+        computed_attribute:
+          kind: TransformPython
+          transform: computed_circuit_description
+        read_only: true
+        optional: true
     relationships:
       - name: provider
         label: "Provider (Organization)"
