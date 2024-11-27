@@ -175,7 +175,11 @@ async def process_jinja2(
 
     await add_tags(branches=[branch_name])
 
-    schema_branch = registry.schema.get_schema_branch(name=branch_name)
+    target_branch_schema = (
+        branch_name if branch_name in registry.get_altered_schema_branches() else registry.default_branch
+    )
+    schema_branch = registry.schema.get_schema_branch(name=target_branch_schema)
+    await service.client.schema.all(branch=branch_name, refresh=True)
 
     computed_macros = [
         attrib
@@ -189,7 +193,11 @@ async def process_jinja2(
         for id_filter in computed_macro.node_filters:
             filters = {id_filter: object_id}
             nodes = await service.client.filters(
-                kind=computed_macro.kind, prefetch_relationships=True, populate_store=True, **filters
+                kind=computed_macro.kind,
+                branch=branch_name,
+                prefetch_relationships=True,
+                populate_store=True,
+                **filters,
             )
             found.extend(nodes)
 
