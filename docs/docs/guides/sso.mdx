@@ -233,3 +233,5 @@ If you get the redirect URI incorrect this will typically be displayed as an err
 After signing in Infrahub will try to collect the groups that the user is member of. The current requirement around this is that the identity provider has to return this information as a list of strings within a "groups" field in the payload returned from the `USERINFO_URL`. This is not something that is supported using the Google provider today but should be configurable in other identity providers such as Keycloak.
 
 For any group that is returned by the IDP provider Infrahub will add the user to that group provided that the group in question exists within Infrahub. I.e. Infrahub will *not* create the groups.
+
+If the identity provider cannot provide a list of groups to assign users to, a default group to use can be configured by using the `INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP` environment variable. This setting's value must match the name of group that exists within Infrahub, as stated before, the group will not be automatically created.
