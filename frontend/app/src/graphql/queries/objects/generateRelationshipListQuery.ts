@@ -1,16 +1,21 @@
-import { RelationshipSchema } from "@/screens/schema/types";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 export const generateRelationshipListQuery = ({
-  relationshipSchema,
+  peer,
+  parent,
 }: {
-  relationshipSchema: RelationshipSchema;
-  search?: string;
+  peer: string;
+  parent?: { name?: string; value?: string };
 }): string => {
+  const args = parent?.value ? { [`${parent.name}__ids`]: [parent.value] } : {};
+
   const request = {
     query: {
       __name: "GetRelationshipList",
-      [relationshipSchema.peer]: {
+      [peer]: {
+        __args: {
+          ...args,
+        },
         edges: {
           node: {
             id: true,
