@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -301,12 +302,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         """
         initialize_repositories_directory()
 
-        if not self.location:
-            raise RepositoryError(
-                identifier=self.name,
-                message=f"Unable to initialize the repository {self.name} without a remote location.",
-            )
-
         # Check if the root, commits and branches directories are already present, create them if needed
         if os.path.isdir(self.directory_root):
             shutil.rmtree(self.directory_root)
@@ -321,8 +316,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         os.makedirs(self.directory_commits)
         os.makedirs(self.directory_temp)
 
+        repo = await self._clone_repo()
         try:
-            repo = Repo.clone_from(self.location, self.directory_default)
             repo.git.checkout(checkout_ref or self.default_branch)
         except GitCommandError as exc:
             self._raise_enriched_error(error=exc)
@@ -336,6 +331,25 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         await self.update_commit_value(branch_name=infrahub_branch_name or self.default_branch, commit=commit)
 
         return True
+
+    async def _clone_repo(self, suffix: str = "") -> Repo:
+        if not self.location:
+            raise RepositoryError(
+                identifier=self.name,
+                message=f"Unable to initialize the repository {self.name} without a remote location.",
+            )
+
+        try:
+            repo = Repo.clone_from(f"{self.location}{suffix}", self.directory_default)
+        except GitCommandError as exc:
+            http_without_dotgit = r"^(https?://)(?!.*\.git$).*"
+            if re.match(http_without_dotgit, self.location):
+                repo = await self._clone_repo(suffix=".git")
+                await self._update_location(location=f"{self.location}.git")
+            else:
+                self._raise_enriched_error(error=exc)
+
+        return repo
 
     def has_worktree(self, identifier: str) -> bool:
         """Return True if a worktree with a given identifier already exist."""
@@ -452,6 +466,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     @abstractmethod
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         raise NotImplementedError()
+
+    async def _update_location(self, location: str) -> None:
+        self.location = location
+        repo_kind = InfrahubKind.READONLYREPOSITORY if self.is_read_only else InfrahubKind.REPOSITORY
+        db_repo = await self.sdk.get(kind=repo_kind, id=str(self.id))
+        db_repo.location.value = self.location
+        await db_repo.save()
 
     async def update_commit_value(self, branch_name: str, commit: str) -> bool:
         """Compare the value of the commit in the graph with the current commit on the filesystem.
