@@ -36,6 +36,10 @@ def default_cors_allow_headers() -> list[str]:
     return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"]
 
 
+def default_append_git_suffix_domains() -> list[str]:
+    return ["github.com", "gitlab.com"]
+
+
 class UserInfoMethod(str, Enum):
     POST = "post"
     GET = "get"
@@ -336,6 +340,10 @@ class GitSettings(BaseSettings):
         ge=0,
         description="Time (in seconds) between git repositories synchronizations",
         deprecated="This setting is deprecated and not currently in use.",
+    )
+    append_git_suffix: list[str] = Field(
+        default_factory=default_append_git_suffix_domains,
+        description="Automatically append '.git' to HTTP URLs if for these domains.",
     )
 
 

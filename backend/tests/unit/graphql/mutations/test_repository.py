@@ -113,6 +113,14 @@ async def test_repository_update(db: InfrahubDatabase, register_core_models_sche
             {"name": "demo", "location": {"value": "http://github.com/opsmill/infrahub-demo-edge-develop.git"}},
         ),
         (
+            {"name": "demo", "location": {"value": "http://gitlab.com/opsmill/infrahub-demo-edge-develop"}},
+            {"name": "demo", "location": {"value": "http://gitlab.com/opsmill/infrahub-demo-edge-develop.git"}},
+        ),
+        (
+            {"name": "demo", "location": {"value": "http://example.com/opsmill/infrahub-demo-edge-develop"}},
+            {"name": "demo", "location": {"value": "http://example.com/opsmill/infrahub-demo-edge-develop"}},
+        ),
+        (
             {"name": "demo"},
             {"name": "demo"},
         ),
