@@ -1,7 +1,5 @@
 from typing import List
 
-from prefect import flow
-
 from infrahub.core.constants import InfrahubKind
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
@@ -10,7 +8,6 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
-@flow(name="event-node-mutated")
 async def mutated(
     message: messages.EventNodeMutated,
     service: InfrahubServices,
