@@ -236,6 +236,7 @@ PROCESS_COMPUTED_MACRO = WorkflowDefinition(
     type=WorkflowType.CORE,
     module="infrahub.computed_attribute.tasks",
     function="process_jinja2",
+    tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
 TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES = WorkflowDefinition(
@@ -271,6 +272,7 @@ UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM = WorkflowDefinition(
     type=WorkflowType.USER,
     module="infrahub.computed_attribute.tasks",
     function="process_transform",
+    tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
 QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS = WorkflowDefinition(
