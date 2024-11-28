@@ -186,7 +186,7 @@ class InfrahubGraphQLApp:
         if request.app.state.response_delay:
             self.logger.info(f"Adding response delay of {request.app.state.response_delay} seconds")
             # This is on purpose
-            time.sleep(request.app.state.response_delay)  # noqa: ASYNC251
+            time.sleep(request.app.state.response_delay)
 
         try:
             operations = await _get_operation_from_request(request)

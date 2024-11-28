@@ -78,20 +78,24 @@ class TestInfrahubApp(TestInfrahub):
 
     @pytest.fixture(scope="class")
     async def register_internal_schema(self, db: InfrahubDatabase, default_branch: Branch) -> SchemaBranch:
+        print(f"start of register_internal_schema: {id(default_branch)=} and {id(registry.branch["main"])=}")
         schema = SchemaRoot(**internal_schema)
         schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
         default_branch.update_schema_hash()
         await default_branch.save(db=db)
+        print(f"end of register_internal_schema: {id(default_branch)=} and {id(registry.branch["main"])=}")
         return schema_branch
 
     @pytest.fixture(scope="class")
     async def register_core_schema(
         self, db: InfrahubDatabase, default_branch: Branch, register_internal_schema: SchemaBranch
     ) -> SchemaBranch:
+        print(f"start of register_core_schema: {id(default_branch)=} and {id(registry.branch["main"])=}")
         schema = SchemaRoot(**core_models)
         schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
         default_branch.update_schema_hash()
         await default_branch.save(db=db)
+        print(f"end of register_core_schema: {id(default_branch)=} and {id(registry.branch["main"])=}")
         return schema_branch
 
     @pytest.fixture(scope="class")
@@ -135,6 +139,7 @@ class TestInfrahubApp(TestInfrahub):
     async def initialize_registry(
         self, db: InfrahubDatabase, register_core_schema: SchemaBranch, bus_simulator: BusSimulator, api_token: str
     ) -> None:
+        print(f"start of initialize_registry:{id(registry.branch["main"])=}")
         admin_account = await create_account(
             db=db, name="admin", password=config.SETTINGS.initial.admin_password, token_value=api_token
         )

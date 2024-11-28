@@ -7,13 +7,31 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.schema_branch import SchemaBranch
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
+    from infrahub_sdk import InfrahubClient
+
+    from infrahub.core.schema import SchemaRoot
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
 class TestIpamReconcileBase(TestInfrahubApp):
+    @pytest.fixture(scope="class")
+    async def register_ipam_schema(
+        self, initialize_registry, ipam_schema: SchemaRoot, client: InfrahubClient
+    ) -> SchemaBranch:
+        # We can't rely on default_branch here as default_branch and registry.get_branch_from_registry(registry.default_branch)
+        # actually are two distinct python objects. So updating default_branch would be useless as we later rely on the registry object.
+        # This is why this fixture depends on initialize_registry and client (finally calling initialize_registry too).
+        default_branch_name = registry.default_branch
+        schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=default_branch_name)
+        registry.get_branch_from_registry(default_branch_name).update_schema_hash()
+        return schema_branch
+
     @pytest.fixture(scope="class")
     async def initial_dataset(
         self,

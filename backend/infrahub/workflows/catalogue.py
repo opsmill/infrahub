@@ -102,18 +102,25 @@ REQUEST_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
-REQUEST_DIFF_UPDATE = WorkflowDefinition(
+DIFF_UPDATE = WorkflowDefinition(
     name="diff-update",
     type=WorkflowType.CORE,
     module="infrahub.core.diff.tasks",
     function="update_diff",
 )
 
-REQUEST_DIFF_REFRESH = WorkflowDefinition(
+DIFF_REFRESH = WorkflowDefinition(
     name="diff-refresh",
     type=WorkflowType.CORE,
     module="infrahub.core.diff.tasks",
     function="refresh_diff",
+)
+
+DIFF_REFRESH_ALL = WorkflowDefinition(
+    name="diff-refresh-all",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.core.diff.tasks",
+    function="refresh_diff_all",
 )
 
 GIT_REPOSITORIES_SYNC = WorkflowDefinition(
@@ -399,8 +406,6 @@ workflows = [
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_ARTIFACT_GENERATE,
-    REQUEST_DIFF_REFRESH,
-    REQUEST_DIFF_UPDATE,
     REQUEST_GENERATOR_DEFINITION_RUN,
     REQUEST_GENERATOR_RUN,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
