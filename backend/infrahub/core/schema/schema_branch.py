@@ -224,8 +224,22 @@ class SchemaBranch:
         #     else:
         #         del self.generics[item_kind]
 
-    def validate_update(self, other: SchemaBranch, enforce_update_support: bool = True) -> SchemaUpdateValidationResult:
-        diff = self.diff(other=other)
+    def validate_node_deletions(self, diff: SchemaDiff) -> None:
+        """Given a diff, check if a delete node is still used in relationships of other nodes."""
+        for schema_name in diff.removed:
+            for name in self.all_names:
+                node = self.get(name=name, duplicate=False)
+
+                for relationship in node.relationships:
+                    if relationship.peer == schema_name:
+                        raise ValueError(
+                            f"'{schema_name}' has been removed but is still referenced in '{name}.{relationship.name}'; keep it or delete the "
+                            "relationship"
+                        )
+
+    def validate_update(
+        self, other: SchemaBranch, diff: SchemaDiff, enforce_update_support: bool = True
+    ) -> SchemaUpdateValidationResult:
         result = SchemaUpdateValidationResult.init(
             diff=diff, schema=other, enforce_update_support=enforce_update_support
         )
