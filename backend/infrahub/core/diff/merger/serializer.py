@@ -181,6 +181,8 @@ class DiffMergeSerializer:
                 serialized_property_diffs.append(attribute_property_diff)
             relationship_diffs: list[RelationshipMergeDict] = []
             for rel_diff in node.relationships:
+                if rel_diff.is_managed:
+                    continue
                 relationship_identifier = self._get_relationship_identifier(
                     schema_kind=node.kind, relationship_name=rel_diff.name
                 )

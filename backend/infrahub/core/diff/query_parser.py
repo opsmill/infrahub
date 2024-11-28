@@ -389,6 +389,7 @@ class DiffRelationshipIntermediate:
             action=action,
             relationships=single_relationships,
             cardinality=self.cardinality,
+            is_managed=self.is_managed,
         )
 
 

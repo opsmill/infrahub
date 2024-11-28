@@ -238,6 +238,7 @@ class EnrichedDiffDeserializer:
             cardinality=RelationshipCardinality(relationship_group_node.get("cardinality")),
             changed_at=Timestamp(timestamp_str) if timestamp_str else None,
             action=DiffAction(str(relationship_group_node.get("action"))),
+            is_managed=str(relationship_group_node.get("is_managed")).lower() == "true",
             path_identifier=str(relationship_group_node.get("path_identifier")),
             num_added=int(relationship_group_node.get("num_added")),
             num_conflicts=int(relationship_group_node.get("num_conflicts")),

@@ -32,13 +32,6 @@ class DiffCalculator:
             from_time=from_time,
             to_time=to_time,
         )
-        # diff_parser = DiffQueryParser(
-        #     base_branch=base_branch,
-        #     diff_branch=diff_branch,
-        #     schema_manager=registry.schema,
-        #     from_time=from_time,
-        #     to_time=to_time,
-        # )
         branch_diff_query = await DiffAllPathsQuery.init(
             db=self.db,
             branch=diff_branch,

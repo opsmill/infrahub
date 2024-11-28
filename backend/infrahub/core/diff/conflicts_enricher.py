@@ -3,6 +3,7 @@ from uuid import uuid4
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 
+from .managed_relationship_checker import ManagedRelationshipChecker
 from .model.path import (
     EnrichedDiffAttribute,
     EnrichedDiffConflict,
@@ -15,7 +16,8 @@ from .model.path import (
 
 
 class ConflictsEnricher:
-    def __init__(self) -> None:
+    def __init__(self, managed_relationship_checker: ManagedRelationshipChecker) -> None:
+        self.managed_relationship_checker = managed_relationship_checker
         self._base_branch_name: str | None = None
         self._diff_branch_name: str | None = None
 
@@ -36,6 +38,7 @@ class ConflictsEnricher:
     ) -> None:
         self._base_branch_name = branch_diff_root.base_branch_name
         self._diff_branch_name = branch_diff_root.diff_branch_name
+        self.managed_relationship_checker.reset()
 
         base_node_map = {n.uuid: n for n in base_diff_root.nodes}
         branch_node_map = {n.uuid: n for n in branch_diff_root.nodes}
@@ -79,6 +82,7 @@ class ConflictsEnricher:
                 self._add_relationship_conflicts(
                     base_relationship=base_relationship,
                     branch_relationship=branch_relationship,
+                    node_kind=branch_node.kind,
                 )
             else:
                 branch_relationship.clear_conflicts()
@@ -133,10 +137,11 @@ class ConflictsEnricher:
             )
 
     def _add_relationship_conflicts(
-        self,
-        base_relationship: EnrichedDiffRelationship,
-        branch_relationship: EnrichedDiffRelationship,
+        self, base_relationship: EnrichedDiffRelationship, branch_relationship: EnrichedDiffRelationship, node_kind: str
     ) -> None:
+        is_managed = self.managed_relationship_checker.check(
+            node_kind=node_kind, relationship_name=branch_relationship.name
+        )
         is_cardinality_one = branch_relationship.cardinality is RelationshipCardinality.ONE
         if is_cardinality_one:
             if not base_relationship.relationships or not branch_relationship.relationships:
@@ -148,6 +153,7 @@ class ConflictsEnricher:
                 base_element=base_element,
                 branch_element=branch_element,
                 is_cardinality_one=is_cardinality_one,
+                is_managed=is_managed,
             )
             return
         base_peer_id_map = {element.peer_id: element for element in base_relationship.relationships}
@@ -162,6 +168,7 @@ class ConflictsEnricher:
                 base_element=base_element,
                 branch_element=branch_element,
                 is_cardinality_one=is_cardinality_one,
+                is_managed=is_managed,
             )
 
     def _add_relationship_conflicts_for_one_peer(
@@ -169,6 +176,7 @@ class ConflictsEnricher:
         base_element: EnrichedDiffSingleRelationship,
         branch_element: EnrichedDiffSingleRelationship,
         is_cardinality_one: bool,
+        is_managed: bool,
     ) -> None:
         base_properties_by_type = {p.property_type: p for p in base_element.properties}
         branch_properties_by_type = {p.property_type: p for p in branch_element.properties}
@@ -180,9 +188,10 @@ class ConflictsEnricher:
             base_property = base_properties_by_type[branch_property.property_type]
             includes_unchanged = DiffAction.UNCHANGED in {branch_property.action, base_property.action}
             same_value = self._have_same_value(base_property=base_property, branch_property=branch_property)
+            conflicts_ignored = branch_property.property_type is DatabaseEdgeType.IS_RELATED and is_managed
             # special handling for cardinality-one peer ID conflict
             if branch_property.property_type is DatabaseEdgeType.IS_RELATED and is_cardinality_one:
-                if same_value or includes_unchanged:
+                if same_value or includes_unchanged or conflicts_ignored:
                     branch_element.conflict = None
                     branch_property.conflict = None
                     continue
@@ -204,7 +213,7 @@ class ConflictsEnricher:
                 )
                 branch_element.conflict = conflict
                 continue
-            if same_value or includes_unchanged:
+            if same_value or includes_unchanged or conflicts_ignored:
                 branch_property.conflict = None
                 continue
             if branch_property.conflict:

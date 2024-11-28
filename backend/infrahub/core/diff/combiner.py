@@ -323,6 +323,7 @@ class DiffCombiner:
                     cardinality=later_relationship.cardinality,
                     changed_at=later_relationship.changed_at or earlier_relationship.changed_at,
                     action=combined_action,
+                    is_managed=later_relationship.is_managed,
                     path_identifier=later_relationship.path_identifier,
                     relationships=combined_relationship_elements,
                     nodes=set(),

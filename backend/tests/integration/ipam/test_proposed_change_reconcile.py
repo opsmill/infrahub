@@ -54,17 +54,6 @@ mutation DeletePrefix($id: String!) {
 
 
 class TestProposedChangeReconcile(TestIpamReconcileBase):
-    # @pytest.fixture(scope="class", autouse=True)
-    # def enable_broker_settings(self):
-    #     config.SETTINGS.broker.enable = True
-
-    # @pytest.fixture(scope="class", autouse=True)
-    # def bus_simulator_cache(self, bus_simulator):
-    #     bus_simulator.service.cache = RedisCache()
-
-    # @pytest.fixture(scope="class", autouse=True)
-    # def git_repos_dir(self, git_repos_source_dir_module_scope: Path): ...
-
     @pytest.fixture(scope="class")
     async def branch_1(self, db: InfrahubDatabase):
         return await create_branch(db=db, branch_name="new_address")
@@ -102,7 +91,6 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
         assert len(parent_rels) == 1
         assert parent_rels[0].peer_id == initial_dataset["net140"].id
 
-    # @pytest.mark.skip(reason="broken for now, will be fixed in #4922")
     async def test_step02_add_delete_prefix(
         self,
         db: InfrahubDatabase,

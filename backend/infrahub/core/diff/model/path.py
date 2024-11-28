@@ -243,6 +243,7 @@ class EnrichedDiffRelationship(BaseSummary):
     path_identifier: str = field(default="", kw_only=True)
     changed_at: Timestamp | None = field(default=None, kw_only=True)
     action: DiffAction
+    is_managed: bool = field(default=False)
     relationships: set[EnrichedDiffSingleRelationship] = field(default_factory=set)
     nodes: set[EnrichedDiffNode] = field(default_factory=set)
 
@@ -273,6 +274,7 @@ class EnrichedDiffRelationship(BaseSummary):
             cardinality=calculated_relationship.cardinality,
             changed_at=calculated_relationship.changed_at,
             action=calculated_relationship.action,
+            is_managed=calculated_relationship.is_managed,
             relationships={
                 EnrichedDiffSingleRelationship.from_calculated_element(calculated_element=element)
                 for element in calculated_relationship.relationships
@@ -564,6 +566,7 @@ class DiffRelationship:
     cardinality: RelationshipCardinality
     changed_at: Timestamp
     action: DiffAction
+    is_managed: bool
     relationships: list[DiffSingleRelationship] = field(default_factory=list)
 
 

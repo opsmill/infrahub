@@ -267,6 +267,7 @@ CALL {
                 if enriched_relationship.changed_at
                 else None,
                 "action": enriched_relationship.action,
+                "is_managed": enriched_relationship.is_managed,
                 "path_identifier": enriched_relationship.path_identifier,
                 "num_added": enriched_relationship.num_added,
                 "num_updated": enriched_relationship.num_updated,
