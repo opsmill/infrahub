@@ -29,7 +29,7 @@ def set_log_data(key: str, value: Any) -> None:
     structlog.contextvars.bind_contextvars(**{key: value})
 
 
-def configure_logging(production: bool = True, log_level: str = "INFO") -> None:
+def configure_logging(production: bool, log_level: str) -> None:
     # Importing prefect.main here triggers prefect.logging.configuration.setup_logging()
     # to be executed, this function wipes out the previous logging configuration and
     # starts from a clean slate. After this has been imported once we can reinject
