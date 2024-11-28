@@ -225,7 +225,7 @@ class SchemaBranch:
         #         del self.generics[item_kind]
 
     def validate_node_deletions(self, diff: SchemaDiff) -> None:
-        """Given a diff, check if a delete node is still used in relationships of other nodes."""
+        """Given a diff, check if a deleted node is still used in relationships of other nodes."""
         for schema_name in diff.removed:
             for name in self.all_names:
                 node = self.get(name=name, duplicate=False)
