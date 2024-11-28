@@ -565,7 +565,8 @@ class SecuritySettings(BaseSettings):
     _oauth2_settings: dict[str, SecurityOAuth2Settings] = PrivateAttr(default_factory=dict)
     _oidc_settings: dict[str, SecurityOIDCSettings] = PrivateAttr(default_factory=dict)
     sso_user_default_group: str | None = Field(
-        default=None, description="Name of the group to which users authenticated via SSO will belong to"
+        default=None,
+        description="Name of the group to which users authenticated via SSO will belong if not provided by identity provider",
     )
 
     @model_validator(mode="after")
