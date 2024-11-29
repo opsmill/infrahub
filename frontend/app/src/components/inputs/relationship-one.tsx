@@ -81,45 +81,50 @@ export const RelationshipInput = React.forwardRef<
             className
           )}
         >
-          <div className="flex-grow flex flex-wrap items-center justify-between gap-2">
-            {value && (
-              <>
-                {value?.display_label}
-
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onChange(null);
-                    setOpen(false);
-                  }}
-                  className="text-gray-500 hover:text-gray-800 h-4 w-4"
-                  aria-label="Remove"
-                >
-                  &times;
-                </Button>
-              </>
-            )}
+          <div
+            className="flex flex-grow w-full items-center justify-between gap-2 truncate mr-1"
+            data-testid="select-value"
+          >
+            {value?.display_label}
           </div>
+
+          {value && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(null);
+                setOpen(false);
+              }}
+              className="text-gray-500 hover:text-gray-800 h-4 w-4"
+              aria-label="Remove"
+              data-testid="select-remove-value"
+            >
+              &times;
+            </Button>
+          )}
 
           {loading && <Spinner className="ml-auto" />}
 
-          <Tooltip content="Open relationships options" enabled>
-            <PopoverTrigger ref={ref} asChild {...props}>
-              <button
-                id={id}
-                type="button"
-                className="text-gray-600 outline-none w-3.5 h-3.5"
-                onClick={() => {
-                  setHasPoolsBeenOpened(false);
-                  setHasBeenOpened(true);
-                }}
-              >
-                <Icon icon="mdi:unfold-more-horizontal" />
-              </button>
-            </PopoverTrigger>
-          </Tooltip>
+          {!loading && (
+            <Tooltip content="Open relationships options" enabled>
+              <PopoverTrigger ref={ref} asChild {...props}>
+                <button
+                  id={id}
+                  type="button"
+                  className="text-gray-600 outline-none w-3.5 h-3.5"
+                  onClick={() => {
+                    setHasPoolsBeenOpened(false);
+                    setHasBeenOpened(true);
+                  }}
+                  data-testid="select-open-option-button"
+                >
+                  <Icon icon="mdi:unfold-more-horizontal" />
+                </button>
+              </PopoverTrigger>
+            </Tooltip>
+          )}
         </div>
 
         {canRequestPools && (
@@ -144,7 +149,6 @@ export const RelationshipInput = React.forwardRef<
           </Tooltip>
         )}
       </PopoverTrigger>
-
       <ComboboxContent onOpenAutoFocus={handleFocus}>
         <ComboboxList>
           {loading ? (
