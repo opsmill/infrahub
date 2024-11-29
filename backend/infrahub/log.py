@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 from pydantic import TypeAdapter
+from structlog.dev import plain_traceback
 
 if TYPE_CHECKING:
     from structlog.types import Processor
@@ -57,7 +58,7 @@ def configure_logging(production: bool, log_level: str) -> None:
     if production:
         log_renderer = structlog.processors.JSONRenderer()
     else:
-        log_renderer = structlog.dev.ConsoleRenderer()
+        log_renderer = structlog.dev.ConsoleRenderer(exception_formatter=plain_traceback)
 
     formatter = structlog.stdlib.ProcessorFormatter(
         foreign_pre_chain=shared_processors,
