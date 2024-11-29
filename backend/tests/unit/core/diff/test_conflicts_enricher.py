@@ -1,4 +1,5 @@
 import random
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -7,6 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.conflicts_enricher import ConflictsEnricher
+from infrahub.core.diff.managed_relationship_checker import ManagedRelationshipChecker
 from infrahub.core.diff.model.path import EnrichedDiffConflict
 from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
@@ -31,7 +33,9 @@ class TestConflictsEnricher:
         self.to_time = Timestamp()
 
     async def __call_system_under_test(self, db: InfrahubDatabase, base_enriched_diff, branch_enriched_diff) -> None:
-        conflicts_enricher = ConflictsEnricher()
+        mock_rel_checker = AsyncMock(spec=ManagedRelationshipChecker)
+        mock_rel_checker.check.return_value = False
+        conflicts_enricher = ConflictsEnricher(managed_relationship_checker=mock_rel_checker)
         return await conflicts_enricher.add_conflicts_to_branch_diff(
             base_diff_root=base_enriched_diff, branch_diff_root=branch_enriched_diff
         )
