@@ -508,7 +508,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                     message=f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}",
                 ) from exc
 
-        response = await self.sdk.schema.load(schemas=[item.content for item in schemas_data], branch=branch_name)
+        response = await self.sdk.schema.load(
+            schemas=[item.content for item in schemas_data], branch=branch_name, wait_until_converged=True
+        )
 
         if response.errors:
             error_messages = []

@@ -20,7 +20,12 @@ def test_message_command_overlap():
     assert messages == commands
 
 
-operations_without_flows = ["event.node.mutated", "refresh.registry.branches", "refresh.registry.rebased_branch"]
+operations_without_flows = [
+    "event.node.mutated",
+    "refresh.registry.branches",
+    "refresh.registry.rebased_branch",
+    "trigger.webhook.actions",
+]
 
 
 @pytest.mark.parametrize(
