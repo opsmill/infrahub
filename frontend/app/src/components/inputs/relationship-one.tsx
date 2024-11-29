@@ -11,15 +11,18 @@ import {
 import { PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { inputStyle } from "@/components/ui/style";
+import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
 import { generateRelationshipListQuery } from "@/graphql/queries/objects/generateRelationshipListQuery";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
+import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
 import { classNames } from "@/utils/common";
 import { Node, RelationshipManyType } from "@/utils/getObjectItemDisplayValue";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React, { useState } from "react";
+import { Tooltip } from "../ui/tooltip";
 
 export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value" | "onChange"> {
   className?: string;
@@ -34,15 +37,42 @@ export const RelationshipInput = React.forwardRef<
   React.ElementRef<typeof PopoverTrigger>,
   RelationshipInputProps
 >(({ id, className, value, onChange, options, peer, parent, ...props }, ref) => {
+  const { schema } = useSchema(peer);
   const [open, setOpen] = React.useState(false);
+  const [hasPoolsBeenOpened, setHasPoolsBeenOpened] = useState(false);
+  const [hasBeenOpened, setHasBeenOpened] = useState(false);
 
-  const [loadComboboxList, { loading, data }] = useLazyQuery(
+  // Check if any kind from inheritance is one of the available for pools
+  const canRequestPools = !!schema?.inherit_from
+    ?.map((from) => POOLS_PEER.includes(from))
+    ?.filter(Boolean)?.length;
+  const poolPeer = canRequestPools && POOLS_DICTIONNARY[peer];
+  const poolsQueryString = poolPeer ? getDropdownOptions({ kind: poolPeer }) : "query { ok }";
+  const poolsQuery = gql`
+    ${poolsQueryString}
+  `;
+
+  const [fetchOptions, { loading: optionsLoading, data }] = useLazyQuery(
     gql(generateRelationshipListQuery({ peer, parent }))
   );
 
+  const [fetchPoolsOptions, { loading: poolsLoading, data: poolsData }] = useLazyQuery(poolsQuery);
+
+  const loading = optionsLoading || poolsLoading;
+
+  const handleFocus = () => {
+    if (hasBeenOpened) {
+      fetchOptions();
+    }
+
+    if (hasPoolsBeenOpened) {
+      fetchPoolsOptions();
+    }
+  };
+
   return (
     <Combobox open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+      <PopoverTrigger className="flex items-center space-x-2">
         <div
           className={classNames(
             inputStyle,
@@ -75,15 +105,47 @@ export const RelationshipInput = React.forwardRef<
 
           {loading && <Spinner className="ml-auto" />}
 
-          <PopoverTrigger ref={ref} asChild {...props}>
-            <button id={id} type="button" className="text-gray-600 outline-none w-3.5 h-3.5">
-              <Icon icon="mdi:unfold-more-horizontal" />
-            </button>
-          </PopoverTrigger>
+          <Tooltip content="Open relationships options" enabled>
+            <PopoverTrigger ref={ref} asChild {...props}>
+              <button
+                id={id}
+                type="button"
+                className="text-gray-600 outline-none w-3.5 h-3.5"
+                onClick={() => {
+                  setHasPoolsBeenOpened(false);
+                  setHasBeenOpened(true);
+                }}
+              >
+                <Icon icon="mdi:unfold-more-horizontal" />
+              </button>
+            </PopoverTrigger>
+          </Tooltip>
         </div>
+
+        {canRequestPools && (
+          <Tooltip content="Open pools options" enabled>
+            <PopoverTrigger ref={ref} asChild {...props}>
+              <Button
+                variant={"ghost"}
+                className={classNames(
+                  "flex items-center h-10 rounded-md p-2 ring-1 ring-inset ring-gray-300",
+                  "focus:outline-none disabled:cursor-not-allowed"
+                )}
+                data-testid="select-open-pool-option-button"
+                type="button"
+                onClick={() => {
+                  setHasPoolsBeenOpened(true);
+                  setHasBeenOpened(false);
+                }}
+              >
+                <Icon icon={"mdi:list-box"} className="text-gray-500" />
+              </Button>
+            </PopoverTrigger>
+          </Tooltip>
+        )}
       </PopoverTrigger>
 
-      <ComboboxContent onOpenAutoFocus={() => !options && loadComboboxList()}>
+      <ComboboxContent onOpenAutoFocus={handleFocus}>
         <ComboboxList>
           {loading ? (
             <Spinner className="flex justify-center m-2" />
@@ -92,8 +154,28 @@ export const RelationshipInput = React.forwardRef<
           )}
 
           {!loading &&
+            hasBeenOpened &&
             data &&
             (data[peer] as RelationshipManyType).edges
+              .map((edge) => edge.node)
+              .filter((node): node is Node => !!node && value?.id !== node.id)
+              .map((relationship) => (
+                <ComboboxItem
+                  key={relationship.id}
+                  value={relationship.id}
+                  onSelect={() => {
+                    onChange(relationship);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="truncate">{relationship.display_label}</span>
+                </ComboboxItem>
+              ))}
+
+          {!loading &&
+            hasPoolsBeenOpened &&
+            poolsData &&
+            (poolsData[poolPeer] as RelationshipManyType).edges
               .map((edge) => edge.node)
               .filter((node): node is Node => !!node && value?.id !== node.id)
               .map((relationship) => (
