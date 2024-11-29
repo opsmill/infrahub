@@ -21,10 +21,7 @@ from .models.validate_migration import SchemaValidateMigrationData, SchemaValida
 @flow(name="schema_validate_migrations", flow_run_name="Validate schema migrations")
 async def schema_validate_migrations(message: SchemaValidateMigrationData) -> list[SchemaValidatorPathResponseData]:
     batch = InfrahubBatch(return_exceptions=True)
-    violations: list[SchemaValidatorPathResponseData] = []
-
     log = get_run_logger()
-
     await add_branch_tag(branch_name=message.branch.name)
 
     if not message.constraints:
@@ -41,11 +38,8 @@ async def schema_validate_migrations(message: SchemaValidateMigrationData) -> li
             schema_path=constraint.path,
         )
 
-    async for _, result in batch.execute():
-        for violation in result.violations:
-            violations.append(violation)
-
-    return violations
+    results = [result async for _, result in batch.execute()]
+    return results
 
 
 @task(

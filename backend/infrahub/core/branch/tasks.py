@@ -82,8 +82,8 @@ async def rebase_branch(branch: str) -> None:
             message=SchemaValidateMigrationData(branch=obj, schema_branch=candidate_schema, constraints=constraints)
         )
 
-        if responses:
-            error_messages = [violation.message for response in responses for violation in response.violations]
+        error_messages = [violation.message for response in responses for violation in response.violations]
+        if error_messages:
             raise ValidationError(",\n".join(error_messages))
 
     schema_in_main_before = merger.destination_schema.duplicate()

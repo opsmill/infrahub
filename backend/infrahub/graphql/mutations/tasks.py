@@ -60,8 +60,8 @@ async def merge_branch_mutation(branch: str) -> None:
         responses = await schema_validate_migrations(
             message=SchemaValidateMigrationData(branch=obj, schema_branch=candidate_schema, constraints=constraints)
         )
-        if responses:
-            error_messages = [violation.message for response in responses for violation in response.violations]
+        error_messages = [violation.message for response in responses for violation in response.violations]
+        if error_messages:
             raise ValidationError(",\n".join(error_messages))
 
     await service.workflow.execute_workflow(workflow=BRANCH_MERGE, parameters={"branch": obj.name})
