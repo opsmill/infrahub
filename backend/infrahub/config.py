@@ -36,6 +36,10 @@ def default_cors_allow_headers() -> list[str]:
     return ["accept", "authorization", "content-type", "user-agent", "x-csrftoken", "x-requested-with"]
 
 
+def default_append_git_suffix_domains() -> list[str]:
+    return ["github.com", "gitlab.com"]
+
+
 class UserInfoMethod(str, Enum):
     POST = "post"
     GET = "get"
@@ -337,6 +341,10 @@ class GitSettings(BaseSettings):
         description="Time (in seconds) between git repositories synchronizations",
         deprecated="This setting is deprecated and not currently in use.",
     )
+    append_git_suffix: list[str] = Field(
+        default_factory=default_append_git_suffix_domains,
+        description="Automatically append '.git' to HTTP URLs if for these domains.",
+    )
 
 
 class HTTPSettings(BaseSettings):
@@ -564,6 +572,10 @@ class SecuritySettings(BaseSettings):
     oidc_provider_settings: SecurityOIDCProviderSettings = Field(default_factory=SecurityOIDCProviderSettings)
     _oauth2_settings: dict[str, SecurityOAuth2Settings] = PrivateAttr(default_factory=dict)
     _oidc_settings: dict[str, SecurityOIDCSettings] = PrivateAttr(default_factory=dict)
+    sso_user_default_group: str | None = Field(
+        default=None,
+        description="Name of the group to which users authenticated via SSO will belong if not provided by identity provider",
+    )
 
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
