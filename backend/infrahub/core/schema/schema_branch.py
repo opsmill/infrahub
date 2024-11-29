@@ -1485,7 +1485,11 @@ class SchemaBranch:
         profile_schema_kinds = set()
         for node_name in self.node_names + self.generic_names:
             node = self.get(name=node_name, duplicate=False)
-            if node.namespace in RESTRICTED_NAMESPACES or not node.generate_profile:
+            if (
+                node.namespace in RESTRICTED_NAMESPACES
+                or not node.generate_profile
+                or node.state == HashableModelState.ABSENT
+            ):
                 try:
                     self.delete(name=self._get_profile_kind(node_kind=node.kind))
                 except SchemaNotFoundError:
