@@ -312,7 +312,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         artifact_defs_in_graph = {
             artdef.name.value: artdef
-            for artdef in await self.sdk.filters(kind=CoreArtifactDefinition, branch=branch_name)
+            for artdef in await self.sdk.filters(
+                kind=CoreArtifactDefinition, branch=branch_name, prefetch_relationships=True, populate_store=True
+            )
         }
 
         local_artifact_defs: dict[str, InfrahubRepositoryArtifactDefinitionConfig] = {}
@@ -380,6 +382,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             existing_artifact_definition.artifact_name.value != local_artifact_definition.artifact_name
             or existing_artifact_definition.parameters.value != local_artifact_definition.parameters
             or existing_artifact_definition.content_type.value != local_artifact_definition.content_type
+            or existing_artifact_definition.targets.peer.name.value != local_artifact_definition.targets
         ):
             return False
 
@@ -398,6 +401,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         if existing_artifact_definition.content_type.value != local_artifact_definition.content_type:
             existing_artifact_definition.content_type.value = local_artifact_definition.content_type
+
+        if existing_artifact_definition.targets.peer.name.value != local_artifact_definition.targets:
+            existing_artifact_definition.targets = local_artifact_definition.targets
 
         await existing_artifact_definition.save()
 
