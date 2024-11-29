@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, Mock, call, patch
 from uuid import uuid4
 
 import pytest
@@ -113,9 +113,8 @@ async def test_merged(default_branch: Branch, init_service: InfrahubServices, pr
         mock_submit_workflow.assert_has_calls(expected_calls)
         assert mock_submit_workflow.call_count == len(expected_calls)
 
-    mock_component_registry.get_component.assert_awaited_once_with(
-        DiffRepository, db=service.database, branch=default_branch
-    )
+    # Use `db=ANY` as a new InfrahubDatabase object is created as we use a new session
+    mock_component_registry.get_component.assert_awaited_once_with(DiffRepository, db=ANY, branch=default_branch)
     diff_repo.get_empty_roots.assert_awaited_once_with(base_branch_names=[target_branch_name])
 
     assert len(service.message_bus.messages) == 2
@@ -170,7 +169,8 @@ async def test_rebased(default_branch: Branch, prefect_test_fixture):
         mock_submit_workflow.assert_has_calls(expected_calls)
         assert mock_submit_workflow.call_count == len(expected_calls)
 
-    mock_component_registry.get_component.assert_awaited_once_with(DiffRepository, db=database, branch=default_branch)
+    # Use `db=ANY` as a new InfrahubDatabase object is created as we use a new session
+    mock_component_registry.get_component.assert_awaited_once_with(DiffRepository, db=ANY, branch=default_branch)
     diff_repo.get_empty_roots.assert_awaited_once_with(diff_branch_names=[branch_name])
     assert len(recorder.messages) == 1
     assert isinstance(recorder.messages[0], messages.RefreshRegistryRebasedBranch)
