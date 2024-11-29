@@ -2881,3 +2881,55 @@ async def test_diff_relationship_property_update_on_main(
     diff_rel = node_diff.relationships.pop()
     assert diff_rel.name == "owner"
     assert diff_rel.action is DiffAction.ADDED
+
+
+async def test_managed_relationship_identified(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp()
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await car_branch.owner.update(db=db, data=person_alfred_main)
+    await car_branch.save(db=db)
+
+    component_registry = get_component_registry()
+    diff_calculator = await component_registry.get_component(DiffCalculator, db=db, branch=branch)
+
+    class MockManagedRelChecker:
+        def reset(self): ...
+        def check(self, node_kind: str, relationship_name: str) -> bool:
+            return node_kind == "TestCar" and relationship_name == "owner"
+
+    diff_calculator.query_parser.managed_relationship_checker = MockManagedRelChecker()
+
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+    )
+
+    base_branch_diff = calculated_diffs.base_branch_diff
+    assert len(base_branch_diff.nodes) == 0
+    diff_branch_diff = calculated_diffs.diff_branch_diff
+    nodes_by_id = {n.uuid: n for n in diff_branch_diff.nodes}
+    assert set(nodes_by_id.keys()) == {car_accord_main.id, person_john_main.id, person_alfred_main.id}
+
+    car_diff = nodes_by_id[car_accord_main.id]
+    assert len(car_diff.relationships) == 1
+    owner_rel_diff = car_diff.relationships.pop()
+    assert owner_rel_diff.is_managed is True
+
+    john_diff = nodes_by_id[person_john_main.id]
+    assert len(john_diff.relationships) == 1
+    cars_rel_diff = john_diff.relationships.pop()
+    assert cars_rel_diff.is_managed is False
+
+    alfred_diff = nodes_by_id[person_alfred_main.id]
+    assert len(alfred_diff.relationships) == 1
+    cars_rel_diff = alfred_diff.relationships.pop()
+    assert cars_rel_diff.is_managed is False

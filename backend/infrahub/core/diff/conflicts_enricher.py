@@ -3,7 +3,6 @@ from uuid import uuid4
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 
-from .managed_relationship_checker import ManagedRelationshipChecker
 from .model.path import (
     EnrichedDiffAttribute,
     EnrichedDiffConflict,
@@ -16,8 +15,7 @@ from .model.path import (
 
 
 class ConflictsEnricher:
-    def __init__(self, managed_relationship_checker: ManagedRelationshipChecker) -> None:
-        self.managed_relationship_checker = managed_relationship_checker
+    def __init__(self) -> None:
         self._base_branch_name: str | None = None
         self._diff_branch_name: str | None = None
 
@@ -38,7 +36,6 @@ class ConflictsEnricher:
     ) -> None:
         self._base_branch_name = branch_diff_root.base_branch_name
         self._diff_branch_name = branch_diff_root.diff_branch_name
-        self.managed_relationship_checker.reset()
 
         base_node_map = {n.uuid: n for n in base_diff_root.nodes}
         branch_node_map = {n.uuid: n for n in branch_diff_root.nodes}
@@ -82,7 +79,6 @@ class ConflictsEnricher:
                 self._add_relationship_conflicts(
                     base_relationship=base_relationship,
                     branch_relationship=branch_relationship,
-                    node_kind=branch_node.kind,
                 )
             else:
                 branch_relationship.clear_conflicts()
@@ -137,11 +133,8 @@ class ConflictsEnricher:
             )
 
     def _add_relationship_conflicts(
-        self, base_relationship: EnrichedDiffRelationship, branch_relationship: EnrichedDiffRelationship, node_kind: str
+        self, base_relationship: EnrichedDiffRelationship, branch_relationship: EnrichedDiffRelationship
     ) -> None:
-        is_managed = self.managed_relationship_checker.check(
-            node_kind=node_kind, relationship_name=branch_relationship.name
-        )
         is_cardinality_one = branch_relationship.cardinality is RelationshipCardinality.ONE
         if is_cardinality_one:
             if not base_relationship.relationships or not branch_relationship.relationships:
@@ -153,7 +146,7 @@ class ConflictsEnricher:
                 base_element=base_element,
                 branch_element=branch_element,
                 is_cardinality_one=is_cardinality_one,
-                is_managed=is_managed,
+                is_managed=branch_relationship.is_managed,
             )
             return
         base_peer_id_map = {element.peer_id: element for element in base_relationship.relationships}
@@ -168,7 +161,7 @@ class ConflictsEnricher:
                 base_element=base_element,
                 branch_element=branch_element,
                 is_cardinality_one=is_cardinality_one,
-                is_managed=is_managed,
+                is_managed=branch_relationship.is_managed,
             )
 
     def _add_relationship_conflicts_for_one_peer(

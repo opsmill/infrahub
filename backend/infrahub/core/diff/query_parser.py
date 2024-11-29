@@ -558,10 +558,7 @@ class DiffQueryParser:
     def _parse_path(self, database_path: DatabasePath) -> None:
         diff_root = self._get_diff_root(database_path=database_path)
         diff_node = self._get_diff_node(database_path=database_path, diff_root=diff_root)
-        is_base_branch = False
-        if self.base_branch_name != self.diff_branch_name and diff_root.branch == self.base_branch_name:
-            is_base_branch = True
-        self._update_attribute_level(database_path=database_path, diff_node=diff_node, is_base_branch=is_base_branch)
+        self._update_attribute_level(database_path=database_path, diff_node=diff_node)
 
     def _get_diff_root(self, database_path: DatabasePath) -> DiffRootIntermediate:
         branch = database_path.deepest_branch
@@ -595,9 +592,7 @@ class DiffQueryParser:
                 return rel_schema
         return None
 
-    def _update_attribute_level(
-        self, database_path: DatabasePath, diff_node: DiffNodeIntermediate, is_base_branch: bool
-    ) -> None:
+    def _update_attribute_level(self, database_path: DatabasePath, diff_node: DiffNodeIntermediate) -> None:
         node_schema = self.db.schema.get(
             name=database_path.node_kind, branch=database_path.deepest_branch, duplicate=False
         )
@@ -608,9 +603,7 @@ class DiffQueryParser:
         relationship_schema = self._get_relationship_schema(database_path=database_path, node_schema=node_schema)
         if not relationship_schema:
             return
-        diff_relationship = self._get_diff_relationship(
-            diff_node=diff_node, relationship_schema=relationship_schema, is_base_branch=is_base_branch
-        )
+        diff_relationship = self._get_diff_relationship(diff_node=diff_node, relationship_schema=relationship_schema)
         diff_relationship.add_path(
             database_path=database_path, diff_from_time=self.from_time, diff_to_time=self.to_time
         )
@@ -647,15 +640,13 @@ class DiffQueryParser:
         )
 
     def _get_diff_relationship(
-        self, diff_node: DiffNodeIntermediate, relationship_schema: RelationshipSchema, is_base_branch: bool
+        self, diff_node: DiffNodeIntermediate, relationship_schema: RelationshipSchema
     ) -> DiffRelationshipIntermediate:
         diff_relationship = diff_node.relationships_by_name.get(relationship_schema.name)
         if not diff_relationship:
-            is_managed = False
-            if is_base_branch and self.managed_relationship_checker.check(
+            is_managed = self.managed_relationship_checker.check(
                 node_kind=diff_node.kind, relationship_name=relationship_schema.name
-            ):
-                is_managed = True
+            )
             diff_relationship = DiffRelationshipIntermediate(
                 name=relationship_schema.name,
                 cardinality=relationship_schema.cardinality,

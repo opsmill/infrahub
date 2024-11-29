@@ -16,6 +16,21 @@ if TYPE_CHECKING:
 
     from infrahub.database import InfrahubDatabase
 
+
+BRANCH_CREATE = """
+    mutation($branch: String!) {
+        BranchCreate(data: {
+                name: $branch
+            }) {
+            ok
+            object {
+                id
+                name
+            }
+        }
+    }
+"""
+
 CREATE_IPPREFIX = """
 mutation CreatePrefix($prefix: String!, $namespace_id: String!) {
     IpamIPPrefixCreate(
@@ -85,7 +100,15 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
         initial_dataset,
         client: InfrahubClient,
     ) -> None:
-        branch = await create_branch(db=db, branch_name="delete_prefix")
+        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=registry.default_branch)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=BRANCH_CREATE,
+            context_value=gql_params.context,
+            variable_values={"branch": "delete_prefix"},
+        )
+        assert not result.errors
+        branch = await registry.get_branch(db=db, branch="delete_prefix")
 
         gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=registry.default_branch)
         result = await graphql(

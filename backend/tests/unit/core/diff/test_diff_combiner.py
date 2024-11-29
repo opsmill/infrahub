@@ -455,6 +455,7 @@ class TestDiffCombiner:
             action=DiffAction.ADDED,
             path_identifier=later_relationship.path_identifier,
             relationships={expected_relationship_element},
+            is_managed=later_relationship.is_managed,
         )
         expected_node = EnrichedDiffNode(
             uuid=later_node.uuid,
@@ -560,6 +561,7 @@ class TestDiffCombiner:
             cardinality=RelationshipCardinality.MANY,
             relationships={added_element_1, removed_element_1, updated_element_1, canceled_element_1},
             nodes=set(),
+            is_managed=True,
         )
         relationship_group_2 = EnrichedRelationshipGroupFactory.build(
             name=relationship_name,
@@ -568,6 +570,7 @@ class TestDiffCombiner:
             relationships={added_element_2, removed_element_2, updated_element_2, canceled_element_2},
             changed_at=Timestamp(),
             nodes=set(),
+            is_managed=True,
         )
         node_1 = EnrichedNodeFactory.build(
             kind="TestPerson", action=DiffAction.UPDATED, relationships={relationship_group_1}
@@ -623,6 +626,7 @@ class TestDiffCombiner:
             action=DiffAction.UPDATED,
             path_identifier=relationship_group_2.path_identifier,
             relationships={expected_added_element, expected_removed_element, expected_updated_element},
+            is_managed=True,
         )
         expected_node = EnrichedDiffNode(
             uuid=node_1.uuid,
@@ -688,6 +692,7 @@ class TestDiffCombiner:
             path_identifier=later_relationship.path_identifier,
             relationships={element_1},
             nodes={later_parent_node},
+            is_managed=later_relationship.is_managed,
         )
         expected_node = EnrichedDiffNode(
             uuid=later_node.uuid,
@@ -857,6 +862,7 @@ class TestDiffCombiner:
             action=DiffAction.UNCHANGED,
             relationships=set(),
             nodes={expected_parent_node},
+            is_managed=parent_rel_2.is_managed,
         )
         expected_child_node = EnrichedDiffNode(
             uuid=child_node_uuid,
@@ -929,6 +935,7 @@ class TestDiffCombiner:
             action=DiffAction.UPDATED,
             relationships={child_element_1},
             nodes={expected_parent_2},
+            is_managed=child_rel_2.is_managed,
         )
         expected_child_node = EnrichedDiffNode(
             uuid=child_node_uuid,
@@ -1088,6 +1095,7 @@ class TestDiffCombiner:
             action=DiffAction.UPDATED,
             path_identifier=later_relationship.path_identifier,
             relationships={expected_relationship_element},
+            is_managed=later_relationship.is_managed,
         )
         expected_node = EnrichedDiffNode(
             uuid=later_node.uuid,

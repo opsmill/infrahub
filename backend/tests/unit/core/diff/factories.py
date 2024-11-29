@@ -48,7 +48,6 @@ class EnrichedRelationshipGroupFactory(DataclassFactory[EnrichedDiffRelationship
     num_conflicts = 0
     nodes = set()
     contains_conflict = False
-    is_managed = False
 
 
 class EnrichedRelationshipElementFactory(DataclassFactory[EnrichedDiffSingleRelationship]):
