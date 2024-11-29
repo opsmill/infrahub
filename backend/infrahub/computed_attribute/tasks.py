@@ -1,6 +1,7 @@
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
+from infrahub_sdk.protocols import CoreNode
 from prefect import flow
 from prefect.automations import AutomationCore
 from prefect.client.orchestration import get_client
@@ -24,6 +25,7 @@ from infrahub.workflows.catalogue import (
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
 )
+from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .constants import (
@@ -66,7 +68,7 @@ async def process_transform(
     computed_attribute_kind: str,  # pylint: disable=unused-argument
     updated_fields: list[str] | None = None,  # pylint: disable=unused-argument
 ) -> None:
-    await add_tags(branches=[branch_name])
+    await add_tags(branches=[branch_name], nodes=[object_id])
 
     service = services.service
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
@@ -159,6 +161,57 @@ async def trigger_update_python_computed_attributes(
 
 
 @flow(
+    name="process_computed_attribute_value_jinja2",
+    flow_run_name="Update value for computed attribute {attribute_name}",
+)
+async def update_computed_attribute_value_jinja2(
+    branch_name: str, obj: CoreNode, attribute_name: str, template_value: str
+) -> None:
+    log = get_run_logger()
+    service = services.service
+
+    await add_tags(branches=[branch_name], nodes=[obj.id], others=[TAG_NAMESPACE, WorkflowTag.DATABASE_CHANGE.render()])
+
+    macro_definition = MacroDefinition(macro=template_value)
+    my_filter = {}
+    for variable in macro_definition.variables:
+        components = variable.split("__")
+        if len(components) == 2:
+            property_name = components[0]
+            property_value = components[1]
+            attribute_property = getattr(obj, property_name)
+            my_filter[variable] = getattr(attribute_property, property_value)
+        elif len(components) == 3:
+            relationship_name = components[0]
+            property_name = components[1]
+            property_value = components[2]
+            relationship = getattr(obj, relationship_name)
+            try:
+                attribute_property = getattr(relationship.peer, property_name)
+                my_filter[variable] = getattr(attribute_property, property_value)
+            except ValueError:
+                my_filter[variable] = ""
+
+    value = macro_definition.render(variables=my_filter)
+    existing_value = getattr(obj, attribute_name).value
+    if value == existing_value:
+        log.debug(f"Ignoring to update {obj} with existing value on {attribute_name}={value}")
+        return
+
+    await service.client.execute_graphql(
+        query=UPDATE_ATTRIBUTE,
+        variables={
+            "id": obj.id,
+            "kind": obj.get_kind(),
+            "attribute": attribute_name,
+            "value": value,
+        },
+        branch_name=branch_name,
+    )
+    log.info(f"Updating computed attribute {obj.get_kind()}.{attribute_name}='{value}' ({obj.id})")
+
+
+@flow(
     name="process_computed_attribute_jinja2",
     flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
 )
@@ -189,10 +242,10 @@ async def process_jinja2(
         if attrib.kind == computed_attribute_kind and attrib.attribute.name == computed_attribute_name
     ]
     for computed_macro in computed_macros:
-        found = []
+        found: list[CoreNode] = []
         for id_filter in computed_macro.node_filters:
             filters = {id_filter: object_id}
-            nodes = await service.client.filters(
+            nodes: list[CoreNode] = await service.client.filters(
                 kind=computed_macro.kind,
                 branch=branch_name,
                 prefetch_relationships=True,
@@ -207,46 +260,18 @@ async def process_jinja2(
         template_string = "n/a"
         if computed_macro.attribute.computed_attribute and computed_macro.attribute.computed_attribute.jinja2_template:
             template_string = computed_macro.attribute.computed_attribute.jinja2_template
-        macro_definition = MacroDefinition(macro=template_string)
+
+        batch = await service.client.create_batch()
         for node in found:
-            my_filter = {}
-            for variable in macro_definition.variables:
-                components = variable.split("__")
-                if len(components) == 2:
-                    property_name = components[0]
-                    property_value = components[1]
-                    attribute_property = getattr(node, property_name)
-                    my_filter[variable] = getattr(attribute_property, property_value)
-                elif len(components) == 3:
-                    relationship_name = components[0]
-                    property_name = components[1]
-                    property_value = components[2]
-                    relationship = getattr(node, relationship_name)
-                    try:
-                        attribute_property = getattr(relationship.peer, property_name)
-                        my_filter[variable] = getattr(attribute_property, property_value)
-                    except ValueError:
-                        my_filter[variable] = ""
-
-            value = macro_definition.render(variables=my_filter)
-            existing_value = getattr(node, computed_macro.attribute.name).value
-            if value == existing_value:
-                log.debug(f"Ignoring to update {node} with existing value on {computed_macro.attribute.name}={value}")
-                continue
-
-            await service.client.execute_graphql(
-                query=UPDATE_ATTRIBUTE,
-                variables={
-                    "id": node.id,
-                    "kind": computed_macro.kind,
-                    "attribute": computed_macro.attribute.name,
-                    "value": value,
-                },
+            batch.add(
+                task=update_computed_attribute_value_jinja2,
                 branch_name=branch_name,
+                obj=node,
+                attribute_name=computed_macro.attribute.name,
+                template_value=template_string,
             )
-            log.info(
-                f"Updating computed attribute {computed_attribute_kind}.{computed_attribute_name}='{value}' ({node.id})"
-            )
+
+        _ = [response async for _, response in batch.execute()]
 
 
 @flow(
