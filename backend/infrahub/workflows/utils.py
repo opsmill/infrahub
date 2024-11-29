@@ -9,7 +9,7 @@ from prefect.runtime import flow_run
 from infrahub.core.registry import registry
 from infrahub.tasks.registry import refresh_branches
 
-from .constants import WorkflowTag
+from .constants import TAG_NAMESPACE, WorkflowTag
 
 if TYPE_CHECKING:
     import logging
@@ -18,7 +18,10 @@ if TYPE_CHECKING:
 
 
 async def add_tags(
-    branches: list[str] | None = None, nodes: list[str] | None = None, others: list[str] | None = None
+    branches: list[str] | None = None,
+    nodes: list[str] | None = None,
+    others: list[str] | None = None,
+    namespace: bool = True,
 ) -> None:
     client = get_client(sync_client=False)
     current_flow_run_id = flow_run.id
@@ -27,6 +30,8 @@ async def add_tags(
     node_tags = [WorkflowTag.RELATED_NODE.render(identifier=node_id) for node_id in nodes] if nodes else []
     others_tags = others or []
     new_tags = set(current_tags + branch_tags + node_tags + others_tags)
+    if namespace:
+        new_tags.add(TAG_NAMESPACE)
     await client.update_flow_run(current_flow_run_id, tags=list(new_tags))
 
 

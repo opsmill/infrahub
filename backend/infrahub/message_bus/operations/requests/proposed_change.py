@@ -11,7 +11,6 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.registry import registry
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.git.repository import InfrahubRepository
-from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import (
     ProposedChangeArtifactDefinition,
@@ -34,8 +33,7 @@ from infrahub.workflows.catalogue import (
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
 )
-
-log = get_logger()
+from infrahub.workflows.utils import add_tags
 
 
 class DefinitionSelect(IntFlag):
@@ -187,9 +185,11 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
 
 @flow(
     name="proposed-changed-refresh-artifact",
-    flow_run_name="Refreshing artifacts for change_proposal={message.proposed_change}",
+    flow_run_name="Refreshing artifacts",
 )
 async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifacts, service: InfrahubServices) -> None:
+    await add_tags(branches=[message.source_branch], nodes=[message.proposed_change])
+
     definition_information = await service.client.execute_graphql(
         query=GATHER_ARTIFACT_DEFINITIONS,
         branch_name=message.source_branch,

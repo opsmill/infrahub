@@ -1,8 +1,8 @@
 from prefect import flow
+from prefect.logging import get_run_logger
 
 from infrahub.exceptions import RepositoryError
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo, initialize_repo
-from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import (
     GitRepositoryConnectivityResponse,
@@ -11,18 +11,19 @@ from infrahub.message_bus.messages.git_repository_connectivity import (
 from infrahub.services import InfrahubServices
 from infrahub.worker import WORKER_IDENTITY
 
-log = get_logger()
 
-
-@flow(name="git-repository-check-connectivity")
+@flow(name="git-repository-check-connectivity", flow_run_name="Check connectivity for {message.repository_name}")
 async def connectivity(message: messages.GitRepositoryConnectivity, service: InfrahubServices) -> None:
     response_data = GitRepositoryConnectivityResponseData(message="Successfully accessed repository", success=True)
+    log = get_run_logger()
 
     try:
         InfrahubRepository.check_connectivity(name=message.repository_name, url=message.repository_location)
+        log.info(response_data.message)
     except RepositoryError as exc:
         response_data.success = False
         response_data.message = exc.message
+        log.error(exc.message)
 
     if message.reply_requested:
         response = GitRepositoryConnectivityResponse(
@@ -33,8 +34,9 @@ async def connectivity(message: messages.GitRepositoryConnectivity, service: Inf
 
 @flow(name="refresh-git-fetch", flow_run_name="Fetch git repository {message.repository_name} on " + WORKER_IDENTITY)
 async def fetch(message: messages.RefreshGitFetch, service: InfrahubServices) -> None:
+    log = get_run_logger()
     if message.meta and message.meta.initiator_id == WORKER_IDENTITY:
-        log.info("Ignoring git fetch request originating from self", worker=WORKER_IDENTITY)
+        log.info("Ignoring git fetch request originating from self ({WORKER_IDENTITY})")
         return
 
     try:
