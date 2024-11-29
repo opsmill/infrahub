@@ -34,14 +34,13 @@ test.describe("Object groups update", () => {
 
     await test.step("open groups manager", async () => {
       await page.getByTestId("open-group-form-button").click();
-      await expect(page.getByTestId("multi-select-input")).toContainText("Empty list");
     });
 
     await test.step("add groups to an object", async () => {
-      await page.getByTestId("select-open-option-button").click();
+      await page.getByLabel("Add groups *").click();
       await page.getByRole("option", { name: "arista_devices" }).click();
       await page.getByRole("option", { name: "backbone_interfaces" }).click();
-      await page.getByTestId("select-open-option-button").click();
+      await page.getByLabel("Add groups *").click(); // to close the combobox
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("2 groups added")).toBeVisible();
     });
@@ -80,9 +79,10 @@ test.describe("Object groups update", () => {
       await expect(page.getByRole("link", { name: "arista_devices" })).not.toBeVisible();
     });
 
-    await test.step("add group form does not contains object groups", async () => {
+    await test.step("add group form default values is visible", async () => {
       await page.getByTestId("open-group-form-button").click();
-      await expect(page.getByTestId("multi-select-input")).toContainText("Empty list");
+      await expect(page.getByText("backbone_interfaces×")).toBeVisible();
+      await expect(page.getByText("arista_devices×")).not.toBeVisible();
     });
   });
 });

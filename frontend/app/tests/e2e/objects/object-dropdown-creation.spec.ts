@@ -19,16 +19,10 @@ test.describe("object dropdown creation", () => {
     await page.getByTestId("create-object-button").click();
 
     // Open tags options
-    const tagsMultiSelectOpenButton = page
-      .getByTestId("side-panel-container")
-      .getByText("Tags")
-      .locator("../..")
-      .getByTestId("select-open-option-button");
-
-    await tagsMultiSelectOpenButton.click();
+    await page.getByLabel("Tags").click();
 
     // Add new option
-    await page.getByRole("option", { name: "Add Tag" }).click();
+    await page.getByRole("button", { name: "+ Add new Tag" }).click();
 
     // Assert form content is visible
     await expect(page.getByText("Create Tag")).toBeVisible();

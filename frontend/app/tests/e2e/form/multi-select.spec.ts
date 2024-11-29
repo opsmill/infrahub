@@ -22,39 +22,26 @@ test.describe("Verify multi select behaviour", () => {
     await page.getByTestId("edit-button").click();
 
     await test.step("Select multiple tags", async () => {
-      const tagsMultiSelectOpenButton = page
-        .getByTestId("side-panel-container")
-        .getByText("Tags")
-        .locator("../..")
-        .getByTestId("select-open-option-button");
-      await tagsMultiSelectOpenButton.click();
-
+      await page.getByLabel("Tags").click();
       await page.getByRole("option", { name: "blue" }).click();
+      await expect(page.getByRole("option", { name: "blue" })).not.toBeVisible();
       await page.getByRole("option", { name: "green" }).click();
+      await expect(page.getByRole("option", { name: "green" })).not.toBeVisible();
       await page.getByRole("option", { name: "red" }).click();
-      await expect(page.locator("form")).toContainText("bluegreenred");
-    });
-
-    await test.step("Remove a tag when clicking on selected input", async () => {
-      await page.getByRole("option", { name: "red" }).click();
-      await expect(page.getByRole("option", { name: "Add Tag" })).toBeVisible();
-      await expect(page.locator("form")).toContainText("bluegreen");
+      await expect(page.getByRole("option", { name: "red" })).not.toBeVisible();
+      await expect(page.locator("form")).toContainText("blue×green×red×");
     });
 
     await test.step("Remove a tag when clicking on selected badge", async () => {
-      await page
-        .getByTestId("multi-select-input-badge")
-        .filter({ hasText: "green" })
-        .getByTestId("badge-delete")
-        .click();
-      await expect(page.locator("form")).toContainText("blue");
+      await page.getByText("red×").getByLabel("Remove").click();
+      await expect(page.locator("form")).toContainText("blue×green×");
     });
 
     await test.step("Create a new tag directly on multi select", async () => {
-      await page.getByRole("option", { name: "Add Tag" }).click();
-      await page.getByTestId("new-object-form").getByLabel("Name").fill("new tag");
+      await page.getByRole("button", { name: "+ Add new Tag" }).click();
+      await page.getByTestId("new-object-form").getByLabel("Name *").fill("new tag");
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.locator("form").first()).toContainText("bluenew tag");
+      await expect(page.getByText("blue×green×new tag×")).toBeVisible();
     });
   });
 });
