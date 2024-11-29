@@ -72,10 +72,12 @@ test.describe("Verifies the object creation", () => {
       await page.getByTestId("edit-button").click();
       await expect(page.getByLabel("Speed *")).toHaveValue(ETHERNET_SPEED);
       await expect(
-        page.locator("div:below(:text('Device *'))").getByTestId("select-input").first()
+        page.locator("div:below(:text('Device *'))").getByTestId("select-value").first()
       ).toHaveValue(DEVICE_NAME);
-      await expect(page.getByTestId("select2step-1").getByTestId("select-input")).toHaveValue(KIND);
-      await expect(page.getByTestId("select2step-2").getByTestId("select-input")).toHaveValue(
+      await expect(page.getByTestId("select2step-1").getByTestId("select-value")).toContainText(
+        KIND
+      );
+      await expect(page.getByTestId("select2step-2").getByTestId("select-value")).toContainText(
         ENDPOINT_NAME
       );
     });
@@ -108,7 +110,7 @@ test.describe("Verifies the object creation", () => {
         .getByText("Connected Endpoint Kind ?")
         .getByText("Kind")
         .locator("../..")
-        .getByTestId("select-input");
+        .getByTestId("select-value");
       await expect(kindSelector).toHaveValue("Interface L3");
 
       const parentSelector = page
@@ -116,7 +118,7 @@ test.describe("Verifies the object creation", () => {
         .getByText("Connected Endpoint Kind ?")
         .getByText("Device")
         .locator("../..")
-        .getByTestId("select-input");
+        .getByTestId("select-value");
       await expect(parentSelector).toHaveValue("dfw1-edge2");
 
       const objectSelector = page
@@ -124,7 +126,7 @@ test.describe("Verifies the object creation", () => {
         .getByText("Connected Endpoint Kind ?")
         .getByText("Interface L3")
         .locator("../..")
-        .getByTestId("select-input");
+        .getByTestId("select-value");
       await expect(objectSelector).toHaveValue("Ethernet1");
 
       await page.getByTestId("side-panel-container").getByLabel("Interface L3").click();
