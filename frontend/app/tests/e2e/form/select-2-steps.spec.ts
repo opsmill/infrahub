@@ -111,7 +111,7 @@ test.describe("Verifies the object creation", () => {
         .getByText("Kind")
         .locator("../..")
         .getByTestId("select-value");
-      await expect(kindSelector).toHaveValue("Interface L3");
+      await expect(kindSelector).toContainText("Interface L3");
 
       const parentSelector = page
         .getByTestId("side-panel-container")
