@@ -14,7 +14,7 @@ PERSON = NodeSchema(
         AttributeSchema(name="height", kind="Number", optional=True),
         AttributeSchema(name="age", kind="Number", optional=True),
     ],
-    inherit_from=["LineageOwner", "LineageSource"],
+    inherit_from=["LineageOwner", "LineageSource", "CoreArtifactTarget"],
     relationships=[
         RelationshipSchema(
             name="cars",
