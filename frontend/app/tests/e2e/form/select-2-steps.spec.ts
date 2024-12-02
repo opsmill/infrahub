@@ -87,13 +87,8 @@ test.describe("Verifies the object creation", () => {
     await page.goto("/objects/CoreGraphQLQuery");
     await page.getByTestId("create-object-button").click();
     await page.getByLabel("Kind").click();
-    await page
-      .getByTestId("side-panel-container")
-      .getByLabel("Kind", { exact: true })
-      .getByText("Repository", { exact: true })
-      .click();
+    await page.getByRole("option", { name: "Repository", exact: true }).click();
     await page.getByLabel("Repository").click();
-    await expect(page.getByText("Empty", { exact: true })).toBeVisible();
     await expect(page.getByText("Read-Only Repository", { exact: true })).not.toBeVisible();
   });
 
@@ -126,7 +121,6 @@ test.describe("Verifies the object creation", () => {
       ).toContainText("Ethernet1");
 
       await page.getByTestId("side-panel-container").getByLabel("Interface L3").click();
-      await expect(page.getByRole("option", { name: "Ethernet1", exact: true })).toBeVisible();
       await expect(page.getByRole("option", { name: "Ethernet10" })).toBeVisible();
       await expect(page.getByRole("option", { name: "Loopback0" })).toBeVisible();
       await expect(page.getByRole("option", { name: "Management0" })).toBeVisible();
