@@ -23,6 +23,13 @@ export const getObjectFromFilters = (
         };
       }
 
+      if (fieldKey === "values") {
+        return {
+          ...acc,
+          [fieldName]: { value: filter.value } satisfies AttributeType,
+        };
+      }
+
       if (fieldKey === "ids") {
         const relationshipSchema = schema.relationships?.find(({ name }) => name === fieldName);
         if (!relationshipSchema) return acc;
