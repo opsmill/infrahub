@@ -57,7 +57,7 @@ async def wait_for_schema_to_converge(
 
         if iteration >= max_iterations:
             log.warning(
-                f"Schema had not converged after {delay * iteration} seconds, refreshing schema on local worker manually"
+                f"Schema had not converged after {delay * iteration:.2f} seconds, refreshing schema on local worker manually"
             )
             async with service.database.start_session() as db:
                 await refresh_branches(db=db)

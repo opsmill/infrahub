@@ -47,31 +47,32 @@ class DiffSummaryQuery(Query):
         self,
         base_branch_name: str,
         diff_branch_names: list[str],
-        from_time: Timestamp,
-        to_time: Timestamp,
         filters: EnrichedDiffQueryFilters,
+        from_time: Timestamp | None = None,
+        to_time: Timestamp | None = None,
         tracking_id: TrackingId | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.base_branch_name = base_branch_name
         self.diff_branch_names = diff_branch_names
+        self.filters = filters or EnrichedDiffQueryFilters()
         self.from_time = from_time
         self.to_time = to_time
-        self.filters = filters or EnrichedDiffQueryFilters()
         self.tracking_id = tracking_id
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        if (self.from_time is None or self.to_time is None) and self.tracking_id is None:
+            raise ValueError("DiffSummaryQuery requires from_time and to_time or tracking_id ")
         self.params = {
             "base_branch": self.base_branch_name,
             "diff_branches": self.diff_branch_names,
-            "from_time": self.from_time.to_string(),
-            "to_time": self.to_time.to_string(),
+            "from_time": self.from_time.to_string() if self.from_time else None,
+            "to_time": self.to_time.to_string() if self.to_time else None,
             "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,
             "diff_ids": None,
         }
 
-        # ruff: noqa: E501
         self.add_to_query(query=QUERY_MATCH_NODES)
 
         if not self.filters.is_empty:

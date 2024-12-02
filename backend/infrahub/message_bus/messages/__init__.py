@@ -19,7 +19,6 @@ from .proposed_change.request_proposedchange_refreshartifacts import RequestProp
 from .refresh_git_fetch import RefreshGitFetch
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
-from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
@@ -28,7 +27,6 @@ from .request_repository_userchecks import RequestRepositoryUserChecks
 from .schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
 from .schema_validator_path import SchemaValidatorPath, SchemaValidatorPathResponse
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
-from .trigger_webhook_actions import TriggerWebhookActions
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "check.artifact.create": CheckArtifactCreate,
@@ -51,7 +49,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "refresh.git.fetch": RefreshGitFetch,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
-    "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
     "request.proposed_change.pipeline": RequestProposedChangePipeline,
@@ -59,7 +56,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "request.repository.checks": RequestRepositoryChecks,
     "request.repository.user_checks": RequestRepositoryUserChecks,
     "send.echo.request": SendEchoRequest,
-    "trigger.webhook.actions": TriggerWebhookActions,
 }
 
 RESPONSE_MAP: dict[str, type[InfrahubResponse]] = {

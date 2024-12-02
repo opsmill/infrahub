@@ -72,9 +72,10 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         for permission in permissions:
             has_permission = False
             for permission_backend in registry.permission_backends:
-                has_permission = await permission_backend.has_permission(
+                if has_permission := await permission_backend.has_permission(
                     db=db, account_session=account_session, permission=permission, branch=branch
-                )
+                ):
+                    break
             if not has_permission:
                 raise PermissionDeniedError(f"You do not have the following permission: {permission}")
 
@@ -168,11 +169,15 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         if not is_permission_operation:
             return CheckerResolution.NEXT_CHECKER
 
+        has_permission = False
         for permission_backend in registry.permission_backends:
-            if not await permission_backend.has_permission(
+            if has_permission := await permission_backend.has_permission(
                 db=db, account_session=account_session, permission=self.permission_required, branch=branch
             ):
-                raise PermissionDeniedError("You do not have the permission to manage permissions")
+                break
+
+        if not has_permission:
+            raise PermissionDeniedError("You do not have the permission to manage permissions")
 
         return CheckerResolution.NEXT_CHECKER
 
@@ -213,10 +218,14 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         if not is_repository_operation or not analyzed_query.contains_mutation:
             return CheckerResolution.NEXT_CHECKER
 
+        has_permission = False
         for permission_backend in registry.permission_backends:
-            if not await permission_backend.has_permission(
+            if has_permission := await permission_backend.has_permission(
                 db=db, account_session=account_session, permission=self.permission_required, branch=branch
             ):
-                raise PermissionDeniedError("You do not have the permission to manage repositories")
+                break
+
+        if not has_permission:
+            raise PermissionDeniedError("You do not have the permission to manage repositories")
 
         return CheckerResolution.NEXT_CHECKER
