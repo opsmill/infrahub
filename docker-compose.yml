@@ -268,16 +268,11 @@ services:
       INFRAHUB_TIMEOUT: ${INFRAHUB_TIMEOUT:-60}
       INFRAHUB_WORKFLOW_PORT: ${INFRAHUB_WORKFLOW_PORT:-4200}
       PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
-    volumes:
-      - "git_data:/opt/infrahub/git"
-      - "git_remote_data:/remote"
     tty: true
 
 volumes:
   database_data:
   database_logs:
-  git_data:
-  git_remote_data:
   storage_data:
   workflow_db:
   workflow_data:

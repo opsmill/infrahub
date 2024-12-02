@@ -96,7 +96,6 @@ PLATFORMS_SUDO_DETECT = ["Linux"]
 VOLUME_NAMES = [
     "database_data",
     "database_logs",
-    "git_data",
     "git_remote_data",
     "workflow_data",
     "workflow_db",
