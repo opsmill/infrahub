@@ -80,7 +80,7 @@ export const PcCloseButton = ({
       variant="danger"
       onClick={handleClose}
       isLoading={isLoadingClose}
-      disabled={!disabled || state === "merged"}
+      disabled={disabled || state === "merged"}
       {...props}
     >
       {state === "closed" ? "Re-open" : "Close"}
