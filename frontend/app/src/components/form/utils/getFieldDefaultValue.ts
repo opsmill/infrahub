@@ -124,7 +124,8 @@ export const getDefaultValueFromSchema = (
 ): AttributeValueFromUser | null => {
   if (fieldSchema.kind === "Boolean" || fieldSchema.kind === "Checkbox") {
     return {
-      source: typeof fieldSchema.default_value === "boolean" ? { type: "schema" } : null,
+      source:
+        typeof fieldSchema.default_value === "boolean" ? { type: "schema" } : { type: "user" },
       value: !!fieldSchema.default_value,
     };
   }

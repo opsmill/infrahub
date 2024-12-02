@@ -7,7 +7,7 @@ import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 export interface CheckboxFieldProps extends FormFieldProps {}
 
 const CheckboxField = ({
-  defaultValue = { source: null, value: false },
+  defaultValue = { source: { type: "user" }, value: false },
   description,
   label,
   name,

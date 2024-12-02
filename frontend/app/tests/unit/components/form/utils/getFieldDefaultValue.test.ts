@@ -461,6 +461,17 @@ describe("getFieldDefaultValue", () => {
     });
   });
 
+  it("returns default value false for attribute of kind boolean if no default value is provided", () => {
+    // GIVEN
+    const fieldSchema = buildAttributeSchema({ kind: "Boolean" });
+
+    // WHEN
+    const defaultValue = getFieldDefaultValue({ fieldSchema });
+
+    // THEN
+    expect(defaultValue).to.deep.equal({ source: { type: "user" }, value: false });
+  });
+
   it("returns null if field is an relationship and no object field value is provided", () => {
     // GIVEN
     const fieldSchema = buildRelationshipSchema();
