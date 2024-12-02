@@ -87,7 +87,7 @@ test.describe("Object filters", () => {
     await expect(page.getByTestId("side-panel-container").getByText("Object")).toBeVisible();
 
     await page.getByLabel("kind").click();
-    await expect(page.getByRole("option", { name: "Tag Builtin", exact: true })).toBeVisible();
+    await expect(page.getByRole("option", { name: "BGP Session Infra", exact: true })).toBeVisible();
   });
 
   test("should correctly filter from a kind", async ({ page }) => {
