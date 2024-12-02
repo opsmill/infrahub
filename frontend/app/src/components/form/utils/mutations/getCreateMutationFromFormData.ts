@@ -26,13 +26,29 @@ export const getCreateMutationFromFormData = (
       }
 
       if (typeof fieldData.value === "object") {
-        const fieldValue = Array.isArray(fieldData.value)
-          ? fieldData.value.map(({ id }) => ({ id }))
-          : { id: fieldData.value.id };
-        return {
-          ...acc,
-          [field.name]: fieldValue,
-        };
+        if (Array.isArray(fieldData.value)) {
+          // To differentiate between list (string[]) and relationship (Node[])
+          if (fieldData.value.every((value) => typeof value === "string")) {
+            return {
+              ...acc,
+              [field.name]: { value: fieldData.value },
+            };
+          }
+
+          if (fieldData.value.every((value) => "id" in value)) {
+            return {
+              ...acc,
+              [field.name]: fieldData.value.map(({ id }) => ({ id })),
+            };
+          }
+        }
+
+        if ("id" in fieldData.value) {
+          return {
+            ...acc,
+            [field.name]: { id: fieldData.value.id },
+          };
+        }
       }
 
       const fieldValue = fieldData.value === "" ? null : fieldData.value;
