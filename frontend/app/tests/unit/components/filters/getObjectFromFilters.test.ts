@@ -18,6 +18,19 @@ describe("getObjectFromFilters - test", () => {
     });
   });
 
+  it("returns value for an attribute of kind list correctly", () => {
+    // GIVEN
+    const filters: Array<Filter> = [{ name: "field1__values", value: ["value1"] }];
+
+    // WHEN
+    const objectData = getObjectFromFilters({} as any, filters);
+
+    // THEN
+    expect(objectData).toEqual({
+      field1: { value: ["value1"] },
+    });
+  });
+
   it("returns value for a relationship of cardinality one correctly", () => {
     // GIVEN
     const filters: Array<Filter> = [{ name: "relationship1__ids", value: ["id1"] }];

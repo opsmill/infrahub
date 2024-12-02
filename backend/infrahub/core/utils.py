@@ -191,6 +191,28 @@ def convert_ip_to_binary_str(
     return ip_bin.zfill(obj.max_prefixlen)
 
 
+def build_regex_attrs(values: list[str | int | bool]) -> str:
+    """Build a regex to match one or multiple values in a JSON string, mainly used to match on an attribute of type List"""
+    return ".*(" + "|".join([build_regex_attr(value=value) for value in values]) + ").*"
+
+
+def build_regex_attr(value: str | int | bool) -> str:
+    """Build a single regex to match a value in a JSON string
+    For a string, it must have quotes
+    For int and bool, it must not have quotes
+    """
+    regex_no_quote = r'(?<=[^\w"\d]){value}(?=[^\w"\d])'
+    if isinstance(value, str):
+        return f'"{value}"'
+    if isinstance(value, bool):
+        value_str = str(value).lower()
+        return regex_no_quote.format(value=value_str)
+    if isinstance(value, int):
+        return regex_no_quote.format(value=value)
+
+    raise ValueError("value was neither a string, an int or a boolean")
+
+
 # --------------------------------------------------------------------------------
 # CODE IMPORTED FROM:
 #   https://github.com/graphql-python/graphene/blob/9c3e4bb7da001aac48002a3b7d83dcd072087770/graphene/utils/subclass_with_meta.py#L18
