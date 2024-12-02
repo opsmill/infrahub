@@ -35,12 +35,13 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
     tmp_schema = branch_schema.duplicate()
 
     for file_name in os.listdir(base_dir):
-        file_path = os.path.join(base_dir, file_name)
+        file_path = base_dir / file_name
+        if file_path.suffix not in (".yml", ".yaml"):
+            continue
+        schema_txt = file_path.read_text(encoding="utf-8")
+        loaded_schema = yaml.safe_load(schema_txt)
+        tmp_schema.load_schema(schema=SchemaRoot(**loaded_schema))
 
-        if file_path.endswith((".yml", ".yaml")):
-            schema_txt = Path(file_path).read_text(encoding="utf-8")
-            loaded_schema = yaml.safe_load(schema_txt)
-            tmp_schema.load_schema(schema=SchemaRoot(**loaded_schema))
     tmp_schema.process()
 
     await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)

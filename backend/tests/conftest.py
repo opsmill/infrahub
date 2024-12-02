@@ -157,7 +157,7 @@ def local_storage_dir(tmp_path: Path) -> Path:
     storage_dir.mkdir()
 
     config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
-    config.SETTINGS.storage.local.path_ = str(storage_dir)
+    config.SETTINGS.storage.local.path_ = storage_dir
 
     return storage_dir
 

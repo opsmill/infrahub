@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from typing import Optional
 
 from invoke import Context, task
@@ -12,7 +12,7 @@ from .utils import ESCAPED_REPO_PATH
 
 MAIN_DIRECTORY = "python_sdk"
 NAMESPACE = "SDK"
-MAIN_DIRECTORY_PATH = os.path.join(ESCAPED_REPO_PATH, MAIN_DIRECTORY)
+MAIN_DIRECTORY_PATH = Path(ESCAPED_REPO_PATH, MAIN_DIRECTORY)
 
 
 # ----------------------------------------------------------------------------

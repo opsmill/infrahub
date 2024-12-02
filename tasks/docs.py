@@ -1,4 +1,3 @@
-import os
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -210,7 +209,7 @@ def _generate_infrahub_schema_documentation() -> None:
         template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/schema/{schema_name}.j2"
         output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/schema/{schema_name}.mdx"
         output_label = f"docs/docs/reference/schema/{schema_name}.mdx"
-        if not os.path.exists(template_file):
+        if not Path(template_file).exists():
             print(f"Unable to find the template file at {template_file}")
             sys.exit(-1)
 
@@ -275,7 +274,7 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
     output_file = f"{DOCUMENTATION_DIRECTORY}/docs/python-sdk/reference/config.mdx"
     output_label = "docs/docs/python-sdk/reference/config.mdx"
 
-    if not os.path.exists(template_file):
+    if not Path(template_file).exists():
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
 
@@ -326,7 +325,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
     template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/dotinfrahub.j2"
     output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/dotinfrahub.mdx"
     output_label = "docs/docs/reference/dotinfrahub.mdx"
-    if not os.path.exists(template_file):
+    if not Path(template_file).exists():
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
 
@@ -386,7 +385,7 @@ def _generate_infrahub_events_documentation() -> None:
 
     print(" - Generate Infrahub Bus Events documentation")
 
-    if not os.path.exists(template_file):
+    if not Path(template_file).exists():
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
 

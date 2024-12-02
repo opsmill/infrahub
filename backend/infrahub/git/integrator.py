@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
-import os
 import sys
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 import jinja2
@@ -412,7 +410,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
         config_file_name = ".infrahub.yml"
-        config_file = Path(os.path.join(branch_wt.directory, config_file_name))
+        config_file = branch_wt.directory / config_file_name
         if not config_file.is_file():
             log.debug(
                 f"Unable to find the configuration file {config_file_name}, skipping",
