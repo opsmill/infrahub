@@ -105,7 +105,7 @@ class CoreIPPrefixPool(Node):
                 prefix_ver = ipaddress.ip_network(resource.prefix.value).version
                 next_available = get_next_available_prefix(pool=pool, prefix_length=prefixlen, prefix_ver=prefix_ver)
                 return next_available
-            except IndexError:
+            except ValueError:
                 continue
 
         raise IndexError("No more resources available")
