@@ -2016,7 +2016,7 @@ async def test_schema_branch_validate_node_deletion(
     diff = schema_branch.diff(other=broken_schema_branch)
     assert "BuiltinTag" in diff.removed
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="'BuiltinTag' has been removed but is still referenced"):
         schema_branch.validate_node_deletions(diff=diff)
 
 
