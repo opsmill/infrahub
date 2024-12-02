@@ -34,6 +34,12 @@ from tests.conftest import TestHelper
 from tests.helpers.test_client import dummy_async_request
 
 
+@pytest.fixture(autouse=True)
+def non_mocked_hosts() -> list:
+    """Workaround to tell HTTPX Mock to not mock the requests to prefect targeting 127.0.0.1."""
+    return ["127.0.0.1"]
+
+
 async def test_directories_props(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path):
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
@@ -146,7 +152,7 @@ async def test_create_commit_worktree(git_repo_01: InfrahubRepository):
     first_file = find_first_file_in_directory(repo.directory_default)
     assert first_file
     async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
-        file.write("new line\n")
+        await file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
 
@@ -195,7 +201,7 @@ async def test_get_commit_worktree(git_repo_01: InfrahubRepository):
     first_file = find_first_file_in_directory(repo.directory_default)
     assert first_file
     async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
-        file.write("new line\n")
+        await file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
 
@@ -368,7 +374,7 @@ async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData):
     first_file = find_first_file_in_directory(repo.directory_default)
     assert first_file
     async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
-        file.write("new line\n")
+        await file.write("new line\n")
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
 
@@ -389,7 +395,11 @@ async def test_sync_no_update(git_repo_02: InfrahubRepository):
 
 
 async def test_sync_new_branch(
-    client: InfrahubClient, git_repo_03: InfrahubRepository, httpx_mock: HTTPXMock, mock_add_branch01_query: HTTPXMock
+    client: InfrahubClient,
+    prefect_test_fixture,
+    git_repo_03: InfrahubRepository,
+    httpx_mock: HTTPXMock,
+    mock_add_branch01_query: HTTPXMock,
 ):
     repo = git_repo_03
 
@@ -416,7 +426,7 @@ async def test_sync_new_branch(
     assert len(worktrees) == 4
 
 
-async def test_sync_updated_branch(git_repo_04: InfrahubRepository):
+async def test_sync_updated_branch(prefect_test_fixture, git_repo_04: InfrahubRepository):
     repo = git_repo_04
 
     # Mock update_commit_value query
@@ -427,7 +437,7 @@ async def test_sync_updated_branch(git_repo_04: InfrahubRepository):
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
 
 
-async def test_render_jinja2_template_success(git_repo_jinja: InfrahubRepository):
+async def test_render_jinja2_template_success(prefect_test_fixture, git_repo_jinja: InfrahubRepository):
     repo = git_repo_jinja
 
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -451,7 +461,7 @@ magnum
     assert rendered_tpl_main != rendered_tpl_branch
 
 
-async def test_render_jinja2_template_error(git_repo_jinja: InfrahubRepository):
+async def test_render_jinja2_template_error(prefect_test_fixture, git_repo_jinja: InfrahubRepository):
     repo = git_repo_jinja
 
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -462,7 +472,9 @@ async def test_render_jinja2_template_error(git_repo_jinja: InfrahubRepository):
     assert "The innermost block that needs to be closed" in str(exc.value)
 
 
-async def test_render_jinja2_template_missing(client: InfrahubClient, git_repo_jinja: InfrahubRepository):
+async def test_render_jinja2_template_missing(
+    client: InfrahubClient, prefect_test_fixture, git_repo_jinja: InfrahubRepository
+):
     repo = git_repo_jinja
 
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -472,7 +484,10 @@ async def test_render_jinja2_template_missing(client: InfrahubClient, git_repo_j
 
 
 async def test_execute_python_check_valid(
-    client: InfrahubClient, git_repo_checks: InfrahubRepository, mock_gql_query_my_query: HTTPXMock
+    client: InfrahubClient,
+    prefect_test_fixture,
+    git_repo_checks: InfrahubRepository,
+    mock_gql_query_my_query: HTTPXMock,
 ):
     repo = git_repo_checks
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -484,7 +499,9 @@ async def test_execute_python_check_valid(
     assert check.passed is False
 
 
-async def test_execute_python_check_file_missing(client: InfrahubClient, git_repo_checks: InfrahubRepository):
+async def test_execute_python_check_file_missing(
+    client: InfrahubClient, prefect_test_fixture, git_repo_checks: InfrahubRepository
+):
     repo = git_repo_checks
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
@@ -494,7 +511,9 @@ async def test_execute_python_check_file_missing(client: InfrahubClient, git_rep
         )
 
 
-async def test_execute_python_check_class_missing(client: InfrahubClient, git_repo_checks: InfrahubRepository):
+async def test_execute_python_check_class_missing(
+    client: InfrahubClient, prefect_test_fixture, git_repo_checks: InfrahubRepository
+):
     repo = git_repo_checks
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
@@ -504,7 +523,9 @@ async def test_execute_python_check_class_missing(client: InfrahubClient, git_re
         )
 
 
-async def test_execute_python_transform_w_data(client: InfrahubClient, git_repo_transforms: InfrahubRepository):
+async def test_execute_python_transform_w_data(
+    client: InfrahubClient, prefect_test_fixture, git_repo_transforms: InfrahubRepository
+):
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
@@ -523,7 +544,10 @@ async def test_execute_python_transform_w_data(client: InfrahubClient, git_repo_
 
 
 async def test_execute_python_transform_w_query(
-    client: InfrahubClient, git_repo_transforms: InfrahubRepository, mock_gql_query_my_query: HTTPXMock
+    client: InfrahubClient,
+    prefect_test_fixture,
+    git_repo_transforms: InfrahubRepository,
+    mock_gql_query_my_query: HTTPXMock,
 ):
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -539,6 +563,7 @@ async def test_execute_python_transform_w_query(
 
 async def test_artifact_generate_python_new(
     client: InfrahubClient,
+    prefect_test_fixture,
     git_repo_transforms_w_client: InfrahubRepository,
     transformation_node_01: InfrahubNode,
     artifact_definition_node_01: InfrahubNode,
@@ -573,6 +598,7 @@ async def test_artifact_generate_python_new(
 
 async def test_artifact_generate_python_existing_same(
     client: InfrahubClient,
+    prefect_test_fixture,
     git_repo_transforms_w_client: InfrahubRepository,
     transformation_node_01: InfrahubNode,
     artifact_definition_node_01: InfrahubNode,
@@ -605,6 +631,7 @@ async def test_artifact_generate_python_existing_same(
 
 async def test_artifact_generate_python_existing_different(
     client: InfrahubClient,
+    prefect_test_fixture,
     git_repo_transforms_w_client: InfrahubRepository,
     transformation_node_01: InfrahubNode,
     artifact_definition_node_01: InfrahubNode,
@@ -639,6 +666,7 @@ async def test_artifact_generate_python_existing_different(
 
 async def test_artifact_generate_jinja2_new(
     client: InfrahubClient,
+    prefect_test_fixture,
     git_repo_jinja_w_client: InfrahubRepository,
     transformation_node_02: InfrahubNode,
     artifact_definition_node_02: InfrahubNode,
@@ -671,7 +699,9 @@ async def test_artifact_generate_jinja2_new(
     assert result == expected_data
 
 
-async def test_execute_python_transform_file_missing(client: InfrahubClient, git_repo_transforms: InfrahubRepository):
+async def test_execute_python_transform_file_missing(
+    client: InfrahubClient, prefect_test_fixture, git_repo_transforms: InfrahubRepository
+):
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
