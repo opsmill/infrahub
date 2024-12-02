@@ -78,9 +78,11 @@ async def rebase_branch(branch: str) -> None:
     if obj.has_schema_changes:
         constraints += await merger.calculate_validations(target_schema=candidate_schema)
     if constraints:
-        error_messages = await schema_validate_migrations(
+        responses = await schema_validate_migrations(
             message=SchemaValidateMigrationData(branch=obj, schema_branch=candidate_schema, constraints=constraints)
         )
+
+        error_messages = [violation.message for response in responses for violation in response.violations]
         if error_messages:
             raise ValidationError(",\n".join(error_messages))
 

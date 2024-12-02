@@ -1,8 +1,6 @@
 import uuid
 
 import pytest
-from infrahub_sdk import InfrahubClient
-from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -20,9 +18,6 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus import Meta
-from infrahub.message_bus.messages import SchemaMigrationPath, SchemaMigrationPathResponse
-from infrahub.services import InfrahubServices
 
 
 @pytest.fixture
@@ -156,32 +151,5 @@ async def test_migration(db: InfrahubDatabase, default_branch, init_database, sc
     execution_result = await migration.execute(db=db, branch=default_branch)
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 5
-    assert await count_nodes(db=db, label="TestCar") == 5
-    assert await count_nodes(db=db, label="Attribute") == 5
-
-
-async def test_rpc(db: InfrahubDatabase, default_branch, init_database, schema_aware, helper):
-    node = schema_aware
-    correlation_id = str(UUIDT())
-    message = SchemaMigrationPath(
-        migration_name="node.attribute.add",
-        new_node_schema=node,
-        previous_node_schema=node,
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_doors"),
-        branch=default_branch,
-        meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
-    )
-
-    bus_simulator = helper.get_message_bus_simulator()
-    service = InfrahubServices(message_bus=bus_simulator, client=InfrahubClient(), database=db)
-    bus_simulator.service = service
-
-    assert await count_nodes(db=db, label="TestCar") == 5
-    assert await count_nodes(db=db, label="Attribute") == 0
-
-    response = await service.message_bus.rpc(message=message, response_class=SchemaMigrationPathResponse)
-    assert response.passed
-    assert not response.data.errors
-
     assert await count_nodes(db=db, label="TestCar") == 5
     assert await count_nodes(db=db, label="Attribute") == 5
