@@ -22,6 +22,7 @@ import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React, { useState } from "react";
+import { Badge } from "../ui/badge";
 import { Tooltip } from "../ui/tooltip";
 
 export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value" | "onChange"> {
@@ -149,6 +150,7 @@ export const RelationshipInput = React.forwardRef<
           </Tooltip>
         )}
       </PopoverTrigger>
+
       <ComboboxContent onOpenAutoFocus={handleFocus}>
         <ComboboxList>
           {loading ? (
@@ -163,18 +165,20 @@ export const RelationshipInput = React.forwardRef<
             (data[peer] as RelationshipManyType).edges
               .map((edge) => edge.node)
               .filter((node): node is Node => !!node && value?.id !== node.id)
-              .map((relationship) => (
-                <ComboboxItem
-                  key={relationship.id}
-                  value={relationship.id}
-                  onSelect={() => {
-                    onChange(relationship);
-                    setOpen(false);
-                  }}
-                >
-                  <span className="truncate">{relationship.display_label}</span>
-                </ComboboxItem>
-              ))}
+              .map((relationship) => {
+                return (
+                  <ComboboxItem
+                    key={relationship.id}
+                    value={relationship.id}
+                    onSelect={() => {
+                      onChange(relationship);
+                      setOpen(false);
+                    }}
+                  >
+                    <span className="truncate">{relationship.display_label}</span>
+                  </ComboboxItem>
+                );
+              })}
 
           {!loading &&
             hasPoolsBeenOpened &&
@@ -182,32 +186,38 @@ export const RelationshipInput = React.forwardRef<
             (poolsData[poolPeer] as RelationshipManyType).edges
               .map((edge) => edge.node)
               .filter((node): node is Node => !!node && value?.id !== node.id)
-              .map((relationship) => (
+              .map((relationship) => {
+                return (
+                  <ComboboxItem
+                    key={relationship.id}
+                    value={relationship.id}
+                    onSelect={() => {
+                      onChange(relationship);
+                      setOpen(false);
+                    }}
+                  >
+                    <span className="truncate">{relationship.display_label}</span>
+                  </ComboboxItem>
+                );
+              })}
+
+          {options &&
+            options.map((option) => {
+              return (
                 <ComboboxItem
-                  key={relationship.id}
-                  value={relationship.id}
+                  key={option.id}
+                  value={option.display_label}
                   onSelect={() => {
-                    onChange(relationship);
+                    onChange(option);
                     setOpen(false);
                   }}
                 >
-                  <span className="truncate">{relationship.display_label}</span>
-                </ComboboxItem>
-              ))}
+                  <span className="truncate flex-grow">{option.display_label}</span>
 
-          {options &&
-            options.map((option) => (
-              <ComboboxItem
-                key={option.id}
-                value={option.display_label}
-                onSelect={() => {
-                  onChange(option);
-                  setOpen(false);
-                }}
-              >
-                <span className="truncate">{option.display_label}</span>
-              </ComboboxItem>
-            ))}
+                  {option.badge && <Badge className="mr-2">{option.badge}</Badge>}
+                </ComboboxItem>
+              );
+            })}
         </ComboboxList>
 
         {!options && (
