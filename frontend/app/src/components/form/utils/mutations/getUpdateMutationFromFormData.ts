@@ -1,4 +1,9 @@
-import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
+import {
+  AttributeValueFromPool,
+  DynamicFieldProps,
+  FormFieldValue,
+  RelationshipValueFromPool,
+} from "@/components/form/type";
 import { isDeepEqual } from "remeda";
 
 type GetUpdateMutationFromFormDataParams = {
@@ -19,7 +24,8 @@ export const getUpdateMutationFromFormData = ({
 
     if (
       fieldData.source?.type === "pool" &&
-      field.defaultValue?.source?.id === fieldData?.source?.id
+      (field.defaultValue as AttributeValueFromPool | RelationshipValueFromPool)?.source?.id ===
+        fieldData?.source?.id
     ) {
       // If the same pool is selected, then remove from the updates
       return acc;
@@ -38,13 +44,28 @@ export const getUpdateMutationFromFormData = ({
         }
 
         if (typeof fieldData.value === "object") {
-          const fieldValue = Array.isArray(fieldData.value)
-            ? fieldData.value.map(({ id }) => ({ id }))
-            : { id: fieldData.value.id };
-          return {
-            ...acc,
-            [field.name]: fieldValue,
-          };
+          if (Array.isArray(fieldData.value)) {
+            if (fieldData.value.every((value) => typeof value === "string")) {
+              return {
+                ...acc,
+                [field.name]: { value: fieldData.value },
+              };
+            }
+
+            if (fieldData.value.every((value) => "id" in value)) {
+              return {
+                ...acc,
+                [field.name]: fieldData.value.map(({ id }) => ({ id })),
+              };
+            }
+          }
+
+          if ("id" in fieldData.value) {
+            return {
+              ...acc,
+              [field.name]: { id: fieldData.value.id },
+            };
+          }
         }
 
         return {
