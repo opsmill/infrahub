@@ -63,37 +63,4 @@ spec:
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           tty: true
-          volumeMounts:
-            - name: git-data
-              mountPath: /opt/infrahub/git
       restartPolicy: Always
-      volumes:
-        {{- if and .Values.infrahubTaskWorker.persistence.enabled }}
-        - name: git-data
-          persistentVolumeClaim:
-            claimName: {{ tpl (.Values.infrahubTaskWorker.persistence.existingClaim | default (printf "%s-%s" (include "infrahub-helm.fullname" .) "git-data")) . }}
-        {{- else }}
-        - name: git-data
-          emptyDir: {}
-        {{- end }}
-
-{{- if and .Values.infrahubTaskWorker.persistence.enabled (not .Values.infrahubTaskWorker.persistence.existingClaim) }}
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ include "infrahub-helm.fullname" . }}-git-data
-  namespace: "{{ .Release.Namespace }}"
-  labels:
-    service: git-data
-  {{- include "infrahub-helm.labels" . | nindent 4 }}
-spec:
-  accessModes:
-    - {{ .Values.infrahubTaskWorker.persistence.accessMode }}
-  resources:
-    requests:
-      storage: {{ .Values.infrahubTaskWorker.persistence.size | quote }}
-  {{- with .Values.infrahubTaskWorker.persistence.storageClassName }}
-  storageClassName: {{ . }}
-  {{- end }}
-{{- end }}
