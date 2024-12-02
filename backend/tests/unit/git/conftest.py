@@ -1,4 +1,3 @@
-import os
 import re
 import shutil
 import tarfile
@@ -119,10 +118,9 @@ def git_upstream_repo_10(helper: TestHelper, git_sources_dir: Path) -> dict[str,
     """Git Repository used as part of the  demo-edge tutorial."""
 
     name = "infrahub-demo-edge"
-    fixtures_dir = helper.get_fixtures_dir()
 
     # Extract the fixture package in the source directory
-    with tarfile.open(fixtures_dir / "infrahub-demo-edge-cff6665.tar.gz") as file:
+    with tarfile.open(helper.get_fixtures_dir() / "infrahub-demo-edge-cff6665.tar.gz") as file:
         file.extractall(git_sources_dir)
 
     return {"name": name, "path": git_sources_dir / name}
@@ -660,9 +658,8 @@ async def gql_query_data_02() -> dict:
 
 @pytest.fixture
 async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
-    response_text = Path(os.path.join(helper.get_fixtures_dir(), "schemas", "schema_01.json")).read_text(
-        encoding="UTF-8"
-    )
+    schema_file: Path = helper.get_fixtures_dir() / "schemas" / "schema_01.json"
+    response_text = schema_file.read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
         method="GET", url=re.compile(r"^http://mock/api/schema\?branch=(main|cr1234)"), json=ujson.loads(response_text)
@@ -672,9 +669,8 @@ async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
-    response_text = Path(os.path.join(helper.get_fixtures_dir(), "schemas", "schema_02.json")).read_text(
-        encoding="UTF-8"
-    )
+    schema_file: Path = helper.get_fixtures_dir() / "schemas" / "schema_02.json"
+    response_text = schema_file.read_text(encoding="UTF-8")
 
     httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=ujson.loads(response_text))
     return httpx_mock
@@ -857,9 +853,7 @@ async def gql_query_data_03():
 
 @pytest.fixture
 async def schema_02(client, helper, car_data_01) -> ClientSchemaRoot:
-    full_schema = ujson.loads(
-        Path(os.path.join(helper.get_fixtures_dir(), "schemas", "schema_02.json")).read_text(encoding="UTF-8")
-    )
+    full_schema = ujson.loads(Path(helper.get_fixtures_dir(), "schemas", "schema_02.json").read_text(encoding="UTF-8"))
 
     return ClientSchemaRoot(**full_schema)
 

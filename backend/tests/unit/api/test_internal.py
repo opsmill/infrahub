@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import pytest
 
@@ -11,7 +11,7 @@ from tests.helpers.fixtures import get_fixtures_dir
 def override_search_index_path():
     old_search_index_path = config.SETTINGS.main.docs_index_path
     old_search_docs_loader = internal.search_docs_loader
-    config.SETTINGS.main.docs_index_path = os.path.join(get_fixtures_dir(), "docs/search-index.json")
+    config.SETTINGS.main.docs_index_path = Path(get_fixtures_dir(), "docs/search-index.json")
     internal.search_docs_loader = internal.SearchDocs()
     yield
     config.SETTINGS.main.docs_index_path = old_search_index_path
@@ -22,7 +22,7 @@ def override_search_index_path():
 def no_search_index_path():
     old_search_index_path = config.SETTINGS.main.docs_index_path
     old_search_docs_loader = internal.search_docs_loader
-    config.SETTINGS.main.docs_index_path = os.path.join(get_fixtures_dir(), "docs/no-index.json")
+    config.SETTINGS.main.docs_index_path = Path(get_fixtures_dir(), "docs/no-index.json")
     internal.search_docs_loader = internal.SearchDocs()
     yield
     config.SETTINGS.main.docs_index_path = old_search_index_path

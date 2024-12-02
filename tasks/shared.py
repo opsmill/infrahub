@@ -45,7 +45,7 @@ TOP_DIRECTORY_NAME = here.parent.name
 BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", str(TOP_DIRECTORY_NAME)))
 PYTHON_VER = os.getenv("PYTHON_VER", "3.12")
 
-PWD = os.getcwd()
+PWD = Path.cwd()
 
 NBR_WORKERS = int(os.getenv("PYTEST_XDIST_WORKER_COUNT", "1"))
 GITHUB_ACTION = os.getenv("GITHUB_ACTION"), False
@@ -229,7 +229,7 @@ def build_compose_files_cmd(database: str, namespace: Namespace = Namespace.DEFA
     elif database == DatabaseType.NEO4J.value:
         COMPOSE_FILES = COMPOSE_FILES_NEO4J.copy()
 
-    if os.path.exists(OVERRIDE_FILE_NAME):
+    if Path(OVERRIDE_FILE_NAME).exists():
         print("!! Found an override file for docker-compose !!")
         COMPOSE_FILES.append(OVERRIDE_FILE_NAME)
     else:
@@ -253,7 +253,7 @@ def build_dev_compose_files_cmd(database: str) -> str:
     elif database == DatabaseType.NEO4J.value:
         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J.copy()
 
-    if os.path.exists(DEV_OVERRIDE_FILE_NAME):
+    if Path(DEV_OVERRIDE_FILE_NAME).exists():
         print("!! Found a dev override file for docker-compose !!")
         DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
 

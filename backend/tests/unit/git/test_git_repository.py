@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import anyio
@@ -130,10 +129,10 @@ async def test_init_existing_repository(git_repo_01: InfrahubRepository):
 
     # Check if all the directories are present
     assert repo.has_origin is True
-    assert os.path.isdir(repo.directory_root)
-    assert os.path.isdir(repo.directory_branches)
-    assert os.path.isdir(repo.directory_commits)
-    assert os.path.isdir(repo.directory_temp)
+    assert repo.directory_root.is_dir()
+    assert repo.directory_branches.is_dir()
+    assert repo.directory_commits.is_dir()
+    assert repo.directory_temp.is_dir()
 
 
 async def test_get_git_repo_main(git_repo_01: InfrahubRepository):
@@ -761,11 +760,11 @@ async def test_calculate_diff_between_commits(
 
     # Add a file
     new_file = "mynewfile.txt"
-    Path(os.path.join(worktree.directory, new_file)).write_text("this is a new file\n", encoding="utf-8")
+    Path(worktree.directory, new_file).write_text("this is a new file\n", encoding="utf-8")
 
     # Remove a file
     file_to_remove = "pyproject.toml"
-    os.remove(os.path.join(worktree.directory, file_to_remove))
+    Path(worktree.directory, file_to_remove).unlink()
 
     git_repo.index.add([new_file])
     git_repo.index.remove([file_to_remove])
@@ -819,11 +818,11 @@ async def test_list_all_files(git_repo_01: InfrahubRepository, branch01: BranchD
 
     # Add a file
     new_file = "mynewfile.txt"
-    Path(os.path.join(worktree.directory, new_file)).write_text("this is a new file\n", encoding="utf-8")
+    Path(worktree.directory, new_file).write_text("this is a new file\n", encoding="utf-8")
 
     # Remove a file
     file_to_remove = "pyproject.toml"
-    os.remove(os.path.join(worktree.directory, file_to_remove))
+    Path(worktree.directory, file_to_remove).unlink()
 
     git_repo.index.add([new_file])
     git_repo.index.remove([file_to_remove])

@@ -492,16 +492,6 @@ ignore = [
     "PLR6201", # Use a `set` literal when testing for membership
     "PLR6301", # Method could be a function, class method, or static method
     "PLW0603", # Using the global statement to update `SETTINGS` is discouraged
-    "PTH100",  # `os.path.abspath()` should be replaced by `Path.resolve()`
-    "PTH102",  # `os.mkdir()` should be replaced by `Path.mkdir()`
-    "PTH107",  # `os.remove()` should be replaced by `Path.unlink()`
-    "PTH108",  # `os.unlink()` should be replaced by `Path.unlink()`
-    "PTH109",  # `os.getcwd()` should be replaced by `Path.cwd()`
-    "PTH110",  # `os.path.exists()` should be replaced by `Path.exists()`
-    "PTH112",  # `os.path.isdir()` should be replaced by `Path.is_dir()`
-    "PTH113",  # `os.path.isfile()` should be replaced by `Path.is_file()`
-    "PTH117",  # `os.path.isabs()` should be replaced by `Path.is_absolute()`
-    "PTH118",  # `os.path.join()` should be replaced by `Path` with `/` operator
     "RET503",  # Missing explicit `return` at the end of function able to return non-`None` value
     "RET504",  # Unnecessary assignment before `return` statement
     "RUF005",  # Consider `[*list(peers.values()), rfc5735]` instead of concatenation
