@@ -89,7 +89,7 @@ test.describe("Verifies the object creation", () => {
     await page.getByLabel("Kind").click();
     await page
       .getByTestId("side-panel-container")
-      .getByLabel("", { exact: true })
+      .getByLabel("Kind", { exact: true })
       .getByText("Repository", { exact: true })
       .click();
     await page.getByLabel("Repository").click();
@@ -119,15 +119,11 @@ test.describe("Verifies the object creation", () => {
         .getByText("Device")
         .locator("../..")
         .getByTestId("select-value");
-      await expect(parentSelector).toHaveValue("dfw1-edge2");
+      await expect(parentSelector).toContainText("dfw1-edge2");
 
-      const objectSelector = page
-        .getByTestId("side-panel-container")
-        .getByText("Connected Endpoint Kind ?")
-        .getByText("Interface L3")
-        .locator("../..")
-        .getByTestId("select-value");
-      await expect(objectSelector).toHaveValue("Ethernet1");
+      await expect(
+        page.getByRole("button", { name: "Ethernet1 Remove Interface L3" })
+      ).toContainText("Ethernet1");
 
       await page.getByTestId("side-panel-container").getByLabel("Interface L3").click();
       await expect(page.getByRole("option", { name: "Ethernet1", exact: true })).toBeVisible();
