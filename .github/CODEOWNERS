@@ -1,4 +1,0 @@
-/backend/ @opsmill/backend
-/frontend/ @opsmill/frontend
-/docs/ @opsmill/customer-success @opsmill/backend @opsmill/frontend
-/docker-compose.yml @opsmill/cloud

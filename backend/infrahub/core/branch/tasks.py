@@ -98,7 +98,7 @@ async def rebase_branch(branch: str) -> None:
             # NOTE there is a bit additional work in order to calculate a proper diff that will
             # allow us to pull only the part of the schema that has changed, for now the safest option is to pull
             # Everything
-            # schema_diff = await merger.has_schema_changes()a
+            # schema_diff = await merger.has_schema_changes()
             # TODO Would be good to convert this part to a Prefect Task in order to track it properly
             updated_schema = await registry.schema.load_schema_from_db(
                 db=service.database,
