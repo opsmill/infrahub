@@ -11,7 +11,8 @@ from infrahub.core.constants import AttributeDBNodeType, RelationshipDirection, 
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.query.utils import find_node_schema
-from infrahub.core.utils import extract_field_filters
+from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
     from infrahub.core.schema import GenericSchema, NodeSchema
-    from infrahub.core.schema.attribute_schema import AttributeSchema
     from infrahub.core.schema.profile_schema import ProfileSchema
     from infrahub.core.schema.relationship_schema import RelationshipSchema
     from infrahub.database import InfrahubDatabase
@@ -1089,6 +1089,14 @@ class NodeGetListQuery(Query):
                     where_parts.append(
                         f"toLower(toString({far.final_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
                     )
+                continue
+            if far.field and isinstance(far.field, AttributeSchema) and far.field.kind == "List":
+                if isinstance(far.field_attr_comparison_value, list):
+                    self.params[var_name] = build_regex_attrs(values=far.field_attr_comparison_value)
+                else:
+                    self.params[var_name] = build_regex_attrs(values=[far.field_attr_comparison_value])
+
+                where_parts.append(f"toString({far.final_value_query_variable}) =~ ${var_name}")
                 continue
 
             where_parts.append(f"{far.final_value_query_variable} {far.comparison_operator} ${var_name}")

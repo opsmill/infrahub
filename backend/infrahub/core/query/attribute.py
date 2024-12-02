@@ -7,6 +7,7 @@ from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABE
 from infrahub.core.constants.schema import FlagProperty, NodeProperty
 from infrahub.core.query import Query, QueryNode, QueryRel, QueryType
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.utils import build_regex_attrs
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
@@ -185,11 +186,12 @@ class AttributeGetQuery(AttributeQuery):
 async def default_attribute_query_filter(  # pylint: disable=unused-argument,too-many-branches,too-many-statements
     name: str,
     filter_name: str,
-    branch: Optional[Branch] = None,
-    filter_value: Optional[Union[str, int, bool, list]] = None,
+    branch: Branch | None = None,
+    filter_value: str | int | bool | list | None = None,
+    attribute_kind: str | None = None,
     include_match: bool = True,
-    param_prefix: Optional[str] = None,
-    db: Optional[InfrahubDatabase] = None,
+    param_prefix: str | None = None,
+    db: InfrahubDatabase | None = None,
     partial_match: bool = False,
     support_profiles: bool = False,
 ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
@@ -229,6 +231,10 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,too
                 query_where.append(
                     f"toLower(toString(av.{filter_name})) CONTAINS toLower(toString(${param_prefix}_{filter_name}))"
                 )
+            elif attribute_kind and attribute_kind == "List" and not isinstance(filter_value, list):
+                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+                filter_value = build_regex_attrs(values=[filter_value])
+                query_where.append(f"toString(av.{filter_name}) =~ ${param_prefix}_{filter_name}")
             elif filter_name == "isnull":
                 query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
             elif support_profiles:
@@ -246,7 +252,10 @@ async def default_attribute_query_filter(  # pylint: disable=unused-argument,too
         query_filter.extend(
             (QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]), QueryNode(name="av", labels=["AttributeValue"]))
         )
-        if support_profiles:
+        if attribute_kind and attribute_kind == "List":
+            query_params[f"{param_prefix}_{filter_name}"] = build_regex_attrs(values=filter_value)
+            query_where.append(f"toString(av.value) =~ ${param_prefix}_{filter_name}")
+        elif support_profiles:
             query_where.append(f"(av.value IN ${param_prefix}_value OR av.is_default)")
         else:
             query_where.append(f"av.value IN ${param_prefix}_value")
