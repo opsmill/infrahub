@@ -46,6 +46,7 @@ export const RelationshipInput = React.forwardRef<
   const [offset, setOffset] = useState(0);
   const [results, setResults] = useState([]);
   const [search, setSearch] = useState("");
+  const [shouldAggregate, setShouldAggregate] = useState(true);
   const searchQuery = useDebounce(search, 500);
   const [isPoolOpen, setIsPoolOpen] = React.useState(false);
 
@@ -86,7 +87,7 @@ export const RelationshipInput = React.forwardRef<
 
     setCount(dataCount);
 
-    if (search) {
+    if (!shouldAggregate) {
       setResults(newResults);
       return;
     }
@@ -154,11 +155,18 @@ export const RelationshipInput = React.forwardRef<
         )}
       </div>
 
-      <ComboboxContent onOpenAutoFocus={() => loadRelationshipList()}>
+      <ComboboxContent
+        onOpenAutoFocus={() => {
+          setOffset(0);
+          setShouldAggregate(false);
+          loadRelationshipList();
+        }}
+      >
         <ComboboxList
           shouldFilter={false}
           onValueChange={(newValue) => {
             setOffset(0);
+            setShouldAggregate(false);
             setSearch(newValue);
           }}
         >
@@ -208,6 +216,7 @@ export const RelationshipInput = React.forwardRef<
               className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
               onClick={() => {
                 setOffset(offset + PAGINATION);
+                setShouldAggregate(true);
               }}
             >
               More
