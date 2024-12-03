@@ -32,9 +32,10 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Set content type of artifact when rendered to fix artifact content type if artifact definition has changed ([#4969](https://github.com/opsmill/infrahub/issues/4969))
 - Raise error if pool allocation misses data to create node ([#5006](https://github.com/opsmill/infrahub/issues/5006))
 - Process new schema before replacing branch in registry to avoid causing the GraphQL schema to be generated while the new schema is still loading ([#5008](https://github.com/opsmill/infrahub/issues/5008))
-- Added a check on repository import and sync to wait until the schema has converged before importing additional objects when the repository contains an updated schema. ([#5051](https://github.com/opsmill/infrahub/issues/5051))
+- Added a check on repository import and sync to wait until the schema has converged before importing additional objects when the repository contains an updated schema ([#5051](https://github.com/opsmill/infrahub/issues/5051))
 - Fix artifact definition targets when changed in repository so that it's reflected in the database ([#5060](https://github.com/opsmill/infrahub/issues/5060))
 - GraphQL query with filters on attribute of type List return the expected result ([#5091](https://github.com/opsmill/infrahub/issues/5091))
+- Prevent adding a new mandatory attribute or relationship to the schema if some nodes are already present in the database ([#5106](https://github.com/opsmill/infrahub/issues/5106))
 - Ensure that permission queries are run in non isolated mode so that updates from the default branch are automatically reflected in other branches ([#5110](https://github.com/opsmill/infrahub/issues/5110))
 - Add retry for transient database errors during IP reconciliation tasks
 - Corrected configuration for prefect worker to never prompt for Git credentials on the console
