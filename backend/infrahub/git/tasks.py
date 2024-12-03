@@ -174,6 +174,7 @@ async def generate_request_artifact_definition(model: RequestArtifactDefinitionG
     await artifact_definition.targets.fetch()
     group = artifact_definition.targets.peer
     await group.members.fetch()
+    current_members = [member.id for member in group.members.peers]
 
     existing_artifacts = await service.client.filters(
         kind=InfrahubKind.ARTIFACT,
@@ -183,7 +184,8 @@ async def generate_request_artifact_definition(model: RequestArtifactDefinitionG
     )
     artifacts_by_member = {}
     for artifact in existing_artifacts:
-        artifacts_by_member[artifact.object.peer.id] = artifact.id
+        if artifact.object.id in current_members:
+            artifacts_by_member[artifact.object.peer.id] = artifact.id
 
     await artifact_definition.transformation.fetch()
     transformation_repository = artifact_definition.transformation.peer.repository
