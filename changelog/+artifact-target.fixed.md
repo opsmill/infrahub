@@ -1,0 +1,1 @@
+Fix artifact object relationship by enforcing it to be an artifact target
