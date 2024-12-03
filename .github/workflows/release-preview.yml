@@ -39,3 +39,10 @@ jobs:
       ref: ${{ github.sha }}
       tags: ${{ needs.meta_data.outputs.tags }}
       labels: ${{ needs.meta_data.outputs.labels }}
+
+  publish-pypi:
+    uses: ./.github/workflows/publish-pypi.yml
+    secrets: inherit
+    with:
+      publish: true
+      version: ${{ github.ref_name }}
