@@ -45,11 +45,8 @@ export const RelationshipInput = React.forwardRef<
   const [open, setOpen] = React.useState(false);
   const [hasPoolsBeenOpened, setHasPoolsBeenOpened] = useState(false);
   const [count, setCount] = useState(0);
-  console.log("count: ", count);
   const [offset, setOffset] = useState(0);
-  console.log("offset: ", offset);
   const [results, setResults] = useState([]);
-  console.log("results: ", results);
   const [search, setSearch] = useState("");
   const searchQuery = useDebounce(search, 500);
 
@@ -184,16 +181,15 @@ export const RelationshipInput = React.forwardRef<
         )}
       </PopoverTrigger>
 
-      <ComboboxContent
-        onOpenAutoFocus={handleFocus}
-        onChange={(event) => {
-          event.preventDefault();
-          setOffset(0);
-          setSearch(event.target.value);
-        }}
-        className="space-y-2"
-      >
-        <ComboboxList>
+      <ComboboxContent onOpenAutoFocus={handleFocus} className="space-y-2">
+        <ComboboxList
+          shouldFilter={false}
+          onValueChange={(string) => {
+            setOffset(0);
+            setResults([]);
+            setSearch(string);
+          }}
+        >
           {!loading && <ComboboxEmpty>No results found</ComboboxEmpty>}
 
           {!hasPoolsBeenOpened &&
