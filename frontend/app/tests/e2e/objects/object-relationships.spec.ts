@@ -110,12 +110,8 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
       await page.getByRole("link", { name: "Connected to den1-edge1::Ethernet1" }).click();
       await page.getByText("Ip Addresses1").click();
       await page.getByTestId("open-relationship-form-button").click();
-      await expect(page.getByTestId("select-open-pool-option-button")).toBeVisible();
-      await page
-        .getByTestId("side-panel-container")
-        .getByTestId("select-open-option-button")
-        .click();
-      await expect(page.getByTestId("relationship-row").first()).toBeVisible();
+      await page.getByTestId("select-open-pool-option-button").click();
+      await expect(page.getByRole("option", { name: "Loopbacks pool" })).toBeVisible();
     });
   });
 

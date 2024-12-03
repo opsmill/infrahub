@@ -7,17 +7,16 @@ import {
   ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
+  ComboboxTrigger,
 } from "@/components/ui/combobox";
-import { PopoverTrigger } from "@/components/ui/popover";
+import { PopoverAnchor, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { inputStyle } from "@/components/ui/style";
 import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
 import { generateRelationshipListQuery } from "@/graphql/queries/objects/generateRelationshipListQuery";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
-import { classNames } from "@/utils/common";
 import { Node, RelationshipManyType } from "@/utils/getObjectItemDisplayValue";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
@@ -40,49 +39,42 @@ const PAGINATION = 10;
 export const RelationshipInput = React.forwardRef<
   React.ElementRef<typeof PopoverTrigger>,
   RelationshipInputProps
->(({ id, className, value, onChange, options, peer, parent, ...props }, ref) => {
-  const { schema } = useSchema(peer);
+>(({ className, value, onChange, options, peer, parent, ...props }, ref) => {
+  const { schema, isNode } = useSchema(peer);
   const [open, setOpen] = React.useState(false);
-  const [hasPoolsBeenOpened, setHasPoolsBeenOpened] = useState(false);
   const [count, setCount] = useState(0);
   const [offset, setOffset] = useState(0);
   const [results, setResults] = useState([]);
   const [search, setSearch] = useState("");
   const searchQuery = useDebounce(search, 500);
+  const [isPoolOpen, setIsPoolOpen] = React.useState(false);
 
   // Check if any kind from inheritance is one of the available for pools
-  const canRequestPools = !!schema?.inherit_from
-    ?.map((from) => POOLS_PEER.includes(from))
-    ?.filter(Boolean)?.length;
+  const canRequestPools =
+    isNode &&
+    !!schema?.inherit_from?.map((from) => POOLS_PEER.includes(from))?.filter(Boolean)?.length;
   const poolPeer = canRequestPools && POOLS_DICTIONNARY[peer];
   const poolsQueryString = poolPeer ? getDropdownOptions({ kind: poolPeer }) : "query { ok }";
   const poolsQuery = gql`
     ${poolsQueryString}
   `;
 
-  const [fetchOptions, { loading: optionsLoading, data }] = useLazyQuery(
-    gql(
-      generateRelationshipListQuery({
-        peer,
-        parent,
-        limit: PAGINATION,
-        offset,
-        search: searchQuery,
-      })
-    )
-  );
+  const [loadRelationshipList, { loading: isRelationshipListLoading, data: RelationshipListData }] =
+    useLazyQuery(
+      gql(
+        generateRelationshipListQuery({
+          peer,
+          parent,
+          limit: PAGINATION,
+          offset,
+          search: searchQuery,
+        })
+      )
+    );
 
-  const [fetchPoolsOptions, { loading: poolsLoading, data: poolsData }] = useLazyQuery(poolsQuery);
+  const [loadPoolList, { loading: isPoolListLoading, data: poolsData }] = useLazyQuery(poolsQuery);
 
-  const loading = optionsLoading || poolsLoading;
-
-  const handleFocus = () => {
-    if (hasPoolsBeenOpened) {
-      return fetchPoolsOptions();
-    }
-
-    fetchOptions();
-  };
+  const loading = isRelationshipListLoading || isPoolListLoading;
 
   useEffect(() => {
     const newResults = data && (data[peer] as RelationshipManyType).edges.map((edge) => edge.node);
@@ -105,121 +97,78 @@ export const RelationshipInput = React.forwardRef<
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className="flex items-center space-x-2">
-        <div
-          className={classNames(
-            inputStyle,
-            "has-[>:last-child:focus-visible]:outline-none has-[>:last-child:focus-visible]:ring-2 has-[>:last-child:focus-visible]:ring-custom-blue-500 has-[>:last-child:focus-visible]:ring-offset-2",
-            "cursor-pointer",
-            className
-          )}
-        >
-          <div
-            className="flex flex-grow w-full items-center justify-between gap-2 truncate mr-1"
-            data-testid="select-value"
-          >
-            {value?.display_label}
-          </div>
+      <div className="flex gap-2">
+        <PopoverAnchor asChild>
+          <ComboboxTrigger ref={ref} {...props}>
+            <span data-testid="select-value">{value?.display_label}</span>
 
-          {value && (
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange(null);
-                setOpen(false);
-              }}
-              className="text-gray-500 hover:text-gray-800 h-4 w-4"
-              aria-label="Remove"
-              data-testid="select-remove-value"
-            >
-              &times;
-            </Button>
-          )}
-
-          {loading && <Spinner className="ml-auto" />}
-
-          {!loading && (
-            <Tooltip content="Open relationships options" enabled>
-              <PopoverTrigger ref={ref} {...props}>
-                <button
-                  id={id}
-                  type="button"
-                  className="text-gray-600 outline-none w-3.5 h-3.5"
-                  onClick={() => {
-                    setHasPoolsBeenOpened(false);
-                  }}
-                  data-testid="select-open-option-button"
-                >
-                  <Icon icon="mdi:unfold-more-horizontal" />
-                </button>
-              </PopoverTrigger>
-            </Tooltip>
-          )}
-        </div>
+            {loading && <Spinner className="ml-auto" />}
+          </ComboboxTrigger>
+        </PopoverAnchor>
 
         {canRequestPools && (
-          <Tooltip content="Open pools options" enabled>
-            <PopoverTrigger ref={ref} asChild {...props}>
-              <Button
-                variant={"ghost"}
-                className={classNames(
-                  "flex items-center h-10 rounded-md p-2 ring-1 ring-inset ring-gray-300",
-                  "focus:outline-none disabled:cursor-not-allowed"
-                )}
-                data-testid="select-open-pool-option-button"
-                type="button"
-                onClick={() => {
-                  setHasPoolsBeenOpened(true);
-                }}
-              >
-                <Icon icon={"mdi:list-box"} className="text-gray-500" />
-              </Button>
-            </PopoverTrigger>
-          </Tooltip>
-        )}
-      </PopoverTrigger>
-
-      <ComboboxContent onOpenAutoFocus={handleFocus} className="space-y-2">
-        <ComboboxList
-          shouldFilter={false}
-          onValueChange={(string) => {
-            setOffset(0);
-            setResults([]);
-            setSearch(string);
-          }}
-        >
-          {!loading && <ComboboxEmpty>No results found</ComboboxEmpty>}
-
-          {!hasPoolsBeenOpened &&
-            results &&
-            results.map((relationship) => {
-              return (
-                <ComboboxItem
-                  key={relationship.id}
-                  value={relationship.id}
-                  onSelect={() => {
-                    onChange(relationship);
-                    setOpen(false);
-                  }}
+          <Combobox open={isPoolOpen} onOpenChange={setIsPoolOpen}>
+            <Tooltip content="select a pool" enabled>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-10 w-10 border-gray-300"
+                  data-testid="select-open-pool-option-button"
                 >
-                  <span className="truncate">{relationship.display_label}</span>
-                </ComboboxItem>
-              );
-            })}
+                  <Icon icon="mdi:view-grid-outline" className="text-gray-500" />
+                </Button>
+              </PopoverTrigger>
+            </Tooltip>
 
-          {hasPoolsBeenOpened &&
-            poolsData &&
-            (poolsData[poolPeer] as RelationshipManyType).edges
+            <ComboboxContent align="end" onOpenAutoFocus={() => loadPoolList()}>
+              <ComboboxList style={{ width: "auto" }}>
+                {isPoolListLoading ? (
+                  <Spinner className="flex justify-center m-2" />
+                ) : (
+                  <ComboboxEmpty>No pools found</ComboboxEmpty>
+                )}
+                {!isPoolListLoading &&
+                  results?.map((relationship) => {
+                    return (
+                      <ComboboxItem
+                        key={relationship.id}
+                        value={relationship.id}
+                        onSelect={() => {
+                          onChange(relationship);
+                          setOpen(false);
+                        }}
+                      >
+                        <span className="truncate">{relationship.display_label}</span>
+                      </ComboboxItem>
+                    );
+                  })}
+              </ComboboxList>
+            </ComboboxContent>
+          </Combobox>
+        )}
+      </div>
+
+      <ComboboxContent onOpenAutoFocus={() => loadRelationshipList()}>
+        <ComboboxList>
+          {isRelationshipListLoading ? (
+            <Spinner className="flex justify-center m-2" />
+          ) : (
+            <ComboboxEmpty>No results found</ComboboxEmpty>
+          )}
+
+          {!isRelationshipListLoading &&
+            RelationshipListData &&
+            (RelationshipListData[peer] as RelationshipManyType).edges
               .map((edge) => edge.node)
+              .filter((node): node is Node => !!node)
               .map((relationship) => {
                 return (
                   <ComboboxItem
                     key={relationship.id}
                     value={relationship.id}
+                    selectedValue={value?.id}
                     onSelect={() => {
-                      onChange(relationship);
+                      onChange(relationship.id === value?.id ? null : relationship);
                       setOpen(false);
                     }}
                   >

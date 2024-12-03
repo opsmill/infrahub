@@ -87,7 +87,7 @@ test.describe("Verifies the object creation", () => {
     await page.goto("/objects/CoreGraphQLQuery");
     await page.getByTestId("create-object-button").click();
     await page.getByLabel("Kind").click();
-    await page.getByRole("option", { name: "Repository", exact: true }).click();
+    await page.getByRole("option", { name: "Repository Core", exact: true }).click();
     await page.getByLabel("Repository").click();
     await expect(page.getByText("Read-Only Repository", { exact: true })).not.toBeVisible();
   });
@@ -100,24 +100,12 @@ test.describe("Verifies the object creation", () => {
     });
 
     await test.step("check inputs values", async () => {
-      const kindSelector = page
-        .getByTestId("side-panel-container")
-        .getByText("Connected Endpoint Kind ?")
-        .getByText("Kind")
-        .locator("../..")
-        .getByTestId("select-value");
-      await expect(kindSelector).toContainText("Interface L3");
-
-      const parentSelector = page
-        .getByTestId("side-panel-container")
-        .getByText("Connected Endpoint Kind ?")
-        .getByText("Device")
-        .locator("../..")
-        .getByTestId("select-value");
-      await expect(parentSelector).toContainText("dfw1-edge2");
-
+      await expect(page.getByLabel("Kind")).toContainText("Interface L3 Infra");
+      await expect(page.locator('button[name="connected_endpoint_parent"]')).toContainText(
+        "dfw1-edge2"
+      );
       await expect(
-        page.getByRole("button", { name: "Ethernet1 Remove Interface L3" })
+        page.getByTestId("side-panel-container").getByLabel("Interface L3")
       ).toContainText("Ethernet1");
 
       await page.getByTestId("side-panel-container").getByLabel("Interface L3").click();

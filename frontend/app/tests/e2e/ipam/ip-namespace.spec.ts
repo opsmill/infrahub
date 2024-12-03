@@ -21,14 +21,14 @@ test.describe("/ipam - IP Namespace", () => {
   test("switch from default ip namespace", async ({ page }) => {
     await page.goto("/ipam");
 
-    await expect(page.getByTestId("namespace-select").getByTestId("select-value")).toContainText(
+    await expect(page.getByTestId("namespace-select").getByTestId("select-input")).toHaveValue(
       "default"
     );
 
     await page.getByTestId("namespace-select").getByTestId("select-open-option-button").click();
     await page.getByRole("option", { name: "test-namespace" }).click();
 
-    await expect(page.getByTestId("namespace-select").getByTestId("select-value")).toContainText(
+    await expect(page.getByTestId("namespace-select").getByTestId("select-input")).toHaveValue(
       "test-namespace"
     );
     expect(page.url()).toContain("namespace=");

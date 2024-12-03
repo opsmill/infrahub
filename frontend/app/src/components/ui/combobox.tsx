@@ -61,6 +61,7 @@ export const ComboboxList = React.forwardRef<
         ...(fitTriggerWidth
           ? { width: "var(--radix-popover-trigger-width)" }
           : { minWidth: "var(--radix-popover-trigger-width)" }),
+        ...style,
       }}
       shouldFilter={shouldFilter}
     >
