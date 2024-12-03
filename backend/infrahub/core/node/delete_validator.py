@@ -11,7 +11,7 @@ from infrahub.core.query.relationship import (
     RelationshipGetByIdentifierQuery,
     RelationshipPeersData,
 )
-from infrahub.core.schema import MainSchemaTypes
+from infrahub.core.schema import MainSchemaTypes, NodeSchema, ProfileSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
@@ -28,20 +28,29 @@ class NodeDeleteIndex:
         # {node_schema: {DeleteRelationshipType: {relationship_identifier: peer_node_schema}}}
         self._dependency_graph: dict[str, dict[DeleteRelationshipType, dict[str, set[str]]]] = {}
 
-    def index(self, start_schemas: Iterable[MainSchemaTypes]) -> None:
+    def index(self, start_schemas: Iterable[NodeSchema | ProfileSchema]) -> None:
         self._index_cascading_deletes(start_schemas=start_schemas)
         self._index_dependent_schema(start_schemas=start_schemas)
 
+    def _get_schema_kinds(self, schema_kind: str) -> set[str]:
+        schema = self._all_schemas_map[schema_kind]
+        if schema.is_node_schema:
+            return {schema_kind}
+        used_by = getattr(schema, "used_by", None)
+        if schema.is_generic_schema and used_by:
+            return set(used_by)
+        return set()
+
     def _add_to_dependency_graph(
-        self, kind: str, relationship_type: DeleteRelationshipType, relationship_identifier: str, peer_kind: str
+        self, kind: str, relationship_type: DeleteRelationshipType, relationship_identifier: str, peer_kinds: set[str]
     ) -> None:
         if kind not in self._dependency_graph:
             self._dependency_graph[kind] = {}
         if relationship_type not in self._dependency_graph[kind]:
             self._dependency_graph[kind][relationship_type] = defaultdict(set)
-        self._dependency_graph[kind][relationship_type][relationship_identifier].add(peer_kind)
+        self._dependency_graph[kind][relationship_type][relationship_identifier].update(peer_kinds)
 
-    def _index_cascading_deletes(self, start_schemas: Iterable[MainSchemaTypes]) -> None:
+    def _index_cascading_deletes(self, start_schemas: Iterable[NodeSchema | ProfileSchema]) -> None:
         kinds_to_check: set[str] = {schema.kind for schema in start_schemas}
         while True:
             try:
@@ -52,27 +61,35 @@ class NodeDeleteIndex:
             for relationship_schema in node_schema.relationships:
                 if relationship_schema.on_delete != RelationshipDeleteBehavior.CASCADE:
                     continue
+                peer_kinds = self._get_schema_kinds(schema_kind=relationship_schema.peer)
                 self._add_to_dependency_graph(
                     kind=kind_to_check,
                     relationship_type=DeleteRelationshipType.CASCADE_DELETE,
                     relationship_identifier=relationship_schema.get_identifier(),
-                    peer_kind=relationship_schema.peer,
+                    peer_kinds=peer_kinds,
                 )
-                if relationship_schema.peer not in self._dependency_graph:
-                    kinds_to_check.add(relationship_schema.peer)
+                for peer_kind in peer_kinds:
+                    if peer_kind not in self._dependency_graph:
+                        kinds_to_check.add(peer_kind)
 
-    def _index_dependent_schema(self, start_schemas: Iterable[MainSchemaTypes]) -> None:
-        start_schema_kinds = {schema.kind for schema in start_schemas}
+    def _index_dependent_schema(self, start_schemas: Iterable[NodeSchema | ProfileSchema]) -> None:
+        start_schema_kinds: set[str] = set()
+        for start_schema in start_schemas:
+            start_schema_kinds.add(start_schema.kind)
+            if start_schema.inherit_from:
+                start_schema_kinds.update(set(start_schema.inherit_from))
         for node_schema in self._all_schemas_map.values():
             for relationship_schema in node_schema.relationships:
                 if relationship_schema.optional is True or relationship_schema.peer not in start_schema_kinds:
                     continue
-                self._add_to_dependency_graph(
-                    kind=relationship_schema.peer,
-                    relationship_type=DeleteRelationshipType.DEPENDENT_NODE,
-                    relationship_identifier=relationship_schema.get_identifier(),
-                    peer_kind=node_schema.kind,
-                )
+
+                for peer_kind in self._get_schema_kinds(schema_kind=relationship_schema.peer):
+                    self._add_to_dependency_graph(
+                        kind=peer_kind,
+                        relationship_type=DeleteRelationshipType.DEPENDENT_NODE,
+                        relationship_identifier=relationship_schema.get_identifier(),
+                        peer_kinds={node_schema.kind},
+                    )
 
     def get_relationship_identifiers(self) -> list[FullRelationshipIdentifier]:
         full_relationship_identifiers = []
