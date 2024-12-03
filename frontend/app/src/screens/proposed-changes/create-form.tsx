@@ -157,8 +157,9 @@ export const ProposedChangeCreateForm = () => {
             <FormInput>
               <RelationshipManyInput
                 {...field}
-                relationship={
-                  proposedChangeSchema.relationships?.find((rel) => rel.name === "reviewers")!
+                peer={
+                  proposedChangeSchema.relationships?.find((rel) => rel.name === "reviewers")
+                    ?.peer ?? ""
                 }
               />
             </FormInput>

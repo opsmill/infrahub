@@ -7,15 +7,13 @@ export const generateRelationshipListQuery = ({
   peer: string;
   parent?: { name?: string; value?: string };
 }): string => {
-  const args = parent?.value ? { [`${parent.name}__ids`]: [parent.value] } : {};
+  const args = parent?.value ? { __args: { [`${parent.name}__ids`]: [parent.value] } } : {};
 
   const request = {
     query: {
       __name: "GetRelationshipList",
       [peer]: {
-        __args: {
-          ...args,
-        },
+        ...args,
         edges: {
           node: {
             id: true,
