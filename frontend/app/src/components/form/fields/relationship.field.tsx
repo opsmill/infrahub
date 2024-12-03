@@ -129,9 +129,8 @@ const RelationshipField = ({
         <FormField
           key={`${name}_generic`}
           name={`${name}_generic`}
-          rules={rules}
           defaultValue={defaultValue}
-          render={({ field }) => {
+          render={() => {
             const [open, setOpen] = useState(false);
 
             return (
@@ -140,15 +139,14 @@ const RelationshipField = ({
                   label={"Kind"}
                   description="Kind of node to use as relationship"
                   unique={unique}
-                  required={!!rules?.required}
                   variant="small"
                 />
 
                 <Combobox open={open} onOpenChange={setOpen}>
                   <FormInput>
-                    <ComboboxTrigger {...field}>
+                    <ComboboxTrigger>
                       {selectedGeneric && (
-                        <div className="w-full flex justify-between">
+                        <div className="w-full flex justify-between" data-testid="select-value">
                           {selectedGeneric.display_label} <Badge>{selectedGeneric.badge}</Badge>
                         </div>
                       )}

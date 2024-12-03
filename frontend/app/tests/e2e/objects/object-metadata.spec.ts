@@ -25,7 +25,7 @@ test.describe("Object metadata", () => {
     await metadataTooltip.getByTestId("edit-metadata-button").click();
 
     // Owner should be empty
-    await expect(page.getByTestId("select-value").nth(0)).toHaveValue("");
+    await expect(page.getByLabel("Kind").first().getByTestId("select-value")).not.toBeVisible();
 
     // Is visible should be checked
     await expect(page.getByLabel("is visible *")).toBeChecked();
@@ -37,9 +37,9 @@ test.describe("Object metadata", () => {
     await page.getByLabel("is protected *").check();
 
     // Select Architecture team
-    await page.getByText("Owner Kind ?").getByLabel("Kind").first().click();
+    await page.getByLabel("Kind").first().click();
     await page.getByRole("option", { name: "Account group" }).click();
-    await page.getByText("Owner Kind ?").getByLabel("Account group").click();
+    await page.getByLabel("Account group").click();
     await page.getByRole("option", { name: "Architecture Team" }).click();
 
     // Save
@@ -61,8 +61,8 @@ test.describe("Object metadata", () => {
     await metadataTooltipUpdated.getByTestId("edit-metadata-button").click();
 
     // Source should be Account + Pop-Builder
-    await expect(page.getByTestId("select-value").nth(0)).toHaveValue("Account group");
-    await expect(page.getByTestId("select-value").nth(1)).toHaveValue("Architecture Team");
+    await expect(page.getByTestId("select-value").nth(0)).toContainText("Account group");
+    await expect(page.getByTestId("select-value").nth(1)).toContainText("Architecture Team");
 
     // Is protected should be checked
     await expect(page.getByLabel("is protected *")).toBeChecked();
