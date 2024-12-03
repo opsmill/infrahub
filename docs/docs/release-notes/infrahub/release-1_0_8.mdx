@@ -39,7 +39,7 @@ The complete list of changes can always be found in the `CHANGELOG.md` file in t
 
 - Loosened up logic to determine when an artifact needs to be regenerated during a proposed change. This is to ensure that we always generate a new artifact if required. Until some other parts are refactored this will also need that we will generate artifacts in a few situations where it's not strictly required. This last part is a temporary solution. ([#4198](https://github.com/opsmill/infrahub/issues/4198))
 - Migrates from headless UI combobox to `cmdk` to resolve focus behavior issues when there is no result in the search anywhere ([#4715](https://github.com/opsmill/infrahub/issues/4715))
-  - Fix GraphQL mutations to make user permissions updates work correctly
+- Fix GraphQL mutations to make user permissions updates work correctly
   - Update the alert message to better reflect the changes (between creation and update)
   - Fix the objects delete modal on the global permission view
   - Fix the global permission update mutation
