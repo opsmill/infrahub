@@ -1,0 +1,1 @@
+Fix issue that could cause diff generation to crash if a schema was renamed

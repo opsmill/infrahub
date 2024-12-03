@@ -235,7 +235,11 @@ async def update_core_schema(  # pylint: disable=too-many-statements
             candidate_schema.load_schema(schema=SchemaRoot(**deprecated_models))
             candidate_schema.process()
 
-            result = branch_schema.validate_update(other=candidate_schema, enforce_update_support=False)
+            schema_diff = branch_schema.diff(other=candidate_schema)
+            branch_schema.validate_node_deletions(diff=schema_diff)
+            result = branch_schema.validate_update(
+                other=candidate_schema, diff=schema_diff, enforce_update_support=False
+            )
             if result.errors:
                 rprint(f"{error_badge} | Unable to update the schema, due to failed validations")
                 for error in result.errors:
