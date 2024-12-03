@@ -54,7 +54,6 @@ class RelationshipMixin:
                 db=context.db,
                 id=input_id,
                 branch=context.branch,
-                at=context.at,
                 include_owner=True,
                 include_source=True,
             )
@@ -74,7 +73,7 @@ class RelationshipMixin:
         # Query the node in the database and validate that all of them exist and are if the correct kind
         node_ids: list[str] = [node_data["id"] for node_data in data.get("nodes") if "id" in node_data]
         nodes = await NodeManager.get_many(
-            db=context.db, ids=node_ids, fields={"display_label": None}, branch=context.branch, at=context.at
+            db=context.db, ids=node_ids, fields={"display_label": None}, branch=context.branch
         )
 
         _, _, in_list2 = compare_lists(list1=list(nodes.keys()), list2=node_ids)
@@ -105,7 +104,6 @@ class RelationshipMixin:
         query = await RelationshipGetPeerQuery.init(
             db=context.db,
             source=source,
-            at=context.at,
             rel=Relationship(schema=rel_schema, branch=context.branch, node=source),
         )
         await query.execute(db=context.db)
@@ -116,7 +114,7 @@ class RelationshipMixin:
                 for node_data in data.get("nodes"):
                     # Instantiate and resolve a relationship
                     # This will take care of allocating a node from a pool if needed
-                    rel = Relationship(schema=rel_schema, branch=context.branch, at=context.at, node=source)
+                    rel = Relationship(schema=rel_schema, branch=context.branch, node=source)
                     await rel.new(db=db, data=node_data)
                     await rel.resolve(db=db)
                     # Save it only if it does not exist
@@ -129,7 +127,7 @@ class RelationshipMixin:
                         # TODO once https://github.com/opsmill/infrahub/issues/792 has been fixed
                         # we should use RelationshipDataDeleteQuery to delete the relationship
                         # it would be more query efficient
-                        rel = Relationship(schema=rel_schema, branch=context.branch, at=context.at, node=source)
+                        rel = Relationship(schema=rel_schema, branch=context.branch, node=source)
                         await rel.load(db=db, data=existing_peers[node_data.get("id")])
                         await rel.delete(db=db)
 

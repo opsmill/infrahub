@@ -1,8 +1,9 @@
 import pytest
 
-from infrahub.core.constants import InfrahubKind, ProposedChangeState
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.schema import core_models
 from infrahub.exceptions import ValidationError
+from infrahub.proposed_change.constants import ProposedChangeState
 
 
 def test_proposed_state_transitions() -> None:

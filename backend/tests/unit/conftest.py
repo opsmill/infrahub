@@ -1,4 +1,3 @@
-import os
 import shutil
 from itertools import islice
 from pathlib import Path
@@ -112,7 +111,7 @@ async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> Infrah
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name="test_basename",
-        location=f"{git_sources_dir}/test_base",
+        location=str(git_sources_dir / "test_base"),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 
@@ -135,14 +134,13 @@ def s3_storage_bucket() -> str:
 
 
 @pytest.fixture
-def file1_in_storage(local_storage_dir, helper) -> str:
-    fixture_dir = helper.get_fixtures_dir()
+def file1_in_storage(local_storage_dir: Path, helper) -> str:
     file1_identifier = str(UUIDT())
 
-    files_dir = os.path.join(fixture_dir, "schemas")
+    files_dir = helper.get_fixtures_dir() / "schemas"
 
-    filenames = [item.name for item in os.scandir(files_dir) if item.is_file()]
-    shutil.copyfile(os.path.join(files_dir, filenames[0]), os.path.join(local_storage_dir, file1_identifier))
+    filenames = [item.name for item in files_dir.iterdir() if item.is_file()]
+    shutil.copyfile(files_dir / filenames[0], local_storage_dir / file1_identifier)
 
     return file1_identifier
 
@@ -1165,6 +1163,7 @@ async def car_person_data_generic(db: InfrahubDatabase, register_core_models_sch
         "c1": c1,
         "c2": c2,
         "c3": c3,
+        "c4": c4,
         "q1": q1,
         "r1": r1,
     }
@@ -2568,9 +2567,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
     await group.save(db=db)
 
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await account.new(
-        db=db, name="test-admin", account_type="User", password=config.SETTINGS.initial.admin_password, role="admin"
-    )
+    await account.new(db=db, name="test-admin", account_type="User", password=config.SETTINGS.initial.admin_password)
     await account.save(db=db)
 
     await group.members.add(db=db, data=account)
@@ -2585,7 +2582,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, d
 
 @pytest.fixture
 async def session_admin(db: InfrahubDatabase, create_test_admin) -> AccountSession:
-    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id, role="admin")
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id)
     return session
 
 
@@ -2604,14 +2601,14 @@ async def authentication_base(
 @pytest.fixture
 async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-    await obj.new(db=db, name="First Account", account_type="Git", password="FirstPassword123", role="read-write")
+    await obj.new(db=db, name="First Account", account_type="Git", password="FirstPassword123")
     await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
 async def session_first_account(db: InfrahubDatabase, first_account) -> AccountSession:
-    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id, role="read-write")
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id)
     return session
 
 
@@ -2625,9 +2622,7 @@ async def second_account(db: InfrahubDatabase, data_schema, node_group_schema, r
 
 @pytest.fixture
 async def session_second_account(db: InfrahubDatabase, second_account) -> AccountSession:
-    session = AccountSession(
-        authenticated=True, auth_type=AuthType.API, account_id=second_account.id, role="read-write"
-    )
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=second_account.id)
     return session
 
 
@@ -2944,9 +2939,67 @@ def workflow_local():
 @pytest.fixture
 def init_service(db: InfrahubDatabase):
     original = services.service
-    database = db
-    workflow = WorkflowLocalExecution()
-    service = InfrahubServices(database=database, workflow=workflow)
-    services.service = service
-    yield service
+    services.service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    yield services.service
     services.service = original
+
+
+@pytest.fixture
+async def generic_car_person_schema(default_branch: Branch, data_schema):
+    schema: dict[str, Any] = {
+        "generics": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                ],
+                "relationships": [
+                    {
+                        "cardinality": "one",
+                        "identifier": "person__car",
+                        "name": "owner",
+                        "optional": True,
+                        "peer": "TestPerson",
+                    }
+                ],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "ElectricCar",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value", "color__value"],
+                "inherit_from": ["TestCar"],
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                    {
+                        "kind": "Text",
+                        "name": "color",
+                    },
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "attributes": [
+                    {
+                        "kind": "Text",
+                        "name": "name",
+                    },
+                ],
+                "relationships": [
+                    {"cardinality": "one", "identifier": "person__car", "name": "car", "peer": "TestCar"}
+                ],
+            },
+        ],
+    }
+
+    schema_root = SchemaRoot(**schema)
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)

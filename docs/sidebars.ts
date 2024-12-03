@@ -81,6 +81,7 @@ const sidebars: SidebarsConfig = {
         'guides/check',
         'guides/resource-manager',
         'guides/managing-api-tokens',
+        'guides/computed-attributes',
       ],
     },
     {
@@ -114,6 +115,7 @@ const sidebars: SidebarsConfig = {
         'topics/schema',
         'topics/transformation',
         'topics/auth',
+        'topics/computed-attributes',
       ],
     },
     {
@@ -312,14 +314,16 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
-            // 'release-notes/infrahub/release-1_0_7-DRAFT'
+            // 'release-notes/infrahub/release-1_1_1-DRAFT'
+            'release-notes/infrahub/release-1_1_0',
+            'release-notes/infrahub/release-1_0_7',
             'release-notes/infrahub/release-1_0_6',
             'release-notes/infrahub/release-1_0_5',
             'release-notes/infrahub/release-1_0_4',
             'release-notes/infrahub/release-1_0_3',
             'release-notes/infrahub/release-1_0_2',
             'release-notes/infrahub/release-1_0_1',
-            'release-notes/infrahub/release-1_0',
+            'release-notes/infrahub/release-1_0_0',
             'release-notes/infrahub/release-0_16_4',
             'release-notes/infrahub/release-0_16_3',
             'release-notes/infrahub/release-0_16_2',

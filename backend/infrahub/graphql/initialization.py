@@ -49,6 +49,12 @@ class GraphqlContext:
             return self.account_session
         raise InitializationError("GraphQLContext doesn't contain an account_session")
 
+    @property
+    def active_service(self) -> InfrahubServices:
+        if self.service:
+            return self.service
+        raise InitializationError("GraphQLContext doesn't contain a service")
+
 
 def prepare_graphql_params(
     db: InfrahubDatabase,

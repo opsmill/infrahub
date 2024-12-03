@@ -1,4 +1,3 @@
-import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -15,6 +14,12 @@ from .fixtures import get_fixtures_dir
 class FileRepo:
     name: str
     sources_directory: Path
+
+    # Some tests make a prior copy of fixtures/repos/car-dealership folder in a temp folder,
+    # in which case we need to use that temp folder instead of fixture dir. This could probably be removed
+    # when https://github.com/opsmill/infrahub/issues/4296 is fixed.
+    local_repo_base_path: Path = get_fixtures_dir() / "repos"
+
     _repo: Optional[Repo] = None
     _initial_branch: Optional[str] = None
     _branches: list[str] = field(default_factory=list)
@@ -48,7 +53,7 @@ class FileRepo:
             self.repo.git.commit("-m", pull_request)
 
     def __post_init__(self) -> None:
-        repo_base = Path(get_fixtures_dir(), "repos", self.name)
+        repo_base = Path(self.local_repo_base_path, self.name)
         initial_directory = self._initial_directory(repo_base=repo_base)
         shutil.copytree(repo_base / initial_directory, self.sources_directory / self.name)
         self._repo = Repo.init(self.sources_directory / self.name, initial_branch=self._initial_branch)
@@ -61,4 +66,4 @@ class FileRepo:
 
     @property
     def path(self) -> str:
-        return str(os.path.join(self.sources_directory, self.name))
+        return str(Path(self.sources_directory, self.name))

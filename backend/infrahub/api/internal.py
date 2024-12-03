@@ -92,7 +92,7 @@ class SearchDocs:
                 self._heading_index = Index.load(heading_json["index"])
         except FileNotFoundError as exc:
             raise NodeNotFoundError(
-                identifier=config.SETTINGS.main.docs_index_path,
+                identifier=str(config.SETTINGS.main.docs_index_path),
                 message="documentation index not found",
                 node_type="file",
             ) from exc

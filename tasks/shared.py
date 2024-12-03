@@ -4,7 +4,7 @@ import re
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 from invoke import Context, UnexpectedExit
 from invoke.runners import Result
@@ -28,7 +28,7 @@ INVOKE_PTY = os.getenv("INVOKE_PTY", None)
 INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
 INFRAHUB_ADDRESS = os.getenv("INFRAHUB_ADDRESS", "http://localhost:8000")
 
-INFRAHUB_USE_NATS = bool(os.getenv("INFRAHUB_USE_NATS", False))
+INFRAHUB_USE_NATS = bool(os.getenv("INFRAHUB_USE_NATS", None))
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
@@ -45,10 +45,10 @@ TOP_DIRECTORY_NAME = here.parent.name
 BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", str(TOP_DIRECTORY_NAME)))
 PYTHON_VER = os.getenv("PYTHON_VER", "3.12")
 
-PWD = os.getcwd()
+PWD = Path.cwd()
 
-NBR_WORKERS = os.getenv("PYTEST_XDIST_WORKER_COUNT", 1)
-GITHUB_ACTION = os.getenv("GITHUB_ACTION", False)
+NBR_WORKERS = int(os.getenv("PYTEST_XDIST_WORKER_COUNT", "1"))
+GITHUB_ACTION = os.getenv("GITHUB_ACTION"), False
 
 
 SERVICE_SERVER_NAME = "server"
@@ -58,35 +58,6 @@ AVAILABLE_SERVICES = [SERVICE_SERVER_NAME, SERVICE_WORKER_NAME, "database", "mes
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
 COMPOSE_FILES_DEPS = {False: "development/docker-compose-deps.yml", True: "development/docker-compose-deps-nats.yml"}
-
-TEST_COMPOSE_FILE = "development/docker-compose-test.yml"
-TEST_COMPOSE_FILES_MEMGRAPH = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-test-database-memgraph.yml",
-    "development/docker-compose-test-deps.yml",
-    TEST_COMPOSE_FILE,
-]
-TEST_COMPOSE_FILES_NEO4J = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-test-database-neo4j.yml",
-    "development/docker-compose-test-deps.yml",
-    TEST_COMPOSE_FILE,
-]
-
-TEST_SCALE_COMPOSE_FILE = "development/docker-compose-test-scale.yml"
-TEST_SCALE_COMPOSE_FILES_NEO4J = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-neo4j.yml",
-    "development/docker-compose-test-cache.yml",
-    TEST_SCALE_COMPOSE_FILE,
-]
-TEST_SCALE_COMPOSE_FILES_MEMGRAPH = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-memgraph.yml",
-    "development/docker-compose-test-cache.yml",
-    TEST_SCALE_COMPOSE_FILE,
-]
-TEST_SCALE_OVERRIDE_FILE_NAME = "development/docker-compose-test-scale-override.yml"
 
 IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
 REQUESTED_IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER")
@@ -258,7 +229,7 @@ def build_compose_files_cmd(database: str, namespace: Namespace = Namespace.DEFA
     elif database == DatabaseType.NEO4J.value:
         COMPOSE_FILES = COMPOSE_FILES_NEO4J.copy()
 
-    if os.path.exists(OVERRIDE_FILE_NAME):
+    if Path(OVERRIDE_FILE_NAME).exists():
         print("!! Found an override file for docker-compose !!")
         COMPOSE_FILES.append(OVERRIDE_FILE_NAME)
     else:
@@ -282,57 +253,8 @@ def build_dev_compose_files_cmd(database: str) -> str:
     elif database == DatabaseType.NEO4J.value:
         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J.copy()
 
-    if os.path.exists(DEV_OVERRIDE_FILE_NAME):
+    if Path(DEV_OVERRIDE_FILE_NAME).exists():
         print("!! Found a dev override file for docker-compose !!")
         DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
 
     return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
-
-
-def build_test_compose_files_cmd(
-    database: Union[bool, str] = DatabaseType.MEMGRAPH.value,
-) -> str:
-    if database is False:
-        return f"-f {TEST_COMPOSE_FILE}"
-
-    if database not in SUPPORTED_DATABASES:
-        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
-
-    if database == DatabaseType.MEMGRAPH.value:
-        DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_MEMGRAPH.copy()
-    elif database == DatabaseType.NEO4J.value:
-        DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_NEO4J.copy()
-
-    # if os.path.exists(DEV_OVERRIDE_FILE_NAME):
-    #     print("!! Found a dev override file for docker-compose !!")
-    #     DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
-
-    return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
-
-
-def build_test_scale_compose_files_cmd(
-    database: str = DatabaseType.NEO4J.value,
-) -> str:
-    if database not in SUPPORTED_DATABASES:
-        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
-
-    if database == DatabaseType.MEMGRAPH.value:
-        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_MEMGRAPH.copy()
-    elif database == DatabaseType.NEO4J.value:
-        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_NEO4J.copy()
-
-    if os.path.exists(TEST_SCALE_OVERRIDE_FILE_NAME):
-        print("!! Found a test scale override file for docker-compose !!")
-        TEST_SCALE_COMPOSE_FILES.append(TEST_SCALE_OVERRIDE_FILE_NAME)
-
-    if os.getenv("CI") is not None:
-        TEST_SCALE_COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE_NAME)
-
-    return f"-f {' -f '.join(TEST_SCALE_COMPOSE_FILES)}"
-
-
-def build_test_envs() -> str:
-    if GITHUB_ACTION:
-        return f"-e {' -e '.join(GITHUB_ENVS_TO_PASS)}"
-
-    return ""

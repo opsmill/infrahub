@@ -33,7 +33,6 @@ test.describe("/profile", () => {
         await expect(page.getByRole("heading", { name: "Admin", exact: true })).toBeVisible();
         await expect(page.getByText("Nameadmin")).toBeVisible();
         await expect(page.getByText("LabelAdmin")).toBeVisible();
-        await expect(page.getByText("Roleadmin")).toBeVisible();
       });
     });
   });
@@ -53,7 +52,6 @@ test.describe("/profile", () => {
           page.getByRole("heading", { name: "Chloe O'Brian", exact: true })
         ).toBeVisible();
         await expect(page.getByText("LabelChloe O'Brian")).toBeVisible();
-        await expect(page.getByText("Roleread-write")).toBeVisible();
       });
     });
   });
@@ -71,7 +69,6 @@ test.describe("/profile", () => {
       await test.step("display account details", async () => {
         await expect(page.getByRole("heading", { name: "Jack Bauer", exact: true })).toBeVisible();
         await expect(page.getByText("LabelJack Bauer")).toBeVisible();
-        await expect(page.getByText("Roleread-only")).toBeVisible();
       });
     });
   });

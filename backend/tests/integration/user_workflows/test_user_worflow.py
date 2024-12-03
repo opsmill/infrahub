@@ -1,13 +1,11 @@
 import pendulum
 import pytest
 from deepdiff import DeepDiff
-from fastapi.testclient import TestClient
 
 from infrahub.database import InfrahubDatabase
-from infrahub.server import app
+from tests.helpers.test_app import TestInfrahubApp
+from tests.integration.conftest import load_infrastructure_schema
 from tests.test_data import dataset01 as ds01
-
-headers = {"Authorization": "Token nelly"}
 
 main_branch = "main"
 branch1 = "branch1"
@@ -218,14 +216,10 @@ class State:
 state = State()
 
 
-class TestUserWorkflow01:
-    @pytest.fixture(scope="class")
-    async def client(self, redis, nats, prefect_test_fixture):
-        client = TestClient(app)
-        return client
-
-    @pytest.fixture(scope="class")
-    async def dataset01(self, db: InfrahubDatabase, init_db_infra):
+class TestUserWorkflow01(TestInfrahubApp):
+    @pytest.fixture(scope="class", autouse=True)
+    async def dataset01(self, db: InfrahubDatabase, client):
+        await load_infrastructure_schema(db=db)
         await ds01.load_data(db=db, nbr_devices=2)
 
     async def test_initialize_state(self):
@@ -233,14 +227,15 @@ class TestUserWorkflow01:
         state.data["spine1_lo0_id"] = None
         state.data["time_start"] = None
 
-    async def test_query_all_devices(self, client, init_db_infra, dataset01):
+    async def test_query_all_devices(self, test_client, integration_helper):
         """
         Query all devices to ensure that we have some data in the database
         and overall that everything is working correctly
         """
 
-        with client:
-            response = client.post("/graphql", json={"query": QUERY_GET_ALL_DEVICES}, headers=headers)
+        headers = await integration_helper.admin_headers()
+
+        response = await test_client.post("/graphql", json={"query": QUERY_GET_ALL_DEVICES}, headers=headers)
 
         assert response.status_code == 200
         assert "errors" not in response.json()
@@ -256,7 +251,7 @@ class TestUserWorkflow01:
         # Initialize the start time
         state.data["time_start"] = pendulum.now(tz="UTC")
 
-    async def test_query_spine1_loobpack0(self, client, init_db_infra, dataset01):
+    async def test_query_spine1_loobpack0(self, test_client, integration_helper):
         """
         Query Loopback0 interface on spine one to ensure that the filters are working properly and to store:
             - the ID of the interface to reuse later
@@ -264,12 +259,14 @@ class TestUserWorkflow01:
         """
 
         intf_name = "Loopback0"
-        with client:
-            response = client.post(
-                "/graphql",
-                json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
-                headers=headers,
-            )
+
+        headers = await integration_helper.admin_headers()
+
+        response = await test_client.post(
+            "/graphql",
+            json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
+            headers=headers,
+        )
 
         assert response.status_code == 200
         assert "errors" not in response.json()
@@ -282,17 +279,19 @@ class TestUserWorkflow01:
         state.data["spine1_lo0_id"] = intfs[0]["node"]["id"]
         state.data["spine1_lo0_description_start"] = intfs[0]["node"]["description"]["value"]
 
-    async def test_query_spine1_ethernet1(self, client, init_db_infra, dataset01):
+    async def test_query_spine1_ethernet1(self, test_client, integration_helper):
         """
         Query Ethernet1 to gather its ID
         """
+
+        headers = await integration_helper.admin_headers()
+
         intf_name = "Ethernet1"
-        with client:
-            response = client.post(
-                "/graphql",
-                json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
-                headers=headers,
-            )
+        response = await test_client.post(
+            "/graphql",
+            json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
+            headers=headers,
+        )
 
         assert response.status_code == 200
         assert "errors" not in response.json()
@@ -309,19 +308,18 @@ class TestUserWorkflow01:
         state.data["spine1_eth1_id"] = intfs[0]["node"]["id"]
         state.data["spine1_eth1_description_start"] = intfs[0]["node"]["description"]["value"]
 
-    async def test_create_first_branch(self, client, integration_helper, init_db_infra, dataset01):
+    async def test_create_first_branch(self, test_client, integration_helper):
         """
         Create a first Branch from Main
         """
 
         headers = await integration_helper.admin_headers()
 
-        with client:
-            response = client.post(
-                "/graphql",
-                json={"query": BRANCH_CREATE, "variables": {"branch": branch1, "isolated": False}},
-                headers=headers,
-            )
+        response = await test_client.post(
+            "/graphql",
+            json={"query": BRANCH_CREATE, "variables": {"branch": branch1, "isolated": False}},
+            headers=headers,
+        )
 
         assert response.status_code == 200
         assert "errors" not in response.json()
@@ -331,9 +329,7 @@ class TestUserWorkflow01:
 
     async def test_update_intf_description_branch1(
         self,
-        client,
-        init_db_infra,
-        dataset01,
+        test_client,
         integration_helper,
     ):
         """
@@ -346,25 +342,25 @@ class TestUserWorkflow01:
         assert state.data["spine1_lo0_id"]
 
         intf_name = "Loopback0"
-        with client:
-            # Update the description in BRANCH1
-            variables = {"interface_id": state.data["spine1_lo0_id"], "description": new_description}
-            response = client.post(
-                f"/graphql/{branch1}", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
-            )
 
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            result = response.json()["data"]
-            assert result["InfraInterfaceL3Update"]["ok"]
+        # Update the description in BRANCH1
+        variables = {"interface_id": state.data["spine1_lo0_id"], "description": new_description}
+        response = await test_client.post(
+            f"/graphql/{branch1}", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
+        )
 
-            # Query the new description in BRANCH1 to check its value
-            response = client.post(
-                f"/graphql/{branch1}",
-                json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
-                headers=headers,
-            )
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]
+        assert result["InfraInterfaceL3Update"]["ok"]
+
+        # Query the new description in BRANCH1 to check its value
+        response = await test_client.post(
+            f"/graphql/{branch1}",
+            json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
+            headers=headers,
+        )
 
         assert response.status_code == 200
         assert "errors" not in response.json()
@@ -378,7 +374,7 @@ class TestUserWorkflow01:
 
         state.data["time_after_intf_update_branch1"] = pendulum.now("UTC").to_iso8601_string()
 
-    async def test_update_intf_description_main(self, client, init_db_infra, dataset01, integration_helper):
+    async def test_update_intf_description_main(self, test_client, integration_helper):
         """
         Update the description of the interface Ethernet1 in the main branch and validate that its being properly updated
         """
@@ -388,24 +384,24 @@ class TestUserWorkflow01:
         assert state.data["spine1_eth1_id"]
 
         intf_name = "Ethernet1"
-        with client:
-            # Update the description in MAIN
-            variables = {"interface_id": state.data["spine1_eth1_id"], "description": new_description}
-            response = client.post(
-                "/graphql", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
-            )
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            result = response.json()["data"]
-            assert result["InfraInterfaceL3Update"]["ok"]
 
-            # Query the new description in MAIN to check its value
-            response = client.post(
-                "/graphql",
-                json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
-                headers=headers,
-            )
+        # Update the description in MAIN
+        variables = {"interface_id": state.data["spine1_eth1_id"], "description": new_description}
+        response = await test_client.post(
+            "/graphql", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
+        )
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]
+        assert result["InfraInterfaceL3Update"]["ok"]
+
+        # Query the new description in MAIN to check its value
+        response = await test_client.post(
+            "/graphql",
+            json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
+            headers=headers,
+        )
 
         assert response.status_code == 200
         assert "errors" not in response.json()
@@ -417,26 +413,25 @@ class TestUserWorkflow01:
 
         assert intfs[0]["node"]["description"]["value"] == new_description
 
-    async def test_validate_diff_after_description_update(self, client, dataset01, integration_helper):
+    async def test_validate_diff_after_description_update(self, test_client, integration_helper):
         headers = await integration_helper.admin_headers()
 
-        with client:
-            response = client.post(
-                "/graphql",
-                json={"query": DIFF_UPDATE, "variables": {"branch": branch1}},
-                headers=headers,
-            )
-            assert response.status_code == 200
-            result = response.json()
-            assert result.get("errors") is None
-            assert result["data"]["DiffUpdate"]["ok"] is True
+        response = await test_client.post(
+            "/graphql",
+            json={"query": DIFF_UPDATE, "variables": {"branch": branch1}},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        result = response.json()
+        assert result.get("errors") is None
+        assert result["data"]["DiffUpdate"]["ok"] is True
 
-            response = client.post(
-                "/graphql",
-                json={"query": DIFF_TREE_QUERY, "variables": {"branch": branch1}},
-                headers=headers,
-            )
-            assert response.status_code == 200
+        response = await test_client.post(
+            "/graphql",
+            json={"query": DIFF_TREE_QUERY, "variables": {"branch": branch1}},
+            headers=headers,
+        )
+        assert response.status_code == 200
 
         result = response.json()
         assert "errors" not in result
@@ -509,7 +504,7 @@ class TestUserWorkflow01:
 
         assert DeepDiff(expected_result, result["data"]["DiffTree"], ignore_order=True).to_dict() == {}
 
-    async def test_update_intf_description_branch1_again(self, client, dataset01, integration_helper):
+    async def test_update_intf_description_branch1_again(self, test_client, integration_helper):
         """
         Update the description of the interface in the new branch again and validate that its being properly updated
         """
@@ -520,24 +515,24 @@ class TestUserWorkflow01:
         assert state.data["spine1_lo0_id"]
 
         intf_name = "Loopback0"
-        with client:
-            # Update the description in BRANCH1
-            variables = {"interface_id": state.data["spine1_lo0_id"], "description": new_description}
-            response = client.post(
-                f"/graphql/{branch1}", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
-            )
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            result = response.json()["data"]
-            assert result["InfraInterfaceL3Update"]["ok"]
 
-            # Query the new new description in BRANCH1 to check its value
-            response = client.post(
-                f"/graphql/{branch1}",
-                json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
-                headers=headers,
-            )
+        # Update the description in BRANCH1
+        variables = {"interface_id": state.data["spine1_lo0_id"], "description": new_description}
+        response = await test_client.post(
+            f"/graphql/{branch1}", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
+        )
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]
+        assert result["InfraInterfaceL3Update"]["ok"]
+
+        # Query the new new description in BRANCH1 to check its value
+        response = await test_client.post(
+            f"/graphql/{branch1}",
+            json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
+            headers=headers,
+        )
 
         assert response.status_code == 200
         assert "errors" not in response.json()
@@ -549,26 +544,25 @@ class TestUserWorkflow01:
 
         assert intfs[0]["node"]["description"]["value"] == new_description
 
-    async def test_validate_diff_again_after_description_update(self, client, dataset01, integration_helper):
+    async def test_validate_diff_again_after_description_update(self, test_client, integration_helper):
         headers = await integration_helper.admin_headers()
 
-        with client:
-            response = client.post(
-                "/graphql",
-                json={"query": DIFF_UPDATE, "variables": {"branch": branch1}},
-                headers=headers,
-            )
-            assert response.status_code == 200
-            result = response.json()
-            assert result.get("errors") is None
-            assert result["data"]["DiffUpdate"]["ok"] is True
+        response = await test_client.post(
+            "/graphql",
+            json={"query": DIFF_UPDATE, "variables": {"branch": branch1}},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        result = response.json()
+        assert result.get("errors") is None
+        assert result["data"]["DiffUpdate"]["ok"] is True
 
-            response = client.post(
-                "/graphql",
-                json={"query": DIFF_TREE_QUERY, "variables": {"branch": branch1}},
-                headers=headers,
-            )
-            assert response.status_code == 200
+        response = await test_client.post(
+            "/graphql",
+            json={"query": DIFF_TREE_QUERY, "variables": {"branch": branch1}},
+            headers=headers,
+        )
+        assert response.status_code == 200
 
         result = response.json()
         assert "errors" not in result
@@ -641,15 +635,14 @@ class TestUserWorkflow01:
 
         assert DeepDiff(expected_result, result["data"]["DiffTree"], ignore_order=True).to_dict() == {}
 
-    async def test_create_second_branch(self, client, init_db_infra, dataset01, integration_helper):
+    async def test_create_second_branch(self, test_client, integration_helper):
         headers = await integration_helper.admin_headers()
 
-        with client:
-            response = client.post(
-                "/graphql",
-                json={"query": BRANCH_CREATE, "variables": {"branch": branch2, "isolated": True}},
-                headers=headers,
-            )
+        response = await test_client.post(
+            "/graphql",
+            json={"query": BRANCH_CREATE, "variables": {"branch": branch2, "isolated": True}},
+            headers=headers,
+        )
 
         assert response.status_code == 200
         assert "errors" not in response.json()
@@ -657,208 +650,195 @@ class TestUserWorkflow01:
         result = response.json()["data"]
         assert result["BranchCreate"]["ok"]
 
-    async def test_update_intf_description_main_after_branch2(self, client, dataset01, integration_helper):
+    async def test_update_intf_description_main_after_branch2(self, test_client, integration_helper):
         assert state.data["spine1_eth1_id"]
         headers = await integration_helper.admin_headers()
 
         new_description = f"New description in {main_branch} after creating {branch2}"
 
         intf_name = "Ethernet1"
-        with client:
-            # Query the description in main_branch to get its value
-            response = client.post(
-                "/graphql",
-                json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
-                headers=headers,
-            )
 
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            result = response.json()["data"]["InfraDevice"]["edges"][0]
+        # Query the description in main_branch to get its value
+        response = await test_client.post(
+            "/graphql",
+            json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
+            headers=headers,
+        )
 
-            intfs = [
-                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name
-            ]
-            assert len(intfs) == 1
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]["InfraDevice"]["edges"][0]
 
-            old_description = intfs[0]["node"]["description"]["value"]
+        intfs = [intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name]
+        assert len(intfs) == 1
 
-            # Update the description in MAIN
-            variables = {
-                "branch": main_branch,
-                "interface_id": state.data["spine1_eth1_id"],
-                "description": new_description,
-            }
-            response = client.post(
-                "/graphql", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
-            )
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            result = response.json()["data"]
-            assert result["InfraInterfaceL3Update"]["ok"]
+        old_description = intfs[0]["node"]["description"]["value"]
 
-            # Query the new description in MAIN to check its value
-            response = client.post(
-                "/graphql",
-                json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
-                headers=headers,
-            )
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            result = response.json()["data"]["InfraDevice"]["edges"][0]
+        # Update the description in MAIN
+        variables = {
+            "branch": main_branch,
+            "interface_id": state.data["spine1_eth1_id"],
+            "description": new_description,
+        }
+        response = await test_client.post(
+            "/graphql", json={"query": INTERFACE_UPDATE, "variables": variables}, headers=headers
+        )
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]
+        assert result["InfraInterfaceL3Update"]["ok"]
 
-            intfs = [
-                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name
-            ]
-            assert len(intfs) == 1
+        # Query the new description in MAIN to check its value
+        response = await test_client.post(
+            "/graphql",
+            json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]["InfraDevice"]["edges"][0]
 
-            assert intfs[0]["node"]["description"]["value"] == new_description
+        intfs = [intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name]
+        assert len(intfs) == 1
 
-            # Query the new description in BRANCH2 to check its value
-            response = client.post(
-                f"/graphql/{branch2}",
-                json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
-                headers=headers,
-            )
+        assert intfs[0]["node"]["description"]["value"] == new_description
 
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            result = response.json()["data"]["InfraDevice"]["edges"][0]
+        # Query the new description in BRANCH2 to check its value
+        response = await test_client.post(
+            f"/graphql/{branch2}",
+            json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
+            headers=headers,
+        )
 
-            intfs = [
-                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name
-            ]
-            assert len(intfs) == 1
-            assert intfs[0]["node"]["description"]["value"] == old_description
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]["InfraDevice"]["edges"][0]
 
-    async def test_rebase_branch2(self, client, dataset01, integration_helper):
+        intfs = [intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name]
+        assert len(intfs) == 1
+        assert intfs[0]["node"]["description"]["value"] == old_description
+
+    async def test_rebase_branch2(self, test_client, integration_helper):
         """
         Rebase Branch 2
         """
         headers = await integration_helper.admin_headers()
 
         intf_name = "Ethernet1"
-        with client:
-            response = client.post(
-                "/graphql", json={"query": BRANCH_REBASE, "variables": {"branch": branch2}}, headers=headers
-            )
-            assert response.status_code == 200
-            result = response.json()["data"]
-            assert result["BranchRebase"]["ok"]
 
-            # Query the description in MAIN to check its value
-            response = client.post(
-                "/graphql",
-                json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
-                headers=headers,
-            )
+        response = await test_client.post(
+            "/graphql", json={"query": BRANCH_REBASE, "variables": {"branch": branch2}}, headers=headers
+        )
+        assert response.status_code == 200
+        result = response.json()["data"]
+        assert result["BranchRebase"]["ok"]
 
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            result = response.json()["data"]["InfraDevice"]["edges"][0]
+        # Query the description in MAIN to check its value
+        response = await test_client.post(
+            "/graphql",
+            json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
+            headers=headers,
+        )
 
-            intfs = [
-                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name
-            ]
-            assert len(intfs) == 1
-            main_description = intfs[0]["node"]["description"]["value"]
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]["InfraDevice"]["edges"][0]
 
-            # Query the new description in BRANCH2 to check its value
-            response = client.post(
-                f"/graphql/{branch2}",
-                json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
-                headers=headers,
-            )
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            result = response.json()["data"]["InfraDevice"]["edges"][0]
-            intfs = [
-                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name
-            ]
-            assert len(intfs) == 1
-            assert intfs[0]["node"]["description"]["value"] == main_description
+        intfs = [intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name]
+        assert len(intfs) == 1
+        main_description = intfs[0]["node"]["description"]["value"]
 
-    async def test_query_spine1_lo0_at_start_time(self, client, dataset01):
+        # Query the new description in BRANCH2 to check its value
+        response = await test_client.post(
+            f"/graphql/{branch2}",
+            json={"query": QUERY_SPINE1_INTF, "variables": {"intf_name": intf_name}},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]["InfraDevice"]["edges"][0]
+        intfs = [intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name]
+        assert len(intfs) == 1
+        assert intfs[0]["node"]["description"]["value"] == main_description
+
+    async def test_query_spine1_lo0_at_start_time(self, test_client, integration_helper):
+        headers = await integration_helper.admin_headers()
+
         intf_name = "Loopback0"
-        with client:
-            response = client.post(
-                "/graphql",
-                json={
-                    "query": QUERY_SPINE1_INTF,
-                    "variables": {
-                        "intf_name": intf_name,
-                    },
+        response = await test_client.post(
+            "/graphql",
+            json={
+                "query": QUERY_SPINE1_INTF,
+                "variables": {
+                    "intf_name": intf_name,
                 },
-                params={"at": state.data["time_start"].to_iso8601_string()},
-                headers=headers,
-            )
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            result = response.json()["data"]["InfraDevice"]["edges"][0]
+            },
+            params={"at": state.data["time_start"].to_iso8601_string()},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]["InfraDevice"]["edges"][0]
 
-            intfs = [
-                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name
-            ]
-            assert len(intfs) == 1
-            assert intfs[0]["node"]["name"]["value"] == "Loopback0"
+        intfs = [intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf_name]
+        assert len(intfs) == 1
+        assert intfs[0]["node"]["name"]["value"] == "Loopback0"
 
-            state.data["spine1_lo0_description_start"] = intfs[0]["node"]["description"]["value"]
+        state.data["spine1_lo0_description_start"] = intfs[0]["node"]["description"]["value"]
 
-    async def test_add_new_interface_in_first_branch(self, client, dataset01, integration_helper):
+    async def test_add_new_interface_in_first_branch(self, test_client, integration_helper):
         headers = await integration_helper.admin_headers()
 
-        with client:
-            response = client.post(
-                f"/graphql/{branch1}",
-                json={
-                    "query": INTERFACE_CREATE,
-                    "variables": {
-                        "device": "spine1",
-                        "intf_name": "Ethernet8",
-                        "status": "active",
-                        "role": "leaf",
-                        "speed": 1000,
-                        "description": "New interface added in Branch1",
-                    },
+        response = await test_client.post(
+            f"/graphql/{branch1}",
+            json={
+                "query": INTERFACE_CREATE,
+                "variables": {
+                    "device": "spine1",
+                    "intf_name": "Ethernet8",
+                    "status": "active",
+                    "role": "leaf",
+                    "speed": 1000,
+                    "description": "New interface added in Branch1",
                 },
-                headers=headers,
-            )
+            },
+            headers=headers,
+        )
 
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            result = response.json()["data"]
-            assert result["InfraInterfaceL3Create"]["ok"]
-            assert result["InfraInterfaceL3Create"]["object"]["name"]["value"] == "Ethernet8"
-            state.data["spine1_ethernet8_id"] = result["InfraInterfaceL3Create"]["object"]["id"]
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]
+        assert result["InfraInterfaceL3Create"]["ok"]
+        assert result["InfraInterfaceL3Create"]["object"]["name"]["value"] == "Ethernet8"
+        state.data["spine1_ethernet8_id"] = result["InfraInterfaceL3Create"]["object"]["id"]
 
-    async def test_validate_diff_after_new_interface(self, client, dataset01, integration_helper):
+    async def test_validate_diff_after_new_interface(self, test_client, integration_helper):
         headers = await integration_helper.admin_headers()
 
-        with client:
-            response = client.post(
-                "/graphql",
-                json={"query": DIFF_UPDATE, "variables": {"branch": branch1}},
-                headers=headers,
-            )
-            assert response.status_code == 200
-            result = response.json()
-            assert result.get("errors") is None
-            assert result["data"]["DiffUpdate"]["ok"] is True
+        response = await test_client.post(
+            "/graphql",
+            json={"query": DIFF_UPDATE, "variables": {"branch": branch1}},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        result = response.json()
+        assert result.get("errors") is None
+        assert result["data"]["DiffUpdate"]["ok"] is True
 
-            response = client.post(
-                "/graphql",
-                json={"query": DIFF_TREE_QUERY, "variables": {"branch": branch1}},
-                headers=headers,
-            )
-            assert response.status_code == 200
+        response = await test_client.post(
+            "/graphql",
+            json={"query": DIFF_TREE_QUERY, "variables": {"branch": branch1}},
+            headers=headers,
+        )
+        assert response.status_code == 200
 
         result = response.json()
         assert "errors" not in result
@@ -1088,7 +1068,7 @@ class TestUserWorkflow01:
             == {}
         )
 
-    async def test_merge_first_branch_into_main(self, client, dataset01, integration_helper):
+    async def test_merge_first_branch_into_main(self, test_client, integration_helper):
         # Expected description for Loopback0 after the merge
         headers = await integration_helper.admin_headers()
 
@@ -1097,63 +1077,58 @@ class TestUserWorkflow01:
         intf1_name = "Loopback0"
         intf2_name = "Ethernet8"
 
-        with client:
-            # Merge branch1 into main
-            response = client.post(
-                "/graphql",
-                json={
-                    "query": BRANCH_MERGE,
-                    "variables": {
-                        "branch": branch1,
-                    },
+        # Merge branch1 into main
+        response = await test_client.post(
+            "/graphql",
+            json={
+                "query": BRANCH_MERGE,
+                "variables": {
+                    "branch": branch1,
                 },
-                headers=headers,
-            )
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            assert response.json()["data"]["BranchMerge"]["ok"] is True
+            },
+            headers=headers,
+        )
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        assert response.json()["data"]["BranchMerge"]["ok"] is True
 
-            # Query the new value in Main which should match the pervious version in branch1
-            response = client.post(
-                "/graphql",
-                json={
-                    "query": QUERY_SPINE1_INTF,
-                    "variables": {
-                        "intf_name": intf1_name,
-                    },
+        # Query the new value in Main which should match the pervious version in branch1
+        response = await test_client.post(
+            "/graphql",
+            json={
+                "query": QUERY_SPINE1_INTF,
+                "variables": {
+                    "intf_name": intf1_name,
                 },
-                headers=headers,
-            )
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            result = response.json()["data"]["InfraDevice"]["edges"][0]
+            },
+            headers=headers,
+        )
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]["InfraDevice"]["edges"][0]
 
-            intfs = [
-                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf1_name
-            ]
-            assert len(intfs) == 1
+        intfs = [intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf1_name]
+        assert len(intfs) == 1
 
-            assert intfs[0]["node"]["description"]["value"] == expected_description
+        assert intfs[0]["node"]["description"]["value"] == expected_description
 
-            # Query the new Interface in Main which should match the previous version in branch1
-            response = client.post(
-                "/graphql",
-                json={
-                    "query": QUERY_SPINE1_INTF,
-                    "variables": {
-                        "intf_name": intf2_name,
-                    },
+        # Query the new Interface in Main which should match the previous version in branch1
+        response = await test_client.post(
+            "/graphql",
+            json={
+                "query": QUERY_SPINE1_INTF,
+                "variables": {
+                    "intf_name": intf2_name,
                 },
-                headers=headers,
-            )
-            assert response.status_code == 200
-            assert "errors" not in response.json()
-            assert response.json()["data"] is not None
-            result = response.json()["data"]["InfraDevice"]["edges"][0]
+            },
+            headers=headers,
+        )
+        assert response.status_code == 200
+        assert "errors" not in response.json()
+        assert response.json()["data"] is not None
+        result = response.json()["data"]["InfraDevice"]["edges"][0]
 
-            intfs = [
-                intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf2_name
-            ]
-            assert len(intfs) == 1
+        intfs = [intf for intf in result["node"]["interfaces"]["edges"] if intf["node"]["name"]["value"] == intf2_name]
+        assert len(intfs) == 1

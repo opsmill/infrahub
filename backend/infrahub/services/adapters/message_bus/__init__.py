@@ -25,6 +25,7 @@ class InfrahubMessageBus:
         "trigger.*.*",
     ]
     event_bindings: list[str] = ["refresh.registry.*"]
+    broadcasted_event_bindings: list[str] = ["refresh.git.*"]
 
     async def initialize(self, service: InfrahubServices) -> None:
         """Initialize the Message bus"""

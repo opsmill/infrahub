@@ -31,6 +31,7 @@ from infrahub.core.constants import (
     UpdateSupport,
 )
 from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.dropdown import DropdownChoice
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.types import ATTRIBUTE_KIND_LABELS
@@ -478,6 +479,14 @@ attribute_schema = SchemaNode(
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
+            name="computed_attribute",
+            kind="JSON",
+            internal_kind=ComputedAttribute,
+            description="Defines how the value of this attribute will be populated.",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
             name="choices",
             kind="List",
             internal_kind=DropdownChoice,
@@ -597,6 +606,14 @@ attribute_schema = SchemaNode(
             enum=AllowOverrideType.available_types(),
             default_value=AllowOverrideType.ANY,
             optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="deprecation",
+            kind="Text",
+            optional=True,
+            description="Mark attribute as deprecated and provide a user-friendly message to display",
+            max_length=DEFAULT_DESCRIPTION_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
     ],
@@ -792,6 +809,14 @@ relationship_schema = SchemaNode(
             description="Set the relationship as read-only, users won't be able to change its value.",
             default_value=False,
             optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="deprecation",
+            kind="Text",
+            optional=True,
+            description="Mark relationship as deprecated and provide a user-friendly message to display",
+            max_length=DEFAULT_DESCRIPTION_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
     ],

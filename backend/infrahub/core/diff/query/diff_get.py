@@ -13,8 +13,8 @@ QUERY_MATCH_NODES = """
     MATCH (diff_root:DiffRoot)
     WHERE diff_root.base_branch = $base_branch
     AND diff_root.diff_branch IN $diff_branches
-    AND diff_root.from_time >= $from_time
-    AND diff_root.to_time <= $to_time
+    AND ($from_time IS NULL OR diff_root.from_time >= $from_time)
+    AND ($to_time IS NULL OR diff_root.to_time <= $to_time)
     AND ($tracking_id IS NULL OR diff_root.tracking_id = $tracking_id)
     AND ($diff_ids IS NULL OR diff_root.uuid IN $diff_ids)
     WITH diff_root

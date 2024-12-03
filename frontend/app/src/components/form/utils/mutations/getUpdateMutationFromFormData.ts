@@ -67,7 +67,6 @@ export const getUpdateMutationFromFormData = ({
             };
           }
         }
-
         return {
           ...acc,
           [field.name]: { value: fieldData.value === "" ? null : fieldData.value },

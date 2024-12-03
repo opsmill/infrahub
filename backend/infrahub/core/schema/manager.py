@@ -537,7 +537,7 @@ class SchemaManager(NodeManager):
         schema: NodeSchema, item: AttributeSchema, branch: Branch, parent: Node, db: InfrahubDatabase
     ) -> AttributeSchema:
         obj = await Node.init(schema=schema, branch=branch, db=db)
-        await obj.new(**item.model_dump(exclude={"id", "state", "filters"}), node=parent, db=db)
+        await obj.new(**item.to_node(), node=parent, db=db)
         await obj.save(db=db)
         new_item = item.duplicate()
         new_item.id = obj.id

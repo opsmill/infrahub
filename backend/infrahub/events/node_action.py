@@ -3,6 +3,7 @@ from typing import Any
 from pydantic import Field
 
 from infrahub.core.constants import MutationAction
+from infrahub.message_bus import InfrahubMessage
 from infrahub.message_bus.messages.event_node_mutated import EventNodeMutated
 
 from .models import InfrahubBranchEvent
@@ -23,18 +24,22 @@ class NodeMutatedEvent(InfrahubBranchEvent):
         return {
             "prefect.resource.id": f"infrahub.node.{self.node_id}",
             "infrahub.node.kind": self.kind,
+            "infrahub.node.id": self.node_id,
             "infrahub.node.action": self.action.value,
+            "infrahub.branch.name": self.branch,
         }
 
     def get_payload(self) -> dict[str, Any]:
         return self.data
 
-    def get_message(self) -> EventNodeMutated:
-        return EventNodeMutated(
-            branch=self.branch,
-            kind=self.kind,
-            node_id=self.node_id,
-            action=self.action.value,
-            data=self.data,
-            meta=self.get_message_meta(),
-        )
+    def get_messages(self) -> list[InfrahubMessage]:
+        return [
+            EventNodeMutated(
+                branch=self.branch,
+                kind=self.kind,
+                node_id=self.node_id,
+                action=self.action.value,
+                data=self.data,
+                meta=self.get_message_meta(),
+            )
+        ]

@@ -41,6 +41,11 @@ class StandardNode(BaseModel):
     def get_type(cls) -> str:
         return cls.__name__
 
+    def get_id(self) -> str:
+        if not self.id:
+            raise ValueError("id isn't defined yet")
+        return self.id
+
     @staticmethod
     def guess_field_type(field: FieldInfo) -> Any:
         """Return the type of a Pydantic model field.

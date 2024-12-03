@@ -3,6 +3,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
@@ -15,41 +16,21 @@ from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 
 
-async def test_validate_graph(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
-    branch1 = await Branch.get_by_name(name="branch1", db=db)
-
+async def _get_branch_merger(
+    db: InfrahubDatabase, source_branch: Branch, destination_branch: Branch | None = None
+) -> BranchMerger:
     component_registry = get_component_registry()
-    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch1)
-    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch1)
-    merger = BranchMerger(db=db, diff_coordinator=diff_coordinator, diff_merger=diff_merger, source_branch=branch1)
-    conflicts = await merger.validate_graph()
-
-    assert not conflicts
-    assert conflicts == []
-
-    # Change the name of C1 in Branch1 to create a conflict
-    c1 = await NodeManager.get_one(id="c1", branch=branch1, db=db)
-    c1.name.value = "new name"
-    await c1.save(db=db)
-
-    merger = BranchMerger(db=db, diff_coordinator=diff_coordinator, diff_merger=diff_merger, source_branch=branch1)
-    conflicts = await merger.validate_graph()
-
-    assert conflicts
-    assert conflicts[0].path == "data/c1/name/value"
-
-
-async def test_validate_empty_branch(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
-    branch2 = await create_branch(branch_name="branch2", db=db)
-
-    component_registry = get_component_registry()
-    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch2)
-    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch2)
-    merger = BranchMerger(db=db, diff_coordinator=diff_coordinator, diff_merger=diff_merger, source_branch=branch2)
-    conflicts = await merger.validate_graph()
-
-    assert not conflicts
-    assert conflicts == []
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=source_branch)
+    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=source_branch)
+    return BranchMerger(
+        db=db,
+        diff_coordinator=diff_coordinator,
+        diff_merger=diff_merger,
+        diff_repository=diff_repository,
+        source_branch=source_branch,
+        destination_branch=destination_branch,
+    )
 
 
 async def test_merge_graph(db: InfrahubDatabase, default_branch, base_dataset_02, register_core_models_schema):
@@ -198,14 +179,8 @@ async def test_merge_update_schema(
 
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch2)
-    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch2)
-    merger = BranchMerger(
-        db=db,
-        diff_coordinator=diff_coordinator,
-        diff_merger=diff_merger,
-        source_branch=branch2,
-        destination_branch=default_branch,
-    )
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+    merger = await _get_branch_merger(db=db, source_branch=branch2, destination_branch=default_branch)
     assert await merger.update_schema() is True
     assert sorted(merger.migrations, key=lambda x: x.path.get_path()) == sorted(
         [

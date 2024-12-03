@@ -130,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
 
     if (!result?.access_token) {
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Invalid username and password" />, {
+      toast(<Alert type={ALERT_TYPES.ERROR} message="Invalid username or password" />, {
         toastId: "alert-error-sign-in",
       });
 

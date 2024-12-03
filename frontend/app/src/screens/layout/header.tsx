@@ -4,6 +4,7 @@ import InfrahubLogo from "@/images/infrahub-logo.svg";
 import BreadcrumbNavigation from "@/screens/layout/breadcrumb-navigation/breadcrumb-navigation";
 import { constructPath } from "@/utils/fetch";
 import { Link } from "react-router-dom";
+import { TaskStatus } from "./tasks-status";
 
 export default function Header() {
   return (
@@ -16,7 +17,11 @@ export default function Header() {
 
       <BranchSelector />
 
-      <BreadcrumbNavigation />
+      <div className="flex-1">
+        <BreadcrumbNavigation />
+      </div>
+
+      <TaskStatus />
     </header>
   );
 }

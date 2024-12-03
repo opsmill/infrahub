@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.api.dependencies import build_graphql_query_permission_checker
@@ -23,8 +24,9 @@ from infrahub.graphql.metrics import (
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
 )
 from infrahub.graphql.utils import extract_data
+from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.log import get_logger
-from infrahub.message_bus import messages
+from infrahub.workflows.catalogue import UPDATE_GRAPHQL_QUERY_GROUP
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
@@ -52,14 +54,14 @@ async def execute_query(
     account_session: AccountSession,
 ) -> dict[str, Any]:
     gql_query = await registry.manager.get_one_by_id_or_default_filter(
-        db=db, id=query_id, kind=InfrahubKind.GRAPHQLQUERY, branch=branch_params.branch, at=branch_params.at
+        db=db, id=query_id, kind=CoreGraphQLQuery, branch=branch_params.branch, at=branch_params.at
     )
 
     gql_params = prepare_graphql_params(
         db=db, branch=branch_params.branch, at=branch_params.at, account_session=account_session
     )
     analyzed_query = InfrahubGraphQLQueryAnalyzer(
-        query=gql_query.query.value,  # type: ignore[attr-defined]
+        query=gql_query.query.value,
         schema=gql_params.schema,
         branch=branch_params.branch,
     )
@@ -75,20 +77,20 @@ async def execute_query(
         "type": "mutation" if analyzed_query.contains_mutation else "query",
         "branch": branch_params.branch.name,
         "operation": "",
-        "name": gql_query.name.value,  # type: ignore[attr-defined]
+        "name": gql_query.name.value,
         "query_id": query_id,
     }
 
     with GRAPHQL_DURATION_METRICS.labels(**labels).time():
         result = await graphql(
             schema=gql_params.schema,
-            source=gql_query.query.value,  # type: ignore[attr-defined]
+            source=gql_query.query.value,
             context_value=gql_params.context,
             root_value=None,
             variable_values=params,
         )
 
-    data = extract_data(query_name=gql_query.name.value, result=result)  # type: ignore[attr-defined]
+    data = extract_data(query_name=gql_query.name.value, result=result)
 
     GRAPHQL_RESPONSE_SIZE_METRICS.labels(**labels).observe(len(data))
     GRAPHQL_QUERY_DEPTH_METRICS.labels(**labels).observe(await analyzed_query.calculate_depth())
@@ -105,16 +107,15 @@ async def execute_query(
 
     if update_group:
         service: InfrahubServices = request.app.state.service
-        await service.send(
-            message=messages.RequestGraphQLQueryGroupUpdate(
-                branch=branch_params.branch.name,
-                query_id=gql_query.id,
-                query_name=gql_query.name.value,  # type: ignore[attr-defined]
-                related_node_ids=sorted(list(related_node_ids)),
-                subscribers=sorted(subscribers),
-                params=params,
-            )
+        model = RequestGraphQLQueryGroupUpdate(
+            branch=branch_params.branch.name,
+            query_id=gql_query.id,
+            query_name=gql_query.name.value,
+            related_node_ids=sorted(list(related_node_ids)),
+            subscribers=sorted(subscribers),
+            params=params,
         )
+        await service.workflow.submit_workflow(workflow=UPDATE_GRAPHQL_QUERY_GROUP, parameters={"model": model})
 
     return response_payload
 

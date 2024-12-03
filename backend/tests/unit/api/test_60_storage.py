@@ -1,5 +1,4 @@
 import hashlib
-import os
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -12,16 +11,14 @@ async def test_file_upload(
     db: InfrahubDatabase,
     client: TestClient,
     helper,
-    local_storage_dir: str,
+    local_storage_dir: Path,
     admin_headers,
     default_branch: Branch,
     authentication_base,
 ):
-    fixture_dir = helper.get_fixtures_dir()
-
-    files_dir = os.path.join(fixture_dir, "schemas")
-    filenames = [item.name for item in os.scandir(files_dir) if item.is_file()]
-    file_path = Path(os.path.join(files_dir, filenames[0]))
+    files_dir = helper.get_fixtures_dir() / "schemas"
+    filenames = [item.name for item in files_dir.iterdir() if item.is_file()]
+    file_path = files_dir / filenames[0]
 
     file_content = file_path.read_bytes()
     file_checksum = hashlib.md5(file_content, usedforsecurity=False).hexdigest()
@@ -34,8 +31,7 @@ async def test_file_upload(
         assert data["checksum"] == file_checksum
         assert data["identifier"]
 
-        file_in_storage = Path(os.path.join(local_storage_dir, data["identifier"]))
-
+        file_in_storage: Path = local_storage_dir / data["identifier"]
         assert file_in_storage.exists()
         assert file_in_storage.read_bytes() == file_content
 
@@ -44,16 +40,15 @@ async def test_content_upload(
     db: InfrahubDatabase,
     client: TestClient,
     helper,
-    local_storage_dir: str,
+    local_storage_dir: Path,
     admin_headers,
     default_branch: Branch,
     authentication_base,
 ):
-    fixture_dir = helper.get_fixtures_dir()
-    files_dir = os.path.join(fixture_dir, "schemas")
-    filenames = [item.name for item in os.scandir(files_dir) if item.is_file()]
+    files_dir = helper.get_fixtures_dir() / "schemas"
+    filenames = [item.name for item in files_dir.iterdir() if item.is_file()]
 
-    file_content = Path(os.path.join(files_dir, filenames[0])).read_bytes()
+    file_content = (files_dir / filenames[0]).read_bytes()
     file_checksum = hashlib.md5(file_content, usedforsecurity=False).hexdigest()
 
     with client:
@@ -64,7 +59,6 @@ async def test_content_upload(
         assert data["checksum"] == file_checksum
         assert data["identifier"]
 
-        file_in_storage = Path(os.path.join(local_storage_dir, data["identifier"]))
-
+        file_in_storage: Path = local_storage_dir / data["identifier"]
         assert file_in_storage.exists()
         assert file_in_storage.read_bytes() == file_content

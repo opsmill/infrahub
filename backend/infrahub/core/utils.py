@@ -184,10 +184,10 @@ def convert_ip_to_binary_str(
     obj: Union[ipaddress.IPv6Network, ipaddress.IPv4Network, ipaddress.IPv4Interface, ipaddress.IPv6Interface],
 ) -> str:
     if isinstance(obj, (ipaddress.IPv6Network, ipaddress.IPv4Network)):
-        prefix_bin = bin(int(obj.network_address))[2:]
+        prefix_bin = f"{int(obj.network_address):b}"
         return prefix_bin.zfill(obj.max_prefixlen)
 
-    ip_bin = bin(int(obj))[2:]
+    ip_bin = f"{int(obj):b}"
     return ip_bin.zfill(obj.max_prefixlen)
 
 
@@ -201,14 +201,11 @@ def build_regex_attr(value: str | int | bool) -> str:
     For a string, it must have quotes
     For int and bool, it must not have quotes
     """
-    regex_no_quote = r'(?<=[^\w"\d]){value}(?=[^\w"\d])'
     if isinstance(value, str):
         return f'"{value}"'
-    if isinstance(value, bool):
+    if isinstance(value, (bool, int)):
         value_str = str(value).lower()
-        return regex_no_quote.format(value=value_str)
-    if isinstance(value, int):
-        return regex_no_quote.format(value=value)
+        return rf'(?<=[^\w"\d]){value_str}(?=[^\w"\d])'
 
     raise ValueError("value was neither a string, an int or a boolean")
 

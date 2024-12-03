@@ -96,8 +96,13 @@ class RabbitMQMessageBus(InfrahubMessageBus):
                 "cafile": self.settings.tls_ca_file or "",
             },
         )
+        self.connection.reconnect_callbacks.add(self.on_reconnect, weak=False)
 
+        await self._initialize_connection()
+
+    async def _initialize_connection(self) -> None:
         self.channel = await self.connection.channel()
+
         if self.service.component_type == ComponentType.API_SERVER:
             await self._initialize_api_server()
         elif self.service.component_type == ComponentType.GIT_AGENT:
@@ -127,6 +132,13 @@ class RabbitMQMessageBus(InfrahubMessageBus):
                 await execute_message(routing_key=message.routing_key, message_body=message.body, service=self.service)
             else:
                 self.service.log.error("Invalid message received", message=f"{message!r}")
+
+    async def on_reconnect(
+        self,
+        weak: bool = False,  # pylint: disable=unused-argument
+    ) -> None:
+        self.service.log.info("Reconnected to RabbitMQ, reinitializing connection")
+        await self._initialize_connection()
 
     async def _initialize_api_server(self) -> None:
         self.callback_queue = await self.channel.declare_queue(name=f"api-callback-{WORKER_IDENTITY}", exclusive=True)
@@ -173,13 +185,14 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.message_enrichers.append(_add_request_id)
 
     async def _initialize_git_worker(self) -> None:
+        bindings = self.event_bindings + self.broadcasted_event_bindings
         events_queue = await self.channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
 
         self.exchange = await self.channel.declare_exchange(
             f"{self.settings.namespace}.events", type="topic", durable=True
         )
 
-        for routing_key in self.event_bindings:
+        for routing_key in bindings:
             await events_queue.bind(self.exchange, routing_key=routing_key)
         self.delayed_exchange = await self.channel.get_exchange(name=f"{self.settings.namespace}.delayed")
 

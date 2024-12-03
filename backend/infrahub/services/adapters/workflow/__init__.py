@@ -41,7 +41,7 @@ class InfrahubWorkflow:
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> Any:
-        raise NotImplementedError()
+        raise NotImplementedError("InfrahubWorkflow.execute_workflow is an abstract method")
 
     async def submit_workflow(
         self,
@@ -49,4 +49,4 @@ class InfrahubWorkflow:
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> WorkflowInfo:
-        raise NotImplementedError()
+        raise NotImplementedError("InfrahubWorkflow.submit_workflow is an abstract method")

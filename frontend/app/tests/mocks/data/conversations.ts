@@ -125,13 +125,6 @@ export const conversationMocksSchema = [
             object_kind: null,
             description: null,
           },
-          {
-            name: "role__value",
-            kind: "Text",
-            enum: ["admin", "read-only", "read-write"],
-            object_kind: null,
-            description: null,
-          },
         ],
         order_weight: 5000,
       },

@@ -1,11 +1,12 @@
 from enum import Enum
 
-from infrahub.core.constants import BranchConflictKeep, InfrahubKind, ProposedChangeState
+from infrahub.core.constants import BranchConflictKeep, InfrahubKind
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError
+from infrahub.proposed_change.constants import ProposedChangeState
 
 from .conflicts_extractor import DiffConflictsExtractor
 from .model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot

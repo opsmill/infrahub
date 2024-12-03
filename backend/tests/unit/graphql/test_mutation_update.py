@@ -1,5 +1,4 @@
 import pytest
-from graphql import graphql
 
 from infrahub import config
 from infrahub.core import registry
@@ -9,6 +8,7 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.manager import GraphQLSchemaManager
+from tests.helpers.graphql import graphql
 
 
 async def test_update_simple_object(db: InfrahubDatabase, person_john_main: Node, branch: Branch):

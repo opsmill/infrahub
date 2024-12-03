@@ -1,4 +1,3 @@
-import os
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -6,12 +5,6 @@ from typing import Any
 
 from invoke import Context, task
 
-from .shared import (
-    BUILD_NAME,
-    build_test_compose_files_cmd,
-    build_test_envs,
-    get_env_vars,
-)
 from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
@@ -85,17 +78,8 @@ def install(context: Context) -> None:
 
 
 @task
-def validate(context: Context, docker: bool = False) -> None:
+def validate(context: Context) -> None:
     """Validate that the generated documentation is committed to Git."""
-
-    if docker:
-        compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run "
-        exec_cmd += f"{build_test_envs()} infrahub-test inv docs.validate"
-        with context.cd(ESCAPED_REPO_PATH):
-            context.run(exec_cmd)
-        return
-
     _generate(context=context)
     exec_cmd = "git diff --exit-code docs"
     with context.cd(ESCAPED_REPO_PATH):
@@ -225,7 +209,7 @@ def _generate_infrahub_schema_documentation() -> None:
         template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/schema/{schema_name}.j2"
         output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/schema/{schema_name}.mdx"
         output_label = f"docs/docs/reference/schema/{schema_name}.mdx"
-        if not os.path.exists(template_file):
+        if not Path(template_file).exists():
             print(f"Unable to find the template file at {template_file}")
             sys.exit(-1)
 
@@ -290,7 +274,7 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
     output_file = f"{DOCUMENTATION_DIRECTORY}/docs/python-sdk/reference/config.mdx"
     output_label = "docs/docs/python-sdk/reference/config.mdx"
 
-    if not os.path.exists(template_file):
+    if not Path(template_file).exists():
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
 
@@ -341,7 +325,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
     template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/dotinfrahub.j2"
     output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/dotinfrahub.mdx"
     output_label = "docs/docs/reference/dotinfrahub.mdx"
-    if not os.path.exists(template_file):
+    if not Path(template_file).exists():
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
 
@@ -401,7 +385,7 @@ def _generate_infrahub_events_documentation() -> None:
 
     print(" - Generate Infrahub Bus Events documentation")
 
-    if not os.path.exists(template_file):
+    if not Path(template_file).exists():
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
 

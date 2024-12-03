@@ -34,8 +34,8 @@ class InfrahubEventService:
         await asyncio.gather(*tasks)
 
     async def _send_bus(self, event: InfrahubEvent) -> None:
-        message = event.get_message()
-        await self.service.send(message=message)
+        for message in event.get_messages():
+            await self.service.send(message=message)
 
     async def _send_prefect(self, event: InfrahubEvent) -> None:
         emit_event(

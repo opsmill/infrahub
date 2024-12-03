@@ -1,7 +1,8 @@
 from pydantic import ConfigDict, Field
 
+from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.message_bus import InfrahubMessage
-from infrahub.message_bus.types import ProposedChangeBranchDiff, ProposedChangeGeneratorDefinition
+from infrahub.message_bus.types import ProposedChangeBranchDiff
 
 
 class RequestGeneratorDefinitionCheck(InfrahubMessage):

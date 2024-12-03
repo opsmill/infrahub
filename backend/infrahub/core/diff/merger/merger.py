@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.diff.model.path import BranchTrackingId
-from infrahub.core.diff.query.merge import DiffMergePropertiesQuery, DiffMergeQuery
+from infrahub.core.diff.query.merge import DiffMergePropertiesQuery, DiffMergeQuery, DiffMergeRollbackQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -65,3 +65,9 @@ class DiffMerger:
         self.source_branch.branched_from = at.to_string()
         await self.source_branch.save(db=self.db)
         registry.branch[self.source_branch.name] = self.source_branch
+
+    async def rollback(self, at: Timestamp) -> None:
+        rollback_query = await DiffMergeRollbackQuery.init(
+            db=self.db, branch=self.source_branch, target_branch=self.destination_branch, at=at
+        )
+        await rollback_query.execute(db=self.db)

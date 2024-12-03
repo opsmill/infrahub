@@ -1,3 +1,4 @@
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { QSP } from "@/config/qsp";
 import { SchemaContext, withSchemaContext } from "@/decorators/withSchemaContext";
 import { Branch } from "@/generated/graphql";
@@ -10,7 +11,8 @@ import { NetworkStatus, useQuery } from "@apollo/client";
 import { useSetAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useContext, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import Header from "./header";
 
@@ -20,13 +22,34 @@ function Layout() {
   const { checkSchemaUpdate } = useContext(SchemaContext);
   const setBranches = useSetAtom(branchesState);
   const setCurrentBranch = useSetAtom(currentBranchAtom);
+
+  const navigate = useNavigate();
+
   const { networkStatus } = useQuery(GET_BRANCHES, {
     notifyOnNetworkStatusChange: true,
     onCompleted: (data) => {
       const branches: Branch[] = data.Branch ?? [];
-      const selectedBranch = findSelectedBranch(branches, branchInQueryString);
 
       setBranches(branches);
+
+      const selectedBranch = findSelectedBranch(branches, branchInQueryString);
+
+      if (branchInQueryString && !selectedBranch) {
+        toast(
+          <Alert
+            type={ALERT_TYPES.ERROR}
+            message={
+              <div>
+                Branch <b>{branchInQueryString}</b> not found, you have been redirected to the main
+                branch.
+              </div>
+            }
+          />
+        );
+        navigate("/");
+        return;
+      }
+
       setCurrentBranch(selectedBranch);
     },
     onError: (err) => {

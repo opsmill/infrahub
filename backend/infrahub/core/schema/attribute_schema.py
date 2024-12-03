@@ -32,6 +32,10 @@ class AttributeSchema(GeneratedAttributeSchema):
     def is_relationship(self) -> bool:
         return False
 
+    @property
+    def is_deprecated(self) -> bool:
+        return bool(self.deprecation)
+
     @field_validator("kind")
     @classmethod
     def kind_options(cls, v: str) -> str:
@@ -91,6 +95,19 @@ class AttributeSchema(GeneratedAttributeSchema):
                 continue
             if getattr(self, name) != getattr(other, name):
                 setattr(self, name, getattr(other, name))
+
+    def to_node(self) -> dict[str, Any]:
+        fields_to_exclude = {"id", "state", "filters"}
+        fields_to_json = {"computed_attribute"}
+        data = self.model_dump(exclude=fields_to_exclude | fields_to_json)
+
+        for field_name in fields_to_json:
+            if field := getattr(self, field_name):
+                data[field_name] = {"value": field.model_dump()}
+            else:
+                data[field_name] = None
+
+        return data
 
     async def get_query_filter(
         self,

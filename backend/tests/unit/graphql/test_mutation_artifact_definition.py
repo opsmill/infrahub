@@ -2,7 +2,6 @@ from typing import Dict
 from unittest.mock import call, patch
 
 import pytest
-from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -15,6 +14,7 @@ from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 from tests.adapters.message_bus import BusRecorder
+from tests.helpers.graphql import graphql
 
 
 @pytest.fixture

@@ -87,22 +87,6 @@ export const profileDetailsMocksQuery = gql`
           __typename
         }
       }
-      role {
-        value
-        updated_at
-        is_protected
-        is_visible
-        source {
-          id
-          display_label
-          __typename
-        }
-        owner {
-          id
-          display_label
-          __typename
-        }
-      }
     }
   }
 `;
@@ -192,22 +176,6 @@ query($offset: Int, $limit: Int) {
             __typename
           }
       }
-      role {
-          value
-          updated_at
-          is_protected
-          is_visible
-          source {
-            id
-            display_label
-            __typename
-          }
-          owner {
-            id
-            display_label
-            __typename
-          }
-      }
   }
 }
 `;
@@ -254,15 +222,6 @@ export const profileDetailsMocksData = {
     },
     account_type: {
       value: "User",
-      updated_at: "2023-07-10T15:01:26.568139+00:00",
-      is_protected: false,
-      is_visible: true,
-      source: null,
-      owner: null,
-      __typename: "TextAttribute",
-    },
-    role: {
-      value: "read-write",
       updated_at: "2023-07-10T15:01:26.568139+00:00",
       is_protected: false,
       is_visible: true,

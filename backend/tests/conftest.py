@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import logging
 import os
 import sys
 import time
@@ -61,6 +62,7 @@ from tests.helpers.constants import (
 from tests.helpers.utils import get_exposed_port, start_neo4j_container
 
 ResponseClass = TypeVar("ResponseClass")
+DEFAULT_TESTING_LOG_LEVEL = "WARNING"
 
 
 def pytest_addoption(parser):
@@ -77,6 +79,15 @@ def pytest_configure(config):
 
     if not config.option.neo4j:
         setattr(config.option, "markexpr", markexpr)
+
+    log_level = config.option.log_level
+    log_level = log_level if log_level is not None else DEFAULT_TESTING_LOG_LEVEL
+
+    # We can't control logging through INFRAHUB_LOG_LEVEL and PREFECT_LOGGING_LEVEL here
+    # because logging configuration has already been setup when `log.py` is imported,
+    # thus we directly set level of corresponding loggers.
+    logging.getLogger().setLevel(log_level)  # root logger
+    logging.getLogger("prefect").setLevel(log_level)  # prefect logger
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -141,9 +152,9 @@ async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema)
 
 
 @pytest.fixture
-def local_storage_dir(tmp_path) -> str:
-    storage_dir = os.path.join(str(tmp_path), "storage")
-    os.mkdir(storage_dir)
+def local_storage_dir(tmp_path: Path) -> Path:
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir()
 
     config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
     config.SETTINGS.storage.local.path_ = storage_dir
@@ -779,9 +790,7 @@ class TestHelper:
     @staticmethod
     def schema_file(file_name: str) -> dict:
         """Return the contents of a schema file as a dictionary"""
-        file_content = Path(os.path.join(TestHelper.get_fixtures_dir(), f"schemas/{file_name}")).read_text(
-            encoding="utf-8"
-        )
+        file_content = (TestHelper.get_fixtures_dir() / "schemas" / file_name).read_text(encoding="utf-8")
 
         return ujson.loads(file_content)
 

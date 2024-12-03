@@ -1,0 +1,21 @@
+query TestingTshirtColor($id: ID!) {
+  TestingTShirt(ids: [$id]) {
+    edges {
+      node {
+        name {
+          value
+        }
+        color {
+          node {
+            name {
+              value
+            }
+            description {
+              value
+            }
+          }
+        }
+      }
+    }
+  }
+}

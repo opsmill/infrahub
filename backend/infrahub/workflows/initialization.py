@@ -7,11 +7,11 @@ from prefect.logging import get_run_logger
 
 from infrahub import config
 
-from .catalogue import worker_pools, workflows
+from .catalogue import automation_setup_workflows, worker_pools, workflows
 from .models import TASK_RESULT_STORAGE_NAME
 
 
-@task(name="task-manager-setup-worker-pools")
+@task(name="task-manager-setup-worker-pools", task_run_name="Setup Worker pools")
 async def setup_worker_pools(client: PrefectClient) -> None:
     log = get_run_logger()
     for worker in worker_pools:
@@ -27,7 +27,7 @@ async def setup_worker_pools(client: PrefectClient) -> None:
             log.warning(f"Work pool {worker.name} already present ")
 
 
-@task(name="task-manager-setup-deployments")
+@task(name="task-manager-setup-deployments", task_run_name="Setup Deployments")
 async def setup_deployments(client: PrefectClient) -> None:
     log = get_run_logger()
     for workflow in workflows:
@@ -37,8 +37,12 @@ async def setup_deployments(client: PrefectClient) -> None:
         await workflow.save(client=client, work_pool=work_pool)
         log.info(f"Flow {workflow.name}, created successfully ... ")
 
+    for automation_setup_workflow in automation_setup_workflows:
+        automation_setup = automation_setup_workflow.get_function()
+        await automation_setup()
 
-@task(name="task-manager-setup-blocks")
+
+@task(name="task-manager-setup-blocks", task_run_name="Setup Blocks")
 async def setup_blocks() -> None:
     log = get_run_logger()
 
@@ -60,7 +64,7 @@ async def setup_blocks() -> None:
         log.warning(f"Redis Storage {TASK_RESULT_STORAGE_NAME} already present ")
 
 
-@flow(name="task-manager-setup")
+@flow(name="task-manager-setup", flow_run_name="Setup Task Manager")
 async def setup_task_manager() -> None:
     async with get_client(sync_client=False) as client:
         await setup_blocks()

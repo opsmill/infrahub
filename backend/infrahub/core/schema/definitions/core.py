@@ -4,7 +4,6 @@ from infrahub.core.constants import (
     DEFAULT_KIND_MAX_LENGTH,
     DEFAULT_KIND_MIN_LENGTH,
     NAMESPACE_REGEX,
-    AccountRole,
     AccountStatus,
     AccountType,
     AllowOverrideType,
@@ -17,7 +16,6 @@ from infrahub.core.constants import (
     InfrahubKind,
     PermissionAction,
     PermissionDecision,
-    ProposedChangeState,
     RelationshipDeleteBehavior,
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
@@ -26,6 +24,7 @@ from infrahub.core.constants import (
     ValidatorConclusion,
     ValidatorState,
 )
+from infrahub.proposed_change.constants import ProposedChangeState
 
 # pylint: disable=too-many-lines
 
@@ -896,12 +895,6 @@ core_models: dict[str, Any] = {
                     "kind": "Text",
                     "default_value": AccountType.USER.value,
                     "enum": AccountType.available_types(),
-                },
-                {
-                    "name": "role",
-                    "kind": "Text",
-                    "default_value": AccountRole.READ_ONLY.value,
-                    "enum": AccountRole.available_types(),
                 },
                 {
                     "name": "status",
