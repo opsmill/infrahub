@@ -11,6 +11,40 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [1.0.8](https://github.com/opsmill/infrahub/tree/v1.0.8) - 2024-12-03
+
+### Added
+
+- Add `sso_user_default_group` security setting to provide the name of a group to which SSO users will be assigned if the identity provider does not gives a list of groups to use ([#4924](https://github.com/opsmill/infrahub/issues/4924))
+- Added a 'append_git_suffix' configuration setting for Git repositories that allows you to define domains for auto appending '.git' to repositories defined with an HTTP URL ([#5077](https://github.com/opsmill/infrahub/issues/5077))
+
+### Fixed
+
+- Loosened up logic to determine when an artifact needs to be regenerated during a proposed change. This is to ensure that we always generate a new artifact if required. Until some other parts are refactored this will also need that we will generate artifacts in a few situations where it's not strictly required. This last part is a temporary solution. ([#4198](https://github.com/opsmill/infrahub/issues/4198))
+- Migrates from headless UI combobox to `cmdk` to resolve focus behavior issues when there is no result in the search anywhere ([#4715](https://github.com/opsmill/infrahub/issues/4715))
+- Fix GraphQL mutations to make user permissions updates work correctly
+  - Update the alert message to better reflect the changes (between creation and update)
+  - Fix the objects delete modal on the global permission view
+  - Fix the global permission update mutation
+
+  ([#4881](https://github.com/opsmill/infrahub/issues/4881), [#4952](https://github.com/opsmill/infrahub/issues/4952))
+- Validate that a deleted schema node is not used in any relationship when loading a new schema ([#4912](https://github.com/opsmill/infrahub/issues/4912))
+- Set content type of artifact when rendered to fix artifact content type if artifact definition has changed ([#4969](https://github.com/opsmill/infrahub/issues/4969))
+- Raise error if pool allocation misses data to create node ([#5006](https://github.com/opsmill/infrahub/issues/5006))
+- Process new schema before replacing branch in registry to avoid causing the GraphQL schema to be generated while the new schema is still loading ([#5008](https://github.com/opsmill/infrahub/issues/5008))
+- Added a check on repository import and sync to wait until the schema has converged before importing additional objects when the repository contains an updated schema ([#5051](https://github.com/opsmill/infrahub/issues/5051))
+- Fix artifact definition targets when changed in repository so that it's reflected in the database ([#5060](https://github.com/opsmill/infrahub/issues/5060))
+- GraphQL query with filters on attribute of type List return the expected result ([#5091](https://github.com/opsmill/infrahub/issues/5091))
+- Prevent adding a new mandatory attribute or relationship to the schema if some nodes are already present in the database ([#5106](https://github.com/opsmill/infrahub/issues/5106))
+- Ensure that permission queries are run in non isolated mode so that updates from the default branch are automatically reflected in other branches ([#5110](https://github.com/opsmill/infrahub/issues/5110))
+- Add retry for transient database errors during IP reconciliation tasks
+- Corrected configuration for prefect worker to never prompt for Git credentials on the console
+- Fix artifact object relationship by enforcing it to be an artifact target
+- Fix bug in IP reconciliation query around deleted nodes and relationships
+- Fix issue that could cause diff generation to crash if a schema was renamed
+- Fixes a bug that prevented running a generator from a read-only repository
+- Generator groups are correctly created after merging a proposed change
+
 ## [1.0.7](https://github.com/opsmill/infrahub/tree/v1.0.7) - 2024-11-20
 
 ### Fixed
