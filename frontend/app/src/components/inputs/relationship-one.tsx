@@ -127,14 +127,15 @@ export const RelationshipInput = React.forwardRef<
             RelationshipListData &&
             (RelationshipListData[peer] as RelationshipManyType).edges
               .map((edge) => edge.node)
-              .filter((node): node is Node => !!node && value?.id !== node.id)
+              .filter((node): node is Node => !!node)
               .map((relationship) => {
                 return (
                   <ComboboxItem
                     key={relationship.id}
                     value={relationship.id}
+                    selectedValue={value?.id}
                     onSelect={() => {
-                      onChange(relationship);
+                      onChange(relationship.id === value?.id ? null : relationship);
                       setOpen(false);
                     }}
                   >
