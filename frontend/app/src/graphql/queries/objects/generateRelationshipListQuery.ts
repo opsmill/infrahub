@@ -6,12 +6,14 @@ export const generateRelationshipListQuery = ({
   limit = 0,
   offset = 0,
   search = "",
+  peerField,
 }: {
   peer: string;
   parent?: { name?: string; value?: string };
   limit?: number;
   offset?: number;
   search?: string;
+  peerField?: string;
 }): string => {
   const defaultArgs = { limit, offset, any__value: search, partial_match: true };
 
@@ -31,6 +33,7 @@ export const generateRelationshipListQuery = ({
           node: {
             id: true,
             display_label: true,
+            ...(peerField ? { [peerField]: { value: true } } : {}),
           },
         },
       },

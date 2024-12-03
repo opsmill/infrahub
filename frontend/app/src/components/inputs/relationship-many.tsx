@@ -28,15 +28,16 @@ export interface RelationshipManyInputProps
   onChange: (value: Array<Node>) => void;
   peer: string;
   value: Array<Node> | null;
+  peerField?: string;
 }
 
 export const RelationshipManyInput = React.forwardRef<
   React.ElementRef<typeof PopoverTrigger>,
   RelationshipManyInputProps
->(({ id, className, peer, value, onChange, ...props }, ref) => {
+>(({ id, className, peer, peerField, value, onChange, ...props }, ref) => {
   const [open, setOpen] = React.useState(false);
   const [loadComboboxList, { loading, data }] = useLazyQuery(
-    gql(generateRelationshipListQuery({ peer }))
+    gql(generateRelationshipListQuery({ peer, peerField }))
   );
 
   const handleSelect = (relationship: Node) => {
@@ -55,9 +56,9 @@ export const RelationshipManyInput = React.forwardRef<
           )}
         >
           <div className="flex-grow flex flex-wrap gap-2">
-            {value?.map(({ id, display_label }) => (
+            {value?.map(({ id, display_label, ...data }) => (
               <Badge key={id} className="flex items-center gap-1 pr-0.5">
-                {display_label}
+                {peerField ? (data[peerField]?.value ?? display_label) : display_label}
 
                 <Button
                   size="icon"
@@ -68,6 +69,7 @@ export const RelationshipManyInput = React.forwardRef<
                   }}
                   className="text-gray-500 hover:text-gray-800 h-4 w-4"
                   aria-label="Remove"
+                  data-testid="remove-option"
                 >
                   &times;
                 </Button>
@@ -102,7 +104,9 @@ export const RelationshipManyInput = React.forwardRef<
                   value={relationship.display_label}
                   onSelect={() => handleSelect(relationship)}
                 >
-                  <span className="truncate">{relationship.display_label}</span>
+                  <span className="truncate">
+                    {peerField ? relationship[peerField]?.value : relationship.display_label}
+                  </span>
                 </ComboboxItem>
               ))}
         </ComboboxList>

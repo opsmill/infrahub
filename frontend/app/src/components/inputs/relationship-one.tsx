@@ -1,6 +1,7 @@
 import { Button } from "@/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
+import { PoolValue } from "@/components/form/pool-selector";
 import {
   Combobox,
   ComboboxContent,
@@ -9,7 +10,7 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/components/ui/combobox";
-import { PopoverAnchor, PopoverTrigger } from "@/components/ui/popover";
+import { PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
 import { generateRelationshipListQuery } from "@/graphql/queries/objects/generateRelationshipListQuery";
@@ -27,9 +28,9 @@ import { Tooltip } from "../ui/tooltip";
 
 export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value" | "onChange"> {
   className?: string;
-  onChange: (value: Node | null) => void;
+  onChange: (value: Node | PoolValue | null) => void;
   peer: string;
-  value: Node | null;
+  value: Node | PoolValue | null;
   options?: Array<Node>;
   parent?: { name?: string; value?: string };
 }
@@ -102,13 +103,15 @@ export const RelationshipInput = React.forwardRef<
   return (
     <Combobox open={open} onOpenChange={setOpen}>
       <div className="flex gap-2">
-        <PopoverAnchor asChild>
-          <ComboboxTrigger ref={ref} {...props}>
-            <span data-testid="select-value">{value?.display_label}</span>
+        <ComboboxTrigger ref={ref} {...props}>
+          {value && (
+            <span data-testid="select-value">
+              {"from_pool" in value ? "Allocated by pool" : value.display_label}
+            </span>
+          )}
 
-            {loading && <Spinner className="ml-auto" />}
-          </ComboboxTrigger>
-        </PopoverAnchor>
+          {loading && <Spinner className="ml-auto" />}
+        </ComboboxTrigger>
 
         {canRequestPools && (
           <Combobox open={isPoolOpen} onOpenChange={setIsPoolOpen}>
@@ -132,18 +135,32 @@ export const RelationshipInput = React.forwardRef<
                   poolsData &&
                   (poolsData[poolPeer] as RelationshipManyType).edges
                     .map((edge) => edge.node)
-                    .filter((node): node is Node => !!node && value?.id !== node.id)
-                    .map((relationship) => {
+                    .filter((node): node is Node => !!node)
+                    .map((pool) => {
                       return (
                         <ComboboxItem
-                          key={relationship.id}
-                          value={relationship.id}
+                          key={pool.id}
+                          value={pool.id}
+                          keywords={[pool.display_label]}
+                          selectedValue={
+                            value && "from_pool" in value ? value.from_pool.id : value?.id
+                          }
                           onSelect={() => {
-                            onChange(relationship);
-                            setOpen(false);
+                            onChange(
+                              value && "from_pool" in value && value.from_pool.id === pool.id
+                                ? null
+                                : {
+                                    from_pool: {
+                                      id: pool.id,
+                                      name: pool.display_label,
+                                      kind: pool.__typename,
+                                    },
+                                  }
+                            );
+                            setIsPoolOpen(false);
                           }}
                         >
-                          <span className="truncate">{relationship.display_label}</span>
+                          <span className="truncate">{pool.display_label}</span>
                         </ComboboxItem>
                       );
                     })}

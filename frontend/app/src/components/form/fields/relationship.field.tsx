@@ -1,5 +1,5 @@
 import { LabelFormField } from "@/components/form/fields/common";
-import { DynamicRelationshipFieldProps } from "@/components/form/type";
+import { DynamicRelationshipFieldProps, FormRelationshipValue } from "@/components/form/type";
 import { updateRelationshipFieldValue } from "@/components/form/utils/updateFormFieldValue";
 import { RelationshipInput } from "@/components/inputs/relationship-one";
 import { Badge } from "@/components/ui/badge";
@@ -310,7 +310,7 @@ const RelationshipField = ({
         rules={rules}
         defaultValue={defaultValue}
         render={({ field }) => {
-          const fieldData = field.value;
+          const fieldData: FormRelationshipValue = field.value;
 
           return (
             <div className="relative flex flex-col space-y-2">

@@ -17,6 +17,7 @@ test.describe("Role management - Roles CRUD", () => {
       await page.getByLabel("Name *").fill("test role");
       await page.getByLabel("Groups").click();
       await page.getByTestId("side-panel-container").getByText("Infrahub Users").click();
+      await page.getByLabel("Groups").click();
       await page.getByTestId("side-panel-container").getByLabel("Permissions").click();
       await page
         .getByTestId("side-panel-container")
@@ -58,8 +59,8 @@ test.describe("Role management - Roles CRUD", () => {
       await page.getByTestId("update-row-button").click();
       await page.getByLabel("Name *").click();
       await page.getByLabel("Name *").fill("test role 2");
+      await page.getByTestId("remove-option").first().click();
       await page.getByLabel("Groups").click();
-      await page.getByLabel("", { exact: true }).getByText("Infrahub Users").click();
       await page.getByTestId("side-panel-container").getByText("Super Administrators").click();
       await page.getByLabel("Groups").click();
       await page.getByTestId("side-panel-container").getByLabel("Permissions").click();
