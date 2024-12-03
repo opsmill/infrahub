@@ -11,6 +11,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
+from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql_mutation
 
@@ -71,7 +72,9 @@ async def test_branch_create(
     }
     """
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
+    cache = MemoryCache()
+    service = InfrahubServices(message_bus=recorder, cache=cache, database=db)
+    await service.component.initialize(service=service)
 
     result = await graphql_mutation(
         query=query, db=db, service=service, branch=default_branch, account_session=session_admin
@@ -178,8 +181,9 @@ async def test_branch_delete(
         query=delete_query, db=db, branch=default_branch, account_session=session_admin
     )
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
-
+    cache = MemoryCache()
+    service = InfrahubServices(message_bus=recorder, cache=cache, database=db)
+    await service.component.initialize(service=service)
     create = await graphql_mutation(
         query=create_query, db=db, branch=default_branch, service=service, account_session=session_admin
     )
