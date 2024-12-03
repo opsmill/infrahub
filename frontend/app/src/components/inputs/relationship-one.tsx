@@ -77,9 +77,12 @@ export const RelationshipInput = React.forwardRef<
   const loading = isRelationshipListLoading || isPoolListLoading;
 
   useEffect(() => {
-    const newResults = data && (data[peer] as RelationshipManyType).edges.map((edge) => edge.node);
+    const newResults =
+      RelationshipListData &&
+      (RelationshipListData[peer] as RelationshipManyType).edges.map((edge) => edge.node);
 
-    const dataCount = data && (data[peer] as RelationshipManyType).count;
+    const dataCount =
+      RelationshipListData && (RelationshipListData[peer] as RelationshipManyType).count;
 
     setCount(dataCount);
 
@@ -93,7 +96,7 @@ export const RelationshipInput = React.forwardRef<
     }
 
     setResults([...results, ...newResults]);
-  }, [data]);
+  }, [RelationshipListData]);
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
@@ -205,7 +208,6 @@ export const RelationshipInput = React.forwardRef<
               className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
               onClick={() => {
                 setOffset(offset + PAGINATION);
-                handleFocus();
               }}
             >
               More
