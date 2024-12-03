@@ -21,7 +21,7 @@ import { Node, RelationshipManyType } from "@/utils/getObjectItemDisplayValue";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Badge } from "../ui/badge";
 import { Tooltip } from "../ui/tooltip";
 
@@ -34,6 +34,8 @@ export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value
   parent?: { name?: string; value?: string };
 }
 
+const PAGINATION = 10;
+
 export const RelationshipInput = React.forwardRef<
   React.ElementRef<typeof PopoverTrigger>,
   RelationshipInputProps
@@ -42,6 +44,9 @@ export const RelationshipInput = React.forwardRef<
   const [open, setOpen] = React.useState(false);
   const [hasPoolsBeenOpened, setHasPoolsBeenOpened] = useState(false);
   const [hasBeenOpened, setHasBeenOpened] = useState(false);
+  const [count, setCount] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [results, setResults] = useState([]);
 
   // Check if any kind from inheritance is one of the available for pools
   const canRequestPools = !!schema?.inherit_from
@@ -54,14 +59,14 @@ export const RelationshipInput = React.forwardRef<
   `;
 
   const [fetchOptions, { loading: optionsLoading, data }] = useLazyQuery(
-    gql(generateRelationshipListQuery({ peer, parent }))
+    gql(generateRelationshipListQuery({ peer, parent, limit: PAGINATION, offset }))
   );
 
   const [fetchPoolsOptions, { loading: poolsLoading, data: poolsData }] = useLazyQuery(poolsQuery);
 
   const loading = optionsLoading || poolsLoading;
 
-  const handleFocus = () => {
+  const handleFocus = useCallback(() => {
     if (hasBeenOpened) {
       fetchOptions();
     }
@@ -69,7 +74,21 @@ export const RelationshipInput = React.forwardRef<
     if (hasPoolsBeenOpened) {
       fetchPoolsOptions();
     }
-  };
+  }, [hasBeenOpened, hasPoolsBeenOpened]);
+
+  useEffect(() => {
+    const newResults = data && (data[peer] as RelationshipManyType).edges.map((edge) => edge.node);
+
+    const dataCount = data && (data[peer] as RelationshipManyType).count;
+
+    setCount(dataCount);
+
+    if (!newResults) {
+      return;
+    }
+
+    setResults([...results, ...newResults]);
+  }, [data]);
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
@@ -110,7 +129,7 @@ export const RelationshipInput = React.forwardRef<
 
           {!loading && (
             <Tooltip content="Open relationships options" enabled>
-              <PopoverTrigger ref={ref} asChild {...props}>
+              <PopoverTrigger ref={ref} {...props}>
                 <button
                   id={id}
                   type="button"
@@ -151,41 +170,31 @@ export const RelationshipInput = React.forwardRef<
         )}
       </PopoverTrigger>
 
-      <ComboboxContent onOpenAutoFocus={handleFocus}>
+      <ComboboxContent onOpenAutoFocus={handleFocus} className="space-y-2">
         <ComboboxList>
-          {loading ? (
-            <Spinner className="flex justify-center m-2" />
-          ) : (
-            <ComboboxEmpty>No results found</ComboboxEmpty>
-          )}
+          {!loading && <ComboboxEmpty>No results found</ComboboxEmpty>}
 
-          {!loading &&
-            hasBeenOpened &&
-            data &&
-            (data[peer] as RelationshipManyType).edges
-              .map((edge) => edge.node)
-              .filter((node): node is Node => !!node && value?.id !== node.id)
-              .map((relationship) => {
-                return (
-                  <ComboboxItem
-                    key={relationship.id}
-                    value={relationship.id}
-                    onSelect={() => {
-                      onChange(relationship);
-                      setOpen(false);
-                    }}
-                  >
-                    <span className="truncate">{relationship.display_label}</span>
-                  </ComboboxItem>
-                );
-              })}
+          {hasBeenOpened &&
+            results &&
+            results.map((relationship) => {
+              return (
+                <ComboboxItem
+                  key={relationship.id}
+                  value={relationship.id}
+                  onSelect={() => {
+                    onChange(relationship);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="truncate">{relationship.display_label}</span>
+                </ComboboxItem>
+              );
+            })}
 
-          {!loading &&
-            hasPoolsBeenOpened &&
+          {hasPoolsBeenOpened &&
             poolsData &&
             (poolsData[poolPeer] as RelationshipManyType).edges
               .map((edge) => edge.node)
-              .filter((node): node is Node => !!node && value?.id !== node.id)
               .map((relationship) => {
                 return (
                   <ComboboxItem
@@ -218,7 +227,24 @@ export const RelationshipInput = React.forwardRef<
                 </ComboboxItem>
               );
             })}
+
+          {loading && <Spinner className="flex justify-center m-2" />}
         </ComboboxList>
+
+        {results?.length < count && (
+          <div className="p-2 pt-0">
+            <Button
+              variant={"ghost"}
+              className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
+              onClick={() => {
+                setOffset(offset + PAGINATION);
+                handleFocus();
+              }}
+            >
+              More
+            </Button>
+          </div>
+        )}
 
         {!options && (
           <AddRelationshipAction
