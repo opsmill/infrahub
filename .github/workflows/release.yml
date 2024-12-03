@@ -44,3 +44,10 @@ jobs:
     secrets: inherit
     with:
       publish: true
+
+  publish-pypi:
+    uses: ./.github/workflows/publish-pypi.yml
+    secrets: inherit
+    with:
+      publish: true
+      version: ${{ github.ref_name }}
