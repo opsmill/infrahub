@@ -224,22 +224,22 @@ export const RelationshipInput = React.forwardRef<
             })}
 
           {loading && <Spinner className="flex justify-center m-2" />}
-        </ComboboxList>
 
-        {results?.length < count && (
-          <div className="p-2 pt-0">
-            <Button
-              variant={"ghost"}
-              className="w-full bg-custom-blue-700/10 border border-custom-blue-700/20 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
-              onClick={() => {
-                setOffset(offset + PAGINATION);
-                setShouldAggregate(true);
-              }}
-            >
-              More
-            </Button>
-          </div>
-        )}
+          {results?.length < count && (
+            <div className="pt-2">
+              <Button
+                variant={"ghost"}
+                className="w-full border-custom-blue-500/10 text-custom-blue-700 enabled:hover:bg-custom-blue-500/10 font-normal"
+                onClick={() => {
+                  setOffset(offset + PAGINATION);
+                  setShouldAggregate(true);
+                }}
+              >
+                Load more
+              </Button>
+            </div>
+          )}
+        </ComboboxList>
 
         {!options && (
           <AddRelationshipAction
