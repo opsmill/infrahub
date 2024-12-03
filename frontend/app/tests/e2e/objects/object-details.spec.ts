@@ -66,11 +66,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
       await page.getByRole("link", { name: "Backbone: Connected to jfk1-" }).click();
       await page.getByTestId("edit-button").click();
 
-      const kindSelector = page
-        .getByTestId("side-panel-container")
-        .getByText("Kind")
-        .locator("../..")
-        .getByTestId("select-value");
+      const kindSelector = page.getByLabel("Kind").getByTestId("select-value");
       await expect(kindSelector).toContainText("Circuit Endpoint");
 
       await expect(page.getByRole("button", { name: "InfraCircuitEndpoint" })).toContainText(

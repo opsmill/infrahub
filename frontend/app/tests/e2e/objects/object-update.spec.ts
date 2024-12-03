@@ -66,13 +66,7 @@ test.describe("Object update", () => {
       await expect(page.getByLabel("Type *")).toHaveValue("MX204");
       await expect(page.getByLabel("Status")).toHaveText("Maintenance");
       await expect(page.getByLabel("Role")).toHaveText("Edge Router");
-      await expect(
-        page
-          .getByTestId("side-panel-container")
-          .getByLabel("Asn")
-          .locator("../..")
-          .getByTestId("select-value")
-      ).toContainText("AS174 174");
+      await expect(page.getByLabel("Asn")).toHaveText("AS174 174");
 
       const tabInput = page.getByTestId("side-panel-container").getByText("green×red×");
       await tabInput.scrollIntoViewIfNeeded();
@@ -102,7 +96,7 @@ test.describe("Object update", () => {
       await page.getByRole("option", { name: "Leaf Switch" }).click();
 
       await page.getByTestId("side-panel-container").getByLabel("Asn").click();
-      await page.getByRole("option", { name: "AS174 174", exact: true }).click();
+      await page.getByRole("option", { name: "AS64496 64496" }).click();
 
       await page.getByRole("button", { name: "Save" }).click();
     });
