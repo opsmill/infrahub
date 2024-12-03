@@ -249,7 +249,8 @@ async def schema_integrity(
 
         candidate_schema = dest_schema.duplicate()
         candidate_schema.update(schema=source_schema)
-        validation_result = dest_schema.validate_update(other=candidate_schema)
+        schema_diff = dest_schema.diff(other=candidate_schema)
+        validation_result = dest_schema.validate_update(other=candidate_schema, diff=schema_diff)
 
         constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
             message=message, schema=candidate_schema
