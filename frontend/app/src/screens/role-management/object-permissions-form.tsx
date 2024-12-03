@@ -21,7 +21,7 @@ import { toast } from "react-toastify";
 
 import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 import DropdownField from "@/components/form/fields/dropdown.field";
-import RelationshipField from "@/components/form/fields/relationship.field";
+import RelationshipManyField from "@/components/form/fields/relationship-many.field";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
 import { useSchema } from "@/hooks/useSchema";
@@ -157,7 +157,7 @@ export const ObjectPermissionForm = ({
           rules={{ required: true, validate: { required: isRequired } }}
         />
 
-        <RelationshipField
+        <RelationshipManyField
           name="roles"
           label="Roles"
           relationship={{

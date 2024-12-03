@@ -3,9 +3,11 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 export const generateRelationshipListQuery = ({
   peer,
   parent,
+  peerField,
 }: {
   peer: string;
   parent?: { name?: string; value?: string };
+  peerField?: string;
 }): string => {
   const args = parent?.value ? { __args: { [`${parent.name}__ids`]: [parent.value] } } : {};
 
@@ -18,6 +20,7 @@ export const generateRelationshipListQuery = ({
           node: {
             id: true,
             display_label: true,
+            ...(peerField ? { [peerField]: { value: true } } : {}),
           },
         },
       },
