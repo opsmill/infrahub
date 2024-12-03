@@ -50,7 +50,6 @@ export const AccountRoleForm = ({
     relationshipData: currentObject?.permissions?.value,
     peerField: "identifier",
   });
-  console.log("permissions: ", permissions);
 
   const defaultValues = {
     name: getCurrentFieldValue("name", currentObject),
