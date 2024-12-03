@@ -95,9 +95,15 @@ export const AccountRoleForm = ({
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Role created"} />, {
-        toastId: "alert-success-role-created",
-      });
+      if (currentObject) {
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Role updated!"} />, {
+          toastId: "alert-success-role-updated",
+        });
+      } else {
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Role created!"} />, {
+          toastId: "alert-success-role-created",
+        });
+      }
 
       if (onSuccess) await onSuccess(result?.data?.[`${ACCOUNT_ROLE_OBJECT}Create`]);
       if (onUpdateComplete) await onUpdateComplete();

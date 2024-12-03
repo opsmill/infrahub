@@ -20,7 +20,12 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
 
         <Input ref={ref} {...props} className={classNames("pl-8 h-auto", className)} />
 
-        {loading && <Spinner className="absolute inset-y-0 right-0 pr-2 flex items-center" />}
+        {loading && (
+          <Spinner
+            className="absolute inset-y-0 right-0 pr-2 flex items-center"
+            data-testid="objects-search-input-loader"
+          />
+        )}
       </div>
     );
   }
