@@ -34,7 +34,7 @@ export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value
   parent?: { name?: string; value?: string };
 }
 
-const PAGINATION = 10;
+const PAGINATION = 2;
 
 export const RelationshipInput = React.forwardRef<
   React.ElementRef<typeof PopoverTrigger>,
@@ -125,26 +125,29 @@ export const RelationshipInput = React.forwardRef<
 
             <ComboboxContent align="end" onOpenAutoFocus={() => loadPoolList()}>
               <ComboboxList style={{ width: "auto" }}>
-                {isPoolListLoading ? (
-                  <Spinner className="flex justify-center m-2" />
-                ) : (
-                  <ComboboxEmpty>No pools found</ComboboxEmpty>
-                )}
+                {!isPoolListLoading && <ComboboxEmpty>No pools found</ComboboxEmpty>}
+
                 {!isPoolListLoading &&
-                  results?.map((relationship) => {
-                    return (
-                      <ComboboxItem
-                        key={relationship.id}
-                        value={relationship.id}
-                        onSelect={() => {
-                          onChange(relationship);
-                          setOpen(false);
-                        }}
-                      >
-                        <span className="truncate">{relationship.display_label}</span>
-                      </ComboboxItem>
-                    );
-                  })}
+                  poolsData &&
+                  (poolsData[poolPeer] as RelationshipManyType).edges
+                    .map((edge) => edge.node)
+                    .filter((node): node is Node => !!node && value?.id !== node.id)
+                    .map((relationship) => {
+                      return (
+                        <ComboboxItem
+                          key={relationship.id}
+                          value={relationship.id}
+                          onSelect={() => {
+                            onChange(relationship);
+                            setOpen(false);
+                          }}
+                        >
+                          <span className="truncate">{relationship.display_label}</span>
+                        </ComboboxItem>
+                      );
+                    })}
+
+                {isPoolListLoading && <Spinner className="flex justify-center m-2" />}
               </ComboboxList>
             </ComboboxContent>
           </Combobox>
@@ -152,33 +155,30 @@ export const RelationshipInput = React.forwardRef<
       </div>
 
       <ComboboxContent onOpenAutoFocus={() => loadRelationshipList()}>
-        <ComboboxList>
-          {isRelationshipListLoading ? (
-            <Spinner className="flex justify-center m-2" />
-          ) : (
-            <ComboboxEmpty>No results found</ComboboxEmpty>
-          )}
+        <ComboboxList
+          shouldFilter={false}
+          onValueChange={(newValue) => {
+            setOffset(0);
+            setSearch(newValue);
+          }}
+        >
+          {!isRelationshipListLoading && <ComboboxEmpty>No results found</ComboboxEmpty>}
 
-          {!isRelationshipListLoading &&
-            RelationshipListData &&
-            (RelationshipListData[peer] as RelationshipManyType).edges
-              .map((edge) => edge.node)
-              .filter((node): node is Node => !!node)
-              .map((relationship) => {
-                return (
-                  <ComboboxItem
-                    key={relationship.id}
-                    value={relationship.id}
-                    selectedValue={value?.id}
-                    onSelect={() => {
-                      onChange(relationship.id === value?.id ? null : relationship);
-                      setOpen(false);
-                    }}
-                  >
-                    <span className="truncate">{relationship.display_label}</span>
-                  </ComboboxItem>
-                );
-              })}
+          {results?.map((relationship) => {
+            return (
+              <ComboboxItem
+                key={relationship.id}
+                value={relationship.id}
+                selectedValue={value?.id}
+                onSelect={() => {
+                  onChange(relationship.id === value?.id ? null : relationship);
+                  setOpen(false);
+                }}
+              >
+                <span className="truncate">{relationship.display_label}</span>
+              </ComboboxItem>
+            );
+          })}
 
           {options &&
             options.map((option) => {

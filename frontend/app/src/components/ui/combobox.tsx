@@ -53,7 +53,7 @@ export const ComboboxList = React.forwardRef<
     shouldFilter?: boolean;
     onValueChange?: (search: string) => void;
   }
->(({ fitTriggerWidth = true, shouldFilter, onValueChange, ...props }, ref) => {
+>(({ fitTriggerWidth = true, style, shouldFilter, onValueChange, ...props }, ref) => {
   return (
     <Command
       style={{
