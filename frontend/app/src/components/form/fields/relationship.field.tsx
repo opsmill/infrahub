@@ -148,7 +148,7 @@ const RelationshipField = ({
                   <FormInput>
                     <ComboboxTrigger {...field}>
                       {selectedGeneric && (
-                        <div className="w-full flex justify-between">
+                        <div className="w-full flex justify-between" data-testid="select-value">
                           {selectedGeneric.display_label} <Badge>{selectedGeneric.badge}</Badge>
                         </div>
                       )}

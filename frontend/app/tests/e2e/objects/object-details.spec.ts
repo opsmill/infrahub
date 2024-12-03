@@ -69,9 +69,8 @@ test.describe("/objects/:objectKind/:objectid", () => {
       const kindSelector = page.getByLabel("Kind").getByTestId("select-value");
       await expect(kindSelector).toContainText("Circuit Endpoint");
 
-      await expect(page.getByRole("button", { name: "InfraCircuitEndpoint" })).toContainText(
-        /InfraCircuitEndpoint/g
-      );
+      const nodeSelector = page.getByLabel("Circuit Endpoint").getByTestId("select-value");
+      await expect(nodeSelector).toContainText("InfraCircuitEndpoint");
     });
   });
 });
