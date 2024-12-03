@@ -21,7 +21,7 @@ import { Node, RelationshipManyType } from "@/utils/getObjectItemDisplayValue";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Badge } from "../ui/badge";
 import { Tooltip } from "../ui/tooltip";
 
@@ -43,7 +43,6 @@ export const RelationshipInput = React.forwardRef<
   const { schema } = useSchema(peer);
   const [open, setOpen] = React.useState(false);
   const [hasPoolsBeenOpened, setHasPoolsBeenOpened] = useState(false);
-  const [hasBeenOpened, setHasBeenOpened] = useState(false);
   const [count, setCount] = useState(0);
   const [offset, setOffset] = useState(0);
   const [results, setResults] = useState([]);
@@ -66,15 +65,13 @@ export const RelationshipInput = React.forwardRef<
 
   const loading = optionsLoading || poolsLoading;
 
-  const handleFocus = useCallback(() => {
-    if (hasBeenOpened) {
-      fetchOptions();
+  const handleFocus = () => {
+    if (hasPoolsBeenOpened) {
+      return fetchPoolsOptions();
     }
 
-    if (hasPoolsBeenOpened) {
-      fetchPoolsOptions();
-    }
-  }, [hasBeenOpened, hasPoolsBeenOpened]);
+    fetchOptions();
+  };
 
   useEffect(() => {
     const newResults = data && (data[peer] as RelationshipManyType).edges.map((edge) => edge.node);
@@ -136,7 +133,6 @@ export const RelationshipInput = React.forwardRef<
                   className="text-gray-600 outline-none w-3.5 h-3.5"
                   onClick={() => {
                     setHasPoolsBeenOpened(false);
-                    setHasBeenOpened(true);
                   }}
                   data-testid="select-open-option-button"
                 >
@@ -160,7 +156,6 @@ export const RelationshipInput = React.forwardRef<
                 type="button"
                 onClick={() => {
                   setHasPoolsBeenOpened(true);
-                  setHasBeenOpened(false);
                 }}
               >
                 <Icon icon={"mdi:list-box"} className="text-gray-500" />
@@ -174,7 +169,7 @@ export const RelationshipInput = React.forwardRef<
         <ComboboxList>
           {!loading && <ComboboxEmpty>No results found</ComboboxEmpty>}
 
-          {hasBeenOpened &&
+          {!hasPoolsBeenOpened &&
             results &&
             results.map((relationship) => {
               return (

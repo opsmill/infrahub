@@ -224,8 +224,21 @@ class SchemaBranch:
         #     else:
         #         del self.generics[item_kind]
 
-    def validate_update(self, other: SchemaBranch, enforce_update_support: bool = True) -> SchemaUpdateValidationResult:
-        diff = self.diff(other=other)
+    def validate_node_deletions(self, diff: SchemaDiff) -> None:
+        """Given a diff, check if a deleted node is still used in relationships of other nodes."""
+        removed_schema_names = set(diff.removed.keys())
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+            for relationship in node.relationships:
+                if relationship.peer in removed_schema_names:
+                    raise ValueError(
+                        f"'{relationship.peer}' has been removed but is still referenced in '{name}.{relationship.name}'; keep it or delete the "
+                        "relationship"
+                    )
+
+    def validate_update(
+        self, other: SchemaBranch, diff: SchemaDiff, enforce_update_support: bool = True
+    ) -> SchemaUpdateValidationResult:
         result = SchemaUpdateValidationResult.init(
             diff=diff, schema=other, enforce_update_support=enforce_update_support
         )
@@ -1471,7 +1484,11 @@ class SchemaBranch:
         profile_schema_kinds = set()
         for node_name in self.node_names + self.generic_names:
             node = self.get(name=node_name, duplicate=False)
-            if node.namespace in RESTRICTED_NAMESPACES or not node.generate_profile:
+            if (
+                node.namespace in RESTRICTED_NAMESPACES
+                or not node.generate_profile
+                or node.state == HashableModelState.ABSENT
+            ):
                 try:
                     self.delete(name=self._get_profile_kind(node_kind=node.kind))
                 except SchemaNotFoundError:
