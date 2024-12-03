@@ -1,0 +1,158 @@
+---
+# yamllint disable rule:line-length
+# The following environment variables are part of the Infrahub configuration options.
+# For detailed information on these configuration options, please refer to the Infrahub documentation:
+# https://docs.infrahub.app/reference/configuration
+services:
+  message-queue:
+    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:3.13.7-management}
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: infrahub
+      RABBITMQ_DEFAULT_PASS: infrahub
+    healthcheck:
+      test: rabbitmq-diagnostics -q check_port_connectivity
+      interval: 5s
+      timeout: 30s
+      retries: 10
+      start_period: 3s
+    ports:
+      - 0:15692
+
+  cache:
+    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.4}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  database:
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.20.0-community}
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/admin
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      NEO4J_dbms_security_auth__minimum__password__length: 4
+    volumes:
+      - "database_data:/data"
+      - "database_logs:/logs"
+    healthcheck:
+      test: wget http://localhost:7474 || exit 1
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 3s
+    ports:
+      - 0:2004
+      - 0:6362
+
+  task-manager:
+    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0.3-python3.12}"
+    command: prefect server start --host 0.0.0.0 --ui
+    depends_on:
+      task-manager-db:
+        condition: service_healthy
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
+    healthcheck:
+      test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    ports:
+      - 0:4200
+
+  task-manager-db:
+    image: "${POSTGRES_DOCKER_IMAGE:-postgres:16-alpine}"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=prefect
+    volumes:
+      - workflow_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  infrahub-server:
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${INFRAHUB_IMAGE_VERSION}"
+    command: >
+      gunicorn --config backend/infrahub/serve/gunicorn_config.py
+      -w ${WEB_CONCURRENCY:-4}
+      --logger-class infrahub.serve.log.GunicornLogger
+      infrahub.server:app
+    environment:
+      INFRAHUB_PRODUCTION: ${INFRAHUB_PRODUCTION:-false}
+      INFRAHUB_LOG_LEVEL: ${INFRAHUB_LOG_LEVEL:-INFO}
+      INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_BROKER_ADDRESS:-message-queue}
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_CACHE_ADDRESS:-cache}
+      INFRAHUB_DB_ADDRESS: ${INFRAHUB_DB_ADDRESS:-database}
+      INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}
+      INFRAHUB_INITIAL_ADMIN_TOKEN: ${INFRAHUB_INITIAL_ADMIN_TOKEN:-06438eb2-8019-4776-878c-0941b1f1d1ec}
+      INFRAHUB_INITIAL_AGENT_TOKEN: ${INFRAHUB_INITIAL_AGENT_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
+      INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_SECURITY_SECRET_KEY:-327f747f-efac-42be-9e73-999f08f86b92"}
+      INFRAHUB_WORKFLOW_PORT: ${INFRAHUB_WORKFLOW_PORT:-4200}
+      PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
+    depends_on:
+      database:
+        condition: service_healthy
+      message-queue:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+      task-manager:
+        condition: service_healthy
+    ports:
+      - 0:8000
+    volumes:
+      - "storage_data:/opt/infrahub/storage"
+      - "workflow_data:/opt/infrahub/workflow"
+    tty: true
+    healthcheck:
+      test: curl -s -f -o /dev/null http://localhost:8000/api/schema/summary || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  task-worker:
+    deploy:
+      mode: replicated
+      replicas: 2
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${INFRAHUB_IMAGE_VERSION}"
+    command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
+    environment:
+      INFRAHUB_PRODUCTION: ${INFRAHUB_PRODUCTION:-false}
+      INFRAHUB_LOG_LEVEL: ${INFRAHUB_LOG_LEVEL:-DEBUG}
+      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_GIT_REPOSITORIES_DIRECTORY:-/opt/infrahub/git}
+      INFRAHUB_API_TOKEN: ${INFRAHUB_INITIAL_AGENT_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
+      INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_SECURITY_SECRET_KEY:-327f747f-efac-42be-9e73-999f08f86b92"}
+      INFRAHUB_ADDRESS: ${INFRAHUB_ADDRESS:-http://infrahub-server:8000}
+      INFRAHUB_INTERNAL_ADDRESS: ${INFRAHUB_INTERNAL_ADDRESS:-http://infrahub-server:8000}
+      INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_BROKER_ADDRESS:-message-queue}
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_CACHE_ADDRESS:-cache}
+      INFRAHUB_DB_ADDRESS: ${INFRAHUB_DB_ADDRESS:-database}
+      INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}
+      INFRAHUB_TIMEOUT: ${INFRAHUB_TIMEOUT:-60}
+      INFRAHUB_WORKFLOW_PORT: ${INFRAHUB_WORKFLOW_PORT:-4200}
+      PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
+    depends_on:
+      - infrahub-server
+    volumes:
+      - "git_data:/opt/infrahub/git"
+      - "git_remote_data:/remote"
+    tty: true
+
+volumes:
+  database_data:
+  database_logs:
+  git_data:
+  git_remote_data:
+  storage_data:
+  workflow_db:
+  workflow_data:
