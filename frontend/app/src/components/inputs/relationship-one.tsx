@@ -13,6 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { inputStyle } from "@/components/ui/style";
 import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
 import { generateRelationshipListQuery } from "@/graphql/queries/objects/generateRelationshipListQuery";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
@@ -44,8 +45,13 @@ export const RelationshipInput = React.forwardRef<
   const [open, setOpen] = React.useState(false);
   const [hasPoolsBeenOpened, setHasPoolsBeenOpened] = useState(false);
   const [count, setCount] = useState(0);
+  console.log("count: ", count);
   const [offset, setOffset] = useState(0);
+  console.log("offset: ", offset);
   const [results, setResults] = useState([]);
+  console.log("results: ", results);
+  const [search, setSearch] = useState("");
+  const searchQuery = useDebounce(search, 500);
 
   // Check if any kind from inheritance is one of the available for pools
   const canRequestPools = !!schema?.inherit_from
@@ -58,7 +64,15 @@ export const RelationshipInput = React.forwardRef<
   `;
 
   const [fetchOptions, { loading: optionsLoading, data }] = useLazyQuery(
-    gql(generateRelationshipListQuery({ peer, parent, limit: PAGINATION, offset }))
+    gql(
+      generateRelationshipListQuery({
+        peer,
+        parent,
+        limit: PAGINATION,
+        offset,
+        search: searchQuery,
+      })
+    )
   );
 
   const [fetchPoolsOptions, { loading: poolsLoading, data: poolsData }] = useLazyQuery(poolsQuery);
@@ -79,6 +93,11 @@ export const RelationshipInput = React.forwardRef<
     const dataCount = data && (data[peer] as RelationshipManyType).count;
 
     setCount(dataCount);
+
+    if (search) {
+      setResults(newResults);
+      return;
+    }
 
     if (!newResults) {
       return;
@@ -165,7 +184,15 @@ export const RelationshipInput = React.forwardRef<
         )}
       </PopoverTrigger>
 
-      <ComboboxContent onOpenAutoFocus={handleFocus} className="space-y-2">
+      <ComboboxContent
+        onOpenAutoFocus={handleFocus}
+        onChange={(event) => {
+          event.preventDefault();
+          setOffset(0);
+          setSearch(event.target.value);
+        }}
+        className="space-y-2"
+      >
         <ComboboxList>
           {!loading && <ComboboxEmpty>No results found</ComboboxEmpty>}
 
