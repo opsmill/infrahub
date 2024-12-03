@@ -91,7 +91,7 @@ class AttributeUniqueUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 class AttributeUniquenessChecker(ConstraintCheckerInterface):
     query_classes = [AttributeUniqueUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]) -> None:
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None) -> None:
         self.db = db
         self.branch = branch
 
