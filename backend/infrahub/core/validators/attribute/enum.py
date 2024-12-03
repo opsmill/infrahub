@@ -74,7 +74,7 @@ class AttributeEnumUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 class AttributeEnumChecker(ConstraintCheckerInterface):
     query_classes = [AttributeEnumUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None):
         self.db = db
         self.branch = branch
 

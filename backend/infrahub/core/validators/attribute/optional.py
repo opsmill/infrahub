@@ -66,7 +66,7 @@ class AttributeOptionalUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 class AttributeOptionalChecker(ConstraintCheckerInterface):
     query_classes = [AttributeOptionalUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None):
         self.db = db
         self.branch = branch
 
@@ -75,7 +75,7 @@ class AttributeOptionalChecker(ConstraintCheckerInterface):
         return "attribute.optional.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name == "attribute.optional.update"
+        return request.constraint_name == self.name
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []
