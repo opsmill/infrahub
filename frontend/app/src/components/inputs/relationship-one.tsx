@@ -41,7 +41,6 @@ export const RelationshipInput = React.forwardRef<
   const { schema } = useSchema(peer);
   const [open, setOpen] = React.useState(false);
   const [hasPoolsBeenOpened, setHasPoolsBeenOpened] = useState(false);
-  const [hasBeenOpened, setHasBeenOpened] = useState(false);
 
   // Check if any kind from inheritance is one of the available for pools
   const canRequestPools = !!schema?.inherit_from
@@ -62,13 +61,11 @@ export const RelationshipInput = React.forwardRef<
   const loading = optionsLoading || poolsLoading;
 
   const handleFocus = () => {
-    if (hasBeenOpened) {
-      fetchOptions();
+    if (hasPoolsBeenOpened) {
+      return fetchPoolsOptions();
     }
 
-    if (hasPoolsBeenOpened) {
-      fetchPoolsOptions();
-    }
+    fetchOptions();
   };
 
   return (
@@ -117,7 +114,6 @@ export const RelationshipInput = React.forwardRef<
                   className="text-gray-600 outline-none w-3.5 h-3.5"
                   onClick={() => {
                     setHasPoolsBeenOpened(false);
-                    setHasBeenOpened(true);
                   }}
                   data-testid="select-open-option-button"
                 >
@@ -141,7 +137,6 @@ export const RelationshipInput = React.forwardRef<
                 type="button"
                 onClick={() => {
                   setHasPoolsBeenOpened(true);
-                  setHasBeenOpened(false);
                 }}
               >
                 <Icon icon={"mdi:list-box"} className="text-gray-500" />
@@ -160,7 +155,7 @@ export const RelationshipInput = React.forwardRef<
           )}
 
           {!loading &&
-            hasBeenOpened &&
+            !hasPoolsBeenOpened &&
             data &&
             (data[peer] as RelationshipManyType).edges
               .map((edge) => edge.node)
