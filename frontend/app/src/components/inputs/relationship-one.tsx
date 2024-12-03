@@ -7,10 +7,10 @@ import {
   ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
+  ComboboxTrigger,
 } from "@/components/ui/combobox";
 import { PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { inputStyle } from "@/components/ui/style";
 import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
 import { generateRelationshipListQuery } from "@/graphql/queries/objects/generateRelationshipListQuery";
 import { useLazyQuery } from "@/hooks/useQuery";
@@ -37,116 +37,66 @@ export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value
 export const RelationshipInput = React.forwardRef<
   React.ElementRef<typeof PopoverTrigger>,
   RelationshipInputProps
->(({ id, className, value, onChange, options, peer, parent, ...props }, ref) => {
-  const { schema } = useSchema(peer);
+>(({ className, value, onChange, options, peer, parent, ...props }, ref) => {
+  const { schema, isNode } = useSchema(peer);
   const [open, setOpen] = React.useState(false);
   const [hasPoolsBeenOpened, setHasPoolsBeenOpened] = useState(false);
 
   // Check if any kind from inheritance is one of the available for pools
-  const canRequestPools = !!schema?.inherit_from
-    ?.map((from) => POOLS_PEER.includes(from))
-    ?.filter(Boolean)?.length;
+  const canRequestPools =
+    isNode &&
+    !!schema?.inherit_from?.map((from) => POOLS_PEER.includes(from))?.filter(Boolean)?.length;
   const poolPeer = canRequestPools && POOLS_DICTIONNARY[peer];
   const poolsQueryString = poolPeer ? getDropdownOptions({ kind: poolPeer }) : "query { ok }";
   const poolsQuery = gql`
     ${poolsQueryString}
   `;
 
-  const [fetchOptions, { loading: optionsLoading, data }] = useLazyQuery(
+  const [loadRelationshipList, { loading: isRelationshipListLoading, data }] = useLazyQuery(
     gql(generateRelationshipListQuery({ peer, parent }))
   );
 
   const [fetchPoolsOptions, { loading: poolsLoading, data: poolsData }] = useLazyQuery(poolsQuery);
 
-  const loading = optionsLoading || poolsLoading;
+  const loading = isRelationshipListLoading || poolsLoading;
 
   const handleFocus = () => {
     if (hasPoolsBeenOpened) {
       return fetchPoolsOptions();
     }
 
-    fetchOptions();
+    loadRelationshipList();
   };
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className="flex items-center space-x-2">
-        <div
-          className={classNames(
-            inputStyle,
-            "has-[>:last-child:focus-visible]:outline-none has-[>:last-child:focus-visible]:ring-2 has-[>:last-child:focus-visible]:ring-custom-blue-500 has-[>:last-child:focus-visible]:ring-offset-2",
-            "cursor-pointer",
-            className
-          )}
-        >
-          <div
-            className="flex flex-grow w-full items-center justify-between gap-2 truncate mr-1"
-            data-testid="select-value"
-          >
-            {value?.display_label}
-          </div>
+      <ComboboxTrigger ref={ref} {...props}>
+        <span data-testid="select-value">{value?.display_label}</span>
 
-          {value && (
+        {loading && <Spinner className="ml-auto" />}
+      </ComboboxTrigger>
+      {canRequestPools && (
+        <Tooltip content="Open pools options" enabled>
+          <PopoverTrigger ref={ref} asChild {...props}>
             <Button
-              size="icon"
-              variant="ghost"
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange(null);
-                setOpen(false);
+              variant={"ghost"}
+              className={classNames(
+                "flex items-center h-10 rounded-md p-2 ring-1 ring-inset ring-gray-300",
+                "focus:outline-none disabled:cursor-not-allowed"
+              )}
+              data-testid="select-open-pool-option-button"
+              type="button"
+              onClick={() => {
+                setHasPoolsBeenOpened(true);
               }}
-              className="text-gray-500 hover:text-gray-800 h-4 w-4"
-              aria-label="Remove"
-              data-testid="select-remove-value"
             >
-              &times;
+              <Icon icon={"mdi:list-box"} className="text-gray-500" />
             </Button>
-          )}
+          </PopoverTrigger>
+        </Tooltip>
+      )}
 
-          {loading && <Spinner className="ml-auto" />}
-
-          {!loading && (
-            <Tooltip content="Open relationships options" enabled>
-              <PopoverTrigger ref={ref} asChild {...props}>
-                <button
-                  id={id}
-                  type="button"
-                  className="text-gray-600 outline-none w-3.5 h-3.5"
-                  onClick={() => {
-                    setHasPoolsBeenOpened(false);
-                  }}
-                  data-testid="select-open-option-button"
-                >
-                  <Icon icon="mdi:unfold-more-horizontal" />
-                </button>
-              </PopoverTrigger>
-            </Tooltip>
-          )}
-        </div>
-
-        {canRequestPools && (
-          <Tooltip content="Open pools options" enabled>
-            <PopoverTrigger ref={ref} asChild {...props}>
-              <Button
-                variant={"ghost"}
-                className={classNames(
-                  "flex items-center h-10 rounded-md p-2 ring-1 ring-inset ring-gray-300",
-                  "focus:outline-none disabled:cursor-not-allowed"
-                )}
-                data-testid="select-open-pool-option-button"
-                type="button"
-                onClick={() => {
-                  setHasPoolsBeenOpened(true);
-                }}
-              >
-                <Icon icon={"mdi:list-box"} className="text-gray-500" />
-              </Button>
-            </PopoverTrigger>
-          </Tooltip>
-        )}
-      </PopoverTrigger>
-
-      <ComboboxContent onOpenAutoFocus={handleFocus}>
+      <ComboboxContent onOpenAutoFocus={() => loadRelationshipList()}>
         <ComboboxList>
           {loading ? (
             <Spinner className="flex justify-center m-2" />

@@ -2,6 +2,15 @@ import { LabelFormField } from "@/components/form/fields/common";
 import { DynamicRelationshipFieldProps } from "@/components/form/type";
 import { updateRelationshipFieldValue } from "@/components/form/utils/updateFormFieldValue";
 import { RelationshipInput } from "@/components/inputs/relationship-one";
+import { Badge } from "@/components/ui/badge";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxTrigger,
+} from "@/components/ui/combobox";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { getRelationshipParent } from "@/graphql/queries/objects/getRelationshipParent";
 import useQuery from "@/hooks/useQuery";
@@ -123,6 +132,8 @@ const RelationshipField = ({
           rules={rules}
           defaultValue={defaultValue}
           render={({ field }) => {
+            const [open, setOpen] = useState(false);
+
             return (
               <div className="relative flex flex-col space-y-1">
                 <LabelFormField
@@ -133,15 +144,39 @@ const RelationshipField = ({
                   variant="small"
                 />
 
-                <FormInput>
-                  <RelationshipInput
-                    {...field}
-                    {...props}
-                    options={genericOptions}
-                    onChange={setSelectedGeneric}
-                    value={selectedGeneric}
-                  />
-                </FormInput>
+                <Combobox open={open} onOpenChange={setOpen}>
+                  <FormInput>
+                    <ComboboxTrigger {...field}>
+                      {selectedGeneric && (
+                        <div className="w-full flex justify-between">
+                          {selectedGeneric.display_label} <Badge>{selectedGeneric.badge}</Badge>
+                        </div>
+                      )}
+                    </ComboboxTrigger>
+                  </FormInput>
+
+                  <ComboboxContent>
+                    <ComboboxList>
+                      <ComboboxEmpty>No schema found.</ComboboxEmpty>
+                      {genericOptions.map((item) => {
+                        return (
+                          <ComboboxItem
+                            key={item.id}
+                            value={item.id}
+                            selectedValue={selectedGeneric?.id}
+                            onSelect={() => {
+                              setSelectedGeneric(item.id === selectedGeneric?.id ? null : item);
+                              setOpen(false);
+                            }}
+                          >
+                            {item.display_label}
+                            <Badge className="ml-auto">{item.badge}</Badge>
+                          </ComboboxItem>
+                        );
+                      })}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
                 <FormMessage />
               </div>
             );
