@@ -70,7 +70,7 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 class AttributeRegexChecker(ConstraintCheckerInterface):
     query_classes = [AttributeRegexUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]):
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None):
         self.db = db
         self.branch = branch
 
