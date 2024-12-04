@@ -15,7 +15,6 @@ import { inputStyle } from "@/components/ui/style";
 import { generateRelationshipListQuery } from "@/graphql/queries/objects/generateRelationshipListQuery";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
-import { RelationshipSchema } from "@/screens/schema/types";
 import { classNames } from "@/utils/common";
 import { Node, RelationshipManyType } from "@/utils/getObjectItemDisplayValue";
 import { gql } from "@apollo/client";
@@ -27,17 +26,18 @@ export interface RelationshipManyInputProps
   extends Omit<PopoverTriggerProps, "value" | "onChange"> {
   className?: string;
   onChange: (value: Array<Node>) => void;
-  relationship: RelationshipSchema;
+  peer: string;
   value: Array<Node> | null;
+  peerField?: string;
 }
 
 export const RelationshipManyInput = React.forwardRef<
   React.ElementRef<typeof PopoverTrigger>,
   RelationshipManyInputProps
->(({ id, className, relationship: relationshipSchema, value, onChange, ...props }, ref) => {
+>(({ id, className, peer, peerField, value, onChange, ...props }, ref) => {
   const [open, setOpen] = React.useState(false);
   const [loadComboboxList, { loading, data }] = useLazyQuery(
-    gql(generateRelationshipListQuery({ relationshipSchema }))
+    gql(generateRelationshipListQuery({ peer, peerField }))
   );
 
   const handleSelect = (relationship: Node) => {
@@ -56,9 +56,9 @@ export const RelationshipManyInput = React.forwardRef<
           )}
         >
           <div className="flex-grow flex flex-wrap gap-2">
-            {value?.map(({ id, display_label }) => (
+            {value?.map(({ id, display_label, ...data }) => (
               <Badge key={id} className="flex items-center gap-1 pr-0.5">
-                {display_label}
+                {peerField ? (data[peerField]?.value ?? display_label) : display_label}
 
                 <Button
                   size="icon"
@@ -69,6 +69,7 @@ export const RelationshipManyInput = React.forwardRef<
                   }}
                   className="text-gray-500 hover:text-gray-800 h-4 w-4"
                   aria-label="Remove"
+                  data-testid="remove-option"
                 >
                   &times;
                 </Button>
@@ -94,7 +95,7 @@ export const RelationshipManyInput = React.forwardRef<
 
           {!loading &&
             data &&
-            (data[relationshipSchema.peer] as RelationshipManyType).edges
+            (data[peer] as RelationshipManyType).edges
               .map((edge) => edge.node)
               .filter((node): node is Node => !!node && !value?.some((v) => v.id === node.id))
               .map((relationship) => (
@@ -103,27 +104,26 @@ export const RelationshipManyInput = React.forwardRef<
                   value={relationship.display_label}
                   onSelect={() => handleSelect(relationship)}
                 >
-                  <span className="truncate">{relationship.display_label}</span>
+                  <span className="truncate">
+                    {peerField ? relationship[peerField]?.value : relationship.display_label}
+                  </span>
                 </ComboboxItem>
               ))}
         </ComboboxList>
 
-        <AddRelationshipAction relationship={relationshipSchema} onSuccess={handleSelect} />
+        <AddRelationshipAction peer={peer} onSuccess={handleSelect} />
       </ComboboxContent>
     </Combobox>
   );
 });
 
 export interface AddRelationshipActionProps {
-  relationship: RelationshipSchema;
+  peer: string;
   onSuccess?: (newObject: Node) => void;
 }
 
-const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
-  relationship,
-  onSuccess,
-}) => {
-  const { schema } = useSchema(relationship.peer);
+const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({ peer, onSuccess }) => {
+  const { schema } = useSchema(peer);
   const [open, setOpen] = useState(false);
 
   if (!schema) return null;
@@ -151,7 +151,7 @@ const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
         setOpen={setOpen}
       >
         <ObjectForm
-          kind={relationship.peer}
+          kind={peer}
           onSuccess={({ object }) => {
             setOpen(false);
             if (!onSuccess) return;
@@ -159,7 +159,7 @@ const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
             const newNode: Node = {
               id: object.id,
               display_label: object.display_label,
-              __typename: relationship.peer,
+              __typename: peer,
             };
             onSuccess(newNode);
           }}

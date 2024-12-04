@@ -63,6 +63,21 @@ export const addRelationshipsToRequest = (relationships: Array<RelationshipSchem
         id: true,
         display_label: true,
       },
+      properties: {
+        is_visible: true,
+        is_protected: true,
+        updated_at: true,
+        source: {
+          id: true,
+          display_label: true,
+          __typename: true,
+        },
+        owner: {
+          id: true,
+          display_label: true,
+          __typename: true,
+        },
+      },
     };
 
     if (relationship.cardinality === "one") {

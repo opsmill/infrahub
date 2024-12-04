@@ -23,7 +23,7 @@ import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import InputField from "@/components/form/fields/input.field";
-import RelationshipField from "@/components/form/fields/relationship.field";
+import RelationshipManyField from "@/components/form/fields/relationship-many.field";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
 
@@ -48,6 +48,7 @@ export const AccountRoleForm = ({
 
   const permissions = getRelationshipDefaultValue({
     relationshipData: currentObject?.permissions?.value,
+    peerField: "identifier",
   });
 
   const defaultValues = {
@@ -126,7 +127,7 @@ export const AccountRoleForm = ({
           }}
         />
 
-        <RelationshipField
+        <RelationshipManyField
           name="groups"
           label="Groups"
           relationship={{
@@ -137,7 +138,7 @@ export const AccountRoleForm = ({
           options={groups.value}
         />
 
-        <RelationshipField
+        <RelationshipManyField
           name="permissions"
           label="Permissions"
           relationship={{

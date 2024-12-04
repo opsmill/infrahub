@@ -1,6 +1,6 @@
 import { Button } from "@/components/buttons/button-primitive";
 import InputField from "@/components/form/fields/input.field";
-import RelationshipField from "@/components/form/fields/relationship.field";
+import RelationshipManyField from "@/components/form/fields/relationship-many.field";
 import { NodeFormProps } from "@/components/form/node-form";
 import { FormFieldValue } from "@/components/form/type";
 import { getCurrentFieldValue } from "@/components/form/utils/getFieldDefaultValue";
@@ -137,7 +137,7 @@ export const AccountForm = ({
 
         <InputField name="description" label="Description" />
 
-        <RelationshipField
+        <RelationshipManyField
           name="member_of_groups"
           label="Groups"
           relationship={{
