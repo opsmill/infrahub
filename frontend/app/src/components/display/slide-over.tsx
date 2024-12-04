@@ -37,7 +37,7 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
     1: "-translate-x-[400px]",
   };
 
-  const isOpen = open || (!open && previousOpen && preventClose);
+  const isOpen = open || (!open && !!previousOpen && preventClose);
 
   const context = {
     isOpen,
