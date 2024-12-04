@@ -1,5 +1,6 @@
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { Badge } from "@/components/ui/badge";
+import usePrevious from "@/hooks/usePrevious";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { Dialog, Transition } from "@headlessui/react";
@@ -26,6 +27,7 @@ export const SlideOverContext = React.createContext<SlideOverContextProps>({});
 export default function SlideOver({ open, setOpen, onClose, title, offset = 0, children }: Props) {
   const initialFocusRef = useRef(null);
   const [preventClose, setPreventClose] = useState(false);
+  const previousOpen = usePrevious(open);
 
   // Need to define full classes so tailwind can compile the css
   const panelWidth = "w-[400px]";
@@ -35,14 +37,16 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
     1: "-translate-x-[400px]",
   };
 
+  const isOpen = open || (!open && previousOpen && preventClose);
+
   const context = {
-    isOpen: open || (!open && preventClose),
+    isOpen,
     setPreventClose: (value: boolean) => setPreventClose(value),
   };
 
   return (
     <SlideOverContext.Provider value={context}>
-      <Transition.Root show={open || (!open && preventClose)} as={Fragment}>
+      <Transition.Root show={isOpen} as={Fragment}>
         <Dialog
           as="div"
           className="relative z-10"
@@ -104,7 +108,7 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
         description={"Are you sure you want to close this form? All unsaved changes will be lost."}
         onCancel={() => setOpen(true)}
         onDelete={() => setPreventClose(false)}
-        open={!open && preventClose}
+        open={!open && !!previousOpen && preventClose}
         setOpen={() => setPreventClose(false)}
         confirmLabel="Close"
       />
