@@ -396,7 +396,7 @@ def reload_settings_before_each_module(tmpdir_factory):
     config.SETTINGS.workflow.driver = config.WorkflowDriver.LOCAL
 
     storage_dir = tmpdir_factory.mktemp("storage")
-    config.SETTINGS.storage.local.path_ = str(storage_dir)
+    config.SETTINGS.storage.local.path_ = storage_dir
 
     config.SETTINGS.broker.enable = False
     config.SETTINGS.cache.enable = True

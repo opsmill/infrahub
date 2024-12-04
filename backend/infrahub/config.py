@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import os.path
 import ssl
 import sys
 from dataclasses import dataclass
@@ -11,7 +10,16 @@ from typing import TYPE_CHECKING, Any, Optional
 
 import toml
 from infrahub_sdk.utils import generate_uuid
-from pydantic import AliasChoices, BaseModel, Field, PrivateAttr, ValidationError, computed_field, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    Field,
+    PrivateAttr,
+    ValidationError,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Self
 
@@ -117,7 +125,7 @@ class WorkflowDriver(str, Enum):
 class MainSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
     docs_index_path: Path = Field(
-        default="/opt/infrahub/docs/build/search-index.json",
+        default=Path("/opt/infrahub/docs/build/search-index.json"),
         description="Full path of saved json containing pre-indexed documentation",
     )
     internal_address: Optional[str] = Field(default=None)
@@ -134,15 +142,23 @@ class MainSettings(BaseSettings):
         description="List of modules to handle permissions, they will be run in the given order",
     )
 
+    @field_validator("docs_index_path", mode="before")
+    def convert_to_path(cls, value: Path | str) -> Path:  # pylint: disable=no-self-argument  # noqa: N805
+        return Path(value) if isinstance(value, str) else value
+
 
 class FileSystemStorageSettings(BaseSettings):
     # Make variable lookup case-sensitive to avoid fetching $PATH value
     model_config = SettingsConfigDict(case_sensitive=True)
     path_: Path = Field(
-        default="/opt/infrahub/storage",
+        default=Path("/opt/infrahub/storage"),
         alias="path",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_LOCAL_PATH", "infrahub_storage_local_path", "path"),
     )
+
+    @field_validator("path_", mode="before")
+    def convert_to_path(cls, value: Path | str) -> Path:  # pylint: disable=no-self-argument  # noqa: N805
+        return Path(value) if isinstance(value, str) else value
 
 
 class S3StorageSettings(BaseSettings):
@@ -803,15 +819,13 @@ def load(config_file_name: Path | str = "infrahub.toml", config_data: Optional[d
     Configuration is loaded from a config file in toml format that contains the settings,
     or from a dictionary of those settings passed in as "config_data"
     """
+    config_file = Path(config_file_name)
 
     if config_data:
         return Settings(**config_data)
 
-    if isinstance(config_file_name, str):
-        config_file_name = Path(config_file_name)
-
-    if config_file_name.exists():
-        config_string = config_file_name.read_text(encoding="utf-8")
+    if config_file.exists():
+        config_string = config_file.read_text(encoding="utf-8")
         config_tmp = toml.loads(config_string)
 
         return Settings(**config_tmp)

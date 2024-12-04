@@ -57,37 +57,40 @@ AVAILABLE_SERVICES = [SERVICE_SERVER_NAME, SERVICE_WORKER_NAME, "database", "mes
 
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
-COMPOSE_FILES_DEPS = {False: "development/docker-compose-deps.yml", True: "development/docker-compose-deps-nats.yml"}
+COMPOSE_FILES_DEPS = {
+    False: Path("development/docker-compose-deps.yml"),
+    True: Path("development/docker-compose-deps-nats.yml"),
+}
 
 IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
 REQUESTED_IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER")
 IMAGE_VER = REQUESTED_IMAGE_VER or "latest"
 
-OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
-DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
-LOCAL_FILE_NAME = "development/docker-compose.local-build.yml"
+OVERRIDE_FILE = Path("development/docker-compose.override.yml")
+DEFAULT_FILE = Path("development/docker-compose.default.yml")
+LOCAL_FILE = Path("development/docker-compose.local-build.yml")
 COMPOSE_FILES_MEMGRAPH = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-memgraph.yml",
-    "development/docker-compose.yml",
+    Path("development/docker-compose-database-memgraph.yml"),
+    Path("development/docker-compose.yml"),
 ]
 COMPOSE_FILES_NEO4J = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-neo4j.yml",
-    "development/docker-compose.yml",
+    Path("development/docker-compose-database-neo4j.yml"),
+    Path("development/docker-compose.yml"),
 ]
 
 DEV_COMPOSE_FILES_MEMGRAPH = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-memgraph.yml",
+    Path("development/docker-compose-database-memgraph.yml"),
 ]
 DEV_COMPOSE_FILES_NEO4J = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-neo4j.yml",
+    Path("development/docker-compose-database-neo4j.yml"),
 ]
-DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"
+DEV_OVERRIDE_FILE = Path("development/docker-compose.dev-override.yml")
 
-TEST_METRICS_OVERRIDE_FILE_NAME = "development/docker-compose-test-metrics.yml"
+TEST_METRICS_OVERRIDE_FILE = Path("development/docker-compose-test-metrics.yml")
 
 
 PLATFORMS_PTY_ENABLE = ["Linux", "Darwin"]
@@ -229,19 +232,19 @@ def build_compose_files_cmd(database: str, namespace: Namespace = Namespace.DEFA
     elif database == DatabaseType.NEO4J.value:
         COMPOSE_FILES = COMPOSE_FILES_NEO4J.copy()
 
-    if Path(OVERRIDE_FILE_NAME).exists():
+    if OVERRIDE_FILE.exists():
         print("!! Found an override file for docker-compose !!")
-        COMPOSE_FILES.append(OVERRIDE_FILE_NAME)
+        COMPOSE_FILES.append(OVERRIDE_FILE)
     else:
-        COMPOSE_FILES.append(DEFAULT_FILE_NAME)
+        COMPOSE_FILES.append(DEFAULT_FILE)
 
     if "local" in IMAGE_VER or (namespace == Namespace.DEV and not REQUESTED_IMAGE_VER):
-        COMPOSE_FILES.append(LOCAL_FILE_NAME)
+        COMPOSE_FILES.append(LOCAL_FILE)
 
     if os.getenv("CI") is not None:
-        COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE_NAME)
+        COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE)
 
-    return f"-f {' -f '.join(COMPOSE_FILES)}"
+    return f"-f {' -f '.join(map(str, COMPOSE_FILES))}"
 
 
 def build_dev_compose_files_cmd(database: str) -> str:
@@ -253,8 +256,8 @@ def build_dev_compose_files_cmd(database: str) -> str:
     elif database == DatabaseType.NEO4J.value:
         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J.copy()
 
-    if Path(DEV_OVERRIDE_FILE_NAME).exists():
+    if DEV_OVERRIDE_FILE.exists():
         print("!! Found a dev override file for docker-compose !!")
-        DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
+        DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE)
 
-    return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
+    return f"-f {' -f '.join(map(str, DEV_COMPOSE_FILES))}"

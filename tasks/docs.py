@@ -206,20 +206,20 @@ def _generate_infrahub_schema_documentation() -> None:
     }
     print(" - Generate Infrahub schema documentation")
     for schema_name, schema in schemas_to_generate.items():
-        template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/schema/{schema_name}.j2"
-        output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/schema/{schema_name}.mdx"
+        template_file = Path(f"{DOCUMENTATION_DIRECTORY}/_templates/schema/{schema_name}.j2")
+        output_file = Path(f"{DOCUMENTATION_DIRECTORY}/docs/reference/schema/{schema_name}.mdx")
         output_label = f"docs/docs/reference/schema/{schema_name}.mdx"
-        if not Path(template_file).exists():
+        if not template_file.exists():
             print(f"Unable to find the template file at {template_file}")
             sys.exit(-1)
 
-        template_text = Path(template_file).read_text(encoding="utf-8")
+        template_text = template_file.read_text(encoding="utf-8")
 
         environment = jinja2.Environment()
         template = environment.from_string(template_text)
         rendered_file = template.render(schema=schema)
 
-        Path(output_file).write_text(rendered_file, encoding="utf-8")
+        output_file.write_text(rendered_file, encoding="utf-8")
         print(f"Docs saved to: {output_label}")
 
 
@@ -270,21 +270,21 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
 
     print(" - Generate Infrahub SDK configuration documentation")
 
-    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/sdk_config.j2"
-    output_file = f"{DOCUMENTATION_DIRECTORY}/docs/python-sdk/reference/config.mdx"
+    template_file = Path(f"{DOCUMENTATION_DIRECTORY}/_templates/sdk_config.j2")
+    output_file = Path(f"{DOCUMENTATION_DIRECTORY}/docs/python-sdk/reference/config.mdx")
     output_label = "docs/docs/python-sdk/reference/config.mdx"
 
-    if not Path(template_file).exists():
+    if not template_file.exists():
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
 
-    template_text = Path(template_file).read_text(encoding="utf-8")
+    template_text = template_file.read_text(encoding="utf-8")
 
     environment = jinja2.Environment(trim_blocks=True)
     template = environment.from_string(template_text)
     rendered_file = template.render(properties=properties)
 
-    Path(output_file).write_text(rendered_file, encoding="utf-8")
+    output_file.write_text(rendered_file, encoding="utf-8")
     print(f"Docs saved to: {output_label}")
 
 
@@ -322,20 +322,20 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
 
     print(" - Generate Infrahub repository configuration documentation")
 
-    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/dotinfrahub.j2"
-    output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/dotinfrahub.mdx"
+    template_file = Path(f"{DOCUMENTATION_DIRECTORY}/_templates/dotinfrahub.j2")
+    output_file = Path(f"{DOCUMENTATION_DIRECTORY}/docs/reference/dotinfrahub.mdx")
     output_label = "docs/docs/reference/dotinfrahub.mdx"
-    if not Path(template_file).exists():
+    if not template_file.exists():
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
 
-    template_text = Path(template_file).read_text(encoding="utf-8")
+    template_text = template_file.read_text(encoding="utf-8")
 
     environment = jinja2.Environment()
     template = environment.from_string(template_text)
     rendered_file = template.render(properties=properties, definitions=definitions)
 
-    Path(output_file).write_text(rendered_file, encoding="utf-8")
+    output_file.write_text(rendered_file, encoding="utf-8")
     print(f"Docs saved to: {output_label}")
 
 
@@ -385,7 +385,7 @@ def _generate_infrahub_events_documentation() -> None:
 
     print(" - Generate Infrahub Bus Events documentation")
 
-    if not Path(template_file).exists():
+    if not template_file.exists():
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
 

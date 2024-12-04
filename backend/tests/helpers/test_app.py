@@ -34,9 +34,8 @@ from .test_client import InfrahubTestClient
 class TestInfrahub:
     @pytest.fixture(scope="class")
     def local_storage_dir(self, tmpdir_factory: pytest.TempdirFactory) -> Path:
-        storage_dir = Path(tmpdir_factory.getbasetemp().strpath, "storage")
-        if not storage_dir.exists():
-            storage_dir.mkdir()
+        storage_dir = Path(tmpdir_factory.getbasetemp().strpath) / "storage"
+        storage_dir.mkdir(parents=True, exist_ok=True)
 
         config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
         config.SETTINGS.storage.local.path_ = storage_dir
