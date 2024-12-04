@@ -35,7 +35,7 @@ export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value
   parent?: { name?: string; value?: string };
 }
 
-const PAGINATION = 2;
+const PAGINATION = 20;
 
 export const RelationshipInput = React.forwardRef<
   React.ElementRef<typeof PopoverTrigger>,
