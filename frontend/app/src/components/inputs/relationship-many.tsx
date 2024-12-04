@@ -32,7 +32,7 @@ export interface RelationshipManyInputProps
   peerField?: string;
 }
 
-const PAGINATION = 2;
+const PAGINATION = 20;
 
 export const RelationshipManyInput = React.forwardRef<
   React.ElementRef<typeof PopoverTrigger>,
