@@ -206,8 +206,8 @@ def _generate_infrahub_schema_documentation() -> None:
     }
     print(" - Generate Infrahub schema documentation")
     for schema_name, schema in schemas_to_generate.items():
-        template_file = Path(f"{DOCUMENTATION_DIRECTORY}/_templates/schema/{schema_name}.j2")
-        output_file = Path(f"{DOCUMENTATION_DIRECTORY}/docs/reference/schema/{schema_name}.mdx")
+        template_file = Path(DOCUMENTATION_DIRECTORY) / "_templates" / "schema" / f"{schema_name}.j2"
+        output_file = Path(DOCUMENTATION_DIRECTORY) / "docs" / "reference" / "schema" / f"{schema_name}.mdx"
         output_label = f"docs/docs/reference/schema/{schema_name}.mdx"
         if not template_file.exists():
             print(f"Unable to find the template file at {template_file}")
@@ -270,8 +270,8 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
 
     print(" - Generate Infrahub SDK configuration documentation")
 
-    template_file = Path(f"{DOCUMENTATION_DIRECTORY}/_templates/sdk_config.j2")
-    output_file = Path(f"{DOCUMENTATION_DIRECTORY}/docs/python-sdk/reference/config.mdx")
+    template_file = Path(DOCUMENTATION_DIRECTORY) / "_templates" / "sdk_config.j2"
+    output_file = Path(DOCUMENTATION_DIRECTORY) / "docs" / "python-sdk" / "reference" / "config.mdx"
     output_label = "docs/docs/python-sdk/reference/config.mdx"
 
     if not template_file.exists():
@@ -322,8 +322,8 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
 
     print(" - Generate Infrahub repository configuration documentation")
 
-    template_file = Path(f"{DOCUMENTATION_DIRECTORY}/_templates/dotinfrahub.j2")
-    output_file = Path(f"{DOCUMENTATION_DIRECTORY}/docs/reference/dotinfrahub.mdx")
+    template_file = Path(DOCUMENTATION_DIRECTORY) / "_templates" / "dotinfrahub.j2"
+    output_file = Path(DOCUMENTATION_DIRECTORY) / "docs" / "reference" / "dotinfrahub.mdx"
     output_label = "docs/docs/reference/dotinfrahub.mdx"
     if not template_file.exists():
         print(f"Unable to find the template file at {template_file}")
