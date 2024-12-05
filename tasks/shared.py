@@ -352,7 +352,7 @@ def build_test_envs() -> str:
     return ""
 
 
-def init_yaml_obj(line_length: int | None = None):
+def init_yaml_obj(line_length: int | None = None):  # noqa: ANN201
     """Instantiate a ruamel.yaml YAML object.
 
     Args:
