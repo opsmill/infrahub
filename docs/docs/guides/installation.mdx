@@ -22,6 +22,9 @@ Please ensure the systems on which you want to install Infrahub meet the [hardwa
 
 To quickly spin up the latest Infrahub locally:
 
+<Tabs>
+
+<TabItem value="Ubuntu" default>
 ```shell
 curl https://infrahub.opsmill.io | sudo docker compose -f - up -d
 ```
@@ -38,6 +41,28 @@ Alternatively, you could indicated `develop` for or any version in the URL:
 curl https://infrahub.opsmill.io/develop | sudo docker compose -f - up -d
 curl https://infrahub.opsmill.io/1.0.7 | sudo docker compose -f - up -d
 ```
+</TabItem>
+
+<TabItem value="MacOS" default>
+```shell
+curl https://infrahub.opsmill.io | docker compose -f - up -d
+```
+
+or
+
+```shell
+curl https://infrahub.opsmill.io/stable | docker compose -f - up -d
+```
+
+Alternatively, you could indicated `develop` for or any version in the URL:
+
+```shell
+curl https://infrahub.opsmill.io/develop | docker compose -f - up -d
+curl https://infrahub.opsmill.io/1.0.7 | docker compose -f - up -d
+```
+</TabItem>
+
+</Tabs>
 
 :::warning
 
