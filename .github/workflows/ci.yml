@@ -520,7 +520,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.documentation == 'true'
+      needs.files-changed.outputs.release == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
@@ -545,7 +545,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.documentation == 'true'
+      needs.files-changed.outputs.release == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
@@ -562,7 +562,7 @@ jobs:
           tar -xzf vale.tar.gz
         env:
           VALE_VERSION: ${{ env.VALE_VERSION }}
-      - name: "Validate documentation style"
+      - name: "Validate release notes style"
         run: ./vale $(find ./changelog ./docs/docs/release-notes/infrahub -type f \( -name '*.mdx' -o -name '*.md' \)) CHANGELOG.md
 
   # ------------------------------------------ E2E Tests  ------------------------------------------
