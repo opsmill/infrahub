@@ -2413,7 +2413,7 @@ async def builtin_schema() -> SchemaRoot:
     return SchemaRoot(**SCHEMA)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 async def ipam_schema() -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "nodes": [
@@ -2481,7 +2481,7 @@ async def register_account_schema(db: InfrahubDatabase) -> None:
     registry.schema.register_schema(schema=SchemaRoot(nodes=nodes, generics=generics))
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 async def register_ipam_schema(default_branch: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
     schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=default_branch.name)
     default_branch.update_schema_hash()

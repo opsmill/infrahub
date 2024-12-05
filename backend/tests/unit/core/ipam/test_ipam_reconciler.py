@@ -4,7 +4,9 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.initialization import create_ipam_namespace, get_default_ipnamespace
+from infrahub.core.initialization import (
+    get_default_ipnamespace,
+)
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -12,20 +14,13 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
 
 
-async def test_invalid_ip_node_raises_error(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
-    await create_ipam_namespace(db=db)
-    default_ipnamespace = await get_default_ipnamespace(db=db)
-
-    reconciler = IpamReconciler(db=db, branch=default_branch)
-    with pytest.raises(NodeNotFoundError):
-        await reconciler.reconcile(ip_value=ipaddress.ip_interface("192.168.1.1"), namespace=default_ipnamespace)
-
-
 async def test_first_prefix(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, register_ipam_schema
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema,
+    register_ipam_schema,
+    default_ipnamespace: Node,
 ):
-    await create_ipam_namespace(db=db)
-    default_ipnamespace = await get_default_ipnamespace(db=db)
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     net161 = await Node.init(db=db, schema=prefix_schema)
     await net161.new(db=db, prefix="2001:db8::/48", ip_namespace=default_ipnamespace)
@@ -40,8 +35,15 @@ async def test_first_prefix(
     assert all_prefixes[0].is_top_level.value is True
 
 
+async def test_invalid_ip_node_raises_error(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
+    default_ipnamespace = await get_default_ipnamespace(db=db)
+
+    reconciler = IpamReconciler(db=db, branch=default_branch)
+    with pytest.raises(NodeNotFoundError):
+        await reconciler.reconcile(ip_value=ipaddress.ip_interface("192.168.1.1"), namespace=default_ipnamespace)
+
+
 async def test_ipprefix_reconciler_no_change(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
-    await create_ipam_namespace(db=db)
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     prefix_140 = ip_dataset_01["net140"]
@@ -63,7 +65,6 @@ async def test_ipprefix_reconciler_no_change(db: InfrahubDatabase, default_branc
 
 
 async def test_ipprefix_reconciler_new_prefix_update(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
-    await create_ipam_namespace(db=db)
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
@@ -114,7 +115,6 @@ async def test_ipprefix_reconciler_new_prefix_update(db: InfrahubDatabase, defau
 
 
 async def test_ipprefix_reconciler_new_address_update(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
-    await create_ipam_namespace(db=db)
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
@@ -140,7 +140,6 @@ async def test_ipprefix_reconciler_new_address_update(db: InfrahubDatabase, defa
 
 
 async def test_ip_prefix_reconciler_delete_prefix(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
-    await create_ipam_namespace(db=db)
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     namespace = ip_dataset_01["ns1"]
@@ -179,7 +178,6 @@ async def test_ip_prefix_reconciler_delete_prefix(db: InfrahubDatabase, default_
 
 
 async def test_ip_prefix_reconciler_delete_address(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
-    await create_ipam_namespace(db=db)
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     namespace = ip_dataset_01["ns1"]
@@ -203,7 +201,6 @@ async def test_ip_prefix_reconciler_delete_address(db: InfrahubDatabase, default
 
 
 async def test_ipprefix_reconciler_prefix_value_update(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
-    await create_ipam_namespace(db=db)
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     namespace = ip_dataset_01["ns1"]
