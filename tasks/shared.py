@@ -8,7 +8,6 @@ from typing import Optional, Union
 
 from invoke import Context, UnexpectedExit
 from invoke.runners import Result
-from ruamel.yaml import YAML
 
 from .utils import get_yamllint_rules, str_to_bool
 
@@ -353,7 +352,7 @@ def build_test_envs() -> str:
     return ""
 
 
-def init_yaml_obj(line_length: int | None = None) -> YAML:
+def init_yaml_obj(line_length: int | None = None):
     """Instantiate a ruamel.yaml YAML object.
 
     Args:
@@ -362,6 +361,8 @@ def init_yaml_obj(line_length: int | None = None) -> YAML:
     Returns:
         YAML: Instantiated ruamel.yaml.YAML object..
     """
+    from ruamel.yaml import YAML
+
     yamllint_rules: dict = get_yamllint_rules()
 
     yaml = YAML(typ="rt")

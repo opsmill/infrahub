@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Tuple
 
 from invoke import Context, UnexpectedExit
-from ruamel.yaml import YAML
 
 try:
     import toml
@@ -110,6 +109,7 @@ def get_version_from_pyproject() -> str:
 
 
 def get_yamllint_rules() -> dict:
+    from ruamel.yaml import YAML
     yaml = YAML(typ="rt")
     yamllint_rules = yaml.load(Path(".yamllint.yml"))
     return yamllint_rules

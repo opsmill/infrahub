@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from invoke import Context, task
-from semver import Version
 
 from tasks.shared import init_yaml_obj
 from tasks.utils import (
@@ -104,6 +103,7 @@ def ship(context: Context) -> None:
 def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yaml") -> None:
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     print(" - [release] Update Helm chart")
+    from semver import Version
     app_version: Version = Version.parse(get_version_from_pyproject(), optional_minor_and_patch=True)
 
     yaml: YAML = init_yaml_obj()
@@ -143,6 +143,7 @@ def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yam
 def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:
     """Update docker-compose.yml with the current version from pyproject.toml."""
     print(" - [release] Update docker-compose.yml")
+    from semver import Version
     version: Version = Version.parse(get_version_from_pyproject(), optional_minor_and_patch=True)
 
     yaml: YAML = init_yaml_obj(line_length=4096)
