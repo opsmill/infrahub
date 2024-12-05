@@ -1,9 +1,9 @@
-# Infrahub Changelog
+# Infrahub changelog
 
 This is the changelog for Infrahub.
 All notable changes to this project will be documented in this file.
 
-Issue tracking is located in [Github](https://github.com/opsmill/infrahub/issues).
+Issue tracking is located in [GitHub](https://github.com/opsmill/infrahub/issues).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -11,7 +11,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
-## [1.0.8](https://github.com/opsmill/infrahub/tree/v1.0.8) - 2024-12-03
+## [Infrahub - v1.0.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.8) - 2024-12-03
 
 ### Added
 
@@ -45,7 +45,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fixes a bug that prevented running a generator from a read-only repository
 - Generator groups are correctly created after merging a proposed change
 
-## [1.0.7](https://github.com/opsmill/infrahub/tree/v1.0.7) - 2024-11-20
+## [Infrahub - v1.0.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.7) - 2024-11-20
 
 ### Fixed
 
@@ -54,7 +54,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fix a bug in the query to delete a relationship that could create unnecessary "deleted" edges on the database
 - Fix bug in incremental diff addition for nodes within a hierarchy
 
-## [1.0.6](https://github.com/opsmill/infrahub/tree/v1.0.6) - 2024-11-18
+## [Infrahub - v1.0.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.6) - 2024-11-18
 
 ### Fixed
 
@@ -63,23 +63,23 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Session is now correctly cleared when logging out from the web UI ([#4962](https://github.com/opsmill/infrahub/issues/4962))
 - Anonymous user will get a 401 response when trying to load a schema
 
-## [1.0.5](https://github.com/opsmill/infrahub/tree/v1.0.5) - 2024-11-15
+## [Infrahub - v1.0.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.5) - 2024-11-15
 
 ### Fixed
 
 - Node attribute name can now be `type` ([#4381](https://github.com/opsmill/infrahub/issues/4381))
 
-## [1.0.4](https://github.com/opsmill/infrahub/tree/v1.0.4) - 2024-11-13
+## [Infrahub - v1.0.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.4) - 2024-11-13
 
 ### Fixed
 
 - Profiles now have a Human-Friendly Identifier (HFID) defined based on `profile_name` ([#4758](https://github.com/opsmill/infrahub/issues/4758))
-- Workers out of sync after deleting node from schema ([[#4836](https://github.com/opsmill/infrahub/issues/4836)])
+- Workers out of sync after deleting node from schema ([#4836](https://github.com/opsmill/infrahub/issues/4836))
 - Infrahub returns a proper error message when trying to load a schema with generic with the same Kind as an existing node ([#4837](https://github.com/opsmill/infrahub/issues/4837))
 - Default to using HTTP GET for UserInfo endpoints (OAuth2/OIDC) ([#4898](https://github.com/opsmill/infrahub/issues/4898))
 - Remove Profile in registry for renamed schema nodes ([#4909](https://github.com/opsmill/infrahub/issues/4909))
 
-## [1.0.3](https://github.com/opsmill/infrahub/tree/v1.0.2) - 2024-11-08
+## [Infrahub - v1.0.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.2) - 2024-11-08
 
 ### Fixed
 
@@ -87,14 +87,14 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fix hierarchical schema update logic to correctly update peer on parent of new child node ([#4839](https://github.com/opsmill/infrahub/issues/4839))
 - Define the version of numpy to install in pyproject.toml
 
-## [1.0.2](https://github.com/opsmill/infrahub/tree/v1.0.2) - 2024-11-06
+## [Infrahub - v1.0.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.2) - 2024-11-06
 
 ### Fixed
 
 - Update branch merge logic to use smaller queries outside of a transaction to allow merging a branch with many changes ([#4448](https://github.com/opsmill/infrahub/issues/4448))
 - Ensure the GraphQL query InfrahubResourcePoolUtilization works properly when the schema is different in the branch ([#4761](https://github.com/opsmill/infrahub/issues/4761))
 
-## [1.0.1](https://github.com/opsmill/infrahub/tree/v1.0.1) - 2024-10-31
+## [Infrahub - v1.0.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.1) - 2024-10-31
 
 ### Fixed
 
@@ -103,7 +103,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Avoid sending an empty list to the load schema API on repository import if it's not required
 - Update demo environment to work with Infrahub 1.0
 
-## [1.0.0](https://github.com/opsmill/infrahub/tree/v1.0.0) - 2024-10-30
+## [Infrahub - v1.0.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.0) - 2024-10-30
 
 ### Removed
 
@@ -155,13 +155,13 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fixes an issue where docker compose would output ANSI control characters that don't support it
 - Prevent temporary directories generated by Docusaurus to be imported by Docker
 
-## [0.16.4](https://github.com/opsmill/infrahub/tree/v0.16.4) - 2024-10-17
+## [Infrahub - v0.16.4](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.4) - 2024-10-17
 
 ### Fixed
 
 - Fixed an issue on the UI where a new relationship was being added to the main branch instead of the current branch. ([#4598](https://github.com/opsmill/infrahub/issues/4598))
 
-## [0.16.3](https://github.com/opsmill/infrahub/tree/v0.16.3) - 2024-10-10
+## [Infrahub - v0.16.3](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.3) - 2024-10-10
 
 ### Removed
 
@@ -172,7 +172,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Save a diff in smaller pieces instead of all at once to prevent out-of-memory error. ([#4511](https://github.com/opsmill/infrahub/issues/4511))
 - Fixes exception handling section in the Python SDK batch guide.
 
-## [0.16.2](https://github.com/opsmill/infrahub/tree/v0.16.2) - 2024-10-01
+## [Infrahub - v0.16.2](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.2) - 2024-10-01
 
 ### Fixed
 
@@ -184,7 +184,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fix performance issue for GraphQL queries that only count nodes. ([#4454](https://github.com/opsmill/infrahub/issues/4454))
 - Fix ability to construct HFID for upsert mutations where a number attribute is used. ([#4460](https://github.com/opsmill/infrahub/issues/4460))
 
-## [0.16.1](https://github.com/opsmill/infrahub/tree/v0.16.1) - 2024-09-24
+## [Infrahub - v0.16.1](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.1) - 2024-09-24
 
 The largest change in this version is the movement of the Infrahub SDK into a
 [separate repository](https://github.com/opsmill/infrahub-sdk-python) and package.
@@ -249,7 +249,7 @@ git submodule update --init
 - Added cancel button in repository form ([#4402](https://github.com/opsmill/infrahub/issues/4402))
 - Fixes the tasks pagination in the proposed changes tab ([#4434](https://github.com/opsmill/infrahub/issues/4434))
 
-## [0.16.0](https://github.com/opsmill/infrahub/tree/v0.16.0) - 2024-09-11
+## [Infrahub - v0.16.0](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.0) - 2024-09-11
 
 ### Removed
 
@@ -298,7 +298,7 @@ git submodule update --init
 - Do not allow '/' character in repository name to avoid sync failure. ([#4120](https://github.com/opsmill/infrahub/issues/4120))
 - Can't close a comment thread on an Artifact. ([#4189](https://github.com/opsmill/infrahub/issues/4189))
 
-## [0.15.3](https://github.com/opsmill/infrahub/tree/v0.15.3) - 2024-08-13
+## [Infrahub - v0.15.3](https://github.com/opsmill/infrahub/tree/infrahub-v0.15.3) - 2024-08-13
 
 ### Added
 
