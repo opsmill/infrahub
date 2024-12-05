@@ -3,6 +3,18 @@
 name: Publish Infrahub-Server Package
 
 on:
+  workflow_dispatch:
+    inputs:
+      runs-on:
+        description: "The OS to run the job on"
+        required: false
+        default: "ubuntu-22.04"
+        type: string
+      publish:
+        type: boolean
+        description: Whether to publish the package to Pypi
+        required: false
+        default: false
   workflow_call:
     inputs:
       runs-on:
@@ -12,7 +24,7 @@ on:
         type: string
       publish:
         type: boolean
-        description: Wether to publish the package to Pypi
+        description: Whether to publish the package to Pypi
         required: false
         default: false
 
