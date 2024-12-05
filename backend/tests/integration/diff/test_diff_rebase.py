@@ -131,6 +131,7 @@ class TestDiffRebase(TestInfrahubApp):
             manufacturer=omnicorp,
         )
         await ed_209.save(db=db)
+        a = 1  # other dummy diff
 
         bus_simulator.service.cache = RedisCache()
 

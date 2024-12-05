@@ -16,5 +16,4 @@ jobs:
           submodules: true
 
       - run: |
-          git checkout lgu-stable
           gh pr create --title "test" --base lgu-develop
