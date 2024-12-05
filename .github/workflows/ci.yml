@@ -18,4 +18,4 @@ jobs:
           submodules: true
 
       - run: |
-          gh pr create --title "test" --base lgu-develop
+          gh pr create --title "test" --body "test body" --base lgu-develop
