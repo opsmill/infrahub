@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Tuple
 
 from invoke import Context, UnexpectedExit
+from ruamel.yaml import YAML
 
 try:
     import toml
@@ -100,3 +101,15 @@ def str_to_bool(value: str) -> bool:
         return MAP[value.lower()]
     except KeyError as exc:
         raise ValueError(f"{value} can not be converted into a boolean") from exc
+
+
+def get_version_from_pyproject() -> str:
+    """Retrieve the current version from the pyproject.toml file."""
+
+    return toml.load("pyproject.toml")["tool"]["poetry"]["version"]
+
+
+def get_yamllint_rules() -> dict:
+    yaml = YAML(typ="rt")
+    yamllint_rules = yaml.load(Path(".yamllint.yml"))
+    return yamllint_rules
