@@ -104,6 +104,7 @@ def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yam
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     print(" - [release] Update Helm chart")
     from semver import Version
+
     app_version: Version = Version.parse(get_version_from_pyproject(), optional_minor_and_patch=True)
 
     yaml: YAML = init_yaml_obj()
@@ -144,6 +145,7 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
     """Update docker-compose.yml with the current version from pyproject.toml."""
     print(" - [release] Update docker-compose.yml")
     from semver import Version
+
     version: Version = Version.parse(get_version_from_pyproject(), optional_minor_and_patch=True)
 
     yaml: YAML = init_yaml_obj(line_length=4096)
