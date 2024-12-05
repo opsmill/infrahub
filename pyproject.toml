@@ -101,6 +101,8 @@ testcontainers = "^4.8.1"
 pytest-timeout = "^2.3.1"
 matplotlib = "^3.9.2"
 pandas = "^2.2.3"
+semver = "^3.0.2"
+ruamel-yaml = "^0.18.6"
 
 # [tool.poetry.group.test-scale.dependencies]
 # locust = "^2.20.1"
