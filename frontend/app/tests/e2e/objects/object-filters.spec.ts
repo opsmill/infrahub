@@ -26,17 +26,9 @@ test.describe("Object filters", () => {
         await page.getByLabel("Role").click();
         await page.getByRole("option", { name: "Edge Router" }).click();
 
-        const tagsMultiSelectOpenButton = page
-          .getByTestId("side-panel-container")
-          .getByText("Tags")
-          .locator("../..")
-          .getByTestId("select-open-option-button");
-        await tagsMultiSelectOpenButton.click();
-
+        await page.getByLabel("Tags").click();
         await page.getByTestId("side-panel-container").getByText("red").click();
-
-        // Closes the multiselect
-        await tagsMultiSelectOpenButton.click();
+        await page.getByLabel("Tags").click(); // Closes the multiselect
 
         await page.getByRole("button", { name: "Apply filters" }).scrollIntoViewIfNeeded();
         await page.getByRole("button", { name: "Apply filters" }).click();
@@ -95,7 +87,9 @@ test.describe("Object filters", () => {
     await expect(page.getByTestId("side-panel-container").getByText("Object")).toBeVisible();
 
     await page.getByLabel("kind").click();
-    await expect(page.getByRole("option", { name: "Tag Builtin", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("option", { name: "BGP Session Infra", exact: true })
+    ).toBeVisible();
   });
 
   test("should correctly filter from a kind", async ({ page }) => {

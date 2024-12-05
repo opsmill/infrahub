@@ -166,7 +166,11 @@ describe("getCreateMutationFromFormData - test", () => {
     const formData: Record<string, FormRelationshipValue> = {
       relationship1: {
         source: { type: "user" },
-        value: { id: "relationship-id" },
+        value: {
+          id: "relationship-id",
+          display_label: "Relationship 1",
+          __typename: "relationship",
+        },
       },
     };
 
@@ -229,7 +233,13 @@ describe("getCreateMutationFromFormData - test", () => {
     const formData: Record<string, FormRelationshipValue> = {
       relationship1: {
         source: { type: "user" },
-        value: [{ id: "relationship-id" }],
+        value: [
+          {
+            id: "relationship-id",
+            display_label: "Relationship 1",
+            __typename: "relationship",
+          },
+        ],
       },
     };
 
@@ -271,6 +281,72 @@ describe("getCreateMutationFromFormData - test", () => {
     // THEN
     expect(mutationData).to.deep.equal({
       field1: { value: 0 },
+    });
+  });
+
+  describe("Attribute of kind list", () => {
+    it("set correctly attribute of kind list when value is from schema", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildField({
+          name: "listField",
+          type: "List",
+          defaultValue: { source: { type: "schema" }, value: ["item1"] },
+        }),
+      ];
+      const formData: Record<string, FormAttributeValue> = {
+        listField: { source: { type: "schema" }, value: ["item1"] },
+      };
+
+      // WHEN
+      const mutationData = getCreateMutationFromFormData(fields, formData);
+
+      // THEN
+      expect(mutationData).to.deep.equal({});
+    });
+
+    it("set correctly attribute of kind list when value is from user", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildField({
+          name: "listField",
+          type: "List",
+          defaultValue: { source: null, value: null },
+        }),
+      ];
+      const formData: Record<string, FormAttributeValue> = {
+        listField: { source: { type: "user" }, value: ["item2", "item3"] },
+      };
+
+      // WHEN
+      const mutationData = getCreateMutationFromFormData(fields, formData);
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        listField: { value: ["item2", "item3"] },
+      });
+    });
+
+    it("set correctly attribute field if value is from user and is an empty array", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildField({
+          name: "listField",
+          type: "List",
+          defaultValue: { source: { type: "schema" }, value: ["item1"] },
+        }),
+      ];
+      const formData: Record<string, FormAttributeValue> = {
+        listField: { source: { type: "user" }, value: [] },
+      };
+
+      // WHEN
+      const mutationData = getCreateMutationFromFormData(fields, formData);
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        listField: { value: [] },
+      });
     });
   });
 });

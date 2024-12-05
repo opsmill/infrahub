@@ -20,18 +20,31 @@ Please ensure the systems on which you want to install Infrahub meet the [hardwa
 
 ## Quick start via curl
 
-To quickly spin up Infrahub locally:
+To quickly spin up the latest Infrahub locally:
 
 ```shell
 curl https://infrahub.opsmill.io | sudo docker compose -f - up -d
 ```
 
-Alternative examples:
+or
+
+```shell
+curl https://infrahub.opsmill.io/stable | sudo docker compose -f - up -d
+```
+
+Alternatively, you could indicated `develop` for or any version in the URL:
 
 ```shell
 curl https://infrahub.opsmill.io/develop | sudo docker compose -f - up -d
-curl https://infrahub.opsmill.io/0.15.2 | sudo docker compose -f - up -d
+curl https://infrahub.opsmill.io/1.0.7 | sudo docker compose -f - up -d
 ```
+
+:::warning
+
+We do not recommend using the development version (`develop` branch) for production purposes or as an introduction to Infrahub.
+For the different versions, you can check our [release notes, on GitHub](https://github.com/opsmill/infrahub/releases).
+
+:::
 
 To spin down and remove an Infrahub environment:
 
@@ -151,11 +164,11 @@ Please reach out if you need some help and feel free to send a PR with the insta
 </TabItem>
 </Tabs>
 
-Once docker desktop and invoke are installed you can start and initialize the Infrahub demo environment with the following command:
+Once docker desktop and invoke are installed you can start and initialize Infrahub:
 
 ```shell
 cd infrahub
-invoke demo.start demo.load-infra-schema demo.load-infra-data
+invoke demo.start
 ```
 
 <ReferenceLink title="Check the documentation of the demo environment for more information" url="/topics/local-demo-environment" />

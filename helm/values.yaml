@@ -164,6 +164,8 @@ rabbitmq:
     password: infrahub
   metrics:
     enabled: true
+  startupProbe:
+    enabled: true
 
 # ----------- NFS Server -----------
 nfs-server-provisioner:
@@ -195,6 +197,8 @@ prefect-server:
     create: false
   postgresql:
     enabled: true
+    image:
+      tag: 14.13.0
     primary:
       persistence:
         enabled: false

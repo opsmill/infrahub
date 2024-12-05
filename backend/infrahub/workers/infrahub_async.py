@@ -79,6 +79,9 @@ class InfrahubWorkerAsync(BaseWorker):
         logging.getLogger("aio_pika").setLevel(logging.ERROR)
         logging.getLogger("aiormq").setLevel(logging.ERROR)
         logging.getLogger("git").setLevel(logging.ERROR)
+        # Prevent git from interactively prompting the user for passwords if the credentials provided
+        # by the credential helper is failing.
+        os.environ["GIT_TERMINAL_PROMPT"] = "0"
 
         if not config.SETTINGS.settings:
             config_file = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")

@@ -1,4 +1,9 @@
-import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
+import {
+  AttributeValueFromPool,
+  DynamicFieldProps,
+  FormFieldValue,
+  RelationshipValueFromPool,
+} from "@/components/form/type";
 import { isDeepEqual } from "remeda";
 
 type GetUpdateMutationFromFormDataParams = {
@@ -19,19 +24,53 @@ export const getUpdateMutationFromFormData = ({
 
     if (
       fieldData.source?.type === "pool" &&
-      field.defaultValue?.source?.id === fieldData?.source?.id
+      (field.defaultValue as AttributeValueFromPool | RelationshipValueFromPool)?.source?.id ===
+        fieldData?.source?.id
     ) {
       // If the same pool is selected, then remove from the updates
       return acc;
     }
 
     switch (fieldData.source?.type) {
-      case "pool":
+      case "pool": {
+        return { ...acc, [field.name]: fieldData.value };
+      }
       case "user": {
-        const fieldValue = fieldData.value === "" ? null : fieldData.value;
+        if (fieldData.value === null) {
+          if (field.type === "relationship") {
+            return { ...acc, [field.name]: null };
+          }
+          return { ...acc, [field.name]: { value: null } };
+        }
+
+        if (typeof fieldData.value === "object") {
+          if (Array.isArray(fieldData.value)) {
+            if (fieldData.value.every((value) => typeof value === "string")) {
+              return {
+                ...acc,
+                [field.name]: { value: fieldData.value },
+              };
+            }
+
+            if (fieldData.value.every((value) => "id" in value)) {
+              return {
+                ...acc,
+                [field.name]: fieldData.value.map(({ id }) => ({ id })),
+              };
+            }
+          }
+
+          if ("id" in fieldData.value) {
+            return {
+              ...acc,
+              [field.name]: { id: fieldData.value.id },
+            };
+          }
+        }
+
         return {
           ...acc,
-          [field.name]: field.type === "relationship" ? fieldValue : { value: fieldValue },
+          [field.name]: { value: fieldData.value === "" ? null : fieldData.value },
         };
       }
       case "profile":

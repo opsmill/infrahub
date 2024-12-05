@@ -1,1 +1,0 @@
-Fix bug in incremental diff addition for nodes within a hierarchy

@@ -3,6 +3,7 @@ import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import AddGroupForm from "@/screens/groups/add-group-form";
+import { GroupDataFromAPI } from "@/screens/groups/types";
 import { iNodeSchema } from "@/state/atoms/schema.atom";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
@@ -12,10 +13,12 @@ type AddGroupTriggerButtonProps = {
   schema: iNodeSchema;
   objectId: string;
   permission: Permission;
+  currentGroups?: Array<GroupDataFromAPI>;
 };
 
 export default function AddGroupTriggerButton({
   schema,
+  currentGroups,
   objectId,
   permission,
   ...props
@@ -55,6 +58,18 @@ export default function AddGroupTriggerButton({
       >
         <AddGroupForm
           objectId={objectId}
+          defaultGroupIds={
+            currentGroups
+              ? {
+                  source: { type: "user" },
+                  value: currentGroups.map(({ id, display_label, __typename }) => ({
+                    id,
+                    display_label,
+                    __typename,
+                  })),
+                }
+              : undefined
+          }
           schema={schema}
           className="p-4"
           onCancel={() => setIsAddGroupFormOpen(false)}

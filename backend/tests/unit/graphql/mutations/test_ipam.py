@@ -5,6 +5,7 @@ from graphql import graphql
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -1125,3 +1126,46 @@ async def test_prefix_ancestors_descendants(
     assert children == [{"node": {"id": net16.id}}]
     descendants = prefix_details["descendants"]["edges"]
     assert descendants == [{"node": {"id": net16.id}}]
+
+
+async def test_delete_top_level_prefix(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+):
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+
+    ns1 = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns1.new(db=db, name="ns1")
+    await ns1.save(db=db)
+    net8 = await Node.init(db=db, schema=prefix_schema)
+    await net8.new(db=db, prefix="10.0.0.0/8", ip_namespace=ns1)
+    await net8.save(db=db)
+    net10 = await Node.init(db=db, schema=prefix_schema)
+    await net10.new(db=db, prefix="10.0.0.0/10", parent=net8, ip_namespace=ns1)
+    await net10.save(db=db)
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    delete_top = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"id": str(net10.id)},
+    )
+    assert not delete_top.errors
+    assert delete_top.data["IpamIPPrefixDelete"]["ok"] is True
+
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    delete_last_prefix = await graphql(
+        schema=gql_params.schema,
+        source=DELETE_IPPREFIX,
+        context_value=gql_params.context,
+        variable_values={"id": str(net8.id)},
+    )
+    assert not delete_last_prefix.errors
+    assert delete_last_prefix.data["IpamIPPrefixDelete"]["ok"] is True
+
+    ip_prefixes = await NodeManager.query(db=db, branch=default_branch, schema="IpamIPPrefix")
+    assert len(ip_prefixes) == 0

@@ -209,6 +209,7 @@ const NodeAttributesSelects = () => {
                         key={node.id}
                         selectedValue={selectedNode?.kind}
                         value={node.kind!}
+                        keywords={[node.label as string]}
                         onSelect={() => {
                           const newValue = node.kind === selectedNode?.kind ? null : node.kind;
                           field.onChange(
@@ -267,6 +268,7 @@ const NodeAttributesSelects = () => {
                         key={attribute.id}
                         selectedValue={selectedAttribute?.value}
                         value={attribute.name}
+                        keywords={[attribute.label as string]}
                         onSelect={() => {
                           const newValue =
                             attribute.name === selectedNode?.name ? null : attribute.name;

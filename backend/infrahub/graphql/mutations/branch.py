@@ -105,6 +105,7 @@ class BranchCreate(Mutation):
 
             fields = await extract_fields(info.field_nodes[0].selection_set)
             if context.service:
+                await context.service.component.refresh_schema_hash(branches=[obj.name])
                 message = messages.EventBranchCreate(
                     branch=obj.name,
                     branch_id=str(obj.id),

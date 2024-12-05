@@ -93,10 +93,10 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
     ):
         log.info(f"Got a request to process data integrity defined in proposed_change: {message.proposed_change}")
 
-        destination_branch = await registry.get_branch(db=service.database, branch=message.destination_branch)
-        source_branch = await registry.get_branch(db=service.database, branch=message.source_branch)
-        component_registry = get_component_registry()
         async with service.database.start_transaction() as dbt:
+            destination_branch = await registry.get_branch(db=dbt, branch=message.destination_branch)
+            source_branch = await registry.get_branch(db=dbt, branch=message.source_branch)
+            component_registry = get_component_registry()
             diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
             await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
@@ -137,12 +137,13 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
 
         await _gather_repository_repository_diffs(repositories=repositories)
 
-        destination_branch = await registry.get_branch(db=service.database, branch=message.destination_branch)
-        source_branch = await registry.get_branch(db=service.database, branch=message.source_branch)
-        component_registry = get_component_registry()
         async with service.database.start_transaction() as dbt:
+            destination_branch = await registry.get_branch(db=dbt, branch=message.destination_branch)
+            source_branch = await registry.get_branch(db=dbt, branch=message.source_branch)
+            component_registry = get_component_registry()
             diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
             await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
+
         diff_summary = await service.client.get_diff_summary(branch=message.source_branch)
         branch_diff = ProposedChangeBranchDiff(diff_summary=diff_summary, repositories=repositories)
         await _populate_subscribers(branch_diff=branch_diff, service=service, branch=message.source_branch)
@@ -248,7 +249,8 @@ async def schema_integrity(
 
         candidate_schema = dest_schema.duplicate()
         candidate_schema.update(schema=source_schema)
-        validation_result = dest_schema.validate_update(other=candidate_schema)
+        schema_diff = dest_schema.diff(other=candidate_schema)
+        validation_result = dest_schema.validate_update(other=candidate_schema, diff=schema_diff)
 
         constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
             message=message, schema=candidate_schema

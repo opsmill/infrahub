@@ -2,6 +2,7 @@ import { Filter } from "@/hooks/useFilters";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import {
   AttributeType,
+  Node,
   RelationshipManyType,
   RelationshipOneType,
   RelationshipType,
@@ -22,6 +23,13 @@ export const getObjectFromFilters = (
         };
       }
 
+      if (fieldKey === "values") {
+        return {
+          ...acc,
+          [fieldName]: { value: filter.value } satisfies AttributeType,
+        };
+      }
+
       if (fieldKey === "ids") {
         const relationshipSchema = schema.relationships?.find(({ name }) => name === fieldName);
         if (!relationshipSchema) return acc;
@@ -31,11 +39,11 @@ export const getObjectFromFilters = (
             ...acc,
             [fieldName]: {
               edges: filter.value.map(
-                (v: string) =>
+                (v: Node) =>
                   ({
                     node: {
-                      id: v,
-                      display_label: "",
+                      id: v.id,
+                      display_label: v.display_label,
                       __typename: relationshipSchema.peer,
                     },
                   }) satisfies RelationshipOneType

@@ -1,6 +1,7 @@
 import {
   DynamicFieldProps,
   FormAttributeValue,
+  FormRelationshipValue,
   RelationshipValueFromPool,
 } from "@/components/form/type";
 import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
@@ -62,6 +63,52 @@ describe("getUpdateMutationFromFormData - test", () => {
     });
   });
 
+  it("set attribute to null if it's from the user and value is null", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [
+      buildField({
+        name: "field1",
+        defaultValue: { source: { type: "user" }, value: "old-value" },
+      }),
+    ];
+    const formData: Record<string, FormAttributeValue> = {
+      field1: { source: { type: "user" }, value: null },
+    };
+
+    // WHEN
+    const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      field1: { value: null },
+    });
+  });
+
+  it("set relationship to null if it's from the user and value is null", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [
+      buildField({
+        name: "relationship1",
+        type: "relationship",
+        defaultValue: {
+          source: { type: "schema" },
+          value: null,
+        },
+      }),
+    ];
+    const formData: Record<string, FormRelationshipValue> = {
+      relationship1: { source: { type: "user" }, value: null },
+    };
+
+    // WHEN
+    const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      relationship1: null,
+    });
+  });
+
   it("removes field if value and source are not updated", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
@@ -108,7 +155,10 @@ describe("getUpdateMutationFromFormData - test", () => {
       buildField({
         name: "field1",
         type: "relationship",
-        defaultValue: { source: { type: "user" }, value: { id: "value1" } },
+        defaultValue: {
+          source: { type: "user" },
+          value: { id: "value1", display_label: "value1", __typename: "FakeResource" },
+        },
       }),
     ];
     const formData: Record<string, RelationshipValueFromPool> = {
@@ -182,6 +232,52 @@ describe("getUpdateMutationFromFormData - test", () => {
     // THEN
     expect(mutationData).to.deep.equal({
       field1: { is_default: true },
+    });
+  });
+
+  describe("Attribute of kind list", () => {
+    it("set correctly attribute of kind list when initial value is null", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildField({
+          name: "listField",
+          type: "List",
+          defaultValue: { source: null, value: null },
+        }),
+      ];
+      const formData: Record<string, FormAttributeValue> = {
+        listField: { source: { type: "user" }, value: ["item2", "item3"] },
+      };
+
+      // WHEN
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        listField: { value: ["item2", "item3"] },
+      });
+    });
+
+    it("set correctly attribute of kind list when initial has items", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildField({
+          name: "listField",
+          type: "List",
+          defaultValue: { source: { type: "user" }, value: ["item1"] },
+        }),
+      ];
+      const formData: Record<string, FormAttributeValue> = {
+        listField: { source: { type: "user" }, value: ["item2", "item3"] },
+      };
+
+      // WHEN
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        listField: { value: ["item2", "item3"] },
+      });
     });
   });
 });

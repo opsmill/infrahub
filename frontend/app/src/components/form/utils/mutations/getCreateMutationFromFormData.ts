@@ -16,16 +16,46 @@ export const getCreateMutationFromFormData = (
       return acc;
     }
 
+    if (isFormFieldValueFromPool(fieldData)) {
+      return { ...acc, [field.name]: fieldData.value };
+    }
+
     if (fieldData.source?.type === "user") {
+      if (fieldData.value === null) {
+        return { ...acc, [field.name]: { value: null } };
+      }
+
+      if (typeof fieldData.value === "object") {
+        if (Array.isArray(fieldData.value)) {
+          // To differentiate between list (string[]) and relationship (Node[])
+          if (fieldData.value.every((value) => typeof value === "string")) {
+            return {
+              ...acc,
+              [field.name]: { value: fieldData.value },
+            };
+          }
+
+          if (fieldData.value.every((value) => "id" in value)) {
+            return {
+              ...acc,
+              [field.name]: fieldData.value.map(({ id }) => ({ id })),
+            };
+          }
+        }
+
+        if ("id" in fieldData.value) {
+          return {
+            ...acc,
+            [field.name]: { id: fieldData.value.id },
+          };
+        }
+      }
+
       const fieldValue = fieldData.value === "" ? null : fieldData.value;
       return {
         ...acc,
-        [field.name]: field.type === "relationship" ? fieldValue : { value: fieldValue },
+        [field.name]: { value: fieldValue },
       };
-    }
-
-    if (isFormFieldValueFromPool(fieldData)) {
-      return { ...acc, [field.name]: fieldData.value };
     }
 
     return acc;
@@ -49,7 +79,10 @@ export const getCreateMutationFromFormDataOnly = (
 
       return {
         ...acc,
-        [name]: Array.isArray(fieldValue) ? fieldValue : { value: fieldValue },
+        [name]: Array.isArray(fieldValue)
+          ? // Uses array of ids for relationships
+            fieldValue.map((value) => ({ id: value.id }))
+          : { value: fieldValue },
       };
     }
 

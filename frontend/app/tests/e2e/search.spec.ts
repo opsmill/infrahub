@@ -22,8 +22,8 @@ test.describe("when searching an object", () => {
       await expect(page.getByTestId("search-anywhere")).not.toBeVisible();
     });
 
-    await test.step("open search anywhere modal when typing on header input", async () => {
-      await page.keyboard.press("Enter");
+    await test.step("open search anywhere modal when using shortcut", async () => {
+      await page.keyboard.press("ControlOrMeta+k");
       await expect(page.getByTestId("search-anywhere")).toBeVisible();
     });
   });
