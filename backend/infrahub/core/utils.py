@@ -160,7 +160,7 @@ async def delete_all_nodes(db: InfrahubDatabase) -> list[Record]:
     """
 
     params: dict = {}
-
+    a = 1  # dummy diff
     return await db.execute_query(query=query, params=params, name="delete_all_nodes")
 
 
