@@ -1,16 +1,20 @@
+from __future__ import annotations
+
 import os
 import platform
 import re
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union
+from typing import TYPE_CHECKING
 
 from invoke import Context, UnexpectedExit
-from invoke.runners import Result
-from ruamel.yaml import YAML
 
 from .utils import get_yamllint_rules, str_to_bool
+
+if TYPE_CHECKING:
+    from invoke.runners import Result
+    from ruamel.yaml.main import YAML
 
 
 class DatabaseType(str, Enum):
@@ -226,7 +230,7 @@ def get_compose_cmd(namespace: Namespace) -> str:
     return "docker compose"
 
 
-def execute_command(context: Context, command: str, print_cmd: bool = False) -> Optional[Result]:
+def execute_command(context: Context, command: str, print_cmd: bool = False) -> Result | None:
     params = check_environment(context=context)
 
     if params["sudo"]:
@@ -305,7 +309,7 @@ def build_dev_compose_files_cmd(database: str) -> str:
 
 
 def build_test_compose_files_cmd(
-    database: Union[bool, str] = DatabaseType.MEMGRAPH.value,
+    database: bool | str = DatabaseType.MEMGRAPH.value,
 ) -> str:
     if database is False:
         return f"-f {TEST_COMPOSE_FILE}"
@@ -362,6 +366,8 @@ def init_yaml_obj(line_length: int | None = None) -> YAML:
     Returns:
         YAML: Instantiated ruamel.yaml.YAML object..
     """
+    from ruamel.yaml import YAML
+
     yamllint_rules: dict = get_yamllint_rules()
 
     yaml = YAML(typ="rt")
