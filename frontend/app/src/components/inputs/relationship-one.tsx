@@ -18,12 +18,14 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
+import { classNames } from "@/utils/common";
 import { Node, RelationshipManyType } from "@/utils/getObjectItemDisplayValue";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React, { useEffect, useState } from "react";
 import { Badge } from "../ui/badge";
+import { inputStyle } from "../ui/style";
 import { Tooltip } from "../ui/tooltip";
 
 export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value" | "onChange"> {
@@ -102,8 +104,17 @@ export const RelationshipInput = React.forwardRef<
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
-      <div className="flex gap-2">
-        <ComboboxTrigger ref={ref} {...props}>
+      <div className={classNames("flex gap-2")}>
+        <ComboboxTrigger
+          ref={ref}
+          {...props}
+          className={classNames(
+            inputStyle,
+            "has-[>:last-child:focus-visible]:outline-none has-[>:last-child:focus-visible]:ring-2 has-[>:last-child:focus-visible]:ring-custom-blue-500 has-[>:last-child:focus-visible]:ring-offset-2",
+            "cursor-pointer",
+            className
+          )}
+        >
           {value && (
             <span data-testid="select-value">
               {"from_pool" in value ? "Allocated by pool" : value.display_label}
