@@ -202,7 +202,7 @@ jobs:
   #       with:
   #         submodules: true
   #     - name: "Install Invoke"
-  #       run: "pip install toml invoke"
+  #       run: "pip install invoke ruamel-yaml semver toml"
 
   #     - name: "Set environment variables"
   #       run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
@@ -403,7 +403,7 @@ jobs:
         run: |
           pipx install poetry
           poetry config virtualenvs.prefer-active-python true
-          pip install invoke toml
+          pip install invoke ruamel-yaml semver toml
       - name: "Install Package"
         run: "poetry install"
       - name: "Run validator"
@@ -486,7 +486,7 @@ jobs:
       - name: "Install dependencies"
         run: npm install
       - name: "Setup Python environment"
-        run: "pip install toml invoke ruamel-yaml semver"
+        run: "pip install invoke ruamel-yaml semver toml"
       - name: "Build website"
         run: "invoke docs.build"
 
@@ -509,7 +509,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: "Setup environment"
-        run: "pip install invoke toml ruamel-yaml"
+        run: "pip install invoke ruamel-yaml semver toml"
       - name: "Build Test Image"
         run: "invoke dev.build"
       - name: "Validate generated documentation"
@@ -613,7 +613,7 @@ jobs:
           cache-dependency-path: frontend/app/package-lock.json
 
       - name: Install Invoke
-        run: pip install toml invoke ruamel-yaml semver
+        run: pip install invoke ruamel-yaml semver toml
 
       - name: Set job name
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
@@ -784,7 +784,7 @@ jobs:
 
       - name: Install Invoke
         run: |
-          pip install toml invoke ruamel-yaml semver
+          pip install invoke ruamel-yaml semver toml
 
       - name: Set job name
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
