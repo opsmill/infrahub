@@ -1,17 +1,80 @@
+import os
+
 import pytest
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import (
+    create_default_branch,
+    create_global_branch,
+    create_ipam_namespace,
+    create_root_node,
+)
 from infrahub.core.node import Node
+from infrahub.core.query.delete import DeleteAfterTimeQuery
+from infrahub.core.schema import SchemaRoot, core_models, internal_schema
+from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
+from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 
 
-@pytest.fixture
-async def ip_dataset_01(
+@pytest.fixture(scope="module")
+async def register_internal_models_schema(default_branch: Branch) -> SchemaBranch:
+    schema = SchemaRoot(**internal_schema)
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
+
+
+@pytest.fixture(scope="module")
+async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
+    schema = SchemaRoot(**core_models)
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
+
+
+@pytest.fixture(scope="module")
+def local_storage_dir(tmpdir_factory: pytest.TempdirFactory) -> str:
+    storage_dir = os.path.join(str(tmpdir_factory.getbasetemp().strpath), "storage")
+    if not os.path.exists(storage_dir):
+        os.mkdir(storage_dir)
+
+    config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
+    config.SETTINGS.storage.local.path_ = storage_dir
+
+    return storage_dir
+
+
+@pytest.fixture(scope="module")
+async def default_branch(local_storage_dir: str, db: InfrahubDatabase) -> Branch:
+    registry.delete_all()
+    await delete_all_nodes(db=db)
+    await create_root_node(db=db)
+    branch = await create_default_branch(db=db)
+    await create_global_branch(db=db)
+    registry.schema = SchemaManager()
+    return branch
+
+
+@pytest.fixture(scope="module")
+async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Node | None:
+    if not registry._default_ipnamespace:
+        ip_namespace = await create_ipam_namespace(db=db)
+        registry.default_ipnamespace = ip_namespace.id
+        return ip_namespace
+    return None
+
+
+@pytest.fixture(scope="module")
+async def ip_dataset_01_load(
     db: InfrahubDatabase,
     default_branch: Branch,
+    default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
 ):
@@ -103,3 +166,15 @@ async def ip_dataset_01(
         "net242": net242,
     }
     return data
+
+
+@pytest.fixture(scope="module")
+def start_time():
+    return Timestamp()
+
+
+@pytest.fixture(scope="function")
+async def ip_dataset_01(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01_load, start_time: Timestamp):
+    yield ip_dataset_01_load
+    query = await DeleteAfterTimeQuery.init(db=db, timestamp=start_time)
+    await query.execute(db=db)
