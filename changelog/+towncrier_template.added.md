@@ -1,0 +1,1 @@
+Added custom Towncrier template to remove extra space after new Changelog entries.
