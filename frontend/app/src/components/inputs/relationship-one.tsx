@@ -14,6 +14,7 @@ import { PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
 import { generateRelationshipListQuery } from "@/graphql/queries/objects/generateRelationshipListQuery";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
@@ -21,7 +22,7 @@ import { Node, RelationshipManyType } from "@/utils/getObjectItemDisplayValue";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Badge } from "../ui/badge";
 import { Tooltip } from "../ui/tooltip";
 
@@ -34,12 +35,20 @@ export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value
   parent?: { name?: string; value?: string };
 }
 
+const PAGINATION = 20;
+
 export const RelationshipInput = React.forwardRef<
   React.ElementRef<typeof PopoverTrigger>,
   RelationshipInputProps
 >(({ className, value, onChange, options, peer, parent, ...props }, ref) => {
   const { schema, isNode } = useSchema(peer);
   const [open, setOpen] = React.useState(false);
+  const [count, setCount] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [results, setResults] = useState([]);
+  const [search, setSearch] = useState("");
+  const [shouldAggregate, setShouldAggregate] = useState(true);
+  const searchQuery = useDebounce(search, 500);
   const [isPoolOpen, setIsPoolOpen] = React.useState(false);
 
   // Check if any kind from inheritance is one of the available for pools
@@ -53,11 +62,43 @@ export const RelationshipInput = React.forwardRef<
   `;
 
   const [loadRelationshipList, { loading: isRelationshipListLoading, data: RelationshipListData }] =
-    useLazyQuery(gql(generateRelationshipListQuery({ peer, parent })));
+    useLazyQuery(
+      gql(
+        generateRelationshipListQuery({
+          peer,
+          parent,
+          limit: PAGINATION,
+          offset,
+          search: searchQuery,
+        })
+      )
+    );
 
   const [loadPoolList, { loading: isPoolListLoading, data: poolsData }] = useLazyQuery(poolsQuery);
 
   const loading = isRelationshipListLoading || isPoolListLoading;
+
+  useEffect(() => {
+    const newResults =
+      RelationshipListData &&
+      (RelationshipListData[peer] as RelationshipManyType).edges.map((edge) => edge.node);
+
+    const dataCount =
+      RelationshipListData && (RelationshipListData[peer] as RelationshipManyType).count;
+
+    setCount(dataCount);
+
+    if (!shouldAggregate) {
+      setResults(newResults);
+      return;
+    }
+
+    if (!newResults) {
+      return;
+    }
+
+    setResults([...results, ...newResults]);
+  }, [RelationshipListData]);
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
@@ -88,11 +129,8 @@ export const RelationshipInput = React.forwardRef<
 
             <ComboboxContent align="end" onOpenAutoFocus={() => loadPoolList()}>
               <ComboboxList style={{ width: "auto" }}>
-                {isPoolListLoading ? (
-                  <Spinner className="flex justify-center m-2" />
-                ) : (
-                  <ComboboxEmpty>No pools found</ComboboxEmpty>
-                )}
+                {!isPoolListLoading && <ComboboxEmpty>No pools found</ComboboxEmpty>}
+
                 {!isPoolListLoading &&
                   poolsData &&
                   (poolsData[poolPeer] as RelationshipManyType).edges
@@ -126,40 +164,46 @@ export const RelationshipInput = React.forwardRef<
                         </ComboboxItem>
                       );
                     })}
+
+                {isPoolListLoading && <Spinner className="flex justify-center m-2" />}
               </ComboboxList>
             </ComboboxContent>
           </Combobox>
         )}
       </div>
 
-      <ComboboxContent onOpenAutoFocus={() => loadRelationshipList()}>
-        <ComboboxList>
-          {isRelationshipListLoading ? (
-            <Spinner className="flex justify-center m-2" />
-          ) : (
-            <ComboboxEmpty>No results found</ComboboxEmpty>
-          )}
+      <ComboboxContent
+        onOpenAutoFocus={() => {
+          setOffset(0);
+          setShouldAggregate(false);
+          loadRelationshipList();
+        }}
+      >
+        <ComboboxList
+          shouldFilter={false}
+          onValueChange={(newValue) => {
+            setOffset(0);
+            setShouldAggregate(false);
+            setSearch(newValue);
+          }}
+        >
+          {!isRelationshipListLoading && <ComboboxEmpty>No results found</ComboboxEmpty>}
 
-          {!isRelationshipListLoading &&
-            RelationshipListData &&
-            (RelationshipListData[peer] as RelationshipManyType).edges
-              .map((edge) => edge.node)
-              .filter((node): node is Node => !!node)
-              .map((relationship) => {
-                return (
-                  <ComboboxItem
-                    key={relationship.id}
-                    value={relationship.id}
-                    selectedValue={value?.id}
-                    onSelect={() => {
-                      onChange(relationship.id === value?.id ? null : relationship);
-                      setOpen(false);
-                    }}
-                  >
-                    <span className="truncate">{relationship.display_label}</span>
-                  </ComboboxItem>
-                );
-              })}
+          {results?.map((relationship) => {
+            return (
+              <ComboboxItem
+                key={relationship.id}
+                value={relationship.id}
+                selectedValue={value?.id}
+                onSelect={() => {
+                  onChange(relationship.id === value?.id ? null : relationship);
+                  setOpen(false);
+                }}
+              >
+                <span className="truncate">{relationship.display_label}</span>
+              </ComboboxItem>
+            );
+          })}
 
           {options &&
             options.map((option) => {
@@ -178,6 +222,23 @@ export const RelationshipInput = React.forwardRef<
                 </ComboboxItem>
               );
             })}
+
+          {loading && <Spinner className="flex justify-center m-2" />}
+
+          {results?.length < count && (
+            <div className="pt-2">
+              <Button
+                variant={"ghost"}
+                className="w-full border-custom-blue-500/10 text-custom-blue-700 enabled:hover:bg-custom-blue-500/10 font-normal"
+                onClick={() => {
+                  setOffset(offset + PAGINATION);
+                  setShouldAggregate(true);
+                }}
+              >
+                Load more
+              </Button>
+            </div>
+          )}
         </ComboboxList>
 
         {!options && (

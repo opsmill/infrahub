@@ -3,19 +3,32 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 export const generateRelationshipListQuery = ({
   peer,
   parent,
+  limit = 0,
+  offset = 0,
+  search = "",
   peerField,
 }: {
   peer: string;
   parent?: { name?: string; value?: string };
+  limit?: number;
+  offset?: number;
+  search?: string;
   peerField?: string;
 }): string => {
-  const args = parent?.value ? { __args: { [`${parent.name}__ids`]: [parent.value] } } : {};
+  const defaultArgs = { limit, offset, any__value: search, partial_match: true };
+
+  const args = parent?.value
+    ? { ...defaultArgs, [`${parent.name}__ids`]: [parent.value] }
+    : { ...defaultArgs };
 
   const request = {
     query: {
       __name: "GetRelationshipList",
       [peer]: {
-        ...args,
+        __args: {
+          ...args,
+        },
+        count: true,
         edges: {
           node: {
             id: true,

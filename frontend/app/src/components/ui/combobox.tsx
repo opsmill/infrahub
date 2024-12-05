@@ -48,8 +48,12 @@ export const ComboboxContent = React.forwardRef<
 
 export const ComboboxList = React.forwardRef<
   React.ElementRef<typeof CommandList>,
-  React.ComponentPropsWithoutRef<typeof CommandList> & { fitTriggerWidth?: boolean }
->(({ fitTriggerWidth = true, style, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof CommandList> & {
+    fitTriggerWidth?: boolean;
+    shouldFilter?: boolean;
+    onValueChange?: (search: string) => void;
+  }
+>(({ fitTriggerWidth = true, style, shouldFilter, onValueChange, ...props }, ref) => {
   return (
     <Command
       style={{
@@ -59,8 +63,9 @@ export const ComboboxList = React.forwardRef<
           : { minWidth: "var(--radix-popover-trigger-width)" }),
         ...style,
       }}
+      shouldFilter={shouldFilter}
     >
-      <CommandInput placeholder="Filter..." />
+      <CommandInput placeholder="Filter..." onValueChange={onValueChange} />
       <CommandList ref={ref} {...props} />
     </Command>
   );
