@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import pytest
 
@@ -6,6 +6,7 @@ from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import (
     create_default_branch,
     create_global_branch,
@@ -20,6 +21,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
 
 
 @pytest.fixture(scope="module")
@@ -39,10 +41,9 @@ async def register_core_models_schema(default_branch: Branch, register_internal_
 
 
 @pytest.fixture(scope="module")
-def local_storage_dir(tmpdir_factory: pytest.TempdirFactory) -> str:
-    storage_dir = os.path.join(str(tmpdir_factory.getbasetemp().strpath), "storage")
-    if not os.path.exists(storage_dir):
-        os.mkdir(storage_dir)
+def local_storage_dir(tmp_path_module_scope: Path) -> Path:
+    storage_dir = tmp_path_module_scope / "storage"
+    storage_dir.mkdir()
 
     config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
     config.SETTINGS.storage.local.path_ = storage_dir
@@ -176,12 +177,32 @@ async def ip_dataset_01_load(
 
 
 @pytest.fixture(scope="module")
+async def diff_repository(db: InfrahubDatabase, default_branch: Branch) -> DiffRepository:
+    component_registry = get_component_registry()
+    return await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
+
+
+@pytest.fixture(scope="module")
 def start_time():
     return Timestamp()
 
 
 @pytest.fixture(scope="function")
-async def ip_dataset_01(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01_load, start_time: Timestamp):
+async def ip_dataset_01(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    ip_dataset_01_load,
+    diff_repository: DiffRepository,
+    start_time: Timestamp,
+):
     yield ip_dataset_01_load
+
+    all_diff_roots = await diff_repository.get_empty_roots()
+    root_uuids_to_delete = []
+    for diff_root in all_diff_roots:
+        if start_time <= diff_root.from_time:
+            root_uuids_to_delete.append(diff_root.uuid)
+    await diff_repository.delete_diff_roots(diff_root_uuids=root_uuids_to_delete)
+
     query = await DeleteAfterTimeQuery.init(db=db, timestamp=start_time)
     await query.execute(db=db)
