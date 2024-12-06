@@ -71,6 +71,13 @@ async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema)
 
 
 @pytest.fixture(scope="module")
+async def register_ipam_schema(default_branch: Branch, ipam_schema: SchemaRoot) -> SchemaBranch:
+    schema_branch = registry.schema.register_schema(schema=ipam_schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
+
+
+@pytest.fixture(scope="module")
 async def ip_dataset_01_load(
     db: InfrahubDatabase,
     default_branch: Branch,
