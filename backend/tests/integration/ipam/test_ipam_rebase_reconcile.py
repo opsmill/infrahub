@@ -72,7 +72,6 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
         new_address = await Node.init(schema=address_schema, db=db, branch=branch)
         await new_address.new(db=db, address="10.10.0.2", ip_namespace=initial_dataset["ns1"].id)
         await new_address.save(db=db)
-
         success = await client.branch.rebase(branch_name=branch.name)
         assert success is True
 

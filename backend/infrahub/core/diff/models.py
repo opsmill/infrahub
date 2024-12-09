@@ -13,10 +13,3 @@ class RequestDiffUpdate(BaseModel):
     name: str | None = None
     from_time: str | None = None
     to_time: str | None = None
-
-
-class RequestDiffRefresh(BaseModel):
-    """Request diff be recalculated from scratch."""
-
-    branch_name: str = Field(..., description="The branch associated with the diff")
-    diff_id: str = Field(..., description="The id for this diff")
