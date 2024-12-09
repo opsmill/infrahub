@@ -14,7 +14,7 @@ from infrahub.api.dependencies import (
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub.exceptions import CommitNotFoundError
+from infrahub.exceptions import CommitNotFoundError, PropagatedFromWorkerError
 from infrahub.message_bus.messages import GitFileGet, GitFileGetResponse
 
 if TYPE_CHECKING:
@@ -60,4 +60,8 @@ async def get_file(
     )
 
     response = await service.message_bus.rpc(message=message, response_class=GitFileGetResponse)
+    if response.data.http_code is not None:
+        assert response.data.error_message is not None
+        raise PropagatedFromWorkerError(message=response.data.error_message, http_code=response.data.http_code)
+
     return PlainTextResponse(content=response.data.content)

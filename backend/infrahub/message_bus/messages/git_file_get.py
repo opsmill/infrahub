@@ -16,7 +16,9 @@ class GitFileGet(InfrahubMessage):
 
 
 class GitFileGetResponseData(InfrahubResponseData):
-    content: str = Field(..., description="The returned content")
+    content: str | None = None  # is empty if error_message / http_code are not empty
+    error_message: str | None = None
+    http_code: int | None = None
 
 
 class GitFileGetResponse(InfrahubResponse):
