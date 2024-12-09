@@ -38,7 +38,7 @@ jobs:
           echo "Branch name: ${{ env.BRANCH_NAME }}"
 
           # Navigate to the submodule and update it to the specified version
-          cd python_sdk
+          cd ${{ env.SUBMODULE_PATH }}
           git fetch --tags
           git checkout ${{ env.SDK_VERSION }}
           cd -
@@ -56,7 +56,7 @@ jobs:
           github-token: ${{ secrets.GH_UPDATE_PACKAGE }}
           push-branch: ${{ env.BRANCH_NAME }}
           commit-message: "chore: update submodule ${{ env.SUBMODULE_PATH }} to version ${{ env.SDK_VERSION }}"
-          files: ${{ env.SUBMODULE_PATH }}
+          files: ${{ env.SUBMODULE_PATH }}/
           name: opsmill-bot
           email: github-bot@opsmill.com
           rebase: ${{ env.BRANCH_EXISTS == 1 }}
