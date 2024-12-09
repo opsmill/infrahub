@@ -32,7 +32,7 @@ jobs:
           echo "SDK_VERSION=$SDK_VERSION" >> $GITHUB_ENV
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
-      - name: Use the version from client payload to update submodule
+      - name: Use the version from the client payload to update the submodule
         run: |
           echo "Updating submodule to version: ${{ env.SDK_VERSION }}"
           echo "Branch name: ${{ env.BRANCH_NAME }}"
@@ -43,16 +43,23 @@ jobs:
           git checkout ${{ env.SDK_VERSION }}
           cd -
 
+      - name: Prepare the branch for the update
+        id: prepare-branch
+        run: |
+          echo "Checking if branch ${{ env.BRANCH_NAME }} exists..."
+          BRANCH_EXISTS=$(git ls-remote --heads origin ${{ env.BRANCH_NAME }} | wc -l)
+          echo "BRANCH_EXISTS=$BRANCH_EXISTS" >> $GITHUB_ENV
+
       - name: Commit and push changes with github-actions-x/commit
         uses: github-actions-x/commit@v2.9
         with:
-          github-token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
+          github-token: ${{ secrets.GH_UPDATE_PACKAGE }}
           push-branch: ${{ env.BRANCH_NAME }}
           commit-message: "chore: update submodule ${{ env.SUBMODULE_PATH }} to version ${{ env.SDK_VERSION }}"
-          files: python_sdk/
+          files: ${{ env.SUBMODULE_PATH }}
           name: opsmill-bot
           email: github-bot@opsmill.com
-          rebase: false
+          rebase: ${{ env.BRANCH_EXISTS == 1 }}
 
       - name: Create a pull request
         run: |
