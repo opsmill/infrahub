@@ -115,7 +115,9 @@ def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yam
     print(" - [release] Update Helm chart")
     from semver import Version
 
-    app_version: Version = Version.parse(version=get_normalized_version(get_version_from_pyproject()), optional_minor_and_patch=True)
+    app_version: Version = Version.parse(
+        version=get_normalized_version(get_version_from_pyproject()), optional_minor_and_patch=True
+    )
 
     yaml: YAML = init_yaml_obj()
 
