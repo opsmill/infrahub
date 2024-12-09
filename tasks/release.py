@@ -22,6 +22,16 @@ VERSION_PATTERN_DOCKER = (
 )
 
 
+def get_normalized_version(version_str: str) -> str:
+    """
+    Normalizes a version string by stripping pre-release labels
+    to be compatible with Docker or Helm chart versioning.
+    """
+    # Replace patterns like 'a0' with '-alpha.0', 'b1' with '-beta.1', etc.
+    version_str = re.sub(r"(\d+\.\d+\.\d+)[a-zA-Z0-9\-\.]*", r"\1", version_str)
+    return version_str
+
+
 @task
 def markdownlint(context: Context) -> None:
     has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
@@ -105,7 +115,7 @@ def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yam
     print(" - [release] Update Helm chart")
     from semver import Version
 
-    app_version: Version = Version.parse(get_version_from_pyproject(), optional_minor_and_patch=True)
+    app_version: Version = Version.parse(version=get_normalized_version(get_version_from_pyproject()), optional_minor_and_patch=True)
 
     yaml: YAML = init_yaml_obj()
 
@@ -146,26 +156,43 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
     print(" - [release] Update docker-compose.yml")
     from semver import Version
 
-    version: Version = Version.parse(get_version_from_pyproject(), optional_minor_and_patch=True)
+    # Parse the current version from pyproject.toml
+    version: Version = Version.parse(
+        version=get_normalized_version(get_version_from_pyproject()), optional_minor_and_patch=True
+    )
 
+    # Initialize YAML and load the docker-compose file
     yaml: YAML = init_yaml_obj(line_length=4096)
-
     docker_path = Path(docker_file)
     docker_yaml: dict = yaml.load(docker_path)
 
-    infrahub_image: str = docker_yaml["services"]["infrahub-server"]["image"]
-    old_version: Version = Version.parse(re.search(r"\d+\.\d+\.\d+", infrahub_image)[0], optional_minor_and_patch=True)
+    services_to_update = ["infrahub-server", "task-worker"]
+    updates_made = False
 
-    if old_version == version:
-        print(f"{docker_file} updates not required, `image` of {old_version} matches current from `pyproject.toml`")
+    # Iterate over the services and update their image versions
+    for service in services_to_update:
+        service_config = docker_yaml["services"].get(service)
+        if not service_config or "image" not in service_config:
+            print(f"Service {service} or its image field is missing; skipping.")
+            continue
+
+        image = service_config["image"]
+        old_version_match = re.search(r"\d+\.\d+\.\d+", image)
+        if old_version_match:
+            old_version = Version.parse(old_version_match[0], optional_minor_and_patch=True)
+            if old_version != version:
+                # Replace old version with the new version in the image field
+                new_image = re.sub(r"\d+\.\d+\.\d+", str(version), image)
+                service_config["image"] = new_image
+                updates_made = True
+                print(f"Updated {service} image from {old_version} to {version}")
+
+    # Check if updates were made
+    if not updates_made:
+        print(f"{docker_file} updates not required, all images are already up-to-date ({version}).")
         return
 
-    new_infrahub_image = re.sub(r"\d+\.\d+\.\d+", str(version), infrahub_image)
-    docker_yaml["services"]["infrahub-server"]["image"] = new_infrahub_image
-
     yaml.dump(docker_yaml, docker_path)
-
-    print(f"{docker_file} updated with version {version}")
 
 
 def get_enum_mappings() -> dict:
