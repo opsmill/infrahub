@@ -11,7 +11,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
-from tests.helpers.test_app import TestInfrahubApp
+from tests.integration.ipam.base import TestIpam
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -56,7 +56,7 @@ query GetPrefixUtilization($prefix_ids: [ID!]) {
 }"""
 
 
-class TestIpamUtilization(TestInfrahubApp):
+class TestIpamUtilization(TestIpam):
     @pytest.fixture(scope="class")
     async def initial_dataset(
         self,

@@ -22,7 +22,7 @@ from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.events.branch_action import BranchCreateEvent, BranchDeleteEvent
+from infrahub.events.branch_action import BranchCreateEvent, BranchDeleteEvent, BranchRebaseEvent
 from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TCH001
 from infrahub.log import get_log_data
@@ -31,6 +31,7 @@ from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
+    DIFF_REFRESH_ALL,
     GIT_REPOSITORIES_CREATE_BRANCH,
     IPAM_RECONCILIATION,
 )
@@ -109,19 +110,19 @@ async def rebase_branch(branch: str) -> None:
                 obj.update_schema_hash()
                 await obj.save(db=db)
 
-            # Execute the migrations
-            migrations = await merger.calculate_migrations(target_schema=updated_schema)
+                # Execute the migrations
+                migrations = await merger.calculate_migrations(target_schema=updated_schema)
 
-            errors = await schema_apply_migrations(
-                message=SchemaApplyMigrationData(
-                    branch=merger.source_branch,
-                    new_schema=candidate_schema,
-                    previous_schema=schema_in_main_before,
-                    migrations=migrations,
+                errors = await schema_apply_migrations(
+                    message=SchemaApplyMigrationData(
+                        branch=merger.source_branch,
+                        new_schema=candidate_schema,
+                        previous_schema=schema_in_main_before,
+                        migrations=migrations,
+                    )
                 )
-            )
-            for error in errors:
-                log.error(error)
+                for error in errors:
+                    log.error(error)
 
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the rebase
@@ -136,18 +137,12 @@ async def rebase_branch(branch: str) -> None:
                 workflow=IPAM_RECONCILIATION, parameters={"branch": obj.name, "ipam_node_details": ipam_node_details}
             )
 
-        # -------------------------------------------------------------
-        # Generate an event to indicate that a branch has been rebased
-        # NOTE: we still need to convert this event and potentially pull
-        #   some tasks currently executed based on the event into this workflow
-        # -------------------------------------------------------------
-        log_data = get_log_data()
-        request_id = log_data.get("request_id", "")
-        message = messages.EventBranchRebased(
-            branch=obj.name,
-            meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
-        )
-        await service.send(message=message)
+    await service.workflow.submit_workflow(workflow=DIFF_REFRESH_ALL, parameters={"branch_name": obj.name})
+
+    # -------------------------------------------------------------
+    # Generate an event to indicate that a branch has been rebased
+    # -------------------------------------------------------------
+    await service.event.send(event=BranchRebaseEvent(branch=obj.name, branch_id=obj.get_id()))
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")

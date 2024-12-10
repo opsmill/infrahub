@@ -7,7 +7,7 @@ from infrahub.core import registry
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.workflows.catalogue import REQUEST_DIFF_UPDATE
+from infrahub.workflows.catalogue import DIFF_UPDATE
 
 if TYPE_CHECKING:
     from ..initialization import GraphqlContext
@@ -63,6 +63,6 @@ class DiffUpdateMutation(Mutation):
             to_time=to_timestamp_str,
         )
         if context.service:
-            await context.service.workflow.submit_workflow(workflow=REQUEST_DIFF_UPDATE, parameters={"model": model})
+            await context.service.workflow.submit_workflow(workflow=DIFF_UPDATE, parameters={"model": model})
 
         return {"ok": True}

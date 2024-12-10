@@ -658,8 +658,7 @@ async def gql_query_data_02() -> dict:
 
 @pytest.fixture
 async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
-    schema_file: Path = helper.get_fixtures_dir() / "schemas" / "schema_01.json"
-    response_text = schema_file.read_text(encoding="UTF-8")
+    response_text = (helper.get_fixtures_dir() / "schemas" / "schema_01.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
         method="GET", url=re.compile(r"^http://mock/api/schema\?branch=(main|cr1234)"), json=ujson.loads(response_text)
@@ -669,8 +668,7 @@ async def mock_schema_query_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
-    schema_file: Path = helper.get_fixtures_dir() / "schemas" / "schema_02.json"
-    response_text = schema_file.read_text(encoding="UTF-8")
+    response_text = (helper.get_fixtures_dir() / "schemas" / "schema_02.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=ujson.loads(response_text))
     return httpx_mock
@@ -853,7 +851,7 @@ async def gql_query_data_03():
 
 @pytest.fixture
 async def schema_02(client, helper, car_data_01) -> ClientSchemaRoot:
-    full_schema = ujson.loads(Path(helper.get_fixtures_dir(), "schemas", "schema_02.json").read_text(encoding="UTF-8"))
+    full_schema = ujson.loads((helper.get_fixtures_dir() / "schemas" / "schema_02.json").read_text(encoding="UTF-8"))
 
     return ClientSchemaRoot(**full_schema)
 

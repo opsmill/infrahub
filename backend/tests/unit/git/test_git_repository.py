@@ -760,11 +760,11 @@ async def test_calculate_diff_between_commits(
 
     # Add a file
     new_file = "mynewfile.txt"
-    Path(worktree.directory, new_file).write_text("this is a new file\n", encoding="utf-8")
+    (worktree.directory / new_file).write_text("this is a new file\n", encoding="utf-8")
 
     # Remove a file
     file_to_remove = "pyproject.toml"
-    Path(worktree.directory, file_to_remove).unlink()
+    (worktree.directory / file_to_remove).unlink()
 
     git_repo.index.add([new_file])
     git_repo.index.remove([file_to_remove])
@@ -777,7 +777,7 @@ async def test_calculate_diff_between_commits(
     #     worktree = repo.get_worktree(identifier=branch)
     #     git_repo = repo.get_git_repo_worktree(identifier=branch)
 
-    #     sports_file = os.path.join(worktree.directory, "test_files/sports.yml")
+    #     sports_file = worktree.directory / "test_files" / "sports.yml"
 
     #     with open(sports_file, 'r') as file:
     #         data = file.readlines()
@@ -818,11 +818,11 @@ async def test_list_all_files(git_repo_01: InfrahubRepository, branch01: BranchD
 
     # Add a file
     new_file = "mynewfile.txt"
-    Path(worktree.directory, new_file).write_text("this is a new file\n", encoding="utf-8")
+    (worktree.directory / new_file).write_text("this is a new file\n", encoding="utf-8")
 
     # Remove a file
     file_to_remove = "pyproject.toml"
-    Path(worktree.directory, file_to_remove).unlink()
+    (worktree.directory / file_to_remove).unlink()
 
     git_repo.index.add([new_file])
     git_repo.index.remove([file_to_remove])

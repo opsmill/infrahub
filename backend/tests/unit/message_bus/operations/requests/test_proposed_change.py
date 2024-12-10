@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 import ujson
 from infrahub_sdk import Config, InfrahubClient
@@ -40,7 +38,7 @@ DST_BRANCH_A = "main"
 
 @pytest.fixture
 async def mock_schema_query_02(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTPXMock:
-    response_text = Path(helper.get_fixtures_dir(), "schemas", "schema_02.json").read_text(encoding="UTF-8")
+    response_text = (helper.get_fixtures_dir() / "schemas" / "schema_02.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=ujson.loads(response_text))
     return httpx_mock

@@ -1,5 +1,4 @@
 import re
-from pathlib import Path
 from typing import Optional
 
 import ujson
@@ -84,7 +83,7 @@ class SearchDocs:
         """
 
         try:
-            with Path(config.SETTINGS.main.docs_index_path).open(encoding="utf-8") as f:
+            with config.SETTINGS.main.docs_index_path.open(encoding="utf-8") as f:
                 search_index = ujson.loads(f.read())
                 self._title_documents = search_index[0]["documents"]
                 heading_json = search_index[1]

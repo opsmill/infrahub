@@ -66,4 +66,4 @@ class FileRepo:
 
     @property
     def path(self) -> str:
-        return str(Path(self.sources_directory, self.name))
+        return str(self.sources_directory / self.name)
