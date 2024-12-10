@@ -86,6 +86,10 @@ test.describe("/proposed-changes", () => {
           await page.getByText(pcName, { exact: true }).click();
           await expect(page.getByText("Source branch" + pcBranchName)).toBeVisible();
           await expect(page.getByText("Stateopen")).toBeVisible();
+          // Validate the buttons are showing as intended
+          await expect(page.getByRole("button", { name: "Approve" })).not.toBeDisabled();
+          await expect(page.getByRole("button", { name: "Merge" })).not.toBeDisabled();
+          await expect(page.getByRole("button", { name: "Close" })).not.toBeDisabled();
         });
 
         await test.step("edit proposed change reviewers", async () => {

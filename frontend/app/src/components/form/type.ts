@@ -46,7 +46,7 @@ export type AttributeValueFromUser =
       source: {
         type: SourceType;
       };
-      value: string | number | boolean | null;
+      value: string | string[] | number | boolean | null;
     }
   | AttributeValueForCheckbox;
 

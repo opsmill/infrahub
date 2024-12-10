@@ -186,12 +186,12 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
     """Triggers a data integrity validation check on the provided proposed change to start."""
 
     service = services.service
-    await add_tags(nodes=[model.proposed_change])
-
-    destination_branch = await registry.get_branch(db=service.database, branch=model.destination_branch)
-    source_branch = await registry.get_branch(db=service.database, branch=model.source_branch)
-    component_registry = get_component_registry()
     async with service.database.start_transaction() as dbt:
+        await add_tags(nodes=[model.proposed_change])
+        destination_branch = await registry.get_branch(db=dbt, branch=model.destination_branch)
+        source_branch = await registry.get_branch(db=dbt, branch=model.source_branch)
+        component_registry = get_component_registry()
+
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
         await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
 
@@ -305,7 +305,8 @@ async def run_proposed_change_schema_integrity_check(
 
     candidate_schema = dest_schema.duplicate()
     candidate_schema.update(schema=source_schema)
-    validation_result = dest_schema.validate_update(other=candidate_schema)
+    schema_diff = dest_schema.diff(other=candidate_schema)
+    validation_result = dest_schema.validate_update(other=candidate_schema, diff=schema_diff)
 
     constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
         model=model, schema=candidate_schema

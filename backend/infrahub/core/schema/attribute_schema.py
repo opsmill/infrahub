@@ -126,6 +126,7 @@ class AttributeSchema(GeneratedAttributeSchema):
 
         return await default_attribute_query_filter(
             name=name,
+            attribute_kind=self.kind,
             filter_name=filter_name,
             branch=branch,
             filter_value=filter_value,

@@ -41,101 +41,101 @@ from infrahub.workflows.utils import add_branch_tag
 @flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
 async def rebase_branch(branch: str) -> None:
     service = services.service
-    log = get_run_logger()
-    await add_branch_tag(branch_name=branch)
 
-    obj = await Branch.get_by_name(db=service.database, name=branch)
-    base_branch = await Branch.get_by_name(db=service.database, name=registry.default_branch)
-    component_registry = get_component_registry()
-    diff_repository = await component_registry.get_component(DiffRepository, db=service.database, branch=obj)
-    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=service.database, branch=obj)
-    diff_merger = await component_registry.get_component(DiffMerger, db=service.database, branch=obj)
-    merger = BranchMerger(
-        db=service.database,
-        diff_coordinator=diff_coordinator,
-        diff_merger=diff_merger,
-        diff_repository=diff_repository,
-        source_branch=obj,
-        service=service,
-    )
-    diff_repository = await component_registry.get_component(DiffRepository, db=service.database, branch=obj)
-    enriched_diff = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
-    if enriched_diff.get_all_conflicts():
-        raise ValidationError(
-            f"Branch {obj.name} contains conflicts with the default branch that must be addressed."
-            " Please review the diff for details and manually update the conflicts before rebasing."
+    async with service.database.start_session() as db:
+        log = get_run_logger()
+        await add_branch_tag(branch_name=branch)
+        obj = await Branch.get_by_name(db=db, name=branch)
+        base_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
+        component_registry = get_component_registry()
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
+        diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
+        merger = BranchMerger(
+            db=db,
+            diff_coordinator=diff_coordinator,
+            diff_merger=diff_merger,
+            diff_repository=diff_repository,
+            source_branch=obj,
+            service=service,
         )
-    node_diff_field_summaries = await diff_repository.get_node_field_summaries(
-        diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
-    )
-
-    candidate_schema = merger.get_candidate_schema()
-    determiner = ConstraintValidatorDeterminer(schema_branch=candidate_schema)
-    constraints = await determiner.get_constraints(node_diffs=node_diff_field_summaries)
-
-    # If there are some changes related to the schema between this branch and main, we need to
-    #  - Run all the validations to ensure everything is correct before rebasing the branch
-    #  - Run all the migrations after the rebase
-    if obj.has_schema_changes:
-        constraints += await merger.calculate_validations(target_schema=candidate_schema)
-    if constraints:
-        responses = await schema_validate_migrations(
-            message=SchemaValidateMigrationData(branch=obj, schema_branch=candidate_schema, constraints=constraints)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
+        if enriched_diff.get_all_conflicts():
+            raise ValidationError(
+                f"Branch {obj.name} contains conflicts with the default branch that must be addressed."
+                " Please review the diff for details and manually update the conflicts before rebasing."
+            )
+        node_diff_field_summaries = await diff_repository.get_node_field_summaries(
+            diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
         )
 
-        error_messages = [violation.message for response in responses for violation in response.violations]
-        if error_messages:
-            raise ValidationError(",\n".join(error_messages))
+        candidate_schema = merger.get_candidate_schema()
+        determiner = ConstraintValidatorDeterminer(schema_branch=candidate_schema)
+        constraints = await determiner.get_constraints(node_diffs=node_diff_field_summaries)
 
-    schema_in_main_before = merger.destination_schema.duplicate()
-
-    async with lock.registry.global_graph_lock():
-        async with service.database.start_transaction() as dbt:
-            await obj.rebase(db=dbt)
-            log.info("Branch successfully rebased")
-
+        # If there are some changes related to the schema between this branch and main, we need to
+        #  - Run all the validations to ensure everything is correct before rebasing the branch
+        #  - Run all the migrations after the rebase
         if obj.has_schema_changes:
-            # NOTE there is a bit additional work in order to calculate a proper diff that will
-            # allow us to pull only the part of the schema that has changed, for now the safest option is to pull
-            # Everything
-            # schema_diff = await merger.has_schema_changes()
-            # TODO Would be good to convert this part to a Prefect Task in order to track it properly
-            updated_schema = await registry.schema.load_schema_from_db(
-                db=service.database,
-                branch=obj,
-                # schema=merger.source_schema.duplicate(),
-                # schema_diff=schema_diff,
+            constraints += await merger.calculate_validations(target_schema=candidate_schema)
+        if constraints:
+            responses = await schema_validate_migrations(
+                message=SchemaValidateMigrationData(branch=obj, schema_branch=candidate_schema, constraints=constraints)
             )
-            registry.schema.set_schema_branch(name=obj.name, schema=updated_schema)
-            obj.update_schema_hash()
-            await obj.save(db=service.database)
+            error_messages = [violation.message for response in responses for violation in response.violations]
+            if error_messages:
+                raise ValidationError(",\n".join(error_messages))
 
-            # Execute the migrations
-            migrations = await merger.calculate_migrations(target_schema=updated_schema)
+        schema_in_main_before = merger.destination_schema.duplicate()
 
-            errors = await schema_apply_migrations(
-                message=SchemaApplyMigrationData(
-                    branch=merger.source_branch,
-                    new_schema=candidate_schema,
-                    previous_schema=schema_in_main_before,
-                    migrations=migrations,
+        async with lock.registry.global_graph_lock():
+            async with db.start_transaction() as dbt:
+                await obj.rebase(db=dbt)
+                log.info("Branch successfully rebased")
+
+            if obj.has_schema_changes:
+                # NOTE there is a bit additional work in order to calculate a proper diff that will
+                # allow us to pull only the part of the schema that has changed, for now the safest option is to pull
+                # Everything
+                # schema_diff = await merger.has_schema_changes()
+                # TODO Would be good to convert this part to a Prefect Task in order to track it properly
+                updated_schema = await registry.schema.load_schema_from_db(
+                    db=db,
+                    branch=obj,
+                    # schema=merger.source_schema.duplicate(),
+                    # schema_diff=schema_diff,
                 )
-            )
-            for error in errors:
-                log.error(error)
+                registry.schema.set_schema_branch(name=obj.name, schema=updated_schema)
+                obj.update_schema_hash()
+                await obj.save(db=db)
 
-    # -------------------------------------------------------------
-    # Trigger the reconciliation of IPAM data after the rebase
-    # -------------------------------------------------------------
-    diff_parser = await component_registry.get_component(IpamDiffParser, db=service.database, branch=obj)
-    ipam_node_details = await diff_parser.get_changed_ipam_node_details(
-        source_branch_name=obj.name,
-        target_branch_name=registry.default_branch,
-    )
-    if ipam_node_details:
-        await service.workflow.submit_workflow(
-            workflow=IPAM_RECONCILIATION, parameters={"branch": obj.name, "ipam_node_details": ipam_node_details}
+                # Execute the migrations
+                migrations = await merger.calculate_migrations(target_schema=updated_schema)
+
+                errors = await schema_apply_migrations(
+                    message=SchemaApplyMigrationData(
+                        branch=merger.source_branch,
+                        new_schema=candidate_schema,
+                        previous_schema=schema_in_main_before,
+                        migrations=migrations,
+                    )
+                )
+                for error in errors:
+                    log.error(error)
+
+        # -------------------------------------------------------------
+        # Trigger the reconciliation of IPAM data after the rebase
+        # -------------------------------------------------------------
+        diff_parser = await component_registry.get_component(IpamDiffParser, db=db, branch=obj)
+        ipam_node_details = await diff_parser.get_changed_ipam_node_details(
+            source_branch_name=obj.name,
+            target_branch_name=registry.default_branch,
         )
+        if ipam_node_details:
+            await service.workflow.submit_workflow(
+                workflow=IPAM_RECONCILIATION, parameters={"branch": obj.name, "ipam_node_details": ipam_node_details}
+            )
 
     await service.workflow.submit_workflow(workflow=DIFF_REFRESH_ALL, parameters={"branch_name": obj.name})
 
@@ -148,12 +148,12 @@ async def rebase_branch(branch: str) -> None:
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
 async def merge_branch(branch: str) -> None:
     service = services.service
-    log = get_run_logger()
-
-    await add_branch_tag(branch_name=branch)
-    await add_branch_tag(branch_name=registry.default_branch)
-
     async with service.database.start_session() as db:
+        log = get_run_logger()
+
+        await add_branch_tag(branch_name=branch)
+        await add_branch_tag(branch_name=registry.default_branch)
+
         obj = await Branch.get_by_name(db=db, name=branch)
         component_registry = get_component_registry()
 
@@ -194,7 +194,7 @@ async def merge_branch(branch: str) -> None:
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the merge
         # -------------------------------------------------------------
-        diff_parser = await component_registry.get_component(IpamDiffParser, db=service.database, branch=obj)
+        diff_parser = await component_registry.get_component(IpamDiffParser, db=db, branch=obj)
         ipam_node_details = await diff_parser.get_changed_ipam_node_details(
             source_branch_name=obj.name,
             target_branch_name=registry.default_branch,
@@ -207,7 +207,7 @@ async def merge_branch(branch: str) -> None:
         # -------------------------------------------------------------
         # remove tracking ID from the diff because there is no diff after the merge
         # -------------------------------------------------------------
-        diff_repository = await component_registry.get_component(DiffRepository, db=service.database, branch=obj)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
         await diff_repository.drop_tracking_ids(tracking_ids=[BranchTrackingId(name=obj.name)])
 
         # -------------------------------------------------------------

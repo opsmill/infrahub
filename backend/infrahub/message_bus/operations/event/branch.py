@@ -21,38 +21,39 @@ log = get_logger()
 
 @flow(name="branch-event-merge")
 async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -> None:
-    log.info("Branch merged", source_branch=message.source_branch, target_branch=message.target_branch)
+    async with service.database.start_session() as db:
+        log.info("Branch merged", source_branch=message.source_branch, target_branch=message.target_branch)
 
-    events: List[InfrahubMessage] = [
-        messages.RefreshRegistryBranches(),
-    ]
-    component_registry = get_component_registry()
-    default_branch = registry.get_branch_from_registry()
-    diff_repository = await component_registry.get_component(DiffRepository, db=service.database, branch=default_branch)
-    # send diff update requests for every branch-tracking diff
-    branch_diff_roots = await diff_repository.get_empty_roots(base_branch_names=[message.target_branch])
+        events: List[InfrahubMessage] = [
+            messages.RefreshRegistryBranches(),
+        ]
+        component_registry = get_component_registry()
+        default_branch = registry.get_branch_from_registry()
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
+        # send diff update requests for every branch-tracking diff
+        branch_diff_roots = await diff_repository.get_empty_roots(base_branch_names=[message.target_branch])
 
-    await service.workflow.submit_workflow(
-        workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
-        parameters={"branch": message.target_branch},
-    )
+        await service.workflow.submit_workflow(
+            workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+            parameters={"branch": message.target_branch},
+        )
 
-    await service.workflow.submit_workflow(
-        workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
-        parameters={"branch": message.target_branch},
-    )
+        await service.workflow.submit_workflow(
+            workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
+            parameters={"branch": message.target_branch},
+        )
 
-    for diff_root in branch_diff_roots:
-        if (
-            diff_root.base_branch_name != diff_root.diff_branch_name
-            and diff_root.tracking_id
-            and isinstance(diff_root.tracking_id, BranchTrackingId)
-        ):
-            request_diff_update_model = RequestDiffUpdate(branch_name=diff_root.diff_branch_name)
-            await service.workflow.submit_workflow(
-                workflow=DIFF_UPDATE, parameters={"model": request_diff_update_model}
-            )
+        for diff_root in branch_diff_roots:
+            if (
+                diff_root.base_branch_name != diff_root.diff_branch_name
+                and diff_root.tracking_id
+                and isinstance(diff_root.tracking_id, BranchTrackingId)
+            ):
+                request_diff_update_model = RequestDiffUpdate(branch_name=diff_root.diff_branch_name)
+                await service.workflow.submit_workflow(
+                    workflow=DIFF_UPDATE, parameters={"model": request_diff_update_model}
+                )
 
-    for event in events:
-        event.assign_meta(parent=message)
-        await service.send(message=event)
+        for event in events:
+            event.assign_meta(parent=message)
+            await service.send(message=event)

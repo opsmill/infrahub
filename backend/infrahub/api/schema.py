@@ -135,10 +135,13 @@ def evaluate_candidate_schemas(
         for schema in schemas_to_evaluate.schemas:
             candidate_schema.load_schema(schema=schema)
         candidate_schema.process()
+
+        schema_diff = branch_schema.diff(other=candidate_schema)
+        candidate_schema.validate_node_deletions(diff=schema_diff)
     except ValueError as exc:
         raise SchemaNotValidError(message=str(exc)) from exc
 
-    result = branch_schema.validate_update(other=candidate_schema)
+    result = branch_schema.validate_update(other=candidate_schema, diff=schema_diff)
 
     if result.errors:
         raise SchemaNotValidError(message=", ".join([error.to_string() for error in result.errors]))
