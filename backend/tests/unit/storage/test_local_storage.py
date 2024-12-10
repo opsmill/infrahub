@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import fastapi_storages
@@ -38,10 +37,10 @@ async def test_store_file(helper, local_storage_dir: Path):
     storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
 
     fixture_dir = helper.get_fixtures_dir()
-    files_dir = Path(fixture_dir, "schemas")
-    filenames = [item.name for item in os.scandir(files_dir) if item.is_file()]
+    files_dir = fixture_dir / "schemas"
+    filenames = [item.name for item in files_dir.iterdir() if item.is_file()]
 
-    content_file1 = Path(files_dir, filenames[0]).read_bytes()
+    content_file1 = (files_dir / filenames[0]).read_bytes()
     identifier = str(UUIDT())
     storage.store(identifier=identifier, content=content_file1)
 

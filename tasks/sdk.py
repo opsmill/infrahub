@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Optional
 
 from invoke import Context, task
@@ -8,11 +7,11 @@ from .shared import (
     INFRAHUB_DATABASE,
     NBR_WORKERS,
 )
-from .utils import ESCAPED_REPO_PATH
+from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
 MAIN_DIRECTORY = "python_sdk"
 NAMESPACE = "SDK"
-MAIN_DIRECTORY_PATH = Path(ESCAPED_REPO_PATH, MAIN_DIRECTORY)
+MAIN_DIRECTORY_PATH = REPO_BASE / MAIN_DIRECTORY
 
 
 # ----------------------------------------------------------------------------
@@ -24,8 +23,8 @@ def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with ruff")
-    exec_cmd = f"ruff format {MAIN_DIRECTORY}/ --config {MAIN_DIRECTORY}/pyproject.toml && "
-    exec_cmd += f"ruff check --fix {MAIN_DIRECTORY}/ --config {MAIN_DIRECTORY}/pyproject.toml"
+    exec_cmd = f"ruff format {MAIN_DIRECTORY}/ --config {MAIN_DIRECTORY / 'pyproject.toml'} && "
+    exec_cmd += f"ruff check --fix {MAIN_DIRECTORY}/ --config {MAIN_DIRECTORY / 'pyproject.toml'}"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
@@ -48,7 +47,7 @@ def ruff(context: Context) -> None:
 
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_directory = MAIN_DIRECTORY_PATH
-    exec_cmd = f"ruff check --diff {exec_directory} --config {exec_directory}/pyproject.toml"
+    exec_cmd = f"ruff check --diff {exec_directory} --config {exec_directory / 'pyproject.toml'}"
 
     with context.cd(exec_directory):
         context.run(exec_cmd)
@@ -92,7 +91,7 @@ def lint(context: Context) -> Optional[Result]:
 def test_unit(context: Context) -> Optional[Result]:
     """Run unit tests for the Python SDK."""
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_sdk {MAIN_DIRECTORY}/tests/unit"
+        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_sdk {MAIN_DIRECTORY / 'tests' / 'unit'}"
         return context.run(exec_cmd)
 
 
@@ -100,7 +99,7 @@ def test_unit(context: Context) -> Optional[Result]:
 def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
     """Run integration tests for the Python SDK."""
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_sdk {MAIN_DIRECTORY}/tests/integration"
+        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_sdk {MAIN_DIRECTORY / 'tests' / 'integration'}"
         return context.run(exec_cmd)
 
 

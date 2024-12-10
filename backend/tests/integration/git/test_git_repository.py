@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -34,14 +33,13 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
     branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
     tmp_schema = branch_schema.duplicate()
 
-    for file_name in os.listdir(base_dir):
+    for file_name in base_dir.iterdir():
         file_path = base_dir / file_name
-        if file_path.suffix not in (".yml", ".yaml"):
-            continue
-        schema_txt = file_path.read_text(encoding="utf-8")
-        loaded_schema = yaml.safe_load(schema_txt)
-        tmp_schema.load_schema(schema=SchemaRoot(**loaded_schema))
 
+        if file_path.suffix in (".yml", ".yaml"):
+            schema_txt = file_path.read_text(encoding="utf-8")
+            loaded_schema = yaml.safe_load(schema_txt)
+            tmp_schema.load_schema(schema=SchemaRoot(**loaded_schema))
     tmp_schema.process()
 
     await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
