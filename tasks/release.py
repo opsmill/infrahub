@@ -27,7 +27,7 @@ def get_normalized_version(version_str: str) -> str:
     Normalizes a version string by stripping pre-release labels
     to be compatible with Docker or Helm chart versioning.
     """
-    # Replace patterns like 'a0' with '-alpha.0', 'b1' with '-beta.1', etc.
+    # Replace patterns like '1.0.9a0' with '1.0.9', '1.1.0b1' with '1.1.0', etc.
     version_str = re.sub(r"(\d+\.\d+\.\d+)[a-zA-Z0-9\-\.]*", r"\1", version_str)
     return version_str
 
