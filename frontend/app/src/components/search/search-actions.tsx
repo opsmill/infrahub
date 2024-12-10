@@ -1,20 +1,22 @@
+import { SearchAnywhereGroup } from "@/components/search/search-anywhere-group";
+import { SearchAnywhereItem } from "@/components/search/search-anywhere-item";
 import { Badge } from "@/components/ui/badge";
 import { MenuItem } from "@/screens/layout/menu-navigation/types";
 import { IModelSchema, genericsState, menuFlatAtom, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
+import { useCommandState } from "cmdk";
 import { useAtomValue } from "jotai";
-import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
 
-type SearchProps = {
-  query: string;
-};
-export const SearchActions = ({ query }: SearchProps) => {
+export const SearchActions = () => {
+  const query = useCommandState((state) => state.search);
   const nodes = useAtomValue(schemaState);
   const generics = useAtomValue(genericsState);
   const models: IModelSchema[] = [...nodes, ...generics];
 
   const menuItems = useAtomValue(menuFlatAtom);
+
+  if (query === "") return null;
 
   const queryLowerCased = query.toLowerCase();
   const resultsMenu = menuItems.filter(({ label }) =>
@@ -32,17 +34,15 @@ export const SearchActions = ({ query }: SearchProps) => {
 
   const firstThreeMatches = results.slice(0, 3);
   return (
-    <SearchGroup>
-      <SearchGroupTitle>Go to</SearchGroupTitle>
-
+    <SearchAnywhereGroup heading="Go to">
       {firstThreeMatches.map((result) => {
         return "namespace" in result ? (
-          <ActionOnSchema key={result.kind} model={result} />
+          <ActionOnSchema key={result.id} model={result} />
         ) : (
-          <ActionOnMenu key={result.path} menuItem={result} />
+          <ActionOnMenu key={result.identifier} menuItem={result} />
         );
       })}
-    </SearchGroup>
+    </SearchAnywhereGroup>
   );
 };
 
@@ -51,20 +51,23 @@ type ActionOnMenuProps = {
 };
 
 const ActionOnMenu = ({ menuItem }: ActionOnMenuProps) => {
+  const url = constructPath(menuItem.path);
+
   return (
-    <SearchResultItem to={constructPath(menuItem.path)}>
+    <SearchAnywhereItem to={url} value={menuItem.identifier}>
       <span className="font-medium">Menu</span>
       <Icon icon="mdi:chevron-right" />
       <span className="font-semibold">{menuItem.label}</span>
-    </SearchResultItem>
+    </SearchAnywhereItem>
   );
 };
 
 const ActionOnSchema = ({ model }: { model: IModelSchema }) => {
   const { kind, label, name } = model;
+  const url = constructPath("/schema", [{ name: "kind", value: kind }]);
 
   return (
-    <SearchResultItem to={constructPath("/schema", [{ name: "kind", value: kind }])}>
+    <SearchAnywhereItem to={url} value={model.id!}>
       <span className="font-medium">Schema</span>
       <Icon icon="mdi:chevron-right" />
       <span className="font-semibold">
@@ -73,6 +76,6 @@ const ActionOnSchema = ({ model }: { model: IModelSchema }) => {
         </Badge>
         {label || name || kind}
       </span>
-    </SearchResultItem>
+    </SearchAnywhereItem>
   );
 };
