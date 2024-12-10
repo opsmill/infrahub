@@ -1,6 +1,8 @@
 import jwt
+from fastapi.testclient import TestClient
 
 from infrahub import config
+from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 
 EXPIRED_ACCESS_TOKEN = (
@@ -163,7 +165,9 @@ async def test_password_based_login_invalid_password(db: InfrahubDatabase, defau
     }
 
 
-async def test_use_expired_token(db: InfrahubDatabase, default_branch, client):
+async def test_use_expired_token(
+    db: InfrahubDatabase, default_branch: Branch, client: TestClient, register_core_models_schema: None
+) -> None:
     with client:
         response = client.get(
             "/api/transform/jinja2/testing", headers={"Authorization": f"Bearer {EXPIRED_ACCESS_TOKEN}"}
@@ -173,7 +177,9 @@ async def test_use_expired_token(db: InfrahubDatabase, default_branch, client):
     assert response.json() == {"data": None, "errors": [{"message": "Expired Signature", "extensions": {"code": 401}}]}
 
 
-async def test_refresh_access_token_with_expired_refresh_token(db: InfrahubDatabase, default_branch, client):
+async def test_refresh_access_token_with_expired_refresh_token(
+    db: InfrahubDatabase, default_branch: Branch, client: TestClient, register_core_models_schema: None
+) -> None:
     """Validate that the correct error is returned for an expired refresh token"""
     with client:
         response = client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {EXPIRED_REFRESH_TOKEN}"})
