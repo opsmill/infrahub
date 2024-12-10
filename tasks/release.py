@@ -17,20 +17,6 @@ from tasks.utils import (
 if TYPE_CHECKING:
     from ruamel.yaml.main import YAML
 
-VERSION_PATTERN_DOCKER = (
-    r"\$\{INFRAHUB_DOCKER_IMAGE:-registry\.opsmill\.io/opsmill/infrahub\}:\$\{VERSION:-[\d\.\-a-zA-Z]+\}"
-)
-
-
-def get_normalized_version(version_str: str) -> str:
-    """
-    Normalizes a version string by stripping pre-release labels
-    to be compatible with Docker or Helm chart versioning.
-    """
-    # Replace patterns like '1.0.9a0' with '1.0.9', '1.1.0b1' with '1.1.0', etc.
-    version_str = re.sub(r"(\d+\.\d+\.\d+)[a-zA-Z0-9\-\.]*", r"\1", version_str)
-    return version_str
-
 
 @task
 def markdownlint(context: Context) -> None:
@@ -113,61 +99,71 @@ def ship(context: Context) -> None:
 def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yaml") -> None:
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     print(" - [release] Update Helm chart")
-    from semver import Version
 
-    app_version: Version = Version.parse(
-        version=get_normalized_version(get_version_from_pyproject()), optional_minor_and_patch=True
-    )
+    # Get the app version directly from pyproject.toml
+    app_version = get_version_from_pyproject()  # Returns a string like '1.1.0a1'
 
+    # Initialize YAML and load the Chart.yaml file
     yaml: YAML = init_yaml_obj()
-
     chart_path = Path(chart_file)
     chart_yaml = yaml.load(chart_path)
 
-    if "appVersion" not in chart_yaml.keys():
+    if "appVersion" not in chart_yaml:
         raise ValueError(f"appVersion not found in {chart_file}; no updates made.")
 
-    old_app_version: Version = Version.parse(chart_yaml["appVersion"], optional_minor_and_patch=True)
+    old_app_version = chart_yaml.get("appVersion", "")
     if old_app_version == app_version:
         print(
             f"{chart_file} updates not required, `appVersion` of {old_app_version} matches current from `pyproject.toml`"
         )
         return
 
-    old_helm_version: Version = Version.parse(chart_yaml["version"], optional_minor_and_patch=True)
-    if app_version.major > old_app_version.major:
-        helm_version: Version = old_helm_version.bump_major()
-    elif app_version.minor > old_app_version.minor:
-        helm_version: Version = old_helm_version.bump_minor()
-    elif app_version.patch > old_app_version.patch:
-        helm_version: Version = old_helm_version.bump_patch()
-    else:
-        helm_version = old_helm_version
+    # Handle Helm chart version increment
+    old_helm_version = chart_yaml.get("version", "")
+    if not old_helm_version:
+        raise ValueError(f"Helm chart `version` not found in {chart_file}; no updates made.")
 
-    chart_yaml["appVersion"] = str(app_version)
-    chart_yaml["version"] = str(helm_version)
+    # Split the Helm chart version into components for increment logic
+    major, minor, patch = map(int, old_helm_version.split("."))
+    new_helm_version = f"{major}.{minor}.{patch}"
+
+    # Determine the appropriate increment
+    try:
+        if app_version > old_app_version:
+            if int(app_version.split(".")[0]) > major:
+                new_helm_version = f"{major + 1}.0.0"
+            elif int(app_version.split(".")[1]) > minor:
+                new_helm_version = f"{major}.{minor + 1}.0"
+            elif int(app_version.split(".")[2].split("a")[0]) > patch:  # For alpha, beta handling
+                new_helm_version = f"{major}.{minor}.{patch + 1}"
+    except Exception:
+        # Fallback in case app_version has non-standard format for Helm comparison
+        print(f"Warning: Unable to strictly compare versions, using default Helm chart version: {new_helm_version}")
+
+    # Update the YAML
+    chart_yaml["appVersion"] = app_version
+    chart_yaml["version"] = new_helm_version
 
     yaml.dump(chart_yaml, chart_path)
 
-    print(f"{chart_file} updated with Helm `version`: {helm_version} and `appVersion`: {app_version}")
+    print(f"{chart_file} updated with Helm `version`: {new_helm_version} and `appVersion`: {app_version}")
+
 
 
 @task
 def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:
     """Update docker-compose.yml with the current version from pyproject.toml."""
     print(" - [release] Update docker-compose.yml")
-    from semver import Version
 
-    # Parse the current version from pyproject.toml
-    version: Version = Version.parse(
-        version=get_normalized_version(get_version_from_pyproject()), optional_minor_and_patch=True
-    )
+    # Get the version directly from pyproject.toml
+    version = get_version_from_pyproject()  # Returns a string like '1.1.0a0'
 
     # Initialize YAML and load the docker-compose file
     yaml: YAML = init_yaml_obj(line_length=4096)
     docker_path = Path(docker_file)
     docker_yaml: dict = yaml.load(docker_path)
 
+    # Define services to update
     services_to_update = ["infrahub-server", "task-worker"]
     updates_made = False
 
@@ -179,21 +175,24 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
             continue
 
         image = service_config["image"]
-        old_version_match = re.search(r"\d+\.\d+\.\d+", image)
+        # Match semantic versions, including pre-release versions
+        version_pattern = r"\d+\.\d+\.\d+[-a-zA-Z0-9]*"
+        old_version_match = re.search(version_pattern, image)
         if old_version_match:
-            old_version = Version.parse(old_version_match[0], optional_minor_and_patch=True)
+            old_version = old_version_match[0]
             if old_version != version:
                 # Replace old version with the new version in the image field
-                new_image = re.sub(r"\d+\.\d+\.\d+", str(version), image)
+                new_image = re.sub(version_pattern, version, image)
                 service_config["image"] = new_image
                 updates_made = True
                 print(f"Updated {service} image from {old_version} to {version}")
 
-    # Check if updates were made
+    # Check if any updates were made
     if not updates_made:
-        print(f"{docker_file} updates not required, all images are already up-to-date ({version}).")
+        print(f"{docker_file} updates not required, all images are already up-to-date.")
         return
 
+    # Write the updated YAML back to file
     yaml.dump(docker_yaml, docker_path)
 
 
