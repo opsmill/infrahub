@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { QSP } from "@/config/qsp";
 import { isGenericSchema, isNodeSchema, isProfileSchema } from "@/screens/schema/utils";
 import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { classNames, isGeneric } from "@/utils/common";
+import { classNames } from "@/utils/common";
 import { Tab } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
@@ -76,7 +76,7 @@ export const SchemaViewer = ({
       <div className="flex justify-between items-start">
         <div className="space-x-1">
           <Badge variant="blue">{schema.namespace}</Badge>
-          <Badge>{isGeneric(schema) ? "Generic" : "Node"}</Badge>
+          <Badge>{isGenericSchema(schema) ? "Generic" : "Node"}</Badge>
           <span className="text-xs">{schema.id}</span>
         </div>
 

@@ -2,8 +2,9 @@ import Accordion from "@/components/display/accordion";
 import { Badge } from "@/components/ui/badge";
 import { SearchInput } from "@/components/ui/search-input";
 import { QSP } from "@/config/qsp";
+import { isGenericSchema } from "@/screens/schema/utils";
 import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { classNames, isGeneric } from "@/utils/common";
+import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import * as R from "ramda";
@@ -80,7 +81,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
                           {schema.label}
                         </div>
                         <Badge className="self-baseline">
-                          {isGeneric(schema) ? "Generic" : "Node"}
+                          {isGenericSchema(schema) ? "Generic" : "Node"}
                         </Badge>
                       </h2>
 

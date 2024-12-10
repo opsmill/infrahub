@@ -6,8 +6,9 @@ import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFr
 import { Form, FormProps, FormRef, FormSubmit } from "@/components/ui/form";
 import { Filter } from "@/hooks/useFilters";
 import { IModelSchema } from "@/state/atoms/schema.atom";
-import { classNames, isGeneric } from "@/utils/common";
+import { classNames } from "@/utils/common";
 import { forwardRef } from "react";
+import {isGenericSchema} from "@/screens/schema/utils";
 
 export interface FilterFormProps extends FormProps {
   schema: IModelSchema;
@@ -30,7 +31,7 @@ export const FilterForm = forwardRef<FormRef, FilterFormProps>(
         className={classNames("bg-custom-white flex flex-col flex-1 overflow-auto p-4", className)}
         {...props}
       >
-        {isGeneric(schema) && schema.used_by?.length ? (
+        {isGenericSchema(schema) && schema.used_by?.length ? (
           <FilterKindSelector genericSchema={schema} />
         ) : null}
 
