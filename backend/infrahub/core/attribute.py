@@ -555,7 +555,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 changed = True
         elif "from_pool" in data:
             self.from_pool = data["from_pool"]
-            await self.node.process_pool(db=db, attribute=self, errors=[])
+            await self.node.handle_pool(db=db, attribute=self, errors=[])
             changed = True
 
         if changed and self.is_from_profile:
