@@ -7,8 +7,8 @@ import { Generate } from "@/screens/artifacts/generate";
 import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import RepositoryActionMenu from "@/screens/repository/repository-action-menu";
+import { isGenericSchema } from "@/screens/schema/utils";
 import { IModelSchema } from "@/state/atoms/schema.atom";
-import { isGeneric } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -52,7 +52,7 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
           />
         )}
 
-        {!isGeneric(schema) && schema.inherit_from?.includes(GENERIC_REPOSITORY_KIND) && (
+        {!isGenericSchema(schema) && schema.inherit_from?.includes(GENERIC_REPOSITORY_KIND) && (
           <RepositoryActionMenu repositoryId={objectDetailsData.id} />
         )}
 
