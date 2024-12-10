@@ -149,7 +149,6 @@ def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yam
     print(f"{chart_file} updated with Helm `version`: {new_helm_version} and `appVersion`: {app_version}")
 
 
-
 @task
 def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:
     """Update docker-compose.yml with the current version from pyproject.toml."""
