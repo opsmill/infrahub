@@ -173,7 +173,7 @@ export const AccountGroupForm = ({
             </Button>
           )}
 
-          <FormSubmit>{currentObject ? "Update" : "Create"}</FormSubmit>
+          <FormSubmit>Save</FormSubmit>
         </div>
       </Form>
     </div>

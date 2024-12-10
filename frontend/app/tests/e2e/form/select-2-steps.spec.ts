@@ -51,7 +51,7 @@ test.describe("Verifies the object creation", () => {
 
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: ENDPOINT_NAME }).last().click();
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText(`${KIND} created`)).toBeVisible();
     });
 
