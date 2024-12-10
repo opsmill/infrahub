@@ -166,6 +166,7 @@ export type AttributeType =
 export type Node = {
   id: string;
   display_label: string;
+  badge?: string;
   __typename: string;
 };
 

@@ -7,11 +7,13 @@ import { RelationshipType } from "@/utils/getObjectItemDisplayValue";
 type GetRelationshipDefaultValueParams = {
   relationshipData: RelationshipType | undefined;
   isFilterForm?: boolean;
+  peerField?: string;
 };
 
 export const getRelationshipDefaultValue = ({
   isFilterForm,
   relationshipData,
+  peerField,
 }: GetRelationshipDefaultValueParams): FormRelationshipValue => {
   if (!relationshipData) {
     return { source: null, value: null };
@@ -29,6 +31,7 @@ export const getRelationshipDefaultValue = ({
                 id: node.id,
                 display_label: node.display_label,
                 __typename: node.__typename,
+                ...(peerField ? { [peerField]: node[peerField] ?? node[peerField] } : {}),
               }
             : null
         )

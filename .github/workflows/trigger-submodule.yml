@@ -53,7 +53,7 @@ jobs:
       - name: Commit and push changes with github-actions-x/commit
         uses: github-actions-x/commit@v2.9
         with:
-          github-token: ${{ secrets.GH_UPDATE_PACKAGE }}
+          github-token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
           push-branch: ${{ env.BRANCH_NAME }}
           commit-message: "chore: update submodule ${{ env.SUBMODULE_PATH }} to version ${{ env.SDK_VERSION }}"
           files: ${{ env.SUBMODULE_PATH }}/

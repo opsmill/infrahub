@@ -116,6 +116,8 @@ validator
 upsert
 Upserting
 upserting
+uuid
+UUID
 validators
 Version Control
 Vitest

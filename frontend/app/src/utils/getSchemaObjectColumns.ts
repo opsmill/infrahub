@@ -5,10 +5,11 @@ import {
   relationshipsForListView,
   relationshipsForTabs,
 } from "@/config/constants";
+import { isGenericSchema } from "@/screens/schema/utils";
 import { store } from "@/state";
 import { iGenericSchema, iNodeSchema, profilesAtom } from "@/state/atoms/schema.atom";
 import * as R from "ramda";
-import { isGeneric, sortByOrderWeight } from "./common";
+import { sortByOrderWeight } from "./common";
 
 type tgetObjectAttributes = {
   schema: iNodeSchema | iGenericSchema | undefined;
@@ -131,7 +132,7 @@ export const getSchemaObjectColumns = ({
 
   // columns.length > 0 needed because of relationship-details-paginated.tsx
   // Relationship needs refactoring to handle this better
-  return isGeneric(schema) && columns.length > 0 ? [kindColumn, ...columns] : columns;
+  return isGenericSchema(schema) && columns.length > 0 ? [kindColumn, ...columns] : columns;
 };
 
 export const getObjectTabs = (tabs: any[], data: any) => {

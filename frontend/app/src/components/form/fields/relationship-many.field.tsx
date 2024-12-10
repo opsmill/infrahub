@@ -41,6 +41,7 @@ export default function RelationshipManyField({
               <RelationshipManyInput
                 {...field}
                 {...props}
+                peer={props.relationship.peer}
                 value={fieldData.value as Node[] | null}
                 onChange={(newValue) => {
                   field.onChange(updateRelationshipFieldValue(newValue, defaultValue));

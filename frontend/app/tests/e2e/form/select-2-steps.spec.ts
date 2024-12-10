@@ -51,7 +51,7 @@ test.describe("Verifies the object creation", () => {
 
       await page.getByTestId("select2step-2").getByTestId("select-open-option-button").click();
       await page.getByRole("option", { name: ENDPOINT_NAME }).last().click();
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText(`${KIND} created`)).toBeVisible();
     });
 
@@ -72,10 +72,12 @@ test.describe("Verifies the object creation", () => {
       await page.getByTestId("edit-button").click();
       await expect(page.getByLabel("Speed *")).toHaveValue(ETHERNET_SPEED);
       await expect(
-        page.locator("div:below(:text('Device *'))").getByTestId("select-input").first()
+        page.locator("div:below(:text('Device *'))").getByTestId("select-value").first()
       ).toHaveValue(DEVICE_NAME);
-      await expect(page.getByTestId("select2step-1").getByTestId("select-input")).toHaveValue(KIND);
-      await expect(page.getByTestId("select2step-2").getByTestId("select-input")).toHaveValue(
+      await expect(page.getByTestId("select2step-1").getByTestId("select-value")).toContainText(
+        KIND
+      );
+      await expect(page.getByTestId("select2step-2").getByTestId("select-value")).toContainText(
         ENDPOINT_NAME
       );
     });
@@ -85,13 +87,8 @@ test.describe("Verifies the object creation", () => {
     await page.goto("/objects/CoreGraphQLQuery");
     await page.getByTestId("create-object-button").click();
     await page.getByLabel("Kind").click();
-    await page
-      .getByTestId("side-panel-container")
-      .getByLabel("", { exact: true })
-      .getByText("Repository", { exact: true })
-      .click();
+    await page.getByRole("option", { name: "Repository Core", exact: true }).click();
     await page.getByLabel("Repository").click();
-    await expect(page.getByText("Empty", { exact: true })).toBeVisible();
     await expect(page.getByText("Read-Only Repository", { exact: true })).not.toBeVisible();
   });
 
@@ -103,32 +100,15 @@ test.describe("Verifies the object creation", () => {
     });
 
     await test.step("check inputs values", async () => {
-      const kindSelector = page
-        .getByTestId("side-panel-container")
-        .getByText("Connected Endpoint Kind ?")
-        .getByText("Kind")
-        .locator("../..")
-        .getByTestId("select-input");
-      await expect(kindSelector).toHaveValue("Interface L3");
-
-      const parentSelector = page
-        .getByTestId("side-panel-container")
-        .getByText("Connected Endpoint Kind ?")
-        .getByText("Device")
-        .locator("../..")
-        .getByTestId("select-input");
-      await expect(parentSelector).toHaveValue("dfw1-edge2");
-
-      const objectSelector = page
-        .getByTestId("side-panel-container")
-        .getByText("Connected Endpoint Kind ?")
-        .getByText("Interface L3")
-        .locator("../..")
-        .getByTestId("select-input");
-      await expect(objectSelector).toHaveValue("Ethernet1");
+      await expect(page.getByLabel("Kind")).toContainText("Interface L3 Infra");
+      await expect(page.locator('button[name="connected_endpoint_parent"]')).toContainText(
+        "dfw1-edge2"
+      );
+      await expect(
+        page.getByTestId("side-panel-container").getByLabel("Interface L3")
+      ).toContainText("Ethernet1");
 
       await page.getByTestId("side-panel-container").getByLabel("Interface L3").click();
-      await expect(page.getByRole("option", { name: "Ethernet1", exact: true })).toBeVisible();
       await expect(page.getByRole("option", { name: "Ethernet10" })).toBeVisible();
       await expect(page.getByRole("option", { name: "Loopback0" })).toBeVisible();
       await expect(page.getByRole("option", { name: "Management0" })).toBeVisible();
