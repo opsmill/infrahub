@@ -175,7 +175,7 @@ export const ObjectPermissionForm = ({
             </Button>
           )}
 
-          <FormSubmit>{currentObject ? "Update" : "Create"}</FormSubmit>
+          <FormSubmit>Save</FormSubmit>
         </div>
       </Form>
     </div>

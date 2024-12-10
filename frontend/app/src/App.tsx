@@ -37,7 +37,7 @@ export function App() {
               />
               <RouterProvider router={router} />
             </ApolloProvider>
-            <TanStackQueryDevtools />
+            <TanStackQueryDevtools buttonPosition="bottom-left" />
           </QueryClientProvider>
         </AuthProvider>
       </Provider>
