@@ -143,7 +143,8 @@ class MainSettings(BaseSettings):
     )
 
     @field_validator("docs_index_path", mode="before")
-    def convert_to_path(cls, value: Path | str) -> Path:  # pylint: disable=no-self-argument  # noqa: N805
+    @classmethod
+    def convert_to_path(cls, value: Path | str) -> Path:
         return Path(value) if isinstance(value, str) else value
 
 
@@ -157,7 +158,8 @@ class FileSystemStorageSettings(BaseSettings):
     )
 
     @field_validator("path_", mode="before")
-    def convert_to_path(cls, value: Path | str) -> Path:  # pylint: disable=no-self-argument  # noqa: N805
+    @classmethod
+    def convert_to_path(cls, value: Path | str) -> Path:
         return Path(value) if isinstance(value, str) else value
 
 
