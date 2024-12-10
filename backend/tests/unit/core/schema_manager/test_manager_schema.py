@@ -2482,6 +2482,7 @@ async def test_load_schema(
 
     schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
     await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
+    default_branch.update_schema_hash()
     schema11 = registry.schema.get_schema_branch(name=default_branch.name)
     schema2 = await registry.schema.load_schema(db=db, branch=default_branch.name)
 

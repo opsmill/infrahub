@@ -31,6 +31,8 @@ class NodeKind(BaseModel):
 class SchemaBranchDiff(BaseModel):
     nodes: list[str] = Field(default_factory=list)
     generics: list[str] = Field(default_factory=list)
+    removed_nodes: list[str] = Field(default_factory=list)
+    removed_generics: list[str] = Field(default_factory=list)
 
     def to_string(self) -> str:
         return ", ".join(self.nodes + self.generics)
@@ -40,7 +42,7 @@ class SchemaBranchDiff(BaseModel):
 
     @property
     def has_diff(self) -> bool:
-        if self.nodes or self.generics:
+        if self.nodes or self.generics or self.removed_nodes or self.removed_generics:
             return True
         return False
 
@@ -50,15 +52,17 @@ class SchemaBranchHash(BaseModel):
     nodes: dict[str, str] = Field(default_factory=dict)
     generics: dict[str, str] = Field(default_factory=dict)
 
-    def compare(self, other: SchemaBranchHash) -> Optional[SchemaBranchDiff]:
+    def compare(self, other: SchemaBranchHash) -> SchemaBranchDiff | None:
         if other.main == self.main:
             return None
 
         return SchemaBranchDiff(
             nodes=[key for key, value in other.nodes.items() if key not in self.nodes or self.nodes[key] != value],
+            removed_nodes=[key for key in self.nodes if key not in other.nodes],
             generics=[
                 key for key, value in other.generics.items() if key not in self.generics or self.generics[key] != value
             ],
+            removed_generics=[key for key in self.generics if key not in other.generics],
         )
 
 

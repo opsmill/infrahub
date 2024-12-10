@@ -636,6 +636,12 @@ class SchemaManager(NodeManager):
                 if filter_value["namespace__values"]:
                     filters[node_type] = filter_value
                     has_filters = True
+            for removed_generic in schema_diff.removed_generics:
+                if removed_generic in schema.generic_names:
+                    schema.delete(name=removed_generic)
+            for removed_node in schema_diff.removed_nodes:
+                if removed_node in schema.node_names:
+                    schema.delete(name=removed_node)
 
         if not has_filters or filters["generics"]:
             generic_schema = self.get(name="SchemaGeneric", branch=branch)
