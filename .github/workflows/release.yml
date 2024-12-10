@@ -121,3 +121,10 @@ jobs:
     secrets: inherit
     with:
       publish: true
+
+  update-submodule:
+    needs: check_release
+    uses: ./.github/workflows/update-submodule.yml
+    secrets: inherit
+    with:
+      version: ${{ github.ref_name }}
