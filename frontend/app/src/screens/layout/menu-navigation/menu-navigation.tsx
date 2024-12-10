@@ -1,46 +1,22 @@
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Divider } from "@/components/ui/divider";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CONFIG } from "@/config/config";
-import { useAuth } from "@/hooks/useAuth";
+import { Spinner } from "@/components/ui/spinner";
+import ErrorScreen from "@/screens/errors/error-screen";
 import { MenuSectionInternal } from "@/screens/layout/menu-navigation/components/menu-section-internal";
 import { MenuSectionObject } from "@/screens/layout/menu-navigation/components/menu-section-object";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { menuAtom } from "@/state/atoms/schema.atom";
-import { fetchUrl } from "@/utils/fetch";
-import { useAtom, useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { menuQueryOptions } from "@/screens/layout/menu-navigation/get-menu";
+import { useQuery } from "@tanstack/react-query";
 
 export interface MenuNavigationProps {
   isCollapsed?: boolean;
 }
 
 export default function MenuNavigation({ isCollapsed }: MenuNavigationProps) {
-  const { accessToken } = useAuth();
-  const currentBranch = useAtomValue(currentBranchAtom);
-  const [menu, setMenu] = useAtom(menuAtom);
-  const [isLoading, setIsLoading] = useState(false);
+  const { data: menu, isPending, error } = useQuery(menuQueryOptions());
 
-  useEffect(() => {
-    if (!currentBranch) return;
+  if (isPending) return <Spinner className="grow mx-auto p-4" />;
+  if (error) return <ErrorScreen message="Something went wrong when fetching the menu" />;
 
-    const headers = accessToken && {
-      authorization: `Bearer ${accessToken}`,
-    };
-
-    try {
-      setIsLoading(true);
-      fetchUrl(CONFIG.MENU_URL(currentBranch?.name), { headers }).then((menu) => setMenu(menu));
-    } catch (error) {
-      console.error("error: ", error);
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while fetching the menu" />);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentBranch, accessToken]);
-
-  if (isLoading) return <div>Loading...</div>;
   if (!menu?.sections) return <div className="flex-grow" />;
 
   return (

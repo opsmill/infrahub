@@ -45,11 +45,11 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
 
       await test.step("Delete the relationship", async () => {
         await page
-          .getByRole("row", { name: "ord1-leaf2" })
+          .getByRole("row", { name: "atl1-leaf1" })
           .getByTestId("relationship-delete-button")
           .click();
         await expect(page.getByRole("paragraph")).toContainText(
-          "Are you sure you want to remove the association between `Cisco IOS` and `ord1-leaf2`? The `InfraDevice` `ord1-leaf2` won't be deleted in the process."
+          "Are you sure you want to remove the association between `Cisco IOS` and `atl1-leaf1`? The `InfraDevice` `atl1-leaf1` won't be deleted in the process."
         );
         await page.getByTestId("modal-delete-confirm").click();
       });
@@ -72,7 +72,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
       await test.step("Add a new relationship", async () => {
         await page.getByTestId("open-relationship-form-button").click();
         await page.getByTestId("side-panel-container").getByLabel("Devices").click();
-        await page.getByRole("option", { name: "ord1-leaf2" }).click();
+        await page.getByRole("option", { name: "atl1-leaf1" }).click();
         await page.getByRole("button", { name: "Save" }).click();
       });
 
@@ -80,7 +80,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
         await expect(page.getByRole("alert")).toContainText("Association with InfraDevice added");
         await expect(page.getByText("Showing 1 to 10 of 10 results")).toBeVisible();
         await expect(page.getByLabel("Tabs")).toContainText("Devices10");
-        await expect(page.getByRole("cell", { name: "ord1-leaf2" })).toBeVisible();
+        await expect(page.getByRole("cell", { name: "atl1-leaf1" })).toBeVisible();
       });
     });
 
@@ -110,12 +110,8 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
       await page.getByRole("link", { name: "Connected to den1-edge1::Ethernet1" }).click();
       await page.getByText("Ip Addresses1").click();
       await page.getByTestId("open-relationship-form-button").click();
-      await expect(page.getByTestId("select-open-pool-option-button")).toBeVisible();
-      await page
-        .getByTestId("side-panel-container")
-        .getByTestId("select-open-option-button")
-        .click();
-      await expect(page.getByTestId("relationship-row").first()).toBeVisible();
+      await page.getByTestId("select-open-pool-option-button").click();
+      await expect(page.getByRole("option", { name: "Loopbacks pool" })).toBeVisible();
     });
   });
 

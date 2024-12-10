@@ -13,39 +13,86 @@ import { PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { inputStyle } from "@/components/ui/style";
 import { generateRelationshipListQuery } from "@/graphql/queries/objects/generateRelationshipListQuery";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
-import { RelationshipSchema } from "@/screens/schema/types";
 import { classNames } from "@/utils/common";
 import { Node, RelationshipManyType } from "@/utils/getObjectItemDisplayValue";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 export interface RelationshipManyInputProps
   extends Omit<PopoverTriggerProps, "value" | "onChange"> {
   className?: string;
   onChange: (value: Array<Node>) => void;
-  relationship: RelationshipSchema;
+  peer: string;
   value: Array<Node> | null;
+  peerField?: string;
 }
+
+const PAGINATION = 20;
 
 export const RelationshipManyInput = React.forwardRef<
   React.ElementRef<typeof PopoverTrigger>,
   RelationshipManyInputProps
->(({ id, className, relationship: relationshipSchema, value, onChange, ...props }, ref) => {
+>(({ id, className, peer, peerField, value, onChange, ...props }, ref) => {
   const [open, setOpen] = React.useState(false);
+  const [count, setCount] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [results, setResults] = useState([]);
+  const [search, setSearch] = useState("");
+  const [shouldAggregate, setShouldAggregate] = useState(true);
+  const searchQuery = useDebounce(search, 500);
+
   const [loadComboboxList, { loading, data }] = useLazyQuery(
-    gql(generateRelationshipListQuery({ relationshipSchema }))
+    gql(
+      generateRelationshipListQuery({
+        peer,
+        peerField,
+        limit: PAGINATION,
+        offset,
+        search: searchQuery,
+      })
+    )
   );
 
   const handleSelect = (relationship: Node) => {
     onChange(value ? [...value, relationship] : [relationship]);
   };
 
+  useEffect(() => {
+    const newResults =
+      data &&
+      (data[peer] as RelationshipManyType).edges
+        .map((edge) => edge.node)
+        .filter((node): node is Node => !!node);
+
+    const dataCount = data && (data[peer] as RelationshipManyType).count;
+
+    setCount(dataCount);
+
+    if (!shouldAggregate) {
+      setResults(newResults);
+      return;
+    }
+
+    if (!newResults) {
+      return;
+    }
+
+    setResults([...results, ...newResults]);
+  }, [data]);
+
   return (
-    <Combobox open={open} onOpenChange={setOpen}>
+    <Combobox
+      open={open}
+      onOpenChange={(newOpen) => {
+        setSearch("");
+        setOpen(newOpen);
+      }}
+    >
       <PopoverTrigger asChild>
         <div
           className={classNames(
@@ -56,9 +103,9 @@ export const RelationshipManyInput = React.forwardRef<
           )}
         >
           <div className="flex-grow flex flex-wrap gap-2">
-            {value?.map(({ id, display_label }) => (
+            {value?.map(({ id, display_label, ...data }) => (
               <Badge key={id} className="flex items-center gap-1 pr-0.5">
-                {display_label}
+                {peerField ? (data[peerField]?.value ?? display_label) : display_label}
 
                 <Button
                   size="icon"
@@ -69,13 +116,16 @@ export const RelationshipManyInput = React.forwardRef<
                   }}
                   className="text-gray-500 hover:text-gray-800 h-4 w-4"
                   aria-label="Remove"
+                  data-testid="remove-option"
                 >
                   &times;
                 </Button>
               </Badge>
             ))}
           </div>
+
           {loading && <Spinner className="ml-auto" />}
+
           <PopoverTrigger ref={ref} asChild {...props}>
             <button id={id} type="button" className="text-gray-600 outline-none w-3.5 h-3.5">
               <Icon icon="mdi:unfold-more-horizontal" />
@@ -84,46 +134,68 @@ export const RelationshipManyInput = React.forwardRef<
         </div>
       </PopoverTrigger>
 
-      <ComboboxContent onOpenAutoFocus={() => loadComboboxList()}>
-        <ComboboxList>
-          {loading ? (
-            <Spinner className="flex justify-center m-2" />
-          ) : (
-            <ComboboxEmpty>No results found</ComboboxEmpty>
-          )}
+      <ComboboxContent
+        onOpenAutoFocus={() => {
+          setOffset(0);
+          setShouldAggregate(false);
+          loadComboboxList();
+        }}
+      >
+        <ComboboxList
+          shouldFilter={false}
+          onValueChange={(newValue) => {
+            setOffset(0);
+            setShouldAggregate(false);
+            setSearch(newValue);
+          }}
+        >
+          {!loading && <ComboboxEmpty>No results found</ComboboxEmpty>}
 
-          {!loading &&
-            data &&
-            (data[relationshipSchema.peer] as RelationshipManyType).edges
-              .map((edge) => edge.node)
-              .filter((node): node is Node => !!node && !value?.some((v) => v.id === node.id))
-              .map((relationship) => (
-                <ComboboxItem
-                  key={relationship.id}
-                  value={relationship.display_label}
-                  onSelect={() => handleSelect(relationship)}
-                >
-                  <span className="truncate">{relationship.display_label}</span>
-                </ComboboxItem>
-              ))}
+          {results
+            ?.filter((node) => !!node && !value?.some((v) => v.id === node.id))
+            .map((relationship) => (
+              <ComboboxItem
+                key={relationship.id}
+                value={relationship.display_label}
+                onSelect={() => handleSelect(relationship)}
+              >
+                <span className="truncate">
+                  {peerField ? relationship[peerField]?.value : relationship.display_label}
+                </span>
+              </ComboboxItem>
+            ))}
+
+          {loading && <Spinner className="flex justify-center m-2" />}
+
+          {results?.length < count && (
+            <div className="pt-2">
+              <Button
+                variant={"ghost"}
+                className="w-full border-custom-blue-500/10 text-custom-blue-700 enabled:hover:bg-custom-blue-500/10 font-normal"
+                onClick={() => {
+                  setOffset(offset + PAGINATION);
+                  setShouldAggregate(true);
+                }}
+              >
+                Load more
+              </Button>
+            </div>
+          )}
         </ComboboxList>
 
-        <AddRelationshipAction relationship={relationshipSchema} onSuccess={handleSelect} />
+        <AddRelationshipAction peer={peer} onSuccess={handleSelect} />
       </ComboboxContent>
     </Combobox>
   );
 });
 
 export interface AddRelationshipActionProps {
-  relationship: RelationshipSchema;
+  peer: string;
   onSuccess?: (newObject: Node) => void;
 }
 
-const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
-  relationship,
-  onSuccess,
-}) => {
-  const { schema } = useSchema(relationship.peer);
+const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({ peer, onSuccess }) => {
+  const { schema } = useSchema(peer);
   const [open, setOpen] = useState(false);
 
   if (!schema) return null;
@@ -151,7 +223,7 @@ const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
         setOpen={setOpen}
       >
         <ObjectForm
-          kind={relationship.peer}
+          kind={peer}
           onSuccess={({ object }) => {
             setOpen(false);
             if (!onSuccess) return;
@@ -159,7 +231,7 @@ const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
             const newNode: Node = {
               id: object.id,
               display_label: object.display_label,
-              __typename: relationship.peer,
+              __typename: peer,
             };
             onSuccess(newNode);
           }}
