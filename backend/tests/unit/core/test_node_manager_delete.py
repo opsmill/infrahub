@@ -184,21 +184,21 @@ async def test_delete_with_required_on_generic_prevented(db, default_branch, dep
 
 
 async def test_delete_with_cascade_on_generic_allowed(db, default_branch, dependent_generics_schema: SchemaBranch):
+    # set TestPerson.animals to be cascade delete
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    for schema_kind in ("TestPerson", "TestHuman", "TestCylon"):
+        schema = schema_branch.get(name=schema_kind, duplicate=False)
+        schema.get_relationship("animals").on_delete = RelationshipDeleteBehavior.CASCADE
+
     human = await Node.init(db=db, schema="TestHuman", branch=default_branch)
     await human.new(db=db, name="Jane", height=180)
     await human.save(db=db)
     dog = await Node.init(db=db, schema="TestDog", branch=default_branch)
     await dog.new(db=db, name="Roofus", breed="whocares", weight=50, owner=human)
     await dog.save(db=db)
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    person_schema = schema_branch.get(name="TestPerson", duplicate=False)
-    person_schema.get_relationship("animals").on_delete = RelationshipDeleteBehavior.CASCADE
 
     deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[human])
 
     assert {d.id for d in deleted} == {human.id, dog.id}
     node_map = await NodeManager.get_many(db=db, ids=[human.id, dog.id])
     assert node_map == {}
-
-
-# TODO: test with agnostic schema too
