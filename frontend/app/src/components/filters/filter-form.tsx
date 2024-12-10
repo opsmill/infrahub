@@ -5,10 +5,10 @@ import { DynamicInput } from "@/components/form/dynamic-form";
 import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
 import { Form, FormProps, FormRef, FormSubmit } from "@/components/ui/form";
 import { Filter } from "@/hooks/useFilters";
+import { isGenericSchema } from "@/screens/schema/utils";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { classNames } from "@/utils/common";
 import { forwardRef } from "react";
-import {isGenericSchema} from "@/screens/schema/utils";
 
 export interface FilterFormProps extends FormProps {
   schema: IModelSchema;

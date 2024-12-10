@@ -2,11 +2,11 @@ import { PROFILE_KIND, TASK_OBJECT } from "@/config/constants";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import { getPermission } from "@/screens/permission/utils";
+import { isGenericSchema } from "@/screens/schema/utils";
 import { IModelSchema, genericsState } from "@/state/atoms/schema.atom";
 import { getSchemaObjectColumns, getTabs } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import {isGenericSchema} from "@/screens/schema/utils";
 
 export const useObjectDetails = (schema: IModelSchema, objectId: string) => {
   const generics = useAtomValue(genericsState);
