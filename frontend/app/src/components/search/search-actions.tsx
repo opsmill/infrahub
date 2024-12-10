@@ -1,12 +1,15 @@
 import { SearchAnywhereGroup } from "@/components/search/search-anywhere-group";
 import { SearchAnywhereItem } from "@/components/search/search-anywhere-item";
 import { Badge } from "@/components/ui/badge";
+import { menuQueryOptions } from "@/screens/layout/menu-navigation/get-menu";
 import { MenuItem } from "@/screens/layout/menu-navigation/types";
-import { IModelSchema, genericsState, menuFlatAtom, schemaState } from "@/state/atoms/schema.atom";
+import { IModelSchema, genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
+import { useQuery } from "@tanstack/react-query";
 import { useCommandState } from "cmdk";
 import { useAtomValue } from "jotai";
+import { useMemo } from "react";
 
 export const SearchActions = () => {
   const query = useCommandState((state) => state.search);
@@ -14,9 +17,40 @@ export const SearchActions = () => {
   const generics = useAtomValue(genericsState);
   const models: IModelSchema[] = [...nodes, ...generics];
 
-  const menuItems = useAtomValue(menuFlatAtom);
+  const { data: menuData, isPending, isError } = useQuery(menuQueryOptions());
+
+  const menuItems = useMemo(() => {
+    if (!menuData) return [];
+
+    const menuItems: MenuItem[] = [];
+
+    const flattenMenuItems = (menuItem: MenuItem) => {
+      if (menuItem.path !== "") menuItems.push(menuItem);
+
+      if (menuItem.children && menuItem.children.length > 0) {
+        menuItem.children.forEach(flattenMenuItems);
+      }
+    };
+
+    menuData.sections.object.forEach(flattenMenuItems);
+    menuData.sections.internal.forEach(flattenMenuItems);
+
+    return menuItems;
+  }, [menuData]);
 
   if (query === "") return null;
+
+  if (isPending) {
+    return (
+      <SearchAnywhereGroup heading="Go to">
+        <SearchAnywhereItem to="" disabled>
+          Loading...
+        </SearchAnywhereItem>
+      </SearchAnywhereGroup>
+    );
+  }
+
+  if (isError || menuItems.length === 0) return null;
 
   const queryLowerCased = query.toLowerCase();
   const resultsMenu = menuItems.filter(({ label }) =>
