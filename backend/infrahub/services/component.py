@@ -4,6 +4,7 @@ import re
 from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.components import ComponentType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError
@@ -71,16 +72,18 @@ class InfrahubComponent:
                 workers[identity].add_value(key=key, value=value)
         return list(workers.values())
 
-    async def refresh_schema_hash(self, branches: Optional[list[str]] = None) -> None:
+    async def refresh_schema_hash(self, branches: list[str] | None = None) -> None:
         branches = branches or list(registry.branch.keys())
         for branch in branches:
+            if branch == GLOBAL_BRANCH_NAME:
+                continue
             schema_branch = registry.schema.get_schema_branch(name=branch)
             hash_value = schema_branch.get_hash()
 
             # Use branch name if we cannot find branch id in cache
             branch_id: Optional[str] = None
             if branch_obj := await registry.get_branch(branch=branch, db=self.service.database):
-                branch_id = branch_obj.id
+                branch_id = str(branch_obj.uuid)
 
             if not branch_id:
                 branch_id = branch
