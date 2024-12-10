@@ -1,5 +1,7 @@
+import { queryClient } from "@/api/client";
 import { components } from "@/infraops";
-import { MenuData, MenuItem } from "@/screens/layout/menu-navigation/types";
+import { menuQueryOptions } from "@/screens/layout/menu-navigation/get-menu";
+import { MenuItem } from "@/screens/layout/menu-navigation/types";
 import { atom } from "jotai";
 
 export type iNodeSchema = components["schemas"]["APINodeSchema"];
@@ -21,10 +23,8 @@ export const namespacesState = atom<iNamespace[]>([]);
 
 export const currentSchemaHashAtom = atom<string | null>(null);
 
-export const menuAtom = atom<MenuData>();
-
 export const menuFlatAtom = atom((get) => {
-  const menuData = get(menuAtom);
+  const menuData = queryClient.getQueryData(menuQueryOptions().queryKey);
   if (!menuData) return [];
 
   const menuItems: MenuItem[] = [];
