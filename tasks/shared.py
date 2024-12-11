@@ -276,3 +276,25 @@ def build_dev_compose_files_cmd(database: str) -> str:
         DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE)
 
     return f"-f {' -f '.join(map(str, DEV_COMPOSE_FILES))}"
+
+
+def init_yaml_obj(line_length: int | None = None) -> YAML:
+    """Instantiate a ruamel.yaml YAML object.
+
+    Args:
+        line_length (int, optional): Override the .yamllint.yml line length. Defaults to None.
+
+    Returns:
+        YAML: Instantiated ruamel.yaml.YAML object.
+    """
+    from ruamel.yaml import YAML
+
+    yamllint_rules: dict = get_yamllint_rules()
+
+    yaml = YAML(typ="rt")
+    yaml.preserve_quotes = True
+    yaml.indent(mapping=2, sequence=4, offset=2)
+    yaml.explicit_start = True
+    yaml.width = line_length or yamllint_rules.get("line-length", {}).get("max", 120)
+
+    return yaml

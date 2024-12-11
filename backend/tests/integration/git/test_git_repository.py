@@ -319,7 +319,6 @@ class TestGetMissingFile(TestInfrahubApp):
             id=obj.id,
             name=git_repo_car_dealership.name,
             location=git_repo_car_dealership.path,
-            task_report=FakeTaskReportLogger(),
             client=client,
         )
 
