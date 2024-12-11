@@ -1,15 +1,20 @@
+from __future__ import annotations
+
 import os
 import platform
 import re
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from invoke import Context, UnexpectedExit
-from invoke.runners import Result
 
-from .utils import str_to_bool
+from .utils import get_yamllint_rules, str_to_bool
+
+if TYPE_CHECKING:
+    from invoke.runners import Result
+    from ruamel.yaml.main import YAML
 
 
 class DatabaseType(str, Enum):
@@ -34,9 +39,13 @@ DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
 NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.20.0-enterprise")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
-    "MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.7-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine"
+    "MESSAGE_QUEUE_DOCKER_IMAGE",
+    "rabbitmq:3.13.7-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
 )
-CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine")
+CACHE_DOCKER_IMAGE = os.getenv(
+    "CACHE_DOCKER_IMAGE",
+    "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
+)
 
 TASK_MANAGER_DOCKER_IMAGE = os.getenv("TASK_MANAGER_DOCKER_IMAGE", "prefecthq/prefect:3.0.3-python3.12")
 
@@ -53,7 +62,14 @@ GITHUB_ACTION = os.getenv("GITHUB_ACTION"), False
 
 SERVICE_SERVER_NAME = "server"
 SERVICE_WORKER_NAME = "task-worker"
-AVAILABLE_SERVICES = [SERVICE_SERVER_NAME, SERVICE_WORKER_NAME, "database", "message-queue", "task-manager", "cache"]
+AVAILABLE_SERVICES = [
+    SERVICE_SERVER_NAME,
+    SERVICE_WORKER_NAME,
+    "database",
+    "message-queue",
+    "task-manager",
+    "cache",
+]
 
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
@@ -184,7 +200,7 @@ def get_compose_cmd(namespace: Namespace) -> str:
     return "docker compose"
 
 
-def execute_command(context: Context, command: str, print_cmd: bool = False) -> Optional[Result]:
+def execute_command(context: Context, command: str, print_cmd: bool = False) -> Result | None:
     params = check_environment(context=context)
 
     if params["sudo"]:

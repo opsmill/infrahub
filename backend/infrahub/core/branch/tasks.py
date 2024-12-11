@@ -293,6 +293,7 @@ async def create_branch(model: BranchCreateModel) -> None:
 
         # Add Branch to registry
         registry.branch[obj.name] = obj
+        await service.component.refresh_schema_hash(branches=[obj.name])
 
     event = BranchCreateEvent(branch=obj.name, branch_id=str(obj.id), sync_with_git=obj.sync_with_git)
     await service.event.send(event=event)

@@ -6,9 +6,9 @@ import {
   IP_PREFIX_GENERIC,
 } from "@/screens/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
+import { isGenericSchema } from "@/screens/schema/utils";
 import { store } from "@/state";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { isGeneric } from "@/utils/common";
 import { constructPath, overrideQueryParams } from "./fetch";
 
 const regex = /^Related/; // starts with Related
@@ -41,7 +41,7 @@ export const getObjectDetailsUrl2 = (
   const schema = [...nodes, ...generics, ...profiles].find(({ kind }) => kind === objectKind);
   if (!schema) return "#";
 
-  if (!isGeneric(schema)) {
+  if (!isGenericSchema(schema)) {
     const inheritFrom = schema.inherit_from;
 
     if (inheritFrom?.includes(IP_PREFIX_GENERIC)) {

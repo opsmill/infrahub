@@ -1,8 +1,9 @@
 import { Button } from "@/components/buttons/button-primitive";
 import { Badge } from "@/components/ui/badge";
 import { QSP } from "@/config/qsp";
+import { isGenericSchema, isNodeSchema, isProfileSchema } from "@/screens/schema/utils";
 import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { classNames, isGeneric } from "@/utils/common";
+import { classNames } from "@/utils/common";
 import { Tab } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
@@ -75,7 +76,7 @@ export const SchemaViewer = ({
       <div className="flex justify-between items-start">
         <div className="space-x-1">
           <Badge variant="blue">{schema.namespace}</Badge>
-          <Badge>{isGeneric(schema) ? "Generic" : "Node"}</Badge>
+          <Badge>{isGenericSchema(schema) ? "Generic" : "Node"}</Badge>
           <span className="text-xs">{schema.id}</span>
         </div>
 
@@ -165,13 +166,14 @@ const Properties = ({ schema }: { schema: IModelSchema }) => {
         <PropertyRow title="Description" value={schema.description} />
       </div>
 
-      {"used_by" in schema && (
+      {isGenericSchema(schema) && (
         <div>
           <PropertyRow title="Used by" value={<ModelDisplay kinds={schema.used_by} />} />
+          <PropertyRow title="Hierarchical" value={schema.hierarchical} />
         </div>
       )}
 
-      {"inherit_from" in schema && (
+      {isNodeSchema(schema) && (
         <div>
           <PropertyRow title="Inherit from" value={<ModelDisplay kinds={schema.inherit_from} />} />
           <PropertyRow
@@ -202,7 +204,9 @@ const Properties = ({ schema }: { schema: IModelSchema }) => {
         <PropertyRow title="Default filter" value={schema.default_filter} />
         <PropertyRow title="Order by" value={schema.order_by} />
         <PropertyRow title="Uniqueness constraints" value={schema.uniqueness_constraints} />
-        <PropertyRow title="Generate profile" value={schema.generate_profile} />
+        {!isProfileSchema(schema) && (
+          <PropertyRow title="Generate profile" value={schema.generate_profile} />
+        )}
       </div>
 
       <div>

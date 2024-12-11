@@ -18,7 +18,7 @@ classifiers = [
 
 packages = [
     { include = "infrahub", from = "backend" },
-    { include = "infrahub_sdk", from = "python_sdk" }
+    { include = "infrahub_sdk", from = "python_sdk" },
 ]
 
 [tool.poetry.dependencies]
@@ -48,7 +48,7 @@ graphene = "~3.4"
 gunicorn = "^23.0.0"
 lunr = "^0.7.0.post1"
 starlette-exporter = "~0.23"
-python-multipart = "0.0.18"                             # Required by FastAPI to upload large files
+python-multipart = "0.0.18"                            # Required by FastAPI to upload large files
 asgi-correlation-id = "4.2.0"                          # Middleware for FastAPI to generate ID per request
 bcrypt = "~4.1"                                        # Used to hash and validate password
 pyjwt = "~2.8"                                         # Used to manage JWT tokens
@@ -69,7 +69,6 @@ numpy = [
     { version = "^1.24.2", python = ">=3.9,<3.12" },
     { version = "^1.26.2", python = ">=3.12" },
 ]
-
 
 
 [tool.poetry.group.dev.dependencies]
@@ -98,6 +97,8 @@ testcontainers = "^4.8.1"
 pytest-timeout = "^2.3.1"
 matplotlib = "^3.9.2"
 pandas = "^2.2.3"
+semver = "^3.0.2"
+ruamel-yaml = "^0.18.6"
 
 # [tool.poetry.group.test-scale.dependencies]
 # locust = "^2.20.1"
@@ -179,8 +180,8 @@ min-similarity-lines = 20
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-timeout = 300           # 5 minutes
-session_timeout = 1200  # 20 minutes
+timeout = 300 # 5 minutes
+session_timeout = 1200 # 20 minutes
 testpaths = ["tests"]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",
@@ -560,7 +561,7 @@ allow-dunder-method-names = [
 ]
 
 "backend/infrahub/config.py" = [
-    "S323",   # Allow users to create an SSL context that doesn't validate certificates
+    "S323", # Allow users to create an SSL context that doesn't validate certificates
 ]
 
 "backend/infrahub/graphql/mutations/**.py" = [
@@ -611,9 +612,10 @@ directory = "changelog"
 filename = "CHANGELOG.md"
 start_string = "<!-- towncrier release notes start -->\n"
 underlines = ["", "", ""]
-title_format = "## [{version}](https://github.com/opsmill/infrahub/tree/v{version}) - {project_date}"
+title_format = "## [Infrahub - v{version}](https://github.com/opsmill/infrahub/tree/infrahub-v{version}) - {project_date}"
 issue_format = "[#{issue}](https://github.com/opsmill/infrahub/issues/{issue})"
 orphan_prefix = "+"
+template = "changelog/towncrier.md.template"
 
 [[tool.towncrier.type]]
 directory = "security"

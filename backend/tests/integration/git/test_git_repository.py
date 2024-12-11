@@ -5,6 +5,7 @@ import pytest
 import yaml
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import NodeNotFoundError
+from starlette.testclient import TestClient
 
 from infrahub import config
 from infrahub.core import registry
@@ -21,6 +22,7 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
 from infrahub.workflows.initialization import setup_task_manager
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.test_client import InfrahubTestClient
 
 # pylint: disable=unused-argument
@@ -297,3 +299,41 @@ class TestInfrahubClient:
         # FIXME not implemented yet
         with pytest.raises(NodeNotFoundError):
             await client.get(kind=InfrahubKind.TRANSFORMJINJA2, id=obj.id)
+
+
+class TestGetMissingFile(TestInfrahubApp):
+    async def test_get_missing_file(self, db: InfrahubDatabase, client: InfrahubClient, git_repo_car_dealership):
+        # Ideally above tests would rely on `TestInfrahubApp.repo` instead of TestInfrahubClient
+        # and we would reuse `TestInfrahubClient.repo` fixture here.
+        obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
+        await obj.new(
+            db=db,
+            name=git_repo_car_dealership.name,
+            description="test repository",
+            location="git@github.com:mock/test.git",
+        )
+        await obj.save(db=db)
+
+        # Initialize the repository on the file system
+        repo = await InfrahubRepository.new(
+            id=obj.id,
+            name=git_repo_car_dealership.name,
+            location=git_repo_car_dealership.path,
+            task_report=FakeTaskReportLogger(),
+            client=client,
+        )
+
+        commit = repo.get_commit_value(branch_name="main")
+        rest_client = TestClient(app)
+        missing_file_name = "i_do_not_exist.txt"
+        with rest_client:
+            response = rest_client.get(
+                url=f"/api/file/{repo.id}/{missing_file_name}?commit={commit}",
+                headers={"Authorization": "Token XXXX"},
+            )
+            errors = response.json()["errors"]
+            assert len(errors) == 1
+            assert (
+                errors[0]["message"] == f"Unable to find the file at 'car-dealership::{commit}::{missing_file_name}'."
+            )
+            assert errors[0]["extensions"]["code"] == 404

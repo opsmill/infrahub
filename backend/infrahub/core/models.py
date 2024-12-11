@@ -192,6 +192,15 @@ class SchemaUpdateValidationResult(BaseModel):
                         migration_name="node.attribute.add",
                     )
                 )
+            elif path_type == SchemaPathType.RELATIONSHIP:
+                self.constraints.append(
+                    SchemaUpdateConstraintInfo(
+                        path=SchemaPath(  # type: ignore[call-arg]
+                            schema_kind=schema.kind, path_type=path_type, field_name=field_name
+                        ),
+                        constraint_name="node.relationship.add",
+                    )
+                )
 
         for field_name in node_field_diff.removed.keys():
             self.migrations.append(
@@ -272,6 +281,7 @@ class SchemaUpdateValidationResult(BaseModel):
     def validate_all(self, migration_map: dict[str, Any], validator_map: dict[str, Any]) -> None:
         self.validate_migrations(migration_map=migration_map)
         self.validate_constraints(validator_map=validator_map)
+        self.add_validator_for_migration(validator_map=validator_map)
 
     def validate_migrations(self, migration_map: dict[str, Any]) -> None:
         for migration in self.migrations:
@@ -292,6 +302,16 @@ class SchemaUpdateValidationResult(BaseModel):
                         path=constraint.path,
                         error=UpdateValidationErrorType.VALIDATOR_NOT_AVAILABLE,
                         message=f"Validator {constraint.constraint_name!r} is not available yet",
+                    )
+                )
+
+    def add_validator_for_migration(self, validator_map: dict[str, Any]) -> None:
+        for migration in self.migrations:
+            if validator_map.get(migration.migration_name, None):
+                self.constraints.append(
+                    SchemaUpdateConstraintInfo(
+                        path=migration.path,
+                        constraint_name=migration.migration_name,
                     )
                 )
 

@@ -83,7 +83,6 @@ class BranchCreate(Mutation):
         fields = await extract_fields(info.field_nodes[0].selection_set)
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=True, task=task)
 
-
 class BranchNameInput(InputObjectType):
     name = String(required=False)
 

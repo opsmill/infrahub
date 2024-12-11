@@ -29,7 +29,7 @@ test.describe("Role management - Roles CRUD", () => {
         .getByText("global:manage_repositories:")
         .click();
       await page.getByTestId("side-panel-container").getByLabel("Permissions").click();
-      await page.getByRole("button", { name: "Create" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Role created!")).toBeVisible();
     });
 
@@ -59,8 +59,8 @@ test.describe("Role management - Roles CRUD", () => {
       await page.getByTestId("update-row-button").click();
       await page.getByLabel("Name *").click();
       await page.getByLabel("Name *").fill("test role 2");
+      await page.getByTestId("remove-option").first().click();
       await page.getByLabel("Groups").click();
-      await page.getByLabel("", { exact: true }).getByText("Infrahub Users").click();
       await page.getByTestId("side-panel-container").getByText("Super Administrators").click();
       await page.getByLabel("Groups").click();
       await page.getByTestId("side-panel-container").getByLabel("Permissions").click();
@@ -69,7 +69,7 @@ test.describe("Role management - Roles CRUD", () => {
         .getByText("global:manage_schema:allow_all")
         .click();
       await page.getByTestId("side-panel-container").getByLabel("Permissions").click();
-      await page.getByRole("button", { name: "Update" }).click();
+      await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Role updated!")).toBeVisible();
     });
 

@@ -8,9 +8,11 @@ from .attribute.optional import AttributeOptionalChecker
 from .attribute.regex import AttributeRegexChecker
 from .attribute.unique import AttributeUniquenessChecker
 from .interface import ConstraintCheckerInterface
+from .node.attribute import NodeAttributeAddChecker
 from .node.generate_profile import NodeGenerateProfileChecker
 from .node.hierarchy import NodeHierarchyChecker
 from .node.inherit_from import NodeInheritFromChecker
+from .node.relationship import NodeRelationshipAddChecker
 from .relationship.count import RelationshipCountChecker
 from .relationship.optional import RelationshipOptionalChecker
 from .relationship.peer import RelationshipPeerChecker
@@ -35,4 +37,6 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, Optional[type[ConstraintCheckerInterface]]] 
     "node.parent.update": NodeHierarchyChecker,
     "node.children.update": NodeHierarchyChecker,
     "node.generate_profile.update": NodeGenerateProfileChecker,
+    "node.attribute.add": NodeAttributeAddChecker,
+    "node.relationship.add": NodeRelationshipAddChecker,
 }
