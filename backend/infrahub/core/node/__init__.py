@@ -215,7 +215,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return cls(**attrs)
 
-    async def process_pool(self, db: InfrahubDatabase, attribute: BaseAttribute, errors: list) -> None:
+    async def handle_pool(self, db: InfrahubDatabase, attribute: BaseAttribute, errors: list) -> None:
         """Evaluate if a resource has been requested from a pool and apply the resource
 
         This method only works on number pools, currently Integer is the only type that has the from_pool
@@ -336,7 +336,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 )
                 if not self._existing:
                     attribute: BaseAttribute = getattr(self, attr_schema.name)
-                    await self.process_pool(db=db, attribute=attribute, errors=errors)
+                    await self.handle_pool(db=db, attribute=attribute, errors=errors)
 
                     attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
             except ValidationError as exc:

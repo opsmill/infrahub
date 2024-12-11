@@ -42,7 +42,7 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.database import DatabaseType
 from infrahub.log import get_logger
-from infrahub.services import InfrahubServices
+from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.message_bus.local import BusSimulator
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
@@ -214,6 +214,7 @@ async def update_core_schema(  # pylint: disable=too-many-statements
             service = InfrahubServices(
                 database=db, message_bus=BusSimulator(database=db), workflow=WorkflowLocalExecution()
             )
+            services.prepare(service)
             await initialize_registry(db=db)
 
             default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
