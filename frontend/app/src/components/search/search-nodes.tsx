@@ -92,7 +92,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
         className="text-lg px-2 py-0.5 text-custom-blue-700"
       />
 
-      <div className="flex-grow text-sm">
+      <div className="flex-grow text-sm overflow-auto">
         <div className="flex justify-between">
           <span className="mr-1 font-semibold text-custom-blue-800">
             {objectDetailsData?.display_label}
@@ -158,7 +158,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           const color = value.color === "" ? "#f1f1f1" : value.color;
           return (
             <div
-              className="px-1.5 rounded text-gray-700 font-medium text-center border border-transparent"
+              className="px-1.5 rounded text-gray-700 font-medium text-center border border-transparent truncate"
               style={{ background: `${color}40` }}
             >
               {value.label}
@@ -172,9 +172,9 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
   };
 
   return (
-    <div className="flex flex-col text-xxs whitespace-nowrap leading-3">
+    <div className="flex flex-col text-xxs whitespace-nowrap leading-3 overflow-hidden">
       <span>{title}</span>
-      <span className="font-medium text-gray-800">{formatValue() || "-"}</span>
+      <span className="font-medium text-gray-800 truncate">{formatValue() || "-"}</span>
     </div>
   );
 };
