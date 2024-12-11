@@ -15,6 +15,7 @@ from infrahub.proposed_change.models import RequestProposedChangeRunGenerators
 from infrahub.proposed_change.tasks import run_generators
 from infrahub.server import app, app_initialization
 from infrahub.services import InfrahubServices, services
+from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
@@ -78,6 +79,7 @@ async def prepare_proposed_change(
     git_repos_dir_module_scope: Path,
     init_db_base,
     test_client: InfrahubTestClient,
+    redis,
 ) -> str:
     source_dir = tmp_path_module_scope / "sources"
     source_dir.mkdir()
@@ -101,8 +103,11 @@ async def prepare_proposed_change(
     config = Config(api_token=admin_token, requester=test_client.async_request)
     client = InfrahubClient(config=config)
 
-    service = InfrahubServices(message_bus=bus, client=client, workflow=WorkflowLocalExecution(), database=db)
+    service = InfrahubServices(
+        message_bus=bus, client=client, workflow=WorkflowLocalExecution(), database=db, cache=RedisCache()
+    )
     await service.event.initialize(service)
+    await service.component.initialize(service)
     services.prepare(service=service)
 
     repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
@@ -136,7 +141,11 @@ async def test_run_pipeline_validate_requested_jobs(
     client = InfrahubClient(config=config)
     fake_log = FakeLogger()
     service = InfrahubServices(
-        client=client, log=fake_log, message_bus=bus_pre_data_changes, database=db, workflow=WorkflowLocalExecution()
+        client=client,
+        log=fake_log,
+        message_bus=bus_pre_data_changes,
+        database=db,
+        workflow=WorkflowLocalExecution(),
     )
     with init_global_service(service):
         await pipeline(message=message, service=services.service)
@@ -181,7 +190,12 @@ async def test_run_generators_validate_requested_jobs(
     admin_token = await integration_helper.create_token()
     config = Config(api_token=admin_token, requester=test_client.async_request)
     client = InfrahubClient(config=config)
-    service = InfrahubServices(client=client, message_bus=bus, log=FakeLogger(), workflow=WorkflowLocalExecution())
+    service = InfrahubServices(
+        client=client,
+        message_bus=bus,
+        log=FakeLogger(),
+        workflow=WorkflowLocalExecution(),
+    )
     with init_global_service(service):
         await run_generators(model=model)
 
