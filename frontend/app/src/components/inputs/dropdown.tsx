@@ -22,7 +22,7 @@ import { AttributeSchema } from "@/screens/schema/types";
 import { IModelSchema } from "@/state/atoms/schema.atom";
 import { classNames, getTextColor } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
-import React, { forwardRef, HTMLAttributes, useState } from "react";
+import React, { forwardRef, HTMLAttributes, useEffect, useState } from "react";
 
 export type DropdownOption = {
   value: string;
@@ -237,6 +237,10 @@ export const Dropdown = forwardRef<HTMLButtonElement, DropdownProps>(
     };
 
     const selectItem = localItems.find((item) => item.value === value);
+
+    useEffect(() => {
+      setLocalItems(items);
+    }, [items?.length]);
 
     return (
       <Combobox open={open} onOpenChange={setOpen}>
