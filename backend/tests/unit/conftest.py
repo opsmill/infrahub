@@ -2413,7 +2413,7 @@ async def builtin_schema() -> SchemaRoot:
     return SchemaRoot(**SCHEMA)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 async def ipam_schema() -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "nodes": [

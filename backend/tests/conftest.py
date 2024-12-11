@@ -125,17 +125,29 @@ async def db(
 
 @pytest.fixture
 async def empty_database(db: InfrahubDatabase) -> None:
+    await do_empty_database(db=db)
+
+
+async def do_empty_database(db: InfrahubDatabase) -> None:
     await delete_all_nodes(db=db)
     await create_root_node(db=db)
 
 
 @pytest.fixture
 async def reset_registry(db: InfrahubDatabase) -> None:
+    await do_reset_registry(db=db)
+
+
+async def do_reset_registry(db: InfrahubDatabase) -> None:
     registry.delete_all()
 
 
 @pytest.fixture
 async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
+    return await do_default_branch(db=db)
+
+
+async def do_default_branch(db: InfrahubDatabase) -> Branch:
     branch = await create_default_branch(db=db)
     await create_global_branch(db=db)
     registry.schema = SchemaManager()
@@ -153,6 +165,10 @@ async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema)
 
 @pytest.fixture
 def local_storage_dir(tmp_path: Path) -> Path:
+    return do_local_storage_dir(tmp_path=tmp_path)
+
+
+def do_local_storage_dir(tmp_path: Path) -> Path:
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir()
 
@@ -164,17 +180,25 @@ def local_storage_dir(tmp_path: Path) -> Path:
 
 @pytest.fixture
 async def register_internal_models_schema(default_branch: Branch) -> SchemaBranch:
+    return await do_register_internal_models_schema(branch=default_branch)
+
+
+async def do_register_internal_models_schema(branch: Branch) -> SchemaBranch:
     schema = SchemaRoot(**internal_schema)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    default_branch.update_schema_hash()
+    schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
+    branch.update_schema_hash()
     return schema_branch
 
 
 @pytest.fixture
 async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
+    return await do_register_core_models_schema(branch=default_branch)
+
+
+async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
     schema = SchemaRoot(**core_models)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    default_branch.update_schema_hash()
+    schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
+    branch.update_schema_hash()
     return schema_branch
 
 
