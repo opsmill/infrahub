@@ -17,6 +17,8 @@ from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.mutations.node_getter.interface import MutationNodeGetterInterface
 from infrahub.log import get_logger
 
+from ... import lock
+from ...lock import InfrahubMultiLock, build_object_lock_name
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
 
 if TYPE_CHECKING:
@@ -106,12 +108,14 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         ip_address = ipaddress.ip_interface(data["address"]["value"])
         namespace_id = await validate_namespace(db=db, data=data)
 
-        async with db.start_transaction() as dbt:
-            address = await cls.mutate_create_object(data=data, db=dbt, branch=branch)
-            reconciler = IpamReconciler(db=dbt, branch=branch)
-            reconciled_address = await reconciler.reconcile(
-                ip_value=ip_address, namespace=namespace_id, node_uuid=address.get_id()
-            )
+        lock_name = build_object_lock_name(cls._meta.schema.kind)
+        async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
+            async with db.start_transaction() as dbt:
+                address = await cls.mutate_create_object(data=data, db=dbt, branch=branch)
+                reconciler = IpamReconciler(db=dbt, branch=branch)
+                reconciled_address = await reconciler.reconcile(
+                    ip_value=ip_address, namespace=namespace_id, node_uuid=address.get_id()
+                )
 
         result = await cls.mutate_create_to_graphql(info=info, db=db, obj=reconciled_address)
 
@@ -141,13 +145,15 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         namespace = await address.ip_namespace.get_peer(db)
         namespace_id = await validate_namespace(db=db, data=data, existing_namespace_id=namespace.id)
         try:
-            async with db.start_transaction() as dbt:
-                address = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=address)
-                reconciler = IpamReconciler(db=dbt, branch=branch)
-                ip_address = ipaddress.ip_interface(address.address.value)
-                reconciled_address = await reconciler.reconcile(
-                    ip_value=ip_address, node_uuid=address.get_id(), namespace=namespace_id
-                )
+            lock_name = build_object_lock_name(cls._meta.schema.kind)
+            async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
+                async with db.start_transaction() as dbt:
+                    address = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=address)
+                    reconciler = IpamReconciler(db=dbt, branch=branch)
+                    ip_address = ipaddress.ip_interface(address.address.value)
+                    reconciled_address = await reconciler.reconcile(
+                        ip_value=ip_address, node_uuid=address.get_id(), namespace=namespace_id
+                    )
 
                 result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=reconciled_address)
         except ValidationError as exc:
@@ -216,12 +222,14 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         ip_network = ipaddress.ip_network(data["prefix"]["value"])
         namespace_id = await validate_namespace(db=db, data=data)
 
-        async with db.start_transaction() as dbt:
-            prefix = await cls.mutate_create_object(data=data, db=dbt, branch=branch)
-            reconciler = IpamReconciler(db=dbt, branch=branch)
-            reconciled_prefix = await reconciler.reconcile(
-                ip_value=ip_network, namespace=namespace_id, node_uuid=prefix.get_id()
-            )
+        lock_name = build_object_lock_name(cls._meta.schema.kind)
+        async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
+            async with db.start_transaction() as dbt:
+                prefix = await cls.mutate_create_object(data=data, db=dbt, branch=branch)
+                reconciler = IpamReconciler(db=dbt, branch=branch)
+                reconciled_prefix = await reconciler.reconcile(
+                    ip_value=ip_network, namespace=namespace_id, node_uuid=prefix.get_id()
+                )
 
         result = await cls.mutate_create_to_graphql(info=info, db=db, obj=reconciled_prefix)
 
@@ -251,13 +259,15 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         namespace = await prefix.ip_namespace.get_peer(db)
         namespace_id = await validate_namespace(db=db, data=data, existing_namespace_id=namespace.id)
         try:
-            async with db.start_transaction() as dbt:
-                prefix = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=prefix)
-                reconciler = IpamReconciler(db=dbt, branch=branch)
-                ip_network = ipaddress.ip_network(prefix.prefix.value)
-                reconciled_prefix = await reconciler.reconcile(
-                    ip_value=ip_network, node_uuid=prefix.get_id(), namespace=namespace_id
-                )
+            lock_name = build_object_lock_name(cls._meta.schema.kind)
+            async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
+                async with db.start_transaction() as dbt:
+                    prefix = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=prefix)
+                    reconciler = IpamReconciler(db=dbt, branch=branch)
+                    ip_network = ipaddress.ip_network(prefix.prefix.value)
+                    reconciled_prefix = await reconciler.reconcile(
+                        ip_value=ip_network, node_uuid=prefix.get_id(), namespace=namespace_id
+                    )
 
                 result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=reconciled_prefix)
         except ValidationError as exc:
@@ -302,12 +312,14 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         namespace_rels = await prefix.ip_namespace.get_relationships(db=db)
         namespace_id = namespace_rels[0].peer_id
         try:
-            async with context.db.start_transaction() as dbt:
-                reconciler = IpamReconciler(db=dbt, branch=branch)
-                ip_network = ipaddress.ip_network(prefix.prefix.value)
-                reconciled_prefix = await reconciler.reconcile(
-                    ip_value=ip_network, node_uuid=prefix.get_id(), namespace=namespace_id, is_delete=True
-                )
+            lock_name = build_object_lock_name(cls._meta.schema.kind)
+            async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
+                async with context.db.start_transaction() as dbt:
+                    reconciler = IpamReconciler(db=dbt, branch=branch)
+                    ip_network = ipaddress.ip_network(prefix.prefix.value)
+                    reconciled_prefix = await reconciler.reconcile(
+                        ip_value=ip_network, node_uuid=prefix.get_id(), namespace=namespace_id, is_delete=True
+                    )
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
 

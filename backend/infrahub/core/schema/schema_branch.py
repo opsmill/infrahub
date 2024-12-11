@@ -53,6 +53,7 @@ from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
+from ...lock import build_object_lock_name
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .schema_branch_computed import ComputedAttributes
 
@@ -1725,3 +1726,41 @@ class SchemaBranch:
             profile.attributes.append(attr)
 
         return profile
+
+    def _get_kinds_to_lock_on_object_mutation(self, kind: str) -> list[str]:
+        """
+        Return kinds for which we want to lock during creating / updating an object of a given schema node.
+        Lock should be performed on schema kind and its generics having a uniqueness_constraint defined.
+        If a generic uniqueness constraint is the same as the node schema one,
+        it means node schema overrided this constraint, in which case we only need to lock on the generic.
+        """
+
+        node_schema = self.get(name=kind)
+
+        schema_uc = None
+        kinds = []
+        if node_schema.uniqueness_constraints:
+            kinds.append(node_schema.kind)
+            schema_uc = node_schema.uniqueness_constraints
+
+        if node_schema.is_generic_schema:
+            return kinds
+
+        generics_kinds = node_schema.inherit_from
+
+        node_schema_kind_removed = False
+        for generic_kind in generics_kinds:
+            generic_uc = self.get(name=generic_kind).uniqueness_constraints
+            if generic_uc:
+                kinds.append(generic_kind)
+                if not node_schema_kind_removed and generic_uc == schema_uc:
+                    # Check whether we should remove original schema kind as it simply overrides uniqueness_constraint
+                    # of a generic
+                    kinds.pop(0)
+                    node_schema_kind_removed = True
+        return kinds
+
+    def get_kind_lock_names_on_object_mutation(self, kind: str) -> list[str]:
+        lock_kinds = self._get_kinds_to_lock_on_object_mutation(kind)
+        lock_names = [build_object_lock_name(kind) for kind in lock_kinds]
+        return lock_names

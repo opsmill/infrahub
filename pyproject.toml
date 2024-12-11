@@ -230,6 +230,10 @@ module = "tests.integration.*"
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
+module = "tests.functional.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
 module = "infrahub.core.attribute"
 ignore_errors = true
 
