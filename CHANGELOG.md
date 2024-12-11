@@ -11,7 +11,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
-## [1.1.0](https://github.com/opsmill/infrahub/tree/v1.1.0) - 2024-11-29
+## [Infrahub - v1.1.0](https://github.com/opsmill/infrahub/tree/v1.1.0) - 2024-11-29
 
 ### Removed
 
@@ -39,9 +39,9 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fix permission check when using multiple backends, if one grants a permission the next ones must not be queried
 - Update the api/diff/artifacts endpoint to use a dedicated query
 
-## [1.0.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.8) - 2024-12-03
+## [Infrahub - v1.0.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.8) - 2024-12-03
 
-## [1.0.7](https://github.com/opsmill/infrahub/tree/v1.0.7) - 2024-11-20
+## [Infrahub - v1.0.7](https://github.com/opsmill/infrahub/tree/v1.0.7) - 2024-11-20
 
 ### Added
 
