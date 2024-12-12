@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Optional
 
 from infrahub_sdk.batch import InfrahubBatch
 from prefect import flow, task
+from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
 from infrahub.core.branch import Branch  # noqa: TCH001
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
 
 
-@flow(name="schema_apply_migrations", flow_run_name="Apply schema migrations")
+@flow(name="schema_apply_migrations", flow_run_name="Apply schema migrations", persist_result=True)
 async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str]:
     await add_branch_tag(branch_name=message.branch.name)
     log = get_run_logger()
@@ -68,6 +69,7 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
     task_run_name="Migrate Schema Path {migration_name} on {branch.name}",
     description="Apply a given migration to the database",
     retries=3,
+    cache_policy=NONE,
 )
 async def schema_path_migrate(
     branch: Branch,

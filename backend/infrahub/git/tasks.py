@@ -4,6 +4,7 @@ from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import CoreRepository
 from prefect import flow, task
 from prefect.automations import AutomationCore
+from prefect.cache_policies import NONE
 from prefect.client.orchestration import get_client
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
 from prefect.events.actions import RunDeployment
@@ -197,7 +198,9 @@ async def sync_remote_repositories() -> None:
                 log.info(exc.message)
 
 
-@task(name="git-branch-create", task_run_name="Create Branch {branch} in repository {repository_name}")
+@task(
+    name="git-branch-create", task_run_name="Create Branch {branch} in repository {repository_name}", cache_policy=NONE
+)
 async def git_branch_create(
     client: InfrahubClient, branch: str, branch_id: str, repository_id: str, repository_name: str
 ) -> None:
@@ -493,6 +496,7 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
 @flow(
     name="git-repository-diff-names-only",
     flow_run_name="Collecting modifications between commits {model.first_commit} and {model.second_commit}",
+    persist_result=True,
 )
 async def git_repository_diff_names_only(model: GitDiffNamesOnly) -> GitDiffNamesOnlyResponse:
     service = services.service

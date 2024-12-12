@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from infrahub_sdk.batch import InfrahubBatch
 from prefect import flow, task
+from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
 from infrahub.core.branch import Branch  # noqa: TCH001
@@ -18,7 +19,7 @@ from infrahub.workflows.utils import add_branch_tag
 from .models.validate_migration import SchemaValidateMigrationData, SchemaValidatorPathResponseData
 
 
-@flow(name="schema_validate_migrations", flow_run_name="Validate schema migrations")
+@flow(name="schema_validate_migrations", flow_run_name="Validate schema migrations", persist_result=True)
 async def schema_validate_migrations(message: SchemaValidateMigrationData) -> list[SchemaValidatorPathResponseData]:
     batch = InfrahubBatch(return_exceptions=True)
     log = get_run_logger()
@@ -47,6 +48,7 @@ async def schema_validate_migrations(message: SchemaValidateMigrationData) -> li
     task_run_name="Validate schema path {constraint_name} in {branch.name}",
     description="Validate if a given migration is compatible with the existing data",
     retries=3,
+    cache_policy=NONE,
 )
 async def schema_path_validate(
     branch: Branch,

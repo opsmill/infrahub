@@ -2,6 +2,7 @@ from typing import Union
 
 from infrahub_sdk.node import InfrahubNode
 from prefect import task
+from prefect.cache_policies import NONE
 
 from infrahub import lock
 from infrahub.core.constants import InfrahubKind
@@ -10,7 +11,7 @@ from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 
 
-@task
+@task(name="define-artifact", task_run_name="Define Artifact", cache_policy=NONE)
 async def define_artifact(
     message: Union[messages.CheckArtifactCreate, RequestArtifactGenerate], service: InfrahubServices
 ) -> InfrahubNode:
