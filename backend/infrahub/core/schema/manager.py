@@ -3,9 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from infrahub import lock
-from infrahub.core.constants import (
-    InfrahubKind,
-)
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import (
     HashableModelDiff,
@@ -234,8 +231,6 @@ class SchemaManager(NodeManager):
         branch = await registry.get_branch(branch=branch, db=db)
 
         for item_kind in schema.node_names + schema.generic_names:
-            if item_kind == InfrahubKind.PROFILE:
-                continue
             if limit and item_kind not in limit:
                 continue
             item = schema.get(name=item_kind, duplicate=False)

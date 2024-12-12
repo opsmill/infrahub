@@ -1,52 +1,56 @@
+import { SearchAnywhereGroup } from "@/components/search/search-anywhere-group";
+import { SearchAnywhereItem } from "@/components/search/search-anywhere-item";
 import { Skeleton } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { SCHEMA_ATTRIBUTE_KIND, SEARCH_QUERY_NAME } from "@/config/constants";
 import { SEARCH } from "@/graphql/queries/objects/search";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
-import { useLazyQuery } from "@/hooks/useQuery";
+import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { constructPath } from "@/utils/fetch";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
 import { Icon } from "@iconify-icon/react";
+import { Command, useCommandState } from "cmdk";
 import { format } from "date-fns";
-import { ReactElement, useEffect } from "react";
-import { SearchGroup, SearchGroupTitle, SearchResultItem } from "./search-anywhere";
+import { ReactElement } from "react";
 
-type SearchProps = {
-  query: string;
-};
-export const SearchNodes = ({ query }: SearchProps) => {
-  const queryDebounced = useDebounce(query, 300);
-  const [fetchSearchNodes, { data, previousData, error }] = useLazyQuery(SEARCH);
+export const SearchNodes = () => {
+  const query = useCommandState((state) => state.search);
+  const queryDebounced = useDebounce(query.trim(), 300);
 
-  useEffect(() => {
-    const cleanedValue = queryDebounced.trim();
-    fetchSearchNodes({ variables: { search: cleanedValue } });
-  }, [queryDebounced]);
+  const { data, error, loading } = useQuery(SEARCH, {
+    skip: !queryDebounced,
+    variables: { search: queryDebounced },
+  });
 
-  if (error) {
+  if (query === "") {
+    return null;
+  }
+
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center">
-        <Icon icon="mdi:error" className="text-2xl px-2 py-0.5" />
-        <p className="text-sm">{error.message}</p>
-      </div>
+      <SearchAnywhereGroup heading="Objects">
+        <SearchAnywhereItem to="" disabled>
+          Loading...
+        </SearchAnywhereItem>
+      </SearchAnywhereGroup>
     );
   }
 
-  const results = (data || previousData)?.[SEARCH_QUERY_NAME];
+  if (error) return null;
+
+  const results = data?.[SEARCH_QUERY_NAME];
 
   if (!results || results?.count === 0) return null;
 
   return (
-    <SearchGroup>
-      <SearchGroupTitle>Search results for &quot;{query}&quot;</SearchGroupTitle>
-
+    <SearchAnywhereGroup heading="Objects">
       {results.edges.map(({ node }: NodesOptionsProps) => (
         <NodesOptions key={node.id} node={node} />
       ))}
-    </SearchGroup>
+    </SearchAnywhereGroup>
   );
 };
 
@@ -82,13 +86,13 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
   );
 
   return (
-    <SearchResultItem to={url} className="!items-start">
+    <SearchAnywhereItem to={url} value={url}>
       <Icon
         icon={schema.icon || "mdi:code-braces-box"}
-        className="text-lg pr-2 py-0.5 text-custom-blue-700"
+        className="text-lg px-2 py-0.5 text-custom-blue-700"
       />
 
-      <div className="flex-grow text-sm">
+      <div className="flex-grow text-sm overflow-auto">
         <div className="flex justify-between">
           <span className="mr-1 font-semibold text-custom-blue-800">
             {objectDetailsData?.display_label}
@@ -98,7 +102,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
             <Badge variant="blue" className="text-xxs py-0">
               {schema.namespace}
             </Badge>
-            <span className="text-xxs font-medium">{schema.label}</span>
+            <span className="text-xxs font-medium mr-2">{schema.label}</span>
           </div>
         </div>
 
@@ -115,7 +119,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
             ))}
         </div>
       </div>
-    </SearchResultItem>
+    </SearchAnywhereItem>
   );
 };
 
@@ -154,7 +158,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           const color = value.color === "" ? "#f1f1f1" : value.color;
           return (
             <div
-              className="px-1.5 rounded text-gray-700 font-medium text-center border border-transparent"
+              className="px-1.5 rounded text-gray-700 font-medium text-center border border-transparent truncate"
               style={{ background: `${color}40` }}
             >
               {value.label}
@@ -168,16 +172,16 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
   };
 
   return (
-    <div className="flex flex-col text-xxs whitespace-nowrap leading-3">
+    <div className="flex flex-col text-xxs whitespace-nowrap leading-3 overflow-hidden">
       <span>{title}</span>
-      <span className="font-medium text-gray-800">{formatValue() || "-"}</span>
+      <span className="font-medium text-gray-800 truncate">{formatValue() || "-"}</span>
     </div>
   );
 };
 
 export const SearchResultNodeSkeleton = () => {
   return (
-    <div className="flex py-2 w-full">
+    <Command.Item disabled className="flex py-2 w-full">
       <Skeleton className="h-6 w-6 rounded mx-1 mr-2" />
 
       <div className="space-y-2 flex-grow">
@@ -190,6 +194,6 @@ export const SearchResultNodeSkeleton = () => {
           <Skeleton className="h-3 max-w-xl" />
         </div>
       </div>
-    </div>
+    </Command.Item>
   );
 };

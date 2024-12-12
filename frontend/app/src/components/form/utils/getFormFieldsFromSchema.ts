@@ -22,7 +22,6 @@ import { store } from "@/state";
 import { IModelSchema, genericsState, schemaState } from "@/state/atoms/schema.atom";
 import { sortByOrderWeight } from "@/utils/common";
 import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
-import { getRelationshipOptions } from "@/utils/getSchemaObjectColumns";
 
 type GetFormFieldsFromSchema = {
   schema: IModelSchema;
@@ -100,7 +99,6 @@ export const getFormFieldsFromSchema = ({
           isFilterForm,
         }),
         parent: getRelationshipParent(currentRelationshipData),
-        options: getRelationshipOptions(initialObject, attribute, nodes, generics),
         relationship: attribute,
         schema,
       };

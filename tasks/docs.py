@@ -105,7 +105,7 @@ def vale(context: Context) -> None:
         print("Warning, Vale is not installed")
         return
 
-    exec_cmd = "vale $(find . -type f \\( -name '*.mdx' -o -name '*.md' \\) -not -path './docs/node_modules/*')"
+    exec_cmd = "vale $(find ./docs -type f \\( -name '*.mdx' -o -name '*.md' \\) -not -path './docs/node_modules/*')"
     print(" - [docs] Lint docs with vale")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)

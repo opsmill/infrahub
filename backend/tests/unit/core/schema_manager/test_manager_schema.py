@@ -2099,7 +2099,28 @@ async def test_schema_branch_validate_add_node_relationships(
     diff = schema_branch.diff(other=new_schema)
     result = schema_branch.validate_update(other=new_schema, diff=diff)
     assert result.model_dump(exclude=["diff"]) == {
-        "constraints": [],
+        "constraints": [
+            {
+                "constraint_name": "node.relationship.add",
+                "path": {
+                    "field_name": "primary_tag",
+                    "path_type": SchemaPathType.RELATIONSHIP,
+                    "property_name": None,
+                    "schema_id": None,
+                    "schema_kind": "BuiltinCriticality",
+                },
+            },
+            {
+                "constraint_name": "node.relationship.add",
+                "path": {
+                    "field_name": "tags",
+                    "path_type": SchemaPathType.RELATIONSHIP,
+                    "property_name": None,
+                    "schema_id": None,
+                    "schema_kind": "BuiltinCriticality",
+                },
+            },
+        ],
         "enforce_update_support": True,
         "errors": [],
         "migrations": [],

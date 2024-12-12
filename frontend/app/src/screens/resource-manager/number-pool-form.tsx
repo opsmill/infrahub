@@ -138,7 +138,7 @@ export const NumberPoolForm = ({
             </Button>
           )}
 
-          <FormSubmit>{currentObject ? "Update" : "Create"}</FormSubmit>
+          <FormSubmit>Save</FormSubmit>
         </div>
       </Form>
     </div>

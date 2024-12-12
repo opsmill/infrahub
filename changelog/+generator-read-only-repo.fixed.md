@@ -1,1 +1,0 @@
-Fixes a bug that prevented running a generator from a read-only repository
