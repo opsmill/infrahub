@@ -97,7 +97,10 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                 attribute_field = getattr(updated_node, attribute_name)
                 attribute_value = getattr(attribute_field, schema_attribute_path.attribute_property_name or "value")
                 node_value_combination.append(
-                    SchemaAttributePathValue.from_schema_attribute_path(schema_attribute_path, value=attribute_value)
+                    SchemaAttributePathValue.from_schema_attribute_path(
+                        schema_attribute_path,
+                        value=attribute_value.value if attribute_field.is_enum else attribute_value,
+                    )
                 )
         return node_value_combination
 
