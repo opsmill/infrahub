@@ -7,7 +7,9 @@ from starlette.background import BackgroundTasks
 
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import InitializationError
+from infrahub.graphql.resolver import SingleRelationshipResolver
 
 from .manager import GraphQLSchemaManager
 
@@ -80,6 +82,10 @@ def prepare_graphql_params(
 
     if request and not service:
         service = request.app.state.service
+
+    component_registry = get_component_registry()
+    srr = SingleRelationshipResolver(db=db)
+    component_registry.cache_component(srr)
 
     return GraphqlParams(
         schema=gql_schema,
