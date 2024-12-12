@@ -24,6 +24,8 @@ export function SearchAnywhereTrigger({
     );
   }
 
+  const command = navigator.userAgent.includes("Macintosh") ? "command" : "ctrl";
+
   return (
     <Button
       variant="ghost"
@@ -41,7 +43,7 @@ export function SearchAnywhereTrigger({
         </span>
       </div>
 
-      <Kbd keys="command" className="group-data-[collapsed=true]/sidebar:hidden transition-all">
+      <Kbd keys={command} className="group-data-[collapsed=true]/sidebar:hidden transition-all">
         K
       </Kbd>
     </Button>
