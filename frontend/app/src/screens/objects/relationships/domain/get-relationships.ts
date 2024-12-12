@@ -14,7 +14,7 @@ export type GetRelationships = (
   params: GetRelationshipsParams & { limit?: number; offset?: number }
 ) => Promise<Array<RelationshipNode>>;
 
-const RELATIONSHIPS_PER_PAGE = 2;
+const RELATIONSHIPS_PER_PAGE = 20;
 
 export const getRelationships: GetRelationships = async ({ peer, offset, search }) => {
   const currentBranchName = getCurrentBranchName();
@@ -47,7 +47,7 @@ export function relationshipsInfiniteQueryOptions({ peer, search }: GetRelations
     queryFn: ({ pageParam }) => getRelationships({ peer, offset: pageParam, search: search }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
-      if (lastPage.length === 0) {
+      if (lastPage.length < RELATIONSHIPS_PER_PAGE) {
         return undefined;
       }
       return lastPageParam + RELATIONSHIPS_PER_PAGE;

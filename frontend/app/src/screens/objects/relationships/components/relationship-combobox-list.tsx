@@ -5,6 +5,7 @@ import ErrorScreen from "@/screens/errors/error-screen";
 import { AddRelationshipAction } from "@/screens/objects/relationships/components/add-relationship-action";
 import { relationshipsInfiniteQueryOptions } from "@/screens/objects/relationships/domain/get-relationships";
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
+import { debounce } from "@/utils/common";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import React from "react";
 
@@ -22,11 +23,13 @@ export function RelationshipComboboxList({
 
   if (error) return <ErrorScreen message={error.message} />;
 
+  const setSearchDebounced = debounce(setSearch, 300);
+
   return (
     <>
       <ComboboxList
         autoFocus
-        onValueChange={(newValue) => setSearch(newValue)}
+        onValueChange={(newValue) => setSearchDebounced(newValue)}
         shouldFilter={false}
       >
         {isPending ? (
@@ -54,6 +57,7 @@ export function RelationshipComboboxList({
             value="Load more"
             onSelect={() => fetchNextPage()}
             disabled={!hasNextPage || isFetchingNextPage}
+            className="justify-center text-custom-blue-700"
           >
             {isFetchingNextPage ? "Loading more..." : "Load more"}
           </ComboboxItem>
