@@ -716,7 +716,7 @@ class RelationshipGetPeerQuery(Query):
         return [peer.peer_id for peer in self.get_peers()]
 
     def get_peers(self) -> Generator[RelationshipPeerData, None, None]:
-        for result in self.get_results_group_by(("peer", "uuid")):
+        for result in self.get_results_group_by(("peer", "uuid"), ("source_node", "uuid")):
             rels = result.get("rels")
             data = RelationshipPeerData(
                 source_id=result.get_node("source_node").get("uuid"),
