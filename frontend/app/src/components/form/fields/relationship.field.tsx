@@ -21,16 +21,6 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 
-const getGenericParentRelationship = (kind?: string) => {
-  if (!kind) return;
-
-  const nodes = store.get(schemaState);
-  const schemaData = nodes.find((schema) => schema.kind === kind);
-  const parentRelationship = schemaData?.relationships?.find((rel) => rel.kind === "Parent");
-
-  return parentRelationship;
-};
-
 const getParentRelationship = (peer?: string) => {
   if (!peer) return;
 
@@ -68,37 +58,43 @@ const RelationshipField = ({
   const generic = generics.find((generic) => generic.kind === relationship.peer);
 
   const parentRelationship = generic
-    ? getGenericParentRelationship(selectedGeneric?.id)
+    ? getParentRelationship(selectedGeneric?.id)
     : getParentRelationship(relationship?.peer);
 
   const kind = parentRelationship?.peer;
-  const parentSchema = schemaList.find((schema) => schema.kind === kind);
-  const attribute = parentSchema?.relationships?.find((relationship) => {
-    if (parentRelationship?.direction === "bidirectional") {
-      return relationship.identifier === parentRelationship?.identifier;
-    }
+  const parentRelationshipSchema = schemaList.find((schema) => schema.kind === kind);
+  const parentRelationshipAttribute = parentRelationshipSchema?.relationships?.find(
+    (relationship) => {
+      if (parentRelationship?.direction === "bidirectional") {
+        return relationship.identifier === parentRelationship?.identifier;
+      }
 
-    if (parentRelationship?.direction === "inbound") {
-      return (
-        relationship.direction === "outbound" &&
-        relationship.identifier === parentRelationship?.identifier
-      );
-    }
+      if (parentRelationship?.direction === "inbound") {
+        return (
+          relationship.direction === "outbound" &&
+          relationship.identifier === parentRelationship?.identifier
+        );
+      }
 
-    if (parentRelationship?.direction === "outbound") {
-      return (
-        relationship.direction === "inbound" &&
-        relationship.identifier === parentRelationship?.identifier
-      );
-    }
+      if (parentRelationship?.direction === "outbound") {
+        return (
+          relationship.direction === "inbound" &&
+          relationship.identifier === parentRelationship?.identifier
+        );
+      }
 
-    return false;
-  });
+      return false;
+    }
+  );
   const id = defaultValue?.value?.id;
-  const queryString = getRelationshipParent({ kind, attribute: `${attribute?.name}__ids`, id });
+  const queryString = getRelationshipParent({
+    kind,
+    attribute: `${parentRelationshipAttribute?.name}__ids`,
+    id,
+  });
 
   const query =
-    kind && attribute?.name && id
+    kind && parentRelationshipAttribute?.name && id
       ? gql`
           ${queryString}
         `
@@ -108,7 +104,7 @@ const RelationshipField = ({
           }
         `;
 
-  const { data } = useQuery(query, { skip: !parentSchema?.kind || !id });
+  const { data } = useQuery(query, { skip: !parentRelationshipSchema?.kind || !id });
 
   const currentParent = data && kind && data[kind]?.edges[0]?.node;
 
