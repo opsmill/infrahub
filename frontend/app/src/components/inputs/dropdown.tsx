@@ -238,10 +238,6 @@ export const Dropdown = forwardRef<HTMLButtonElement, DropdownProps>(
 
     const selectItem = localItems.find((item) => item.value === value);
 
-    // useEffect(() => {
-    //   setLocalItems(items);
-    // }, [items?.length]);
-
     return (
       <Combobox open={open} onOpenChange={setOpen}>
         <ComboboxTrigger ref={ref} style={getDropdownStyle(selectItem?.color)} {...props}>
