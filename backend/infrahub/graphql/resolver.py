@@ -266,7 +266,7 @@ class SingleRelationshipResolverDataLoader(DataLoader):
         self.query_args = query_args
         self.db = db
 
-    async def batch_load_fn(self, keys: list[Any]) -> list[Relationship]:
+    async def batch_load_fn(self, keys: list[Any]) -> list[Relationship]:  # pylint: disable=method-hidden
         async with self.db.start_session() as db:
             relationships = await NodeManager.query_peers(
                 db=db,
