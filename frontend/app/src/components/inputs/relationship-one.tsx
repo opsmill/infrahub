@@ -1,6 +1,4 @@
 import { Button } from "@/components/buttons/button-primitive";
-import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
-import ObjectForm from "@/components/form/object-form";
 import { PoolValue } from "@/components/form/pool-selector";
 import {
   Combobox,
