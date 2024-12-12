@@ -66,19 +66,11 @@ test.describe("/objects/:objectKind/:objectid", () => {
       await page.getByRole("link", { name: "Backbone: Connected to jfk1-" }).click();
       await page.getByTestId("edit-button").click();
 
-      const kindSelector = page
-        .getByTestId("side-panel-container")
-        .getByText("Kind")
-        .locator("../..")
-        .getByTestId("select-input");
-      await expect(kindSelector).toHaveValue("Circuit Endpoint");
+      const kindSelector = page.getByLabel("Kind").getByTestId("select-value");
+      await expect(kindSelector).toContainText("Circuit Endpoint");
 
-      const nodeSelector = page
-        .getByTestId("side-panel-container")
-        .getByText("Circuit Endpoint")
-        .locator("../..")
-        .getByTestId("select-input");
-      await expect(nodeSelector).toHaveValue(/InfraCircuitEndpoint/g);
+      const nodeSelector = page.getByLabel("Circuit Endpoint").getByTestId("select-value");
+      await expect(nodeSelector).toContainText("InfraCircuitEndpoint");
     });
   });
 });

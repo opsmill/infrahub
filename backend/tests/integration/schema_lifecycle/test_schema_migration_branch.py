@@ -50,7 +50,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         return state.branch
 
     @pytest.fixture(scope="class")
-    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01):
+    async def initial_dataset(self, db: InfrahubDatabase, initialize_registry, schema_step01, client: InfrahubClient):
         await load_schema(db=db, schema=schema_step01)
 
         # Load data in the MAIN branch first

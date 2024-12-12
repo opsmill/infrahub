@@ -7,9 +7,10 @@
       "./coverage",
       "./dist",
       "./playwright-report",
-      "./src/generated",
       "./test-results",
-      "./tests/e2e/.auth"
+      "./tests/e2e/.auth",
+      "./src/generated",
+      "./src/infraops.d.ts"
     ]
   },
   "formatter": {

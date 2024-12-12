@@ -123,12 +123,12 @@ def server_request_hook(span: Span, scope: dict) -> None:  # pylint: disable=unu
 
 FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics", server_request_hook=server_request_hook)
 
-FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend/app"))
-FRONTEND_ASSET_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/assets"
-FRONTEND_FAVICONS_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/favicons"
+FRONTEND_DIRECTORY = Path(os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", "frontend/app")).resolve()
+FRONTEND_ASSET_DIRECTORY = FRONTEND_DIRECTORY / "dist" / "assets"
+FRONTEND_FAVICONS_DIRECTORY = FRONTEND_DIRECTORY / "dist" / "favicons"
 
-DOCS_DIRECTORY = os.environ.get("INFRAHUB_DOCS_DIRECTORY", os.path.abspath("docs"))
-DOCS_BUILD_DIRECTORY = f"{DOCS_DIRECTORY}/build"
+DOCS_DIRECTORY = Path(os.environ.get("INFRAHUB_DOCS_DIRECTORY", Path("docs").resolve()))
+DOCS_BUILD_DIRECTORY = DOCS_DIRECTORY / "build"
 
 log = get_logger()
 gunicorn_logger = logging.getLogger("gunicorn.error")
@@ -136,7 +136,7 @@ logger.handlers = gunicorn_logger.handlers
 
 app.include_router(api)
 
-templates = Jinja2Templates(directory=f"{FRONTEND_DIRECTORY}/dist")
+templates = Jinja2Templates(directory=FRONTEND_DIRECTORY / "dist")
 
 
 @app.middleware("http")
@@ -195,17 +195,17 @@ app.add_exception_handler(ValidationError, partial(generic_api_exception_handler
 app.add_route(path="/metrics", route=handle_metrics)
 app.include_router(graphql_router)
 
-app.mount("/api-static", StaticFiles(directory=f"{CURRENT_DIRECTORY}/api/static"), name="static")
+app.mount("/api-static", StaticFiles(directory=CURRENT_DIRECTORY / "api" / "static"), name="static")
 
-if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIRECTORY):
+if FRONTEND_ASSET_DIRECTORY.exists() and FRONTEND_ASSET_DIRECTORY.is_dir():
     app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
 
 
-if os.path.exists(FRONTEND_FAVICONS_DIRECTORY) and os.path.isdir(FRONTEND_FAVICONS_DIRECTORY):
+if FRONTEND_FAVICONS_DIRECTORY.exists() and FRONTEND_FAVICONS_DIRECTORY.is_dir():
     app.mount("/favicons", StaticFiles(directory=FRONTEND_FAVICONS_DIRECTORY), "favicons")
 
 
-if os.path.exists(DOCS_BUILD_DIRECTORY) and os.path.isdir(DOCS_BUILD_DIRECTORY):
+if DOCS_BUILD_DIRECTORY.exists() and DOCS_BUILD_DIRECTORY.is_dir():
     app.mount("/docs", StaticFiles(directory=DOCS_BUILD_DIRECTORY, html=True, check_dir=True), name="infrahub-docs")
 
 

@@ -1,5 +1,4 @@
 import pytest
-from graphql import graphql
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -10,6 +9,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 
 
 @pytest.fixture

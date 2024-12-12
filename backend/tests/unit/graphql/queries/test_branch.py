@@ -1,11 +1,10 @@
 import operator
 
-from graphql import graphql
-
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import services
+from tests.helpers.graphql import graphql
 from tests.helpers.test_app import TestInfrahubApp
 
 

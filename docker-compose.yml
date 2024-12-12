@@ -64,6 +64,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_DOCS_INDEX_PATH: ${INFRAHUB_DOCS_INDEX_PATH:-/opt/infrahub/docs/build/search-index.json}
   INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS: ${INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS:-false}
   INFRAHUB_EXPERIMENTAL_PULL_REQUEST: ${INFRAHUB_EXPERIMENTAL_PULL_REQUEST:-false}
+  INFRAHUB_GIT_APPEND_GIT_SUFFIX:
   INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_GIT_REPOSITORIES_DIRECTORY:-repositories}
   INFRAHUB_GIT_SYNC_INTERVAL: ${INFRAHUB_GIT_SYNC_INTERVAL:-10}
   INFRAHUB_HTTP_TIMEOUT: ${INFRAHUB_HTTP_TIMEOUT:-10}
@@ -93,6 +94,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_SECURITY_OIDC_PROVIDER_SETTINGS:
   INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME: ${INFRAHUB_SECURITY_REFRESH_TOKEN_LIFETIME:-2592000}
   INFRAHUB_SECURITY_SECRET_KEY:
+  INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP:
   INFRAHUB_STORAGE_BUCKET_NAME:
   INFRAHUB_STORAGE_CUSTOM_DOMAIN:
   INFRAHUB_STORAGE_DEFAULT_ACL:
@@ -119,7 +121,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_WORKFLOW_WORKER_POLLING_INTERVAL: ${INFRAHUB_WORKFLOW_WORKER_POLLING_INTERVAL:-2}
   OTEL_RESOURCE_ATTRIBUTES:
 
-x-task-manager-config: &task-manager_config
+x-task-manager-config:
   INFRAHUB_TASKMANAGER_DB_USER: ${INFRAHUB_TASKMANAGER_DB_USER:-postgres}
   INFRAHUB_TASKMANAGER_DB_PASSWORD: ${INFRAHUB_TASKMANAGER_DB_PASSWORD:-postgres}
   INFRAHUB_TASKMANAGER_DB_DATABASE: ${INFRAHUB_TASKMANAGER_DB_DATABASE:-prefect}
@@ -174,7 +176,8 @@ services:
     command: prefect server start --host 0.0.0.0 --ui
     restart: unless-stopped
     depends_on:
-      - task-manager-db
+      task-manager-db:
+        condition: service_healthy
     environment:
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://${INFRAHUB_TASKMANAGER_DB_USER:-postgres}:${INFRAHUB_TASKMANAGER_DB_PASSWORD:-postgres}@task-manager-db:5432/${INFRAHUB_TASKMANAGER_DB_DATABASE:-prefect}
     healthcheck:
@@ -267,16 +270,11 @@ services:
       INFRAHUB_TIMEOUT: ${INFRAHUB_TIMEOUT:-60}
       INFRAHUB_WORKFLOW_PORT: ${INFRAHUB_WORKFLOW_PORT:-4200}
       PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
-    volumes:
-      - "git_data:/opt/infrahub/git"
-      - "git_remote_data:/remote"
     tty: true
 
 volumes:
   database_data:
   database_logs:
-  git_data:
-  git_remote_data:
   storage_data:
   workflow_db:
   workflow_data:

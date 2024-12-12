@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import infrahubkind as InfrahubKind
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.schema import SchemaRoot, core_models
 
 from .constants import DEFAULT_MENU, MenuSection

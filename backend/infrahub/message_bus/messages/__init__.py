@@ -24,8 +24,6 @@ from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
 from .request_repository_checks import RequestRepositoryChecks
 from .request_repository_userchecks import RequestRepositoryUserChecks
-from .schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
-from .schema_validator_path import SchemaValidatorPath, SchemaValidatorPathResponse
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
@@ -44,8 +42,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "finalize.validator.execution": FinalizeValidatorExecution,
     "git.file.get": GitFileGet,
     "git.repository.connectivity": GitRepositoryConnectivity,
-    "schema.migration.path": SchemaMigrationPath,
-    "schema.validator.path": SchemaValidatorPath,
     "refresh.git.fetch": RefreshGitFetch,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
@@ -61,8 +57,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
 RESPONSE_MAP: dict[str, type[InfrahubResponse]] = {
     "git.file.get": GitFileGetResponse,
     "send.echo.request": SendEchoRequestResponse,
-    "schema.migration.path": SchemaMigrationPathResponse,
-    "schema.validator.path": SchemaValidatorPathResponse,
 }
 
 PRIORITY_MAP = {

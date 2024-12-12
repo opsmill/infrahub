@@ -71,7 +71,7 @@ class AccountGlobalPermissionQuery(Query):
         self.params["account_id"] = self.account_id
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic, is_isolated=False
         )
         self.params.update(branch_params)
 
@@ -185,7 +185,7 @@ class AccountObjectPermissionQuery(Query):
         self.params["account_id"] = self.account_id
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic, is_isolated=False
         )
         self.params.update(branch_params)
 
@@ -336,7 +336,7 @@ class AccountRoleGlobalPermissionQuery(Query):
         self.params["role_id"] = self.role_id
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic, is_isolated=False
         )
         self.params.update(branch_params)
 
@@ -425,7 +425,7 @@ class AccountRoleObjectPermissionQuery(Query):
         self.params["role_id"] = self.role_id
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic, is_isolated=False
         )
         self.params.update(branch_params)
 

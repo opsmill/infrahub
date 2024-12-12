@@ -34,7 +34,7 @@ ANONYMOUS_TELEMETRY_SEND = WorkflowDefinition(
 
 SCHEMA_APPLY_MIGRATION = WorkflowDefinition(
     name="schema_apply_migrations",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.core.migrations.schema.tasks",
     function="schema_apply_migrations",
     tags=[WorkflowTag.DATABASE_CHANGE],
@@ -42,28 +42,29 @@ SCHEMA_APPLY_MIGRATION = WorkflowDefinition(
 
 SCHEMA_VALIDATE_MIGRATION = WorkflowDefinition(
     name="schema_validate_migrations",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.core.validators.tasks",
     function="schema_validate_migrations",
 )
 
 TRIGGER_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
     name="artifact-definition-generate",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.git.tasks",
     function="generate_artifact_definition",
 )
 
 TRIGGER_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
     name="generator_definition_run",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.generators.tasks",
     function="run_generator_definition",
+    tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
 IPAM_RECONCILIATION = WorkflowDefinition(
     name="ipam_reconciliation",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.core.ipam.tasks",
     function="ipam_reconciliation",
     tags=[WorkflowTag.DATABASE_CHANGE],
@@ -71,44 +72,55 @@ IPAM_RECONCILIATION = WorkflowDefinition(
 
 REQUEST_GENERATOR_RUN = WorkflowDefinition(
     name="generator-run",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.USER,
     module="infrahub.generators.tasks",
     function="run_generator",
+    tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
 REQUEST_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
     name="request_generator_definition_run",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.generators.tasks",
     function="request_generator_definition_run",
+    tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
 REQUEST_ARTIFACT_GENERATE = WorkflowDefinition(
     name="artifact-generate",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,  # NOTE need to check
     module="infrahub.git.tasks",
     function="generate_artifact",
+    tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
 REQUEST_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
     name="request_artifact_definitions_generate",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.git.tasks",
     function="generate_request_artifact_definition",
+    tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
-REQUEST_DIFF_UPDATE = WorkflowDefinition(
+DIFF_UPDATE = WorkflowDefinition(
     name="diff-update",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.core.diff.tasks",
     function="update_diff",
 )
 
-REQUEST_DIFF_REFRESH = WorkflowDefinition(
+DIFF_REFRESH = WorkflowDefinition(
     name="diff-refresh",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.core.diff.tasks",
     function="refresh_diff",
+)
+
+DIFF_REFRESH_ALL = WorkflowDefinition(
+    name="diff-refresh-all",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.core.diff.tasks",
+    function="refresh_diff_all",
 )
 
 GIT_REPOSITORIES_SYNC = WorkflowDefinition(
@@ -121,7 +133,7 @@ GIT_REPOSITORIES_SYNC = WorkflowDefinition(
 
 GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
     name="git_repositories_create_branch",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.git.tasks",
     function="create_branch",
     tags=[WorkflowTag.DATABASE_CHANGE],
@@ -129,7 +141,7 @@ GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
 
 GIT_REPOSITORY_ADD = WorkflowDefinition(
     name="git-repository-add-read-write",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.git.tasks",
     function="add_git_repository",
     tags=[WorkflowTag.DATABASE_CHANGE],
@@ -137,7 +149,7 @@ GIT_REPOSITORY_ADD = WorkflowDefinition(
 
 GIT_REPOSITORY_ADD_READ_ONLY = WorkflowDefinition(
     name="git-repository-add-read-only",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.git.tasks",
     function="add_git_repository_read_only",
     tags=[WorkflowTag.DATABASE_CHANGE],
@@ -145,14 +157,14 @@ GIT_REPOSITORY_ADD_READ_ONLY = WorkflowDefinition(
 
 GIT_REPOSITORIES_PULL_READ_ONLY = WorkflowDefinition(
     name="git-repository-pull-read-only",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.git.tasks",
     function="pull_read_only",
 )
 
 GIT_REPOSITORIES_MERGE = WorkflowDefinition(
     name="git-repository-merge",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.git.tasks",
     function="merge_git_repository",
     tags=[WorkflowTag.DATABASE_CHANGE],
@@ -160,7 +172,7 @@ GIT_REPOSITORIES_MERGE = WorkflowDefinition(
 
 BRANCH_REBASE = WorkflowDefinition(
     name="branch-rebase",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.core.branch.tasks",
     function="rebase_branch",
     tags=[WorkflowTag.DATABASE_CHANGE],
@@ -168,7 +180,7 @@ BRANCH_REBASE = WorkflowDefinition(
 
 BRANCH_CREATE = WorkflowDefinition(
     name="create-branch",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.core.branch.tasks",
     function="create_branch",
     tags=[WorkflowTag.DATABASE_CHANGE],
@@ -176,7 +188,7 @@ BRANCH_CREATE = WorkflowDefinition(
 
 BRANCH_MERGE = WorkflowDefinition(
     name="branch-merge",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.core.branch.tasks",
     function="merge_branch",
     tags=[WorkflowTag.DATABASE_CHANGE],
@@ -184,7 +196,7 @@ BRANCH_MERGE = WorkflowDefinition(
 
 BRANCH_MERGE_MUTATION = WorkflowDefinition(
     name="merge-branch-mutation",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.graphql.mutations.tasks",
     function="merge_branch_mutation",
     tags=[WorkflowTag.DATABASE_CHANGE],
@@ -192,120 +204,122 @@ BRANCH_MERGE_MUTATION = WorkflowDefinition(
 
 BRANCH_DELETE = WorkflowDefinition(
     name="branch-delete",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.core.branch.tasks",
     function="delete_branch",
 )
 
 BRANCH_VALIDATE = WorkflowDefinition(
     name="branch-validate",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.core.branch.tasks",
     function="validate_branch",
 )
 
 BRANCH_CANCEL_PROPOSED_CHANGES = WorkflowDefinition(
     name="proposed-changes-cancel-branch",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.proposed_change.tasks",
     function="cancel_proposed_changes_branch",
 )
 
 PROPOSED_CHANGE_MERGE = WorkflowDefinition(
     name="proposed-change-merge",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.proposed_change.tasks",
     function="merge_proposed_change",
+    tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
 UPDATE_GRAPHQL_QUERY_GROUP = WorkflowDefinition(
     name="update_graphql_query_group",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.groups.tasks",
     function="update_graphql_query_group",
 )
 
 PROCESS_COMPUTED_MACRO = WorkflowDefinition(
     name="process_computed_attribute_jinja2",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.computed_attribute.tasks",
     function="process_jinja2",
+    tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
 TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES = WorkflowDefinition(
     name="trigger_update_jinja2_computed_attributes",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.computed_attribute.tasks",
     function="trigger_update_jinja2_computed_attributes",
 )
 
 TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES = WorkflowDefinition(
     name="trigger_update_python_computed_attributes",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.computed_attribute.tasks",
     function="trigger_update_python_computed_attributes",
 )
 
 COMPUTED_ATTRIBUTE_SETUP = WorkflowDefinition(
     name="computed-attribute-setup",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.computed_attribute.tasks",
     function="computed_attribute_setup",
 )
 
 COMPUTED_ATTRIBUTE_SETUP_PYTHON = WorkflowDefinition(
     name="computed-attribute-setup-python",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.computed_attribute.tasks",
     function="computed_attribute_setup_python",
 )
 
-
 UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM = WorkflowDefinition(
     name="process_computed_attribute_transform",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.USER,
     module="infrahub.computed_attribute.tasks",
     function="process_transform",
+    tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
 QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS = WorkflowDefinition(
     name="query-computed-attribute-transform-targets",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.computed_attribute.tasks",
     function="query_transform_targets",
 )
 
 REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY = WorkflowDefinition(
     name="proposed-changed-data-integrity",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.proposed_change.tasks",
     function="run_proposed_change_data_integrity_check",
 )
 
 REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY = WorkflowDefinition(
     name="proposed-changed-schema-integrity",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.proposed_change.tasks",
     function="run_proposed_change_schema_integrity_check",
 )
 
 REQUEST_PROPOSED_CHANGE_USER_TESTS = WorkflowDefinition(
     name="proposed-changed-user-tests",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.USER,
     module="infrahub.proposed_change.tasks",
     function="run_proposed_change_user_tests",
 )
 
 AUTOMATION_SCHEMA_UPDATED = WorkflowDefinition(
     name="schema-updated-setup",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.schema.tasks",
     function="schema_updated_setup",
 )
 
 AUTOMATION_GIT_UPDATED = WorkflowDefinition(
     name="git-commit-automation-setup",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.CORE,
     module="infrahub.git.tasks",
     function="setup_commit_automation",
 )
@@ -319,7 +333,7 @@ GIT_REPOSITORIES_DIFF_NAMES_ONLY = WorkflowDefinition(
 
 GIT_REPOSITORIES_IMPORT_OBJECTS = WorkflowDefinition(
     name="git-repository-import-object",
-    type=WorkflowType.INTERNAL,
+    type=WorkflowType.USER,
     module="infrahub.git.tasks",
     function="import_objects_from_git_repository",
     tags=[WorkflowTag.DATABASE_CHANGE],
@@ -378,6 +392,9 @@ workflows = [
     BRANCH_VALIDATE,
     COMPUTED_ATTRIBUTE_SETUP,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
+    DIFF_REFRESH,
+    DIFF_REFRESH_ALL,
+    DIFF_UPDATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
     GIT_REPOSITORIES_DIFF_NAMES_ONLY,
     GIT_REPOSITORIES_IMPORT_OBJECTS,
@@ -392,8 +409,6 @@ workflows = [
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_ARTIFACT_GENERATE,
-    REQUEST_DIFF_REFRESH,
-    REQUEST_DIFF_UPDATE,
     REQUEST_GENERATOR_DEFINITION_RUN,
     REQUEST_GENERATOR_RUN,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,

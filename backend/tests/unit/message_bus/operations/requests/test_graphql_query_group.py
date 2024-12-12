@@ -1,6 +1,4 @@
-import os
 import uuid
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -18,9 +16,7 @@ from tests.helpers.utils import init_global_service
 
 @pytest.fixture
 async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
-    response_text = Path(os.path.join(helper.get_fixtures_dir(), "schemas", "schema_02.json")).read_text(
-        encoding="UTF-8"
-    )
+    response_text = (helper.get_fixtures_dir() / "schemas" / "schema_02.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=ujson.loads(response_text))
     return httpx_mock

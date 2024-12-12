@@ -1,6 +1,7 @@
 from datetime import timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from infrahub_sdk.protocols import CoreNode
 from prefect import flow
 from prefect.automations import AutomationCore
 from prefect.client.orchestration import get_client
@@ -24,7 +25,8 @@ from infrahub.workflows.catalogue import (
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
 )
-from infrahub.workflows.utils import add_branch_tag, wait_for_schema_to_converge
+from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
+from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .constants import (
     PROCESS_AUTOMATION_NAME,
@@ -56,7 +58,7 @@ mutation UpdateAttribute(
 
 @flow(
     name="process_computed_attribute_transform",
-    flow_run_name="Process computed attribute on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
+    flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
 )
 async def process_transform(
     branch_name: str,
@@ -66,8 +68,7 @@ async def process_transform(
     computed_attribute_kind: str,  # pylint: disable=unused-argument
     updated_fields: list[str] | None = None,  # pylint: disable=unused-argument
 ) -> None:
-    """Request to the creation of git branches in available repositories."""
-    await add_branch_tag(branch_name=branch_name)
+    await add_tags(branches=[branch_name], nodes=[object_id])
 
     service = services.service
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
@@ -142,6 +143,8 @@ async def trigger_update_python_computed_attributes(
     computed_attribute_kind: str,
 ) -> None:
     service = services.service
+    await add_tags(branches=[branch_name])
+
     nodes = await service.client.all(kind=computed_attribute_kind, branch=branch_name)
 
     for node in nodes:
@@ -158,8 +161,59 @@ async def trigger_update_python_computed_attributes(
 
 
 @flow(
+    name="process_computed_attribute_value_jinja2",
+    flow_run_name="Update value for computed attribute {attribute_name}",
+)
+async def update_computed_attribute_value_jinja2(
+    branch_name: str, obj: CoreNode, attribute_name: str, template_value: str
+) -> None:
+    log = get_run_logger()
+    service = services.service
+
+    await add_tags(branches=[branch_name], nodes=[obj.id], others=[TAG_NAMESPACE, WorkflowTag.DATABASE_CHANGE.render()])
+
+    macro_definition = MacroDefinition(macro=template_value)
+    my_filter = {}
+    for variable in macro_definition.variables:
+        components = variable.split("__")
+        if len(components) == 2:
+            property_name = components[0]
+            property_value = components[1]
+            attribute_property = getattr(obj, property_name)
+            my_filter[variable] = getattr(attribute_property, property_value)
+        elif len(components) == 3:
+            relationship_name = components[0]
+            property_name = components[1]
+            property_value = components[2]
+            relationship = getattr(obj, relationship_name)
+            try:
+                attribute_property = getattr(relationship.peer, property_name)
+                my_filter[variable] = getattr(attribute_property, property_value)
+            except ValueError:
+                my_filter[variable] = ""
+
+    value = macro_definition.render(variables=my_filter)
+    existing_value = getattr(obj, attribute_name).value
+    if value == existing_value:
+        log.debug(f"Ignoring to update {obj} with existing value on {attribute_name}={value}")
+        return
+
+    await service.client.execute_graphql(
+        query=UPDATE_ATTRIBUTE,
+        variables={
+            "id": obj.id,
+            "kind": obj.get_kind(),
+            "attribute": attribute_name,
+            "value": value,
+        },
+        branch_name=branch_name,
+    )
+    log.info(f"Updating computed attribute {obj.get_kind()}.{attribute_name}='{value}' ({obj.id})")
+
+
+@flow(
     name="process_computed_attribute_jinja2",
-    flow_run_name="Process computed attribute on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
+    flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
 )
 async def process_jinja2(
     branch_name: str,
@@ -169,10 +223,16 @@ async def process_jinja2(
     computed_attribute_kind: str,
     updated_fields: list[str] | None = None,
 ) -> None:
-    """Request to the creation of git branches in available repositories."""
     log = get_run_logger()
     service = services.service
-    schema_branch = registry.schema.get_schema_branch(name=branch_name)
+
+    await add_tags(branches=[branch_name])
+
+    target_branch_schema = (
+        branch_name if branch_name in registry.get_altered_schema_branches() else registry.default_branch
+    )
+    schema_branch = registry.schema.get_schema_branch(name=target_branch_schema)
+    await service.client.schema.all(branch=branch_name, refresh=True)
 
     computed_macros = [
         attrib
@@ -182,11 +242,15 @@ async def process_jinja2(
         if attrib.kind == computed_attribute_kind and attrib.attribute.name == computed_attribute_name
     ]
     for computed_macro in computed_macros:
-        found = []
+        found: list[CoreNode] = []
         for id_filter in computed_macro.node_filters:
             filters = {id_filter: object_id}
-            nodes = await service.client.filters(
-                kind=computed_macro.kind, prefetch_relationships=True, populate_store=True, **filters
+            nodes: list[CoreNode] = await service.client.filters(
+                kind=computed_macro.kind,
+                branch=branch_name,
+                prefetch_relationships=True,
+                populate_store=True,
+                **filters,
             )
             found.extend(nodes)
 
@@ -196,51 +260,23 @@ async def process_jinja2(
         template_string = "n/a"
         if computed_macro.attribute.computed_attribute and computed_macro.attribute.computed_attribute.jinja2_template:
             template_string = computed_macro.attribute.computed_attribute.jinja2_template
-        macro_definition = MacroDefinition(macro=template_string)
+
+        batch = await service.client.create_batch()
         for node in found:
-            my_filter = {}
-            for variable in macro_definition.variables:
-                components = variable.split("__")
-                if len(components) == 2:
-                    property_name = components[0]
-                    property_value = components[1]
-                    attribute_property = getattr(node, property_name)
-                    my_filter[variable] = getattr(attribute_property, property_value)
-                elif len(components) == 3:
-                    relationship_name = components[0]
-                    property_name = components[1]
-                    property_value = components[2]
-                    relationship = getattr(node, relationship_name)
-                    try:
-                        attribute_property = getattr(relationship.peer, property_name)
-                        my_filter[variable] = getattr(attribute_property, property_value)
-                    except ValueError:
-                        my_filter[variable] = ""
-
-            value = macro_definition.render(variables=my_filter)
-            existing_value = getattr(node, computed_macro.attribute.name).value
-            if value == existing_value:
-                log.debug(f"Ignoring to update {node} with existing value on {computed_macro.attribute.name}={value}")
-                continue
-
-            await service.client.execute_graphql(
-                query=UPDATE_ATTRIBUTE,
-                variables={
-                    "id": node.id,
-                    "kind": computed_macro.kind,
-                    "attribute": computed_macro.attribute.name,
-                    "value": value,
-                },
+            batch.add(
+                task=update_computed_attribute_value_jinja2,
                 branch_name=branch_name,
+                obj=node,
+                attribute_name=computed_macro.attribute.name,
+                template_value=template_string,
             )
-            log.info(
-                f"Updating computed attribute {computed_attribute_kind}.{computed_attribute_name}='{value}' ({node.id})"
-            )
+
+        _ = [response async for _, response in batch.execute()]
 
 
 @flow(
     name="trigger_update_jinja2_computed_attributes",
-    flow_run_name="Trigger updates for computed attributes on branch {branch_name} for {computed_attribute_kind}.{computed_attribute_name}",
+    flow_run_name="Trigger updates for computed attributes for {computed_attribute_kind}.{computed_attribute_name}",
 )
 async def trigger_update_jinja2_computed_attributes(
     branch_name: str,
@@ -248,6 +284,8 @@ async def trigger_update_jinja2_computed_attributes(
     computed_attribute_kind: str,
 ) -> None:
     service = services.service
+    await add_tags(branches=[branch_name])
+
     nodes = await service.client.all(kind=computed_attribute_kind, branch=branch_name)
 
     for node in nodes:
@@ -264,9 +302,12 @@ async def trigger_update_jinja2_computed_attributes(
 
 
 @flow(name="computed-attribute-setup", flow_run_name="Setup computed attributes in task-manager")
-async def computed_attribute_setup(branch_name: str | None = None) -> None:
+async def computed_attribute_setup(branch_name: str | None = None) -> None:  # pylint: disable=too-many-statements
     service = services.service
     branch_name = branch_name or registry.default_branch
+
+    await add_tags(branches=[branch_name])
+
     log = get_run_logger()
     await wait_for_schema_to_converge(branch_name=branch_name, service=service, log=log)
 
@@ -295,6 +336,10 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:
             log.info(f"processing {computed_attribute.key_name}")
             scope = registry.default_branch
 
+            match_criteria: dict[str, Any] = {"infrahub.node.kind": source_node_types}
+            if branches_with_diff_from_main:
+                match_criteria["infrahub.branch.name"] = [f"!{branch}" for branch in branches_with_diff_from_main]
+
             automation = AutomationCore(
                 name=PROCESS_AUTOMATION_NAME.format(
                     prefix=PROCESS_JINJA2_AUTOMATION_NAME_PREFIX, identifier=computed_attribute.key_name, scope=scope
@@ -305,12 +350,7 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:
                     posture=Posture.Reactive,
                     expect={"infrahub.node.*"},
                     within=timedelta(0),
-                    match=ResourceSpecification(
-                        {
-                            "infrahub.node.kind": source_node_types,
-                            "infrahub.branch.name": [f"!{branch}" for branch in branches_with_diff_from_main],
-                        }
-                    ),
+                    match=ResourceSpecification(match_criteria),
                     threshold=1,
                 ),
                 actions=[
@@ -355,15 +395,14 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:
             mapping = schema_branch.computed_attributes.get_jinja2_target_map()
             for computed_attribute, source_node_types in mapping.items():
                 log.info(f"processing {computed_attribute.key_name}")
-                scope = diff_branch
 
                 automation = AutomationCore(
                     name=PROCESS_AUTOMATION_NAME.format(
                         prefix=PROCESS_PYTHON_AUTOMATION_NAME_PREFIX,
                         identifier=computed_attribute.key_name,
-                        scope=scope,
+                        scope=diff_branch,
                     ),
-                    description=f"Process value of the computed attribute for {computed_attribute.key_name} [{scope}]",
+                    description=f"Process value of the computed attribute for {computed_attribute.key_name} [{diff_branch}]",
                     enabled=True,
                     trigger=EventTrigger(
                         posture=Posture.Reactive,
@@ -372,7 +411,7 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:
                         match=ResourceSpecification(
                             {
                                 "infrahub.node.kind": source_node_types,
-                                "infrahub.branch.name": scope,
+                                "infrahub.branch.name": diff_branch,
                             }
                         ),
                         threshold=1,
@@ -393,9 +432,9 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:
                     ],
                 )
 
-                if existing_computed_attr_automations.has(identifier=computed_attribute.key_name, scope=scope):
+                if existing_computed_attr_automations.has(identifier=computed_attribute.key_name, scope=diff_branch):
                     existing = existing_computed_attr_automations.get(
-                        identifier=computed_attribute.key_name, scope=scope
+                        identifier=computed_attribute.key_name, scope=diff_branch
                     )
                     await client.update_automation(automation_id=existing.id, automation=automation)
                     automations_to_keep.append(existing.id)
@@ -429,6 +468,10 @@ async def computed_attribute_setup_python(
 ) -> None:
     log = get_run_logger()
     service = services.service
+
+    if branch_name:
+        await add_tags(branches=[branch_name])
+
     await wait_for_schema_to_converge(branch_name=registry.default_branch, service=service, log=log)
 
     schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
@@ -594,14 +637,14 @@ async def computed_attribute_setup_python(
 
 @flow(
     name="query-computed-attribute-transform-targets",
-    flow_run_name="Query for potential targets of computed attributes in branch {branch_name} for {node_kind}",
+    flow_run_name="Query for potential targets of computed attributes for {node_kind}",
 )
 async def query_transform_targets(
     branch_name: str,
     node_kind: str,  # pylint: disable=unused-argument
     object_id: str,
 ) -> None:
-    await add_branch_tag(branch_name=branch_name)
+    await add_tags(branches=[branch_name])
     service = services.service
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     targets = await service.client.execute_graphql(

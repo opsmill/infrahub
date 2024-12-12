@@ -69,7 +69,7 @@ export function RelationshipsButtons({ permission }: RelationshipsButtonsProps) 
       await addRelationship({
         variables: {
           objectId: objectid,
-          relationshipIds: [relation],
+          relationshipIds: [{ id: relation.id }],
           relationshipName: relationshipSchema?.name,
         },
       });

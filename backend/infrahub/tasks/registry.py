@@ -36,14 +36,13 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
                         hash_new=new_branch.active_schema_hash.main,
                         worker=WORKER_IDENTITY,
                     )
+                    await registry.schema.load_schema(db=db, branch=new_branch)
                     registry.branch[new_branch.name] = new_branch
 
-                    await registry.schema.load_schema(db=db, branch=new_branch)
-
             else:
-                registry.branch[new_branch.name] = new_branch
                 log.info("New branch detected, pulling schema", branch=new_branch.name, worker=WORKER_IDENTITY)
                 await registry.schema.load_schema(db=db, branch=new_branch)
+                registry.branch[new_branch.name] = new_branch
 
         for branch_name in list(registry.branch.keys()):
             if branch_name not in active_branches:

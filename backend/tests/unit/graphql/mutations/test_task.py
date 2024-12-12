@@ -1,8 +1,7 @@
-from graphql import graphql
-
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 
 CREATE_TASK = """
 mutation CreateTask(

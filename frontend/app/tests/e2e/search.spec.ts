@@ -22,8 +22,8 @@ test.describe("when searching an object", () => {
       await expect(page.getByTestId("search-anywhere")).not.toBeVisible();
     });
 
-    await test.step("open search anywhere modal when typing on header input", async () => {
-      await page.keyboard.press("Enter");
+    await test.step("open search anywhere modal when using shortcut", async () => {
+      await page.keyboard.press("ControlOrMeta+k");
       await expect(page.getByTestId("search-anywhere")).toBeVisible();
     });
   });
@@ -37,7 +37,7 @@ test.describe("when searching an object", () => {
     });
 
     await test.step("find a matching result", async () => {
-      await page.getByTestId("search-anywhere").getByPlaceholder("Search anywhere").fill("devi");
+      await page.getByTestId("search-anywhere-input").fill("devi");
       await expect(page.getByTestId("search-anywhere")).toContainText("Go to");
       await page.getByRole("option", { name: "Menu Device" }).click();
       await expect(page.getByRole("heading", { name: "Device" })).toBeVisible();
@@ -53,12 +53,13 @@ test.describe("when searching an object", () => {
       await expect(page.getByTestId("search-anywhere")).toBeVisible();
     });
 
-    const searchAnywhere = page.getByTestId("search-anywhere");
     await test.step("open search anywhere modal when typing on header input", async () => {
-      await searchAnywhere.getByPlaceholder("Search anywhere").fill("no_results_query_for_test");
-      await expect(searchAnywhere.getByRole("option")).toContainText(
-        "Search in docs: no_results_query_for_test"
-      );
+      await page.getByTestId("search-anywhere-input").fill("no_results_query_for_test");
+      await expect(
+        page
+          .getByTestId("search-anywhere")
+          .getByRole("option", { name: "Search in docs: no_results_query_for_test" })
+      ).toBeVisible();
     });
   });
 
@@ -71,7 +72,7 @@ test.describe("when searching an object", () => {
     });
 
     await test.step("find a matching result", async () => {
-      await page.getByTestId("search-anywhere").getByPlaceholder("Search anywhere").fill("atl1");
+      await page.getByTestId("search-anywhere-input").fill("atl1");
       await expect(
         page.getByTestId("search-anywhere").getByRole("option", { name: "atl1 Location Site" })
       ).toBeVisible();
@@ -89,7 +90,7 @@ test.describe("when searching an object", () => {
       await expect(page.getByTestId("search-anywhere")).toBeVisible();
     });
 
-    await page.getByTestId("search-anywhere").getByPlaceholder("Search anywhere").fill(uuid);
+    await page.getByTestId("search-anywhere-input").fill(uuid);
     await expect(
       page.getByRole("option", { name: "AS174 174 Infra Autonomous System" })
     ).toBeVisible();

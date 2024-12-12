@@ -1,9 +1,8 @@
-from graphql import graphql
-
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 
 
 async def test_display_label_generic(db: InfrahubDatabase, animal_person_schema, branch: Branch):

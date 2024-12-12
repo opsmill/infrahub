@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from typing import AsyncGenerator, Generator
 
 import pytest
@@ -33,10 +33,9 @@ from .test_client import InfrahubTestClient
 
 class TestInfrahub:
     @pytest.fixture(scope="class")
-    def local_storage_dir(self, tmpdir_factory: pytest.TempdirFactory) -> str:
-        storage_dir = os.path.join(str(tmpdir_factory.getbasetemp().strpath), "storage")
-        if not os.path.exists(storage_dir):
-            os.mkdir(storage_dir)
+    def local_storage_dir(self, tmpdir_factory: pytest.TempdirFactory) -> Path:
+        storage_dir = Path(tmpdir_factory.getbasetemp().strpath) / "storage"
+        storage_dir.mkdir(parents=True, exist_ok=True)
 
         config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
         config.SETTINGS.storage.local.path_ = storage_dir
@@ -44,7 +43,7 @@ class TestInfrahub:
         return storage_dir
 
     @pytest.fixture(scope="class")
-    async def default_branch(self, local_storage_dir: str, db: InfrahubDatabase) -> Branch:
+    async def default_branch(self, local_storage_dir: Path, db: InfrahubDatabase) -> Branch:
         registry.delete_all()
         await delete_all_nodes(db=db)
         await create_root_node(db=db)
@@ -109,7 +108,10 @@ class TestInfrahubApp(TestInfrahub):
         self, test_client: InfrahubTestClient, api_token: str, bus_simulator: BusSimulator
     ) -> InfrahubClient:
         config = Config(
-            api_token=api_token, requester=test_client.async_request, sync_requester=test_client.sync_request
+            api_token=api_token,
+            requester=test_client.async_request,
+            sync_requester=test_client.sync_request,
+            schema_converge_timeout=5,
         )
 
         sdk_client = InfrahubClient(config=config)

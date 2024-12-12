@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import logging
 import os
 import sys
 import time
@@ -61,6 +62,7 @@ from tests.helpers.constants import (
 from tests.helpers.utils import get_exposed_port, start_neo4j_container
 
 ResponseClass = TypeVar("ResponseClass")
+DEFAULT_TESTING_LOG_LEVEL = "WARNING"
 
 
 def pytest_addoption(parser):
@@ -77,6 +79,15 @@ def pytest_configure(config):
 
     if not config.option.neo4j:
         setattr(config.option, "markexpr", markexpr)
+
+    log_level = config.option.log_level
+    log_level = log_level if log_level is not None else DEFAULT_TESTING_LOG_LEVEL
+
+    # We can't control logging through INFRAHUB_LOG_LEVEL and PREFECT_LOGGING_LEVEL here
+    # because logging configuration has already been setup when `log.py` is imported,
+    # thus we directly set level of corresponding loggers.
+    logging.getLogger().setLevel(log_level)  # root logger
+    logging.getLogger("prefect").setLevel(log_level)  # prefect logger
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -114,17 +125,29 @@ async def db(
 
 @pytest.fixture
 async def empty_database(db: InfrahubDatabase) -> None:
+    await do_empty_database(db=db)
+
+
+async def do_empty_database(db: InfrahubDatabase) -> None:
     await delete_all_nodes(db=db)
     await create_root_node(db=db)
 
 
 @pytest.fixture
 async def reset_registry(db: InfrahubDatabase) -> None:
+    await do_reset_registry(db=db)
+
+
+async def do_reset_registry(db: InfrahubDatabase) -> None:
     registry.delete_all()
 
 
 @pytest.fixture
 async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
+    return await do_default_branch(db=db)
+
+
+async def do_default_branch(db: InfrahubDatabase) -> Branch:
     branch = await create_default_branch(db=db)
     await create_global_branch(db=db)
     registry.schema = SchemaManager()
@@ -142,28 +165,40 @@ async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema)
 
 @pytest.fixture
 def local_storage_dir(tmp_path: Path) -> Path:
+    return do_local_storage_dir(tmp_path=tmp_path)
+
+
+def do_local_storage_dir(tmp_path: Path) -> Path:
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir()
 
     config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
-    config.SETTINGS.storage.local.path_ = str(storage_dir)
+    config.SETTINGS.storage.local.path_ = storage_dir
 
     return storage_dir
 
 
 @pytest.fixture
 async def register_internal_models_schema(default_branch: Branch) -> SchemaBranch:
+    return await do_register_internal_models_schema(branch=default_branch)
+
+
+async def do_register_internal_models_schema(branch: Branch) -> SchemaBranch:
     schema = SchemaRoot(**internal_schema)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    default_branch.update_schema_hash()
+    schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
+    branch.update_schema_hash()
     return schema_branch
 
 
 @pytest.fixture
 async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
+    return await do_register_core_models_schema(branch=default_branch)
+
+
+async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
     schema = SchemaRoot(**core_models)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    default_branch.update_schema_hash()
+    schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
+    branch.update_schema_hash()
     return schema_branch
 
 
@@ -385,7 +420,7 @@ def reload_settings_before_each_module(tmpdir_factory):
     config.SETTINGS.workflow.driver = config.WorkflowDriver.LOCAL
 
     storage_dir = tmpdir_factory.mktemp("storage")
-    config.SETTINGS.storage.local.path_ = str(storage_dir)
+    config.SETTINGS.storage.local.path_ = storage_dir
 
     config.SETTINGS.broker.enable = False
     config.SETTINGS.cache.enable = True
@@ -668,6 +703,109 @@ async def animal_person_schema(
     db: InfrahubDatabase, default_branch: Branch, animal_person_schema_unregistered
 ) -> SchemaBranch:
     return registry.schema.register_schema(schema=animal_person_schema_unregistered, branch=default_branch.name)
+
+
+@pytest.fixture
+async def dependent_generics_unregistered(db: InfrahubDatabase, node_group_schema, data_schema) -> SchemaRoot:
+    schema: dict[str, Any] = {
+        "generics": [
+            {
+                "name": "Animal",
+                "namespace": "Test",
+                "human_friendly_id": ["owner__name__value", "name__value"],
+                "uniqueness_constraints": [
+                    ["owner", "name__value"],
+                ],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text"},
+                    {"name": "weight", "kind": "Number", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "peer": "TestPerson",
+                        "optional": False,
+                        "identifier": "person__animal",
+                        "cardinality": "one",
+                        "direction": "outbound",
+                    },
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "human_friendly_id": ["name__value"],
+                "uniqueness_constraints": [
+                    ["name__value"],
+                ],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text"},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "animals",
+                        "peer": "TestAnimal",
+                        "identifier": "person__animal",
+                        "cardinality": "many",
+                        "direction": "inbound",
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Dog",
+                "namespace": "Test",
+                "inherit_from": ["TestAnimal"],
+                "display_labels": ["name__value", "breed__value"],
+                "attributes": [
+                    {"name": "breed", "kind": "Text", "optional": False},
+                    {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
+                ],
+            },
+            {
+                "name": "Cat",
+                "namespace": "Test",
+                "inherit_from": ["TestAnimal"],
+                "display_labels": ["name__value", "breed__value", "color__value"],
+                "attributes": [
+                    {"name": "breed", "kind": "Text", "optional": False},
+                    {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
+                ],
+            },
+            {
+                "name": "Human",
+                "namespace": "Test",
+                "display_labels": ["name__value"],
+                "inherit_from": ["TestPerson"],
+                "default_filter": "name__value",
+                "human_friendly_id": ["name__value"],
+            },
+            {
+                "name": "Cylon",
+                "namespace": "Test",
+                "display_labels": ["name__value"],
+                "inherit_from": ["TestPerson"],
+                "default_filter": "name__value",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "model_number", "kind": "Number", "optional": False},
+                ],
+            },
+        ],
+    }
+
+    return SchemaRoot(**schema)
+
+
+@pytest.fixture
+async def dependent_generics_schema(
+    db: InfrahubDatabase, default_branch: Branch, dependent_generics_unregistered
+) -> SchemaBranch:
+    return registry.schema.register_schema(schema=dependent_generics_unregistered, branch=default_branch.name)
 
 
 @pytest.fixture

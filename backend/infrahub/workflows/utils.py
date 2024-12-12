@@ -17,13 +17,16 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
 
-async def add_tags(branches: list[str] | None = None, nodes: list[str] | None = None) -> None:
+async def add_tags(
+    branches: list[str] | None = None, nodes: list[str] | None = None, others: list[str] | None = None
+) -> None:
     client = get_client(sync_client=False)
     current_flow_run_id = flow_run.id
     current_tags: list[str] = flow_run.tags
     branch_tags = [WorkflowTag.BRANCH.render(identifier=branch_name) for branch_name in branches] if branches else []
     node_tags = [WorkflowTag.RELATED_NODE.render(identifier=node_id) for node_id in nodes] if nodes else []
-    new_tags = set(current_tags + branch_tags + node_tags)
+    others_tags = others or []
+    new_tags = set(current_tags + branch_tags + node_tags + others_tags)
     await client.update_flow_run(current_flow_run_id, tags=list(new_tags))
 
 

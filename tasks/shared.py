@@ -1,15 +1,20 @@
+from __future__ import annotations
+
 import os
 import platform
 import re
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union
+from typing import TYPE_CHECKING
 
 from invoke import Context, UnexpectedExit
-from invoke.runners import Result
 
-from .utils import str_to_bool
+from .utils import get_yamllint_rules, str_to_bool
+
+if TYPE_CHECKING:
+    from invoke.runners import Result
+    from ruamel.yaml.main import YAML
 
 
 class DatabaseType(str, Enum):
@@ -34,9 +39,13 @@ DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
 NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.20.0-enterprise")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
-    "MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.13.7-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine"
+    "MESSAGE_QUEUE_DOCKER_IMAGE",
+    "rabbitmq:3.13.7-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
 )
-CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine")
+CACHE_DOCKER_IMAGE = os.getenv(
+    "CACHE_DOCKER_IMAGE",
+    "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
+)
 
 TASK_MANAGER_DOCKER_IMAGE = os.getenv("TASK_MANAGER_DOCKER_IMAGE", "prefecthq/prefect:3.0.3-python3.12")
 
@@ -45,7 +54,7 @@ TOP_DIRECTORY_NAME = here.parent.name
 BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", str(TOP_DIRECTORY_NAME)))
 PYTHON_VER = os.getenv("PYTHON_VER", "3.12")
 
-PWD = os.getcwd()
+PWD = Path.cwd()
 
 NBR_WORKERS = int(os.getenv("PYTEST_XDIST_WORKER_COUNT", "1"))
 GITHUB_ACTION = os.getenv("GITHUB_ACTION"), False
@@ -53,70 +62,51 @@ GITHUB_ACTION = os.getenv("GITHUB_ACTION"), False
 
 SERVICE_SERVER_NAME = "server"
 SERVICE_WORKER_NAME = "task-worker"
-AVAILABLE_SERVICES = [SERVICE_SERVER_NAME, SERVICE_WORKER_NAME, "database", "message-queue", "task-manager", "cache"]
+AVAILABLE_SERVICES = [
+    SERVICE_SERVER_NAME,
+    SERVICE_WORKER_NAME,
+    "database",
+    "message-queue",
+    "task-manager",
+    "cache",
+]
 
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
-COMPOSE_FILES_DEPS = {False: "development/docker-compose-deps.yml", True: "development/docker-compose-deps-nats.yml"}
-
-TEST_COMPOSE_FILE = "development/docker-compose-test.yml"
-TEST_COMPOSE_FILES_MEMGRAPH = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-test-database-memgraph.yml",
-    "development/docker-compose-test-deps.yml",
-    TEST_COMPOSE_FILE,
-]
-TEST_COMPOSE_FILES_NEO4J = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-test-database-neo4j.yml",
-    "development/docker-compose-test-deps.yml",
-    TEST_COMPOSE_FILE,
-]
-
-TEST_SCALE_COMPOSE_FILE = "development/docker-compose-test-scale.yml"
-TEST_SCALE_COMPOSE_FILES_NEO4J = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-neo4j.yml",
-    "development/docker-compose-test-cache.yml",
-    TEST_SCALE_COMPOSE_FILE,
-]
-TEST_SCALE_COMPOSE_FILES_MEMGRAPH = [
-    COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-memgraph.yml",
-    "development/docker-compose-test-cache.yml",
-    TEST_SCALE_COMPOSE_FILE,
-]
-TEST_SCALE_OVERRIDE_FILE_NAME = "development/docker-compose-test-scale-override.yml"
+COMPOSE_FILES_DEPS = {
+    False: Path("development/docker-compose-deps.yml"),
+    True: Path("development/docker-compose-deps-nats.yml"),
+}
 
 IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
 REQUESTED_IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER")
 IMAGE_VER = REQUESTED_IMAGE_VER or "latest"
 
-OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
-DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
-LOCAL_FILE_NAME = "development/docker-compose.local-build.yml"
+OVERRIDE_FILE = Path("development/docker-compose.override.yml")
+DEFAULT_FILE = Path("development/docker-compose.default.yml")
+LOCAL_FILE = Path("development/docker-compose.local-build.yml")
 COMPOSE_FILES_MEMGRAPH = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-memgraph.yml",
-    "development/docker-compose.yml",
+    Path("development/docker-compose-database-memgraph.yml"),
+    Path("development/docker-compose.yml"),
 ]
 COMPOSE_FILES_NEO4J = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-neo4j.yml",
-    "development/docker-compose.yml",
+    Path("development/docker-compose-database-neo4j.yml"),
+    Path("development/docker-compose.yml"),
 ]
 
 DEV_COMPOSE_FILES_MEMGRAPH = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-memgraph.yml",
+    Path("development/docker-compose-database-memgraph.yml"),
 ]
 DEV_COMPOSE_FILES_NEO4J = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
-    "development/docker-compose-database-neo4j.yml",
+    Path("development/docker-compose-database-neo4j.yml"),
 ]
-DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"
+DEV_OVERRIDE_FILE = Path("development/docker-compose.dev-override.yml")
 
-TEST_METRICS_OVERRIDE_FILE_NAME = "development/docker-compose-test-metrics.yml"
+TEST_METRICS_OVERRIDE_FILE = Path("development/docker-compose-test-metrics.yml")
 
 
 PLATFORMS_PTY_ENABLE = ["Linux", "Darwin"]
@@ -125,7 +115,6 @@ PLATFORMS_SUDO_DETECT = ["Linux"]
 VOLUME_NAMES = [
     "database_data",
     "database_logs",
-    "git_data",
     "git_remote_data",
     "workflow_data",
     "workflow_db",
@@ -211,7 +200,7 @@ def get_compose_cmd(namespace: Namespace) -> str:
     return "docker compose"
 
 
-def execute_command(context: Context, command: str, print_cmd: bool = False) -> Optional[Result]:
+def execute_command(context: Context, command: str, print_cmd: bool = False) -> Result | None:
     params = check_environment(context=context)
 
     if params["sudo"]:
@@ -258,19 +247,19 @@ def build_compose_files_cmd(database: str, namespace: Namespace = Namespace.DEFA
     elif database == DatabaseType.NEO4J.value:
         COMPOSE_FILES = COMPOSE_FILES_NEO4J.copy()
 
-    if os.path.exists(OVERRIDE_FILE_NAME):
+    if OVERRIDE_FILE.exists():
         print("!! Found an override file for docker-compose !!")
-        COMPOSE_FILES.append(OVERRIDE_FILE_NAME)
+        COMPOSE_FILES.append(OVERRIDE_FILE)
     else:
-        COMPOSE_FILES.append(DEFAULT_FILE_NAME)
+        COMPOSE_FILES.append(DEFAULT_FILE)
 
     if "local" in IMAGE_VER or (namespace == Namespace.DEV and not REQUESTED_IMAGE_VER):
-        COMPOSE_FILES.append(LOCAL_FILE_NAME)
+        COMPOSE_FILES.append(LOCAL_FILE)
 
     if os.getenv("CI") is not None:
-        COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE_NAME)
+        COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE)
 
-    return f"-f {' -f '.join(COMPOSE_FILES)}"
+    return f"-f {' -f '.join(map(str, COMPOSE_FILES))}"
 
 
 def build_dev_compose_files_cmd(database: str) -> str:
@@ -282,57 +271,30 @@ def build_dev_compose_files_cmd(database: str) -> str:
     elif database == DatabaseType.NEO4J.value:
         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J.copy()
 
-    if os.path.exists(DEV_OVERRIDE_FILE_NAME):
+    if DEV_OVERRIDE_FILE.exists():
         print("!! Found a dev override file for docker-compose !!")
-        DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
+        DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE)
 
-    return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
-
-
-def build_test_compose_files_cmd(
-    database: Union[bool, str] = DatabaseType.MEMGRAPH.value,
-) -> str:
-    if database is False:
-        return f"-f {TEST_COMPOSE_FILE}"
-
-    if database not in SUPPORTED_DATABASES:
-        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
-
-    if database == DatabaseType.MEMGRAPH.value:
-        DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_MEMGRAPH.copy()
-    elif database == DatabaseType.NEO4J.value:
-        DEV_COMPOSE_FILES = TEST_COMPOSE_FILES_NEO4J.copy()
-
-    # if os.path.exists(DEV_OVERRIDE_FILE_NAME):
-    #     print("!! Found a dev override file for docker-compose !!")
-    #     DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
-
-    return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
+    return f"-f {' -f '.join(map(str, DEV_COMPOSE_FILES))}"
 
 
-def build_test_scale_compose_files_cmd(
-    database: str = DatabaseType.NEO4J.value,
-) -> str:
-    if database not in SUPPORTED_DATABASES:
-        sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+def init_yaml_obj(line_length: int | None = None) -> YAML:
+    """Instantiate a ruamel.yaml YAML object.
 
-    if database == DatabaseType.MEMGRAPH.value:
-        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_MEMGRAPH.copy()
-    elif database == DatabaseType.NEO4J.value:
-        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_NEO4J.copy()
+    Args:
+        line_length (int, optional): Override the .yamllint.yml line length. Defaults to None.
 
-    if os.path.exists(TEST_SCALE_OVERRIDE_FILE_NAME):
-        print("!! Found a test scale override file for docker-compose !!")
-        TEST_SCALE_COMPOSE_FILES.append(TEST_SCALE_OVERRIDE_FILE_NAME)
+    Returns:
+        YAML: Instantiated ruamel.yaml.YAML object.
+    """
+    from ruamel.yaml import YAML
 
-    if os.getenv("CI") is not None:
-        TEST_SCALE_COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE_NAME)
+    yamllint_rules: dict = get_yamllint_rules()
 
-    return f"-f {' -f '.join(TEST_SCALE_COMPOSE_FILES)}"
+    yaml = YAML(typ="rt")
+    yaml.preserve_quotes = True
+    yaml.indent(mapping=2, sequence=4, offset=2)
+    yaml.explicit_start = True
+    yaml.width = line_length or yamllint_rules.get("line-length", {}).get("max", 120)
 
-
-def build_test_envs() -> str:
-    if GITHUB_ACTION:
-        return f"-e {' -e '.join(GITHUB_ENVS_TO_PASS)}"
-
-    return ""
+    return yaml

@@ -2,7 +2,6 @@ from typing import Dict, Literal
 
 import pytest
 from deepdiff import DeepDiff
-from graphql import graphql
 
 from infrahub import __version__, config
 from infrahub.core import registry
@@ -15,6 +14,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 
 
 async def test_info_query(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
@@ -1533,6 +1533,74 @@ async def test_query_filter_relationship_id(
     assert len(result.data["TestPerson"]["edges"]) == 1
     assert result.data["TestPerson"]["edges"][0]["node"]["name"]["value"] == "John"
     assert len(result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"]) == 2
+
+
+@pytest.mark.parametrize(
+    "graphql_filter,expected_results",
+    [
+        ('mylist__value: "tree"', ["obj1", "obj2"]),
+        ("mylist__value: 2", ["obj2", "obj3", "obj5"]),
+        ('mylist__value: "one", level__value: 2', ["obj2"]),
+        ('mylist__values: ["one"]', ["obj1", "obj2", "obj3"]),
+        ('mylist__values: ["one", "two"]', ["obj1", "obj2", "obj3", "obj5"]),
+        ('mylist__values: ["one", "two"]', ["obj1", "obj2", "obj3", "obj5"]),
+        ('mylist__values: ["one", 5]', ["obj1", "obj2", "obj3", "obj4"]),
+        ("mylist__value: true", ["obj3"]),
+        ("mylist__values: [true]", ["obj3"]),
+        ("mylist__values: [true, false]", ["obj3", "obj5"]),
+    ],
+)
+async def test_query_filter_list(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    graphql_filter: str,
+    expected_results: list[str],
+):
+    obj1 = await Node.init(db=db, schema=criticality_schema)
+    await obj1.new(db=db, name="obj1", level=1, mylist=["one", "two", "tree", 5])
+    await obj1.save(db=db)
+    obj2 = await Node.init(db=db, schema=criticality_schema)
+    await obj2.new(db=db, name="obj2", level=2, mylist=["one", 2, "tree"])
+    await obj2.save(db=db)
+    obj3 = await Node.init(db=db, schema=criticality_schema)
+    await obj3.new(db=db, name="obj3", level=3, mylist=["one", "two", True, 2])
+    await obj3.save(db=db)
+    obj4 = await Node.init(db=db, schema=criticality_schema)
+    await obj4.new(db=db, name="obj4", level=4, mylist=["anotherone", "twotree", "true", "2", 5])
+    await obj4.save(db=db)
+    obj5 = await Node.init(db=db, schema=criticality_schema)
+    await obj5.new(db=db, name="obj5", level=5, mylist=["oneone", "two", False, 2])
+    await obj5.save(db=db)
+
+    query = """
+    query {
+        TestCriticality(%(filter)s) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % {"filter": graphql_filter}
+
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    names = sorted([item["node"]["name"]["value"] for item in result.data["TestCriticality"]["edges"]])
+    assert names == expected_results
 
 
 async def test_query_attribute_multiple_values(

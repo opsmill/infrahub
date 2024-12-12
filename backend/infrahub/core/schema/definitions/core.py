@@ -1799,7 +1799,7 @@ core_models: dict[str, Any] = {
             "relationships": [
                 {
                     "name": "object",
-                    "peer": InfrahubKind.NODE,
+                    "peer": InfrahubKind.ARTIFACTTARGET,
                     "kind": "Attribute",
                     "identifier": "artifact__node",
                     "cardinality": "one",

@@ -56,11 +56,6 @@ neo4j:
 # ----------- Infrahub Task Worker -----------
 infrahubTaskWorker:
   replicas: 2
-  persistence:
-    enabled: true
-    size: 100Mi
-    accessMode: ReadWriteMany
-    storageClassName: nfs
   resources: {}
   infrahubTaskWorker:
     args:
@@ -97,9 +92,8 @@ infrahubServer:
     annotations:
   persistence:
     enabled: true
-    size: 100Mi
-    accessMode: ReadWriteMany
-    storageClassName: nfs
+    size: 1Gi
+    accessMode: ReadWriteOnce
   resources: {}
   infrahubServer:
     args:
@@ -164,16 +158,8 @@ rabbitmq:
     password: infrahub
   metrics:
     enabled: true
-
-# ----------- NFS Server -----------
-nfs-server-provisioner:
-  enabled: true
-  persistence:
+  startupProbe:
     enabled: true
-    size: 10Gi
-  storageClass:
-    create: true
-    name: nfs
 
 # ----------- NATS Server -----------
 nats:

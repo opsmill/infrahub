@@ -349,7 +349,7 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
                 execution_container,
                 full_command,
                 environment=environment,
-                failure_message="neo4j metadata restore command failed for '{database_name}' database",
+                failure_message=f"neo4j metadata restore command failed for '{database_name}' database",
                 display_error=True,
                 continue_on_error=True,
             )
@@ -398,7 +398,7 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
                 success = self._execute_docker_container_command(
                     helper_container,
                     restore_command,
-                    failure_message="neo4j restore command failed for '{database_name}' database",
+                    failure_message=f"neo4j restore command failed for '{database_name}' database",
                     display_error=True,
                     continue_on_error=False,
                 )

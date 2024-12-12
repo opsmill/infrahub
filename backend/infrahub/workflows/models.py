@@ -51,7 +51,7 @@ class WorkflowDefinition(BaseModel):
 
     def to_deployment(self) -> dict[str, Any]:
         payload: dict[str, Any] = {"name": self.name, "entrypoint": self.entrypoint, "tags": self.get_tags()}
-        if self.type == WorkflowType.INTERNAL:
+        if self.type == WorkflowType.CORE:
             payload["version"] = __version__
         if self.cron:
             payload["schedules"] = [DeploymentScheduleCreate(schedule=CronSchedule(cron=self.cron))]
@@ -59,7 +59,10 @@ class WorkflowDefinition(BaseModel):
         return payload
 
     def get_tags(self) -> list[str]:
-        tags: list[str] = [TAG_NAMESPACE, WorkflowTag.WORKFLOWTYPE.render(identifier=self.type.value)]
+        tags: list[str] = []
+        if self.type != WorkflowType.INTERNAL:
+            tags.append(TAG_NAMESPACE)
+        tags.append(WorkflowTag.WORKFLOWTYPE.render(identifier=self.type.value))
         tags += [tag.render() for tag in self.tags]
         return tags
 

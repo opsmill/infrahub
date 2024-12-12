@@ -3,13 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from graphql import graphql
 
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 
 from .base import TestIpamReconcileBase
 
@@ -72,7 +72,6 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
         new_address = await Node.init(schema=address_schema, db=db, branch=branch)
         await new_address.new(db=db, address="10.10.0.2", ip_namespace=initial_dataset["ns1"].id)
         await new_address.save(db=db)
-
         success = await client.branch.rebase(branch_name=branch.name)
         assert success is True
 

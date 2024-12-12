@@ -11,6 +11,7 @@ from git import Blob, Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
 from infrahub_sdk import InfrahubClient  # noqa: TCH002
+from prefect import Flow, Task
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
@@ -156,7 +157,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     infrahub_branch_name: Optional[str] = Field(
         None, description="Infrahub branch on which to sync the remote repository"
     )
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, ignored_types=(Flow, Task))
 
     @property
     def sdk(self) -> InfrahubClient:

@@ -1,4 +1,3 @@
-import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -67,4 +66,4 @@ class FileRepo:
 
     @property
     def path(self) -> str:
-        return str(os.path.join(self.sources_directory, self.name))
+        return str(self.sources_directory / self.name)

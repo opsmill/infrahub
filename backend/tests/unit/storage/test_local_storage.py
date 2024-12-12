@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import fastapi_storages
@@ -13,7 +12,7 @@ from infrahub.storage import InfrahubObjectStorage
 async def test_init_local(helper, local_storage_dir: Path, file1_in_storage: str):
     storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
     assert isinstance(storage._storage, fastapi_storages.FileSystemStorage)
-    assert config.SETTINGS.storage.local.path_ == str(local_storage_dir)
+    assert config.SETTINGS.storage.local.path_ == local_storage_dir
 
 
 async def test_init_s3(helper, s3_storage_bucket: str):
@@ -38,10 +37,10 @@ async def test_store_file(helper, local_storage_dir: Path):
     storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
 
     fixture_dir = helper.get_fixtures_dir()
-    files_dir = os.path.join(fixture_dir, "schemas")
-    filenames = [item.name for item in os.scandir(files_dir) if item.is_file()]
+    files_dir = fixture_dir / "schemas"
+    filenames = [item.name for item in files_dir.iterdir() if item.is_file()]
 
-    content_file1 = Path(os.path.join(files_dir, filenames[0])).read_bytes()
+    content_file1 = (files_dir / filenames[0]).read_bytes()
     identifier = str(UUIDT())
     storage.store(identifier=identifier, content=content_file1)
 

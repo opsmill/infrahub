@@ -1,0 +1,1 @@
+Fix a bug that prevented updating a relationship during a merge if ONLY the metadata was updated and not the peer.

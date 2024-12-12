@@ -86,6 +86,64 @@ CALL {
                 <-[:IS_PART_OF { branch: $target_branch, branch_level: $branch_level, from: $at, status: node_rel_status }]
                 -(n)
         }
+        // ------------------------------
+        // shortcut to delete all attributes and relationships for this node if the node is deleted
+        // ------------------------------
+        CALL {
+            WITH n, node_rel_status
+            WITH n, node_rel_status
+            WHERE node_rel_status = "deleted"
+            CALL {
+                WITH n
+                OPTIONAL MATCH (n)-[rel1:IS_RELATED]-(:Relationship)-[rel2]-(p)
+                WHERE (p.uuid IS NULL OR n.uuid <> p.uuid)
+                AND rel1.branch = $target_branch
+                AND rel2.branch = $target_branch
+                AND rel1.status = "active"
+                AND rel2.status = "active"
+                RETURN rel1, rel2
+                UNION
+                WITH n
+                OPTIONAL MATCH (n)-[rel1:HAS_ATTRIBUTE]->(:Attribute)-[rel2]->()
+                WHERE type(rel2) <> "HAS_ATTRIBUTE"
+                AND rel1.branch = $target_branch
+                AND rel2.branch = $target_branch
+                AND rel1.status = "active"
+                AND rel2.status = "active"
+                RETURN rel1, rel2
+            }
+            WITH n, rel1, rel2
+            WHERE rel1.to IS NULL
+            AND rel2.to IS NULL
+            AND rel1.from <= $at
+            AND rel2.from <= $at
+            SET rel1.to = $at
+            SET rel2.to = $at
+            // ------------------------------
+            // and delete HAS_OWNER and HAS_SOURCE edges to this node if the node is deleted
+            // ------------------------------
+            WITH n
+            CALL {
+                WITH n
+                CALL {
+                    WITH n
+                    MATCH (n)<-[rel:HAS_OWNER]-()
+                    WHERE rel.branch = $target_branch
+                    AND rel.status = "active"
+                    AND rel.from <= $at
+                    AND rel.to IS NULL
+                    RETURN rel
+                    UNION
+                    MATCH (n)<-[rel:HAS_SOURCE]-()
+                    WHERE rel.branch = $target_branch
+                    AND rel.status = "active"
+                    AND rel.from <= $at
+                    AND rel.to IS NULL
+                    RETURN rel
+                }
+                SET rel.to = $at
+            }
+        }
     }
     WITH n, node_diff_map
     CALL {
