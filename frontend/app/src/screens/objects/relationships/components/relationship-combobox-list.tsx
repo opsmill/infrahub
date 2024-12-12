@@ -9,13 +9,17 @@ import { debounce } from "@/utils/common";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import React from "react";
 
+export interface RelationshipComboboxListProps {
+  peer: string;
+  onSelect: (value: RelationshipNode) => void;
+  filterItem?: (relationshipNode: RelationshipNode) => boolean;
+}
+
 export function RelationshipComboboxList({
   peer,
   onSelect,
-}: {
-  peer: string;
-  onSelect: (value: RelationshipNode) => void;
-}) {
+  filterItem,
+}: RelationshipComboboxListProps) {
   const [search, setSearch] = React.useState("");
   const { schema } = useSchema(peer);
   const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -38,8 +42,10 @@ export function RelationshipComboboxList({
           <>
             <ComboboxEmpty>No {schema?.label ?? "results"} found</ComboboxEmpty>
 
-            {data.pages.map((page) =>
-              page.map((node) => (
+            {data.pages.map((page) => {
+              const filteredNodes = filterItem ? page.filter(filterItem) : page;
+
+              return filteredNodes.map((node) => (
                 <ComboboxItem
                   key={node.id}
                   value={node.display_label}
@@ -47,8 +53,8 @@ export function RelationshipComboboxList({
                 >
                   <span className="truncate">{node.display_label}</span>
                 </ComboboxItem>
-              ))
-            )}
+              ));
+            })}
           </>
         )}
 
