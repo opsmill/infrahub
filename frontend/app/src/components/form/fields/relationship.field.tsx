@@ -26,15 +26,19 @@ const getGenericParentRelationship = (kind?: string) => {
 
   const nodes = store.get(schemaState);
   const schemaData = nodes.find((schema) => schema.kind === kind);
-  return schemaData?.relationships?.find((rel) => rel.kind === "Parent");
+  const parentRelationship = schemaData?.relationships?.find((rel) => rel.kind === "Parent");
+
+  return parentRelationship;
 };
 
 const getParentRelationship = (peer?: string) => {
   if (!peer) return;
 
-  const schemaList = useAtomValue(schemaState);
-  const schemaData = schemaList.find((schema) => schema.kind === peer);
-  return schemaData?.relationships?.find((rel) => rel.kind === "Parent");
+  const nodes = store.get(schemaState);
+  const peerSchema = nodes.find((schema) => schema.kind === peer);
+  const parentRelationship = peerSchema?.relationships?.find((rel) => rel.kind === "Parent");
+
+  return parentRelationship;
 };
 
 export interface RelationshipFieldProps extends DynamicRelationshipFieldProps {}
@@ -68,13 +72,33 @@ const RelationshipField = ({
     : getParentRelationship(relationship?.peer);
 
   const kind = parentRelationship?.peer;
-  const attribute = parentRelationship?.identifier?.split("__")[1];
-  const id = defaultValue?.value?.id;
+  const parentSchema = schemaList.find((schema) => schema.kind === kind);
+  const attribute = parentSchema?.relationships?.find((relationship) => {
+    if (parentRelationship?.direction === "bidirectional") {
+      return relationship.identifier === parentRelationship?.identifier;
+    }
 
-  const queryString = getRelationshipParent({ kind, attribute: `${attribute}s__ids`, id });
+    if (parentRelationship?.direction === "inbound") {
+      return (
+        relationship.direction === "outbound" &&
+        relationship.identifier === parentRelationship?.identifier
+      );
+    }
+
+    if (parentRelationship?.direction === "outbound") {
+      return (
+        relationship.direction === "inbound" &&
+        relationship.identifier === parentRelationship?.identifier
+      );
+    }
+
+    return false;
+  });
+  const id = defaultValue?.value?.id;
+  const queryString = getRelationshipParent({ kind, attribute: `${attribute?.name}__ids`, id });
 
   const query =
-    kind && attribute && id
+    kind && attribute?.name && id
       ? gql`
           ${queryString}
         `
@@ -84,7 +108,7 @@ const RelationshipField = ({
           }
         `;
 
-  const { data } = useQuery(query, { skip: !parentRelationship?.kind || !id });
+  const { data } = useQuery(query, { skip: !parentSchema?.kind || !id });
 
   const currentParent = data && kind && data[kind]?.edges[0]?.node;
 
