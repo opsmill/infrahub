@@ -19,7 +19,6 @@ from .permissions import get_permissions
 from .types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
 
 if TYPE_CHECKING:
-
     from graphql import GraphQLResolveInfo
     from infrahub_sdk.schema import RelationshipSchema
 
