@@ -261,6 +261,7 @@ const NodeSelect = () => {
       />
 
       <DropdownField
+        key={selectedNamespaceField?.value}
         name={"name"}
         label="Name"
         defaultValue={DEFAULT_FORM_FIELD_VALUE}
