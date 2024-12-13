@@ -260,7 +260,7 @@ class BranchMerge(Mutation):
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=context.db, branch=obj)
         diff_repository = await component_registry.get_component(DiffRepository, db=context.db, branch=obj)
         diff_merger = await component_registry.get_component(DiffMerger, db=context.db, branch=obj)
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(base_branch=base_branch, diff_branch=obj)
         if enriched_diff.get_all_conflicts():
             raise ValidationError(
                 f"Branch {obj.name} contains conflicts with the default branch."

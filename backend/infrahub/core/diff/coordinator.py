@@ -77,10 +77,11 @@ class DiffCoordinator:
         from_time: str | None = None,
         to_time: str | None = None,
         name: str | None = None,
-    ) -> EnrichedDiffRoot:
+    ) -> None:
         # we are updating a diff that tracks the full lifetime of a branch
         if not name and not from_time and not to_time:
-            return await self.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)
+            await self.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)
+            return
 
         if from_time:
             from_timestamp = Timestamp(from_time)
@@ -90,7 +91,7 @@ class DiffCoordinator:
             to_timestamp = Timestamp(to_time)
         else:
             to_timestamp = Timestamp()
-        return await self.create_or_update_arbitrary_timeframe_diff(
+        await self.create_or_update_arbitrary_timeframe_diff(
             base_branch=base_branch,
             diff_branch=diff_branch,
             from_time=from_timestamp,
@@ -104,8 +105,16 @@ class DiffCoordinator:
             lock_name += "__incremental"
         return lock_name
 
-    async def update_branch_diff(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRoot:
-        log.debug(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
+    async def update_branch_diff_and_return(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRoot:
+        enriched_diff = await self.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)
+        if enriched_diff:
+            return enriched_diff
+        return await self.diff_repo.get_one(
+            diff_branch_name=diff_branch.name, tracking_id=BranchTrackingId(name=diff_branch.name)
+        )
+
+    async def update_branch_diff(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRoot | None:
+        log.info(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
         incremental_lock_name = self._get_lock_name(
             base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=True
         )
@@ -113,9 +122,9 @@ class DiffCoordinator:
             name=incremental_lock_name, namespace=self.lock_namespace
         )
         if existing_incremental_lock and await existing_incremental_lock.locked():
-            log.debug(f"Branch diff update for {base_branch.name} - {diff_branch.name} already in progress")
+            log.info(f"Branch diff update for {base_branch.name} - {diff_branch.name} already in progress")
             async with self.lock_registry.get(name=incremental_lock_name, namespace=self.lock_namespace):
-                log.debug(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
+                log.info(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
                 return await self.diff_repo.get_one(
                     tracking_id=BranchTrackingId(name=diff_branch.name), diff_branch_name=diff_branch.name
                 )
@@ -129,7 +138,7 @@ class DiffCoordinator:
             self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace),
             self.lock_registry.get(name=incremental_lock_name, namespace=self.lock_namespace),
         ):
-            log.debug(f"Acquired lock to run branch diff update for {base_branch.name} - {diff_branch.name}")
+            log.info(f"Acquired lock to run branch diff update for {base_branch.name} - {diff_branch.name}")
             enriched_diffs = await self._update_diffs(
                 base_branch=base_branch,
                 diff_branch=diff_branch,
@@ -137,11 +146,13 @@ class DiffCoordinator:
                 to_time=to_time,
                 tracking_id=tracking_id,
             )
+            if not enriched_diffs:
+                return None
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.base_branch_diff)
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff)
             await self.diff_repo.save(enriched_diffs=enriched_diffs)
             await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
-            log.debug(f"Branch diff update complete for {base_branch.name} - {diff_branch.name}")
+            log.info(f"Branch diff update complete for {base_branch.name} - {diff_branch.name}")
         return enriched_diffs.diff_branch_diff
 
     async def create_or_update_arbitrary_timeframe_diff(
@@ -159,7 +170,7 @@ class DiffCoordinator:
             base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=False
         )
         async with self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace):
-            log.debug(f"Acquired lock to run arbitrary diff update for {base_branch.name} - {diff_branch.name}")
+            log.info(f"Acquired lock to run arbitrary diff update for {base_branch.name} - {diff_branch.name}")
             enriched_diffs = await self._update_diffs(
                 base_branch=base_branch,
                 diff_branch=diff_branch,
@@ -167,11 +178,14 @@ class DiffCoordinator:
                 to_time=to_time,
                 tracking_id=tracking_id,
             )
+            if not enriched_diffs:
+                return await self.diff_repo.get_one(diff_branch_name=diff_branch.name, tracking_id=tracking_id)
+
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.base_branch_diff)
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff)
             await self.diff_repo.save(enriched_diffs=enriched_diffs)
             await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
-            log.debug(f"Arbitrary diff update complete for {base_branch.name} - {diff_branch.name}")
+            log.info(f"Arbitrary diff update complete for {base_branch.name} - {diff_branch.name}")
         return enriched_diffs.diff_branch_diff
 
     async def recalculate(
@@ -184,7 +198,7 @@ class DiffCoordinator:
             base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=False
         )
         async with self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace):
-            log.debug(f"Acquired lock to recalculate diff for {base_branch.name} - {diff_branch.name}")
+            log.info(f"Acquired lock to recalculate diff for {base_branch.name} - {diff_branch.name}")
             current_branch_diff = await self.diff_repo.get_one(diff_branch_name=diff_branch.name, diff_id=diff_id)
             current_base_diff = await self.diff_repo.get_one(
                 diff_branch_name=base_branch.name, diff_id=current_branch_diff.partner_uuid
@@ -205,6 +219,10 @@ class DiffCoordinator:
                 tracking_id=current_branch_diff.tracking_id,
                 force_branch_refresh=True,
             )
+            if not enriched_diffs:
+                return await self.diff_repo.get_one(
+                    diff_branch_name=diff_branch.name, tracking_id=current_branch_diff.tracking_id
+                )
 
             if current_branch_diff:
                 await self.conflict_transferer.transfer(
@@ -215,7 +233,7 @@ class DiffCoordinator:
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff)
             await self.diff_repo.save(enriched_diffs=enriched_diffs)
             await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
-            log.debug(f"Diff recalculation complete for {base_branch.name} - {diff_branch.name}")
+            log.info(f"Diff recalculation complete for {base_branch.name} - {diff_branch.name}")
         return enriched_diffs.diff_branch_diff
 
     def _get_ordered_diff_pairs(
@@ -250,7 +268,12 @@ class DiffCoordinator:
         to_time: Timestamp,
         tracking_id: TrackingId | None = None,
         force_branch_refresh: bool = False,
-    ) -> EnrichedDiffs:
+    ) -> EnrichedDiffs | None:
+        if not force_branch_refresh and not await self._any_changes_after_last_diff(
+            base_branch=base_branch, diff_branch=diff_branch, to_time=to_time
+        ):
+            return None
+
         diff_uuids_to_delete = []
         retrieved_enriched_diffs = await self.diff_repo.get_pairs(
             base_branch_name=base_branch.name,

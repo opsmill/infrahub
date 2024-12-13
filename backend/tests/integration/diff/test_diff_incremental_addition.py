@@ -191,7 +191,9 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_coordinator: DiffCoordinator,
         data_01_remove_on_main,
     ) -> None:
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=diff_branch
+        )
 
         assert len(enriched_diff.nodes) == 0
 
@@ -255,7 +257,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         initial_dataset,
         data_02_previous_owner_on_branch,
     ) -> None:
-        incremental_diff = await diff_coordinator.update_branch_diff(
+        incremental_diff = await diff_coordinator.update_branch_diff_and_return(
             base_branch=default_branch, diff_branch=diff_branch
         )
         await self.validate_diff_data_02(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
@@ -331,7 +333,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_coordinator: DiffCoordinator,
         data_03_new_peer_on_main,
     ) -> None:
-        incremental_diff = await diff_coordinator.update_branch_diff(
+        incremental_diff = await diff_coordinator.update_branch_diff_and_return(
             base_branch=default_branch, diff_branch=diff_branch
         )
         await self.validate_diff_data_03(
@@ -406,7 +408,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_coordinator: DiffCoordinator,
         data_04_update_previous_owner_protected_on_branch,
     ) -> None:
-        incremental_diff = await diff_coordinator.update_branch_diff(
+        incremental_diff = await diff_coordinator.update_branch_diff_and_return(
             base_branch=default_branch, diff_branch=diff_branch
         )
         await self.validate_diff_data_04(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
@@ -485,7 +487,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_coordinator: DiffCoordinator,
         data_05_remove_previous_owner_on_branch,
     ) -> None:
-        incremental_diff = await diff_coordinator.update_branch_diff(
+        incremental_diff = await diff_coordinator.update_branch_diff_and_return(
             base_branch=default_branch, diff_branch=diff_branch
         )
         await self.validate_diff_data_05(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
@@ -555,7 +557,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_coordinator: DiffCoordinator,
         data_06_remove_previous_owner_on_main_again,
     ) -> None:
-        incremental_diff = await diff_coordinator.update_branch_diff(
+        incremental_diff = await diff_coordinator.update_branch_diff_and_return(
             base_branch=default_branch, diff_branch=diff_branch
         )
         await self.validate_diff_data_06(db=db, enriched_diff=incremental_diff, initial_dataset=initial_dataset)
