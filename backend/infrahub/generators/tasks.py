@@ -3,6 +3,7 @@ from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreGeneratorInstance
 from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
 from prefect import flow, task
+from prefect.cache_policies import NONE
 
 from infrahub import lock
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
@@ -76,7 +77,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
     await generator_instance.update(do_full_update=True)
 
 
-@task
+@task(name="generator-define-instance", task_run_name="Define Instance", cache_policy=NONE)
 async def _define_instance(model: RequestGeneratorRun, service: InfrahubServices) -> CoreGeneratorInstance:
     if model.generator_instance:
         instance = await service.client.get(

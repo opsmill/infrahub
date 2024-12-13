@@ -30,6 +30,7 @@ from infrahub_sdk.schema import (
 from infrahub_sdk.utils import compare_lists
 from infrahub_sdk.yaml import SchemaFile
 from prefect import flow, task
+from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
@@ -198,7 +199,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             tracker="mutation-repository-update-admin-status",
         )
 
-    @task(name="import-jinja2-tansforms", task_run_name="Import Jinja2 transform")
+    @task(name="import-jinja2-tansforms", task_run_name="Import Jinja2 transform", cache_policy=NONE)
     async def import_jinja2_transforms(
         self,
         branch_name: str,
@@ -305,7 +306,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         await existing_transform.save()
 
-    @task(name="import-artifact-definitions", task_run_name="Import Artifact Definitions")
+    @task(name="import-artifact-definitions", task_run_name="Import Artifact Definitions", cache_policy=NONE)
     async def import_artifact_definitions(
         self,
         branch_name: str,
@@ -406,7 +407,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         await existing_artifact_definition.save()
 
-    @task(name="repository-get-config", task_run_name="get repository config")
+    @task(name="repository-get-config", task_run_name="get repository config", cache_policy=NONE)
     async def get_repository_config(self, branch_name: str, commit: str) -> Optional[InfrahubRepositoryConfig]:
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         log = get_run_logger()
@@ -435,10 +436,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             log.error(f"Unable to load the configuration file {config_file_name}, the format is not valid  : {exc}")
             return None
 
-    @task(
-        name="import-schema-files",
-        task_run_name="Import schema files",
-    )
+    @task(name="import-schema-files", task_run_name="Import schema files", cache_policy=NONE)
     async def import_schema_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig) -> None:
         # pylint: disable=too-many-branches
         log = get_run_logger()
@@ -511,7 +509,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         for schema_file in schemas_data:
             log.info(f"schema '{schema_file.identifier}' loaded successfully!")
 
-    @task(name="import-graphql-queries", task_run_name="Import GraphQL Queries")
+    @task(name="import-graphql-queries", task_run_name="Import GraphQL Queries", cache_policy=NONE)
     async def import_all_graphql_query(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
@@ -569,7 +567,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         await obj.save()
         return obj
 
-    @task(name="import-python-check-definitions", task_run_name="Import Python Check Definitions")
+    @task(name="import-python-check-definitions", task_run_name="Import Python Check Definitions", cache_policy=NONE)
     async def import_python_check_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
@@ -640,7 +638,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             log.info(f"CheckDefinition '{check_name!r}' not found locally, deleting")
             await check_definition_in_graph[check_name].delete()
 
-    @task(name="import-generator-definitions", task_run_name="Import Generator Definitions")
+    @task(name="import-generator-definitions", task_run_name="Import Generator Definitions", cache_policy=NONE)
     async def import_generator_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
@@ -730,7 +728,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             return True
         return False
 
-    @task(name="import-python-transforms", task_run_name="Import Python Transforms")
+    @task(name="import-python-transforms", task_run_name="Import Python Transforms", cache_policy=NONE)
     async def import_python_transforms(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
@@ -801,7 +799,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             log.info(f"TransformPython {transform_name!r} not found locally, deleting")
             await transform_definition_in_graph[transform_name].delete()
 
-    @task(name="check-definition-get", task_run_name="Get Check Definition")
+    @task(name="check-definition-get", task_run_name="Get Check Definition", cache_policy=NONE)
     async def get_check_definition(
         self,
         branch_name: str,
@@ -841,7 +839,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             raise
         return checks
 
-    @task(name="python-transform-get", task_run_name="Get Python Transform")
+    @task(name="python-transform-get", task_run_name="Get Python Transform", cache_policy=NONE)
     async def get_python_transforms(
         self, branch_name: str, module: types.ModuleType, file_path: str, transform: InfrahubPythonTransformConfig
     ) -> list[TransformPythonInformation]:
@@ -1043,7 +1041,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)
         await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
 
-    @task(name="jinja2-template-render", task_run_name="Render Jinja2 template")
+    @task(name="jinja2-template-render", task_run_name="Render Jinja2 template", cache_policy=NONE)
     async def render_jinja2_template(self, commit: str, location: str, data: dict) -> str:
         log = get_run_logger()
         commit_worktree = self.get_commit_worktree(commit=commit)
@@ -1059,7 +1057,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             log.error(str(exc), exc_info=True)
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
 
-    @task(name="python-check-execute", task_run_name="Execute Python Check")
+    @task(name="python-check-execute", task_run_name="Execute Python Check", cache_policy=NONE)
     async def execute_python_check(
         self,
         branch_name: str,
@@ -1118,7 +1116,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=str(exc)
             ) from exc
 
-    @task(name="python-transform-execute", task_run_name="Execute Python Transform")
+    @task(name="python-transform-execute", task_run_name="Execute Python Transform", cache_policy=NONE)
     async def execute_python_transform(
         self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: Optional[dict] = None
     ) -> Any:

@@ -5,6 +5,7 @@ import time
 from typing import Any
 
 from prefect import flow, task
+from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
 from infrahub import __version__, config
@@ -18,7 +19,7 @@ TELEMETRY_KIND: str = "community"
 TELEMETRY_VERSION: str = "20240524"
 
 
-@task
+@task(name="telemetry-gather-db", task_run_name="Gather Database Information", cache_policy=NONE)
 async def gather_database_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
     data: dict[str, Any] = {
         "database_type": service.database.db_type.value,
@@ -35,7 +36,7 @@ async def gather_database_information(service: InfrahubServices, branch: Branch)
     return data
 
 
-@task
+@task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)
 async def gather_schema_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
     data: dict[str, Any] = {}
     main_schema = registry.schema.get_schema_branch(name=branch.name)
@@ -46,7 +47,7 @@ async def gather_schema_information(service: InfrahubServices, branch: Branch) -
     return data
 
 
-@task
+@task(name="telemetry-feature-information", task_run_name="Gather Feature Information", cache_policy=NONE)
 async def gather_feature_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
     data = {}
     features_to_count = [
@@ -64,7 +65,7 @@ async def gather_feature_information(service: InfrahubServices, branch: Branch) 
     return data
 
 
-@task
+@task(name="telemetry-gather-data", task_run_name="Gather Anonynous Data", cache_policy=NONE)
 async def gather_anonymous_telemetry_data(service: InfrahubServices) -> dict:
     start_time = time.time()
 
@@ -94,7 +95,7 @@ async def gather_anonymous_telemetry_data(service: InfrahubServices) -> dict:
     return data
 
 
-@task(retries=5)
+@task(name="telemetry-post-data", task_run_name="Upload data", retries=5, cache_policy=NONE)
 async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict[str, Any]) -> None:
     """Send the telemetry data to the specified URL, using HTTP POST."""
     response = await service.http.post(url=url, json=payload)

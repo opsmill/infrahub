@@ -35,14 +35,12 @@ from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
 WORKER_QUERY_SECONDS = "2"
-WORKER_PERSIST_RESULT = "true"
 WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"redisstoragecontainer/{TASK_RESULT_STORAGE_NAME}"
 
 
 class InfrahubWorkerAsyncConfiguration(BaseJobConfiguration):
     env: dict[str, str | None] = {
         "PREFECT_WORKER_QUERY_SECONDS": WORKER_QUERY_SECONDS,
-        "PREFECT_RESULTS_PERSIST_BY_DEFAULT": WORKER_PERSIST_RESULT,
         "PREFECT_DEFAULT_RESULT_STORAGE_BLOCK": WORKER_DEFAULT_RESULT_STORAGE_BLOCK,
     }
     labels: dict[str, str] = {

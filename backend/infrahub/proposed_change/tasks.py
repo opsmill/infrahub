@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import pytest
 from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreProposedChange
 from prefect import flow, task
+from prefect.cache_policies import NONE
 from prefect.client.schemas.objects import (
     State,  # noqa: TCH002
 )
@@ -165,7 +166,7 @@ async def cancel_proposed_changes_branch(branch_name: str) -> None:
         await cancel_proposed_change(proposed_change=proposed_change)
 
 
-@task(name="Cancel a propose change", description="Cancel a propose change")
+@task(name="Cancel a propose change", description="Cancel a propose change", cache_policy=NONE)
 async def cancel_proposed_change(proposed_change: CoreProposedChange) -> None:
     service = services.service
 
