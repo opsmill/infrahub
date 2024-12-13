@@ -14,6 +14,8 @@ from .container_ops import (
     start_services,
     stop_services,
     update_core_schema,
+    display_container_status,
+    collect_support_data,
 )
 from .infra_ops import load_infrastructure_data, load_infrastructure_menu, load_infrastructure_schema
 from .shared import (
@@ -155,9 +157,14 @@ def restart(context: Context, database: str = INFRAHUB_DATABASE) -> None:
 
 
 @task(optional=["database"])
-def status(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Display the status of all containers."""
-    show_service_status(context=context, database=database, namespace=NAMESPACE)
+def status(
+    context: Context,
+    database: str = INFRAHUB_DATABASE,
+    watch: bool = False,
+    interval: int = 2,
+) -> None:
+    """Display detailed status and metrics of all services."""
+    display_container_status(context=context, database=database, namespace=NAMESPACE, watch=watch, interval=interval)
 
 
 @task(optional=["database"])
@@ -177,3 +184,9 @@ def migrate(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Apply the latest database migrations."""
     migrate_database(context=context, database=database, namespace=NAMESPACE)
     update_core_schema(context=context, database=database, namespace=NAMESPACE, debug=True)
+
+
+@task(optional=["database"])
+def collect(context: Context, database: str = INFRAHUB_DATABASE, include_queries: bool = False) -> None:
+    """Collect all logs and create a support archive."""
+    collect_support_data(context=context, database=database, namespace=NAMESPACE, include_queries=include_queries)

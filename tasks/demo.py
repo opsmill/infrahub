@@ -14,6 +14,8 @@ from .container_ops import (
     start_services,
     stop_services,
     update_core_schema,
+    display_container_status,
+    collect_support_data,
 )
 from .infra_ops import load_infrastructure_data, load_infrastructure_menu, load_infrastructure_schema
 from .shared import (
@@ -96,9 +98,14 @@ def cli_git(context: Context, database: str = INFRAHUB_DATABASE) -> None:
 
 
 @task(optional=["database"])
-def status(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Display the status of all containers."""
-    show_service_status(context=context, database=database, namespace=NAMESPACE)
+def status(
+    context: Context,
+    database: str = INFRAHUB_DATABASE,
+    watch: bool = False,
+    interval: int = 2,
+) -> None:
+    """Display detailed status and metrics of all services."""
+    display_container_status(context=context, database=database, namespace=NAMESPACE, watch=watch, interval=interval)
 
 
 @task(optional=["database"])
@@ -119,3 +126,9 @@ def load_infra_menu(context: Context, database: str = INFRAHUB_DATABASE) -> None
 def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load infrastructure demo data."""
     load_infrastructure_data(context=context, database=database, namespace=NAMESPACE)
+
+
+@task(optional=["database"])
+def collect(context: Context, database: str = INFRAHUB_DATABASE, include_queries: bool = False) -> None:
+    """Collect all logs and create a support archive."""
+    collect_support_data(context=context, database=database, namespace=NAMESPACE, include_queries=include_queries)
