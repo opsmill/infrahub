@@ -830,6 +830,54 @@ jobs:
         if: always()
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
+  backend-docker-integration:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on:
+      group: huge-runners
+    timeout-minutes: 45
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+      INFRAHUB_IMAGE_VERSION: "local"
+      INFRAHUB_DOCKER_IMAGE: "opsmill/infrahub"
+      PYTEST_XDIST_WORKER_COUNT: 1
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+        with:
+          submodules: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: "Setup git credentials"
+        run: "git config --global user.name 'Infrahub' && \
+              git config --global user.email 'infrahub@opsmill.com' && \
+              git config --global --add safe.directory '*' && \
+              git config --global credential.usehttppath true && \
+              git config --global credential.helper /usr/local/bin/infrahub-git-credential"
+      - name: "Setup Python environment"
+        run: |
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
+      - name: "Install dependencies"
+        run: "poetry install --no-interaction --no-ansi"
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Build container"
+        run: "poetry run inv dev.build"
+      - name: "Run tests"
+        run: "poetry run pytest backend/tests/integration_docker/"
+      - name: Display images
+        if: always()
+        run: docker images
+
   # ------------------------------------------ Benchmarks ------------------------------------------------
   backend-benchmark:
     needs:
