@@ -529,9 +529,12 @@ class HashableModel(BaseModel):
 
         return attr_other
 
+    def _get_field_names_for_diff(self) -> list[str]:
+        return list(self.model_fields.keys())
+
     def diff(self, other: Self) -> HashableModelDiff:
         in_both, local_only, other_only = compare_lists(
-            list1=list(self.model_fields.keys()), list2=list(other.model_fields.keys())
+            list1=self._get_field_names_for_diff(), list2=other._get_field_names_for_diff()
         )
         diff_result = HashableModelDiff(added=dict.fromkeys(local_only), removed=dict.fromkeys(other_only))
 
