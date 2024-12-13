@@ -22,3 +22,9 @@ export const isNodeSchema = (schema: IModelSchema): schema is iNodeSchema => {
 export const isProfileSchema = (schema: IModelSchema): schema is IProfileSchema => {
   return schema.namespace === "Profile";
 };
+
+export const isHierarchicalSchema = (
+  schema: IModelSchema
+): schema is IModelSchema & { hierarchy: string } => {
+  return "hierarchy" in schema && !!schema.hierarchy;
+};

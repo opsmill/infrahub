@@ -52,11 +52,5 @@ export function relationshipsInfiniteQueryOptions({ peer, search }: GetRelations
       }
       return lastPageParam + RELATIONSHIPS_PER_PAGE;
     },
-    getPreviousPageParam: (_, __, firstPageParam) => {
-      if (firstPageParam <= RELATIONSHIPS_PER_PAGE) {
-        return undefined;
-      }
-      return firstPageParam - RELATIONSHIPS_PER_PAGE;
-    },
   });
 }
