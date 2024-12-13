@@ -62,6 +62,8 @@ log = get_logger()
 if TYPE_CHECKING:
     from pydantic import ValidationInfo
 
+    from ..branch import Branch
+
 # pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines
 
 
@@ -1760,7 +1762,10 @@ class SchemaBranch:
                     node_schema_kind_removed = True
         return kinds
 
-    def get_kind_lock_names_on_object_mutation(self, kind: str) -> list[str]:
+    def get_kind_lock_names_on_object_mutation(self, kind: str, branch: Branch) -> list[str]:
+        if not branch.is_default:
+            # Do not lock on other branches as objects validations will be performed at least when merging in main branch.
+            return []
         lock_kinds = self._get_kinds_to_lock_on_object_mutation(kind)
         lock_names = [build_object_lock_name(kind) for kind in lock_kinds]
         return lock_names

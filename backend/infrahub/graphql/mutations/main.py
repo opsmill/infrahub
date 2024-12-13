@@ -140,8 +140,8 @@ class InfrahubMutationMixin:
         """
         Wrapper around mutate_create_object to potentially activate locking.
         """
-        lock_names = registry.schema.get_schema_branch(name=branch.name).get_kind_lock_names_on_object_mutation(
-            cls._meta.schema.kind
+        lock_names = db.schema.get_schema_branch(name=branch.name).get_kind_lock_names_on_object_mutation(
+            kind=cls._meta.schema.kind, branch=branch
         )
         if lock_names:
             async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
@@ -217,8 +217,8 @@ class InfrahubMutationMixin:
         Wrapper around mutate_update to potentially activate locking and call it within a database transaction.
         """
 
-        lock_names = registry.schema.get_schema_branch(name=branch.name).get_kind_lock_names_on_object_mutation(
-            cls._meta.schema.kind
+        lock_names = db.schema.get_schema_branch(name=branch.name).get_kind_lock_names_on_object_mutation(
+            kind=cls._meta.schema.kind, branch=branch
         )
 
         if db.is_transaction:

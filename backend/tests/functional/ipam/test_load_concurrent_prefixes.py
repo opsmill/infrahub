@@ -1,7 +1,7 @@
 import ipaddress
 
 from infrahub.database import InfrahubDatabase
-from tests.integration.ipam.base import TestIpam
+from tests.functional.ipam.base import TestIpam
 
 
 # See https://github.com/opsmill/infrahub/issues/4523
@@ -30,4 +30,5 @@ class TestLoadConcurrentPrefixes(TestIpam):
         nodes = await client.all("IpamIPPrefix", prefetch_relationships=True, populate_store=True)
         for n in nodes:
             if n.prefix.value != network_8:
+                # Without locking mechanism server side, parent might not be present
                 assert n.parent.peer.prefix.value == network_8
