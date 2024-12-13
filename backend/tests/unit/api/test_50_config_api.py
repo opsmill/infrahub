@@ -1,7 +1,9 @@
 from infrahub.database import InfrahubDatabase
 
 
-async def test_config_endpoint(db: InfrahubDatabase, client, client_headers, default_branch):
+async def test_config_endpoint(
+    db: InfrahubDatabase, client, client_headers, default_branch, register_core_models_schema: None
+):
     with client:
         response = client.get(
             "/api/config",

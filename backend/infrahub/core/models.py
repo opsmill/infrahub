@@ -29,8 +29,12 @@ class NodeKind(BaseModel):
 
 
 class SchemaBranchDiff(BaseModel):
-    nodes: list[str] = Field(default_factory=list)
-    generics: list[str] = Field(default_factory=list)
+    added_nodes: list[str] = Field(default_factory=list)
+    changed_nodes: list[str] = Field(default_factory=list)
+    added_generics: list[str] = Field(default_factory=list)
+    changed_generics: list[str] = Field(default_factory=list)
+    removed_nodes: list[str] = Field(default_factory=list)
+    removed_generics: list[str] = Field(default_factory=list)
 
     def to_string(self) -> str:
         return ", ".join(self.nodes + self.generics)
@@ -40,9 +44,25 @@ class SchemaBranchDiff(BaseModel):
 
     @property
     def has_diff(self) -> bool:
-        if self.nodes or self.generics:
-            return True
-        return False
+        return any([self.has_node_diff, self.has_generic_diff])
+
+    @property
+    def has_node_diff(self) -> bool:
+        return bool(self.added_nodes + self.changed_nodes + self.removed_nodes)
+
+    @property
+    def has_generic_diff(self) -> bool:
+        return bool(self.added_generics + self.changed_generics + self.removed_generics)
+
+    @property
+    def nodes(self) -> list[str]:
+        """Return nodes that are still active."""
+        return self.added_nodes + self.changed_nodes
+
+    @property
+    def generics(self) -> list[str]:
+        """Return generics that are still active."""
+        return self.added_generics + self.changed_generics
 
 
 class SchemaBranchHash(BaseModel):
@@ -50,15 +70,19 @@ class SchemaBranchHash(BaseModel):
     nodes: dict[str, str] = Field(default_factory=dict)
     generics: dict[str, str] = Field(default_factory=dict)
 
-    def compare(self, other: SchemaBranchHash) -> Optional[SchemaBranchDiff]:
+    def compare(self, other: SchemaBranchHash) -> SchemaBranchDiff | None:
         if other.main == self.main:
             return None
 
         return SchemaBranchDiff(
-            nodes=[key for key, value in other.nodes.items() if key not in self.nodes or self.nodes[key] != value],
-            generics=[
-                key for key, value in other.generics.items() if key not in self.generics or self.generics[key] != value
+            added_nodes=[key for key in other.nodes if key not in self.nodes],
+            changed_nodes=[key for key, value in other.nodes.items() if key in self.nodes and self.nodes[key] != value],
+            removed_nodes=[key for key in self.nodes if key not in other.nodes],
+            added_generics=[key for key in other.generics if key not in self.generics],
+            changed_generics=[
+                key for key, value in other.generics.items() if key in self.generics and self.generics[key] != value
             ],
+            removed_generics=[key for key in self.generics if key not in other.generics],
         )
 
 
@@ -535,9 +559,12 @@ class HashableModel(BaseModel):
 
         return attr_other
 
+    def _get_field_names_for_diff(self) -> list[str]:
+        return list(self.model_fields.keys())
+
     def diff(self, other: Self) -> HashableModelDiff:
         in_both, local_only, other_only = compare_lists(
-            list1=list(self.model_fields.keys()), list2=list(other.model_fields.keys())
+            list1=self._get_field_names_for_diff(), list2=other._get_field_names_for_diff()
         )
         diff_result = HashableModelDiff(added=dict.fromkeys(local_only), removed=dict.fromkeys(other_only))
 

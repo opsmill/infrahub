@@ -153,7 +153,6 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
                             },
                         },
                     },
-                    "LocationGeneric": {"added": {}, "changed": {"used_by": None}, "removed": {}},
                 },
             },
         }
