@@ -10,8 +10,8 @@ from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.functional.ipam.base import TestIpam
 from tests.helpers.graphql import graphql
-from tests.integration.ipam.base import TestIpam
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch

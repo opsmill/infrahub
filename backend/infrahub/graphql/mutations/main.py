@@ -7,7 +7,7 @@ from graphene.types.mutation import MutationOptions
 from infrahub_sdk.utils import extract_fields
 from typing_extensions import Self
 
-from infrahub import config
+from infrahub import config, lock
 from infrahub.auth import validate_mutation_permissions_update_node
 from infrahub.core import registry
 from infrahub.core.constants import MutationAction
@@ -25,6 +25,7 @@ from infrahub.exceptions import ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.worker import WORKER_IDENTITY
 
+from ...lock import InfrahubMultiLock
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 from .node_getter.by_hfid import MutationNodeGetterByHfid
 from .node_getter.by_id import MutationNodeGetterById
@@ -135,6 +136,20 @@ class InfrahubMutationMixin:
         return obj
 
     @classmethod
+    async def _call_mutate_create_object(cls, data: InputObjectType, db: InfrahubDatabase, branch: Branch):
+        """
+        Wrapper around mutate_create_object to potentially activate locking.
+        """
+        lock_names = db.schema.get_schema_branch(name=branch.name).get_kind_lock_names_on_object_mutation(
+            kind=cls._meta.schema.kind, branch=branch
+        )
+        if lock_names:
+            async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+                return await cls.mutate_create_object(data=data, db=db, branch=branch)
+
+        return await cls.mutate_create_object(data=data, db=db, branch=branch)
+
+    @classmethod
     async def mutate_create(
         cls,
         info: GraphQLResolveInfo,
@@ -144,7 +159,7 @@ class InfrahubMutationMixin:
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
-        obj = await cls.mutate_create_object(data=data, db=db, branch=branch)
+        obj = await cls._call_mutate_create_object(data=data, db=db, branch=branch)
         result = await cls.mutate_create_to_graphql(info=info, db=db, obj=obj)
         return obj, result
 
@@ -190,6 +205,41 @@ class InfrahubMutationMixin:
         return cls(**result)
 
     @classmethod
+    async def _call_mutate_update(
+        cls,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        db: InfrahubDatabase,
+        obj: Node,
+    ) -> tuple[Node, Self]:
+        """
+        Wrapper around mutate_update to potentially activate locking and call it within a database transaction.
+        """
+
+        lock_names = db.schema.get_schema_branch(name=branch.name).get_kind_lock_names_on_object_mutation(
+            kind=cls._meta.schema.kind, branch=branch
+        )
+
+        if db.is_transaction:
+            if lock_names:
+                async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+                    obj = await cls.mutate_update_object(db=db, info=info, data=data, branch=branch, obj=obj)
+            else:
+                obj = await cls.mutate_update_object(db=db, info=info, data=data, branch=branch, obj=obj)
+            result = await cls.mutate_update_to_graphql(db=db, info=info, obj=obj)
+            return obj, result
+
+        async with db.start_transaction() as dbt:
+            if lock_names:
+                async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
+                    obj = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=obj)
+            else:
+                obj = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=obj)
+            result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=obj)
+            return obj, result
+
+    @classmethod
     @retry_db_transaction(name="object_update")
     async def mutate_update(
         cls,
@@ -207,13 +257,7 @@ class InfrahubMutationMixin:
         )
 
         try:
-            if db.is_transaction:
-                obj = await cls.mutate_update_object(db=db, info=info, data=data, branch=branch, obj=obj)
-                result = await cls.mutate_update_to_graphql(db=db, info=info, obj=obj)
-            else:
-                async with db.start_transaction() as dbt:
-                    obj = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=obj)
-                    result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=obj)
+            obj, result = await cls._call_mutate_update(info=info, data=data, db=db, branch=branch, obj=obj)
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
 
