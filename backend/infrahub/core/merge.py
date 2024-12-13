@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
 
-from infrahub.core.constants import DiffAction, RepositoryInternalStatus
+from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
-from infrahub.core.models import SchemaBranchDiff, SchemaUpdateValidationResult
+from infrahub.core.models import SchemaUpdateValidationResult
 from infrahub.core.protocols import CoreRepository
 from infrahub.core.registry import registry
-from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.message_bus import messages
@@ -48,8 +47,6 @@ class BranchMerger:
         self._source_schema: Optional[SchemaBranch] = None
         self._destination_schema: Optional[SchemaBranch] = None
         self._initial_source_schema: Optional[SchemaBranch] = None
-
-        self.schema_diff: Optional[SchemaBranchDiff] = None
 
         self._service = service
 
@@ -106,46 +103,6 @@ class BranchMerger:
         graph_diff = await self.get_graph_diff()
         return await graph_diff.has_schema_changes()
 
-    async def get_schema_diff(self) -> SchemaBranchDiff:
-        """Return a SchemaBranchDiff object with the list of nodes and generics
-        based on the information returned by the Graph Diff.
-
-        The Graph Diff return a list of UUID so we need to convert that back into Kind
-        """
-
-        if self.schema_diff:
-            return self.schema_diff
-
-        graph_diff = await self.get_graph_diff()
-        schema_summary = await graph_diff.get_schema_summary()
-        schema_diff = SchemaBranchDiff()
-
-        # NOTE At this point there is no Generic in the schema but this could change in the future
-        for element in schema_summary.get(self.source_branch.name, []):
-            if element.kind == "SchemaNode" and DiffAction.REMOVED in element.actions:
-                continue
-            node = self.source_schema.get_by_any_id(id=element.node)
-            if isinstance(node, NodeSchema):
-                schema_diff.nodes.append(node.kind)
-            elif isinstance(node, GenericSchema):
-                schema_diff.generics.append(node.kind)
-
-        for element in schema_summary.get(self.destination_branch.name, []):
-            if element.kind == "SchemaNode" and DiffAction.REMOVED in element.actions:
-                continue
-            node = self.destination_schema.get_by_any_id(id=element.node)
-            if isinstance(node, NodeSchema):
-                schema_diff.nodes.append(node.kind)
-            elif isinstance(node, GenericSchema):
-                schema_diff.generics.append(node.kind)
-
-        # Remove duplicates if any
-        schema_diff.nodes = list(set(schema_diff.nodes))
-        schema_diff.generics = list(set(schema_diff.generics))
-
-        self.schema_diff = schema_diff
-        return self.schema_diff
-
     async def update_schema(self) -> bool:
         """After the merge, if there was some changes, we need to:
         - update the schema in the registry
@@ -154,7 +111,6 @@ class BranchMerger:
 
         # NOTE we need to revisit how to calculate an accurate diff to pull only what needs to be updated from the schema
         # for now the best solution is to pull everything to ensure the integrity of the schema
-        # schema_diff = await self.get_schema_diff()
 
         if not await self.has_schema_changes():
             return False
