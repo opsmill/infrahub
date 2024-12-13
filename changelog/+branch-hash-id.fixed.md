@@ -1,1 +1,0 @@
-Use the branch uuid instead of the internal database id to track the hash of the schema in the cache

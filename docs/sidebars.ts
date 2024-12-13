@@ -314,8 +314,8 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
-            // 'release-notes/infrahub/release-1_1_1-DRAFT'
             'release-notes/infrahub/release-1_1_0',
+            'release-notes/infrahub/release-1_0_9',
             'release-notes/infrahub/release-1_0_8',
             'release-notes/infrahub/release-1_0_7',
             'release-notes/infrahub/release-1_0_6',
@@ -329,11 +329,11 @@ const sidebars: SidebarsConfig = {
             'release-notes/infrahub/release-0_16_3',
             'release-notes/infrahub/release-0_16_2',
             'release-notes/infrahub/release-0_16_1',
-            'release-notes/infrahub/release-0_16',
+            'release-notes/infrahub/release-0_16_0',
             'release-notes/infrahub/release-0_15_3',
             'release-notes/infrahub/release-0_15_2',
             'release-notes/infrahub/release-0_15_1',
-            'release-notes/infrahub/release-0_15',
+            'release-notes/infrahub/release-0_15_0',
             'release-notes/infrahub/release-0_14',
             'release-notes/infrahub/release-0_13',
             'release-notes/infrahub/release-0_12',

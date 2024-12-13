@@ -1,5 +1,5 @@
 ---
-title: Release 1.0.9 - DEVELOPMENT
+title: Release 1.0.9
 ---
 <table>
   <tbody>
@@ -9,7 +9,7 @@ title: Release 1.0.9 - DEVELOPMENT
     </tr>
     <tr>
       <th>Release Date</th>
-      <td>TBD</td>
+      <td>December 13, 2024</td>
     </tr>
     <tr>
       <th>Release Codename</th>
@@ -29,6 +29,30 @@ This release is a bug-fix release to resolve issues found in Infrahub v1.0.8 and
 ## Main changes
 
 The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Added
+
+- Adding `invoke` tasks to assist with release process. ([#4519](https://github.com/opsmill/infrahub/issues/4519))
+- Add pagination and backend search in new combobox for relationships.
+- Added custom Towncrier template to remove extra space after new Changelog entries.
+- In schema viewer, we now display `Hierarchical` value for generics.
+
+### Fixed
+
+- Update delete constraints to correctly account for relationships on generics and relationships for which the peer kind is a generic. ([#4332](https://github.com/opsmill/infrahub/issues/4332))
+- Fix error when `pool` was used a relationship name. ([#4807](https://github.com/opsmill/infrahub/issues/4807))
+- Ensure that deleted schema nodes are removed from all workers and that the schema is in sync without having to restart. ([#4836](https://github.com/opsmill/infrahub/issues/4836))
+- Consistently use "Save" on all object forms submit buttons. ([#4850](https://github.com/opsmill/infrahub/issues/4850))
+- Search shortcuts show `Cmd` on macOS and `Ctrl` on other systems. ([#4861](https://github.com/opsmill/infrahub/issues/4861))
+- Update the parent relationship query to populate the dropdown options when editing an object, ensuring the current parent is correctly selected for the current node. ([#5035](https://github.com/opsmill/infrahub/issues/5035))
+- Correctly refresh menu after access token has expired. ([#5099](https://github.com/opsmill/infrahub/issues/5099))
+- On the object permission form, fix the name option selection when changing the namespace to get the latest options and to be able to choose a name option. ([#5100](https://github.com/opsmill/infrahub/issues/5100))
+- Prevent adding a new mandatory attribute or relationship to the schema if some nodes are already present in the database. ([#5106](https://github.com/opsmill/infrahub/issues/5106))
+- Refresh branch hash on local worker during branch create. ([#5130](https://github.com/opsmill/infrahub/issues/5130))
+- Fix uniqueness constraint check with enum based attributes. ([#5132](https://github.com/opsmill/infrahub/issues/5132))
+- Editing old `CHANGELOG.md` entries to use uniform formatting from new Towncrier template.
+- Store CoreProfile in database to ensure consistent initial schema hash. Prior to this the schema was reported as being out of sync when starting the application for the first time. This error wouldn't have hade any impact but was confusing. The workaround would be to load a schema or restart the application at least once after first time initialization.
+- Use the branch uuid instead of the internal database id to track the hash of the schema in the cache.
 
 ## Migration guide
 
