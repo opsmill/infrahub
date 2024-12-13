@@ -108,7 +108,7 @@ class SchemaBranch:
     def get_all_kind_id_map(self, exclude_profiles: bool = False) -> dict[str, str]:
         kind_id_map = {}
         if exclude_profiles:
-            names = self.node_names + [gn for gn in self.generic_names if gn != InfrahubKind.PROFILE]
+            names = self.node_names + self.generic_names
         else:
             names = self.all_names
         for name in names:

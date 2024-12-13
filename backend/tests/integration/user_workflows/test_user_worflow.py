@@ -3,6 +3,7 @@ import pytest
 from deepdiff import DeepDiff
 
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.manager import GraphQLSchemaManager
 from tests.helpers.test_app import TestInfrahubApp
 from tests.integration.conftest import load_infrastructure_schema
 from tests.test_data import dataset01 as ds01
@@ -221,6 +222,7 @@ class TestUserWorkflow01(TestInfrahubApp):
     async def dataset01(self, db: InfrahubDatabase, client):
         await load_infrastructure_schema(db=db)
         await ds01.load_data(db=db, nbr_devices=2)
+        GraphQLSchemaManager.clear_cache()
 
     async def test_initialize_state(self):
         state.data["spine1_id"] = None

@@ -1,7 +1,9 @@
 import copy
+from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 from infrahub_sdk import InfrahubClient
 
 from infrahub.testing.helpers import TestInfrahubDev
@@ -10,6 +12,8 @@ from infrahub.testing.schemas.car_person import (
     TESTING_PERSON,
     SchemaCarPerson,
 )
+
+CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
 
 class TestSchemaMigrations(TestInfrahubDev, SchemaCarPerson):
@@ -34,6 +38,9 @@ class TestSchemaMigrations(TestInfrahubDev, SchemaCarPerson):
     async def test_setup_initial_schema(
         self, default_branch: str, infrahub_client: InfrahubClient, schema_base: dict[str, Any]
     ) -> None:
+        await infrahub_client.schema.wait_until_converged(branch=default_branch)
+        # Validate that the schema is in sync after initial startup
+        assert await self.schema_in_sync(client=infrahub_client, branch=default_branch)
         resp = await infrahub_client.schema.load(
             schemas=[schema_base], branch=default_branch, wait_until_converged=True
         )
@@ -53,3 +60,40 @@ class TestSchemaMigrations(TestInfrahubDev, SchemaCarPerson):
         resp = await infrahub_client.schema.load(schemas=[schema_person_with_age], branch=branch.name)
 
         assert resp.errors == {}
+
+    async def test_schema_load_and_delete(self, infrahub_client: InfrahubClient) -> None:
+        with Path(CURRENT_DIRECTORY / "test_files/device_and_interface_schema.yml").open(encoding="utf-8") as file:
+            device_and_interface_schema = yaml.safe_load(file.read())
+
+        with Path(CURRENT_DIRECTORY / "test_files/delete_interface_schema.yml").open(encoding="utf-8") as file:
+            delete_interface_schema = yaml.safe_load(file.read())
+
+        device_branch = await infrahub_client.branch.create(branch_name="device_branch")
+
+        device_interface = await infrahub_client.schema.load(
+            schemas=[device_and_interface_schema], branch=device_branch.name, wait_until_converged=True
+        )
+        assert device_interface.schema_updated
+        # Validate that the schema is in sync after loading the device and interface schema
+        assert await self.schema_in_sync(client=infrahub_client, branch=device_branch.name)
+
+        delete_interface = await infrahub_client.schema.load(
+            schemas=[delete_interface_schema], branch=device_branch.name, wait_until_converged=True
+        )
+        assert delete_interface.schema_updated
+        # Validate that the schema is in sync after removing the interface
+        assert await self.schema_in_sync(client=infrahub_client, branch=device_branch.name)
+
+    @staticmethod
+    async def schema_in_sync(client: InfrahubClient, branch: str | None) -> bool:
+        SCHEMA_HASH_SYNC_STATUS = """
+        query {
+        InfrahubStatus {
+            summary {
+            schema_hash_synced
+            }
+        }
+        }
+        """
+        response = await client.execute_graphql(query=SCHEMA_HASH_SYNC_STATUS, branch_name=branch)
+        return response["InfrahubStatus"]["summary"]["schema_hash_synced"]

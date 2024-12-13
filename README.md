@@ -10,30 +10,31 @@ Infrahub from [OpsMill](https://opsmill.com) is taking a new approach to Infrast
 
 ## Quick Start
 
-Leveraging [GitHub Codespaces](https://docs.github.com/en/codespaces/overview), it's possible to start a new instance of Infrahub in the Cloud in minutes:
+[Always-On Sandbox](https://demo.infrahub.app/) - Instantly login to the UI of a demo environment of Infrahub with sample data pre-loaded.
 
-|  No Data | Demo Data |
-|---|---|
-| [![Launch in GitHub Codespaces (No Data)](https://img.shields.io/badge/Launch%20Infrahub-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable) | [![Launch in GitHub Codespaces (Demo Data)](https://img.shields.io/badge/Infrahub%20with%20Data-0B6581?logo=github)](https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdemo-container%2Fdevcontainer.json&ref=stable) |
+[Getting Started Environment & Tutorial](https://opsmill.instruqt.com/pages/labs) - It spins up an instance of Infrahub on our cloud, provides a browser, terminal, code editor and walks you through the basic concepts:
 
-For details on how to deploy a local instance of Infrahub please refer to our guide: [Installing Infrahub](https://docs.infrahub.app/guides/installation)
+- Branching and version control
+- Flexible schema
+- Unified storage
+
+For longer term tests, you can deploy a local instance of Infrahub by referring to our guide: [Installing Infrahub](https://docs.infrahub.app/guides/installation)
 
 ## Documentation
 
 If you'd like to learn more about Infrahub, please refer to the following resources:
 
 - [Infrahub Overview](https://docs.infrahub.app/overview/)
-- [Getting Started](https://docs.infrahub.app/tutorials/getting-started/)
 - [Infrahub Documentation](https://docs.infrahub.app/)
 - [FAQ](https://docs.infrahub.app/faq/)
 
 ## Support and Community
 
-If you need help, support for the open-source Infrahub project is provided on [![Join our Discord server](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/opsmill) or via [filing an issue on GitHub](https://github.com/opsmill/infrahub/issues).
+If you need help, support for the community version of Infrahub is provided on [![Join our Discord server](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/opsmill) or via [filing an issue on GitHub](https://github.com/opsmill/infrahub/issues).
 
 ## Contributing
 
-[View our CONTRIBUTING](./CONTRIBUTING.md) policy to find the latest information.
+[View our CONTRIBUTING](./CONTRIBUTING.md) policy to get started on contributing to Infrahub.
 
 ## Security
 
