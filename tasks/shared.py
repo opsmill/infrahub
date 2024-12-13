@@ -30,6 +30,7 @@ class Namespace(str, Enum):
 
 INVOKE_SUDO = os.getenv("INVOKE_SUDO", None)
 INVOKE_PTY = os.getenv("INVOKE_PTY", None)
+DEBUG = os.environ.get("DEBUG", "").lower() in ("true", "1", "yes")
 INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
 INFRAHUB_ADDRESS = os.getenv("INFRAHUB_ADDRESS", "http://localhost:8000")
 
@@ -206,17 +207,17 @@ def get_compose_cmd(namespace: Namespace) -> str:
     return "docker compose"
 
 
-def execute_command(context: Context, command: str, print_cmd: bool = False) -> Result | None:
+def execute_command(context: Context, command: str, print_cmd: bool = False, hide: bool = False) -> Result | None:
     params = check_environment(context=context)
-
     if params["sudo"]:
         command = f"sudo {command}"
 
-    if print_cmd:
-        print(command)
+    should_print = print_cmd or DEBUG
+    should_hide = hide and not DEBUG
 
-    print(f"command={command}")
-    return context.run(command, pty=params["pty"])
+    if should_print:
+        print(f"command={command}")
+    return context.run(command, pty=params["pty"], hide=should_hide)
 
 
 def get_env_vars(context: Context, namespace: Namespace = Namespace.DEFAULT) -> str:
