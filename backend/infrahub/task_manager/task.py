@@ -253,8 +253,8 @@ class PrefectTask:
                                 "workflow": workflow_names.get(flow.flow_id, None),
                                 "related_node": related_nodes_info.id.get(flow.id, None),
                                 "related_node_kind": related_nodes_info.kind.get(flow.id, None),
-                                "created_at": flow.created.to_iso8601_string(),
-                                "updated_at": flow.updated.to_iso8601_string(),
+                                "created_at": flow.created.to_iso8601_string(),  # type: ignore
+                                "updated_at": flow.updated.to_iso8601_string(),  # type: ignore
                                 "start_time": flow.start_time.to_iso8601_string() if flow.start_time else None,
                                 "id": flow.id,
                                 "logs": {"edges": logs},

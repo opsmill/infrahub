@@ -371,7 +371,7 @@ def prefect_container(request: pytest.FixtureRequest, load_settings_before_sessi
         return None
 
     container = (
-        DockerContainer(image="prefecthq/prefect:3.1.6-python3.12")
+        DockerContainer(image="prefecthq/prefect:3.1.5-python3.12")
         .with_command("prefect server start --host 0.0.0.0 --ui")
         .with_exposed_ports(PORT_PREFECT)
     )
