@@ -24,7 +24,7 @@ class TestDiffCoordinator:
 
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
-        diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+        diff = await diff_coordinator.update_branch_diff_and_return(base_branch=default_branch, diff_branch=branch)
 
         assert diff.base_branch_name == default_branch.name
         assert diff.diff_branch_name == branch.name

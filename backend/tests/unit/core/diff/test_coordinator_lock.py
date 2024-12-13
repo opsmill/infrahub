@@ -102,7 +102,7 @@ class TestDiffCoordinatorLocks:
                 from_time=Timestamp(branch_with_data.branched_from),
                 to_time=Timestamp(),
             ),
-            diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
+            diff_coordinator.update_branch_diff_and_return(base_branch=default_branch, diff_branch=diff_branch),
         )
         assert len(results) == 2
         assert results[0].to_time != results[1].to_time

@@ -3,6 +3,7 @@ from typing import Generator
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.diff.query.field_summary import EnrichedDiffNodeFieldSummaryQuery
+from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import ResourceNotFoundError
@@ -267,3 +268,10 @@ class DiffRepository:
     async def drop_tracking_ids(self, tracking_ids: list[TrackingId]) -> None:
         query = await EnrichedDiffDropTrackingIdQuery.init(db=self.db, tracking_ids=tracking_ids)
         await query.execute(db=self.db)
+
+    async def get_num_changes_in_time_range_by_branch(
+        self, branch_names: list[str], from_time: Timestamp, to_time: Timestamp
+    ) -> dict[str, int]:
+        query = await DiffCountChanges.init(db=self.db, branch_names=branch_names, diff_from=from_time, diff_to=to_time)
+        await query.execute(db=self.db)
+        return query.get_num_changes_by_branch()
