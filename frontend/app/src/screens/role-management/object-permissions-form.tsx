@@ -261,7 +261,7 @@ const NodeSelect = () => {
       />
 
       <DropdownField
-        key={nameOptions.length} // Re render optons depending on namespace selected
+        key={selectedNamespaceField?.value}
         name={"name"}
         label="Name"
         defaultValue={DEFAULT_FORM_FIELD_VALUE}

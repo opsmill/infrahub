@@ -1,0 +1,21 @@
+---
+version: "1.0"
+nodes:
+  - name: Device
+    namespace: Network
+    human_friendly_id: ['hostname__value']
+    attributes:
+      - name: hostname
+        kind: Text
+        unique: true
+      - name: model
+        kind: Text
+  - name: Interface
+    namespace: Network
+    state: absent
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true

@@ -601,8 +601,26 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
     }
 
 
+async def test_schema_branch_diff_core_profile(schema_all_in_one):
+    core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
+    schema_all_in_one["generics"].append(core_profile_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.process_inheritance()
+    schema.manage_profile_schemas()
+
+    new_schema = schema.duplicate()
+    profile_schema = new_schema.get(name=InfrahubKind.PROFILE, duplicate=True)
+    profile_schema.description = "New description"
+    new_schema.set(name=InfrahubKind.PROFILE, schema=profile_schema)
+
+    diff = new_schema.diff(other=schema)
+    assert diff.all == ["CoreProfile"]
+
+
 async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one):
-    core_profile_schema = _get_schema_by_kind(core_models, kind="CoreProfile")
+    core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
     builtin_tag_schema = _get_schema_by_kind(schema_all_in_one, kind="BuiltinTag")
     builtin_tag_schema["generate_profile"] = False
@@ -2501,6 +2519,7 @@ async def test_load_schema(
 
     schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
     await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
+    default_branch.update_schema_hash()
     schema11 = registry.schema.get_schema_branch(name=default_branch.name)
     schema2 = await registry.schema.load_schema(db=db, branch=default_branch.name)
 

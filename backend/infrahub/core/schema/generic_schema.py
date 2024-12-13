@@ -33,3 +33,8 @@ class GenericSchema(GeneratedGenericSchema):
     def get_labels(self) -> list[str]:
         """Return the labels for this object"""
         return [self.kind]
+
+    def _get_field_names_for_diff(self) -> list[str]:
+        """Exclude used_by from the diff for generic nodes"""
+        fields = super()._get_field_names_for_diff()
+        return [field for field in fields if field not in ["used_by"]]
