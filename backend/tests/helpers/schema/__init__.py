@@ -34,7 +34,9 @@ async def load_schema(
     await registry.schema.update_schema_branch(
         schema=branch_schema.duplicate(), db=db, branch=branch_name, update_db=update_db
     )
-    registry.get_branch_from_registry(branch_name).update_schema_hash()
+    branch = registry.get_branch_from_registry(branch_name)
+    branch.update_schema_hash()
+    await branch.save(db=db)
     GraphQLSchemaManager.clear_cache()
 
 
