@@ -18,6 +18,7 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
     If a branch is already present with a different value for the hash
     We pull the new schema from the database and we update the registry.
     """
+    from infrahub.graphql.manager import GraphQLSchemaManager  # pylint: disable=import-outside-toplevel,cyclic-import
 
     async with lock.registry.local_schema_lock():
         branches = await registry.branch_object.get_list(db=db)
@@ -38,11 +39,27 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
                     )
                     await registry.schema.load_schema(db=db, branch=new_branch)
                     registry.branch[new_branch.name] = new_branch
+                    schema_branch = registry.schema.get_schema_branch(name=new_branch.name)
+                    gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=new_branch, schema_branch=schema_branch)
+                    gqlm.get_graphql_schema(
+                        include_query=True,
+                        include_mutation=True,
+                        include_subscription=True,
+                        include_types=True,
+                    )
 
             else:
                 log.info("New branch detected, pulling schema", branch=new_branch.name, worker=WORKER_IDENTITY)
                 await registry.schema.load_schema(db=db, branch=new_branch)
                 registry.branch[new_branch.name] = new_branch
+                schema_branch = registry.schema.get_schema_branch(name=new_branch.name)
+                gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=new_branch, schema_branch=schema_branch)
+                gqlm.get_graphql_schema(
+                    include_query=True,
+                    include_mutation=True,
+                    include_subscription=True,
+                    include_types=True,
+                )
 
         for branch_name in list(registry.branch.keys()):
             if branch_name not in active_branches:

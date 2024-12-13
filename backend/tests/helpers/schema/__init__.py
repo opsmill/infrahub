@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.schema import SchemaRoot
+from infrahub.graphql.manager import GraphQLSchemaManager
 
 from .car import CAR
 from .manufacturer import MANUFACTURER
@@ -28,6 +29,7 @@ async def load_schema(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str
     await registry.schema.update_schema_branch(
         schema=tmp_schema, db=db, branch=branch_name or default_branch_name, update_db=True
     )
+    GraphQLSchemaManager.clear_cache()
 
 
 __all__ = ["CAR", "CAR_SCHEMA", "MANUFACTURER", "PERSON", "TICKET", "WIDGET"]
