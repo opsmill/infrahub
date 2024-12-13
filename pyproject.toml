@@ -587,6 +587,14 @@ allow-dunder-method-names = [
 
 ]
 
+"backend/tests/integration_docker/test_schema_migration.py" = [
+    ##################################################################################################
+    # Review and change the below later                                                              #
+    ##################################################################################################
+    "ASYNC230", # Async functions should not open files with blocking methods like `open`
+]
+
+
 "models/infrastructure_edge.py" = [
     "S106", # Hardcoded password
     ##################################################################################################
