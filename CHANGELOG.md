@@ -16,28 +16,35 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 ### Removed
 
 - Remove at parameter from GraphQL mutate functions ([#3587](https://github.com/opsmill/infrahub/issues/3587))
-- Remove the "role" attribute of base schema account node
-  - This attribute was no longer useful as roles are defined as dedicated nodes and are tightly related to permissions
+- Remove the "role" attribute of base schema account node. This attribute was no longer useful as roles are defined as dedicated nodes and are tightly related to permissions.
 - Remove the /api/diff/data and /api/diff/schema endpoints that have been replaced by the DiffTree GraphQL query
 
 ### Added
 
-- Add a "deprecation" property to attribute and relationship schema in order to allow users to identify deprecated fields for nodes and provide a user-friendly message about the deprecation reasons ([#4245](https://github.com/opsmill/infrahub/issues/4245))
+- Add a "deprecation" property to attribute and relationship schema in order to allow users to identify deprecated fields for nodes and provide a user-friendly message about the deprecation reasons. ([#4245](https://github.com/opsmill/infrahub/issues/4245))
 - Add ability to use node HFID to create a related node on a generic relationship ([#4649](https://github.com/opsmill/infrahub/issues/4649))
+
+### Changed
+
+- Change strings referring to file system paths to pathlib.Path objects ([#3545](https://github.com/opsmill/infrahub/issues/3545))
 
 ### Fixed
 
 - Fix search anywhere so it looks at Groups ([#3173](https://github.com/opsmill/infrahub/issues/3173))
-- Loosened up logic to determine when an artifact needs to be regenerated during a proposed change. This is to ensure that we always generate a new artifact if required. Until some other sections are refactored this will also mean that Infrahub will generate artifacts in a few situations where it's not strictly required. This last part is a temporary solution. ([#4198](https://github.com/opsmill/infrahub/issues/4198))
 - Use the repository object ID as name for its git working copy directory ([#4296](https://github.com/opsmill/infrahub/issues/4296))
 - Search anywhere now supports IPv6 extended format ([#4613](https://github.com/opsmill/infrahub/issues/4613))
-- Synchronise git repository clones and updates for task workers in order to remove the need for a shared storage ([#4789](https://github.com/opsmill/infrahub/issues/4789))
+- Synchronize Git repository clones and updates for task workers in order to remove the need for a shared storage ([#4789](https://github.com/opsmill/infrahub/issues/4789))
+- FIX: Resolved edge cases in 'Search Anywhere' that were causing old results to be displayed. ([#4863](https://github.com/opsmill/infrahub/issues/4863))
 - Remove Profile in registry for renamed schema nodes ([#4909](https://github.com/opsmill/infrahub/issues/4909))
 - Forbid changing the "optional" property of an inherited attribute to not break GraphQL schema generation ([#4936](https://github.com/opsmill/infrahub/issues/4936))
+- Send a request to the backend on logout to delete session cookies and prevent remaining information ([#4962](https://github.com/opsmill/infrahub/issues/4962))
 - Add support for irresolvable conflicts to the diff logic and DiffTree GraphQL query
-- Fix a bug that prevented updating a relationship during a merge if ONLY the metadata was updated and not the peer
-- Fix permission check when using multiple backends, if one grants a permission the next ones must not be queried
+- Fix a bug that prevented updating a relationship during a merge if ONLY the metadata was updated and not the peer.
+- Fix permission check when using multiple backends, if one grants a permission the next ones must not be queried.
+- Update logic to check if the changes on a branch include schema changes to use the new diff
 - Update the api/diff/artifacts endpoint to use a dedicated query
+- Verify if the requested branch exists. If it doesn't, it redirects to the homepage on the default branch.
+  This helps avoid query issues, such as empty results (for example, an empty menu) or incorrect queries being sent.
 
 ## [Infrahub - v1.0.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.9) - 2024-12-13
 
