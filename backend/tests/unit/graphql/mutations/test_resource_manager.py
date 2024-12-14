@@ -430,7 +430,7 @@ async def test_prefix_pool_get_resource_with_prefix_length(
     assert not result.errors
     assert result.data
     assert result.data["IPPrefixPoolGetResource"]["ok"]
-    assert result.data["IPPrefixPoolGetResource"]["node"] == {"display_label": "10.10.3.32/31", "kind": "IpamIPPrefix"}
+    assert result.data["IPPrefixPoolGetResource"]["node"] == {"display_label": "10.10.0.0/31", "kind": "IpamIPPrefix"}
 
 
 async def test_address_pool_get_resource(
