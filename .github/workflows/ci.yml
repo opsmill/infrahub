@@ -693,9 +693,6 @@ jobs:
       - name: Build Demo
         run: invoke dev.build
 
-      - name: Pull External Docker Images
-        run: invoke dev.pull
-
       - name: Initialize Demo
         id: init-demo
         run: invoke dev.start dev.load-infra-schema
