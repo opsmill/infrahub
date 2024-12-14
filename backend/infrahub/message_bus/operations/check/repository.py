@@ -17,7 +17,10 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
-@flow(name="git-repository-check-definition")
+@flow(
+    name="git-repository-check-definition",
+    flow_run_name="Run user defined checks for repository {message.repository_name}",
+)
 async def check_definition(message: messages.CheckRepositoryCheckDefinition, service: InfrahubServices) -> None:
     definition = await service.client.get(
         kind=InfrahubKind.CHECKDEFINITION, id=message.check_definition_id, branch=message.branch_name
@@ -129,7 +132,10 @@ async def check_definition(message: messages.CheckRepositoryCheckDefinition, ser
         await service.send(message=event)
 
 
-@flow(name="git-repository-check-merge-conflict")
+@flow(
+    name="git-repository-check-merge-conflict",
+    flow_run_name="Check for merge conflicts between {message.source_branch} and {message.target_branch}",
+)
 async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, service: InfrahubServices) -> None:
     """Runs a check to see if there are merge conflicts between two branches."""
     log.info(
@@ -212,7 +218,7 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
     )
 
 
-@flow(name="git-repository-user-check")
+@flow(name="git-repository-user-check", flow_run_name="Execute user defined Check")
 async def user_check(message: messages.CheckRepositoryUserCheck, service: InfrahubServices) -> None:
     validator = await service.client.get(kind=InfrahubKind.USERVALIDATOR, id=message.validator_id)
     await validator.checks.fetch()

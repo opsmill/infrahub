@@ -1,4 +1,3 @@
-
 from infrahub.exceptions import FileOutOfRepositoryError, RepositoryFileNotFoundError
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
