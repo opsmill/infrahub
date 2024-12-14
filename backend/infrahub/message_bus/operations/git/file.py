@@ -1,4 +1,3 @@
-from prefect import flow
 
 from infrahub.exceptions import FileOutOfRepositoryError, RepositoryFileNotFoundError
 from infrahub.git.repository import get_initialized_repo
@@ -13,7 +12,6 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
-@flow(name="git-repository-get-file")
 async def get(message: messages.GitFileGet, service: InfrahubServices) -> None:
     log.info("Collecting file from repository", repository=message.repository_name, file=message.file)
 
