@@ -5,7 +5,7 @@
 # https://docs.infrahub.app/reference/configuration
 services:
   message-queue:
-    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:3.13.7-management}
+    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:3.13.6-management}
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: infrahub
