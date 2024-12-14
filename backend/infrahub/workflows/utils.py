@@ -44,7 +44,7 @@ async def wait_for_schema_to_converge(
     has_converged = False
     branch_id = branch_name
     if branch := registry.branch.get(branch_name):
-        branch_id = branch.get_id()
+        branch_id = str(branch.get_uuid())
 
     delay = 0.2
     max_iterations = delay * 5 * 30
