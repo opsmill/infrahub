@@ -23,6 +23,7 @@ export const RelationshipHierarchicalInput = ({
       <ComboboxContent>
         <RelationshipComboboxList
           peer={peer}
+          value={value}
           onSelect={(relationshipNode) => {
             onChange(relationshipNode);
             setOpen(false);

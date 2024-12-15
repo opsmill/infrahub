@@ -9,6 +9,7 @@ export type getRelationshipsFromApiParams = {
   search?: string;
   branchName: string;
   atDate: Date | null;
+  parent?: { name: string; value: string };
 };
 
 export const getRelationshipsFromApi = async ({
@@ -18,8 +19,9 @@ export const getRelationshipsFromApi = async ({
   search,
   branchName,
   atDate,
+  parent,
 }: getRelationshipsFromApiParams) => {
-  const query = gql(generateRelationshipListQuery({ peer, limit, offset, search }));
+  const query = gql(generateRelationshipListQuery({ peer, limit, offset, search, parent }));
 
   return graphqlClient.query({
     query,
