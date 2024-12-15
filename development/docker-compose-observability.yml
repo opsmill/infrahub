@@ -1,0 +1,91 @@
+---
+services:
+  # --------------------------------------------------------------------------------
+  #  - Prometheus to collect all metrics endpoints
+  #  - Tempo to receive traces
+  #  - Grafana to visualize these metrics
+  #  - Loki to receive logs from promtail
+  #  - Promtail to parse logs from different source
+  # --------------------------------------------------------------------------------
+  # promtail:
+  #   image: grafana/promtail:2.8.4
+  #   volumes:
+  #     - ./promtail/config.yml:/etc/promtail/config.yml
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #     - /var/lib/docker/containers:/var/lib/docker/containers
+  #   depends_on:
+  #     - loki
+  # loki:
+  #   image: grafana/loki:2.8.4
+  #   command:
+  #     - '-config.file=/etc/loki/config.yml'
+  #     - '-config.expand-env=true'
+  #   volumes:
+  #     - type: bind
+  #       source: ./loki/config.yml
+  #       target: /etc/loki/config.yml
+  #       read_only: true
+  #     - loki_data:/loki
+  #   ports:
+  #     - "3100:3100"
+
+  # tempo:
+  #   image: grafana/tempo:latest
+  #   volumes:
+  #     - type: bind
+  #       source: ./tempo/config.yml
+  #       target: /etc/tempo.yaml
+  #       read_only: true
+  #     - tempo_data:/tmp/tempo
+  #   command:
+  #     - '-config.file=/etc/tempo.yaml'
+  #   ports:
+  #     - "3200:3200"
+
+  task-manager-exporter:
+    profiles: [debug]
+    image: prefecthq/prometheus-prefect-exporter:latest
+    environment:
+      PREFECT_API_URL: http://task-manager:4200/api
+    ports:
+      - "4201:8000"
+    depends_on:
+      task-manager:
+        condition: service_healthy
+
+  prometheus:
+    profiles: [debug]
+    image: prom/prometheus:latest
+    volumes:
+      - type: bind
+        source: ./prometheus/config.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=1d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+
+  grafana:
+    profiles: [debug]
+    image: grafana/grafana:11.4.0
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3500:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  grafana_data:
+  prometheus_data:
