@@ -83,10 +83,6 @@ def prepare_graphql_params(
     if request and not service:
         service = request.app.state.service
 
-    component_registry = get_component_registry()
-    srr = SingleRelationshipResolver(db=db)
-    component_registry.cache_component(srr)
-
     return GraphqlParams(
         schema=gql_schema,
         context=GraphqlContext(

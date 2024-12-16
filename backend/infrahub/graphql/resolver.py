@@ -357,8 +357,8 @@ class SingleRelationshipResolver:
 
 
 async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
-    component_registry = get_component_registry()
-    resolver: SingleRelationshipResolver = component_registry.get_cached_component(SingleRelationshipResolver)
+    context: GraphqlContext = info.context
+    resolver = context.single_relationship_resolver
     return await resolver.resolve(parent=parent, info=info, **kwargs)
 
 
