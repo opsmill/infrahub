@@ -34,7 +34,7 @@ default_branch = Branch(
 
 class Migration013ConvertCoreRepositoryWithCred(Query):
     name = "migration_013_convert_repository_with_cred"
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         at = Timestamp()
@@ -170,7 +170,7 @@ class Migration013ConvertCoreRepositoryWithCred(Query):
 
 class Migration013ConvertCoreRepositoryWithoutCred(Query):
     name = "migration_013_convert_repository_without_cred"
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         at = Timestamp()
@@ -233,7 +233,7 @@ class Migration013ConvertCoreRepositoryWithoutCred(Query):
 
 class Migration013DeleteUsernamePasswordGenericSchema(DeleteElementInSchemaQuery):
     name = "migration_013_delete_username_password_schema"
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
     insert_return = False
 
     def __init__(self, **kwargs: Any):
@@ -251,7 +251,7 @@ class Migration013DeleteUsernamePasswordGenericSchema(DeleteElementInSchemaQuery
 
 class Migration013DeleteUsernamePasswordReadWriteSchema(DeleteElementInSchemaQuery):
     name = "migration_013_delete_username_password_schema"
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
     insert_return = False
 
     def __init__(self, **kwargs: Any):
@@ -269,7 +269,7 @@ class Migration013DeleteUsernamePasswordReadWriteSchema(DeleteElementInSchemaQue
 
 class Migration013DeleteUsernamePasswordReadOnlySchema(DeleteElementInSchemaQuery):
     name = "migration_013_delete_username_password_schema"
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
     insert_return = False
 
     def __init__(self, **kwargs: Any):

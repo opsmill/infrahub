@@ -117,8 +117,7 @@ class NodeQuery(Query):
 
 class NodeCreateAllQuery(NodeQuery):
     name = "node_create_all"
-
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     raise_error_if_empty: bool = True
 
@@ -397,7 +396,8 @@ class NodeCheckIDQuery(Query):
 
 
 class NodeListGetAttributeQuery(Query):
-    name: str = "node_list_get_attribute"
+    name = "node_list_get_attribute"
+    type = QueryType.READ
 
     property_type_mapping = {
         "HAS_VALUE": ("r2", "av"),
@@ -556,7 +556,8 @@ class NodeListGetAttributeQuery(Query):
 
 
 class NodeListGetRelationshipsQuery(Query):
-    name: str = "node_list_get_relationship"
+    name = "node_list_get_relationship"
+    type = QueryType.READ
 
     def __init__(self, ids: list[str], **kwargs):
         self.ids = ids
@@ -596,7 +597,7 @@ class NodeListGetRelationshipsQuery(Query):
 
 
 class NodeGetKindQuery(Query):
-    name: str = "node_get_kind_query"
+    name = "node_get_kind_query"
     type = QueryType.READ
 
     def __init__(self, ids: list[str], **kwargs: Any) -> None:
@@ -621,7 +622,8 @@ class NodeGetKindQuery(Query):
 
 
 class NodeListGetInfoQuery(Query):
-    name: str = "node_list_get_info"
+    name = "node_list_get_info"
+    type = QueryType.READ
 
     def __init__(self, ids: list[str], account=None, **kwargs: Any) -> None:
         self.account = account
@@ -752,6 +754,7 @@ class FieldAttributeRequirement:
 
 class NodeGetListQuery(Query):
     name = "node_get_list"
+    type = QueryType.READ
 
     def __init__(
         self, schema: NodeSchema, filters: Optional[dict] = None, partial_match: bool = False, **kwargs: Any
@@ -1156,8 +1159,7 @@ class NodeGetListQuery(Query):
 
 class NodeGetHierarchyQuery(Query):
     name = "node_get_hierarchy"
-
-    type: QueryType = QueryType.READ
+    type = QueryType.READ
 
     def __init__(
         self,

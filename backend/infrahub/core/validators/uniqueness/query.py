@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_VALUE_LABEL
-from infrahub.core.query import Query
+from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 class NodeUniqueAttributeConstraintQuery(Query):
     name = "node_constraints_uniqueness"
     insert_return = False
+    type = QueryType.READ
     attribute_property_map = {"value": RELATIONSHIP_TO_VALUE_LABEL}
 
     def __init__(

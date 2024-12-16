@@ -276,8 +276,7 @@ class RelationshipCreateQuery(RelationshipQuery):
 
 class RelationshipUpdatePropertyQuery(RelationshipQuery):
     name = "relationship_property_update"
-
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     def __init__(
         self,
@@ -358,8 +357,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
 class RelationshipDataDeleteQuery(RelationshipQuery):
     name = "relationship_data_delete"
-
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     def __init__(
         self,
@@ -425,8 +423,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
 
 class RelationshipDeleteQuery(RelationshipQuery):
     name = "relationship_delete"
-
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -513,8 +510,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
 class RelationshipGetPeerQuery(Query):
     name = "relationship_get_peer"
-
-    type: QueryType = QueryType.READ
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -797,8 +793,7 @@ class RelationshipGetQuery(RelationshipQuery):
 
 class RelationshipGetByIdentifierQuery(Query):
     name = "relationship_get_identifier"
-
-    type: QueryType = QueryType.READ
+    type = QueryType.READ
 
     def __init__(
         self,

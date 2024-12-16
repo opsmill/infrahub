@@ -15,6 +15,8 @@ from infrahub.database import InfrahubDatabase
 
 
 class Query01(Query):
+    type = QueryType.READ
+
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.order_by = ["at.name", "r2.from"]
 
@@ -30,7 +32,7 @@ class Query01(Query):
 
 
 class Query02(Query):
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         query = """
