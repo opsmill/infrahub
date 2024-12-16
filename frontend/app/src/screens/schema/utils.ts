@@ -1,8 +1,10 @@
+import { store } from "@/state";
 import {
   IModelSchema,
   IProfileSchema,
   iGenericSchema,
   iNodeSchema,
+  schemaState,
 } from "@/state/atoms/schema.atom";
 
 export const isOfKind = (kind: string, schema: IModelSchema) => {
@@ -27,4 +29,12 @@ export const isHierarchicalSchema = (
   schema: IModelSchema
 ): schema is IModelSchema & { hierarchy: string } => {
   return "hierarchy" in schema && !!schema.hierarchy;
+};
+
+export const getRootSchemaOfHierarchicalSchema = (schema: iNodeSchema): iNodeSchema | null => {
+  const nodes = store.get(schemaState);
+  const parentSchema = nodes.find(({ kind }) => kind === schema.parent);
+
+  if (!parentSchema) return schema;
+  return getRootSchemaOfHierarchicalSchema(parentSchema);
 };

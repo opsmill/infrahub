@@ -53,7 +53,7 @@ export const ComboboxList = React.forwardRef<
     shouldFilter?: boolean;
     onValueChange?: (search: string) => void;
   }
->(({ fitTriggerWidth = true, style, shouldFilter, onValueChange, ...props }, ref) => {
+>(({ fitTriggerWidth = true, style, shouldFilter, autoFocus, onValueChange, ...props }, ref) => {
   return (
     <Command
       style={{
@@ -65,7 +65,7 @@ export const ComboboxList = React.forwardRef<
       }}
       shouldFilter={shouldFilter}
     >
-      <CommandInput placeholder="Filter..." onValueChange={onValueChange} />
+      <CommandInput placeholder="Filter..." autoFocus={autoFocus} onValueChange={onValueChange} />
       <CommandList ref={ref} {...props} />
     </Command>
   );

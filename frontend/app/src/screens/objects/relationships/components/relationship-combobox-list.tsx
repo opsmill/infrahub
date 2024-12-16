@@ -31,7 +31,6 @@ export const RelationshipComboboxList = forwardRef<HTMLDivElement, RelationshipC
       <>
         <ComboboxList
           ref={ref}
-          autoFocus
           onValueChange={(newValue) => setSearchDebounced(newValue)}
           shouldFilter={false}
         >
