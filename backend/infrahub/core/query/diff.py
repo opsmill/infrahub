@@ -317,7 +317,8 @@ class DiffRelationshipPropertyQuery(DiffQuery):
 
 
 class DiffNodePropertiesByIDSRangeQuery(Query):
-    name: str = "diff_node_properties_range_ids"
+    name = "diff_node_properties_range_ids"
+    type = QueryType.READ
 
     def __init__(self, ids: list[str], diff_from: str, diff_to: str, account=None, **kwargs):
         self.account = account
