@@ -25,6 +25,7 @@ operations_without_flows = [
     "refresh.registry.branches",
     "refresh.registry.rebased_branch",
     "trigger.webhook.actions",
+    "git.file.get",
 ]
 
 

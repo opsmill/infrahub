@@ -14,7 +14,7 @@ from infrahub.worker import WORKER_IDENTITY
 log = get_logger()
 
 
-@flow(name="git-repository-check-connectivity")
+@flow(name="git-repository-check-connectivity", flow_run_name="Check connectivity for {message.repository_name}")
 async def connectivity(message: messages.GitRepositoryConnectivity, service: InfrahubServices) -> None:
     response_data = GitRepositoryConnectivityResponseData(message="Successfully accessed repository", success=True)
 
