@@ -92,8 +92,8 @@ const HierarchicalExplorer = ({
 
     return (
       <>
-        <Badge className="ml-2 mt-1 self-start" onClick={handleRemoveNode}>
-          {selectNode.display_label}
+        <Badge className="ml-2 mt-1 self-start cursor-pointer" onClick={handleRemoveNode}>
+          {selectNode.display_label} &times;
         </Badge>
 
         <HierarchicalExplorer
