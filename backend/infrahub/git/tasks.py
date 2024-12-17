@@ -242,7 +242,7 @@ async def generate_artifact_definition(branch: str) -> None:
 async def generate_artifact(model: RequestArtifactGenerate) -> None:
     service = services.service
 
-    await add_tags(branches=[model.branch_name], nodes=[model.repository_id])
+    await add_tags(branches=[model.branch_name], nodes=[model.target_id])
     log = get_run_logger()
     repo = await get_initialized_repo(
         repository_id=model.repository_id,
