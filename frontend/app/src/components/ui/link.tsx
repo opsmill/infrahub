@@ -1,13 +1,5 @@
 import { classNames } from "@/utils/common";
-import { Link as RouterLink } from "react-router-dom";
-
-type LinkProps = {
-  to: string;
-  children?: any;
-  target?: string;
-  rel?: string;
-  className?: string;
-};
+import { LinkProps, Link as RouterLink } from "react-router-dom";
 
 export const Link = (props: LinkProps) => {
   const { children, className, ...propsToPass } = props;
