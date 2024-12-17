@@ -1,4 +1,9 @@
-import { Combobox, ComboboxContent, ComboboxTrigger } from "@/components/ui/combobox";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxTrigger,
+  ComboboxTriggerProps,
+} from "@/components/ui/combobox";
 import {
   PopoverTabs,
   PopoverTabsContent,
@@ -10,7 +15,8 @@ import { RelationshipHierarchicalComboboxList } from "@/screens/objects/relation
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
 import { useState } from "react";
 
-export interface IHierarchicalRelationshipInputProps {
+export interface IHierarchicalRelationshipInputProps
+  extends Omit<ComboboxTriggerProps, "value" | "onChange"> {
   onChange: (value: RelationshipNode) => void;
   value?: RelationshipNode | null;
   peer: string;
@@ -20,12 +26,13 @@ export const RelationshipHierarchicalInput = ({
   value,
   onChange,
   peer,
+  ...props
 }: IHierarchicalRelationshipInputProps) => {
   const [open, setOpen] = useState(false);
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
-      <ComboboxTrigger>{value?.display_label}</ComboboxTrigger>
+      <ComboboxTrigger {...props}>{value?.display_label}</ComboboxTrigger>
 
       <ComboboxContent>
         <PopoverTabs defaultValue="list">

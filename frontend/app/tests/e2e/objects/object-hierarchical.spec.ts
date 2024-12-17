@@ -41,4 +41,28 @@ test.describe("Object hierarchical view", () => {
       await expect(page.getByRole("link", { name: "Atlanta" })).toBeVisible();
     });
   });
+
+  test("should select a site using the Explore tab of relationship input", async ({ page }) => {
+    await test.step("navigate to InfraDevice creation page", async () => {
+      await page.goto("/objects/InfraDevice");
+      await page.getByTestId("create-object-button").click();
+    });
+
+    await test.step("open site selection and verify All tab", async () => {
+      await page.getByLabel("Site *").click();
+      await expect(page.getByRole("tab", { name: "All" })).toBeVisible();
+      await expect(page.getByRole("option", { name: "atl1" })).toBeVisible();
+    });
+
+    await test.step("navigate through hierarchy in Explore tab", async () => {
+      await page.getByRole("tab", { name: "Explore" }).click();
+      await page.getByRole("option", { name: "North America Continent" }).click();
+      await page.getByRole("option", { name: "United States of America" }).click();
+      await page.getByRole("option", { name: "atl1 Site" }).click();
+    });
+
+    await test.step("verify selected site", async () => {
+      await expect(page.getByLabel("Site *")).toContainText("atl1");
+    });
+  });
 });
