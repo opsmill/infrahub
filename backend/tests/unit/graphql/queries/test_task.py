@@ -150,6 +150,13 @@ async def prefect_client(local_prefect_server):
 
 
 @pytest.fixture
+async def delete_flow_runs(prefect_client: PrefectClient):
+    flows = await prefect_client.read_flow_runs()
+    for flow in flows:
+        await prefect_client.delete_flow_run(flow_run_id=flow.id)
+
+
+@pytest.fixture
 async def flow_runs_data(prefect_client: PrefectClient, tag_blue, account_bob):
     branch1_tag = WorkflowTag.BRANCH.render(identifier="branch1")
     db_tag = WorkflowTag.DATABASE_CHANGE.render()
@@ -234,7 +241,7 @@ async def run_query(db: InfrahubDatabase, branch: Branch, query: str, variables:
 
 
 async def test_task_query_infrahub(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, local_prefect_server
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs
 ):
     red = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await red.new(db=db, name="Red", description="The Red tag")

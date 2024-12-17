@@ -25,7 +25,6 @@ from infrahub.workflows.catalogue import (
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
 )
-from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .constants import (
@@ -170,7 +169,7 @@ async def update_computed_attribute_value_jinja2(
     log = get_run_logger()
     service = services.service
 
-    await add_tags(branches=[branch_name], nodes=[obj.id], others=[TAG_NAMESPACE, WorkflowTag.DATABASE_CHANGE.render()])
+    await add_tags(branches=[branch_name], nodes=[obj.id], db_change=True)
 
     macro_definition = MacroDefinition(macro=template_value)
     my_filter = {}
