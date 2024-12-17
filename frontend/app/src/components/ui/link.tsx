@@ -5,6 +5,7 @@ type LinkProps = {
   to: string;
   children?: any;
   target?: string;
+  rel?: string;
   className?: string;
 };
 
