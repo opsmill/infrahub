@@ -2,21 +2,21 @@ from typing import List
 
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
+from prefect.logging import get_run_logger
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.timestamp import Timestamp
-from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
+from infrahub.workflows.utils import add_tags
 
-log = get_logger()
 
-
-@flow(name="repository-check")
+@flow(name="repository-check", flow_run_name="Running repository checks for repository {message.repository}")
 async def checks(message: messages.RequestRepositoryChecks, service: InfrahubServices) -> None:
     """Request to start validation checks on a specific repository."""
-    log.info("Running repository checks", repository_id=message.repository, proposed_change_id=message.proposed_change)
+    await add_tags(branches=[message.source_branch], nodes=[message.proposed_change])
+    log = get_run_logger()
 
     events: List[InfrahubMessage] = []
 
@@ -76,7 +76,7 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
     )
 
     checks_in_execution = ",".join(check_execution_ids)
-    log.info("Checks in execution", checks=checks_in_execution)
+    log.info(f"Checks in execution {checks_in_execution}")
     await service.cache.set(
         key=f"validator_execution_id:{validator_execution_id}:checks",
         value=checks_in_execution,
@@ -98,10 +98,14 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
 
 @flow(
     name="repository-users-check",
-    flow_run_name="Evaluating user-defined checks on repository {message.repository} and proposed change {message.proposed_change}",
+    flow_run_name="Evaluating user-defined checks on repository {message.repository}",
 )
 async def user_checks(message: messages.RequestRepositoryUserChecks, service: InfrahubServices) -> None:
     """Request to start validation checks on a specific repository for User-defined checks."""
+
+    await add_tags(branches=[message.source_branch], nodes=[message.proposed_change])
+    log = get_run_logger()
+
     events: List[InfrahubMessage] = []
 
     repository = await service.client.get(
