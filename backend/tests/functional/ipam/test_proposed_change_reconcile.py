@@ -5,12 +5,17 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub import config
+from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
+from infrahub.message_bus.types import KVTTL
+from infrahub.services import services
 from infrahub.services.adapters.cache.redis import RedisCache
+from infrahub.worker import WORKER_IDENTITY
 
 from .base import TestIpamReconcileBase
 
@@ -58,12 +63,18 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
         branch_1,
         new_address_1,
     ) -> None:
+        await services.service.component.refresh_heartbeat()
         proposed_change_create = await client.create(
             kind=InfrahubKind.PROPOSEDCHANGE,
             data={"source_branch": branch_1.name, "destination_branch": "main", "name": "add_address_pc"},
         )
         await proposed_change_create.save()
         proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+        await services.service.cache.set(
+            key=f"workers:active:{ComponentType.API_SERVER}:worker:{WORKER_IDENTITY}",
+            value=Timestamp().to_string(),
+            expires=KVTTL.FIFTEEN,
+        )
         await proposed_change_create.save()
 
         updated_address = await NodeManager.get_one(db=db, id=new_address_1.id)

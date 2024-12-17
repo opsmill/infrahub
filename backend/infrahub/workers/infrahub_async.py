@@ -116,6 +116,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
         initialize_repositories_directory()
         build_component_registry()
+        await service.scheduler.start_schedule()
         self._logger.info("Worker initialization completed .. ")
 
     async def run(
