@@ -7,7 +7,6 @@ from starlette.background import BackgroundTasks
 
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import InitializationError
 from infrahub.graphql.resolver import SingleRelationshipResolver
 
@@ -34,6 +33,7 @@ class GraphqlContext:
     db: InfrahubDatabase
     branch: Branch
     types: dict
+    single_relationship_resolver: SingleRelationshipResolver
     at: Optional[Timestamp] = None
     related_node_ids: Optional[set] = None
     service: Optional[InfrahubServices] = None
@@ -88,6 +88,7 @@ def prepare_graphql_params(
         context=GraphqlContext(
             db=db,
             branch=branch,
+            single_relationship_resolver=SingleRelationshipResolver(),
             at=Timestamp(at),
             types=gqlm.get_graphql_types(),
             related_node_ids=set(),

@@ -1137,7 +1137,7 @@ class NodeManager:
             profile_attributes_id_map=profile_attributes, profile_ids_by_node_id=profile_ids_by_node_id
         )
 
-        # if prefetch_relationships is enabled
+        # if prefetch_relationships or fields include relationships
         # Query all the peers associated with all nodes at once.
         grouped_peer_nodes: GroupedPeerNodes | None = None
         peers: dict[str, Node] = {}
