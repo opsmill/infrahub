@@ -688,7 +688,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         for relationship_schema in self.get_schema().relationships:
             peer_rels = []
-            if relationship_schema.name not in fields:
+            if not fields or relationship_schema.name not in fields:
                 continue
             rel_manager = getattr(self, relationship_schema.name, None)
             if rel_manager is None:
