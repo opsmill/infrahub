@@ -294,7 +294,7 @@ class SingleRelationshipResolver:
     def __init__(self) -> None:
         self._data_loader_instances: dict[GetEntitiesParams, EntityDataLoader] = {}
 
-    async def resolve(self, parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
+    async def resolve(self, parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:  # pylint: disable=unused-argument
         """Resolver for relationships of cardinality=one for Edged responses
 
         This resolver is used for paginated responses and as such we redefined the requested
@@ -339,7 +339,6 @@ class SingleRelationshipResolver:
             fields=node_fields,
             at=context.at,
             branch=context.branch,
-            # TODO: can be smarter about setting these
             include_source=True,
             include_owner=True,
             prefetch_relationships=False,
