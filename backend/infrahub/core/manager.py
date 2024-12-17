@@ -10,6 +10,7 @@ from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.query.node import (
     AttributeFromDB,
     AttributeNodePropertyFromDB,
+    GroupedPeerNodes,
     NodeAttributesFromDB,
     NodeGetHierarchyQuery,
     NodeGetListQuery,
@@ -1138,22 +1139,18 @@ class NodeManager:
 
         # if prefetch_relationships is enabled
         # Query all the peers associated with all nodes at once.
-        peers_per_node: dict[str, dict[str, list[str]]] = {}
+        grouped_peer_nodes: GroupedPeerNodes | None = None
         peers: dict[str, Node] = {}
         if prefetch_relationships:
             query = await NodeListGetRelationshipsQuery.init(
                 db=db, ids=ids, branch=branch, at=at, branch_agnostic=branch_agnostic
             )
             await query.execute(db=db)
-            peers_per_node = query.get_peers_group_by_node()
-            peer_ids = []
+            grouped_peer_nodes = query.get_peers_group_by_node()
+            peer_ids = grouped_peer_nodes.get_all_peers()
 
-            for node_data in peers_per_node.values():
-                for node_peers in node_data.values():
-                    peer_ids.extend(node_peers)
-
-            # query the peers that are not already part of the main list
-            peer_ids = list(set(peer_ids) - set(ids))
+            # only query the peers that are not already part of the main list
+            peer_ids -= set(ids)
             peers = await cls.get_many(
                 ids=peer_ids,
                 branch=branch,
@@ -1201,23 +1198,24 @@ class NodeManager:
         # --------------------------------------------------------
         # Relationships
         # --------------------------------------------------------
-        if prefetch_relationships:
+        if prefetch_relationships and grouped_peer_nodes:
             for node_id, node in nodes.items():
-                if node_id not in peers_per_node.keys():
+                if not grouped_peer_nodes.has_node(node_id=node_id):
                     continue
 
                 for rel_schema in node._schema.relationships:
-                    direction_identifier = f"{rel_schema.direction.value}::{rel_schema.identifier}"
-                    if direction_identifier in peers_per_node[node_id]:
-                        rel_peers = [
-                            peers.get(id, None) or nodes.get(id) for id in peers_per_node[node_id][direction_identifier]
-                        ]
-                        rel_manager: RelationshipManager = getattr(node, rel_schema.name)
-                        if rel_schema.cardinality == "one" and not len(rel_peers) == 1:
-                            raise ValueError("Only one relationship expected")
+                    peer_ids = grouped_peer_nodes.get_peer_ids(
+                        node_id=node_id, rel_name=rel_schema.identifier, direction=rel_schema.direction
+                    )
+                    if not peer_ids:
+                        continue
+                    rel_peers = [peers.get(peer_id, None) or nodes.get(peer_id) for peer_id in peer_ids]
+                    rel_manager: RelationshipManager = getattr(node, rel_schema.name)
+                    if rel_schema.cardinality == "one" and not len(rel_peers) == 1:
+                        raise ValueError("Only one relationship expected")
 
-                        rel_manager.has_fetched_relationships = True
-                        await rel_manager.update(db=db, data=rel_peers)
+                    rel_manager.has_fetched_relationships = True
+                    await rel_manager.update(db=db, data=rel_peers)
 
         return nodes
 
