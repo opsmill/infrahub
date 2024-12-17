@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Iterable, Optional, Union
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.constants import AllIPTypes, IPAddressType, IPNetworkType
+from infrahub.core.query import QueryType
 from infrahub.core.registry import registry
 from infrahub.core.utils import convert_ip_to_binary_str
 
@@ -47,7 +48,8 @@ def _get_namespace_id(
 
 
 class IPPrefixSubnetFetch(Query):
-    name: str = "ipprefix_subnet_fetch"
+    name = "ipprefix_subnet_fetch"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -138,7 +140,8 @@ class IPPrefixSubnetFetch(Query):
 
 
 class IPPrefixIPAddressFetch(Query):
-    name: str = "ipprefix_ipaddress_fetch"
+    name = "ipprefix_ipaddress_fetch"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -243,7 +246,8 @@ async def get_ip_addresses(
 
 
 class IPPrefixUtilization(Query):
-    name: str = "ipprefix_utilization_prefix"
+    name = "ipprefix_utilization_prefix"
+    type = QueryType.READ
 
     def __init__(self, ip_prefixes: list[str], **kwargs):
         self.ip_prefixes = ip_prefixes
@@ -309,7 +313,8 @@ class IPPrefixUtilization(Query):
 
 
 class IPPrefixReconcileQuery(Query):
-    name: str = "ip_prefix_reconcile"
+    name = "ip_prefix_reconcile"
+    type = QueryType.READ
 
     def __init__(
         self,

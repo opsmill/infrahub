@@ -337,7 +337,7 @@ class QueryStat:
 
 class Query(ABC):
     name: str = "base-query"
-    type: QueryType = QueryType.READ
+    type: QueryType
 
     raise_error_if_empty: bool = False
     insert_return: bool = True
@@ -535,14 +535,14 @@ class Query(ABC):
         if self.type == QueryType.READ:
             if self.limit or self.offset:
                 results = await db.execute_query(
-                    query=query_str, params=self.params, name=self.name, context=self.get_context()
+                    query=query_str, params=self.params, name=self.name, context=self.get_context(), type=self.type
                 )
             else:
                 results = await self.query_with_size_limit(db=db)
 
         elif self.type == QueryType.WRITE:
             results, metadata = await db.execute_query_with_metadata(
-                query=query_str, params=self.params, name=self.name, context=self.get_context()
+                query=query_str, params=self.params, name=self.name, context=self.get_context(), type=self.type
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))
@@ -568,6 +568,7 @@ class Query(ABC):
                 params=self.params,
                 name=self.name,
                 context=self.get_context(),
+                type=self.type,
             )
             if "stats" in metadata:
                 self.stats.add(metadata.get("stats"))
@@ -589,7 +590,9 @@ class Query(ABC):
         if self.type != QueryType.READ:
             raise ValueError(f"unknown value for {self.type}")
 
-        results = await db.execute_query(query=self.get_count_query(), params=self.params, name=f"{self.name}_count")
+        results = await db.execute_query(
+            query=self.get_count_query(), params=self.params, name=f"{self.name}_count", type=QueryType.READ
+        )
 
         if not results and self.raise_error_if_empty:
             raise QueryError(query=self.get_count_query(), params=self.params)

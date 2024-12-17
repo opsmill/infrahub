@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 class SchemaAttributeUpdateQuery(Query):
     name = "schema_attribute_update"
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
     insert_return = True
 
     def __init__(

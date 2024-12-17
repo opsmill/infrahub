@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub.core.constants import NULL_VALUE, RelationshipStatus
-from infrahub.core.query import Query
+from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 class AttributeAddQuery(Query):
     name = "attribute_add"
+    type = QueryType.WRITE
 
     def __init__(
         self,

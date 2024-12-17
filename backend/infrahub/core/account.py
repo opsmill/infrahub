@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from typing_extensions import Self
 
 from infrahub.core.constants import InfrahubKind, PermissionDecision
-from infrahub.core.query import Query
+from infrahub.core.query import Query, QueryType
 from infrahub.core.registry import registry
 
 if TYPE_CHECKING:
@@ -62,6 +62,7 @@ class ObjectPermission:
 
 class AccountGlobalPermissionQuery(Query):
     name: str = "account_global_permissions"
+    type: QueryType = QueryType.READ
 
     def __init__(self, account_id: str, **kwargs: Any):
         self.account_id = account_id
@@ -176,6 +177,7 @@ class AccountGlobalPermissionQuery(Query):
 
 class AccountObjectPermissionQuery(Query):
     name: str = "account_object_permissions"
+    type: QueryType = QueryType.READ
 
     def __init__(self, account_id: str, **kwargs: Any):
         self.account_id = account_id
@@ -327,6 +329,7 @@ async def fetch_permissions(account_id: str, db: InfrahubDatabase, branch: Branc
 
 class AccountRoleGlobalPermissionQuery(Query):
     name: str = "account_role_global_permissions"
+    type: QueryType = QueryType.READ
 
     def __init__(self, role_id: str, **kwargs: Any):
         self.role_id = role_id
@@ -416,6 +419,7 @@ class AccountRoleGlobalPermissionQuery(Query):
 
 class AccountRoleObjectPermissionQuery(Query):
     name: str = "account_role_object_permissions"
+    type: QueryType = QueryType.READ
 
     def __init__(self, role_id: str, **kwargs: Any):
         self.role_id = role_id
@@ -542,6 +546,7 @@ async def fetch_role_permissions(role_id: str, db: InfrahubDatabase, branch: Bra
 
 class AccountTokenValidateQuery(Query):
     name: str = "account_token_validate"
+    type: QueryType = QueryType.READ
 
     def __init__(self, token: str, **kwargs: Any):
         self.token = token

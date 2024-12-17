@@ -27,9 +27,8 @@ class StandardNodeQuery(Query):
 
 
 class RootNodeCreateQuery(StandardNodeQuery):
-    name: str = "standard_node_create"
-
-    type: QueryType = QueryType.WRITE
+    name = "standard_node_create"
+    type = QueryType.WRITE
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         node_type = self.node.get_type()
@@ -44,9 +43,8 @@ class RootNodeCreateQuery(StandardNodeQuery):
 
 
 class StandardNodeCreateQuery(StandardNodeQuery):
-    name: str = "standard_node_create"
-
-    type: QueryType = QueryType.WRITE
+    name = "standard_node_create"
+    type = QueryType.WRITE
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         node_type = self.node.get_type()
@@ -62,9 +60,8 @@ class StandardNodeCreateQuery(StandardNodeQuery):
 
 
 class StandardNodeUpdateQuery(StandardNodeQuery):
-    name: str = "standard_node_update"
-
-    type: QueryType = QueryType.WRITE
+    name = "standard_node_update"
+    type = QueryType.WRITE
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.node.get_type()
@@ -82,10 +79,9 @@ class StandardNodeUpdateQuery(StandardNodeQuery):
 
 
 class StandardNodeDeleteQuery(StandardNodeQuery):
-    name: str = "standard_node_delete"
-    insert_return: bool = False
-
-    type: QueryType = QueryType.WRITE
+    name = "standard_node_delete"
+    insert_return = False
+    type = QueryType.WRITE
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         query = """
@@ -98,9 +94,8 @@ class StandardNodeDeleteQuery(StandardNodeQuery):
 
 
 class StandardNodeGetItemQuery(Query):
-    name: str = "standard_node_get"
-
-    type: QueryType = QueryType.WRITE
+    name = "standard_node_get"
+    type = QueryType.READ
 
     def __init__(self, node_id: str, node_type: str, **kwargs: Any) -> None:
         self.node_id = node_id
@@ -121,9 +116,8 @@ class StandardNodeGetItemQuery(Query):
 
 
 class StandardNodeGetListQuery(Query):
-    name: str = "standard_node_list"
-
-    type: QueryType = QueryType.WRITE
+    name = "standard_node_list"
+    type = QueryType.READ
 
     def __init__(
         self, node_class: StandardNode, ids: Optional[list[str]] = None, node_name: Optional[str] = None, **kwargs: Any

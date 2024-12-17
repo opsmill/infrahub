@@ -47,7 +47,8 @@ class DiffQuery(Query):
 
 
 class DiffNodeQuery(DiffQuery):
-    name: str = "diff_node"
+    name = "diff_node"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -113,7 +114,8 @@ class DiffNodeQuery(DiffQuery):
 
 
 class DiffAttributeQuery(DiffQuery):
-    name: str = "diff_attribute"
+    name = "diff_attribute"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -175,8 +177,8 @@ class DiffAttributeQuery(DiffQuery):
 
 
 class DiffRelationshipQuery(DiffQuery):
-    name: str = "diff_relationship"
-    type: QueryType = QueryType.READ
+    name = "diff_relationship"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -260,8 +262,8 @@ class DiffRelationshipQuery(DiffQuery):
 
 
 class DiffRelationshipPropertyQuery(DiffQuery):
-    name: str = "diff_relationship_property"
-    type: QueryType = QueryType.READ
+    name = "diff_relationship_property"
+    type = QueryType.READ
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
@@ -363,7 +365,8 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
 
 
 class DiffNodePropertiesByIDSQuery(Query):
-    name: str = "diff_node_properties_ids"
+    name = "diff_node_properties_ids"
+    type = QueryType.READ
     order_by: list[str] = ["a.name"]
 
     def __init__(
@@ -415,8 +418,7 @@ class DiffNodePropertiesByIDSQuery(Query):
 
 class DiffRelationshipPropertiesByIDSRangeQuery(Query):
     name = "diff_relationship_properties_range_ids"
-
-    type: QueryType = QueryType.READ
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -470,8 +472,8 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
 
 
 class DiffCountChanges(Query):
-    name: str = "diff_count_changes"
-    type: QueryType = QueryType.READ
+    name = "diff_count_changes"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -523,7 +525,8 @@ class DiffCountChanges(Query):
 class DiffAllPathsQuery(DiffQuery):
     """Gets the required Cypher paths for a diff"""
 
-    name: str = "diff_node"
+    name = "diff_node"
+    type = QueryType.READ
 
     def __init__(
         self,

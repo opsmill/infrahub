@@ -33,7 +33,8 @@ INVOKE_PTY = os.getenv("INVOKE_PTY", None)
 INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
 INFRAHUB_ADDRESS = os.getenv("INFRAHUB_ADDRESS", "http://localhost:8000")
 
-INFRAHUB_USE_NATS = bool(os.getenv("INFRAHUB_USE_NATS", None))
+INFRAHUB_DEBUG: bool = str_to_bool(value=os.getenv("INFRAHUB_DEBUG", "false"))
+INFRAHUB_USE_NATS: bool = str_to_bool(os.getenv("INFRAHUB_USE_NATS", "false"))
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
@@ -47,7 +48,7 @@ CACHE_DOCKER_IMAGE = os.getenv(
     "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
 )
 
-TASK_MANAGER_DOCKER_IMAGE = os.getenv("TASK_MANAGER_DOCKER_IMAGE", "prefecthq/prefect:3.1.5-python3.12")
+TASK_MANAGER_DOCKER_IMAGE = os.getenv("TASK_MANAGER_DOCKER_IMAGE", "prefecthq/prefect:3.0.9-python3.12")
 
 here = Path(__file__).parent.resolve()
 TOP_DIRECTORY_NAME = here.parent.name
@@ -93,6 +94,7 @@ COMPOSE_FILES_MEMGRAPH = [
 COMPOSE_FILES_NEO4J = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     Path("development/docker-compose-database-neo4j.yml"),
+    Path("development/docker-compose-observability.yml"),
     Path("development/docker-compose.yml"),
 ]
 
@@ -103,6 +105,7 @@ DEV_COMPOSE_FILES_MEMGRAPH = [
 DEV_COMPOSE_FILES_NEO4J = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     Path("development/docker-compose-database-neo4j.yml"),
+    Path("development/docker-compose-observability.yml"),
 ]
 DEV_OVERRIDE_FILE = Path("development/docker-compose.dev-override.yml")
 
@@ -190,6 +193,9 @@ def get_compose_cmd(namespace: Namespace) -> str:
         options.append("--profile demo")
     elif namespace == Namespace.TEST:
         options.append("--profile test")
+
+    if INFRAHUB_DEBUG:
+        options.append("--profile debug")
 
     if dumb_terminal():
         options.append("--ansi never")

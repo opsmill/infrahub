@@ -24,15 +24,16 @@ class NodeConstraintRunner:
         self.relationship_manager_constraints = relationship_manager_constraints
 
     async def check(self, node: Node, field_filters: Optional[list[str]] = None) -> None:
-        await node.resolve_relationships(db=self.db)
+        async with self.db.start_session() as db:
+            await node.resolve_relationships(db=db)
 
-        for node_constraint in self.node_constraints:
-            await node_constraint.check(node, filters=field_filters)
+            for node_constraint in self.node_constraints:
+                await node_constraint.check(node, filters=field_filters)
 
-        for relationship_name in node.get_schema().relationship_names:
-            if field_filters and relationship_name not in field_filters:
-                continue
-            relationship_manager: RelationshipManager = getattr(node, relationship_name)
-            await relationship_manager.fetch_relationship_ids(db=self.db, force_refresh=True)
-            for relationship_constraint in self.relationship_manager_constraints:
-                await relationship_constraint.check(relm=relationship_manager, node_schema=node.get_schema())
+            for relationship_name in node.get_schema().relationship_names:
+                if field_filters and relationship_name not in field_filters:
+                    continue
+                relationship_manager: RelationshipManager = getattr(node, relationship_name)
+                await relationship_manager.fetch_relationship_ids(db=db, force_refresh=True)
+                for relationship_constraint in self.relationship_manager_constraints:
+                    await relationship_constraint.check(relm=relationship_manager, node_schema=node.get_schema())

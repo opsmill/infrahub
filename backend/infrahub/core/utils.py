@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.models import NodeKind
+from infrahub.core.query import QueryType
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 
@@ -110,7 +111,7 @@ async def get_paths_between_nodes(
         "destination_id": db.to_database_id(destination_id),
     }
 
-    return await db.execute_query(query=query, params=params, name="get_paths_between_nodes")
+    return await db.execute_query(query=query, params=params, name="get_paths_between_nodes", type=QueryType.READ)
 
 
 async def count_relationships(db: InfrahubDatabase, label: Optional[str] = None) -> int:
@@ -125,7 +126,7 @@ async def count_relationships(db: InfrahubDatabase, label: Optional[str] = None)
 
     params: dict = {}
 
-    result = await db.execute_query(query=query, params=params, name="count_relationships")
+    result = await db.execute_query(query=query, params=params, name="count_relationships", type=QueryType.READ)
     return result[0][0]
 
 
@@ -135,7 +136,7 @@ async def get_nodes(db: InfrahubDatabase, label: str) -> list[Neo4jNode]:
     MATCH (node:%(node_kind)s)
     RETURN node
     """ % {"node_kind": label}
-    results = await db.execute_query(query=query, name="get_nodes")
+    results = await db.execute_query(query=query, name="get_nodes", type=QueryType.READ)
     return [result[0] for result in results]
 
 
@@ -149,7 +150,7 @@ async def count_nodes(db: InfrahubDatabase, label: Optional[str] = None) -> int:
     RETURN count(node) as count
     """
     params: dict = {"label": label}
-    result = await db.execute_query(query=query, params=params, name="count_nodes")
+    result = await db.execute_query(query=query, params=params, name="count_nodes", type=QueryType.READ)
     return result[0][0]
 
 

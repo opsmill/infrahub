@@ -69,7 +69,7 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
             return None
 
         container = (
-            DockerContainer(image="prefecthq/prefect:3.1.5-python3.12")
+            DockerContainer(image="prefecthq/prefect:3.0.9-python3.12")
             .with_command("prefect server start --host 0.0.0.0 --ui")
             .with_exposed_ports(PORT_PREFECT)
         )
