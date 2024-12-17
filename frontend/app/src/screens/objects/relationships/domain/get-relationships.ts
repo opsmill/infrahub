@@ -1,4 +1,4 @@
-import { getCurrentBranchName } from "@/screens/branches/get-currench-branch";
+import { getCurrentBranchName } from "@/screens/branches/get-current-branch";
 import { getRelationshipsFromApi } from "@/screens/objects/relationships/api/queries";
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
 import { store } from "@/state";
