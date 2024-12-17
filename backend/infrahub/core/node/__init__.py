@@ -691,7 +691,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if relationship_schema.name not in fields:
                 continue
             rel_manager = getattr(self, relationship_schema.name, None)
-            if not rel_manager:
+            if rel_manager is None:
                 continue
             try:
                 if relationship_schema.cardinality is RelationshipCardinality.ONE:
