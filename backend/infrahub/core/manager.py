@@ -1211,7 +1211,7 @@ class NodeManager:
                         continue
                     rel_peers = [peers.get(peer_id, None) or nodes.get(peer_id) for peer_id in peer_ids]
                     rel_manager: RelationshipManager = getattr(node, rel_schema.name)
-                    if rel_schema.cardinality == "one" and not len(rel_peers) == 1:
+                    if rel_schema.cardinality == "one" and len(rel_peers) > 1:
                         raise ValueError("Only one relationship expected")
 
                     rel_manager.has_fetched_relationships = True
