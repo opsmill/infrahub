@@ -15,7 +15,7 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 4.0.0
+version: 4.0.1
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
@@ -44,6 +44,6 @@ dependencies:
     repository: "https://nats-io.github.io/k8s/helm/charts/"
     condition: nats.enabled
   - name: prefect-server
-    version: "2024.7.25191224"
+    version: "2024.12.5195120"
     repository: "https://prefecthq.github.io/prefect-helm"
     condition: prefect-server.enabled
