@@ -133,7 +133,7 @@ const HierarchicalExplorer = ({
         }
       }}
     >
-      <CommandInput placeholder="Filter..." onValueChange={setSearchDebounced} />
+      <CommandInput autoFocus placeholder="Filter..." onValueChange={setSearchDebounced} />
       <CommandList>
         {isPending ? (
           <Spinner className="flex justify-center m-2" />
