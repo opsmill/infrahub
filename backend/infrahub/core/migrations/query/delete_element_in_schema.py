@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
-from infrahub.core.query import Query
+from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 class DeleteElementInSchemaQuery(Query):
     name = "delete_element_in_schema"
+    type = QueryType.WRITE
     insert_return: bool = False
 
     def __init__(

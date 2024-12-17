@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RelationshipStatus
-from infrahub.core.query import Query
+from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPool
@@ -12,7 +12,8 @@ if TYPE_CHECKING:
 
 
 class IPAddressPoolGetIdentifiers(Query):
-    name: str = "ipaddresspool_get_identifiers"
+    name = "ipaddresspool_get_identifiers"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -38,7 +39,8 @@ class IPAddressPoolGetIdentifiers(Query):
 
 
 class IPAddressPoolGetReserved(Query):
-    name: str = "ipaddresspool_get_reserved"
+    name = "ipaddresspool_get_reserved"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -64,7 +66,8 @@ class IPAddressPoolGetReserved(Query):
 
 
 class IPAddressPoolSetReserved(Query):
-    name: str = "ipaddresspool_set_reserved"
+    name = "ipaddresspool_set_reserved"
+    type = QueryType.WRITE
 
     def __init__(
         self,
@@ -104,7 +107,8 @@ class IPAddressPoolSetReserved(Query):
 
 
 class NumberPoolGetAllocated(Query):
-    name: str = "numberpool_get_allocated"
+    name = "numberpool_get_allocated"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -146,7 +150,8 @@ class NumberPoolGetAllocated(Query):
 
 
 class NumberPoolGetReserved(Query):
-    name: str = "numberpool_get_reserved"
+    name = "numberpool_get_reserved"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -187,7 +192,8 @@ class NumberPoolGetReserved(Query):
 
 
 class NumberPoolGetUsed(Query):
-    name: str = "number_pool_get_used"
+    name = "number_pool_get_used"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -235,7 +241,8 @@ class NumberPoolGetUsed(Query):
 
 
 class NumberPoolSetReserved(Query):
-    name: str = "numberpool_set_reserved"
+    name = "numberpool_set_reserved"
+    type = QueryType.WRITE
 
     def __init__(
         self,
@@ -275,7 +282,8 @@ class NumberPoolSetReserved(Query):
 
 
 class PrefixPoolGetIdentifiers(Query):
-    name: str = "prefixpool_get_identifiers"
+    name = "prefixpool_get_identifiers"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -301,7 +309,8 @@ class PrefixPoolGetIdentifiers(Query):
 
 
 class PrefixPoolGetReserved(Query):
-    name: str = "prefixpool_get_reserved"
+    name = "prefixpool_get_reserved"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -327,7 +336,8 @@ class PrefixPoolGetReserved(Query):
 
 
 class PrefixPoolSetReserved(Query):
-    name: str = "prefixpool_set_reserved"
+    name = "prefixpool_set_reserved"
+    type = QueryType.WRITE
 
     def __init__(
         self,

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.query import QueryType
+
 from .constants import EntityType, IndexType
 from .index import IndexInfo, IndexItem, IndexManagerBase
 from .manager import DatabaseManager
@@ -50,7 +52,7 @@ class IndexManagerNeo4j(IndexManagerBase):
 
     async def list(self) -> list[IndexInfo]:
         query = "SHOW INDEXES"
-        records = await self.db.execute_query(query=query, params={}, name="index_show")
+        records = await self.db.execute_query(query=query, params={}, name="index_show", type=QueryType.READ)
         results = []
         for record in records:
             if not record["labelsOrTypes"]:

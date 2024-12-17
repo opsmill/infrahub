@@ -2,12 +2,13 @@ from typing import Any
 
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.query import Query
+from infrahub.core.query import Query, QueryType
 from infrahub.database import InfrahubDatabase
 
 
 class ArtifactDiffQuery(Query):
     name = "get_artifact_diff"
+    type = QueryType.READ
 
     def __init__(
         self,
