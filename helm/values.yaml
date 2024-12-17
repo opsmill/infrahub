@@ -173,7 +173,7 @@ prefect-server:
   enabled: true
   server:
     image:
-      prefectTag: 3.1.5-python3.12-kubernetes
+      prefectTag: 3.0.11-python3.12-kubernetes
     env:
       - name: PREFECT_UI_SERVE_BASE
         value: /
