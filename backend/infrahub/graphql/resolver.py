@@ -4,14 +4,15 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional
 
 from aiodataloader import DataLoader
-from infrahub_sdk.utils import extract_fields
+from infrahub_sdk.utils import deep_merge_dict, extract_fields
 
+from infrahub.auth import AccountSession
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.core.timestamp import Timestamp
-from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import NodeNotFoundError
 
 from .parser import extract_selection
@@ -20,9 +21,7 @@ from .types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
-    from infrahub_sdk.schema import RelationshipSchema
 
-    from infrahub.core.relationship.model import Relationship
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
@@ -196,6 +195,7 @@ async def default_paginated_list_resolver(
                     partial_match=partial_match,
                 )
 
+        # get peer IDs for relationships
         if objs:
             objects = [
                 {
@@ -214,35 +214,33 @@ async def default_paginated_list_resolver(
 
 
 @dataclass
-class QueryPeersArgs:
-    source_kind: str
-    schema: RelationshipSchema
-    filters: dict[str, Any]
+class GetEntitiesParams:
     fields: dict | None = None
     at: Timestamp | str | None = None
     branch: Branch | str | None = None
+    include_source: bool = False
+    include_owner: bool = False
+    prefetch_relationships: bool = False
+    account: AccountSession | None = None
     branch_agnostic: bool = False
-    fetch_peers: bool = False
 
     def __hash__(self) -> int:
-        frozen_filters: frozenset | None = None
-        if self.filters:
-            frozen_filters = to_frozen_set(self.filters)
         frozen_fields: frozenset | None = None
         if self.fields:
             frozen_fields = to_frozen_set(self.fields)
         timestamp = Timestamp(self.at)
         branch = self.branch.name if isinstance(self.branch, Branch) else self.branch
+        account_id = self.account.id if isinstance(self.account, AccountSession) else None
         hash_str = "|".join(
             [
-                self.source_kind,
-                self.schema.name,
-                str(hash(frozen_filters)),
                 str(hash(frozen_fields)),
                 timestamp.to_string(),
                 branch,
+                str(self.include_source),
+                str(self.include_owner),
+                str(self.prefetch_relationships),
+                str(account_id),
                 str(self.branch_agnostic),
-                str(self.fetch_peers),
             ]
         )
         return hash(hash_str)
@@ -260,40 +258,41 @@ def to_frozen_set(to_freeze: dict[str, Any]) -> frozenset:
     return frozenset(freezing_dict)
 
 
-class SingleRelationshipResolverDataLoader(DataLoader):
-    def __init__(self, db: InfrahubDatabase, query_args: QueryPeersArgs, *args: Any, **kwargs: Any) -> None:
+class EntityDataLoader(DataLoader[str, Node]):
+    def __init__(self, db: InfrahubDatabase, query_params: GetEntitiesParams, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.query_args = query_args
+        self.query_params = query_params
         self.db = db
 
-    async def batch_load_fn(self, keys: list[Any]) -> list[Relationship]:  # pylint: disable=method-hidden
+    async def batch_load_fn(self, keys: list[Any]) -> list[Node]:  # pylint: disable=method-hidden
         async with self.db.start_session() as db:
-            relationships = await NodeManager.query_peers(
+            nodes_by_id = await NodeManager.get_many(
                 db=db,
                 ids=keys,
-                source_kind=self.query_args.source_kind,
-                schema=self.query_args.schema,
-                filters=self.query_args.filters,
-                fields=self.query_args.fields,
-                at=self.query_args.at,
-                branch=self.query_args.branch,
-                branch_agnostic=self.query_args.branch_agnostic,
-                fetch_peers=self.query_args.fetch_peers,
+                fields=self.query_params.fields,
+                at=self.query_params.at,
+                branch=self.query_params.branch,
+                include_source=self.query_params.include_source,
+                include_owner=self.query_params.include_owner,
+                prefetch_relationships=self.query_params.prefetch_relationships,
+                account=self.query_params.account,
+                branch_agnostic=self.query_params.branch_agnostic,
             )
-        relationships_by_node_id = {r.node_id: r for r in relationships}
         results = []
         for node_id in keys:
-            if node_id in relationships_by_node_id:
-                results.append(relationships_by_node_id[node_id])
-            else:
-                results.append(None)
+            results.append(nodes_by_id.get(node_id, None))
         return results
 
 
+async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
+    context: GraphqlContext = info.context
+    resolver = context.single_relationship_resolver
+    return await resolver.resolve(parent=parent, info=info, **kwargs)
+
+
 class SingleRelationshipResolver:
-    def __init__(self, db: InfrahubDatabase) -> None:
-        self.db = db
-        self._data_loader_instances: dict[QueryPeersArgs, SingleRelationshipResolverDataLoader] = {}
+    def __init__(self) -> None:
+        self._data_loader_instances: dict[GetEntitiesParams, EntityDataLoader] = {}
 
     async def resolve(self, parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
         """Resolver for relationships of cardinality=one for Edged responses
@@ -318,48 +317,55 @@ class SingleRelationshipResolver:
         # Extract the schema of the node on the other end of the relationship from the GQL Schema
         node_rel = node_schema.get_relationship(info.field_name)
 
-        # Extract only the filters from the kwargs and prepend the name of the field to the filters
-        filters = {
-            f"{info.field_name}__{key}": value
-            for key, value in kwargs.items()
-            if "__" in key and value or key in ["id", "ids"]
-        }
+        response: dict[str, Any] = {"node": None, "properties": {}}
+        try:
+            peer_id: str = parent[node_rel.name][0]["node"]["id"]
+        except (KeyError, IndexError):
+            return response
 
-        query_args = QueryPeersArgs(
-            source_kind=node_schema.kind,
-            schema=node_rel,
-            filters=filters,
+        if node_fields and "display_label" in node_fields:
+            schema_branch = context.db.schema.get_schema_branch(name=context.branch.name)
+            display_label_fields = schema_branch.generate_fields_for_display_label(name=node_rel.peer)
+            if display_label_fields:
+                node_fields = deep_merge_dict(dicta=node_fields, dictb=display_label_fields)
+
+        if node_fields and "hfid" in node_fields:
+            peer_schema = context.db.schema.get(name=node_rel.peer, branch=context.branch, duplicate=False)
+            hfid_fields = peer_schema.generate_fields_for_hfid()
+            if hfid_fields:
+                node_fields = deep_merge_dict(dicta=node_fields, dictb=hfid_fields)
+
+        query_params = GetEntitiesParams(
             fields=node_fields,
             at=context.at,
             branch=context.branch,
+            # TODO: can be smarter about setting these
+            include_source=True,
+            include_owner=True,
+            prefetch_relationships=False,
+            account=None,
             branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
-            fetch_peers=True,
         )
-
-        if query_args in self._data_loader_instances:
-            loader = self._data_loader_instances[query_args]
+        if query_params in self._data_loader_instances:
+            loader = self._data_loader_instances[query_params]
         else:
-            loader = SingleRelationshipResolverDataLoader(db=context.db, query_args=query_args)
-            self._data_loader_instances[query_args] = loader
-        result = await loader.load(key=parent["id"])
+            loader = EntityDataLoader(db=context.db, query_params=query_params)
+            self._data_loader_instances[query_params] = loader
+        result = await loader.load(key=peer_id)
 
-        response: dict[str, Any] = {"node": None, "properties": {}}
         if not result:
             return response
 
-        node_graph = await result.to_graphql(db=self.db, fields=node_fields, related_node_ids=context.related_node_ids)
+        node_graph = await result.to_graphql(
+            db=context.db, fields=node_fields, related_node_ids=context.related_node_ids
+        )
+
         for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
             value = node_graph.pop(key, None)
             if value:
                 response["properties"][mapped] = value
         response["node"] = node_graph
         return response
-
-
-async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
-    context: GraphqlContext = info.context
-    resolver = context.single_relationship_resolver
-    return await resolver.resolve(parent=parent, info=info, **kwargs)
 
 
 async def many_relationship_resolver(

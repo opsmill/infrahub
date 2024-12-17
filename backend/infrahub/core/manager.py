@@ -1136,18 +1136,26 @@ class NodeManager:
             profile_attributes_id_map=profile_attributes, profile_ids_by_node_id=profile_ids_by_node_id
         )
 
-        # if prefetch_relationships is enabled
+        has_relationship_fields = False
+        if fields and nodes_info_by_id:
+            for node_info in nodes_info_by_id.values():
+                if node_info.schema and set(fields.keys()) & set(node_info.schema.relationship_names):
+                    has_relationship_fields = True
+                    break
+
+        # if prefetch_relationships or fields include relationships
         # Query all the peers associated with all nodes at once.
         peers_per_node = None
         peers = None
-        if prefetch_relationships:
+        if prefetch_relationships or has_relationship_fields:
             query = await NodeListGetRelationshipsQuery.init(
                 db=db, ids=ids, branch=branch, at=at, branch_agnostic=branch_agnostic
             )
             await query.execute(db=db)
             peers_per_node = query.get_peers_group_by_node()
-            peer_ids = []
 
+        if prefetch_relationships:
+            peer_ids = []
             for node_data in peers_per_node.values():
                 for node_peers in node_data.values():
                     peer_ids.extend(node_peers)
@@ -1201,6 +1209,16 @@ class NodeManager:
                                 new_node_data[rel_schema.name] = rel_peers[0]
                         elif rel_schema.cardinality == "many":
                             new_node_data[rel_schema.name] = rel_peers
+
+            elif has_relationship_fields and peers_per_node:
+                for rel_schema in node.schema.relationships:
+                    if node_id in peers_per_node and rel_schema.identifier in peers_per_node[node_id]:
+                        rel_peer_ids = peers_per_node[node_id][rel_schema.identifier]
+                        if rel_schema.cardinality == "one":
+                            if len(rel_peer_ids) == 1:
+                                new_node_data[rel_schema.name] = rel_peer_ids[0]
+                        elif rel_schema.cardinality == "many":
+                            new_node_data[rel_schema.name] = rel_peer_ids
 
             new_node_data_with_profile_overrides = profile_index.apply_profiles(new_node_data)
             node_class = identify_node_class(node=node)
