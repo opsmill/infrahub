@@ -48,7 +48,7 @@ CACHE_DOCKER_IMAGE = os.getenv(
     "redis:7.2.4" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",
 )
 
-TASK_MANAGER_DOCKER_IMAGE = os.getenv("TASK_MANAGER_DOCKER_IMAGE", "prefecthq/prefect:3.1.5-python3.12")
+TASK_MANAGER_DOCKER_IMAGE = os.getenv("TASK_MANAGER_DOCKER_IMAGE", "prefecthq/prefect:3.0.9-python3.12")
 
 here = Path(__file__).parent.resolve()
 TOP_DIRECTORY_NAME = here.parent.name
