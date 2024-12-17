@@ -23,7 +23,7 @@ export const getConclusionBadge: { [key: string]: any } = {
   failure: <Badge type={BADGE_TYPES.CANCEL}>failure</Badge>,
 };
 
-export const TaskItemDetails = forwardRef((props, ref) => {
+export const TaskItemDetails = forwardRef((_, ref) => {
   const [taskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const [search, setSearch] = useState("");
 

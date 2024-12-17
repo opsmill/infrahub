@@ -59,7 +59,9 @@ export const PcMergeButton = ({
 
       await graphqlClient.reFetchObservableQueries();
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed changes merged successfully!"} />);
-    } catch (error: any) {
+    } catch (error) {
+      console.error(error);
+
       toast(
         <Alert
           type={ALERT_TYPES.SUCCESS}

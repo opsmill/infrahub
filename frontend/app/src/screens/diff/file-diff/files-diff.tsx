@@ -12,7 +12,7 @@ import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { FileRepoDiff } from "./file-repo-diff";
 
-export const FilesDiff = forwardRef((props, ref) => {
+export const FilesDiff = forwardRef((_, ref) => {
   const [filesDiff, setFilesDiff] = useState({});
   const { "*": branchName } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
@@ -45,7 +45,8 @@ export const FilesDiff = forwardRef((props, ref) => {
       if (filesResult[branch]) {
         setFilesDiff(filesResult[branch]);
       }
-    } catch (err) {
+    } catch (error) {
+      console.error(error);
       setError(true);
     }
 

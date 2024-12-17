@@ -58,7 +58,7 @@
         "noUndeclaredVariables": "off",
         "noUnusedFunctionParameters": "off",
         "noUnusedImports": "error",
-        "noUnusedVariables": "off",
+        "noUnusedVariables": "error",
         "useExhaustiveDependencies": "off",
         "useHookAtTopLevel": "off",
         "useImportExtensions": "off"
