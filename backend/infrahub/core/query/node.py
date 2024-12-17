@@ -576,7 +576,8 @@ class GroupedPeerNodes:
     def get_all_peers(self) -> set[str]:
         all_peers_set = set()
         for peer_direction_map in self._rel_directions_map.values():
-            all_peers_set.update(peer_direction_map.values())
+            for peer_ids in peer_direction_map.values():
+                all_peers_set.update(peer_ids)
         return all_peers_set
 
     def has_node(self, node_id: str) -> bool:

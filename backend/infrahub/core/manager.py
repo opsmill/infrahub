@@ -1152,7 +1152,7 @@ class NodeManager:
             # only query the peers that are not already part of the main list
             peer_ids -= set(ids)
             peers = await cls.get_many(
-                ids=peer_ids,
+                ids=list(peer_ids),
                 branch=branch,
                 at=at,
                 db=db,
