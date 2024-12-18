@@ -90,7 +90,7 @@ export const Pagination = (props: tPaginationType) => {
         className
       )}
     >
-      <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+      <div className="flex flex-wrap flex-1 gap-2 justify-between">
         <div className="flex items-center">
           <div className="text-sm text-gray-700">{paginationText}</div>
 

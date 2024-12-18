@@ -34,7 +34,7 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 
-const IpamIPAddressesList = forwardRef((props, ref) => {
+const IpamIPAddressesList = forwardRef((_, ref) => {
   const { prefix } = useParams();
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const [isLoading, setIsLoading] = useState(false);

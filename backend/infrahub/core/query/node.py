@@ -555,9 +555,39 @@ class NodeListGetAttributeQuery(Query):
         return data
 
 
+class GroupedPeerNodes:
+    def __init__(self):
+        # {node_id: [rel_name, ...]}
+        self._rel_names_by_node_id: dict[str, set[str]] = defaultdict(set)
+        # {(node_id, rel_name): {RelationshipDirection: {peer_id, ...}}}
+        self._rel_directions_map: dict[tuple[str, str], dict[RelationshipDirection, set[str]]] = defaultdict(dict)
+
+    def add_peer(self, node_id: str, rel_name: str, peer_id: str, direction: RelationshipDirection) -> None:
+        self._rel_names_by_node_id[node_id].add(rel_name)
+        if direction not in self._rel_directions_map[node_id, rel_name]:
+            self._rel_directions_map[node_id, rel_name][direction] = set()
+        self._rel_directions_map[node_id, rel_name][direction].add(peer_id)
+
+    def get_peer_ids(self, node_id: str, rel_name: str, direction: RelationshipDirection) -> set[str]:
+        if (node_id, rel_name) not in self._rel_directions_map:
+            return set()
+        return self._rel_directions_map[node_id, rel_name].get(direction, set())
+
+    def get_all_peers(self) -> set[str]:
+        all_peers_set = set()
+        for peer_direction_map in self._rel_directions_map.values():
+            for peer_ids in peer_direction_map.values():
+                all_peers_set.update(peer_ids)
+        return all_peers_set
+
+    def has_node(self, node_id: str) -> bool:
+        return node_id in self._rel_names_by_node_id
+
+
 class NodeListGetRelationshipsQuery(Query):
-    name = "node_list_get_relationship"
-    type = QueryType.READ
+    name: str = "node_list_get_relationship"
+    type: QueryType = QueryType.READ
+    insert_return: bool = False
 
     def __init__(self, ids: list[str], **kwargs):
         self.ids = ids
@@ -570,30 +600,42 @@ class NodeListGetRelationshipsQuery(Query):
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
         self.params.update(rels_params)
 
-        query = (
-            """
-        MATCH (n) WHERE n.uuid IN $ids
-        MATCH p = ((n)-[r1:IS_RELATED]-(rel:Relationship)-[r2:IS_RELATED]-(peer))
-        WHERE all(r IN relationships(p) WHERE (%s))
-        """
-            % rels_filter
-        )
+        query = """
+        MATCH (n:Node) WHERE n.uuid IN $ids
+        MATCH paths_in = ((n)<-[r1:IS_RELATED]-(rel:Relationship)<-[r2:IS_RELATED]-(peer))
+        WHERE all(r IN relationships(paths_in) WHERE (%(filters)s))
+        RETURN n, rel, peer, r1, r2, "inbound" as direction
+        UNION
+        MATCH (n:Node) WHERE n.uuid IN $ids
+        MATCH paths_out = ((n)-[r1:IS_RELATED]->(rel:Relationship)-[r2:IS_RELATED]->(peer))
+        WHERE all(r IN relationships(paths_out) WHERE (%(filters)s))
+        RETURN n, rel, peer, r1, r2, "outbound" as direction
+        UNION
+        MATCH (n:Node) WHERE n.uuid IN $ids
+        MATCH paths_bidir = ((n)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(peer))
+        WHERE all(r IN relationships(paths_bidir) WHERE (%(filters)s))
+        RETURN n, rel, peer, r1, r2, "bidirectional" as direction
+        """ % {"filters": rels_filter}
 
         self.add_to_query(query)
 
-        self.return_labels = ["n", "rel", "peer", "r1", "r2"]
+        self.return_labels = ["n", "rel", "peer", "r1", "r2", "direction"]
 
-    def get_peers_group_by_node(self) -> dict[str, dict[str, list[str]]]:
-        peers_by_node = defaultdict(lambda: defaultdict(list))
-
+    def get_peers_group_by_node(self) -> GroupedPeerNodes:
+        gpn = GroupedPeerNodes()
         for result in self.get_results_group_by(("n", "uuid"), ("rel", "name"), ("peer", "uuid")):
             node_id = result.get("n").get("uuid")
             rel_name = result.get("rel").get("name")
             peer_id = result.get("peer").get("uuid")
+            direction = str(result.get("direction"))
+            direction_enum = {
+                "inbound": RelationshipDirection.INBOUND,
+                "outbound": RelationshipDirection.OUTBOUND,
+                "bidirectional": RelationshipDirection.BIDIR,
+            }.get(direction)
+            gpn.add_peer(node_id=node_id, rel_name=rel_name, peer_id=peer_id, direction=direction_enum)
 
-            peers_by_node[node_id][rel_name].append(peer_id)
-
-        return peers_by_node
+        return gpn
 
 
 class NodeGetKindQuery(Query):

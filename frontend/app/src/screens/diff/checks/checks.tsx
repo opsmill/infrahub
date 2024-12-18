@@ -6,7 +6,7 @@ import { useParams } from "react-router-dom";
 import { ChecksSummary } from "./checks-summary";
 import { Validator } from "./validator";
 
-export const Checks = forwardRef((props, ref) => {
+export const Checks = forwardRef((_, ref) => {
   const { proposedChangeId } = useParams();
 
   const { loading, error, data, refetch } = useQuery(GET_VALIDATORS, {
