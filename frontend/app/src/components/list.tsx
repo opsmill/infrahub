@@ -3,12 +3,14 @@ import { toast } from "react-toastify";
 
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { FormFieldError } from "@/screens/edit-form-hook/form";
+import { classNames } from "@/utils/common";
 import { Input } from "./inputs/input";
 import { MultipleInput } from "./inputs/multiple-input";
 import { SelectOption } from "./inputs/select";
 
 type OpsListProps = {
   id?: string;
+  className?: string;
   value: (string | SelectOption)[];
   onChange: (value: (string | SelectOption)[]) => void;
   error?: FormFieldError;
@@ -17,7 +19,7 @@ type OpsListProps = {
 };
 
 const List = forwardRef<HTMLInputElement, OpsListProps>((props, ref) => {
-  const { value = [], onChange, id, error, isProtected, disabled } = props;
+  const { value = [], onChange, id, error, isProtected, disabled, className } = props;
 
   const [inputValue, sertInputValue] = useState("");
 
@@ -54,7 +56,7 @@ const List = forwardRef<HTMLInputElement, OpsListProps>((props, ref) => {
         error={error}
         disabled={isProtected}
         placeholder="Add a new item + hit 'enter'"
-        className="mb-1"
+        className={classNames("mb-1", className)}
         onKeyDown={handleKeyDown}
         value={inputValue}
       />
