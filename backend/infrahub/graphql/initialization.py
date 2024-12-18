@@ -8,7 +8,7 @@ from starlette.background import BackgroundTasks
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError
-from infrahub.graphql.resolver import SingleRelationshipResolver
+from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
 
 from .manager import GraphQLSchemaManager
 

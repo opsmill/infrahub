@@ -344,7 +344,7 @@ disable_error_code = [
 
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.resolver"
+module = "infrahub.graphql.resolvers.resolver"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

@@ -8,7 +8,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.core.timestamp import Timestamp
-from infrahub.graphql.resolver import SingleRelationshipResolver
+from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
