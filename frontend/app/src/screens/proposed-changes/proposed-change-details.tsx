@@ -35,7 +35,9 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
 
   const navigate = useNavigate();
 
-  const { data } = useQuery(gql(getObjectPermissionsQuery(PROPOSED_CHANGES_OBJECT)));
+  const { data } = useQuery(gql(getObjectPermissionsQuery(PROPOSED_CHANGES_OBJECT)), {
+    pollInterval: 2000,
+  });
 
   const { loading: loadingCheck, data: checkData } = useQuery(TASK_DETAILS_CHECK, {
     variables: {
