@@ -1,3 +1,4 @@
+import { focusWithinStyle, inputStyle } from "@/components/ui/style";
 import { useCodeMirror } from "@/hooks/useCodeMirror";
 import { classNames } from "@/utils/common";
 import { FC, forwardRef, useRef, useState } from "react";
@@ -60,10 +61,8 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = forwardRef<
 
         <div
           className={classNames(
-            `
-        bg-white rounded-md border border-gray-300 shadow-sm
-        focus-within:ring-2 focus-within:ring-custom-blue-600/25 focus-within:border-custom-blue-600
-        `,
+            " bg-white rounded-md border border-gray-300 shadow-sm",
+            focusWithinStyle,
             className
           )}
         >
