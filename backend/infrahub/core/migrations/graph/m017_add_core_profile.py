@@ -38,6 +38,7 @@ class Migration017(InternalSchemaMigration):
         manager = SchemaManager()
         manager.set_schema_branch(name=default_branch.name, schema=self.get_internal_schema())
 
+        db.add_schema(manager.get_schema_branch(default_branch.name))
         await manager.load_node_to_db(node=core_profile, db=db, branch=default_branch)
 
         return MigrationResult()
