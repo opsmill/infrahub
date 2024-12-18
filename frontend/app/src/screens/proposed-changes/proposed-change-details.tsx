@@ -27,11 +27,7 @@ import { TaskDisplay } from "../branches/task-display";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getObjectPermissionsQuery } from "../permission/queries/getObjectPermissions";
 import { getPermission } from "../permission/utils";
-import {
-  BRANCH_MERGE_WORKFLOW,
-  BRANCH_REBASE_WORKFLOW,
-  BRANCH_VALIDATE_WORKFLOW,
-} from "../tasks/constants";
+import { PROPOSED_CHANGE_MERGE_WORKFLOW } from "../tasks/constants";
 
 export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const { proposedChangeId } = useParams();
@@ -43,7 +39,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
 
   const { loading: loadingCheck, data: checkData } = useQuery(TASK_DETAILS_CHECK, {
     variables: {
-      workflow: [BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW],
+      workflow: [PROPOSED_CHANGE_MERGE_WORKFLOW],
       relatedNodes: proposedChangeId ? [proposedChangeId] : undefined,
     },
     pollInterval: 5000,
@@ -152,7 +148,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
             <div className="mt-2">
               <TaskDisplay
                 relatedNode={proposedChangeId}
-                workflow={[BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW]}
+                workflow={[PROPOSED_CHANGE_MERGE_WORKFLOW]}
               />
             </div>
           </Accordion>

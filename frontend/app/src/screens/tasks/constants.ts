@@ -12,3 +12,4 @@ export const TASK_STATES = [
 export const BRANCH_VALIDATE_WORKFLOW = "branch-validate";
 export const BRANCH_REBASE_WORKFLOW = "branch-rebase";
 export const BRANCH_MERGE_WORKFLOW = "merge-branch-mutation";
+export const PROPOSED_CHANGE_MERGE_WORKFLOW = "proposed-change-merge";
