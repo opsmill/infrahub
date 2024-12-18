@@ -126,7 +126,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
             proposedChangeId={proposedChangeId!}
             state={state}
             sourceBranch={proposedChangesDetails?.source_branch?.value}
-            disabled={!permission.update.isAllowed}
+            disabled={!permission.update.isAllowed || checkData[TASK_OBJECT].count}
           />
           <PcCloseButton
             proposedChangeId={proposedChangeId!}
