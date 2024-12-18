@@ -66,17 +66,12 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
   const { data, loading, error } = useObjectDetails(schema!, node.id);
 
   if (!schema) return null;
+
   const columns = getSchemaObjectColumns({ schema, forListView: true, limit: 7 });
 
   if (loading) return <SearchResultNodeSkeleton />;
 
-  if (error) {
-    return (
-      <div className="text-sm text-red-600">
-        Error loading object details for {node.kind} (id: {node.id})
-      </div>
-    );
-  }
+  if (error) return null;
 
   const objectDetailsData = schema && data?.[node.kind]?.edges[0]?.node;
   if (!objectDetailsData) return <div className="text-sm">No data found for this object</div>;
