@@ -154,7 +154,7 @@ export const RelationshipManyInput = React.forwardRef<
             .map((relationship) => (
               <ComboboxItem
                 key={relationship.id}
-                value={relationship.display_label}
+                value={relationship.id}
                 onSelect={() => handleSelect(relationship)}
               >
                 <span className="truncate">
