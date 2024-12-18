@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import json
+import shutil
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .shared import (
@@ -18,6 +22,7 @@ from .utils import ESCAPED_REPO_PATH
 
 if TYPE_CHECKING:
     from invoke.context import Context
+    from invoke.runners import Result
 
 
 def build_images(
@@ -140,11 +145,11 @@ def format_bytes(bytes_value: int) -> str:
 
 def collect_system_metrics() -> dict:
     """Collect system-wide metrics."""
+    # ruff: noqa
     import psutil
-    from datetime import datetime
 
     return {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
         "cpu": {
             "percent": psutil.cpu_percent(interval=1),
             "count": psutil.cpu_count(),
@@ -235,10 +240,9 @@ def display_container_status(
 ) -> None:
     """Display detailed status and metrics of all services."""
     from rich.console import Console
-    from rich.table import Table
     from rich.panel import Panel
+    from rich.table import Table
     import time
-    from datetime import datetime
 
     console = Console()
 
@@ -247,7 +251,7 @@ def display_container_status(
             if watch:
                 console.clear()
 
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            current_time = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             console.print(Panel(f"[bold]Status at:[/bold] {current_time}", expand=False, style="cyan"))
 
             status_result = show_service_status(
@@ -338,12 +342,11 @@ def collect_database_logs(
     include_queries: bool = False,
 ) -> None:
     """Collect logs from database container using docker cp."""
-    import os
     from rich.console import Console
 
     console = Console()
-    db_logs_dir = os.path.join(logs_dir, "database")
-    os.makedirs(db_logs_dir, exist_ok=True)
+    db_logs_dir = Path(logs_dir) / "database"
+    db_logs_dir.mkdir(parents=True, exist_ok=True)
 
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
@@ -372,12 +375,11 @@ def collect_message_queue_status(
     logs_dir: str,
 ) -> None:
     """Collect message queues status and metrics."""
-    import os
     from rich.console import Console
 
     console = Console()
-    mq_logs_dir = os.path.join(logs_dir, "message-queue")
-    os.makedirs(mq_logs_dir, exist_ok=True)
+    mq_logs_dir = Path(logs_dir) / "message-queue"
+    mq_logs_dir.mkdir(parents=True, exist_ok=True)
 
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
@@ -398,9 +400,8 @@ def collect_message_queue_status(
         for name, cmd in commands:
             result = execute_command(context=context, command=f"{base_cmd} exec message-queue {cmd}", hide=True)
             if result and result.stdout:
-                log_file_path = os.path.join(mq_logs_dir, f"{name}.log")
-                with open(log_file_path, "w", encoding="utf-8") as f:
-                    f.write(result.stdout)
+                log_file_path = Path(mq_logs_dir) / f"{name}.log"
+                log_file_path.write_text(result.stdout, encoding="utf-8")
 
 
 def collect_cache_status(
@@ -410,12 +411,11 @@ def collect_cache_status(
     logs_dir: str,
 ) -> None:
     """Collect cache status and metrics."""
-    import os
     from rich.console import Console
 
     console = Console()
-    cache_logs_dir = os.path.join(logs_dir, "cache")
-    os.makedirs(cache_logs_dir, exist_ok=True)
+    cache_logs_dir = Path(logs_dir) / "cache"
+    cache_logs_dir.mkdir(parents=True, exist_ok=True)
 
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
@@ -437,9 +437,8 @@ def collect_cache_status(
         for name, cmd in commands:
             result = execute_command(context=context, command=f"{base_cmd} exec cache {cmd}", hide=True)
             if result and result.stdout:
-                log_file_path = os.path.join(cache_logs_dir, f"{name}.log")
-                with open(log_file_path, "w", encoding="utf-8") as f:
-                    f.write(result.stdout)
+                log_file_path = Path(cache_logs_dir) / f"{name}.log"
+                log_file_path.write_text(result.stdout, encoding="utf-8")
 
 
 def collect_task_worker_status(
@@ -449,12 +448,11 @@ def collect_task_worker_status(
     logs_dir: str,
 ) -> None:
     """Collect task workers status and metrics."""
-    import os
     from rich.console import Console
 
     console = Console()
-    worker_logs_dir = os.path.join(logs_dir, "task-worker")
-    os.makedirs(worker_logs_dir, exist_ok=True)
+    worker_logs_dir = Path(logs_dir) / "task-worker"
+    worker_logs_dir.mkdir(parents=True, exist_ok=True)
 
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
@@ -478,15 +476,14 @@ def collect_task_worker_status(
 
             console.print(f"[bold yellow]Collecting task workers status for {len(containers)} containers[/bold yellow]")
             for container in containers:
-                worker_dir = os.path.join(worker_logs_dir, container)
-                os.makedirs(worker_dir, exist_ok=True)
+                worker_dir = Path(worker_logs_dir) / container
+                worker_dir.mkdir(parents=True, exist_ok=True)
 
                 for name, cmd in commands:
                     result = execute_command(context=context, command=f"docker exec {container} {cmd}", hide=True)
                     if result and result.stdout:
-                        log_file_path = os.path.join(worker_dir, f"{name}.log")
-                        with open(log_file_path, "w", encoding="utf-8") as f:
-                            f.write(result.stdout)
+                        log_file_path = Path(worker_dir) / f"{name}.log"
+                        log_file_path.write_text(result.stdout, encoding="utf-8")
 
 
 def collect_support_data(
@@ -496,17 +493,12 @@ def collect_support_data(
     include_queries: bool = False,
 ) -> None:
     """Collect all logs from each service and create a support archive."""
-    import os
-    import shutil
     from rich.console import Console
-    from datetime import datetime
-    import json
 
     console = Console()
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    logs_dir = f"support_logs_{timestamp}"
-
-    os.makedirs(logs_dir, exist_ok=True)
+    timestamp = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
+    logs_dir = Path(f"support_logs_{timestamp}")
+    logs_dir.mkdir(parents=True, exist_ok=True)
 
     for service in AVAILABLE_SERVICES:
         console.print(f"[bold yellow]Collecting logs for service:[/bold yellow] {service}")
@@ -517,9 +509,8 @@ def collect_support_data(
             service=service,
         )
         if result and result.stdout:
-            log_file_path = os.path.join(logs_dir, f"{service}_{timestamp}.log")
-            with open(log_file_path, "w", encoding="utf-8") as f:
-                f.write(result.stdout)
+            log_file_path = Path(logs_dir) / f"{service}_{timestamp}.log"
+            log_file_path.write_text(result.stdout, encoding="utf-8")
         else:
             console.print(f"[red]No logs found for service {service}.[/red]")
 
@@ -532,9 +523,8 @@ def collect_support_data(
 
     console.print("[bold yellow]Collecting system metrics[/bold yellow]")
     sys_metrics = collect_system_metrics()
-    metrics_file = os.path.join(logs_dir, f"system_metrics_{timestamp}.json")
-    with open(metrics_file, "w", encoding="utf-8") as f:
-        json.dump(sys_metrics, f, indent=2)
+    metrics_file = Path(logs_dir) / f"system_metrics_{timestamp}.json"
+    metrics_file.write_text(json.dumps(sys_metrics, indent=2), encoding="utf-8")
 
     console.print("[bold yellow]Collecting container metrics[/bold yellow]")
     with context.cd(ESCAPED_REPO_PATH):
@@ -563,9 +553,8 @@ def collect_support_data(
                         }
                     )
 
-            container_metrics_file = os.path.join(logs_dir, f"container_metrics_{timestamp}.json")
-            with open(container_metrics_file, "w", encoding="utf-8") as f:
-                json.dump(containers_metrics, f, indent=2)
+            container_metrics_file = Path(logs_dir) / f"container_metrics_{timestamp}.json"
+            container_metrics_file.write_text(json.dumps(containers_metrics, indent=2), encoding="utf-8")
 
     archive_name = f"support_logs_{timestamp}.tar.gz"
     shutil.make_archive(base_name=f"support_logs_{timestamp}", format="gztar", root_dir=".", base_dir=logs_dir)

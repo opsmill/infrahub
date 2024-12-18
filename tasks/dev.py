@@ -6,16 +6,15 @@ from invoke.tasks import task
 
 from .container_ops import (
     build_images,
+    collect_support_data,
     destroy_environment,
+    display_container_status,
     migrate_database,
     pull_images,
     restart_services,
-    show_service_status,
     start_services,
     stop_services,
     update_core_schema,
-    display_container_status,
-    collect_support_data,
 )
 from .infra_ops import load_infrastructure_data, load_infrastructure_menu, load_infrastructure_schema
 from .shared import (
@@ -34,7 +33,6 @@ from .utils import ESCAPED_REPO_PATH
 
 if TYPE_CHECKING:
     from invoke.context import Context
-
 
 NAMESPACE = Namespace.DEV
 
