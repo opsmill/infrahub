@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from enum import IntFlag
 
-from prefect import flow
+from prefect import flow, task
+from prefect.logging import get_run_logger
 from pydantic import BaseModel
 
 from infrahub import lock
@@ -11,7 +12,6 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.registry import registry
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.git.repository import InfrahubRepository
-from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import (
     ProposedChangeArtifactDefinition,
@@ -34,8 +34,7 @@ from infrahub.workflows.catalogue import (
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
 )
-
-log = get_logger()
+from infrahub.workflows.utils import add_tags
 
 
 class DefinitionSelect(IntFlag):
@@ -64,7 +63,7 @@ class DefinitionSelect(IntFlag):
         return "Doesn't require changes due to no relevant modified kinds or file changes in Git"
 
 
-@flow(name="proposed-changed-pipeline")
+@flow(name="proposed-changed-pipeline", flow_run_name="Execute Pipeline")
 async def pipeline(message: messages.RequestProposedChangePipeline, service: InfrahubServices) -> None:
     events: list[InfrahubMessage] = []
 
@@ -187,9 +186,11 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
 
 @flow(
     name="proposed-changed-refresh-artifact",
-    flow_run_name="Refreshing artifacts for change_proposal={message.proposed_change}",
+    flow_run_name="Refreshing artifacts",
 )
 async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifacts, service: InfrahubServices) -> None:
+    await add_tags(branches=[message.source_branch], nodes=[message.proposed_change])
+
     definition_information = await service.client.execute_graphql(
         query=GATHER_ARTIFACT_DEFINITIONS,
         branch_name=message.source_branch,
@@ -511,7 +512,9 @@ async def _get_proposed_change_repositories(
     return _parse_proposed_change_repositories(message=message, source=source_all, destination=destination_all)
 
 
+@task(name="proposed-change-validate-repository-conflicts", task_run_name="Validate conflicts on repository")
 async def _validate_repository_merge_conflicts(repositories: list[ProposedChangeRepository]) -> bool:
+    log = get_run_logger()
     conflicts = False
     for repo in repositories:
         if repo.has_diff and not repo.is_staging:
@@ -521,7 +524,10 @@ async def _validate_repository_merge_conflicts(repositories: list[ProposedChange
                     source_branch=repo.source_branch, dest_branch=repo.destination_branch
                 )
                 if repo.conflicts:
+                    log.info(f"{len(repo.conflicts)} conflict(s) identified on {repo.repository_name}")
                     conflicts = True
+                else:
+                    log.info(f"no conflict identified for {repo.repository_name}")
 
     return conflicts
 

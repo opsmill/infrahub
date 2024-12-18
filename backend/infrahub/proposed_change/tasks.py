@@ -185,10 +185,10 @@ async def cancel_proposed_change(proposed_change: CoreProposedChange) -> None:
 )
 async def run_proposed_change_data_integrity_check(model: RequestProposedChangeDataIntegrity) -> None:
     """Triggers a data integrity validation check on the provided proposed change to start."""
+    await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
     service = services.service
     async with service.database.start_transaction() as dbt:
-        await add_tags(nodes=[model.proposed_change])
         destination_branch = await registry.get_branch(db=dbt, branch=model.destination_branch)
         source_branch = await registry.get_branch(db=dbt, branch=model.source_branch)
         component_registry = get_component_registry()
@@ -203,7 +203,7 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
 )
 async def run_generators(model: RequestProposedChangeRunGenerators) -> None:
     service = services.service
-    await add_tags(nodes=[model.proposed_change])
+    await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
     generators = await service.client.filters(
         kind=CoreGeneratorDefinition,
@@ -299,7 +299,7 @@ async def run_proposed_change_schema_integrity_check(
     # For now, we retrieve the latest schema for each branch from the registry
     # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
     service = services.service
-    await add_tags(nodes=[model.proposed_change])
+    await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
     source_schema = registry.schema.get_schema_branch(name=model.source_branch).duplicate()
     dest_schema = registry.schema.get_schema_branch(name=model.destination_branch).duplicate()
@@ -385,11 +385,11 @@ async def _get_proposed_change_schema_integrity_constraints(
 
 @flow(
     name="proposed-changed-repository-checks",
-    flow_run_name="Process checks defined in proposed change: {model.proposed_change}",
+    flow_run_name="Process user defined checks",
 )
 async def repository_checks(model: RequestProposedChangeRepositoryChecks) -> None:
     service = services.service
-    await add_tags(nodes=[model.proposed_change])
+    await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
     events: list[InfrahubMessage] = []
     for repository in model.branch_diff.repositories:
@@ -410,7 +410,8 @@ async def repository_checks(model: RequestProposedChangeRepositoryChecks) -> Non
         events.append(
             messages.RequestRepositoryUserChecks(
                 proposed_change=model.proposed_change,
-                repository=repository.repository_id,
+                repository_id=repository.repository_id,
+                repository_name=repository.repository_name,
                 source_branch=model.source_branch,
                 source_branch_sync_with_git=model.source_branch_sync_with_git,
                 target_branch=model.destination_branch,
@@ -424,11 +425,12 @@ async def repository_checks(model: RequestProposedChangeRepositoryChecks) -> Non
 
 @flow(
     name="proposed-changed-user-tests",
-    flow_run_name="Running_repository_tests on proposed change {model.proposed_change}",
+    flow_run_name="Run unit tests in repositories",
 )
 async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) -> None:
     service = services.service
     log = get_run_logger()
+    await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
     proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
 
     def _execute(

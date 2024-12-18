@@ -10,7 +10,8 @@ class RequestRepositoryUserChecks(InfrahubMessage):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     proposed_change: str = Field(..., description="The unique ID of the Proposed Change")
-    repository: str = Field(..., description="The unique ID of the Repository")
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the Repository")
     source_branch: str = Field(..., description="The source branch")
     source_branch_sync_with_git: bool = Field(..., description="Indicates if the source branch should sync with git")
     target_branch: str = Field(..., description="The target branch")
