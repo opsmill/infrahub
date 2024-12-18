@@ -30,7 +30,7 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 
-const IpamIPPrefixDetails = forwardRef((props, ref) => {
+const IpamIPPrefixDetails = forwardRef((_, ref) => {
   const { prefix } = useParams();
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);

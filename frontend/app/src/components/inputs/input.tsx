@@ -57,6 +57,7 @@ export const Input = forwardRef((props: any, ref: any) => {
           props.type === "password" ? "pr-14" : ""
         )}
         type={type === "password" && display ? "text" : type}
+        ref={ref}
         {...propsToPass}
       />
 

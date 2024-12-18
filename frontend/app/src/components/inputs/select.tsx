@@ -412,7 +412,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
         setIsLoading(false);
 
         checkSchemaUpdate();
-      } catch (e) {
+      } catch (error) {
+        console.error(error);
         setIsLoading(false);
       }
     };
@@ -500,7 +501,8 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
         setOpen(false);
 
         setIsLoading(false);
-      } catch (e) {
+      } catch (error) {
+        console.error(error);
         setIsLoading(false);
       }
     };
@@ -563,6 +565,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
       setIsLoading(false);
     } catch (error) {
+      console.error(error);
       setIsLoading(false);
     }
   };
@@ -602,6 +605,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>((props, ref) => {
 
       setIsLoading(false);
     } catch (error) {
+      console.error(error);
       setIsLoading(false);
     }
   };

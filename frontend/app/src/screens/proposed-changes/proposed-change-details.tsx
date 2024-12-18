@@ -30,9 +30,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
 
   const navigate = useNavigate();
 
-  const { loading, data, error } = useQuery(
-    gql(getObjectPermissionsQuery(PROPOSED_CHANGES_OBJECT))
-  );
+  const { data } = useQuery(gql(getObjectPermissionsQuery(PROPOSED_CHANGES_OBJECT)));
 
   const permission = getPermission(data?.[PROPOSED_CHANGES_OBJECT]?.permissions?.edges);
 
