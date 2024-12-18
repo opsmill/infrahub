@@ -126,7 +126,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
             proposedChangeId={proposedChangeId!}
             state={state}
             sourceBranch={proposedChangesDetails?.source_branch?.value}
-            disabled={!permission.update.isAllowed || checkData[TASK_OBJECT].count}
+            disabled={!permission.update.isAllowed || (checkData && checkData[TASK_OBJECT].count)}
           />
           <PcCloseButton
             proposedChangeId={proposedChangeId!}
@@ -142,7 +142,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
     <div className="bg-stone-50 p-2.5 flex flex-col flex-grow gap-2.5">
       {loadingCheck && <LoadingScreen hideText />}
 
-      {!loadingCheck && !!checkData[TASK_OBJECT].count && (
+      {!loadingCheck && checkData && !!checkData[TASK_OBJECT].count && (
         <Card>
           <Accordion title={<div className="font-normal text-xs">Actions in progress</div>}>
             <div className="mt-2">
