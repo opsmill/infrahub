@@ -42,7 +42,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
       workflow: [PROPOSED_CHANGE_MERGE_WORKFLOW],
       relatedNodes: proposedChangeId ? [proposedChangeId] : undefined,
     },
-    pollInterval: 5000,
+    pollInterval: 2000,
   });
 
   const permission = getPermission(data?.[PROPOSED_CHANGES_OBJECT]?.permissions?.edges);
