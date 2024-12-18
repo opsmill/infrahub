@@ -59,7 +59,18 @@ async def app_initialization(application: FastAPI) -> None:
         )
 
     # Initialize database Driver and load local registry
-    database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
+    # pylint: disable=import-outside-toplevel
+    from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
+    from infrahub.database import QueryConfig
+    from infrahub.database.constants import Neo4jRuntime
+
+    database = application.state.db = InfrahubDatabase(
+        mode=InfrahubDatabaseMode.DRIVER,
+        driver=await get_db(),
+        queries_names_to_config={
+            NodeUniqueAttributeConstraintQuery.name: QueryConfig(neo4j_runtime=Neo4jRuntime.PARALLEL)
+        },
+    )
     database.manager.index.init(nodes=node_indexes, rels=rel_indexes)
 
     build_component_registry()

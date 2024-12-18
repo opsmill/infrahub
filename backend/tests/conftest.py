@@ -105,7 +105,17 @@ async def db(
             assert memgraph is not None
             config.SETTINGS.database.port = memgraph[PORT_MEMGRAPH]
 
-    driver = InfrahubDatabase(driver=await get_db(retry=5))
+    # pylint: disable=import-outside-toplevel
+    from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
+    from infrahub.database import QueryConfig
+    from infrahub.database.constants import Neo4jRuntime
+
+    driver = InfrahubDatabase(
+        driver=await get_db(retry=5),
+        queries_names_to_config={
+            NodeUniqueAttributeConstraintQuery.name: QueryConfig(neo4j_runtime=Neo4jRuntime.PARALLEL)
+        },
+    )
 
     yield driver
 
