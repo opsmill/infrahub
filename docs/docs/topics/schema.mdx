@@ -325,7 +325,7 @@ By including `bgppeergroup__local_as` and `bgppeergroup__remote_as`, we can clea
 
 This example shows how direction (`inbound` for `svlan` and `outbound` for `cvlan`) distinguishes connections within the same node type `ipamVLAN`.
 The `vlan__qinq` identifier connects the `svlan` and `cvlan` relationships while keeping their separate functions.
-Because both sides of the relationship have the same `Kind`, we must avoid the default `bidrectional` assumption, , therefore we have to specify a direction.
+Because both sides of the relationship have the same `Kind`, we must avoid the default `bidrectional` assumption, therefore we have to specify a direction.
 
 ```yaml
 - name: VLAN
