@@ -86,7 +86,7 @@ class PrefectTask:
         logs_flow = FlowLogs()
         all_logs = await client.read_logs(log_filter=LogFilter(flow_run_id=LogFilterFlowRunId(any_=flow_ids)))
         for flow_log in all_logs:
-            if flow_log.flow_run_id:
+            if flow_log.flow_run_id and flow_log.message not in ["Finished in state Completed()"]:
                 logs_flow.logs[flow_log.flow_run_id].append(flow_log)
 
         return logs_flow
