@@ -22,6 +22,7 @@ async def transform_python(message: TransformPythonData) -> Any:
         name=message.repository_name,
         service=service,
         repository_kind=message.repository_kind,
+        commit=message.commit,
     )
 
     transformed_data = await repo.execute_python_transform(
@@ -45,6 +46,7 @@ async def transform_render_jinja2_template(message: TransformJinjaTemplateData) 
         name=message.repository_name,
         service=service,
         repository_kind=message.repository_kind,
+        commit=message.commit,
     )
 
     rendered_template = await repo.render_jinja2_template(

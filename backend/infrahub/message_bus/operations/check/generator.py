@@ -22,6 +22,7 @@ async def run(message: messages.CheckGeneratorRun, service: InfrahubServices) ->
         name=message.repository_name,
         service=service,
         repository_kind=message.repository_kind,
+        commit=message.commit,
     )
 
     conclusion = ValidatorConclusion.SUCCESS

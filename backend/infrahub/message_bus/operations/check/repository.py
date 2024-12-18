@@ -146,7 +146,7 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
     validator = await service.client.get(kind=InfrahubKind.REPOSITORYVALIDATOR, id=message.validator_id)
     await validator.checks.fetch()
 
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, service=service)
     async with lock.registry.get(name=message.repository_name, namespace="repository"):
         conflicts = await repo.get_conflicts(source_branch=message.source_branch, dest_branch=message.target_branch)
 
@@ -224,7 +224,9 @@ async def user_check(message: messages.CheckRepositoryUserCheck, service: Infrah
     validator = await service.client.get(kind=InfrahubKind.USERVALIDATOR, id=message.validator_id)
     await validator.checks.fetch()
 
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
+    repo = await InfrahubRepository.init(
+        id=message.repository_id, name=message.repository_name, commit=message.commit, service=service
+    )
     conclusion = "failure"
     severity = "critical"
     log_entries = ""
