@@ -95,7 +95,7 @@ export const RelationshipManyInput = React.forwardRef<
         <div
           className={classNames(
             inputStyle,
-            "has-[>:last-child:focus-visible]:outline-none has-[>:last-child:focus-visible]:ring-2 has-[>:last-child:focus-visible]:ring-custom-blue-500 has-[>:last-child:focus-visible]:ring-offset-2",
+            "has-[>:last-child:focus-visible]:outline-none has-[>:last-child:focus-visible]:ring-2 has-[>:last-child:focus-visible]:ring-custom-blue-600/25  has-[>:last-child:focus-visible]:border-custom-blue-600",
             "cursor-pointer",
             className
           )}

@@ -62,7 +62,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = forwardRef<
           className={classNames(
             `
         bg-white rounded-md border border-gray-300 shadow-sm
-        focus-within:outline focus-within:outline-custom-blue-600 focus-within:border-custom-blue-600
+        focus-within:outline focus-within:outline-custom-blue-600/25 focus-within:border-custom-blue-600
         `,
             className
           )}
