@@ -22,7 +22,15 @@ export const ComboboxTrigger = React.forwardRef<HTMLButtonElement, ComboboxTrigg
   ({ children, className, ...props }, ref) => {
     return (
       <PopoverTrigger asChild ref={ref} {...props}>
-        <button type="button" role="combobox" className={classNames(inputStyle, className)}>
+        <button
+          type="button"
+          role="combobox"
+          className={classNames(
+            inputStyle,
+            "focus:outline-none focus:ring-2 focus:ring-custom-blue-600/25 focus:border-custom-blue-600",
+            className
+          )}
+        >
           {children}
           <Icon icon="mdi:unfold-more-horizontal" className="ml-auto text-gray-600 pl-2" />
         </button>

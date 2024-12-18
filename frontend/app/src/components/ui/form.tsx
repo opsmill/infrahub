@@ -108,7 +108,8 @@ export const FormInput = React.forwardRef<
       ref={ref}
       id={id}
       className={classNames(
-        error && "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/25",
+        error &&
+          "border-red-500 focus:border-red-500 focus:ring-red-500/25 focus-within:border-red-500 focus-within:ring-red-500/25 focus-visible:border-red-500 focus-visible:ring-red-500/25",
         className
       )}
       aria-invalid={!!error}
