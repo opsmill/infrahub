@@ -672,7 +672,6 @@ class SchemaManager(NodeManager):
                 db=db,
             ):
                 kind = f"{schema_node.namespace.value}{schema_node.name.value}"
-                print(f"{kind=}")
                 schema.set(
                     name=kind,
                     schema=await self.convert_generic_schema_to_schema(schema_node=schema_node, db=db),
