@@ -103,6 +103,7 @@ async def process_transform(
             name=transform.repository.peer.name.value,
             service=service,
             repository_kind=transform.repository.peer.typename,
+            commit=repo_node.commit.value,
         )
 
         data = await service.client.query_gql_query(

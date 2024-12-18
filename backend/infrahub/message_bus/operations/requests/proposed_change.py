@@ -69,7 +69,9 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
 
     repositories = await _get_proposed_change_repositories(message=message, service=service)
 
-    if message.source_branch_sync_with_git and await _validate_repository_merge_conflicts(repositories=repositories):
+    if message.source_branch_sync_with_git and await _validate_repository_merge_conflicts(
+        repositories=repositories, service=service
+    ):
         for repo in repositories:
             if not repo.read_only and repo.internal_status == RepositoryInternalStatus.ACTIVE.value:
                 events.append(
@@ -85,7 +87,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             await service.send(message=event)
         return
 
-    await _gather_repository_repository_diffs(repositories=repositories)
+    await _gather_repository_repository_diffs(repositories=repositories, service=service)
 
     async with service.database.start_transaction() as dbt:
         destination_branch = await registry.get_branch(db=dbt, branch=message.destination_branch)
@@ -513,12 +515,16 @@ async def _get_proposed_change_repositories(
 
 
 @task(name="proposed-change-validate-repository-conflicts", task_run_name="Validate conflicts on repository")
-async def _validate_repository_merge_conflicts(repositories: list[ProposedChangeRepository]) -> bool:
+async def _validate_repository_merge_conflicts(
+    repositories: list[ProposedChangeRepository], service: InfrahubServices
+) -> bool:
     log = get_run_logger()
     conflicts = False
     for repo in repositories:
         if repo.has_diff and not repo.is_staging:
-            git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name)
+            git_repo = await InfrahubRepository.init(
+                id=repo.repository_id, name=repo.repository_name, client=service.client
+            )
             async with lock.registry.get(name=repo.repository_name, namespace="repository"):
                 repo.conflicts = await git_repo.get_conflicts(
                     source_branch=repo.source_branch, dest_branch=repo.destination_branch
@@ -532,11 +538,15 @@ async def _validate_repository_merge_conflicts(repositories: list[ProposedChange
     return conflicts
 
 
-async def _gather_repository_repository_diffs(repositories: list[ProposedChangeRepository]) -> None:
+async def _gather_repository_repository_diffs(
+    repositories: list[ProposedChangeRepository], service: InfrahubServices
+) -> None:
     for repo in repositories:
         if repo.has_diff and repo.source_commit and repo.destination_commit:
             # TODO we need to find a way to return all files in the repo if the repo is new
-            git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name)
+            git_repo = await InfrahubRepository.init(
+                id=repo.repository_id, name=repo.repository_name, client=service.client
+            )
 
             files_changed: list[str] = []
             files_added: list[str] = []

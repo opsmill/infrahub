@@ -15,6 +15,7 @@ from infrahub_sdk.protocols import (
     CoreArtifactDefinition,
     CoreCheckDefinition,
     CoreGeneratorDefinition,
+    CoreGenericRepository,
     CoreGraphQLQuery,
     CoreTransformation,
     CoreTransformJinja2,
@@ -34,11 +35,13 @@ from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
+from typing_extensions import Self
 
 from infrahub.core.constants import InfrahubKind, RepositorySyncStatus
 from infrahub.events.repository_action import CommitUpdatedEvent
-from infrahub.exceptions import CheckError, TransformError
+from infrahub.exceptions import CheckError, RepositoryInvalidFileSystemError, TransformError
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
+from infrahub.services import InfrahubServices
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
@@ -125,6 +128,33 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     This class will later be broken out from the "InfrahubRepository" based classes and instead be a separate
     class that uses an "InfrahubRepository" or "InfrahubReadOnlyRepository" as input
     """
+
+    @classmethod
+    async def init(cls, commit: str | None = None, service: InfrahubServices | None = None, **kwargs: Any) -> Self:
+        service = service or InfrahubServices()
+        self = cls(service=service, **kwargs)
+        try:
+            self.validate_local_directories()
+        except RepositoryInvalidFileSystemError:
+            await self.ensure_location_is_defined()
+            await self.create_locally(infrahub_branch_name=self.infrahub_branch_name, update_commit_value=False)
+            service.log.info(f"Initialized the local directory for {self.name} because it was missing.")
+            if commit:
+                self.get_commit_worktree(commit=commit)
+
+        service.log.debug(
+            f"Initiated the object on an existing directory for {self.name}",
+        )
+        return self
+
+    async def ensure_location_is_defined(self) -> None:
+        if self.location:
+            return
+        client = self.get_client()
+        repo = await client.get(
+            kind=CoreGenericRepository, name__value=self.name, exclude=["tags", "credential"], raise_when_missing=True
+        )
+        self.location = repo.location.value
 
     @flow(name="import-object-from-file", flow_run_name="Import objects")
     async def import_objects_from_files(

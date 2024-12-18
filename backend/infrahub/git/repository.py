@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
@@ -23,18 +23,14 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     """
 
     @classmethod
-    async def init(cls, service: Optional[InfrahubServices] = None, **kwargs: Any) -> InfrahubRepository:
+    async def new(
+        cls, service: InfrahubServices | None = None, update_commit_value: bool = True, **kwargs: Any
+    ) -> InfrahubRepository:
         service = service or InfrahubServices()
         self = cls(service=service, **kwargs)
-        self.validate_local_directories()
-        log.debug("Initiated the object on an existing directory.", repository=self.name)
-        return self
-
-    @classmethod
-    async def new(cls, service: Optional[InfrahubServices] = None, **kwargs: Any) -> InfrahubRepository:
-        service = service or InfrahubServices()
-        self = cls(service=service, **kwargs)
-        await self.create_locally(infrahub_branch_name=self.infrahub_branch_name)
+        await self.create_locally(
+            infrahub_branch_name=self.infrahub_branch_name, update_commit_value=update_commit_value
+        )
         log.info("Created new repository locally.", repository=self.name)
         return self
 
@@ -51,7 +47,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return str(branches[branch_name].commit)
 
     async def create_branch_in_git(
-        self, branch_name: str, branch_id: Optional[str] = None, push_origin: bool = True
+        self, branch_name: str, branch_id: str | None = None, push_origin: bool = True
     ) -> bool:
         """Create new branch in the repository, assuming the branch has been created in the graph already."""
 
@@ -245,18 +241,10 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
     """
 
     is_read_only: bool = True
-    ref: Optional[str] = Field(None, description="Ref to track on the external repository")
+    ref: str | None = Field(None, description="Ref to track on the external repository")
 
     @classmethod
-    async def init(cls, service: Optional[InfrahubServices] = None, **kwargs: Any) -> InfrahubReadOnlyRepository:
-        service = service or InfrahubServices()
-        self = cls(service=service, **kwargs)
-        self.validate_local_directories()
-        log.debug("Initiated the object on an existing directory.", repository=self.name)
-        return self
-
-    @classmethod
-    async def new(cls, service: Optional[InfrahubServices] = None, **kwargs: Any) -> InfrahubReadOnlyRepository:
+    async def new(cls, service: InfrahubServices | None = None, **kwargs: Any) -> InfrahubReadOnlyRepository:
         service = service or InfrahubServices()
 
         if "ref" not in kwargs or "infrahub_branch_name" not in kwargs:
@@ -286,7 +274,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
         return str(commit)
 
-    async def sync_from_remote(self, commit: Optional[str] = None) -> None:
+    async def sync_from_remote(self, commit: str | None = None) -> None:
         if not commit:
             commit = self.get_commit_value(branch_name=self.ref, remote=True)
         local_branches = self.get_branches_from_local()
@@ -298,14 +286,16 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
 
 async def get_initialized_repo(
-    repository_id: str, name: str, service: InfrahubServices, repository_kind: str
+    repository_id: str, name: str, service: InfrahubServices, repository_kind: str, commit: str | None = None
 ) -> Union[InfrahubReadOnlyRepository, InfrahubRepository]:
     if repository_kind == InfrahubKind.REPOSITORY:
-        return await InfrahubRepository.init(id=repository_id, name=name, client=service._client, service=service)
+        return await InfrahubRepository.init(
+            id=repository_id, name=name, commit=commit, client=service._client, service=service
+        )
 
     if repository_kind == InfrahubKind.READONLYREPOSITORY:
         return await InfrahubReadOnlyRepository.init(
-            id=repository_id, name=name, client=service._client, service=service
+            id=repository_id, name=name, commit=commit, client=service._client, service=service
         )
 
     raise NotImplementedError(f"The repository kind {repository_kind} has not been implemented")

@@ -249,6 +249,7 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
         name=model.repository_name,
         service=service,
         repository_kind=model.repository_kind,
+        commit=model.commit,
     )
 
     artifact = await define_artifact(message=model, service=service)
@@ -489,6 +490,7 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
         name=model.repository_name,
         service=services.service,
         repository_kind=model.repository_kind,
+        commit=model.commit,
     )
     await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
 

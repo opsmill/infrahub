@@ -33,6 +33,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
         name=model.repository_name,
         service=service,
         repository_kind=model.repository_kind,
+        commit=model.commit,
     )
 
     generator_definition = InfrahubGeneratorDefinitionConfig(
