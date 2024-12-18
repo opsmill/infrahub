@@ -16,9 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { CREATE_PROPOSED_CHANGE } from "@/graphql/mutations/proposed-changes/createProposedChange";
-import { GET_ALL_ACCOUNTS } from "@/graphql/queries/accounts/getAllAccounts";
 import { useAuth } from "@/hooks/useAuth";
-import useQuery, { useMutation } from "@/hooks/useQuery";
+import { useMutation } from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { branchesState } from "@/state/atoms/branches.atom";
 import { branchesToSelectOptions } from "@/utils/branches";
@@ -37,7 +36,6 @@ export const ProposedChangeCreateForm = () => {
   const navigate = useNavigate();
 
   const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGES_OBJECT);
-  const { data: getAllAccountsData } = useQuery(GET_ALL_ACCOUNTS);
 
   const [createProposedChange, { error }] = useMutation(CREATE_PROPOSED_CHANGE);
 

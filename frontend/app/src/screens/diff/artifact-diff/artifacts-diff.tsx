@@ -13,7 +13,7 @@ import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ArtifactRepoDiff } from "./artifact-repo-diff";
 
-export const ArtifactsDiff = forwardRef((props, ref) => {
+export const ArtifactsDiff = forwardRef((_, ref) => {
   const [artifactsDiff, setArtifactsDiff] = useState({});
   const { "*": branchName } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);

@@ -44,7 +44,6 @@ export const BranchDetails = () => {
   const { isAuthenticated } = useAuth();
   const [branches, setBranches] = useAtom(branchesState);
 
-  const [isLoadingRequest, setIsLoadingRequest] = useState(false);
   const [displayModal, setDisplayModal] = useState(false);
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
@@ -54,8 +53,6 @@ export const BranchDetails = () => {
     if (!branchName) return;
 
     try {
-      setIsLoadingRequest(true);
-
       await graphqlClient.mutate({
         mutation,
         variables: {
@@ -70,12 +67,10 @@ export const BranchDetails = () => {
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />, {
         toastId: "alert-success",
       });
-    } catch (error: any) {
-      console.error("error: ", error);
+    } catch (error) {
+      console.error(error);
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={errorMessage} />);
     }
-
-    setIsLoadingRequest(false);
   };
 
   const { loading, error, data } = useQuery(getBranchDetailsQuery, { variables: { branchName } });

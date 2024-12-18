@@ -142,6 +142,10 @@ async def migrate(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Check the current format of the internal graph and apply the necessary migrations"""
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
     log = get_logger()
 
     config.load_and_exit(config_file_name=config_file)

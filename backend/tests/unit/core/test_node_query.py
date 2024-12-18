@@ -3,6 +3,7 @@ from typing import Dict
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     InfrahubKind,
+    RelationshipDirection,
     RelationshipHierarchyDirection,
 )
 from infrahub.core.manager import NodeManager
@@ -343,7 +344,9 @@ async def test_query_NodeListGetAttributeQuery_deleted(db: InfrahubDatabase, bas
     assert len(query.get_attributes_group_by_node()["c1"].attrs) == 1
 
 
-async def test_query_NodeListGetRelationshipsQuery(db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main):
+async def test_query_NodeListGetRelationshipsQuery(
+    db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main, tag_blue_main, tag_red_main
+):
     default_branch = await registry.get_branch(db=db, branch="main")
     query = await NodeListGetRelationshipsQuery.init(
         db=db,
@@ -351,10 +354,39 @@ async def test_query_NodeListGetRelationshipsQuery(db: InfrahubDatabase, default
         branch=default_branch,
     )
     await query.execute(db=db)
-    result = query.get_peers_group_by_node()
-    assert person_jack_tags_main.id in result
-    assert "builtintag__testperson" in result[person_jack_tags_main.id]
-    assert len(result[person_jack_tags_main.id]["builtintag__testperson"]) == 2
+    grouped_peer_nodes = query.get_peers_group_by_node()
+    assert grouped_peer_nodes.has_node(person_jack_tags_main.id)
+    peer_ids = grouped_peer_nodes.get_peer_ids(
+        node_id=person_jack_tags_main.id, rel_name="builtintag__testperson", direction=RelationshipDirection.INBOUND
+    )
+    assert peer_ids == {tag_blue_main.id, tag_red_main.id}
+
+
+async def test_query_NodeListGetRelationshipsQuery_hierarchical(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+):
+    node_ids = [value.id for value in hierarchical_location_data.values()]
+    europe_id = hierarchical_location_data["europe"].id
+    paris_id = hierarchical_location_data["paris"].id
+    paris_r1_id = hierarchical_location_data["paris-r1"].id
+    paris_r2_id = hierarchical_location_data["paris-r2"].id
+    default_branch = await registry.get_branch(db=db, branch="main")
+    query = await NodeListGetRelationshipsQuery.init(
+        db=db,
+        ids=node_ids,
+        branch=default_branch,
+    )
+    await query.execute(db=db)
+    grouped_peer_nodes = query.get_peers_group_by_node()
+    assert grouped_peer_nodes.has_node(paris_id)
+    child_peer_ids = grouped_peer_nodes.get_peer_ids(
+        node_id=paris_id, rel_name="parent__child", direction=RelationshipDirection.INBOUND
+    )
+    assert child_peer_ids == {paris_r1_id, paris_r2_id}
+    parent_peer_ids = grouped_peer_nodes.get_peer_ids(
+        node_id=paris_id, rel_name="parent__child", direction=RelationshipDirection.OUTBOUND
+    )
+    assert parent_peer_ids == {europe_id}
 
 
 async def test_query_NodeDeleteQuery(

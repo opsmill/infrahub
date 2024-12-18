@@ -37,7 +37,8 @@ const authMiddleware: Middleware = {
 
         request.headers.set("Authorization", `Bearer ${newToken.access_token}`);
         return fetch(request);
-      } catch (e) {
+      } catch (error) {
+        console.error(error);
         return response;
       }
     }

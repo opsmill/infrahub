@@ -103,7 +103,7 @@
     "vite-tsconfig-paths": "^4.3.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.3",
+    "@biomejs/biome": "1.9.4",
     "@graphql-codegen/cli": "^5.0.2",
     "@graphql-codegen/typescript": "^4.0.9",
     "@playwright/test": "^1.47.2",
