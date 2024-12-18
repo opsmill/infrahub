@@ -245,6 +245,110 @@ When you create a relationship of kind Component, automatically the `on_delete` 
 
 :::
 
+#### Direction and Identifier in relationships
+
+Relationships in Infrahub schema connect nodes while defining how those connections behave and are traversed.
+Direction and identifier both constitute critical qualities for good relationship management.
+
+##### Direction
+
+The **direction** attribute defines the flow of the relationship:
+
+- **Bidirectional**: Supports traversal in both directions.
+- **Outbound**: Defines a relationship that runs from the source node to the target node.
+- **Inbound**: Defines a relationship that flows from the target node to the source node.
+
+For detailed information, see the [Relationship Reference Guide](/reference/schema/relationship#direction)
+
+##### Identifier
+
+To maintain consistent traversal, the **identifier** serves as the relationship's unique key and must match on both ends.
+If no identifier is provided, one will be generated automatically. It is encouraged to establish distinct ones for clarity and maintenance.
+
+For detailed information, see the [Relationship Reference Guide](/reference/schema/relationship#identifier)
+
+##### Examples
+
+:::info Example 1: Bidirectional Relationship with `device__interfaces`
+
+Here's an example schema that uses the identifier `device__interfaces` in a bidirectional connection to ensure that devices and interfaces can refer to each other seamlessly.
+
+```yaml
+  - name: Interface
+    namespace: Infra
+    relationships:
+      - name: device
+        peer: InfraDevice
+        identifier: "device__interfaces"
+        optional: false
+        cardinality: one
+        kind: Parent
+
+  - name: Device
+    namespace: Infra
+    relationships:
+      - name: interfaces
+        peer: InfraInterface
+        identifier: device__interfaces
+        cardinality: many
+        kind: Component
+```
+
+:::info Example 2: Relationships in InfraBGPGroup
+
+`InfraBGPGroup` has two relationships with the same node, `InfraAutonomousSystem`. To avoid issues with the auto-generated identifiers, we should specifically specify the ones we want.
+By including `bgppeergroup__local_as` and `bgppeergroup__remote_as`, we can clearly represent each relationship role.
+
+```yaml
+- name: BGPGroup
+  namespace: Infra
+  relationships:
+    - name: local_as
+      identifier: bgppeergroup__local_as
+      peer: InfraAutonomousSystem
+      optional: true
+      cardinality: one
+      kind: Attribute
+    - name: remote_as
+      identifier: bgppeergroup__remote_as
+      peer: InfraAutonomousSystem
+      optional: true
+      cardinality: one
+      kind: Attribute
+```
+
+:::
+
+:::info Example 3: Reflexive Relationships in IpamVLAN
+
+This example shows how direction (`inbound` for `svlan` and `outbound` for `cvlan`) distinguishes connections within the same node type `ipamVLAN`.
+The `vlan__qinq` identifier connects the `svlan` and `cvlan` relationships while keeping their separate functions.
+Because both sides of the relationship have the same `Kind`, we must avoid the default `bidrectional` assumption, , therefore we have to specify a direction.
+
+```yaml
+- name: VLAN
+  namespace: Ipam
+  relationships:
+    - name: svlan
+      label: Supplier VLAN
+      peer: IpamVLAN
+      optional: true
+      direction: inbound
+      identifier: vlan__qinq
+      cardinality: one
+      kind: Attribute
+    - name: cvlan
+      label: Customer VLAN(s)
+      peer: IpamVLAN
+      optional: true
+      direction: outbound
+      identifier: vlan__qinq
+      cardinality: many
+      kind: Attribute
+````
+
+:::
+
 <!-- vale off -->
 ### Uniqueness Constraints
 <!-- vale on -->
@@ -291,8 +395,8 @@ Having a human friendly way to identify an object is very important to build rob
 
 In the network industry:
 
-- the `hfid` of a device could be its `name` : `atl1-edge01`
-- the `hfid` of an interface could be the combination of the name of the device and the name of the interface: (`atl1-edge01`, `Ethernet1`)
+- The `hfid` of a device could be its `name` : `atl1-edge01`
+- The `hfid` of an interface could be the combination of the name of the device and the name of the interface: (`atl1-edge01`, `Ethernet1`)
 
 :::
 
