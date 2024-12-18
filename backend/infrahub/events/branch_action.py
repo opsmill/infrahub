@@ -1,7 +1,6 @@
 from pydantic import Field
 
 from infrahub.message_bus import InfrahubMessage
-from infrahub.message_bus.messages.event_branch_delete import EventBranchDelete
 from infrahub.message_bus.messages.refresh_registry_branches import RefreshRegistryBranches
 from infrahub.message_bus.messages.refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
 
@@ -24,15 +23,13 @@ class BranchDeleteEvent(InfrahubBranchEvent):
         }
 
     def get_messages(self) -> list[InfrahubMessage]:
-        events = [
-            # TODO: Sending EventBranchDelete currently has no effect.
-            #  We should either consider handle it or remove it.
-            EventBranchDelete(
-                branch=self.branch,
-                branch_id=self.branch_id,
-                sync_with_git=self.sync_with_git,
-                meta=self.get_message_meta(),
-            ),
+        events: list[InfrahubMessage] = [
+            # EventBranchDelete(
+            #     branch=self.branch,
+            #     branch_id=self.branch_id,
+            #     sync_with_git=self.sync_with_git,
+            #     meta=self.get_message_meta(),
+            # ),
             RefreshRegistryBranches(),
         ]
         return events
@@ -54,7 +51,7 @@ class BranchCreateEvent(InfrahubBranchEvent):
         }
 
     def get_messages(self) -> list[InfrahubMessage]:
-        events = [
+        events: list[InfrahubMessage] = [
             # EventBranchCreate(
             #     branch=self.branch,
             #     branch_id=self.branch_id,
@@ -63,7 +60,7 @@ class BranchCreateEvent(InfrahubBranchEvent):
             # ),
             RefreshRegistryBranches(),
         ]
-        return events  # type: ignore
+        return events
 
 
 class BranchRebaseEvent(InfrahubBranchEvent):
@@ -81,11 +78,11 @@ class BranchRebaseEvent(InfrahubBranchEvent):
         }
 
     def get_messages(self) -> list[InfrahubMessage]:
-        events = [
+        events: list[InfrahubMessage] = [
             # EventBranchRebased(
             #     branch=self.branch,
             #     meta=self.get_message_meta(),
             # ),
             RefreshRegistryRebasedBranch(branch=self.branch),
         ]
-        return events  # type: ignore
+        return events
