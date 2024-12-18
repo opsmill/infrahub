@@ -4,6 +4,9 @@ from typing import TYPE_CHECKING, Sequence
 
 from infrahub.core import registry
 from infrahub.core.migrations.shared import MigrationResult
+from infrahub.core.schema import GenericSchema
+from infrahub.core.schema.definitions.core import core_profile_schema_definition
+from infrahub.core.schema.manager import SchemaManager
 from infrahub.log import get_logger
 
 from ..shared import InternalSchemaMigration, SchemaMigration
@@ -25,9 +28,9 @@ class Migration017(InternalSchemaMigration):
         return result
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
-        from infrahub.core.schema import GenericSchema
-        from infrahub.core.schema.definitions.core import core_profile_schema_definition
-        from infrahub.core.schema.manager import SchemaManager
+        """
+        Load CoreProfile schema node in db.
+        """
 
         core_profile = GenericSchema(**core_profile_schema_definition)
 

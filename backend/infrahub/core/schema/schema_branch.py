@@ -1476,10 +1476,10 @@ class SchemaBranch:
 
     def manage_profile_schemas(self) -> None:
         if not self.has(name=InfrahubKind.PROFILE):
+            # TODO: This logic is actually only for testing purposes as since 1.0.9 CoreProfile is loaded in db.
+            #  Ideally, we would remove this and instead load CoreProfile properly within tests.
             core_profile_schema = GenericSchema(**core_profile_schema_definition)
             self.set(name=core_profile_schema.kind, schema=core_profile_schema)
-        else:
-            core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
 
         profile_schema_kinds = set()
         for node_name in self.node_names + self.generic_names:
