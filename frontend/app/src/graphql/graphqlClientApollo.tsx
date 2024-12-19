@@ -128,7 +128,7 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
           // Do not display alert on unauthorized errors
           return;
         }
-        default:
+        default: {
           const { processErrorMessage } = operation.getContext();
 
           if (!graphQLError.message) return;
@@ -140,6 +140,7 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
           toast(<Alert type={ALERT_TYPES.ERROR} message={graphQLError.message} />, {
             toastId: "alert-error",
           });
+        }
       }
     }
   }

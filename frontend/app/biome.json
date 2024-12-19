@@ -53,10 +53,9 @@
         "useSimplifiedLogicExpression": "off"
       },
       "correctness": {
-        "noSwitchDeclarations": "off",
         "noUndeclaredDependencies": "error",
         "noUndeclaredVariables": "off",
-        "noUnusedFunctionParameters": "off",
+        "noUnusedFunctionParameters": "error",
         "noUnusedImports": "error",
         "noUnusedVariables": "error",
         "useExhaustiveDependencies": "off",
