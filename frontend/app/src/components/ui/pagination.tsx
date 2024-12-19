@@ -1,4 +1,3 @@
-import { SelectOption } from "@/components/inputs/select";
 import usePagination from "@/hooks/usePagination";
 import { classNames } from "@/utils/common";
 import ReactPaginate from "react-paginate";
@@ -9,21 +8,6 @@ type tPaginationType = {
   count?: number;
   className?: string;
 };
-
-const limitOptions: SelectOption[] = [
-  {
-    id: 10,
-    name: "10",
-  },
-  {
-    id: 20,
-    name: "20",
-  },
-  {
-    id: 50,
-    name: "50",
-  },
-];
 
 export const Pagination = (props: tPaginationType) => {
   const { count = 0, className } = props;
@@ -58,13 +42,13 @@ export const Pagination = (props: tPaginationType) => {
     setPagination(newPagination);
   };
 
-  const handleLimitChange = (newLimit: SelectOption) => {
-    if (newLimit.id === limit) {
+  const handleLimitChange = (newLimit: number) => {
+    if (newLimit === limit) {
       return;
     }
 
     const newPagination = {
-      limit: newLimit.id,
+      limit: newLimit,
       offset,
     };
 
@@ -103,17 +87,20 @@ export const Pagination = (props: tPaginationType) => {
               <ComboboxContent>
                 <Command>
                   <CommandList>
-                    {limitOptions.map((option) => {
+                    {[10, 20, 50].map((option) => {
+                      const optionAsString = option.toString();
+                      const currentLimitAsString = limit.toString();
+
                       return (
                         <ComboboxItem
-                          key={option.name}
-                          value={option.name}
-                          selectedValue={limit?.toString()}
+                          key={option}
+                          value={optionAsString}
+                          selectedValue={currentLimitAsString}
                           onSelect={() => {
                             handleLimitChange(option);
                           }}
                         >
-                          {option.name}
+                          {optionAsString}
                         </ComboboxItem>
                       );
                     })}
