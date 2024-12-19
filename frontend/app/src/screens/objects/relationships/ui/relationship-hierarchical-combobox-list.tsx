@@ -87,6 +87,7 @@ const HierarchicalExplorer = ({
     }
 
     const handleRemoveNode = () => {
+      setSearch("");
       setSelectNode(undefined);
     };
 

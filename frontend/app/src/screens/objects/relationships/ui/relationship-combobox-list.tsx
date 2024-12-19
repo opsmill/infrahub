@@ -2,9 +2,9 @@ import { ComboboxEmpty, ComboboxItem, ComboboxList } from "@/components/ui/combo
 import { Spinner } from "@/components/ui/spinner";
 import { useSchema } from "@/hooks/useSchema";
 import ErrorScreen from "@/screens/errors/error-screen";
-import { AddRelationshipAction } from "@/screens/objects/relationships/components/add-relationship-action";
 import { relationshipsInfiniteQueryOptions } from "@/screens/objects/relationships/domain/get-relationships";
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
+import { AddRelationshipAction } from "@/screens/objects/relationships/ui/add-relationship-action";
 import { debounce } from "@/utils/common";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import React, { forwardRef } from "react";

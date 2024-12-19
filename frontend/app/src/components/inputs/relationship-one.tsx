@@ -16,7 +16,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
-import { AddRelationshipAction } from "@/screens/objects/relationships/components/add-relationship-action";
+import { AddRelationshipAction } from "@/screens/objects/relationships/ui/add-relationship-action";
 import { classNames } from "@/utils/common";
 import { Node, RelationshipManyType } from "@/utils/getObjectItemDisplayValue";
 import { gql } from "@apollo/client";

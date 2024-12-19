@@ -13,7 +13,7 @@ import { inputStyle } from "@/components/ui/style";
 import { generateRelationshipListQuery } from "@/graphql/queries/objects/generateRelationshipListQuery";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useLazyQuery } from "@/hooks/useQuery";
-import { AddRelationshipAction } from "@/screens/objects/relationships/components/add-relationship-action";
+import { AddRelationshipAction } from "@/screens/objects/relationships/ui/add-relationship-action";
 import { classNames } from "@/utils/common";
 import { Node, RelationshipManyType } from "@/utils/getObjectItemDisplayValue";
 import { gql } from "@apollo/client";

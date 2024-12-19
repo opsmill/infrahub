@@ -3,8 +3,8 @@ import { LabelFormField } from "@/components/form/fields/common";
 import { DynamicRelationshipFieldProps, FormRelationshipValue } from "@/components/form/type";
 import { updateRelationshipFieldValue } from "@/components/form/utils/updateFormFieldValue";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { RelationshipHierarchicalInput } from "@/screens/objects/relationships/components/relationship-hierarchical-input";
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
+import { RelationshipHierarchicalInput } from "@/screens/objects/relationships/ui/relationship-hierarchical-input";
 
 export interface RelationshipHierarchicalFieldProps
   extends Omit<DynamicRelationshipFieldProps, "type"> {}

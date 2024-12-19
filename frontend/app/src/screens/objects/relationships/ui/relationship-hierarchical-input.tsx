@@ -10,9 +10,9 @@ import {
   PopoverTabsList,
   PopoverTabsTrigger,
 } from "@/components/ui/popover";
-import { RelationshipComboboxList } from "@/screens/objects/relationships/components/relationship-combobox-list";
-import { RelationshipHierarchicalComboboxList } from "@/screens/objects/relationships/components/relationship-hierarchical-combobox-list";
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
+import { RelationshipComboboxList } from "@/screens/objects/relationships/ui/relationship-combobox-list";
+import { RelationshipHierarchicalComboboxList } from "@/screens/objects/relationships/ui/relationship-hierarchical-combobox-list";
 import { forwardRef, useState } from "react";
 
 export interface IHierarchicalRelationshipInputProps
