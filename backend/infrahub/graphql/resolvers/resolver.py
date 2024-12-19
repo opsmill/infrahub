@@ -9,9 +9,9 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.exceptions import NodeNotFoundError
 
-from .parser import extract_selection
-from .permissions import get_permissions
-from .types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
+from ..parser import extract_selection
+from ..permissions import get_permissions
+from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 async def account_resolver(
-    root,  # pylint: disable=unused-argument
+    root: dict,  # pylint: disable=unused-argument
     info: GraphQLResolveInfo,
 ) -> dict:
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -188,6 +188,7 @@ async def default_paginated_list_resolver(
                     partial_match=partial_match,
                 )
 
+        # get peer IDs for relationships
         if objs:
             objects = [
                 {
@@ -205,66 +206,14 @@ async def default_paginated_list_resolver(
         return response
 
 
-async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
-    """Resolver for relationships of cardinality=one for Edged responses
-
-    This resolver is used for paginated responses and as such we redefined the requested
-    fields by only reusing information below the 'node' key.
-    """
-    # Extract the InfraHub schema by inspecting the GQL Schema
-
-    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
-
+async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs: Any) -> dict[str, Any]:
     context: GraphqlContext = info.context
-
-    # Extract the name of the fields in the GQL query
-    fields = await extract_fields(info.field_nodes[0].selection_set)
-    node_fields = fields.get("node", {})
-    property_fields = fields.get("properties", {})
-    for key, value in property_fields.items():
-        mapped_name = RELATIONS_PROPERTY_MAP[key]
-        node_fields[mapped_name] = value
-
-    # Extract the schema of the node on the other end of the relationship from the GQL Schema
-    node_rel = node_schema.get_relationship(info.field_name)
-
-    # Extract only the filters from the kwargs and prepend the name of the field to the filters
-    filters = {
-        f"{info.field_name}__{key}": value
-        for key, value in kwargs.items()
-        if "__" in key and value or key in ["id", "ids"]
-    }
-
-    response: dict[str, Any] = {"node": None, "properties": {}}
-
-    async with context.db.start_session() as db:
-        objs = await NodeManager.query_peers(
-            db=db,
-            ids=[parent["id"]],
-            source_kind=node_schema.kind,
-            schema=node_rel,
-            filters=filters,
-            fields=node_fields,
-            at=context.at,
-            branch=context.branch,
-            branch_agnostic=node_rel.branch is BranchSupportType.AGNOSTIC,
-            fetch_peers=True,
-        )
-
-        if not objs:
-            return response
-
-        node_graph = await objs[0].to_graphql(db=db, fields=node_fields, related_node_ids=context.related_node_ids)
-        for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
-            value = node_graph.pop(key, None)
-            if value:
-                response["properties"][mapped] = value
-        response["node"] = node_graph
-        return response
+    resolver = context.single_relationship_resolver
+    return await resolver.resolve(parent=parent, info=info, **kwargs)
 
 
 async def many_relationship_resolver(
-    parent: dict, info: GraphQLResolveInfo, include_descendants: Optional[bool] = False, **kwargs
+    parent: dict, info: GraphQLResolveInfo, include_descendants: Optional[bool] = False, **kwargs: Any
 ) -> dict[str, Any]:
     """Resolver for relationships of cardinality=many for Edged responses
 

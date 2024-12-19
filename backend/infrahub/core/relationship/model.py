@@ -767,6 +767,12 @@ class RelationshipManager:
 
         return iter(self._relationships)
 
+    def get_one(self) -> Relationship | None:
+        if not self.has_fetched_relationships:
+            raise LookupError("you can't get a relationship before the cache has been populated.")
+
+        return self._relationships[0] if self._relationships else None
+
     def __len__(self) -> int:
         if not self.has_fetched_relationships:
             raise LookupError("you can't count relationships before the cache has been populated.")

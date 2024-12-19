@@ -623,10 +623,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def to_graphql(
         self,
         db: InfrahubDatabase,
-        fields: Optional[dict] = None,
-        related_node_ids: Optional[set] = None,
+        fields: dict | None = None,
+        related_node_ids: set | None = None,
         filter_sensitive: bool = False,
-        permissions: Optional[dict] = None,
+        permissions: dict | None = None,
     ) -> dict:
         """Generate GraphQL Payload for all attributes
 
@@ -685,6 +685,27 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 response[field_name] = await field.to_graphql(
                     db=db, filter_sensitive=filter_sensitive, permissions=permissions
                 )
+
+        for relationship_schema in self.get_schema().relationships:
+            peer_rels = []
+            if not fields or relationship_schema.name not in fields:
+                continue
+            rel_manager = getattr(self, relationship_schema.name, None)
+            if rel_manager is None:
+                continue
+            try:
+                if relationship_schema.cardinality is RelationshipCardinality.ONE:
+                    rel = rel_manager.get_one()
+                    if rel:
+                        peer_rels = [rel]
+                else:
+                    peer_rels = list(rel_manager)
+                if peer_rels:
+                    response[relationship_schema.name] = [
+                        {"node": {"id": relationship.peer_id}} for relationship in peer_rels if relationship.peer_id
+                    ]
+            except LookupError:
+                continue
 
         return response
 

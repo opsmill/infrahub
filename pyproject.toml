@@ -60,6 +60,7 @@ opentelemetry-exporter-otlp-proto-http = "1.28.1"
 nats-py = "^2.7.2"
 netaddr = "1.3.0"
 authlib = "1.3.2"
+aiodataloader = "0.4.0"
 
 
 # Dependencies specific to the SDK
@@ -343,7 +344,7 @@ disable_error_code = [
 
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.resolver"
+module = "infrahub.graphql.resolvers.resolver"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
