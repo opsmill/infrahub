@@ -106,8 +106,9 @@ export const Pagination = (props: tPaginationType) => {
                     {limitOptions.map((option) => {
                       return (
                         <ComboboxItem
-                          key={option.id}
+                          key={option.name}
                           value={option.name}
+                          selectedValue={limit?.toString()}
                           onSelect={() => {
                             handleLimitChange(option);
                           }}
