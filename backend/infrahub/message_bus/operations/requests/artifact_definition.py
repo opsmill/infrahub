@@ -2,25 +2,25 @@ from typing import Optional
 
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
+from prefect.logging import get_run_logger
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
-from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
-
-log = get_logger()
+from infrahub.workflows.utils import add_tags
 
 
 @flow(
     name="artifact-definition-check",
-    flow_run_name="Validating generation of artifacts of artifact definition {message.artifact_definition.definition_id} "
-    "on source branch {message.source_branch}",
+    flow_run_name="Validating generation of artifacts for {message.artifact_definition.definition_name}",
 )
 async def check(message: messages.RequestArtifactDefinitionCheck, service: InfrahubServices) -> None:
     events: list[InfrahubMessage] = []
+    await add_tags(branches=[message.source_branch], nodes=[message.proposed_change], db_change=True)
 
+    log = get_run_logger()
     artifact_definition = await service.client.get(
         kind=InfrahubKind.ARTIFACTDEFINITION,
         id=message.artifact_definition.definition_id,
@@ -88,6 +88,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
             check_execution_id = str(UUIDT())
             check_execution_ids.append(check_execution_id)
             requested_artifacts += 1
+            log.info(f"Trigger Artifact processing for {member.display_label}")
             events.append(
                 messages.CheckArtifactCreate(
                     artifact_name=message.artifact_definition.definition_name,
