@@ -91,7 +91,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     async def get_path_value(self, db: InfrahubDatabase, path: str) -> str:
         schema_path = self._schema.parse_schema_path(
-            path=path, schema=registry.schema.get_schema_branch(name=self._branch.name)
+            path=path, schema=db.schema.get_schema_branch(name=self._branch.name)
         )
 
         if not schema_path.has_property:
@@ -366,7 +366,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 await getattr(self, f"process_{name}")(db=db)
 
     async def _process_macros(self, db: InfrahubDatabase) -> None:
-        schema_branch = registry.schema.get_schema_branch(name=self._branch.name)
+        schema_branch = db.schema.get_schema_branch(self._branch.name)
         allowed_path_types = (
             SchemaElementPathType.ATTR_WITH_PROP
             | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
