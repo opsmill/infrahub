@@ -28,11 +28,45 @@ This release contains both new features and bug-fixes to resolve issues found in
 
 ## Main changes
 
-There have been several user-facing and behind-the-scenes changes in Infrahub 1.1.
+Infrahub 1.1 is focused on several user-facing features and behind-the-scenes changes.
 
-Below are details about some of the major changes, and the more detailed changelog is in the next section.
+There are three key items outlined below:
+
+- Computed attributes
+- Migration of backend tasks to Prefect
+- Enhancements to diff functionality
+
+While these are the larger items, see the detailed changelog in the following sections for more information.
 
 ### Computed attributes
+
+The computed attributes feature enables the dynamic calculation of attribute values based on user-defined logic.
+
+This functionality is valuable in a number of use cases, not least of which is programmatically generating device or interface names.
+
+There are two main ways to configure/create computed attributes, using either Jinja2 or Python.
+
+For Jinja2-based computed attributes, the user writes a concise Jinja2 template directly into their Schema definition file.
+Then, any changes to a field referenced in the template will update the resultant computed attribute automatically.
+There are some limitations with Jinja2-based computed attributes; for example, only direct relationships can be used (a relationship of a relationship is not accessible).
+
+For more complex use cases, Python-based computed attributes now are available leveraging the exiting Python-based transform feature.
+Users can define a transformation within the schema to apply to a their field, and the attribute is generated asynchronously by an Infrahub worker.
+When using Python-based computed attributes, note that there can be system performance impact with large or complex Python scripts.
+
+See [this table in the documentation](https://docs.infrahub.app/topics/computed-attributes#choosing-between-jinja2-and-python) for a concise comparison of the two types of computed attributes.
+
+#### Caveats
+
+- Only URL and Text attribute kinds are supported at the moment.
+
+#### Documentation
+
+For more information on either style of computed attribute, please see the below documentation.
+
+- https://docs.infrahub.app/guides/computed-attributes
+- https://docs.infrahub.app/topics/computed-attributes
+- https://docs.infrahub.app/topics/transformation
 
 ### Migration of backend tasks to Prefect
 
