@@ -92,7 +92,7 @@ describe("List screen", () => {
       });
 
     // Select the limit 50
-    cy.get("[id^=headlessui-combobox-button-]").click();
+    cy.get("[data-testid='pagination-size-select']").click();
     cy.contains("50").click();
 
     // The last page should be the number 20
