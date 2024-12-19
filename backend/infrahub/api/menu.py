@@ -29,6 +29,6 @@ async def get_menu(
 ) -> Menu:
     log.info("menu_request", branch=branch.name)
 
-    menu_items = await registry.manager.query(db=db, schema=CoreMenuItem, branch=branch)
+    menu_items = await registry.manager.query(db=db, schema=CoreMenuItem, branch=branch, prefetch_relationships=True)
     menu = await generate_restricted_menu(db=db, branch=branch, account=account_session, menu_items=menu_items)
     return menu.to_rest()
