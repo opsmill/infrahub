@@ -39,6 +39,7 @@ LOCK_RESERVE_TIME_METRICS = Histogram(
 )
 
 LOCAL_SCHEMA_LOCK = "local.schema"
+LOCAL_REPO_LOCK = "local.repository"
 GLOBAL_INIT_LOCK = "global.init"
 GLOBAL_SCHEMA_LOCK = "global.schema"
 GLOBAL_GRAPH_LOCK = "global.graph"

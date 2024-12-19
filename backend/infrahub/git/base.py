@@ -28,6 +28,8 @@ from infrahub.exceptions import (
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
 from infrahub.git.worktree import Worktree
+from infrahub.lock import LOCAL_REPO_LOCK
+from infrahub.lock import registry as lock_registry
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices  # noqa: TCH001
 
@@ -307,12 +309,23 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     async def create_locally(
         self, checkout_ref: str | None = None, infrahub_branch_name: str | None = None, update_commit_value: bool = True
     ) -> bool:
+        async with lock_registry.get(name=LOCAL_REPO_LOCK, namespace=self.name, local=True):
+            return await self._create_locally(
+                checkout_ref=checkout_ref,
+                infrahub_branch_name=infrahub_branch_name,
+                update_commit_value=update_commit_value,
+            )
+
+    async def _create_locally(
+        self, checkout_ref: str | None = None, infrahub_branch_name: str | None = None, update_commit_value: bool = True
+    ) -> bool:
         """Ensure the required directory already exist in the filesystem or create them if needed.
 
         Returns
             True if the directory has been created,
             False if the directory was already present.
         """
+
         initialize_repositories_directory()
 
         if not self.location:
@@ -652,6 +665,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         return True
 
     async def pull(self, branch_name: str) -> Union[bool, str]:
+        """Pull the latest update from the remote repository on a given branch."""
+        async with lock_registry.get(name=LOCAL_REPO_LOCK, namespace=self.name, local=True):
+            return await self._pull_unsafe(branch_name=branch_name)
+
+    async def _pull_unsafe(self, branch_name: str) -> Union[bool, str]:
         """Pull the latest update from the remote repository on a given branch."""
 
         if not self.has_origin:

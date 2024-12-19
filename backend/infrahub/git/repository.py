@@ -9,6 +9,8 @@ from pydantic import Field
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
+from infrahub.lock import LOCAL_REPO_LOCK
+from infrahub.lock import registry as lock_registry
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
 
@@ -94,6 +96,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return True
 
     async def sync(self, staging_branch: str | None = None) -> None:
+        async with lock_registry.get(name=LOCAL_REPO_LOCK, namespace=self.name, local=True):
+            return await self._sync_unsafe(staging_branch=staging_branch)
+
+    async def _sync_unsafe(self, staging_branch: str | None = None) -> None:
         """Synchronize the repository with its remote origin and with the database.
 
         By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
@@ -275,6 +281,10 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         return str(commit)
 
     async def sync_from_remote(self, commit: str | None = None) -> None:
+        async with lock_registry.get(name=LOCAL_REPO_LOCK, namespace=self.name, local=True):
+            return await self._sync_from_remote_unsafe(commit=commit)
+
+    async def _sync_from_remote_unsafe(self, commit: str | None = None) -> None:
         if not commit:
             commit = self.get_commit_value(branch_name=self.ref, remote=True)
         local_branches = self.get_branches_from_local()
