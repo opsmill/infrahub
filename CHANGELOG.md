@@ -11,7 +11,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
-## [Infrahub - v1.1.0](https://github.com/opsmill/infrahub/tree/v1.1.0) - 2024-11-29
+## [Infrahub - v1.1.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.0) - 2024-12-19
 
 ### Removed
 
@@ -22,28 +22,37 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 ### Added
 
 - Add a "deprecation" property to attribute and relationship schema in order to allow users to identify deprecated fields for nodes and provide a user-friendly message about the deprecation reasons. ([#4245](https://github.com/opsmill/infrahub/issues/4245))
+- Enhanced relationship inputs for hierarchical models with a new way to navigate and select objects directly within the hierarchy. ([#4636](https://github.com/opsmill/infrahub/issues/4636))
 - Add ability to use node HFID to create a related node on a generic relationship ([#4649](https://github.com/opsmill/infrahub/issues/4649))
+- Make URL fields clickable in the details view ([#5005](https://github.com/opsmill/infrahub/issues/5005))
 
 ### Changed
 
+- More efficient logic for retrieving cardinality-one relationships within a GraphQL query ([#522](https://github.com/opsmill/infrahub/issues/522))
 - Change strings referring to file system paths to pathlib.Path objects ([#3545](https://github.com/opsmill/infrahub/issues/3545))
 
 ### Fixed
 
+- Support directionality in the query to get all peer IDs for a given group of nodes ([#3065](https://github.com/opsmill/infrahub/issues/3065))
 - Fix search anywhere so it looks at Groups ([#3173](https://github.com/opsmill/infrahub/issues/3173))
 - Use the repository object ID as name for its git working copy directory ([#4296](https://github.com/opsmill/infrahub/issues/4296))
 - Search anywhere now supports IPv6 extended format ([#4613](https://github.com/opsmill/infrahub/issues/4613))
-- Synchronize Git repository clones and updates for task workers in order to remove the need for a shared storage ([#4789](https://github.com/opsmill/infrahub/issues/4789))
+- Synchronise git repository clones and updates for task workers in order to remove the need for a shared storage ([#4789](https://github.com/opsmill/infrahub/issues/4789))
 - FIX: Resolved edge cases in 'Search Anywhere' that were causing old results to be displayed. ([#4863](https://github.com/opsmill/infrahub/issues/4863))
 - Remove Profile in registry for renamed schema nodes ([#4909](https://github.com/opsmill/infrahub/issues/4909))
 - Forbid changing the "optional" property of an inherited attribute to not break GraphQL schema generation ([#4936](https://github.com/opsmill/infrahub/issues/4936))
 - Send a request to the backend on logout to delete session cookies and prevent remaining information ([#4962](https://github.com/opsmill/infrahub/issues/4962))
+- Fix query to correctly send the variables in the tasks details view ([#5002](https://github.com/opsmill/infrahub/issues/5002), [#5118](https://github.com/opsmill/infrahub/issues/5118))
+- Verify the tasks related to the proposed changes view to show or hide the tasks accordion in the details view
+  - Disable the merge button if there is an ongoing merge
+  - Add poll-interval to the proposed changes query to be up to date on the state and disable the merge button if the proposed change is already merged
 - Add support for irresolvable conflicts to the diff logic and DiffTree GraphQL query
 - Fix a bug that prevented updating a relationship during a merge if ONLY the metadata was updated and not the peer.
 - Fix permission check when using multiple backends, if one grants a permission the next ones must not be queried.
 - Update logic to check if the changes on a branch include schema changes to use the new diff
 - Update the api/diff/artifacts endpoint to use a dedicated query
 - Verify if the requested branch exists. If it doesn't, it redirects to the homepage on the default branch.
+
   This helps avoid query issues, such as empty results (for example, an empty menu) or incorrect queries being sent.
 
 ## [Infrahub - v1.0.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.9) - 2024-12-13
