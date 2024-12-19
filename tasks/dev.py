@@ -12,6 +12,7 @@ from .container_ops import (
     migrate_database,
     pull_images,
     restart_services,
+    show_service_status,
     start_services,
     stop_services,
     update_core_schema,
@@ -162,7 +163,12 @@ def status(
     interval: int = 2,
 ) -> None:
     """Display detailed status and metrics of all services."""
-    display_container_status(context=context, database=database, namespace=NAMESPACE, watch=watch, interval=interval)
+    try:
+        display_container_status(
+            context=context, database=database, namespace=NAMESPACE, watch=watch, interval=interval
+        )
+    except ImportError:
+        show_service_status(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
