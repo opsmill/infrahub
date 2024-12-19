@@ -1,7 +1,8 @@
-import { Select, SelectDirection, SelectOption } from "@/components/inputs/select";
+import { SelectOption } from "@/components/inputs/select";
 import usePagination from "@/hooks/usePagination";
 import { classNames } from "@/utils/common";
 import ReactPaginate from "react-paginate";
+import { Combobox, ComboboxContent, ComboboxItem, ComboboxList, ComboboxTrigger } from "./combobox";
 
 type tPaginationType = {
   count?: number;
@@ -95,13 +96,27 @@ export const Pagination = (props: tPaginationType) => {
           <div className="text-sm text-gray-700">{paginationText}</div>
 
           <div className="w-[75px] ml-8">
-            <Select
-              options={limitOptions}
-              value={limit}
-              onChange={handleLimitChange}
-              direction={SelectDirection.OVER}
-              preventEmpty
-            />
+            <Combobox>
+              <ComboboxTrigger id={`${limit}`}>{limit}</ComboboxTrigger>
+
+              <ComboboxContent>
+                <ComboboxList>
+                  {limitOptions.map((option) => {
+                    return (
+                      <ComboboxItem
+                        key={option.id}
+                        value={option.name}
+                        onSelect={() => {
+                          handleLimitChange(option);
+                        }}
+                      >
+                        {option.name}
+                      </ComboboxItem>
+                    );
+                  })}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
           </div>
         </div>
         <div>
