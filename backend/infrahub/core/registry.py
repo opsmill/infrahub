@@ -216,7 +216,6 @@ class Registry:
 
     def get_altered_schema_branches(self) -> list[str]:
         """Return a list of branch names that has a different hash than the default branch"""
-        # altered_branches = []
         default_branch = self.branch[registry.default_branch]
         return [
             name

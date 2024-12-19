@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
-from infrahub_sdk.protocols import CoreNode
+from infrahub_sdk.protocols import CoreNode  # noqa: TCH002
 from prefect import flow
 from prefect.automations import AutomationCore
 from prefect.client.orchestration import get_client
@@ -37,7 +39,10 @@ from .constants import (
 from .models import ComputedAttributeAutomations, PythonTransformComputedAttribute, PythonTransformTarget
 
 if TYPE_CHECKING:
+    import logging
+
     from infrahub.core.schema.computed_attribute import ComputedAttribute
+    from infrahub.services import InfrahubServices
 
 UPDATE_ATTRIBUTE = """
 mutation UpdateAttribute(
@@ -108,6 +113,7 @@ async def process_transform(
 
         data = await service.client.query_gql_query(
             name=transform.query.peer.name.value,
+            branch_name=branch_name,
             variables={"id": object_id},
             update_group=True,
             subscribers=[object_id],
@@ -464,51 +470,20 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:  # p
     flow_run_name="Setup computed attributes for Python transforms in task-manager",
 )
 async def computed_attribute_setup_python(
-    branch_name: str | None = None,  # pylint: disable=unused-argument
+    branch_name: str | None = None,
+    commit: str | None = None,  # pylint: disable=unused-argument
+    trigger_updates: bool = True,
 ) -> None:
     log = get_run_logger()
     service = services.service
 
-    if branch_name:
-        await add_tags(branches=[branch_name])
+    branch_name = branch_name or registry.default_branch
 
-    await wait_for_schema_to_converge(branch_name=registry.default_branch, service=service, log=log)
+    await add_tags(branches=[branch_name])
 
-    schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
+    await wait_for_schema_to_converge(branch_name=branch_name, service=service, log=log)
 
-    transform_attributes = schema_branch.computed_attributes.python_attributes_by_transform
-
-    transform_names = list(transform_attributes.keys())
-
-    transforms = await service.client.filters(
-        kind="CoreTransformPython",
-        branch=registry.default_branch,
-        prefetch_relationships=True,
-        populate_store=True,
-        name__values=transform_names,
-    )
-
-    found_transforms_names = [transform.name.value for transform in transforms]
-    for transform_name in transform_names:
-        if transform_name not in found_transforms_names:
-            log.warning(
-                msg=f"The transform {transform_name} is assigned to a computed attribute but the transform could not be found in the database."
-            )
-
-    computed_attributes: list[PythonTransformComputedAttribute] = []
-    for transform in transforms:
-        for attribute in transform_attributes[transform.name.value]:
-            computed_attributes.append(
-                PythonTransformComputedAttribute(
-                    name=transform.name.value,
-                    repository_id=transform.repository.peer.id,
-                    repository_name=transform.repository.peer.name.value,
-                    repository_kind=transform.repository.peer.typename,
-                    query_name=transform.query.peer.name.value,
-                    query_models=transform.query.peer.models.value,
-                    computed_attribute=attribute,
-                )
-            )
+    computed_attributes = await _gather_python_transform_attributes(branch_name=branch_name, service=service, log=log)
 
     async with get_client(sync_client=False) as client:
         deployments = {
@@ -531,15 +506,16 @@ async def computed_attribute_setup_python(
 
         automations = await client.read_automations()
         existing_computed_attr_process_automations = ComputedAttributeAutomations.from_prefect(
-            automations=automations, prefix=PROCESS_PYTHON_AUTOMATION_NAME_PREFIX
+            automations=automations, prefix=f"{PROCESS_PYTHON_AUTOMATION_NAME_PREFIX}::{branch_name}::"
         )
         existing_computed_attr_query_automations = ComputedAttributeAutomations.from_prefect(
-            automations=automations, prefix=QUERY_AUTOMATION_NAME_PREFIX
+            automations=automations, prefix=f"{QUERY_AUTOMATION_NAME_PREFIX}::{branch_name}::"
         )
 
+        automations_to_keep = []
         for computed_attribute in computed_attributes:
             log.info(f"processing {computed_attribute.computed_attribute.key_name}")
-            scope = "default"
+            scope = branch_name
 
             automation = AutomationCore(
                 name=PROCESS_AUTOMATION_NAME.format(
@@ -553,7 +529,12 @@ async def computed_attribute_setup_python(
                     posture=Posture.Reactive,
                     expect={"infrahub.node.*"},
                     within=timedelta(0),
-                    match=ResourceSpecification({"infrahub.node.kind": [computed_attribute.computed_attribute.kind]}),
+                    match=ResourceSpecification(
+                        {
+                            "infrahub.node.kind": [computed_attribute.computed_attribute.kind],
+                            "infrahub.branch.name": branch_name,
+                        }
+                    ),
                     threshold=1,
                 ),
                 actions=[
@@ -580,8 +561,10 @@ async def computed_attribute_setup_python(
                 )
                 await client.update_automation(automation_id=existing.id, automation=automation)
                 log.info(f"Process {computed_attribute.computed_attribute.key_name} Updated")
+                automations_to_keep.append(existing.id)
             else:
-                await client.create_automation(automation=automation)
+                automation_id = await client.create_automation(automation=automation)
+                automations_to_keep.append(automation_id)
                 log.info(f"Process {computed_attribute.computed_attribute.key_name} Created")
 
             automation = AutomationCore(
@@ -596,7 +579,12 @@ async def computed_attribute_setup_python(
                     posture=Posture.Reactive,
                     expect={"infrahub.node.*"},
                     within=timedelta(0),
-                    match=ResourceSpecification({"infrahub.node.kind": computed_attribute.query_models}),
+                    match=ResourceSpecification(
+                        {
+                            "infrahub.node.kind": computed_attribute.query_models,
+                            "infrahub.branch.name": branch_name,
+                        }
+                    ),
                     threshold=1,
                 ),
                 actions=[
@@ -620,19 +608,53 @@ async def computed_attribute_setup_python(
                     identifier=computed_attribute.computed_attribute.key_name, scope=scope
                 )
                 await client.update_automation(automation_id=existing.id, automation=automation)
+                automations_to_keep.append(existing.id)
                 log.info(f"Query {computed_attribute.computed_attribute.key_name} Updated")
             else:
-                await client.create_automation(automation=automation)
+                automation_id = await client.create_automation(automation=automation)
+                automations_to_keep.append(automation_id)
                 log.info(f"Query {computed_attribute.computed_attribute.key_name} Created")
 
-            await service.workflow.submit_workflow(
-                workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
-                parameters={
-                    "branch_name": registry.default_branch,
-                    "computed_attribute_name": computed_attribute.computed_attribute.attribute.name,
-                    "computed_attribute_kind": computed_attribute.computed_attribute.kind,
-                },
-            )
+            if trigger_updates:
+                await service.workflow.submit_workflow(
+                    workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+                    parameters={
+                        "branch_name": branch_name,
+                        "computed_attribute_name": computed_attribute.computed_attribute.attribute.name,
+                        "computed_attribute_kind": computed_attribute.computed_attribute.kind,
+                    },
+                )
+
+        automations_to_remove = existing_computed_attr_process_automations.return_obsolete(keep=automations_to_keep)
+        for automation_to_remove in automations_to_remove:
+            await client.delete_automation(automation_id=automation_to_remove)
+
+        automations_to_remove = existing_computed_attr_query_automations.return_obsolete(keep=automations_to_keep)
+        for automation_to_remove in automations_to_remove:
+            await client.delete_automation(automation_id=automation_to_remove)
+
+
+@flow(
+    name="computed-attribute-remove-python",
+    flow_run_name="Remove Python based computed attributes on branch={branch_name}",
+)
+async def computed_attribute_remove_python(
+    branch_name: str,
+) -> None:
+    async with get_client(sync_client=False) as client:
+        automations = await client.read_automations()
+        existing_computed_attr_process_automations = ComputedAttributeAutomations.from_prefect(
+            automations=automations, prefix=f"{PROCESS_PYTHON_AUTOMATION_NAME_PREFIX}::{branch_name}::"
+        )
+        existing_computed_attr_query_automations = ComputedAttributeAutomations.from_prefect(
+            automations=automations, prefix=f"{QUERY_AUTOMATION_NAME_PREFIX}::{branch_name}::"
+        )
+
+        for automation_id in existing_computed_attr_process_automations.all_automation_ids:
+            await client.delete_automation(automation_id=automation_id)
+
+        for automation_id in existing_computed_attr_query_automations.all_automation_ids:
+            await client.delete_automation(automation_id=automation_id)
 
 
 @flow(
@@ -648,7 +670,7 @@ async def query_transform_targets(
     service = services.service
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     targets = await service.client.execute_graphql(
-        query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS, variables={"members": [object_id]}
+        query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS, variables={"members": [object_id]}, branch_name=branch_name
     )
 
     subscribers: list[PythonTransformTarget] = []
@@ -673,6 +695,55 @@ async def query_transform_targets(
                         "computed_attribute_kind": subscriber.kind,
                     },
                 )
+
+
+async def _gather_python_transform_attributes(
+    branch_name: str, service: InfrahubServices, log: logging.Logger | logging.LoggerAdapter
+) -> list[PythonTransformComputedAttribute]:
+    schema_branch = registry.schema.get_schema_branch(name=branch_name)
+    branches_with_diff_from_main = registry.get_altered_schema_branches()
+
+    transform_attributes = schema_branch.computed_attributes.python_attributes_by_transform
+
+    transform_names = list(transform_attributes.keys())
+    if not transform_names:
+        return []
+
+    transforms = await service.client.filters(
+        kind="CoreTransformPython",
+        branch=branch_name,
+        prefetch_relationships=True,
+        populate_store=True,
+        name__values=transform_names,
+    )
+
+    found_transforms_names = [transform.name.value for transform in transforms]
+    for transform_name in transform_names:
+        if transform_name not in found_transforms_names:
+            log.warning(
+                msg=f"The transform {transform_name} is assigned to a computed attribute but the transform could not be found in the database."
+            )
+
+    repositories = await service.client.get_list_repositories()
+    computed_attributes: list[PythonTransformComputedAttribute] = []
+    for transform in transforms:
+        for attribute in transform_attributes[transform.name.value]:
+            python_transform_computed_attribute = PythonTransformComputedAttribute(
+                name=transform.name.value,
+                repository_id=transform.repository.peer.id,
+                repository_name=transform.repository.peer.name.value,
+                repository_kind=transform.repository.peer.typename,
+                query_name=transform.query.peer.name.value,
+                query_models=transform.query.peer.models.value,
+                computed_attribute=attribute,
+                default_schema=branch_name not in branches_with_diff_from_main,
+            )
+            python_transform_computed_attribute.populate_branch_commit(
+                repository_data=repositories.get(transform.repository.peer.name.value)
+            )
+            computed_attributes.append(python_transform_computed_attribute)
+
+    return computed_attributes
 
 
 GATHER_GRAPHQL_QUERY_SUBSCRIBERS = """

@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
 import pydantic
 from prefect import flow, get_run_logger
+from prefect.automations import AutomationCore
+from prefect.client.orchestration import get_client
+from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
 from prefect.client.schemas.objects import State  # noqa: TCH002
+from prefect.events.actions import RunDeployment
+from prefect.events.schemas.automations import EventTrigger, Posture
 from prefect.states import Completed, Failed
 
 from infrahub import lock
@@ -31,11 +37,15 @@ from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
+    COMPUTED_ATTRIBUTE_REMOVE_PYTHON,
+    COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     DIFF_REFRESH_ALL,
     GIT_REPOSITORIES_CREATE_BRANCH,
     IPAM_RECONCILIATION,
 )
 from infrahub.workflows.utils import add_branch_tag
+
+from .constants import AUTOMATION_NAME_CREATE, AUTOMATION_NAME_REMOVE
 
 
 @flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
@@ -303,3 +313,85 @@ async def create_branch(model: BranchCreateModel) -> None:
             workflow=GIT_REPOSITORIES_CREATE_BRANCH,
             parameters={"branch": obj.name, "branch_id": str(obj.id)},
         )
+
+
+@flow(name="branch-actions-setup", flow_run_name="Setup branch action events in task-manager")
+async def branch_actions_setup() -> None:
+    log = get_run_logger()
+
+    async with get_client(sync_client=False) as client:
+        deployments = {
+            item.name: item
+            for item in await client.read_deployments(
+                deployment_filter=DeploymentFilter(
+                    name=DeploymentFilterName(
+                        any_=[COMPUTED_ATTRIBUTE_SETUP_PYTHON.name, COMPUTED_ATTRIBUTE_REMOVE_PYTHON.name]
+                    )
+                )
+            )
+        }
+        deployment_id_computed_attribute_setup_python = deployments[COMPUTED_ATTRIBUTE_SETUP_PYTHON.name].id
+        deployment_id_computed_attribute_remove_python = deployments[COMPUTED_ATTRIBUTE_REMOVE_PYTHON.name].id
+
+        branch_create_automation = await client.find_automation(id_or_name=AUTOMATION_NAME_CREATE)
+
+        automation = AutomationCore(
+            name=AUTOMATION_NAME_CREATE,
+            description="Trigger actions on branch create event",
+            enabled=True,
+            trigger=EventTrigger(
+                posture=Posture.Reactive,
+                expect={"infrahub.branch.created"},
+                within=timedelta(0),
+                threshold=1,
+            ),
+            actions=[
+                RunDeployment(
+                    source="selected",
+                    deployment_id=deployment_id_computed_attribute_setup_python,
+                    parameters={
+                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                        "trigger_updates": False,
+                    },
+                    job_variables={},
+                ),
+            ],
+        )
+
+        if branch_create_automation:
+            await client.update_automation(automation_id=branch_create_automation.id, automation=automation)
+            log.info(f"{AUTOMATION_NAME_CREATE} Updated")
+        else:
+            await client.create_automation(automation=automation)
+            log.info(f"{AUTOMATION_NAME_CREATE} Created")
+
+        branch_remove_automation = await client.find_automation(id_or_name=AUTOMATION_NAME_REMOVE)
+
+        automation = AutomationCore(
+            name=AUTOMATION_NAME_REMOVE,
+            description="Trigger actions on branch delete event",
+            enabled=True,
+            trigger=EventTrigger(
+                posture=Posture.Reactive,
+                expect={"infrahub.branch.deleted"},
+                within=timedelta(0),
+                threshold=1,
+            ),
+            actions=[
+                RunDeployment(
+                    source="selected",
+                    deployment_id=deployment_id_computed_attribute_remove_python,
+                    parameters={
+                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                    },
+                    job_variables={},
+                ),
+            ],
+        )
+
+        if branch_remove_automation:
+            await client.update_automation(automation_id=branch_remove_automation.id, automation=automation)
+            log.info(f"{AUTOMATION_NAME_REMOVE} Updated")
+        else:
+            await client.create_automation(automation=automation)
+            log.info(f"{AUTOMATION_NAME_REMOVE} Created")

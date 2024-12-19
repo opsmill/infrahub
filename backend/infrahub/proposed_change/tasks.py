@@ -46,7 +46,7 @@ from infrahub.proposed_change.models import (
 )
 from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import services
-from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS
+from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_SETUP_PYTHON, REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
@@ -136,6 +136,7 @@ async def merge_proposed_change(proposed_change_id: str, proposed_change_name: s
         log.info(f"Branch {source_branch.name} has been merged successfully")
 
         await _proposed_change_transition_state(proposed_change=proposed_change, state=ProposedChangeState.MERGED)
+        await service.workflow.submit_workflow(workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON)
         return Completed(message="proposed change merged successfully")
 
 

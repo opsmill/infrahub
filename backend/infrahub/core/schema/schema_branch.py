@@ -68,13 +68,19 @@ if TYPE_CHECKING:
 
 
 class SchemaBranch:
-    def __init__(self, cache: dict, name: str | None = None, data: dict[str, dict[str, str]] | None = None):
+    def __init__(
+        self,
+        cache: dict,
+        name: str | None = None,
+        data: dict[str, dict[str, str]] | None = None,
+        computed_attributes: ComputedAttributes | None = None,
+    ):
         self._cache: dict[str, Union[NodeSchema, GenericSchema]] = cache
         self.name: str | None = name
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
         self.profiles: dict[str, str] = {}
-        self.computed_attributes = ComputedAttributes()
+        self.computed_attributes = computed_attributes or ComputedAttributes()
 
         if data:
             self.nodes = data.get("nodes", {})
@@ -254,7 +260,12 @@ class SchemaBranch:
 
     def duplicate(self, name: Optional[str] = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
-        return self.__class__(name=name, data=copy.deepcopy(self.to_dict()), cache=self._cache)
+        return self.__class__(
+            name=name,
+            data=copy.deepcopy(self.to_dict()),
+            cache=self._cache,
+            computed_attributes=self.computed_attributes.duplicate(),
+        )
 
     def set(self, name: str, schema: MainSchemaTypes) -> str:
         """Store a NodeSchema or GenericSchema associated with a specific name.

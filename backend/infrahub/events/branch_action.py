@@ -20,6 +20,7 @@ class BranchDeleteEvent(InfrahubBranchEvent):
         return {
             "prefect.resource.id": f"infrahub.branch.{self.branch}",
             "infrahub.branch.id": self.branch_id,
+            "infrahub.branch.name": self.branch,
         }
 
     def get_messages(self) -> list[InfrahubMessage]:
@@ -48,6 +49,7 @@ class BranchCreateEvent(InfrahubBranchEvent):
         return {
             "prefect.resource.id": f"infrahub.branch.{self.branch}",
             "infrahub.branch.id": self.branch_id,
+            "infrahub.branch.name": self.branch,
         }
 
     def get_messages(self) -> list[InfrahubMessage]:

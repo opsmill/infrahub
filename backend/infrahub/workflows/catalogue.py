@@ -274,6 +274,13 @@ COMPUTED_ATTRIBUTE_SETUP_PYTHON = WorkflowDefinition(
     function="computed_attribute_setup_python",
 )
 
+COMPUTED_ATTRIBUTE_REMOVE_PYTHON = WorkflowDefinition(
+    name="computed-attribute-remove-python",
+    type=WorkflowType.CORE,
+    module="infrahub.computed_attribute.tasks",
+    function="computed_attribute_remove_python",
+)
+
 UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM = WorkflowDefinition(
     name="process_computed_attribute_transform",
     type=WorkflowType.USER,
@@ -308,6 +315,13 @@ REQUEST_PROPOSED_CHANGE_USER_TESTS = WorkflowDefinition(
     type=WorkflowType.USER,
     module="infrahub.proposed_change.tasks",
     function="run_proposed_change_user_tests",
+)
+
+AUTOMATION_BRANCH_ACTIONS = WorkflowDefinition(
+    name="branch-actions-setup",
+    type=WorkflowType.CORE,
+    module="infrahub.core.branch.tasks",
+    function="branch_actions_setup",
 )
 
 AUTOMATION_SCHEMA_UPDATED = WorkflowDefinition(
@@ -380,6 +394,7 @@ worker_pools = [INFRAHUB_WORKER_POOL]
 
 workflows = [
     ANONYMOUS_TELEMETRY_SEND,
+    AUTOMATION_BRANCH_ACTIONS,
     AUTOMATION_GIT_UPDATED,
     AUTOMATION_SCHEMA_UPDATED,
     AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER,
@@ -390,6 +405,7 @@ workflows = [
     BRANCH_MERGE_MUTATION,
     BRANCH_REBASE,
     BRANCH_VALIDATE,
+    COMPUTED_ATTRIBUTE_REMOVE_PYTHON,
     COMPUTED_ATTRIBUTE_SETUP,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     DIFF_REFRESH,
@@ -432,6 +448,7 @@ workflows = [
 ]
 
 automation_setup_workflows = [
+    AUTOMATION_BRANCH_ACTIONS,
     AUTOMATION_GIT_UPDATED,
     AUTOMATION_SCHEMA_UPDATED,
     AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER,

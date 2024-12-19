@@ -46,7 +46,7 @@ from infrahub.worker import WORKER_IDENTITY
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
 
-async def app_initialization(application: FastAPI) -> None:
+async def app_initialization(application: FastAPI, enable_scheduler: bool = True) -> None:
     config.SETTINGS.initialize_and_exit()
 
     # Initialize trace
@@ -92,6 +92,8 @@ async def app_initialization(application: FastAPI) -> None:
     services.prepare(service=service)
     application.state.service = service
     application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
+    if enable_scheduler:
+        await service.scheduler.start_schedule()
 
 
 async def shutdown(application: FastAPI) -> None:

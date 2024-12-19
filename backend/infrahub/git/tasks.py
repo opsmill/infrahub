@@ -468,7 +468,10 @@ async def setup_commit_automation() -> None:
                 RunDeployment(
                     source="selected",
                     deployment_id=deployment_id_computed_attribute_setup_python,
-                    parameters={},
+                    parameters={
+                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                        "commit": "{{ event.payload['commit'] }}",
+                    },
                     job_variables={},
                 ),
             ],
