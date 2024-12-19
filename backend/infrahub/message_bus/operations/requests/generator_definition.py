@@ -2,21 +2,23 @@ from typing import Optional
 
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
+from prefect.logging import get_run_logger
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
+from infrahub.workflows.utils import add_tags
 
 
-@flow(name="generator-definition-check")
+@flow(
+    name="generator-definition-check",
+    flow_run_name="Validate Generator selection for {message.generator_definition.definition_name}",
+)
 async def check(message: messages.RequestGeneratorDefinitionCheck, service: InfrahubServices) -> None:
-    service.log.info(
-        "Validating Generator selection",
-        generator_definition=message.generator_definition.definition_id,
-        source_branch=message.source_branch,
-    )
+    log = get_run_logger()
+    await add_tags(branches=[message.source_branch], nodes=[message.proposed_change])
     events: list[InfrahubMessage] = []
 
     proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
@@ -87,6 +89,7 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
             check_execution_id = str(UUIDT())
             check_execution_ids.append(check_execution_id)
             requested_instances += 1
+            log.info(f"Trigger execution of {message.generator_definition.definition_name} for {member.display_label}")
             events.append(
                 messages.CheckGeneratorRun(
                     generator_definition=message.generator_definition,
@@ -101,6 +104,7 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
                     target_id=member.id,
                     target_name=member.display_label,
                     validator_id=validator.id,
+                    proposed_change=message.proposed_change,
                     meta=Meta(validator_execution_id=validator_execution_id, check_execution_id=check_execution_id),
                 )
             )
