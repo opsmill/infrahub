@@ -20,6 +20,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 ### Fixed
 
 - Support directionality in the query to get all peer IDs for a given group of nodes ([#3065](https://github.com/opsmill/infrahub/issues/3065))
+- Fix errors in Infrahub `db update-core-schema` that were impacting migrations from prior versions ([#5186](https://github.com/opsmill/infrahub/pull/5186), [#5254](https://github.com/opsmill/infrahub/pull/5254))
 
 ## [Infrahub - v1.0.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.9) - 2024-12-13
 
