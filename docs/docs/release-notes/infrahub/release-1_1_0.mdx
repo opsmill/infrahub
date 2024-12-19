@@ -28,30 +28,26 @@ This release contains both new features and bug-fixes to resolve issues found in
 
 ## Main changes
 
-Infrahub 1.1 is focused on several user-facing features and behind-the-scenes changes.
+Infrahub 1.1 brings computed attributes, a new (and highly-requested) feature, as well as many behind-the-scenes changes.
 
-There are three key items outlined below:
-
-- Computed attributes
-- Migration of backend tasks to Prefect
-- Enhancements to diff functionality
-
-While these are the larger items, see the detailed changelog in the following sections for more information.
+See the detailed changelog in the following sections for more information.
 
 ### Computed attributes
 
 The computed attributes feature enables the dynamic calculation of attribute values based on user-defined logic.
+This functionality is valuable in a number of use cases, not least of which is programmatically generating interface or circuit names.
+Several users have requested this capability and we are excited to make it available in Infrahub 1.1.
 
-This functionality is valuable in a number of use cases, not least of which is programmatically generating device or interface names.
+There are two main ways to configure computed attributes, they can be created using either **Jinja2** or **Python**.
 
-There are two main ways to configure/create computed attributes, using either Jinja2 or Python.
-
-For Jinja2-based computed attributes, the user writes a concise Jinja2 template directly into their Schema definition file.
+For basic use cases, Jinja2-based computed attributes are now available.
+To use this style of computed attribute, the user writes a concise Jinja2 template directly into their Schema definition file.
 Then, any changes to a field referenced in the template will update the resultant computed attribute automatically.
-There are some limitations with Jinja2-based computed attributes; for example, only direct relationships can be used (a relationship of a relationship is not accessible).
+There are some limitations with Jinja2-based computed attributes however; for example, only direct relationships can be used (a relationship of a relationship is not accessible).
 
-For more complex use cases, Python-based computed attributes now are available leveraging the exiting Python-based transform feature.
-Users can define a transformation within the schema to apply to a their field, and the attribute is generated asynchronously by an Infrahub worker.
+For more complex use cases, with the need for nested relationships or more detailed logic, Python-based computed attributes are also available.
+Python-based computed attributes leverage the exiting Python-based transform feature.
+Users can define a transformation within the schema to apply to a their field, and the attribute is then generated asynchronously by an Infrahub worker.
 When using Python-based computed attributes, note that there can be system performance impact with large or complex Python scripts.
 
 See [this table in the documentation](https://docs.infrahub.app/topics/computed-attributes#choosing-between-jinja2-and-python) for a concise comparison of the two types of computed attributes.
@@ -68,10 +64,36 @@ For more information on either style of computed attribute, please see the below
 - https://docs.infrahub.app/topics/computed-attributes
 - https://docs.infrahub.app/topics/transformation
 
-### Migration of backend tasks to Prefect
+### Infrahub task enhancements
 
-### Enhancements to diff functionality
+As part of Infrahub 1.0, we added a new tool into the system to assist with task management and control.
+In Infrahub 1.1, we have now begun to migrate key backend system tasks over to this tool.
 
+What this means in practice for the user is that now Infrahub tasks will have more robust error reporting and supervision.
+
+Some example tasks run in the background by the updated task worker and framework are:
+
+- Rendering a Jinja template.
+- Rendering a transform function.
+- Executing a check.
+- All Git operations (pull/merge/diff).
+
+All of these and more will benefit from migration to the new task framework, providing additional logging capabilities and overall supervision and control.
+
+Finally, this updated task framework has allowed us to add an indicator at the top right of the Infrahub window to give users task status at a glance.
+For example, a section of the indicator will change color when tasks are running.
+This indicator also serves as quick access to view in-progress or completed tasks.
+
+!["Example screenshot of Infrahub 1.1 showing the Task Overview page and an arrow pointing at the new Task Indicator."](../../media/release_notes/infrahub_1_1/task_update.png)
+
+### Remove shared storage requirements for Git
+
+Previous to Infrahub 1.1, task workers needed access to shared storage such as NFS in order to function.
+
+As of 1.1 this requirement is removed, and users are able to distribute task workers without needing shared storage for local Git repositories.
+Each task worker now manages its own copy of any required Git repository.
+
+This change not only simplifies deployment of Infrahub in some scenarios, but increases the overall reliability of the system.
 
 ## Changelog
 
