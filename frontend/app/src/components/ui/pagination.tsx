@@ -98,7 +98,7 @@ export const Pagination = (props: tPaginationType) => {
 
           <div>
             <Combobox>
-              <ComboboxTrigger>{limit}</ComboboxTrigger>
+              <ComboboxTrigger data-testid="pagination-size-select">{limit}</ComboboxTrigger>
 
               <ComboboxContent>
                 <Command>
