@@ -2,7 +2,8 @@ import { SelectOption } from "@/components/inputs/select";
 import usePagination from "@/hooks/usePagination";
 import { classNames } from "@/utils/common";
 import ReactPaginate from "react-paginate";
-import { Combobox, ComboboxContent, ComboboxItem, ComboboxList, ComboboxTrigger } from "./combobox";
+import { Combobox, ComboboxContent, ComboboxItem, ComboboxTrigger } from "./combobox";
+import { Command, CommandList } from "./command";
 
 type tPaginationType = {
   count?: number;
@@ -92,33 +93,36 @@ export const Pagination = (props: tPaginationType) => {
       )}
     >
       <div className="flex flex-wrap flex-1 gap-2 justify-between">
-        <div className="flex items-center">
+        <div className="flex items-center gap-4">
           <div className="text-sm text-gray-700">{paginationText}</div>
 
-          <div className="w-[75px] ml-8">
+          <div>
             <Combobox>
-              <ComboboxTrigger id={`${limit}`}>{limit}</ComboboxTrigger>
+              <ComboboxTrigger>{limit}</ComboboxTrigger>
 
               <ComboboxContent>
-                <ComboboxList>
-                  {limitOptions.map((option) => {
-                    return (
-                      <ComboboxItem
-                        key={option.id}
-                        value={option.name}
-                        onSelect={() => {
-                          handleLimitChange(option);
-                        }}
-                      >
-                        {option.name}
-                      </ComboboxItem>
-                    );
-                  })}
-                </ComboboxList>
+                <Command>
+                  <CommandList>
+                    {limitOptions.map((option) => {
+                      return (
+                        <ComboboxItem
+                          key={option.id}
+                          value={option.name}
+                          onSelect={() => {
+                            handleLimitChange(option);
+                          }}
+                        >
+                          {option.name}
+                        </ComboboxItem>
+                      );
+                    })}
+                  </CommandList>
+                </Command>
               </ComboboxContent>
             </Combobox>
           </div>
         </div>
+
         <div>
           <ReactPaginate
             initialPage={currentPage}
