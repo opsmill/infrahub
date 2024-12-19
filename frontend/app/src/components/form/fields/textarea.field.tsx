@@ -20,9 +20,8 @@ const TextareaField = ({
       name={name}
       rules={rules}
       defaultValue={defaultValue}
-      render={({ field, fieldState }) => {
+      render={({ field }) => {
         const fieldData: FormAttributeValue = field.value;
-        const { error } = fieldState;
 
         return (
           <div>
@@ -35,15 +34,11 @@ const TextareaField = ({
               className="mb-2"
             />
 
-            <FormInput
-              className={classNames(
-                "w-full",
-                error && "border-red-500 focus-within:border-red-500 focus-within:outline-red-500"
-              )}
-            >
+            <FormInput>
               <MarkdownEditor
                 {...field}
                 {...props}
+                className={classNames("w-full")}
                 defaultValue={defaultValue?.value as string | undefined}
                 value={fieldData?.value as string | undefined}
                 onChange={(newValue) => {

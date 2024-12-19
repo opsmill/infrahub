@@ -38,6 +38,7 @@ export default function RelationshipHierarchicalField({
 
             <FormInput>
               <RelationshipHierarchicalInput
+                {...field}
                 peer={props.relationship.peer}
                 value={fieldData.value as RelationshipNode | null}
                 onChange={(newValue) => {

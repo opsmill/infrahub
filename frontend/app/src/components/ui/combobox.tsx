@@ -6,6 +6,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { inputStyle } from "@/components/ui/style";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
@@ -25,7 +26,8 @@ export const ComboboxTrigger = React.forwardRef<HTMLButtonElement, ComboboxTrigg
           type="button"
           role="combobox"
           className={classNames(
-            "h-10 flex items-center w-full rounded-md border border-gray-300 bg-white p-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-custom-blue-600 focus-visible:border-custom-blue-600 disabled:cursor-not-allowed disabled:bg-gray-100",
+            inputStyle,
+            "focus:outline-none focus:ring-2 focus:ring-custom-blue-600/25 focus:border-custom-blue-600",
             className
           )}
         >

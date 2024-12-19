@@ -13,7 +13,7 @@ import {
 import { RelationshipComboboxList } from "@/screens/objects/relationships/components/relationship-combobox-list";
 import { RelationshipHierarchicalComboboxList } from "@/screens/objects/relationships/components/relationship-hierarchical-combobox-list";
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 
 export interface IHierarchicalRelationshipInputProps
   extends Omit<ComboboxTriggerProps, "value" | "onChange"> {
@@ -22,17 +22,17 @@ export interface IHierarchicalRelationshipInputProps
   peer: string;
 }
 
-export const RelationshipHierarchicalInput = ({
-  value,
-  onChange,
-  peer,
-  ...props
-}: IHierarchicalRelationshipInputProps) => {
+export const RelationshipHierarchicalInput = forwardRef<
+  HTMLButtonElement,
+  IHierarchicalRelationshipInputProps
+>(({ value, onChange, peer, ...props }, ref) => {
   const [open, setOpen] = useState(false);
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
-      <ComboboxTrigger {...props}>{value?.display_label}</ComboboxTrigger>
+      <ComboboxTrigger ref={ref} {...props}>
+        {value?.display_label}
+      </ComboboxTrigger>
 
       <ComboboxContent>
         <PopoverTabs defaultValue="list">
@@ -72,4 +72,4 @@ export const RelationshipHierarchicalInput = ({
       </ComboboxContent>
     </Combobox>
   );
-};
+});
