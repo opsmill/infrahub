@@ -46,7 +46,7 @@ export default function ObjectItems({
   const [rowToDelete, setRowToDelete] = useState<any>();
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
 
-  const kindFilter = filters?.find((filter) => filter.name == "kind__value");
+  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
 
   if (schema && MENU_EXCLUDELIST.includes(schema.kind as string) && !preventBlock) {
     return <Navigate to="/" />;

@@ -21,7 +21,7 @@ export const FilterKindSelector = ({ genericSchema }: { genericSchema: iGenericS
   const availableProfiles = useAtomValue(profilesAtom);
   const allAvailableSchemas = [...availableNodes, ...availableProfiles];
 
-  const selectedKindFilter = activeFilters.find((filter) => filter.name == "kind__value");
+  const selectedKindFilter = activeFilters.find((filter) => filter.name === "kind__value");
   const compatibleSchemas = (genericSchema.used_by ?? [])
     .map((kindValue) => {
       if (!allAvailableSchemas) return null;

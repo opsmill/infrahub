@@ -99,7 +99,6 @@
           "level": "error",
           "options": { "allow": ["assert", "error", "info", "warn"] }
         },
-        "noDoubleEquals": "off",
         "noEmptyBlock": "off",
         "noEmptyBlockStatements": "off",
         "noEvolvingTypes": "off",
