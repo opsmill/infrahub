@@ -691,7 +691,10 @@ jobs:
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
       - name: Build Demo
-        run: invoke dev.build
+        run: |
+          echo "::group::Build infrahub container"
+          invoke dev.build
+          echo "::endgroup::"
 
       - name: Initialize Demo
         id: init-demo
