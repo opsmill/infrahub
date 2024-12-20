@@ -68,8 +68,6 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
   if (!schema) return null;
 
-  const columns = getSchemaObjectColumns({ schema, forListView: true, limit: 7 });
-
   if (loading) return <SearchResultNodeSkeleton />;
 
   if (error) return null;
@@ -82,6 +80,12 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
     schema?.inherit_from?.some((generic) => {
       return POOLS_PEER.includes(generic);
     });
+
+  const columns = getSchemaObjectColumns({
+    schema,
+    forListView: true,
+    limit: useIpNamespace ? 6 : 7,
+  });
 
   const url = constructPath(
     getObjectDetailsUrl(objectDetailsData.id, objectDetailsData.__typename)
@@ -109,6 +113,13 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
         </div>
 
         <div className="mt-1 text-gray-600 flex gap-5">
+          {useIpNamespace && (
+            <NodeAttribute
+              title={"IP Namespace"}
+              value={{ value: objectDetailsData?.ip_namespace?.node?.display_label }}
+            />
+          )}
+
           {columns
             .filter(({ name }) => !["name", "label"].includes(name))
             .map((column) => (
@@ -119,13 +130,6 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
                 value={objectDetailsData[column.name]}
               />
             ))}
-
-          {useIpNamespace && (
-            <NodeAttribute
-              title={"IP Namespace"}
-              value={{ value: objectDetailsData?.ip_namespace?.node?.display_label }}
-            />
-          )}
         </div>
       </div>
     </SearchAnywhereItem>
