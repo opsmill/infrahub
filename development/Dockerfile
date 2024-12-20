@@ -101,5 +101,3 @@ RUN poetry install --no-interaction --no-ansi --no-root --no-directory && \
 # --------------------------------------------
 COPY . ./
 RUN poetry install --no-interaction --no-ansi
-
-RUN pip install .
