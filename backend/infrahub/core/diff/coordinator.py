@@ -418,7 +418,7 @@ class DiffCoordinator:
         complete_enriched_diffs: None | EnrichedDiffs = None
         for diff_or_request in diff_or_request_list:
             single_enriched_diffs: EnrichedDiffs | None = None
-            if isinstance(diff_or_request, EnrichedDiffRootEmpty):
+            if isinstance(diff_or_request, EnrichedDiffsEmpty):
                 single_enriched_diffs = await self.diff_repo.hydrate_diff_pair(enriched_diffs=diff_or_request)
             elif isinstance(diff_or_request, EnrichedDiffRequest):
                 if complete_enriched_diffs:
