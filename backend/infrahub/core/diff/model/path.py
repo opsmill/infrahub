@@ -506,12 +506,12 @@ class EnrichedDiffsEmpty:
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}("
-            "branch_uuid={self.diff_branch_diff},"
-            "base_uuid={self.base_branch_diff.uuid},"
-            "branch_name={self.diff_branch_name},"
-            "base_name={self.base_branch_name},"
-            "from_time={self.diff_branch_diff.from_time},"
-            "to_time={self.diff_branch_diff.to_time})"
+            f"branch_uuid={self.diff_branch_diff.uuid},"
+            f"base_uuid={self.base_branch_diff.uuid},"
+            f"branch_name={self.diff_branch_name},"
+            f"base_name={self.base_branch_name},"
+            f"from_time={self.diff_branch_diff.from_time},"
+            f"to_time={self.diff_branch_diff.to_time})"
         )
 
 
