@@ -920,7 +920,7 @@ jobs:
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build container"
-        run: "poetry run inv dev.build"
+        run: "inv dev.build"
       - name: "Tag image for tests"
         run: |
           echo "Tagging image ${INFRAHUB_IMAGE_VER} as local"
@@ -932,14 +932,8 @@ jobs:
           echo "INFRAHUB_IMAGE_NAME=${INFRAHUB_IMAGE_NAME}"
       - name: "Run tests with debug"
         run: |
-            # Exécuter les tests
-            poetry run pytest backend/tests/integration_docker/
-            # Afficher les logs du conteneur qui a échoué
-            echo "=== Docker Container Logs ==="
-            for container in $(docker ps -a --filter "name=${INFRAHUB_BUILD_NAME}-" --format "{{.Names}}"); do
-              echo "=== Logs for $container ==="
-              docker logs $container
-            done
+          poetry run pytest backend/tests/integration_docker/
+
   # ------------------------------------------ E2E version upgrade ------------------------------------------------
 #  E2E-testing-version-upgrade:
 #    needs:
