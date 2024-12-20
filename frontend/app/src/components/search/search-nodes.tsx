@@ -102,9 +102,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
           <div className="inline-flex items-center gap-1">
             <Badge variant="blue" className="text-xxs py-0">
-              {useIpNamespace
-                ? objectDetailsData?.ip_namespace?.node?.display_label
-                : schema.namespace}
+              {schema.namespace}
             </Badge>
             <span className="text-xxs font-medium mr-2">{schema.label}</span>
           </div>
@@ -121,6 +119,13 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
                 value={objectDetailsData[column.name]}
               />
             ))}
+
+          {useIpNamespace && (
+            <NodeAttribute
+              title={"IP Namespace"}
+              value={{ value: objectDetailsData?.ip_namespace?.node?.display_label }}
+            />
+          )}
         </div>
       </div>
     </SearchAnywhereItem>
@@ -129,7 +134,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
 type NodeAttributeProps = {
   title: string;
-  kind: string;
+  kind?: string;
   value:
     | { value: string | number | boolean | null }
     | { value: string | null; label: string; color: string }
