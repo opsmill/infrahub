@@ -926,18 +926,13 @@ jobs:
           echo "Tagging image ${INFRAHUB_IMAGE_VER} as local"
           docker tag "opsmill/infrahub:${INFRAHUB_IMAGE_VER}" "opsmill/infrahub:local"
           docker images
-  
       - name: "Verify Docker setup"
         run: |
           docker images | grep infrahub
           echo "INFRAHUB_IMAGE_VER=${INFRAHUB_IMAGE_VER}"
           echo "INFRAHUB_IMAGE_NAME=${INFRAHUB_IMAGE_NAME}"
-  
       - name: "Run tests"
         run: "poetry run pytest backend/tests/integration_docker/ -v --capture=no"
-      - name: 'images'  
-        if: always()
-        run: docker images
   # ------------------------------------------ E2E version upgrade ------------------------------------------------
 #  E2E-testing-version-upgrade:
 #    needs:
