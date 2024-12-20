@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, replace
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -382,7 +382,7 @@ class EnrichedDiffNode(BaseSummary):
 
 
 @dataclass
-class EnrichedDiffRoot(BaseSummary):
+class EnrichedDiffRootEmpty(BaseSummary):
     base_branch_name: str
     diff_branch_name: str
     from_time: Timestamp
@@ -390,6 +390,17 @@ class EnrichedDiffRoot(BaseSummary):
     uuid: str
     partner_uuid: str
     tracking_id: TrackingId | None = field(default=None, kw_only=True)
+
+    def __hash__(self) -> int:
+        return hash(self.uuid)
+
+    @property
+    def time_range(self) -> Interval:
+        return self.to_time.obj - self.from_time.obj
+
+
+@dataclass
+class EnrichedDiffRoot(EnrichedDiffRootEmpty):
     nodes: set[EnrichedDiffNode] = field(default_factory=set)
 
     def __hash__(self) -> int:
@@ -424,6 +435,10 @@ class EnrichedDiffRoot(BaseSummary):
         for node in self.nodes:
             all_conflicts.update(node.get_all_conflicts())
         return all_conflicts
+
+    @classmethod
+    def from_empty_root(cls, empty_root: EnrichedDiffRootEmpty) -> EnrichedDiffRoot:
+        return EnrichedDiffRoot(**asdict(empty_root))
 
     @classmethod
     def from_calculated_diff(
@@ -482,9 +497,26 @@ class EnrichedDiffRoot(BaseSummary):
 
 
 @dataclass
-class EnrichedDiffs:
+class EnrichedDiffsEmpty:
     base_branch_name: str
     diff_branch_name: str
+    base_branch_diff: EnrichedDiffRootEmpty
+    diff_branch_diff: EnrichedDiffRootEmpty
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}("
+            "branch_uuid={self.diff_branch_diff},"
+            "base_uuid={self.base_branch_diff.uuid},"
+            "branch_name={self.diff_branch_name},"
+            "base_name={self.base_branch_name},"
+            "from_time={self.diff_branch_diff.from_time},"
+            "to_time={self.diff_branch_diff.to_time})"
+        )
+
+
+@dataclass
+class EnrichedDiffs(EnrichedDiffsEmpty):
     base_branch_diff: EnrichedDiffRoot
     diff_branch_diff: EnrichedDiffRoot
 
