@@ -12,7 +12,6 @@ from infrahub.log import get_logger
 from .model.path import (
     BranchTrackingId,
     EnrichedDiffRoot,
-    EnrichedDiffRootEmpty,
     EnrichedDiffs,
     EnrichedDiffsEmpty,
     NameTrackingId,
