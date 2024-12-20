@@ -889,7 +889,6 @@ jobs:
     timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
-      INFRAHUB_IMAGE_VERSION: "local"
       INFRAHUB_DOCKER_IMAGE: "opsmill/infrahub"
       PYTEST_XDIST_WORKER_COUNT: 1
     steps:
