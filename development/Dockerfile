@@ -39,10 +39,10 @@ RUN npm install --omit=dev
 COPY frontend/app/ /source/
 RUN npm run build && npm cache clean --force \
 
-# ****************************************************************
-# STAGE : Documentation
-# ****************************************************************
-FROM frontend
+    # ****************************************************************
+    # STAGE : Documentation
+    # ****************************************************************
+    FROM frontend
 
 ENV DOCS_IN_APP=1
 
@@ -101,3 +101,5 @@ RUN poetry install --no-interaction --no-ansi --no-root --no-directory && \
 # --------------------------------------------
 COPY . ./
 RUN poetry install --no-interaction --no-ansi
+
+RUN pip install .
