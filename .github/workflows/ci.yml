@@ -933,7 +933,7 @@ jobs:
       - name: "Run tests with debug"
         run: |
             # Exécuter les tests
-            poetry run pytest backend/tests/integration_docker/ -v 
+            poetry run pytest backend/tests/integration_docker/
             # Afficher les logs du conteneur qui a échoué
             echo "=== Docker Container Logs ==="
             for container in $(docker ps -a --filter "name=${INFRAHUB_BUILD_NAME}-" --format "{{.Names}}"); do
