@@ -889,6 +889,8 @@ jobs:
     timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
+      INFRAHUB_IMAGE_VERSION: "local"
+      INFRAHUB_DOCKER_IMAGE: "opsmill/infrahub"
       PYTEST_XDIST_WORKER_COUNT: 1
     steps:
       - name: "Check out repository code"
@@ -922,8 +924,7 @@ jobs:
       - name: "Tag image for tests"
         run: |
           echo "Tagging image ${INFRAHUB_IMAGE_VER} as local"
-          docker tag "opsmill/infrahub:${INFRAHUB_IMAGE_VER}" "opsmill/infrahub:local"
-           echo "INFRAHUB_IMAGE_VERSION=local" >> $GITHUB_ENV
+          docker images
       - name: "Verify Docker setup"
         run: |
           docker images | grep infrahub
