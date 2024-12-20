@@ -910,8 +910,6 @@ jobs:
         run: |
           poetry config virtualenvs.create true --local
           poetry env use 3.12
-      - name: "Install dependencies"
-        run: "poetry install --no-interaction --no-ansi"
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Set environment variables"
