@@ -934,7 +934,6 @@ jobs:
         run: |
             # Exécuter les tests
             poetry run pytest backend/tests/integration_docker/ -v || true
-            
             # Afficher les logs du conteneur qui a échoué
             echo "=== Docker Container Logs ==="
             for container in $(docker ps -a --filter "name=infrahub-test-" --format "{{.Names}}"); do
