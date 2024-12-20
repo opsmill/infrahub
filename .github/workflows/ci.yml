@@ -921,20 +921,23 @@ jobs:
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build container"
         run: "poetry run inv dev.build"
+      - name: "Tag image for tests"
+        run: |
+          echo "Tagging image ${INFRAHUB_IMAGE_VER} as local"
+          docker tag "opsmill/infrahub:${INFRAHUB_IMAGE_VER}" "opsmill/infrahub:local"
+          docker images
+  
+      - name: "Verify Docker setup"
+        run: |
+          docker images | grep infrahub
+          echo "INFRAHUB_IMAGE_VER=${INFRAHUB_IMAGE_VER}"
+          echo "INFRAHUB_IMAGE_NAME=${INFRAHUB_IMAGE_NAME}"
+  
       - name: "Run tests"
         run: "poetry run pytest backend/tests/integration_docker/ -v --capture=no"
-      - name: Display server logs
+      - name: 'images'  
         if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
-      - name: Display database logs
-        if: always()
-        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
-      - name: "Clear docker environment and force vmagent to stop"
-        if: always()
-        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
-      - name: Display images
-        if: always()
-        run: docker imag
+        run: docker images
   # ------------------------------------------ E2E version upgrade ------------------------------------------------
 #  E2E-testing-version-upgrade:
 #    needs:
