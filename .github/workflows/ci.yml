@@ -919,6 +919,15 @@ jobs:
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build container"
         run: "poetry run inv dev.build"
+      - name: "Tag image for tests"
+        run: |
+          echo "Tagging image ${INFRAHUB_IMAGE_VER} as local"
+          docker images
+      - name: "Verify Docker setup"
+        run: |
+          docker images | grep infrahub
+          echo "INFRAHUB_IMAGE_VER=${INFRAHUB_IMAGE_VER}"
+          echo "INFRAHUB_IMAGE_NAME=${INFRAHUB_IMAGE_NAME}"
       - name: "Run tests"
         run: "poetry run pytest backend/tests/integration_docker/ -v --capture=no"
   # ------------------------------------------ E2E version upgrade ------------------------------------------------
