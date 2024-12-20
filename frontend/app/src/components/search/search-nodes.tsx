@@ -8,6 +8,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
+import { POOLS_PEER } from "@/screens/ipam/constants";
 import { constructPath } from "@/utils/fetch";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
@@ -62,7 +63,7 @@ type NodesOptionsProps = {
 };
 
 const NodesOptions = ({ node }: NodesOptionsProps) => {
-  const { schema } = useSchema(node.kind);
+  const { isGeneric, schema } = useSchema(node.kind);
   const { data, loading, error } = useObjectDetails(schema!, node.id);
 
   if (!schema) return null;
@@ -75,6 +76,12 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
   const objectDetailsData = schema && data?.[node.kind]?.edges[0]?.node;
   if (!objectDetailsData) return <div className="text-sm">No data found for this object</div>;
+
+  const useIpNamespace =
+    !isGeneric &&
+    schema?.inherit_from?.some((generic) => {
+      return POOLS_PEER.includes(generic);
+    });
 
   const url = constructPath(
     getObjectDetailsUrl(objectDetailsData.id, objectDetailsData.__typename)
@@ -95,7 +102,9 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
           <div className="inline-flex items-center gap-1">
             <Badge variant="blue" className="text-xxs py-0">
-              {schema.namespace}
+              {useIpNamespace
+                ? objectDetailsData?.ip_namespace?.node?.display_label
+                : schema.namespace}
             </Badge>
             <span className="text-xxs font-medium mr-2">{schema.label}</span>
           </div>
