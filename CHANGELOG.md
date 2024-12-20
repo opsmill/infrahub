@@ -55,6 +55,17 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
   This helps avoid query issues, such as empty results (for example, an empty menu) or incorrect queries being sent.
 
+## [Infrahub - v1.0.10](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.10) - 2024-12-20
+
+### Added
+
+- Make URL fields clickable in the details view ([#5005](https://github.com/opsmill/infrahub/issues/5005))
+
+### Fixed
+
+- Support directionality in the query to get all peer IDs for a given group of nodes ([#3065](https://github.com/opsmill/infrahub/issues/3065))
+- Fix errors when executing `infrahub db update-core-schema` command that were impacting migrations from prior versions ([#5186](https://github.com/opsmill/infrahub/pull/5186), [#5254](https://github.com/opsmill/infrahub/pull/5254))
+
 ## [Infrahub - v1.0.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.9) - 2024-12-13
 
 ### Added

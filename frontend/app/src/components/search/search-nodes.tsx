@@ -144,10 +144,11 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           return (
             <div className="h-4 w-4 rounded mt-0.5" style={{ background: value.value as string }} />
           );
-        case SCHEMA_ATTRIBUTE_KIND.DATETIME:
+        case SCHEMA_ATTRIBUTE_KIND.DATETIME: {
           const date = typeof value.value === "string" ? new Date(value.value) : new Date();
           return format(date, "yyyy/MM/dd HH:mm");
-        case SCHEMA_ATTRIBUTE_KIND.DROPDOWN:
+        }
+        case SCHEMA_ATTRIBUTE_KIND.DROPDOWN: {
           if (!("color" in value)) return value.value;
 
           const color = value.color === "" ? "#f1f1f1" : value.color;
@@ -159,6 +160,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
               {value.label}
             </div>
           );
+        }
       }
       return value.value;
     }

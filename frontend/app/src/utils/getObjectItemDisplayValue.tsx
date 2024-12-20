@@ -220,14 +220,15 @@ export const ObjectAttributeValue = ({
     case SCHEMA_ATTRIBUTE_KIND.PASSWORD:
     case SCHEMA_ATTRIBUTE_KIND.HASHED_PASSWORD:
       return <PasswordDisplay value={getTextValue(attributeValue)} />;
-    case SCHEMA_ATTRIBUTE_KIND.DROPDOWN:
+    case SCHEMA_ATTRIBUTE_KIND.DROPDOWN: {
       const dropdownAttribute = attributeValue as Dropdown;
       return (
         <ColorDisplay value={getTextValue(dropdownAttribute)} color={dropdownAttribute.color} />
       );
+    }
     case SCHEMA_ATTRIBUTE_KIND.COLOR:
       return <ColorDisplay color={attributeValue.value} />;
-    case SCHEMA_ATTRIBUTE_KIND.LIST:
+    case SCHEMA_ATTRIBUTE_KIND.LIST: {
       const items = attributeValue.value?.map((value?: string) => value ?? "-").slice(0, 5);
 
       const rest = attributeValue.value.slice(5).length;
@@ -241,6 +242,7 @@ export const ObjectAttributeValue = ({
           {items?.length !== attributeValue.value?.length && <i>{`(${rest} more)`}</i>}
         </div>
       );
+    }
     case SCHEMA_ATTRIBUTE_KIND.JSON:
       return <CodeEditor value={JSON.stringify(attributeValue.value ?? "", null, 2)} disabled />;
     default:
