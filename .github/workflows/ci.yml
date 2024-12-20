@@ -919,6 +919,8 @@ jobs:
         run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
       - name: "Build container"
         run: "poetry run inv dev.build"
+      - name: "Pull External Docker Images"
+        run: "poetry run inv dev.pull"
       - name: "Run tests"
         run: "poetry run pytest backend/tests/integration_docker/ -v --capture=no"
       - name: Display server logs
