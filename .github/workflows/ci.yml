@@ -691,7 +691,10 @@ jobs:
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
       - name: Build Demo
-        run: invoke dev.build
+        run: |
+          echo "::group::Build infrahub container"
+          invoke dev.build
+          echo "::endgroup::"
 
       - name: Initialize Demo
         id: init-demo
@@ -876,6 +879,19 @@ jobs:
       - name: "Clear docker environment and force vmagent to stop"
         if: always()
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+  # ------------------------------------------ E2E version upgrade ------------------------------------------------
+  E2E-testing-version-upgrade:
+    needs:
+      - javascript-lint
+      - files-changed
+      - yaml-lint
+      - python-lint
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    uses: ./.github/workflows/version-upgrade.yml
 
   # ------------------------------------------ Benchmarks ------------------------------------------------
   backend-benchmark:

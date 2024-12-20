@@ -6,7 +6,9 @@ from invoke.context import Context
 from invoke.tasks import task
 
 from .container_ops import (
+    collect_support_data,
     destroy_environment,
+    display_container_status,
     migrate_database,
     pull_images,
     restart_services,
@@ -96,9 +98,19 @@ def cli_git(context: Context, database: str = INFRAHUB_DATABASE) -> None:
 
 
 @task(optional=["database"])
-def status(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Display the status of all containers."""
-    show_service_status(context=context, database=database, namespace=NAMESPACE)
+def status(
+    context: Context,
+    database: str = INFRAHUB_DATABASE,
+    watch: bool = False,
+    interval: int = 2,
+) -> None:
+    """Display detailed status and metrics of all services."""
+    try:
+        display_container_status(
+            context=context, database=database, namespace=NAMESPACE, watch=watch, interval=interval
+        )
+    except ImportError:
+        show_service_status(context=context, database=database, namespace=NAMESPACE)
 
 
 @task(optional=["database"])
@@ -119,3 +131,9 @@ def load_infra_menu(context: Context, database: str = INFRAHUB_DATABASE) -> None
 def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE) -> None:
     """Load infrastructure demo data."""
     load_infrastructure_data(context=context, database=database, namespace=NAMESPACE)
+
+
+@task(optional=["database"])
+def collect(context: Context, database: str = INFRAHUB_DATABASE, include_queries: bool = False) -> None:
+    """Collect all logs and create a support archive."""
+    collect_support_data(context=context, database=database, namespace=NAMESPACE, include_queries=include_queries)
