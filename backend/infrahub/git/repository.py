@@ -6,11 +6,11 @@ from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
 from pydantic import Field
 
+from infrahub import lock
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.lock import LOCAL_REPO_LOCK
-from infrahub.lock import registry as lock_registry
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
 
@@ -96,7 +96,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return True
 
     async def sync(self, staging_branch: str | None = None) -> None:
-        async with lock_registry.get(name=LOCAL_REPO_LOCK, namespace=self.name, local=True):
+        async with lock.registry.get(name=LOCAL_REPO_LOCK, namespace=self.name, local=True):
             return await self._sync_unsafe(staging_branch=staging_branch)
 
     async def _sync_unsafe(self, staging_branch: str | None = None) -> None:
@@ -281,7 +281,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         return str(commit)
 
     async def sync_from_remote(self, commit: str | None = None) -> None:
-        async with lock_registry.get(name=LOCAL_REPO_LOCK, namespace=self.name, local=True):
+        async with lock.registry.get(name=LOCAL_REPO_LOCK, namespace=self.name, local=True):
             return await self._sync_from_remote_unsafe(commit=commit)
 
     async def _sync_from_remote_unsafe(self, commit: str | None = None) -> None:
