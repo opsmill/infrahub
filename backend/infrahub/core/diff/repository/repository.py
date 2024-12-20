@@ -12,7 +12,9 @@ from ..model.path import (
     ConflictSelection,
     EnrichedDiffConflict,
     EnrichedDiffRoot,
+    EnrichedDiffRootEmpty,
     EnrichedDiffs,
+    EnrichedDiffsEmpty,
     EnrichedNodeCreateRequest,
     NodeDiffFieldSummary,
     TimeRange,
@@ -119,6 +121,20 @@ class DiffRepository:
             for dbr in diff_branch_roots
         ]
 
+    async def hydrate_diff_pair(self, enriched_diffs: EnrichedDiffsEmpty) -> EnrichedDiffs:
+        hydrated_base_diff = await self.get_one(
+            diff_branch_name=enriched_diffs.base_branch_name, diff_id=enriched_diffs.base_branch_diff.uuid
+        )
+        hydrated_branch_diff = await self.get_one(
+            diff_branch_name=enriched_diffs.diff_branch_name, diff_id=enriched_diffs.diff_branch_diff.uuid
+        )
+        return EnrichedDiffs(
+            base_branch_name=enriched_diffs.base_branch_name,
+            diff_branch_name=enriched_diffs.diff_branch_name,
+            base_branch_diff=hydrated_base_diff,
+            diff_branch_diff=hydrated_branch_diff,
+        )
+
     async def get_one(
         self,
         diff_branch_name: str,
@@ -212,18 +228,55 @@ class DiffRepository:
         await query.execute(db=self.db)
         return await query.get_time_ranges()
 
+    async def get_empty_diff_pairs(
+        self,
+        diff_branch_names: list[str] | None = None,
+        base_branch_names: list[str] | None = None,
+        from_time: Timestamp | None = None,
+        to_time: Timestamp | None = None,
+    ) -> list[EnrichedDiffsEmpty]:
+        if diff_branch_names and base_branch_names:
+            diff_branch_names += base_branch_names
+        empty_roots = await self.get_empty_roots(
+            diff_branch_names=diff_branch_names,
+            base_branch_names=base_branch_names,
+            from_time=from_time,
+            to_time=to_time,
+        )
+        roots_by_id = {root.uuid: root for root in empty_roots}
+        pairs: list[EnrichedDiffsEmpty] = []
+        for branch_root in empty_roots:
+            if branch_root.base_branch_name == branch_root.diff_branch_name:
+                continue
+            base_root = roots_by_id[branch_root.partner_uuid]
+            pairs.append(
+                EnrichedDiffsEmpty(
+                    base_branch_name=branch_root.base_branch_name,
+                    diff_branch_name=branch_root.diff_branch_name,
+                    base_branch_diff=base_root,
+                    diff_branch_diff=branch_root,
+                )
+            )
+        return pairs
+
     async def get_empty_roots(
         self,
         diff_branch_names: list[str] | None = None,
         base_branch_names: list[str] | None = None,
-    ) -> list[EnrichedDiffRoot]:
+        from_time: Timestamp | None = None,
+        to_time: Timestamp | None = None,
+    ) -> list[EnrichedDiffRootEmpty]:
         query = await EnrichedDiffEmptyRootsQuery.init(
-            db=self.db, diff_branch_names=diff_branch_names, base_branch_names=base_branch_names
+            db=self.db,
+            diff_branch_names=diff_branch_names,
+            base_branch_names=base_branch_names,
+            from_time=from_time,
+            to_time=to_time,
         )
         await query.execute(db=self.db)
         diff_roots = []
         for neo4j_node in query.get_empty_root_nodes():
-            diff_roots.append(self.deserializer.build_diff_root(root_node=neo4j_node))
+            diff_roots.append(self.deserializer.build_diff_root_empty(root_node=neo4j_node))
         return diff_roots
 
     async def diff_has_conflicts(

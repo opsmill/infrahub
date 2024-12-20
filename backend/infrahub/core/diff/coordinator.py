@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Iterable
+from uuid import uuid4
 
 from infrahub import lock
 from infrahub.core import registry
@@ -11,7 +12,9 @@ from infrahub.log import get_logger
 from .model.path import (
     BranchTrackingId,
     EnrichedDiffRoot,
+    EnrichedDiffRootEmpty,
     EnrichedDiffs,
+    EnrichedDiffsEmpty,
     NameTrackingId,
     NodeFieldSpecifier,
     TrackingId,
@@ -237,12 +240,12 @@ class DiffCoordinator:
         return enriched_diffs.diff_branch_diff
 
     def _get_ordered_diff_pairs(
-        self, diff_pairs: Iterable[EnrichedDiffs], allow_overlap: bool = False
-    ) -> list[EnrichedDiffs]:
+        self, diff_pairs: Iterable[EnrichedDiffsEmpty], allow_overlap: bool = False
+    ) -> list[EnrichedDiffsEmpty]:
         ordered_diffs = sorted(diff_pairs, key=lambda d: d.diff_branch_diff.from_time)
         if allow_overlap:
             return ordered_diffs
-        ordered_diffs_no_overlaps: list[EnrichedDiffs] = []
+        ordered_diffs_no_overlaps: list[EnrichedDiffsEmpty] = []
         for candidate_diff_pair in ordered_diffs:
             if not ordered_diffs_no_overlaps:
                 ordered_diffs_no_overlaps.append(candidate_diff_pair)
@@ -260,6 +263,30 @@ class DiffCoordinator:
                 ordered_diffs_no_overlaps[-1] = candidate_diff_pair
         return ordered_diffs_no_overlaps
 
+    def _build_empty_enriched_diffs(self, diff_request: EnrichedDiffRequest) -> EnrichedDiffs:
+        base_uuid = str(uuid4())
+        branch_uuid = str(uuid4())
+        return EnrichedDiffs(
+            base_branch_name=diff_request.base_branch.name,
+            diff_branch_name=diff_request.diff_branch.name,
+            base_branch_diff=EnrichedDiffRoot(
+                base_branch_name=diff_request.base_branch.name,
+                diff_branch_name=diff_request.base_branch.name,
+                from_time=diff_request.from_time,
+                to_time=diff_request.to_time,
+                uuid=base_uuid,
+                partner_uuid=branch_uuid,
+            ),
+            diff_branch_diff=EnrichedDiffRoot(
+                base_branch_name=diff_request.base_branch.name,
+                diff_branch_name=diff_request.diff_branch.name,
+                from_time=diff_request.from_time,
+                to_time=diff_request.to_time,
+                uuid=branch_uuid,
+                partner_uuid=base_uuid,
+            ),
+        )
+
     async def _update_diffs(
         self,
         base_branch: Branch,
@@ -269,33 +296,31 @@ class DiffCoordinator:
         tracking_id: TrackingId | None = None,
         force_branch_refresh: bool = False,
     ) -> EnrichedDiffs | None:
-        if not force_branch_refresh and not await self._any_changes_after_last_diff(
-            base_branch=base_branch, diff_branch=diff_branch, to_time=to_time
-        ):
-            return None
-
         diff_uuids_to_delete = []
-        retrieved_enriched_diffs = await self.diff_repo.get_pairs(
-            base_branch_name=base_branch.name,
-            diff_branch_name=diff_branch.name,
+        # start with empty diffs b/c we only care about their metadata for now, hydrate them with data as needed
+        empty_diff_pairs = await self.diff_repo.get_empty_diff_pairs(
+            base_branch_names=[base_branch.name],
+            diff_branch_names=[diff_branch.name],
             from_time=from_time,
             to_time=to_time,
         )
-        for enriched_diffs in retrieved_enriched_diffs:
-            if tracking_id:
-                if enriched_diffs.base_branch_diff.tracking_id:
-                    diff_uuids_to_delete.append(enriched_diffs.base_branch_diff.uuid)
-                if enriched_diffs.diff_branch_diff.tracking_id:
-                    diff_uuids_to_delete.append(enriched_diffs.diff_branch_diff.uuid)
-        aggregated_enriched_diffs = await self._get_aggregated_enriched_diffs(
+        if tracking_id:
+            for diff_pair in empty_diff_pairs:
+                if diff_pair.base_branch_diff.tracking_id:
+                    diff_uuids_to_delete.append(diff_pair.base_branch_diff.uuid)
+                if diff_pair.diff_branch_diff.tracking_id:
+                    diff_uuids_to_delete.append(diff_pair.diff_branch_diff.uuid)
+        aggregated_enriched_diffs = await self._aggregate_enriched_diffs(
             diff_request=EnrichedDiffRequest(
                 base_branch=base_branch,
                 diff_branch=diff_branch,
                 from_time=from_time,
                 to_time=to_time,
             ),
-            partial_enriched_diffs=retrieved_enriched_diffs if not force_branch_refresh else [],
+            partial_enriched_diffs=empty_diff_pairs if not force_branch_refresh else [],
         )
+        if not aggregated_enriched_diffs:
+            return None
 
         await self.conflicts_enricher.add_conflicts_to_branch_diff(
             base_diff_root=aggregated_enriched_diffs.base_branch_diff,
@@ -312,57 +337,114 @@ class DiffCoordinator:
             await self.diff_repo.delete_diff_roots(diff_root_uuids=diff_uuids_to_delete)
         return aggregated_enriched_diffs
 
-    async def _get_aggregated_enriched_diffs(
-        self, diff_request: EnrichedDiffRequest, partial_enriched_diffs: list[EnrichedDiffs]
-    ) -> EnrichedDiffs:
+    async def _aggregate_enriched_diffs(
+        self, diff_request: EnrichedDiffRequest, partial_enriched_diffs: list[EnrichedDiffsEmpty]
+    ) -> EnrichedDiffs | None:
         if not partial_enriched_diffs:
-            return await self._get_enriched_diff(diff_request=diff_request, is_incremental_diff=False)
+            return await self._calculate_enriched_diff(diff_request=diff_request, is_incremental_diff=False)
 
         ordered_diffs = self._get_ordered_diff_pairs(diff_pairs=partial_enriched_diffs, allow_overlap=False)
         ordered_diff_reprs = [repr(d) for d in ordered_diffs]
-        log.debug(f"Ordered diffs for aggregation: {ordered_diff_reprs}")
+        log.info(f"Ordered diffs for aggregation: {ordered_diff_reprs}")
+        incremental_diffs_and_requests: list[EnrichedDiffsEmpty | EnrichedDiffRequest | None] = []
         current_time = diff_request.from_time
-        previous_diffs: EnrichedDiffs | None = None
         while current_time < diff_request.to_time:
+            # the next diff to include has already been calculated
             if ordered_diffs and ordered_diffs[0].diff_branch_diff.from_time == current_time:
-                current_diffs = ordered_diffs.pop(0)
+                current_diff = ordered_diffs.pop(0)
+                incremental_diffs_and_requests.append(current_diff)
+                current_time = current_diff.diff_branch_diff.to_time
+                continue
+            # set the end time to the start of the next calculated diff or the end of the time range
+            if ordered_diffs:
+                end_time = ordered_diffs[0].diff_branch_diff.from_time
             else:
-                if ordered_diffs:
-                    end_time = ordered_diffs[0].diff_branch_diff.from_time
-                else:
-                    end_time = diff_request.to_time
-                if previous_diffs is None:
-                    node_field_specifiers = set()
-                else:
-                    node_field_specifiers = self._get_node_field_specifiers(
-                        enriched_diff=previous_diffs.diff_branch_diff
-                    )
-                inner_diff_request = EnrichedDiffRequest(
+                end_time = diff_request.to_time
+            # if there are no changes on either branch in this time range, then there cannot be a diff
+            num_changes_by_branch = await self.diff_repo.get_num_changes_in_time_range_by_branch(
+                branch_names=[diff_request.base_branch.name, diff_request.diff_branch.name],
+                from_time=current_time,
+                to_time=end_time,
+            )
+            might_have_changes_in_time_range = any(num_changes_by_branch.values())
+            if not might_have_changes_in_time_range:
+                incremental_diffs_and_requests.append(None)
+                current_time = end_time
+                continue
+
+            incremental_diffs_and_requests.append(
+                EnrichedDiffRequest(
                     base_branch=diff_request.base_branch,
                     diff_branch=diff_request.diff_branch,
                     from_time=current_time,
                     to_time=end_time,
-                    node_field_specifiers=node_field_specifiers,
                 )
-                is_incremental_diff = current_time != diff_request.from_time
-                current_diffs = await self._get_enriched_diff(
-                    diff_request=inner_diff_request, is_incremental_diff=is_incremental_diff
+            )
+            current_time = end_time
+
+        aggregated_enriched_diffs = await self._concatenate_diffs_and_requests(
+            diff_or_request_list=incremental_diffs_and_requests, full_diff_request=diff_request
+        )
+
+        if aggregated_enriched_diffs:
+            aggregated_enriched_diffs.base_branch_diff.from_time = diff_request.from_time
+            aggregated_enriched_diffs.diff_branch_diff.from_time = diff_request.from_time
+            aggregated_enriched_diffs.base_branch_diff.to_time = diff_request.to_time
+            aggregated_enriched_diffs.diff_branch_diff.to_time = diff_request.to_time
+            return aggregated_enriched_diffs
+        return self._build_empty_enriched_diffs(diff_request=diff_request)
+
+    async def _concatenate_diffs_and_requests(
+        self,
+        diff_or_request_list: list[EnrichedDiffsEmpty | EnrichedDiffRequest | None],
+        full_diff_request: EnrichedDiffRequest,
+    ) -> EnrichedDiffs | None:
+        calculations_required = False
+        existing_diff_count = 0
+        for diff_or_request in diff_or_request_list:
+            # a diff needs to be calculated
+            if isinstance(diff_or_request, EnrichedDiffRequest):
+                calculations_required = True
+                break
+            if isinstance(diff_or_request, EnrichedDiffsEmpty):
+                existing_diff_count += 1
+            # multiple existing diffs need to be added together
+            if existing_diff_count > 1:
+                calculations_required = True
+                break
+        if not calculations_required:
+            return None
+
+        complete_enriched_diffs: None | EnrichedDiffs = None
+        for diff_or_request in diff_or_request_list:
+            single_enriched_diffs: EnrichedDiffs | None = None
+            if isinstance(diff_or_request, EnrichedDiffRootEmpty):
+                single_enriched_diffs = await self.diff_repo.hydrate_diff_pair(enriched_diffs=diff_or_request)
+            elif isinstance(diff_or_request, EnrichedDiffRequest):
+                if complete_enriched_diffs:
+                    diff_or_request.node_field_specifiers = self._get_node_field_specifiers(
+                        enriched_diff=complete_enriched_diffs.diff_branch_diff
+                    )
+                is_incremental_diff = diff_or_request.from_time != full_diff_request.from_time
+                single_enriched_diffs = await self._calculate_enriched_diff(
+                    diff_request=diff_or_request, is_incremental_diff=is_incremental_diff
                 )
-
-            if previous_diffs:
-                current_diffs = await self.diff_combiner.combine(
-                    earlier_diffs=previous_diffs, later_diffs=current_diffs
+            if not single_enriched_diffs:
+                continue
+            if complete_enriched_diffs:
+                complete_enriched_diffs = await self.diff_combiner.combine(
+                    earlier_diffs=complete_enriched_diffs, later_diffs=single_enriched_diffs
                 )
-
-            previous_diffs = current_diffs
-            current_time = current_diffs.diff_branch_diff.to_time
-
-        return current_diffs
+            else:
+                complete_enriched_diffs = single_enriched_diffs
+        return complete_enriched_diffs
 
     async def _update_core_data_checks(self, enriched_diff: EnrichedDiffRoot) -> list[Node]:
         return await self.data_check_synchronizer.synchronize(enriched_diff=enriched_diff)
 
-    async def _get_enriched_diff(self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool) -> EnrichedDiffs:
+    async def _calculate_enriched_diff(
+        self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool
+    ) -> EnrichedDiffs:
         calculated_diff_pair = await self.diff_calculator.calculate_diff(
             base_branch=diff_request.base_branch,
             diff_branch=diff_request.diff_branch,
