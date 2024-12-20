@@ -916,7 +916,7 @@ jobs:
         run: |
           poetry config virtualenvs.create true --local
           poetry env use 3.12
-      - name: "Tag image for tests"
+      - name: "Tag image for test"
         run: |
           echo "Tagging image ${INFRAHUB_IMAGE_VER} as local"
           docker images
