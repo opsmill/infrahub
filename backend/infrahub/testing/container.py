@@ -70,7 +70,7 @@ class InfrahubDockerCompose(DockerCompose):
     @classmethod
     def create_docker_file(cls, directory: Path) -> Path:
         current_directory = Path(__file__).resolve().parent
-        compose_file = current_directory / "development/docker-compose.yml"
+        compose_file = current_directory / "docker-compose.test.yml"
 
         test_compose_file = directory / "docker-compose.yml"
         test_compose_file.write_bytes(compose_file.read_bytes())
