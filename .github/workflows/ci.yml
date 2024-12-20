@@ -922,7 +922,8 @@ jobs:
       - name: "Tag image for tests"
         run: |
           echo "Tagging image ${INFRAHUB_IMAGE_VER} as local"
-          docker images
+          docker tag "opsmill/infrahub:${INFRAHUB_IMAGE_VER}" "opsmill/infrahub:local"
+           echo "INFRAHUB_IMAGE_VERSION=local" >> $GITHUB_ENV
       - name: "Verify Docker setup"
         run: |
           docker images | grep infrahub
