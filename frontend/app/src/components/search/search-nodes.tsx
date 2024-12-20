@@ -8,6 +8,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
+import { POOLS_PEER } from "@/screens/ipam/constants";
 import { constructPath } from "@/utils/fetch";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
@@ -62,12 +63,10 @@ type NodesOptionsProps = {
 };
 
 const NodesOptions = ({ node }: NodesOptionsProps) => {
-  const { schema } = useSchema(node.kind);
+  const { isGeneric, schema } = useSchema(node.kind);
   const { data, loading, error } = useObjectDetails(schema!, node.id);
 
   if (!schema) return null;
-
-  const columns = getSchemaObjectColumns({ schema, forListView: true, limit: 7 });
 
   if (loading) return <SearchResultNodeSkeleton />;
 
@@ -75,6 +74,18 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
   const objectDetailsData = schema && data?.[node.kind]?.edges[0]?.node;
   if (!objectDetailsData) return <div className="text-sm">No data found for this object</div>;
+
+  const useIpNamespace =
+    !isGeneric &&
+    schema?.inherit_from?.some((generic) => {
+      return POOLS_PEER.includes(generic);
+    });
+
+  const columns = getSchemaObjectColumns({
+    schema,
+    forListView: true,
+    limit: useIpNamespace ? 6 : 7,
+  });
 
   const url = constructPath(
     getObjectDetailsUrl(objectDetailsData.id, objectDetailsData.__typename)
@@ -102,6 +113,13 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
         </div>
 
         <div className="mt-1 text-gray-600 flex gap-5">
+          {useIpNamespace && (
+            <NodeAttribute
+              title={"IP Namespace"}
+              value={{ value: objectDetailsData?.ip_namespace?.node?.display_label }}
+            />
+          )}
+
           {columns
             .filter(({ name }) => !["name", "label"].includes(name))
             .map((column) => (
@@ -120,7 +138,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
 type NodeAttributeProps = {
   title: string;
-  kind: string;
+  kind?: string;
   value:
     | { value: string | number | boolean | null }
     | { value: string | null; label: string; color: string }

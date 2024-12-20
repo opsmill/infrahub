@@ -77,6 +77,20 @@ test.describe("when searching an object", () => {
         page.getByTestId("search-anywhere").getByRole("option", { name: "atl1 Location Site" })
       ).toBeVisible();
     });
+
+    await test.step("find a matching IPAM result", async () => {
+      await page.getByTestId("search-anywhere-input").fill("10.0");
+      await expect(
+        page.getByRole("option", { name: "10.0.0.0/8 Ipam IP Prefix IP" })
+      ).toBeVisible();
+      await expect(
+        page.getByRole("option", { name: "10.0.0.0/16 Ipam IP Prefix IP" })
+      ).toBeVisible();
+      await expect(page.getByText("IP Namespacedefault").first()).toBeVisible();
+      await expect(
+        page.getByText("IP NamespacedefaultAddress10.0.0.2/32Description-")
+      ).toBeVisible();
+    });
   });
 
   test("display result when searching by uuid", async ({ page }) => {
