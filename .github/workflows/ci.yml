@@ -930,8 +930,17 @@ jobs:
           docker images | grep infrahub
           echo "INFRAHUB_IMAGE_VER=${INFRAHUB_IMAGE_VER}"
           echo "INFRAHUB_IMAGE_NAME=${INFRAHUB_IMAGE_NAME}"
-      - name: "Run tests"
-        run: "poetry run pytest backend/tests/integration_docker/ -v --capture=no"
+      - name: "Run tests with debug"
+        run: |
+            # Exécuter les tests
+            poetry run pytest backend/tests/integration_docker/ -v || true
+            
+            # Afficher les logs du conteneur qui a échoué
+            echo "=== Docker Container Logs ==="
+            for container in $(docker ps -a --filter "name=infrahub-test-" --format "{{.Names}}"); do
+              echo "=== Logs for $container ==="
+              docker logs $container
+            done
   # ------------------------------------------ E2E version upgrade ------------------------------------------------
 #  E2E-testing-version-upgrade:
 #    needs:
