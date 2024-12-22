@@ -14,7 +14,7 @@ from infrahub.core.validators.model import (
 )
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.services import services
-from infrahub.workflows.utils import add_branch_tag
+from infrahub.workflows.utils import add_tags
 
 from .models.validate_migration import SchemaValidateMigrationData, SchemaValidatorPathResponseData
 
@@ -23,14 +23,15 @@ from .models.validate_migration import SchemaValidateMigrationData, SchemaValida
 async def schema_validate_migrations(message: SchemaValidateMigrationData) -> list[SchemaValidatorPathResponseData]:
     batch = InfrahubBatch(return_exceptions=True)
     log = get_run_logger()
-    await add_branch_tag(branch_name=message.branch.name)
+    await add_tags(branches=[message.branch.name])
 
     if not message.constraints:
+        log.info("No constaint to validate")
         return []
 
+    log.info(f"{len(message.constraints)} constraint(s) to validate")
+    # NOTE this task is a good candidate to add a progress bar
     for constraint in message.constraints:
-        log.info(f"Preparing validator for constraint {constraint.constraint_name!r} ({constraint.routing_key})")
-
         batch.add(
             task=schema_path_validate,
             branch=message.branch,
