@@ -4,5 +4,6 @@ message: "Did you really mean '%s'?"
 level: error
 filters:
   - '[pP]y.*\b'
-  - '\bimport_.*\b'    # New filter to ignore variables starting with 'import_'
+  - '\bimport_.*\b' # New filter to ignore variables starting with 'import_'
+  - '\w+__value' # New filter to skip Infrahub filters in documentation (name__value)
 ignore: spelling-exceptions.txt

@@ -13,8 +13,8 @@ The goal of this guide is to develop a Generator and add it to Infrahub, we will
 1. Identify the relevant data you want to extract from the database using a [GraphQL query](/topics/graphql), that can take an input parameter to filter the data
 2. Write a Python script that uses the GraphQL query to read information from the system and generates new data based on the response
 3. Create an entry for the generator within an .infrahub.yml file.
-4. Create a Git repository
-5. Test the generator with infrahubctl
+4. Test the generator with infrahubctl
+5. Create a Git repository
 6. Add the repository to Infrahub as an external repository
 7. Validate that the generator works by triggering it through a proposed change
 
@@ -24,9 +24,11 @@ What your generator will look like will depend on what your schema looks like an
 
 As the default Infrahub schema doesn't have a lot of object types to use as a test, we will illustrate how this could work by adding two nodes to the schema.
 
-Load the following schema using the [infrahubctl schema](/infrahubctl/infrahubctl-schema) command.
+### Create and load example schema
 
-```yaml
+Create a **widgets.yml** file with the following:
+
+```yaml title="widgets.yml"
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
 ---
 version: '1.0'
@@ -56,34 +58,78 @@ nodes:
         unique: true
 ```
 
-Perform these steps in the frontend.
+Load the following schema using the [infrahubctl schema](/infrahubctl/infrahubctl-schema) command.
+
+```shell
+infrahubctl schema load widgets.yml
+```
+
+```shell
+schema 'widgets.yml' loaded successfully
+1 schema processed in 8.453 seconds.
+```
+
+### Add two new nodes
+
+Perform these steps in the [Infrahub UI](http://localhost:8000).
 
 1. Create two new widget objects
     - One with the name `widget1` and count 1
     - One with the name `widget2` and count 2
-2. Create a Standard group called "widgets"
+2. Create a [Standard group](http://localhost:8000/objects/CoreGroup) called "**widgets**
 3. Add both of the created objects to the new group
+
+:::info
+Any widget object must be added to or part of the **widgets** group to be tied to the generator.
+:::
 
 ## 1. Identify the relevant data
 
 Here we define a GraphQL query that we will use to gather information.
 
-```graphql
-query Widgets($name: String!) {
-  TestWidget(name__value: $name) {
-    edges {
-      node {
-        name {
-          value
+<Tabs groupId="convertResponse">
+  <TabItem value="Non-converted query response">
+    ```graphql title="example_generator/widget_query.gql"
+    query Widgets($name: String!) {
+      TestWidget(name__value: $name) {
+        edges {
+          node {
+            name {
+              value
+            }
+            count {
+              value
+            }
+          }
         }
-        count {
-          value
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem value="Converted query response">
+    Here we must provide `__typename` and `id` within the query so the SDK can convert the query to the correct type and properly stored in the SDK.
+
+  ```graphql title="example_generator/widget_query.gql"
+  query Widgets($name: String!) {
+    TestWidget(name__value: $name) {
+      edges {
+        node {
+          __typename
+          id
+          name {
+            value
+          }
+          count {
+            value
+          }
         }
       }
     }
   }
-}
-```
+  ```
+
+  </TabItem>
+</Tabs>
 
 Create a local directory on your computer where we will store the generator files.
 
@@ -91,55 +137,105 @@ Create a local directory on your computer where we will store the generator file
 mkdir example_generator
 ```
 
-Within that directory store the above GraphQL query as widget_query.gql.
-
 ## 2. Create a Python Generator
 
 The Generator class needs to implement a `generate` function that receives a `data` parameter that contains the response from the GraphQL query.
 
 The goal of this generator will be to create a number of resources that depends on the set count of the widgets.
 
-```python
-from infrahub_sdk.generator import InfrahubGenerator
+<Tabs groupId="convertResponse">
+  <TabItem value="Non-converted query response">
+    <!-- markdownlint-disable MD046 -->
+    ```python title="example_generator/widget_generator.py"
+    from infrahub_sdk.generator import InfrahubGenerator
 
+    class WidgetGenerator(InfrahubGenerator):
+        async def generate(self, data: dict) -> None:
+            # We can now access the nodes as typical SDK objects
+            widget = data["TestWidget"]["edges"][0]["node"]
+            widget_name: str = widget["name"]["value"]
+            widget_count: str = widget["count"]["value"]
+            for count in range(1, widget_count + 1):
+                payload = {
+                    "name": f"{widget_name.lower()}-{count}",
+                }
+                obj = await self.client.create(kind="TestResource", data=payload)
+                await obj.save(allow_upsert=True)
+    ```
+  </TabItem>
+  <TabItem value="Converted query response">
+    <!-- markdownlint-disable MD046 -->
+    ```python title="example_generator/widget_generator.py"
+    from infrahub_sdk.generator import InfrahubGenerator
 
-class WidgetGenerator(InfrahubGenerator):
-    async def generate(self, data: dict) -> None:
-        widget = data["TestWidget"]["edges"][0]["node"]
-        widget_name: str = widget["name"]["value"]
-        widget_count: str = widget["count"]["value"]
+    class WidgetGenerator(InfrahubGenerator):
+        async def generate(self, data: dict) -> None:
+            # We can now access the nodes as typical SDK objects
+            widget = self.nodes[0]  # or self.store.get(data["TestWidget"]["edges"][0]["node"]["id"])
+            widget_name: str = widget.name.value
+            widget_count: str = widget.count.value
+    
+            for count in range(1, widget_count + 1):
 
-        for count in range(1, widget_count + 1):
+                payload = {
+                    "name": f"{widget_name.lower()}-{count}",
+                }
+                obj = await self.client.create(kind="TestResource", data=payload)
+                await obj.save(allow_upsert=True)
+    ```
+  </TabItem>
+</Tabs>
 
-            payload = {
-                "name": f"{widget_name.lower()}-{count}",
-            }
-            obj = await self.client.create(kind="TestResource", data=payload)
-            await obj.save(allow_upsert=True)
-```
-
-Store this class within a new file called widget_generator.py.
+<!-- vale Infrahub.spelling = NO -->
+Store this class within a new file called **widget_generator.py** within the **example_generator** directory.
 
 ## 3. Create an .infrahub.yml file
 
 The [.infrahub.yml](/topics/infrahub-yml) file allows you to tie the different [components of a generator](/topics/generator) together into a working unit.
 
-```yaml
-# yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
----
-generator_definitions:
-  - name: widget_generator
-    file_path: "widget_generator.py"
-    targets: widgets
-    query: widget_query
-    class_name: WidgetGenerator
-    parameters:
-      name: "name__value"
+<Tabs groupId="convertResponse">
+  <TabItem value="Non-converted query response">
+    <!-- markdownlint-disable MD046 -->
+    ```yaml title=".infrahub.yml"
+    <!-- vale Infrahub.swap = NO -->
+    # yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
+    ---
+    generator_definitions:
+      - name: widget_generator
+        file_path: "widget_generator.py"
+        targets: widgets
+        query: widget_query
+        class_name: WidgetGenerator
+        parameters:
+          name: "name__value"
 
-queries:
-  - name: widget_query
-    file_path: "widget_query.gql"
-```
+    queries:
+      - name: widget_query
+        file_path: "widget_query.gql"
+    ```
+  </TabItem>
+  <TabItem value="Converted query response">
+    <!-- markdownlint-disable MD046 -->
+    ```yaml title=".infrahub.yml"
+    <!-- vale Infrahub.swap = NO -->
+    # yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
+    ---
+    generator_definitions:
+      - name: widget_generator
+        file_path: "widget_generator.py"
+        targets: widgets
+        query: widget_query
+        convert_query_response: true
+        class_name: WidgetGenerator
+        parameters:
+          name: "name__value"
+
+    queries:
+      - name: widget_query
+        file_path: "widget_query.gql"
+    ```
+  </TabItem>
+</Tabs>
 
 <Tabs>
   <TabItem value="Generator definitions" default>
@@ -148,8 +244,9 @@ queries:
       - **file_path**: the relative file path to the file containing the generator as seen from within a Git repository
       - **targets**: the name of a group of which the members will be a target for this generator
       - **query**: the name of the GraphQL query used within this generator
+      - **convert_query_response**: convert the result of the GraphQL query to SDK InfrahubNode objects
+      - **class_name**: the name of the Python class in the generator file
       - **parameters**: the parameter to pass to the generator GraphQL query, in this case this we will pass the name of the object (widget) as the name parameter
-      - **query**: the name of the GraphQL query used within this generator
   </TabItem>
   <TabItem value="Queries">
     Here the `name` refers to the query's name and `file_path` should point to the GraphQL file within the repository.
@@ -158,27 +255,15 @@ queries:
 
 See [this topic](/topics/infrahub-yml) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
 
-## 4. Create a Git repository
+## 4. Test the generator using infrahubctl
 
-Within the `example_generator` folder you should now have 3 files:
-
-- `widget_query.gql`: Contains the GraphQL query
-- `generator.py`: Contains the Python code for the generator
-- `.infrahub.yml`: Contains the definition for the generator
-
-Before we can test our generator we must add the files to a local Git repository.
+Using infrahubctl you can first verify that the **.infrahub.yml** file is formatted correctly by listing available generators.
 
 ```shell
-git init --initial-branch=main
-git add .
-git commit -m "First commit"
+infrahubctl generator --list
 ```
 
-## 5. Test the generator using infrahubctl
-
-Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available generators.
-
-```shell title="❯ infrahubctl generator --list"
+```shell
 Generators defined in repository: 1
 widget_generator (widget_generator.py::Generator) Target: widgets
 ```
@@ -200,6 +285,47 @@ infrahubctl generator widget_generator --branch=test-branch1 name=widget1
 infrahubctl generator widget_generator --branch=test-branch1 name=widget2
 ```
 
-Now you should see the tree TestResource objects within `test-branch1` one for the first widget and two for the second one.
+Now you should see the tree [TestResource](http://localhost:8000/objects/TestResource?branch=test-branch1) objects within `test-branch1` one for the first widget and two for the second one.
 
-With this step completed you can [add your repository to Infrahub](/guides/repository) and then the generators will be executed as part of the proposed change pipeline.
+![resources](../media/guides/generator_pc_3.png)
+
+Load the following schema using the [infrahubctl branch](/infrahubctl/infrahubctl-branch) command.
+
+```shell
+infrahubctl branch merge 'test-branch1'
+```
+
+## 5. Create a Git repository
+
+The root directory should include the **.infrahub.yml** file and **example_generator** folder.
+
+- `.infrahub.yml`: Contains the definition for the generator
+
+Within the `example_generator` folder you should now have 2 files:
+
+- `widget_query.gql`: Contains the GraphQL query
+- `widget_generator.py`: Contains the Python code for the generator
+
+Before we can run our generator in an Proposed Change (PC) pipeline we must add the files to a local Git repository and push them up to a remote Git repository.
+
+```shell
+git init --initial-branch=main
+git add .
+git commit -m "First commit"
+git push
+```
+
+With this step completed you can [add your repository to Infrahub](/guides/repository) and then the generators will be executed as part of the proposed change CI pipeline.
+
+## 6. Generator in the CI pipeline
+
+1. Navigate to [widgets](http://localhost:8000/objects/TestWidget) in the Infrahub UI
+2. Create a new branch named **widget-3**
+3. Create a new widget with the name of **widget3** and count of **3**
+4. Add **widget3** to the **widgets** group
+5. Create a [Proposed Change](http://localhost:8000/proposed-changes?branch=widget-3)
+6. Navigate to the **Checks** tab
+7. Once the **generator** CI check has completed, navigate to the **Data** tab
+![generator ci/cd](../media/guides/generator_pc_1.png)
+8. Click the **Refresh diff** button to see the **widget3** resources created by the generator
+![data refresh](../media/guides/generator_pc_2.png)
