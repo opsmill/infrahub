@@ -668,7 +668,7 @@ CALL {
             AND (from_time <= diff_rel.from < $to_time)
             AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
             AND r_root.from <= diff_rel.from
-            AND (r_root.to IS NULL OR r_root.to >= diff_rel.from)
+            AND (r_root.to IS NULL OR diff_rel.branch <> r_root.branch OR r_root.to >= diff_rel.from)
             RETURN root, r_root, p, diff_rel, q
             UNION ALL
             WITH node_field_specifiers_list, from_time
@@ -683,7 +683,7 @@ CALL {
             AND (from_time <= diff_rel.from < $to_time)
             AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
             AND r_root.from <= diff_rel.from
-            AND (r_root.to IS NULL OR r_root.to >= diff_rel.from)
+            AND (r_root.to IS NULL OR diff_rel.branch <> r_root.branch OR r_root.to >= diff_rel.from)
             RETURN root, r_root, p, diff_rel, q
         }
         WITH root, r_root, p, diff_rel, q, from_time

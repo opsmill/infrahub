@@ -365,12 +365,11 @@ class DiffRelationshipIntermediate:
         action = DiffAction.UPDATED
         if last_changed_at < from_time or all(sr.action is DiffAction.UNCHANGED for sr in single_relationships):
             action = DiffAction.UNCHANGED
-        if (
-            self.cardinality is RelationshipCardinality.ONE
-            and len(single_relationships) == 1
-            and single_relationships[0].action in (DiffAction.ADDED, DiffAction.REMOVED)
-        ):
-            action = single_relationships[0].action
+        # bubble up action, excluding UNCHANGED
+        if self.cardinality is RelationshipCardinality.ONE:
+            actions = {sr.action for sr in single_relationships if sr.action is not DiffAction.UNCHANGED}
+            if len(actions) == 1:
+                action = actions.pop()
         return DiffRelationship(
             name=self.name,
             changed_at=last_changed_at,
