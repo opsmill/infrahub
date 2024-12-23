@@ -11,3 +11,4 @@ class RefreshGitFetch(InfrahubMessage):
     repository_name: str = Field(..., description="The name of the repository")
     repository_kind: str = Field(..., description="The type of repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
+    infrahub_branch_id: str = Field(..., description="Id of the Infrahub branch on which to sync the remote repository")

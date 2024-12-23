@@ -217,7 +217,8 @@ class BranchMerger:
                     repository_name=repo.name.value,
                     internal_status=repo.internal_status.value,
                     source_branch=self.source_branch.name,
-                    destination_branch=registry.default_branch,
+                    destination_branch=self.destination_branch.name,
+                    destination_branch_id=str(self.destination_branch.get_uuid()),
                     default_branch=repo.default_branch.value,
                 )
                 await self.service.workflow.submit_workflow(

@@ -170,6 +170,7 @@ disable = """,
     unnecessary-comprehension,
     multiple-statements,
     self-assigning-variable,
+    no-else-return,
     """
 
 [tool.pylint.miscellaneous]

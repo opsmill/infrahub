@@ -54,4 +54,9 @@ async def fetch(message: messages.RefreshGitFetch, service: InfrahubServices) ->
         )
 
     await repo.fetch()
-    await repo.pull(branch_name=message.infrahub_branch_name)
+    await repo.pull(
+        branch_name=message.infrahub_branch_name,
+        branch_id=message.infrahub_branch_id,
+        create_if_missing=True,
+        update_commit_value=False,
+    )
