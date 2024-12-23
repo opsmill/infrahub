@@ -146,11 +146,11 @@ class TestDiffMerge(TestInfrahubApp):
         await new_person.save(db=db)
         diff_branch = await create_branch(db=db, branch_name="branch2")
         if delete_on_branch:
-            delete_branch = default_branch
-            update_branch = diff_branch
-        else:
             delete_branch = diff_branch
             update_branch = default_branch
+        else:
+            delete_branch = default_branch
+            update_branch = diff_branch
         person_deleted = await NodeManager.get_one(db=db, id=new_person.id, branch=delete_branch)
         await person_deleted.delete(db=db)
 
@@ -174,11 +174,11 @@ class TestDiffMerge(TestInfrahubApp):
         assert set(conflicts_map.keys()) == {f"data/{person_updated.id}"}
         conflict = conflicts_map[f"data/{person_updated.id}"]
         if delete_on_branch:
-            assert conflict.base_branch_action is DiffAction.REMOVED
-            assert conflict.diff_branch_action is DiffAction.UPDATED
-        else:
             assert conflict.base_branch_action is DiffAction.UPDATED
             assert conflict.diff_branch_action is DiffAction.REMOVED
+        else:
+            assert conflict.base_branch_action is DiffAction.REMOVED
+            assert conflict.diff_branch_action is DiffAction.UPDATED
         assert conflict.resolvable is False
 
         # manually undo updates on branch to resolve conflict

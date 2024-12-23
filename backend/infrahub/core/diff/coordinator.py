@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable
 
 from infrahub import lock
 from infrahub.core import registry
@@ -14,7 +14,6 @@ from .model.path import (
     EnrichedDiffs,
     NameTrackingId,
     NodeFieldSpecifier,
-    TimeRange,
     TrackingId,
 )
 
@@ -219,6 +218,30 @@ class DiffCoordinator:
             log.debug(f"Diff recalculation complete for {base_branch.name} - {diff_branch.name}")
         return enriched_diffs.diff_branch_diff
 
+    def _get_ordered_diff_pairs(
+        self, diff_pairs: Iterable[EnrichedDiffs], allow_overlap: bool = False
+    ) -> list[EnrichedDiffs]:
+        ordered_diffs = sorted(diff_pairs, key=lambda d: d.diff_branch_diff.from_time)
+        if allow_overlap:
+            return ordered_diffs
+        ordered_diffs_no_overlaps: list[EnrichedDiffs] = []
+        for candidate_diff_pair in ordered_diffs:
+            if not ordered_diffs_no_overlaps:
+                ordered_diffs_no_overlaps.append(candidate_diff_pair)
+                continue
+            # no time overlap
+            previous_diff = ordered_diffs_no_overlaps[-1].diff_branch_diff
+            candidate_diff = candidate_diff_pair.diff_branch_diff
+            if previous_diff.to_time <= candidate_diff.from_time:
+                ordered_diffs_no_overlaps.append(candidate_diff_pair)
+                continue
+            previous_interval = previous_diff.time_range
+            candidate_interval = candidate_diff.time_range
+            # keep the diff that covers the larger time frame
+            if candidate_interval > previous_interval:
+                ordered_diffs_no_overlaps[-1] = candidate_diff_pair
+        return ordered_diffs_no_overlaps
+
     async def _update_diffs(
         self,
         base_branch: Branch,
@@ -272,15 +295,17 @@ class DiffCoordinator:
         if not partial_enriched_diffs:
             return await self._get_enriched_diff(diff_request=diff_request, is_incremental_diff=False)
 
-        remaining_diffs = sorted(partial_enriched_diffs, key=lambda d: d.diff_branch_diff.from_time)
+        ordered_diffs = self._get_ordered_diff_pairs(diff_pairs=partial_enriched_diffs, allow_overlap=False)
+        ordered_diff_reprs = [repr(d) for d in ordered_diffs]
+        log.debug(f"Ordered diffs for aggregation: {ordered_diff_reprs}")
         current_time = diff_request.from_time
         previous_diffs: EnrichedDiffs | None = None
         while current_time < diff_request.to_time:
-            if remaining_diffs and remaining_diffs[0].diff_branch_diff.from_time == current_time:
-                current_diffs = remaining_diffs.pop(0)
+            if ordered_diffs and ordered_diffs[0].diff_branch_diff.from_time == current_time:
+                current_diffs = ordered_diffs.pop(0)
             else:
-                if remaining_diffs:
-                    end_time = remaining_diffs[0].diff_branch_diff.from_time
+                if ordered_diffs:
+                    end_time = ordered_diffs[0].diff_branch_diff.from_time
                 else:
                     end_time = diff_request.to_time
                 if previous_diffs is None:
@@ -325,26 +350,6 @@ class DiffCoordinator:
         )
         enriched_diff_pair = await self.diff_enricher.enrich(calculated_diffs=calculated_diff_pair)
         return enriched_diff_pair
-
-    def _get_missing_time_ranges(
-        self, time_ranges: list[TimeRange], from_time: Timestamp, to_time: Timestamp
-    ) -> list[TimeRange]:
-        if not time_ranges:
-            return [TimeRange(from_time=from_time, to_time=to_time)]
-        sorted_time_ranges = sorted(time_ranges, key=lambda tr: tr.from_time)
-        missing_time_ranges = []
-        if sorted_time_ranges[0].from_time > from_time:
-            missing_time_ranges.append(TimeRange(from_time=from_time, to_time=sorted_time_ranges[0].from_time))
-        index = 0
-        while index < len(sorted_time_ranges) - 1:
-            this_diff = sorted_time_ranges[index]
-            next_diff = sorted_time_ranges[index + 1]
-            if this_diff.to_time < next_diff.from_time:
-                missing_time_ranges.append(TimeRange(from_time=this_diff.to_time, to_time=next_diff.from_time))
-            index += 1
-        if sorted_time_ranges[-1].to_time < to_time:
-            missing_time_ranges.append(TimeRange(from_time=sorted_time_ranges[-1].to_time, to_time=to_time))
-        return missing_time_ranges
 
     def _get_node_field_specifiers(self, enriched_diff: EnrichedDiffRoot) -> set[NodeFieldSpecifier]:
         specifiers: set[NodeFieldSpecifier] = set()
