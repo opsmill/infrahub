@@ -231,8 +231,8 @@ PROPOSED_CHANGE_MERGE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
-UPDATE_GRAPHQL_QUERY_GROUP = WorkflowDefinition(
-    name="update_graphql_query_group",
+GRAPHQL_QUERY_GROUP_UPDATE = WorkflowDefinition(
+    name="graphql-query-group-update",
     type=WorkflowType.CORE,
     module="infrahub.groups.tasks",
     function="update_graphql_query_group",
@@ -419,6 +419,7 @@ workflows = [
     GIT_REPOSITORIES_SYNC,
     GIT_REPOSITORY_ADD,
     GIT_REPOSITORY_ADD_READ_ONLY,
+    GRAPHQL_QUERY_GROUP_UPDATE,
     IPAM_RECONCILIATION,
     PROCESS_COMPUTED_MACRO,
     PROPOSED_CHANGE_MERGE,
@@ -441,7 +442,6 @@ workflows = [
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
-    UPDATE_GRAPHQL_QUERY_GROUP,
     WEBHOOK_CONFIGURE,
     WEBHOOK_SEND,
     WEBHOOK_TRIGGER,
