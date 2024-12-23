@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
 
 import { Button } from "@/components/buttons/button-primitive";
@@ -10,12 +10,16 @@ import { classNames } from "@/utils/common";
 
 export interface ListProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> {
-  value: string[];
-  onChange: (value: string[]) => void;
+  defaultValue?: string[];
+  value?: string[];
+  onChange?: (value: string[]) => void;
 }
 
 export const List = React.forwardRef<HTMLInputElement, ListProps>(
-  ({ value = [], onChange, className, disabled, ...props }, ref) => {
+  ({ defaultValue = [], value, onChange, className, disabled, ...props }, ref) => {
+    const [internalValue, setInternalValue] = useState<string[]>(defaultValue);
+    const items = value ?? internalValue;
+
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -24,19 +28,25 @@ export const List = React.forwardRef<HTMLInputElement, ListProps>(
         const trimmedItem = event.currentTarget.value.trim();
         if (!trimmedItem) return;
 
-        if (value.includes(trimmedItem)) {
+        if (items.includes(trimmedItem)) {
           toast(<Alert message="Item already exists in the list" type={ALERT_TYPES.INFO} />);
           return;
         }
 
-        onChange([...value, trimmedItem]);
+        const newValue = [...items, trimmedItem];
+        onChange?.(newValue);
+        setInternalValue(newValue);
+
         event.currentTarget.value = "";
       }
     };
 
     const handleDelete = (itemToDelete: string) => {
       if (disabled) return;
-      onChange(value.filter((item) => item !== itemToDelete));
+
+      const newValue = items.filter((item) => item !== itemToDelete);
+      onChange?.(newValue);
+      setInternalValue(newValue);
     };
 
     return (
@@ -50,7 +60,7 @@ export const List = React.forwardRef<HTMLInputElement, ListProps>(
           {...props}
         />
 
-        <ListItems items={value} disabled={disabled} onDelete={handleDelete} />
+        <ListItems items={items} disabled={disabled} onDelete={handleDelete} />
       </div>
     );
   }
