@@ -241,13 +241,16 @@ async def delete_branch(branch: str) -> None:
 
     await add_branch_tag(branch_name=branch)
 
-    obj = await Branch.get_by_name(db=service.database, name=str(branch))
-    event = BranchDeleteEvent(branch=branch, branch_id=obj.get_id(), sync_with_git=obj.sync_with_git)
-    await obj.delete(db=service.database)
+    async with service.database.start_session() as db:
+        obj = await Branch.get_by_name(db=db, name=str(branch))
+        event = BranchDeleteEvent(branch=branch, branch_id=obj.get_id(), sync_with_git=obj.sync_with_git)
+        await obj.delete(db=db)
 
-    await service.workflow.submit_workflow(workflow=BRANCH_CANCEL_PROPOSED_CHANGES, parameters={"branch_name": branch})
+        await service.workflow.submit_workflow(
+            workflow=BRANCH_CANCEL_PROPOSED_CHANGES, parameters={"branch_name": branch}
+        )
 
-    await service.event.send(event=event)
+        await service.event.send(event=event)
 
 
 @flow(
@@ -260,16 +263,17 @@ async def validate_branch(branch: str) -> State:
     service = services.service
     await add_branch_tag(branch_name=branch)
 
-    obj = await Branch.get_by_name(db=service.database, name=branch)
+    async with service.database.start_session() as db:
+        obj = await Branch.get_by_name(db=db, name=branch)
 
-    component_registry = get_component_registry()
-    diff_repo = await component_registry.get_component(DiffRepository, db=service.database, branch=obj)
-    has_conflicts = await diff_repo.diff_has_conflicts(
-        diff_branch_name=obj.name, tracking_id=BranchTrackingId(name=obj.name)
-    )
-    if has_conflicts:
-        return Failed(message="branch has some conflicts")
-    return Completed(message="branch is valid")
+        component_registry = get_component_registry()
+        diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=obj)
+        has_conflicts = await diff_repo.diff_has_conflicts(
+            diff_branch_name=obj.name, tracking_id=BranchTrackingId(name=obj.name)
+        )
+        if has_conflicts:
+            return Failed(message="branch has some conflicts")
+        return Completed(message="branch is valid")
 
 
 @flow(name="create-branch", flow_run_name="Create branch {model.name}")
@@ -277,42 +281,43 @@ async def create_branch(model: BranchCreateModel) -> None:
     service = services.service
     await add_branch_tag(model.name)
 
-    try:
-        await Branch.get_by_name(db=service.database, name=model.name)
-        raise ValueError(f"The branch {model.name}, already exist")
-    except BranchNotFoundError:
-        pass
+    async with service.database.start_session() as db:
+        try:
+            await Branch.get_by_name(db=db, name=model.name)
+            raise ValueError(f"The branch {model.name}, already exist")
+        except BranchNotFoundError:
+            pass
 
-    data_dict: dict[str, Any] = dict(model)
-    if "is_isolated" in data_dict:
-        del data_dict["is_isolated"]
+        data_dict: dict[str, Any] = dict(model)
+        if "is_isolated" in data_dict:
+            del data_dict["is_isolated"]
 
-    try:
-        obj = Branch(**data_dict)
-    except pydantic.ValidationError as exc:
-        error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
-        raise ValueError("\n".join(error_msgs)) from exc
+        try:
+            obj = Branch(**data_dict)
+        except pydantic.ValidationError as exc:
+            error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
+            raise ValueError("\n".join(error_msgs)) from exc
 
-    async with lock.registry.local_schema_lock():
-        # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-        origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
-        new_schema = origin_schema.duplicate(name=obj.name)
-        registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
-        obj.update_schema_hash()
-        await obj.save(db=service.database)
+        async with lock.registry.local_schema_lock():
+            # Copy the schema from the origin branch and set the hash and the schema_changed_at value
+            origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
+            new_schema = origin_schema.duplicate(name=obj.name)
+            registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
+            obj.update_schema_hash()
+            await obj.save(db=db)
 
-        # Add Branch to registry
-        registry.branch[obj.name] = obj
-        await service.component.refresh_schema_hash(branches=[obj.name])
+            # Add Branch to registry
+            registry.branch[obj.name] = obj
+            await service.component.refresh_schema_hash(branches=[obj.name])
 
-    event = BranchCreateEvent(branch=obj.name, branch_id=str(obj.uuid), sync_with_git=obj.sync_with_git)
-    await service.event.send(event=event)
+        event = BranchCreateEvent(branch=obj.name, branch_id=str(obj.uuid), sync_with_git=obj.sync_with_git)
+        await service.event.send(event=event)
 
-    if obj.sync_with_git:
-        await service.workflow.submit_workflow(
-            workflow=GIT_REPOSITORIES_CREATE_BRANCH,
-            parameters={"branch": obj.name, "branch_id": str(obj.uuid)},
-        )
+        if obj.sync_with_git:
+            await service.workflow.submit_workflow(
+                workflow=GIT_REPOSITORIES_CREATE_BRANCH,
+                parameters={"branch": obj.name, "branch_id": str(obj.uuid)},
+            )
 
 
 @flow(name="branch-actions-setup", flow_run_name="Setup branch action events in task-manager")

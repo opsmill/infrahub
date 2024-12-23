@@ -21,19 +21,20 @@ TELEMETRY_VERSION: str = "20240524"
 
 @task(name="telemetry-gather-db", task_run_name="Gather Database Information", cache_policy=NONE)
 async def gather_database_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
-    data: dict[str, Any] = {
-        "database_type": service.database.db_type.value,
-        "relationship_count": {"total": await utils.count_relationships(db=service.database)},
-        "node_count": {"total": await utils.count_nodes(db=service.database)},
-    }
+    async with service.database.start_session() as db:
+        data: dict[str, Any] = {
+            "database_type": db.db_type.value,
+            "relationship_count": {"total": await utils.count_relationships(db=db)},
+            "node_count": {"total": await utils.count_nodes(db=db)},
+        }
 
-    for name in GRAPH_SCHEMA["relationships"]:
-        data["relationship_count"][name] = await utils.count_relationships(db=service.database, label=name)
+        for name in GRAPH_SCHEMA["relationships"]:
+            data["relationship_count"][name] = await utils.count_relationships(db=db, label=name)
 
-    for name in GRAPH_SCHEMA["nodes"]:
-        data["node_count"][name] = await utils.count_nodes(db=service.database, label=name)
+        for name in GRAPH_SCHEMA["nodes"]:
+            data["node_count"][name] = await utils.count_nodes(db=db, label=name)
 
-    return data
+        return data
 
 
 @task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)
@@ -49,20 +50,21 @@ async def gather_schema_information(service: InfrahubServices, branch: Branch) -
 
 @task(name="telemetry-feature-information", task_run_name="Gather Feature Information", cache_policy=NONE)
 async def gather_feature_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
-    data = {}
-    features_to_count = [
-        InfrahubKind.ARTIFACT,
-        InfrahubKind.RESOURCEPOOL,
-        InfrahubKind.REPOSITORY,
-        InfrahubKind.GENERICGROUP,
-        InfrahubKind.PROFILE,
-        InfrahubKind.PROPOSEDCHANGE,
-        InfrahubKind.TRANSFORM,
-    ]
-    for kind in features_to_count:
-        data[kind] = await utils.count_nodes(db=service.database, label=kind)
+    async with service.database.start_session() as db:
+        data = {}
+        features_to_count = [
+            InfrahubKind.ARTIFACT,
+            InfrahubKind.RESOURCEPOOL,
+            InfrahubKind.REPOSITORY,
+            InfrahubKind.GENERICGROUP,
+            InfrahubKind.PROFILE,
+            InfrahubKind.PROPOSEDCHANGE,
+            InfrahubKind.TRANSFORM,
+        ]
+        for kind in features_to_count:
+            data[kind] = await utils.count_nodes(db=db, label=kind)
 
-    return data
+        return data
 
 
 @task(name="telemetry-gather-data", task_run_name="Gather Anonynous Data", cache_policy=NONE)
