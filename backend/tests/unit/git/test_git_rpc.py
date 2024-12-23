@@ -79,6 +79,7 @@ class TestAddRepository:
             location=str(git_upstream_repo_01["path"]),
             default_branch_name=self.default_branch_name,
             infrahub_branch_name=self.default_branch_name,
+            infrahub_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
             internal_status="active",
         )
 
@@ -128,6 +129,7 @@ async def test_git_rpc_merge(
         repository_name=repo.name,
         source_branch="branch01",
         destination_branch="main",
+        destination_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
         internal_status=RepositoryInternalStatus.ACTIVE.value,
         default_branch="main",
     )
@@ -225,6 +227,7 @@ class TestAddReadOnly:
             location=str(git_upstream_repo_01["path"]),
             ref="branch01",
             infrahub_branch_name="read-only-branch",
+            infrahub_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
             internal_status="active",
         )
 
@@ -271,6 +274,7 @@ class TestPullReadOnly:
             ref=self.ref,
             commit=self.commit,
             infrahub_branch_name=self.infrahub_branch_name,
+            infrahub_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
         )
 
         lock_patcher = patch("infrahub.git.tasks.lock")

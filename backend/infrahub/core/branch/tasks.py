@@ -305,13 +305,13 @@ async def create_branch(model: BranchCreateModel) -> None:
         registry.branch[obj.name] = obj
         await service.component.refresh_schema_hash(branches=[obj.name])
 
-    event = BranchCreateEvent(branch=obj.name, branch_id=str(obj.id), sync_with_git=obj.sync_with_git)
+    event = BranchCreateEvent(branch=obj.name, branch_id=str(obj.uuid), sync_with_git=obj.sync_with_git)
     await service.event.send(event=event)
 
     if obj.sync_with_git:
         await service.workflow.submit_workflow(
             workflow=GIT_REPOSITORIES_CREATE_BRANCH,
-            parameters={"branch": obj.name, "branch_id": str(obj.id)},
+            parameters={"branch": obj.name, "branch_id": str(obj.uuid)},
         )
 
 

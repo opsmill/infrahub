@@ -51,47 +51,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     ) -> bool:
         """Create new branch in the repository, assuming the branch has been created in the graph already."""
 
-        repo = self.get_git_repo_main()
-
-        # Check if the branch already exists locally, if it does do nothing
-        local_branches = self.get_branches_from_local(include_worktree=False)
-        if branch_name in local_branches:
-            return False
-
-        # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
-        repo.git.branch(branch_name)
-        self.create_branch_worktree(branch_name=branch_name, branch_id=branch_id or branch_name)
-
-        # If there is not remote configured, we are done
-        #  Since the branch is a match for the main branch we don't need to create a commit worktree
-        # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
-        if not self.has_origin:
-            log.debug(
-                f"Branch {branch_name} created in Git without tracking a remote branch.",
-                repository=self.name,
-                branch=branch_name,
-            )
-            return True
-
-        remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
-
-        if remote_branch:
-            br_repo = self.get_git_repo_worktree(identifier=branch_name)
-            br_repo.head.reference.set_tracking_branch(remote_branch[0])
-            br_repo.remotes.origin.pull(branch_name)
-            self.create_commit_worktree(str(br_repo.head.reference.commit))
-            log.debug(
-                f"Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}.",
-                repository=self.name,
-                branch=branch_name,
-            )
-        else:
-            log.debug(f"Branch {branch_name} created in Git without tracking a remote branch.", repository=self.name)
-
+        response = await super().create_branch_in_git(branch_name=branch_name, branch_id=branch_id)
         if push_origin:
             await self.push(branch_name)
 
-        return True
+        return response
 
     async def sync(self, staging_branch: str | None = None) -> None:
         """Synchronize the repository with its remote origin and with the database.
@@ -125,7 +89,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         raise
                     branch = await self.sdk.branch.get(branch_name=infrahub_branch)
 
-                await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id)
+                await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id, push_origin=True)
 
                 commit = self.get_commit_value(branch_name=branch_name, remote=False)
                 self.create_commit_worktree(commit=commit)

@@ -44,6 +44,7 @@ class GitRepositoryAdd(BaseModel):
     created_by: Optional[str] = Field(default=None, description="The user ID of the user that created the repository")
     default_branch_name: Optional[str] = Field(None, description="Default branch for this repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
+    infrahub_branch_id: str = Field(..., description="Id of the Infrahub branch on which to sync the remote repository")
     internal_status: str = Field(..., description="Administrative status of the repository")
 
 
@@ -56,6 +57,7 @@ class GitRepositoryAddReadOnly(BaseModel):
     ref: str = Field(..., description="Ref to track on the external repository")
     created_by: Optional[str] = Field(default=None, description="The user ID of the user that created the repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
+    infrahub_branch_id: str = Field(..., description="Id of the Infrahub branch on which to sync the remote repository")
     internal_status: str = Field(..., description="Internal status of the repository")
 
 
@@ -68,6 +70,7 @@ class GitRepositoryPullReadOnly(BaseModel):
     ref: Optional[str] = Field(None, description="Ref to track on the external repository")
     commit: Optional[str] = Field(None, description="Specific commit to pull")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
+    infrahub_branch_id: str = Field(..., description="Infrahub branch on which to sync the remote repository")
 
 
 class GitRepositoryMerge(BaseModel):
@@ -77,7 +80,8 @@ class GitRepositoryMerge(BaseModel):
     repository_name: str = Field(..., description="The name of the repository")
     internal_status: str = Field(..., description="Administrative status of the repository")
     source_branch: str = Field(..., description="The source branch")
-    destination_branch: str = Field(..., description="The source branch")
+    destination_branch: str = Field(..., description="The destination branch")
+    destination_branch_id: str = Field(..., description="The ID of the destination branch")
     default_branch: str = Field(..., description="The default branch in Git")
 
 

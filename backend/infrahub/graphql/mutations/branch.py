@@ -54,7 +54,6 @@ class BranchCreate(Mutation):
     task = Field(TaskInfo, required=False)
 
     @classmethod
-    @retry_db_transaction(name="branch_create")
     @trace.get_tracer(__name__).start_as_current_span("branch_create")
     async def mutate(
         cls,
@@ -103,7 +102,6 @@ class BranchDelete(Mutation):
     task = Field(TaskInfo, required=False)
 
     @classmethod
-    @retry_db_transaction(name="branch_delete")
     async def mutate(
         cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
     ) -> Self:

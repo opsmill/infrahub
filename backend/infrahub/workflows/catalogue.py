@@ -132,7 +132,7 @@ GIT_REPOSITORIES_SYNC = WorkflowDefinition(
 )
 
 GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
-    name="git_repositories_create_branch",
+    name="git-repositories-create-branch",
     type=WorkflowType.CORE,
     module="infrahub.git.tasks",
     function="create_branch",

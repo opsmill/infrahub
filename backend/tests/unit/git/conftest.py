@@ -217,7 +217,7 @@ async def git_repo_03_w_client(git_repo_03: InfrahubRepository, client: Infrahub
 async def git_repo_04(
     client: InfrahubClient, git_upstream_repo_03: dict[str, str | Path], git_repos_dir: Path, branch01: BranchData
 ) -> InfrahubRepository:
-    """Git Repository with git_upstream_repo_01 as remote
+    """Git Repository with git_upstream_repo_03 as remote
     The repo has 2 local branches : main and branch01
     The content of the branch branch01 has been  updated after the repo has been initialized
     to generate a diff between the local and the remote branch branch01.
