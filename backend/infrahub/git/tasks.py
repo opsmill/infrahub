@@ -279,10 +279,10 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
         await artifact.save()
 
 
-@flow(name="request_artifact_definitions_generate", flow_run_name="Generate artifacts")
+@flow(name="request_artifact_definitions_generate", flow_run_name="Trigger Generation of Artifacts for ")
 async def generate_request_artifact_definition(model: RequestArtifactDefinitionGenerate) -> None:
     service = services.service
-    await add_branch_tag(branch_name=model.branch)
+    await add_tags(branches=[model.branch])
 
     artifact_definition = await service.client.get(
         kind=InfrahubKind.ARTIFACTDEFINITION, id=model.artifact_definition, branch=model.branch

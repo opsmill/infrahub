@@ -45,7 +45,7 @@ async def test_graphql_group_update(db: InfrahubDatabase, httpx_mock: HTTPXMock,
     )
     service = InfrahubServices(client=client, workflow=WorkflowLocalExecution())
 
-    with init_global_service(service), patch("infrahub.groups.tasks.add_branch_tag"):
+    with init_global_service(service), patch("infrahub.groups.tasks.add_tags"):
         # add_branch_tag requires a prefect client, ie it does not work with WorkflowLocal
         response1 = {
             "data": {
