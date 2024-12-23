@@ -5,7 +5,10 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core import registry
+from infrahub.core.constants import DiffAction, InfrahubKind
+from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
+from infrahub.core.diff.model.diff import ArtifactTarget, BranchDiffArtifact, BranchDiffArtifactStorage
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.git.models import RequestArtifactDefinitionGenerate
@@ -22,6 +25,7 @@ if TYPE_CHECKING:
 
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.branch.models import Branch
     from infrahub.core.protocols import CoreCheckDefinition, CoreReadOnlyRepository
     from infrahub.database import InfrahubDatabase
     from tests.conftest import TestHelper
@@ -37,20 +41,29 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         patch.stopall()
 
     @pytest.fixture(scope="class")
+    async def load_car_schema(self, db: InfrahubDatabase) -> None:
+        await load_schema(db=db, schema=CAR_SCHEMA)
+
+    @pytest.fixture(scope="class")
+    async def person_john(self, db: InfrahubDatabase, load_car_schema) -> Node:
+        john = await Node.init(schema=TestKind.PERSON, db=db)
+        await john.new(db=db, name="John", height=175, age=25)
+        await john.save(db=db)
+        return john
+
+    @pytest.fixture(scope="class")
     async def initial_dataset(
         self,
         db: InfrahubDatabase,
         initialize_registry: None,
         git_repos_dir_module_scope: Path,
         git_repos_source_dir_module_scope: Path,
+        load_car_schema,
+        person_john: Node,
     ) -> None:
-        await load_schema(db, schema=CAR_SCHEMA)
         FileRepo(name="car-dealership", sources_directory=git_repos_source_dir_module_scope)
-        john = await Node.init(schema=TestKind.PERSON, db=db)
-        await john.new(db=db, name="John", height=175, age=25)
-        await john.save(db=db)
         people = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
-        await people.new(db=db, name="people", members=[john])
+        await people.new(db=db, name="people", members=[person_john])
         await people.save(db=db)
 
     async def test_step01_create_repository(
@@ -85,13 +98,28 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         assert check_definition.file_path.value == "checks/car_overview.py"
 
     async def test_step02_validate_generated_artifacts(
-        self,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
+        self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient, person_john: Node
     ):
         artifacts = await client.all(kind=InfrahubKind.ARTIFACT, branch="ro_repository")
         assert artifacts
         assert artifacts[0].name.value == "Ownership report"
+        john_display_label = await person_john.render_display_label(db=db)
+
+        artifact_diff_calculator = ArtifactDiffCalculator(db=db)
+        branch = await registry.get_branch(db=db, branch="ro_repository")
+        diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
+        assert len(diffs) == 1
+        assert diffs[0] == BranchDiffArtifact(
+            branch="ro_repository",
+            id=artifacts[0].id,
+            display_label=f"{john_display_label} - Ownership report",
+            action=DiffAction.ADDED,
+            target=ArtifactTarget(id=person_john.id, kind="TestingPerson", display_label=john_display_label),
+            item_new=BranchDiffArtifactStorage(
+                storage_id=artifacts[0].storage_id.value, checksum=artifacts[0].checksum.value
+            ),
+            item_previous=None,
+        )
 
     async def test_step03_merge_branch(
         self,
@@ -117,3 +145,55 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         artifacts = await client.all(kind=InfrahubKind.ARTIFACT)
         assert artifacts
         assert artifacts[0].name.value == "Ownership report"
+
+    async def test_step04_new_branch_with_artifact(
+        self,
+        db: InfrahubDatabase,
+        default_branch,
+        client: InfrahubClient,
+        helper: TestHelper,
+        person_john: Node,
+    ):
+        from infrahub.core import registry
+        from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
+
+        await client.branch.create(branch_name="branch", sync_with_git=False)
+        branch = await registry.get_branch(db=db, branch="branch")
+
+        manufacturer = await Node.init(schema=TestKind.MANUFACTURER, db=db, branch=branch)
+        await manufacturer.new(db=db, name="Car builder")
+        await manufacturer.save(db=db)
+        john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john.id)
+        john_branch.name.value = "John2"
+        await john_branch.save(db=db)
+        john_display_label = await john_branch.render_display_label(db=db)
+
+        artifact_definitions = await client.all(kind=InfrahubKind.ARTIFACTDEFINITION)
+
+        for artifact_definition in artifact_definitions:
+            model = RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch="branch")
+            await services.service.workflow.submit_workflow(
+                REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
+            )
+
+        artifacts = await client.all(kind=InfrahubKind.ARTIFACT, branch="branch")
+        assert artifacts
+        assert artifacts[0].name.value == "Ownership report"
+        artifact_main = await NodeManager.get_one(db=db, id=artifacts[0].id)
+
+        artifact_diff_calculator = ArtifactDiffCalculator(db=db)
+        diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
+        assert len(diffs) == 1
+        assert diffs[0] == BranchDiffArtifact(
+            branch="branch",
+            id=artifacts[0].id,
+            display_label=f"{john_display_label} - Ownership report",
+            action=DiffAction.UPDATED,
+            target=ArtifactTarget(id=person_john.id, kind="TestingPerson", display_label=john_display_label),
+            item_new=BranchDiffArtifactStorage(
+                storage_id=artifacts[0].storage_id.value, checksum=artifacts[0].checksum.value
+            ),
+            item_previous=BranchDiffArtifactStorage(
+                storage_id=artifact_main.storage_id.value, checksum=artifact_main.checksum.value
+            ),
+        )
