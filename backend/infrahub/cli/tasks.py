@@ -44,7 +44,9 @@ async def execute(
 
     async with get_client(sync_client=False) as client:
         worker = WorkflowWorkerExecution()
-        await DUMMY_FLOW.save(client=client, work_pool=WorkerPoolDefinition(name="testing", worker_type="process"))
+        await DUMMY_FLOW.save(
+            client=client, work_pool=WorkerPoolDefinition(name="infrahub-worker", worker_type="infrahubasync")
+        )
 
         result = await worker.execute_workflow(
             workflow=DUMMY_FLOW, parameters={"data": DummyInput(firstname="John", lastname="Doe")}
