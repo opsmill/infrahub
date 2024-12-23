@@ -10,7 +10,7 @@ from git import Repo
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
 from infrahub_sdk.node import InfrahubNode
-from infrahub_sdk.schema import SchemaRoot as ClientSchemaRoot
+from infrahub_sdk.schema import SchemaRootAPI as ClientSchemaRoot
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx import HTTPXMock
 

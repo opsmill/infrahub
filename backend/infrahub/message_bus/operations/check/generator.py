@@ -1,6 +1,6 @@
 from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.node import InfrahubNode
-from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
+from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig
 from prefect import flow
 from prefect.logging import get_run_logger
 
