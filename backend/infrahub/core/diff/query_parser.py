@@ -372,10 +372,6 @@ class DiffRelationshipIntermediate:
             actions = {sr.action for sr in single_relationships if sr.action is not DiffAction.UNCHANGED}
             if len(actions) == 1:
                 action = actions.pop()
-
-            # if action is DiffAction.REMOVED:
-            #     breakpoint()
-
         return DiffRelationship(
             name=self.name,
             changed_at=last_changed_at,
@@ -467,9 +463,6 @@ class DiffQueryParser:
         self._diff_root_by_branch: dict[str, DiffRootIntermediate] = {}
         self._final_diff_root_by_branch: dict[str, DiffRoot] = {}
         self._previous_node_field_specifiers = previous_node_field_specifiers or set()
-        # self._diff_branch_node_field_specifiers: set[NodeFieldSpecifier] | None = None
-        # self._new_node_field_specifiers: set[NodeFieldSpecifier] | None = None
-        # self._current_node_field_specifiers: set[NodeFieldSpecifier] | None = None
 
     def get_branches(self) -> set[str]:
         return set(self._final_diff_root_by_branch.keys())
