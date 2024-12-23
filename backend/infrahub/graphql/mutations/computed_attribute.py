@@ -92,7 +92,8 @@ class UpdateComputedAttribute(Mutation):
             )
         if attribute_field.value != str(data.value):
             attribute_field.value = str(data.value)
-            await target_node.save(db=context.db, fields=[str(data.attribute)])
+            async with context.db.start_transaction() as dbt:
+                await target_node.save(db=dbt, fields=[str(data.attribute)])
 
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
@@ -104,6 +105,7 @@ class UpdateComputedAttribute(Mutation):
                 kind=node_schema.kind,
                 node_id=target_node.get_id(),
                 data=graphql_payload,
+                fields=[str(data.attribute)],
                 action=MutationAction.UPDATED,
                 meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
