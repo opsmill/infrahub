@@ -241,7 +241,11 @@ async def run_query(db: InfrahubDatabase, branch: Branch, query: str, variables:
 
 
 async def test_task_query_prefect(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs,
+    flow_runs_data,
 ):
     result = await run_query(
         db=db,
@@ -266,7 +270,11 @@ async def test_task_query_prefect(
 
 
 async def test_task_query_filter_workflow(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs,
+    flow_runs_data,
 ):
     QUERY = """
     query {
@@ -303,7 +311,7 @@ async def test_task_query_filter_workflow(
 
 
 async def test_task_query_filter_workflow_state(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
 ):
     QUERY = """
     query {
@@ -334,7 +342,7 @@ async def test_task_query_filter_workflow_state(
 
 
 async def test_task_query_filter_id(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
 ):
     dummy_completed_br1_db = flow_runs_data["dummy-completed-br1-db"]
     dummy_running_br1 = flow_runs_data["dummy-running-br1"]
@@ -367,7 +375,7 @@ async def test_task_query_filter_id(
 
 
 async def test_task_query_filter_branch(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
 ):
     QUERY = """
     query TaskQuery(
@@ -405,7 +413,7 @@ async def test_task_query_filter_branch(
 
 
 async def test_task_query_filter_state(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
 ):
     QUERY = """
     query {
@@ -441,7 +449,7 @@ async def test_task_query_filter_state(
 
 
 async def test_task_query_partial_text(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
 ):
     QUERY = """
     query {
