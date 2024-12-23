@@ -99,17 +99,17 @@ class InfrahubMutationMixin:
             request_id = log_data.get("request_id", "")
 
             graphql_payload = await obj.to_graphql(db=context.db, filter_sensitive=True)
-
             event = NodeMutatedEvent(
                 branch=context.branch.name,
                 kind=obj._schema.kind,
                 node_id=obj.id,
                 data=graphql_payload,
                 action=action,
+                fields=_get_data_fields(data),
                 meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
 
-            context.background.add_task(context.service.event.send, event)
+            context.background.add_task(context.active_service.event.send, event)
 
         return mutation
 
@@ -457,3 +457,7 @@ def _get_kind_lock_names_on_object_mutation(kind: str, branch: Branch, schema_br
     lock_kinds = _get_kinds_to_lock_on_object_mutation(kind, schema_branch)
     lock_names = [build_object_lock_name(kind) for kind in lock_kinds]
     return lock_names
+
+
+def _get_data_fields(data: InputObjectType) -> list[str]:
+    return [field for field in data.keys() if field not in ["id", "hfid"]]

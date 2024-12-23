@@ -91,7 +91,7 @@ class TestComputedAttribute(TestInfrahubApp):
             object_id=tshirt_1.id,
             computed_attribute_kind="TestingTShirt",
             computed_attribute_name="description",
-            updated_fields=["color"],
+            updated_fields='"color"',
         )
 
         tshirt_updated = await client.get(kind="TestingTShirt", id=data["t1"].id)
