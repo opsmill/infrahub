@@ -293,7 +293,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
     from copy import deepcopy
 
     import jinja2
-    from infrahub_sdk.schema import InfrahubRepositoryConfig
+    from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
 
     schema = InfrahubRepositoryConfig.model_json_schema()
 

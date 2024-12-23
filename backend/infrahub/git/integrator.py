@@ -21,7 +21,7 @@ from infrahub_sdk.protocols import (
     CoreTransformJinja2,
     CoreTransformPython,
 )
-from infrahub_sdk.schema import (
+from infrahub_sdk.schema.repository import (
     InfrahubCheckDefinitionConfig,
     InfrahubGeneratorDefinitionConfig,
     InfrahubJinja2TransformConfig,

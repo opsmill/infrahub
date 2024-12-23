@@ -34,7 +34,7 @@ def generate_infrahub_node_schema() -> None:
 
 
 def generate_sdk_repository_config() -> None:
-    from infrahub_sdk.schema import InfrahubRepositoryConfig
+    from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
 
     repository_dir = SDK_DIRECTORY / "repository-config"
     repository_dir.mkdir(parents=True, exist_ok=True)
