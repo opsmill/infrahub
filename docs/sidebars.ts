@@ -98,6 +98,7 @@ const sidebars: SidebarsConfig = {
         'topics/check',
         'topics/metadata',
         'topics/database-backup',
+        'topics/developer-guide',
         'topics/local-demo-environment',
         'topics/generator',
         'topics/graphql',

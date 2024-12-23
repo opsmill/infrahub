@@ -126,6 +126,14 @@ class WorkflowDriver(str, Enum):
     WORKER = "worker"
 
 
+class ExtraLogLevel(str, Enum):
+    CRITICAL = "CRITICAL"
+    ERROR = "ERROR"
+    WARNING = "WARNING"
+    INFO = "INFO"
+    DEBUG = "DEBUG"
+
+
 class MainSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
     docs_index_path: Path = Field(
@@ -318,6 +326,12 @@ class WorkflowSettings(BaseSettings):
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     driver: WorkflowDriver = WorkflowDriver.WORKER
     default_worker_type: str = "infrahubasync"
+    extra_loggers: list[str] = Field(
+        default_factory=list, description="A list of additional logger that will be captured during task execution."
+    )
+    extra_log_level: ExtraLogLevel = Field(
+        default=ExtraLogLevel.INFO, description="Log level applied to all extra loggers."
+    )
     worker_polling_interval: int = Field(
         default=2, ge=1, le=30, description="Specify how often the worker should poll the server for tasks (sec)"
     )
