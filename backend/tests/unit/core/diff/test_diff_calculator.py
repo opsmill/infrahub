@@ -2880,4 +2880,5 @@ async def test_diff_relationship_property_update_on_main(
     assert len(node_diff.relationships) == 1
     diff_rel = node_diff.relationships.pop()
     assert diff_rel.name == "owner"
-    assert diff_rel.action is DiffAction.ADDED
+    assert diff_rel.action is DiffAction.UPDATED
+    assert {elem.action for elem in diff_rel.relationships} == {DiffAction.ADDED, DiffAction.REMOVED}
