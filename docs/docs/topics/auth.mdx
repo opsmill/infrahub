@@ -88,11 +88,11 @@ If Infrahub is setup to allow anonymous access when it is first initialized, an 
 | Permission                          | Description                                                                                                  |
 |-------------------------------------|--------------------------------------------------------------------------------------------------------------|
 | `object:*:*:any:deny`               | Denies anything on all objects, across all branches (this one is not required, but it is more explicit)      |
-| `object:*:*:view:allow_all`         | llows seeing all objects, across all branches and namespaces.                                                |
+| `object:*:*:view:allow_all`         | Allows seeing all objects, across all branches and namespaces.                                                |
 
 The role is defined by its name in Infrahub's configuration and can be adjusted by changing the setting `main.anonymous_access_role` or the environment variable `INFRAHUB_ANONYMOUS_ACCESS_ROLE`.
 
-Note that an anonymous user will never be able to make changes to data inside Infrahub whether the role's permisssions allow it or not.
+Note that an anonymous user will never be able to make changes to data inside Infrahub whether the role's permissions allow it or not.
 
 ## Authentication backends
 
