@@ -11,6 +11,17 @@ test.describe("List Component", () => {
     await expect(component.getByText("Empty list")).toBeVisible();
   });
 
+  test("renders with default values correctly", async ({ mount }) => {
+    // GIVEN
+    const defaultItems = ["item 1", "item 2"];
+    const component = await mount(<List defaultValue={defaultItems} />);
+
+    // THEN
+    await expect(component.getByText("item 1")).toBeVisible();
+    await expect(component.getByText("item 2")).toBeVisible();
+    await expect(component.getByText("Empty list")).not.toBeVisible();
+  });
+
   test("adds new item when pressing enter", async ({ mount }) => {
     // GIVEN
     let items: string[] = [];
@@ -26,6 +37,34 @@ test.describe("List Component", () => {
     await expect(input).toHaveValue("");
     await expect(component.getByText("Empty list")).not.toBeVisible();
     expect(items).toEqual(["test item"]);
+  });
+
+  test("trims whitespace from input", async ({ mount }) => {
+    // GIVEN
+    let items: string[] = [];
+    const component = await mount(<List onChange={(newItems) => (items = newItems)} />);
+    const input = component.getByPlaceholder("Add a new item + hit 'enter'");
+
+    // WHEN
+    await input.fill("  test item  ");
+    await input.press("Enter");
+
+    // THEN
+    await expect(component.getByText("test item")).toBeVisible();
+    expect(items).toEqual(["test item"]);
+  });
+
+  test("handles empty string input correctly", async ({ mount }) => {
+    // GIVEN
+    const component = await mount(<List />);
+    const input = component.getByPlaceholder("Add a new item + hit 'enter'");
+
+    // WHEN
+    await input.fill("   ");
+    await input.press("Enter");
+
+    // THEN
+    await expect(component.getByText("Empty list")).toBeVisible();
   });
 
   test("prevents adding duplicate items and shows toast", async ({ mount }) => {
@@ -58,6 +97,23 @@ test.describe("List Component", () => {
     expect(items).toEqual([]);
   });
 
+  test("removes middle item correctly", async ({ mount }) => {
+    // GIVEN
+    let items: string[] = ["first", "second", "third"];
+    const component = await mount(
+      <List defaultValue={items} onChange={(newItems) => (items = newItems)} />
+    );
+
+    // WHEN
+    await component.getByText("second").locator("..").getByRole("button", { name: "Remove" }).click();
+
+    // THEN
+    await expect(component.getByText("first")).toBeVisible();
+    await expect(component.getByText("second")).not.toBeVisible();
+    await expect(component.getByText("third")).toBeVisible();
+    expect(items).toEqual(["first", "third"]);
+  });
+
   test("disables all interactions when disabled prop is true", async ({ mount }) => {
     // GIVEN
     const component = await mount(<List defaultValue={["test item"]} disabled={true} />);
@@ -67,34 +123,6 @@ test.describe("List Component", () => {
     await expect(input).toBeDisabled();
     await expect(component.getByText("test item")).toBeVisible();
     await expect(component.getByRole("button", { name: "Remove" })).not.toBeVisible();
-  });
-
-  test("handles empty string input correctly", async ({ mount }) => {
-    // GIVEN
-    const component = await mount(<List />);
-    const input = component.getByPlaceholder("Add a new item + hit 'enter'");
-
-    // WHEN
-    await input.fill("   ");
-    await input.press("Enter");
-
-    // THEN
-    await expect(component.getByText("Empty list")).toBeVisible();
-  });
-
-  test("trims whitespace from input", async ({ mount }) => {
-    // GIVEN
-    let items: string[] = [];
-    const component = await mount(<List onChange={(newItems) => (items = newItems)} />);
-    const input = component.getByPlaceholder("Add a new item + hit 'enter'");
-
-    // WHEN
-    await input.fill("  test item  ");
-    await input.press("Enter");
-
-    // THEN
-    await expect(component.getByText("test item")).toBeVisible();
-    expect(items).toEqual(["test item"]);
   });
 
   test("handles controlled value prop correctly", async ({ mount }) => {
