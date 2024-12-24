@@ -105,6 +105,8 @@ schema_mapping
 sdk
 subcommand
 subnet
+subtyping
+Subtyping
 template_path
 toml
 Towncrier
@@ -123,5 +125,6 @@ Version Control
 Vitest
 Yaml
 yamllint
+YouTube
 vscode
 VSCode
