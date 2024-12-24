@@ -151,7 +151,7 @@ export const BranchDetails = () => {
                     (!isAuthenticated || branch.is_default) && "opacity-50 cursor-not-allowed"
                   )}
                   to={constructPath("/proposed-changes/new", [
-                    { name: "source_branch", value: branch?.name },
+                    { name: QSP.SOURCE_BRANCH, value: branch?.name },
                   ])}
                 >
                   Propose change
