@@ -69,7 +69,7 @@ export const BranchDetails = () => {
       });
     } catch (error) {
       console.error(error);
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={errorMessage} />);
+      toast(<Alert type={ALERT_TYPES.ERROR} message={errorMessage} />);
     }
   };
 
