@@ -1,3 +1,5 @@
+import random
+
 from .constants import WorkflowTag, WorkflowType
 from .models import WorkerPoolDefinition, WorkflowDefinition
 
@@ -27,7 +29,7 @@ TRANSFORM_PYTHON_RENDER = WorkflowDefinition(
 ANONYMOUS_TELEMETRY_SEND = WorkflowDefinition(
     name="anonymous_telemetry_send",
     type=WorkflowType.INTERNAL,
-    cron="0 2 * * *",
+    cron=f"{random.randint(0, 59)} 2 * * *",
     module="infrahub.tasks.telemetry",
     function="send_telemetry_push",
 )
