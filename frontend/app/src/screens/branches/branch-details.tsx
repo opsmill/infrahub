@@ -1,4 +1,4 @@
-import { BUTTON_TYPES, Button } from "@/components/buttons/button";
+import { Button, LinkButton } from "@/components/buttons/button-primitive";
 import Accordion from "@/components/display/accordion";
 import { Badge } from "@/components/display/badge";
 import { DateDisplay } from "@/components/display/date-display";
@@ -19,6 +19,7 @@ import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { branchesState } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
+import { classNames } from "@/utils/common";
 import { constructPath, getCurrentQsp } from "@/utils/fetch";
 import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
 import { ArrowPathIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
@@ -133,20 +134,29 @@ export const BranchDetails = () => {
                       mutation: BRANCH_MERGE,
                     })
                   }
-                  buttonType={BUTTON_TYPES.VALIDATE}
+                  variant={"active"}
                 >
                   Merge
                   <CheckIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </Button>
 
-                <Button
-                  disabled={!isAuthenticated || branch.is_default}
-                  className="mr-0 md:mr-3"
-                  onClick={() => navigate(constructPath("/proposed-changes/new"))}
+                <LinkButton
+                  onClick={(event) => {
+                    if (!isAuthenticated || branch.is_default) {
+                      event?.preventDefault();
+                    }
+                  }}
+                  className={classNames(
+                    "mr-0 md:mr-3",
+                    (!isAuthenticated || branch.is_default) && "opacity-50 cursor-not-allowed"
+                  )}
+                  to={constructPath("/proposed-changes/new", [
+                    { name: "source_branch", value: branch?.name },
+                  ])}
                 >
                   Propose change
                   <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                </Button>
+                </LinkButton>
 
                 <Button
                   disabled={!isAuthenticated || branch.is_default}
@@ -158,6 +168,7 @@ export const BranchDetails = () => {
                       mutation: BRANCH_REBASE,
                     })
                   }
+                  variant={"dark"}
                 >
                   Rebase
                   <ArrowPathIcon className="ml-2 h-4 w-4" aria-hidden="true" />
@@ -173,7 +184,7 @@ export const BranchDetails = () => {
                       mutation: BRANCH_VALIDATE,
                     })
                   }
-                  buttonType={BUTTON_TYPES.WARNING}
+                  variant={"warning"}
                 >
                   Validate
                   <ShieldCheckIcon className="ml-2 h-4 w-4" aria-hidden="true" />
@@ -183,7 +194,7 @@ export const BranchDetails = () => {
                   disabled={!isAuthenticated || branch.is_default}
                   className="mr-0 md:mr-3"
                   onClick={() => setDisplayModal(true)}
-                  buttonType={BUTTON_TYPES.CANCEL}
+                  variant={"danger"}
                 >
                   Delete
                   <TrashIcon className="ml-2 h-4 w-4" aria-hidden="true" />
