@@ -721,6 +721,8 @@ jobs:
         run: npx playwright install chromium
 
       # Make chromium ignore netlink messages by returning HandleMessage early
+      - name: test
+        run: npx playwright install chromium --dry-run
       - name: Chrome path
         run: echo CHROME_BIN_PATH="$(npx playwright install chromium --dry-run | grep Install | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
       - name: Chrome func offset
