@@ -1,3 +1,4 @@
+import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 import { LabelFormField } from "@/components/form/fields/common";
 import { FormAttributeValue, FormFieldProps } from "@/components/form/type";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
@@ -5,7 +6,7 @@ import { List } from "@/components/list";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 
 const ListField = ({
-  defaultValue,
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
   description,
   label,
   name,
