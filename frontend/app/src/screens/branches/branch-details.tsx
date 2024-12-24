@@ -2,12 +2,9 @@ import { BUTTON_TYPES, Button } from "@/components/buttons/button";
 import Accordion from "@/components/display/accordion";
 import { Badge } from "@/components/display/badge";
 import { DateDisplay } from "@/components/display/date-display";
-import SlideOver from "@/components/display/slide-over";
-import ObjectForm from "@/components/form/object-form";
 import ModalDelete from "@/components/modals/modal-delete";
 import { List } from "@/components/table/list";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { BRANCH_DELETE } from "@/graphql/mutations/branches/deleteBranch";
@@ -25,7 +22,6 @@ import { datetimeAtom } from "@/state/atoms/time.atom";
 import { constructPath, getCurrentQsp } from "@/utils/fetch";
 import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
 import { ArrowPathIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
@@ -45,7 +41,6 @@ export const BranchDetails = () => {
   const [branches, setBranches] = useAtom(branchesState);
 
   const [displayModal, setDisplayModal] = useState(false);
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const navigate = useNavigate();
 
@@ -147,7 +142,7 @@ export const BranchDetails = () => {
                 <Button
                   disabled={!isAuthenticated || branch.is_default}
                   className="mr-0 md:mr-3"
-                  onClick={() => setShowCreateDrawer(true)}
+                  onClick={() => navigate(constructPath("/proposed-changes/new"))}
                 >
                   Propose change
                   <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
@@ -210,39 +205,6 @@ export const BranchDetails = () => {
           </div>
         </Accordion>
       </div>
-
-      <SlideOver
-        title={
-          <div className="space-y-2">
-            <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">Create Proposed Changes</span>
-              <div className="flex-1"></div>
-              <div className="flex items-center">
-                <Icon icon={"mdi:layers-triple"} />
-                <div className="ml-1.5 pb-1">{branch?.name}</div>
-              </div>
-            </div>
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-              <svg
-                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                viewBox="0 0 6 6"
-                aria-hidden="true"
-              >
-                <circle cx={3} cy={3} r={3} />
-              </svg>
-              {PROPOSED_CHANGES_OBJECT}
-            </span>
-          </div>
-        }
-        open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}
-      >
-        <ObjectForm
-          kind={PROPOSED_CHANGES_OBJECT}
-          onSuccess={() => setShowCreateDrawer(false)}
-          onCancel={() => setShowCreateDrawer(false)}
-        />
-      </SlideOver>
 
       {displayModal && (
         <ModalDelete
