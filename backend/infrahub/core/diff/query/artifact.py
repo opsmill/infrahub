@@ -23,22 +23,29 @@ class ArtifactDiffQuery(Query):
         self.definition_rel_identifier = definition_rel_identifier
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
-        self.params = {
-            "source_branch_name": self.branch.name,
-            "target_branch_name": self.target_branch.name,
-            "target_rel_identifier": self.target_rel_identifier,
-            "definition_rel_identifier": self.definition_rel_identifier,
-        }
+        source_branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
+
+        self.params.update(
+            {
+                "source_branch_name": self.branch.name,
+                "target_branch_name": self.target_branch.name,
+                "target_rel_identifier": self.target_rel_identifier,
+                "definition_rel_identifier": self.definition_rel_identifier,
+            }
+        )
         query = """
 // -----------------------
 // get the active artifacts on the source branch
 // -----------------------
-MATCH (source_artifact:%(artifact_kind)s)-[:IS_PART_OF {branch: $source_branch_name}]->(:Root)
+MATCH (source_artifact:%(artifact_kind)s)-[r:IS_PART_OF]->(:Root)
+WHERE r.branch IN [$source_branch_name, $target_branch_name]
 CALL {
     WITH source_artifact
-    MATCH (source_artifact)-[root_rel:IS_PART_OF {branch: $source_branch_name}]->(:Root)
-    RETURN root_rel
-    ORDER BY root_rel.from DESC
+    MATCH (source_artifact)-[r:IS_PART_OF]->(:Root)
+    WHERE %(source_branch_filter)s
+    RETURN r AS root_rel
+    ORDER BY r.branch_level DESC, r.from DESC
     LIMIT 1
 }
 WITH source_artifact, root_rel
@@ -52,10 +59,12 @@ CALL {
         WITH source_artifact
         OPTIONAL MATCH (source_artifact)-[rrel1:IS_RELATED]-(rel_node:Relationship)-[rrel2:IS_RELATED]-(target_node:Node)
         WHERE rel_node.name = $target_rel_identifier
-        AND rrel1.branch = $source_branch_name
-        AND rrel2.branch = $source_branch_name
-        RETURN target_node, (rrel1.status = "active" AND rrel2.status = "active") AS target_is_active
-        ORDER BY rrel1.from DESC, rrel2.from DESC
+        AND all(r IN [rrel1, rrel2] WHERE ( %(source_branch_filter)s ))
+        RETURN
+            target_node,
+            (rrel1.status = "active" AND rrel2.status = "active") AS target_is_active,
+            $source_branch_name IN [rrel1.branch, rrel2.branch] AS target_on_source_branch
+        ORDER BY rrel1.branch_level DESC, rrel1.branch_level DESC, rrel1.from DESC, rrel2.from DESC
         LIMIT 1
     }
     // -----------------------
@@ -65,10 +74,12 @@ CALL {
         WITH source_artifact
         OPTIONAL MATCH (source_artifact)-[rrel1:IS_RELATED]-(rel_node:Relationship)-[rrel2:IS_RELATED]-(definition_node:Node)
         WHERE rel_node.name = $definition_rel_identifier
-        AND rrel1.branch = $source_branch_name
-        AND rrel2.branch = $source_branch_name
-        RETURN definition_node, (rrel1.status = "active" AND rrel2.status = "active") AS definition_is_active
-        ORDER BY rrel1.from DESC, rrel2.from DESC
+        AND all(r IN [rrel1, rrel2] WHERE ( %(source_branch_filter)s ))
+        RETURN
+            definition_node,
+            (rrel1.status = "active" AND rrel2.status = "active") AS definition_is_active,
+            $source_branch_name IN [rrel1.branch, rrel2.branch] AS definition_on_source_branch
+        ORDER BY rrel1.branch_level DESC, rrel1.branch_level DESC, rrel1.from DESC, rrel2.from DESC
         LIMIT 1
     }
     // -----------------------
@@ -78,10 +89,12 @@ CALL {
         WITH source_artifact
         OPTIONAL MATCH (source_artifact)-[attr_rel:HAS_ATTRIBUTE]->(attr:Attribute)-[value_rel:HAS_VALUE]->(attr_val:AttributeValue)
         WHERE attr.name = "checksum"
-        AND attr_rel.branch = $source_branch_name
-        AND value_rel.branch = $source_branch_name
-        RETURN attr_val.value AS checksum, (attr_rel.status = "active" AND value_rel.status = "active") AS checksum_is_active
-        ORDER BY value_rel.from DESC, attr_rel.from DESC
+        AND all(r IN [attr_rel, value_rel] WHERE ( %(source_branch_filter)s ))
+        RETURN
+            attr_val.value AS checksum,
+            (attr_rel.status = "active" AND value_rel.status = "active") AS checksum_is_active,
+            $source_branch_name IN [attr_rel.branch, value_rel.branch] AS checksum_on_source_branch
+        ORDER BY value_rel.branch_level DESC, attr_rel.branch_level DESC, value_rel.from DESC, attr_rel.from DESC
         LIMIT 1
     }
     // -----------------------
@@ -91,12 +104,22 @@ CALL {
         WITH source_artifact
         OPTIONAL MATCH (source_artifact)-[attr_rel:HAS_ATTRIBUTE]->(attr:Attribute)-[value_rel:HAS_VALUE]->(attr_val:AttributeValue)
         WHERE attr.name = "storage_id"
-        AND attr_rel.branch = $source_branch_name
-        AND value_rel.branch = $source_branch_name
-        RETURN attr_val.value AS storage_id, (attr_rel.status = "active" AND value_rel.status = "active") AS storage_id_is_active
-        ORDER BY value_rel.from DESC, attr_rel.from DESC
+        AND all(r IN [attr_rel, value_rel] WHERE ( %(source_branch_filter)s ))
+        RETURN
+            attr_val.value AS storage_id,
+            (attr_rel.status = "active" AND value_rel.status = "active") AS storage_id_is_active,
+            $source_branch_name IN [attr_rel.branch, value_rel.branch] AS storage_id_on_source_branch
+        ORDER BY value_rel.branch_level DESC, attr_rel.branch_level DESC, value_rel.from DESC, attr_rel.from DESC
         LIMIT 1
     }
+    WITH target_node, target_is_active, target_on_source_branch,
+        definition_node, definition_is_active, definition_on_source_branch,
+        checksum, checksum_is_active, checksum_on_source_branch,
+        storage_id, storage_id_is_active, storage_id_on_source_branch
+    WHERE (target_is_active AND target_on_source_branch)
+    OR (definition_is_active AND definition_on_source_branch)
+    OR (checksum_is_active AND checksum_on_source_branch)
+    OR (storage_id_is_active AND storage_id_on_source_branch)
     RETURN CASE
         WHEN target_is_active = TRUE THEN target_node
         ELSE NULL
@@ -175,7 +198,7 @@ CALL {
         ELSE NULL
     END AS target_storage_id
 }
-        """ % {"artifact_kind": InfrahubKind.ARTIFACT}
+        """ % {"artifact_kind": InfrahubKind.ARTIFACT, "source_branch_filter": source_branch_filter}
         self.return_labels = [
             "source_artifact",
             "target_node",
