@@ -266,7 +266,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             diff_branch=diff_branch,
             from_time=incremental_diff.from_time,
             to_time=incremental_diff.to_time,
-            name=str(uuid4),
+            name=str(uuid4()),
         )
         await self.validate_diff_data_02(db=db, enriched_diff=full_diff, initial_dataset=initial_dataset)
 

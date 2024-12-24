@@ -260,6 +260,7 @@ CALL {
         return {
             "node_properties": {
                 "name": enriched_relationship.name,
+                "identifier": enriched_relationship.identifier,
                 "label": enriched_relationship.label,
                 "cardinality": enriched_relationship.cardinality.value,
                 "changed_at": enriched_relationship.changed_at.to_string()

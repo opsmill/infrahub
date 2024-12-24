@@ -136,6 +136,7 @@ class EnrichedDiffDeserializer:
                 parent_kind=parent.get("kind"),
                 parent_label=parent.get("label"),
                 parent_rel_name=rel.get("name"),
+                parent_rel_identifier=rel.get("identifier"),
                 parent_rel_cardinality=RelationshipCardinality(rel.get("cardinality")),
                 parent_rel_label=rel.get("label"),
             )
@@ -236,6 +237,7 @@ class EnrichedDiffDeserializer:
         timestamp_str = relationship_group_node.get("changed_at")
         enriched_relationship = EnrichedDiffRelationship(
             name=relationship_group_node.get("name"),
+            identifier=relationship_group_node.get("identifier"),
             label=relationship_group_node.get("label"),
             cardinality=RelationshipCardinality(relationship_group_node.get("cardinality")),
             changed_at=Timestamp(timestamp_str) if timestamp_str else None,
