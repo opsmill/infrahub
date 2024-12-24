@@ -239,6 +239,7 @@ class EnrichedDiffSingleRelationship(BaseSummary):
 @dataclass
 class EnrichedDiffRelationship(BaseSummary):
     name: str
+    identifier: str
     label: str
     cardinality: RelationshipCardinality
     path_identifier: str = field(default="", kw_only=True)
@@ -270,6 +271,7 @@ class EnrichedDiffRelationship(BaseSummary):
     def from_calculated_relationship(cls, calculated_relationship: DiffRelationship) -> EnrichedDiffRelationship:
         return EnrichedDiffRelationship(
             name=calculated_relationship.name,
+            identifier=calculated_relationship.identifier,
             label="",
             cardinality=calculated_relationship.cardinality,
             changed_at=calculated_relationship.changed_at,
@@ -482,6 +484,7 @@ class EnrichedDiffRoot(EnrichedDiffRootEmpty):
         parent_kind: str,
         parent_label: str,
         parent_rel_name: str,
+        parent_rel_identifier: str,
         parent_rel_cardinality: RelationshipCardinality,
         parent_rel_label: str = "",
     ) -> EnrichedDiffNode:
@@ -506,6 +509,7 @@ class EnrichedDiffRoot(EnrichedDiffRootEmpty):
             node.relationships.add(
                 EnrichedDiffRelationship(
                     name=parent_rel_name,
+                    identifier=parent_rel_identifier,
                     label=parent_rel_label,
                     cardinality=parent_rel_cardinality,
                     changed_at=None,
@@ -609,6 +613,7 @@ class DiffSingleRelationship:
 @dataclass
 class DiffRelationship:
     name: str
+    identifier: str
     cardinality: RelationshipCardinality
     changed_at: Timestamp
     action: DiffAction

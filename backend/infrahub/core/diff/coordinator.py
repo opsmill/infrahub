@@ -305,9 +305,9 @@ class DiffCoordinator:
         )
         if tracking_id:
             for diff_pair in empty_diff_pairs:
-                if diff_pair.base_branch_diff.tracking_id:
+                if diff_pair.base_branch_diff.tracking_id == tracking_id:
                     diff_uuids_to_delete.append(diff_pair.base_branch_diff.uuid)
-                if diff_pair.diff_branch_diff.tracking_id:
+                if diff_pair.diff_branch_diff.tracking_id == tracking_id:
                     diff_uuids_to_delete.append(diff_pair.diff_branch_diff.uuid)
         aggregated_enriched_diffs = await self._aggregate_enriched_diffs(
             diff_request=EnrichedDiffRequest(
