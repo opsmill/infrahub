@@ -105,7 +105,11 @@ test.describe("List Component", () => {
     );
 
     // WHEN
-    await component.getByText("second").locator("..").getByRole("button", { name: "Remove" }).click();
+    await component
+      .getByText("second")
+      .locator("..")
+      .getByRole("button", { name: "Remove" })
+      .click();
 
     // THEN
     await expect(component.getByText("first")).toBeVisible();
