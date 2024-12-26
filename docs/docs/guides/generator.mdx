@@ -10,9 +10,9 @@ Within Infrahub a generator is defined in an [external repository](/topics/repos
 
 The goal of this guide is to develop a Generator and add it to Infrahub, we will achieve this by following these steps.
 
-1. Identify the relevant data you want to extract from the database using a [GraphQL query](/topics/graphql), that can take an input parameter to filter the data
-2. Write a Python script that uses the GraphQL query to read information from the system and generates new data based on the response
-3. Create an entry for the generator within an .infrahub.yml file.
+1. Create an entry for the generator within an .infrahub.yml file.
+2. Identify the relevant data you want to extract from the database using a [GraphQL query](/topics/graphql), that can take an input parameter to filter the data
+3. Write a Python script that uses the GraphQL query to read information from the system and generates new data based on the response
 4. Test the generator with infrahubctl
 5. Create a Git repository
 6. Add the repository to Infrahub as an external repository
@@ -80,12 +80,87 @@ Perform these steps in the [Infrahub UI](http://localhost:8000).
 3. Add both of the created objects to the new group
 
 :::info
-Any widget object must be added to or part of the **widgets** group to be tied to the generator.
+Any widget object must be added to or be part of the **widgets** group to be tied to the generator.
 :::
 
-## 1. Identify the relevant data
+## 1. Create an .infrahub.yml file
 
-Here we define a GraphQL query that we will use to gather information.
+The [.infrahub.yml](/topics/infrahub-yml) file allows you to tie the different [components of a generator](/topics/generator) together into a working unit.
+
+:::info Convert query to Infrahub SDK objects
+We provide `convert_query_response` option to be toggled to be able to access objects from the GraphQL query as Infrahub SDK objects rather than the raw dictionary response.
+
+This allows you to manage the returned data with helper methods on the SDK objects such as `save`, `fetch`, etc. on the returned data rather than having to build a payload to send back to Infrahub to manage the objects.
+
+Read more on the [Infrahub Python SDK](/python-sdk).
+:::
+
+<Tabs groupId="convertResponse">
+  <TabItem value="Non-converted query response">
+    <!-- markdownlint-disable MD046 -->
+    <!-- vale Infrahub.swap = NO -->
+    <!-- vale Infrahub.spelling = NO -->
+    ```yaml title=".infrahub.yml"
+    # yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
+    ---
+    generator_definitions:
+      - name: widget_generator
+        file_path: "example_generator/widget_generator.py"
+        targets: widgets
+        query: widget_query
+        class_name: WidgetGenerator
+        parameters:
+          name: "name__value"
+
+    queries:
+      - name: widget_query
+        file_path: "example_generator/widget_query.gql"
+    ```
+  </TabItem>
+  <TabItem value="Converted query response">
+    <!-- markdownlint-disable MD046 -->
+    <!-- vale Infrahub.swap = NO -->
+    ```yaml title=".infrahub.yml"
+    # yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
+    ---
+    generator_definitions:
+      - name: widget_generator
+        file_path: "example_generator/widget_generator.py"
+        targets: widgets
+        query: widget_query
+        convert_query_response: true
+        class_name: WidgetGenerator
+        parameters:
+          name: "name__value"
+
+    queries:
+      - name: widget_query
+        file_path: "example_generator/widget_query.gql"
+    ```
+  </TabItem>
+</Tabs>
+
+<Tabs>
+  <TabItem value="Generator definitions" default>
+    This defines a generator definition with the following properties:
+      - **name**: a unique name for the generator
+      - **file_path**: the relative file path to the file containing the generator as seen from within a Git repository
+      - **targets**: the name of a group of which the members will be a target for this generator
+      - **query**: the name of the GraphQL query used within this generator
+      - **convert_query_response**: convert the result of the GraphQL query to SDK InfrahubNode objects
+      - **class_name**: the name of the Python class in the generator file
+      - **parameters**: the parameter to pass to the generator GraphQL query, in this case this we will pass the name of the object (widget) as the name parameter
+  </TabItem>
+  <TabItem value="Queries">
+    Here the `name` refers to the query's name and `file_path` should point to the GraphQL file within the repository.
+  </TabItem>
+</Tabs>
+
+See [this topic](/topics/infrahub-yml) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
+
+## 2. Identify the relevant data
+
+Here we define a GraphQL query that we will use to gather the information that will be passed into the generator.
 
 <Tabs groupId="convertResponse">
   <TabItem value="Non-converted query response">
@@ -107,7 +182,7 @@ Here we define a GraphQL query that we will use to gather information.
     ```
   </TabItem>
   <TabItem value="Converted query response">
-    Here we must provide `__typename` and `id` within the query so the SDK can convert the query to the correct type and properly stored in the SDK.
+    Here we must provide `__typename` and `id` within the query so the SDK can convert the query to the correct type and properly store within the SDK.
 
   ```graphql title="example_generator/widget_query.gql"
   query Widgets($name: String!) {
@@ -137,7 +212,7 @@ Create a local directory on your computer where we will store the generator file
 mkdir example_generator
 ```
 
-## 2. Create a Python Generator
+## 3. Create a Python Generator
 
 The Generator class needs to implement a `generate` function that receives a `data` parameter that contains the response from the GraphQL query.
 
@@ -188,72 +263,6 @@ The goal of this generator will be to create a number of resources that depends 
 
 <!-- vale Infrahub.spelling = NO -->
 Store this class within a new file called **widget_generator.py** within the **example_generator** directory.
-
-## 3. Create an .infrahub.yml file
-
-The [.infrahub.yml](/topics/infrahub-yml) file allows you to tie the different [components of a generator](/topics/generator) together into a working unit.
-
-<Tabs groupId="convertResponse">
-  <TabItem value="Non-converted query response">
-    <!-- markdownlint-disable MD046 -->
-    ```yaml title=".infrahub.yml"
-    <!-- vale Infrahub.swap = NO -->
-    # yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
-    ---
-    generator_definitions:
-      - name: widget_generator
-        file_path: "widget_generator.py"
-        targets: widgets
-        query: widget_query
-        class_name: WidgetGenerator
-        parameters:
-          name: "name__value"
-
-    queries:
-      - name: widget_query
-        file_path: "widget_query.gql"
-    ```
-  </TabItem>
-  <TabItem value="Converted query response">
-    <!-- markdownlint-disable MD046 -->
-    ```yaml title=".infrahub.yml"
-    <!-- vale Infrahub.swap = NO -->
-    # yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
-    ---
-    generator_definitions:
-      - name: widget_generator
-        file_path: "widget_generator.py"
-        targets: widgets
-        query: widget_query
-        convert_query_response: true
-        class_name: WidgetGenerator
-        parameters:
-          name: "name__value"
-
-    queries:
-      - name: widget_query
-        file_path: "widget_query.gql"
-    ```
-  </TabItem>
-</Tabs>
-
-<Tabs>
-  <TabItem value="Generator definitions" default>
-    This defines a generator definition with the following properties:
-      - **name**: a unique name for the generator
-      - **file_path**: the relative file path to the file containing the generator as seen from within a Git repository
-      - **targets**: the name of a group of which the members will be a target for this generator
-      - **query**: the name of the GraphQL query used within this generator
-      - **convert_query_response**: convert the result of the GraphQL query to SDK InfrahubNode objects
-      - **class_name**: the name of the Python class in the generator file
-      - **parameters**: the parameter to pass to the generator GraphQL query, in this case this we will pass the name of the object (widget) as the name parameter
-  </TabItem>
-  <TabItem value="Queries">
-    Here the `name` refers to the query's name and `file_path` should point to the GraphQL file within the repository.
-  </TabItem>
-</Tabs>
-
-See [this topic](/topics/infrahub-yml) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
 
 ## 4. Test the generator using infrahubctl
 
