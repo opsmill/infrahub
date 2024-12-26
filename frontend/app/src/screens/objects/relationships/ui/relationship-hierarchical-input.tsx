@@ -85,7 +85,7 @@ export const RelationshipHierarchicalInput = forwardRef<
   );
 });
 
-export interface IHierarchicalRelationshipInputProps
+export interface RelationshipHierarchicalManyInputProps
   extends Omit<ComboboxTriggerProps, "value" | "onChange"> {
   onChange: (value: RelationshipNode[]) => void;
   value?: RelationshipNode[] | null;
@@ -94,7 +94,7 @@ export interface IHierarchicalRelationshipInputProps
 
 export const RelationshipHierarchicalManyInput = forwardRef<
   HTMLButtonElement,
-  IHierarchicalRelationshipInputProps
+  RelationshipHierarchicalManyInputProps
 >(({ value, onChange, peer, className, ...props }, ref) => {
   const [open, setOpen] = useState(false);
 
@@ -108,7 +108,7 @@ export const RelationshipHierarchicalManyInput = forwardRef<
         <div
           className={classNames(
             inputStyle,
-            "has-[>:last-child:focus]:outline-none has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25  has-[>:last-child:focus]:border-custom-blue-600",
+            "has-[>:last-child:focus]:outline-none has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25 has-[>:last-child:focus]:border-custom-blue-600",
             "cursor-pointer",
             className
           )}
@@ -126,7 +126,7 @@ export const RelationshipHierarchicalManyInput = forwardRef<
                     onChange(value?.filter((item) => item.id !== id));
                   }}
                   className="text-gray-500 hover:text-gray-800 h-4 w-4"
-                  aria-label="Remove"
+                  aria-label={`Remove ${display_label}`}
                   data-testid="remove-option"
                 >
                   &times;
