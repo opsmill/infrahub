@@ -6,7 +6,6 @@ from graphene import Field, Int, List, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 from prefect.client.schemas.objects import StateType
 
-from infrahub.core.task.task import Task as TaskNode
 from infrahub.graphql.types.task import TaskNodes, TaskState
 from infrahub.task_manager.task import PrefectTask
 from infrahub.workflows.constants import WorkflowTag
@@ -76,14 +75,6 @@ class Tasks(ObjectType):
         context: GraphqlContext = info.context
         fields = await extract_fields_first_node(info)
 
-        # During the migration, query both Prefect and Infrahub to get the list of tasks
-        if not branch:
-            infrahub_tasks = await TaskNode.query(
-                db=context.db, fields=fields, limit=limit, offset=offset, ids=ids, related_nodes=related_nodes
-            )
-        else:
-            infrahub_tasks = {}
-
         prefect_tasks = await PrefectTask.query(
             db=context.db,
             fields=fields,
@@ -97,11 +88,10 @@ class Tasks(ObjectType):
             limit=limit,
             offset=offset,
         )
-        infrahub_count = infrahub_tasks.get("count", None)
         prefect_count = prefect_tasks.get("count", None)
         return {
-            "count": (infrahub_count or 0) + (prefect_count or 0),
-            "edges": infrahub_tasks.get("edges", []) + prefect_tasks.get("edges", []),
+            "count": prefect_count or 0,
+            "edges": prefect_tasks.get("edges", []),
         }
 
 

@@ -43,10 +43,11 @@ async def car_person_data_artifact_diff(
     )
     await ad1.save(db=db)
 
+    # artifact on main and branch with updates
     art1 = await Node.init(db=db, schema=InfrahubKind.ARTIFACT)
     await art1.new(
         db=db,
-        name="myyartifact",
+        name="art_1_main",
         definition=ad1,
         status="Ready",
         object=car_person_data_generic["c1"],
@@ -55,13 +56,26 @@ async def car_person_data_artifact_diff(
         content_type="application/json",
     )
     await art1.save(db=db)
+    # artifact on main, same node updated on branch
+    art6_main = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=default_branch)
+    await art6_main.new(
+        db=db,
+        name="art_6_main",
+        definition=ad1,
+        status="Ready",
+        object=car_person_data_generic["p2"],
+        storage_id=str(uuid4()),
+        checksum=str(uuid4()),
+        content_type="application/json",
+    )
+    await art6_main.save(db=db)
 
     branch3 = await create_branch(branch_name="branch3", db=db)
 
     art1_branch = await Node.init(db=db, branch=branch3, schema=InfrahubKind.ARTIFACT)
     await art1_branch.new(
         db=db,
-        name="myyartifact",
+        name="art_1_branch",
         definition=ad1,
         status="Ready",
         object=car_person_data_generic["c1"],
@@ -73,15 +87,16 @@ async def car_person_data_artifact_diff(
     art1_branch = await NodeManager.get_one(db=db, branch=branch3, id=art1_branch.id)
     art1_branch.storage_id.value = "azertyui-073f-4173-aa4b-f50e1309f03c"
     await art1_branch.save(db=db)
-    art1_main = await NodeManager.get_one(db=db, branch=branch3, id=art1.id)
+    art1_main = await NodeManager.get_one(db=db, id=art1.id)
     art1_main.storage_id.value = str(uuid4())
     art1_main.checksum.value = str(uuid4())
     await art1_main.save(db=db)
 
+    # artifact only on branch
     art2 = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=branch3)
     await art2.new(
         db=db,
-        name="myyartifact",
+        name="art_2_branch",
         definition=ad1,
         status="Ready",
         object=car_person_data_generic["c2"],
@@ -91,10 +106,11 @@ async def car_person_data_artifact_diff(
     )
     await art2.save(db=db)
 
+    # artifact on both branches
     art3_main = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=default_branch)
     await art3_main.new(
         db=db,
-        name="myyartifact",
+        name="art_3_main",
         definition=ad1,
         status="Ready",
         object=car_person_data_generic["c3"],
@@ -107,7 +123,7 @@ async def car_person_data_artifact_diff(
     art3_branch = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=branch3)
     await art3_branch.new(
         db=db,
-        name="myyartifact",
+        name="art_3_branch",
         definition=ad1,
         status="Ready",
         object=car_person_data_generic["c3"],
@@ -117,10 +133,11 @@ async def car_person_data_artifact_diff(
     )
     await art3_branch.save(db=db)
 
+    # deleted artifact
     art4_main = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=default_branch)
     await art4_main.new(
         db=db,
-        name="myyartifact",
+        name="art_4_main",
         definition=ad1,
         status="Ready",
         object=car_person_data_generic["c4"],
@@ -133,7 +150,7 @@ async def car_person_data_artifact_diff(
     art4_branch = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=branch3)
     await art4_branch.new(
         db=db,
-        name="myyartifact",
+        name="art_4_branch",
         definition=ad1,
         status="Ready",
         object=car_person_data_generic["c4"],
@@ -144,12 +161,32 @@ async def car_person_data_artifact_diff(
     await art4_branch.save(db=db)
     await art4_branch.delete(db=db)
 
+    # artifact only on main
+    art5_main = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=default_branch)
+    await art5_main.new(
+        db=db,
+        name="art_5_main",
+        definition=ad1,
+        status="Ready",
+        object=car_person_data_generic["p1"],
+        storage_id=str(uuid4()),
+        checksum=str(uuid4()),
+        content_type="application/json",
+    )
+    await art5_main.save(db=db)
+
+    art6_branch = await NodeManager.get_one(db=db, branch=branch3, id=art6_main.id)
+    art6_branch.storage_id.value = str(uuid4())
+    await art6_branch.save(db=db)
+
     car_person_data_generic["branch3"] = branch3
-    car_person_data_generic["art1"] = art1
+    car_person_data_generic["art1"] = art1_main
     car_person_data_generic["art1_branch"] = art1_branch
     car_person_data_generic["art2_branch"] = art2
     car_person_data_generic["art3"] = art3_main
     car_person_data_generic["art3_branch"] = art3_branch
+    car_person_data_generic["art6"] = art6_main
+    car_person_data_generic["art6_branch"] = art6_branch
 
     return car_person_data_generic
 
@@ -158,13 +195,17 @@ async def test_calculate_artifact_diff(
     db: InfrahubDatabase, default_branch: Branch, car_person_data_artifact_diff: dict[str, Node]
 ):
     source_branch = car_person_data_artifact_diff["branch3"]
+    art1_main = car_person_data_artifact_diff["art1"]
     art1_branch = car_person_data_artifact_diff["art1_branch"]
     art2_branch = car_person_data_artifact_diff["art2_branch"]
     art3_branch = car_person_data_artifact_diff["art3_branch"]
+    art6_main = car_person_data_artifact_diff["art6"]
+    art6_branch = car_person_data_artifact_diff["art6_branch"]
+    # art 1
     expected_artifact_diff_1 = BranchDiffArtifact(
         branch=source_branch.name,
         id=art1_branch.id,
-        display_label="volt #444444 - myyartifact",
+        display_label="volt #444444 - art_1_branch",
         action=DiffAction.UPDATED,
         target=ArtifactTarget(
             id=car_person_data_artifact_diff["c1"].id,
@@ -176,14 +217,15 @@ async def test_calculate_artifact_diff(
             checksum="zxcv9063c26263353de24e1b911z1x2c3v",
         ),
         item_previous=BranchDiffArtifactStorage(
-            storage_id="8caf6f89-073f-4173-aa4b-f50e1309f03c",
-            checksum="60d39063c26263353de24e1b913e1e1c",
+            storage_id=art1_main.storage_id.value,
+            checksum=art1_main.checksum.value,
         ),
     )
+    # art 2
     expected_artifact_diff_2 = BranchDiffArtifact(
         branch=source_branch.name,
         id=art2_branch.id,
-        display_label="bolt #444444 - myyartifact",
+        display_label="bolt #444444 - art_2_branch",
         action=DiffAction.ADDED,
         target=ArtifactTarget(
             id=car_person_data_artifact_diff["c2"].id,
@@ -196,10 +238,11 @@ async def test_calculate_artifact_diff(
         ),
         item_previous=None,
     )
+    # art 3
     expected_artifact_diff_3 = BranchDiffArtifact(
         branch=source_branch.name,
         id=art3_branch.id,
-        display_label="nolt #444444 - myyartifact",
+        display_label="nolt #444444 - art_3_branch",
         action=DiffAction.UPDATED,
         target=ArtifactTarget(
             id=car_person_data_artifact_diff["c3"].id,
@@ -215,13 +258,34 @@ async def test_calculate_artifact_diff(
             checksum="poiuytrewq9063c26263353de24e1b913e1e1c",
         ),
     )
+    # art 6
+    expected_artifact_diff_6 = BranchDiffArtifact(
+        branch=source_branch.name,
+        id=art6_branch.id,
+        display_label="Jane - art_6_main",
+        action=DiffAction.UPDATED,
+        target=ArtifactTarget(
+            id=car_person_data_artifact_diff["p2"].id,
+            kind="TestPerson",
+            display_label="Jane",
+        ),
+        item_new=BranchDiffArtifactStorage(
+            storage_id=art6_branch.storage_id.value,
+            checksum=art6_branch.checksum.value,
+        ),
+        item_previous=BranchDiffArtifactStorage(
+            storage_id=art6_main.storage_id.value,
+            checksum=art6_main.checksum.value,
+        ),
+    )
 
     artifact_diff_calculator = ArtifactDiffCalculator(db=db)
     artifact_diffs = await artifact_diff_calculator.calculate(source_branch=source_branch, target_branch=default_branch)
 
-    assert len(artifact_diffs) == 3
+    assert len(artifact_diffs) == 4
     diffs_by_id = {d.id: d for d in artifact_diffs}
-    assert set(diffs_by_id.keys()) == {art1_branch.id, art2_branch.id, art3_branch.id}
+    assert set(diffs_by_id.keys()) == {art1_branch.id, art2_branch.id, art3_branch.id, art6_branch.id}
     assert diffs_by_id[art1_branch.id] == expected_artifact_diff_1
     assert diffs_by_id[art2_branch.id] == expected_artifact_diff_2
     assert diffs_by_id[art3_branch.id] == expected_artifact_diff_3
+    assert diffs_by_id[art6_branch.id] == expected_artifact_diff_6
