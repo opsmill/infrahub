@@ -136,7 +136,11 @@ export const RelationshipHierarchicalManyInput = forwardRef<
           </div>
 
           <PopoverTrigger ref={ref} asChild {...props}>
-            <button type="button" className="text-gray-600 outline-none w-3.5 h-3.5">
+            <button
+              type="button"
+              className="text-gray-600 outline-none w-3.5 h-3.5"
+              aria-label={`Open ${peer}`}
+            >
               <Icon icon="mdi:unfold-more-horizontal" />
             </button>
           </PopoverTrigger>
