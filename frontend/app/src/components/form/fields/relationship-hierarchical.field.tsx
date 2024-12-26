@@ -4,7 +4,10 @@ import { DynamicRelationshipFieldProps, FormRelationshipValue } from "@/componen
 import { updateRelationshipFieldValue } from "@/components/form/utils/updateFormFieldValue";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
-import { RelationshipHierarchicalInput } from "@/screens/objects/relationships/ui/relationship-hierarchical-input";
+import {
+  RelationshipHierarchicalInput,
+  RelationshipHierarchicalManyInput,
+} from "@/screens/objects/relationships/ui/relationship-hierarchical-input";
 
 export interface RelationshipHierarchicalFieldProps
   extends Omit<DynamicRelationshipFieldProps, "type"> {}
@@ -37,14 +40,25 @@ export default function RelationshipHierarchicalField({
             />
 
             <FormInput>
-              <RelationshipHierarchicalInput
-                {...field}
-                peer={props.relationship.peer}
-                value={fieldData.value as RelationshipNode | null}
-                onChange={(newValue) => {
-                  field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
-                }}
-              />
+              {props.relationship.cardinality === "many" ? (
+                <RelationshipHierarchicalManyInput
+                  {...field}
+                  peer={props.relationship.peer}
+                  value={fieldData.value as RelationshipNode[] | null}
+                  onChange={(newValue) => {
+                    field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
+                  }}
+                />
+              ) : (
+                <RelationshipHierarchicalInput
+                  {...field}
+                  peer={props.relationship.peer}
+                  value={fieldData.value as RelationshipNode | null}
+                  onChange={(newValue) => {
+                    field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
+                  }}
+                />
+              )}
             </FormInput>
 
             <FormMessage />

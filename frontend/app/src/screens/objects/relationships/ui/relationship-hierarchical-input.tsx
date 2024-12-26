@@ -1,3 +1,5 @@
+import { Button } from "@/components/buttons/button-primitive";
+import { Badge } from "@/components/ui/badge";
 import {
   Combobox,
   ComboboxContent,
@@ -9,13 +11,52 @@ import {
   PopoverTabsContent,
   PopoverTabsList,
   PopoverTabsTrigger,
+  PopoverTrigger,
 } from "@/components/ui/popover";
+import { inputStyle } from "@/components/ui/style";
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
-import { RelationshipComboboxList } from "@/screens/objects/relationships/ui/relationship-combobox-list";
+import {
+  RelationshipComboboxList,
+  RelationshipComboboxListProps,
+} from "@/screens/objects/relationships/ui/relationship-combobox-list";
 import { RelationshipHierarchicalComboboxList } from "@/screens/objects/relationships/ui/relationship-hierarchical-combobox-list";
+import { classNames } from "@/utils/common";
+import { Node } from "@/utils/getObjectItemDisplayValue";
+import { Icon } from "@iconify-icon/react";
 import { forwardRef, useState } from "react";
 
-export interface IHierarchicalRelationshipInputProps
+export interface RelationshipHierarchicalContentProps extends RelationshipComboboxListProps {}
+
+export const RelationshipHierarchicalContent = ({
+  ...props
+}: RelationshipHierarchicalContentProps) => {
+  return (
+    <ComboboxContent>
+      <PopoverTabs defaultValue="list">
+        <PopoverTabsList className="mt-1">
+          <PopoverTabsTrigger value="list">All</PopoverTabsTrigger>
+          <PopoverTabsTrigger value="tree">Explore</PopoverTabsTrigger>
+        </PopoverTabsList>
+
+        <PopoverTabsContent value="list">
+          <RelationshipComboboxList {...props} />
+        </PopoverTabsContent>
+
+        <PopoverTabsContent
+          value="tree"
+          style={{
+            maxHeight: "min(var(--radix-popover-content-available-height), 300px)",
+            width: "var(--radix-popover-trigger-width)",
+          }}
+        >
+          <RelationshipHierarchicalComboboxList {...props} />
+        </PopoverTabsContent>
+      </PopoverTabs>
+    </ComboboxContent>
+  );
+};
+
+export interface RelationshipHierarchicalInputProps
   extends Omit<ComboboxTriggerProps, "value" | "onChange"> {
   onChange: (value: RelationshipNode) => void;
   value?: RelationshipNode | null;
@@ -24,9 +65,14 @@ export interface IHierarchicalRelationshipInputProps
 
 export const RelationshipHierarchicalInput = forwardRef<
   HTMLButtonElement,
-  IHierarchicalRelationshipInputProps
+  RelationshipHierarchicalInputProps
 >(({ value, onChange, peer, ...props }, ref) => {
   const [open, setOpen] = useState(false);
+
+  const handleSelect = (relationship: RelationshipNode) => {
+    onChange(relationship);
+    setOpen(false);
+  };
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
@@ -34,42 +80,74 @@ export const RelationshipHierarchicalInput = forwardRef<
         {value?.display_label}
       </ComboboxTrigger>
 
-      <ComboboxContent>
-        <PopoverTabs defaultValue="list">
-          <PopoverTabsList className="mt-1">
-            <PopoverTabsTrigger value="list">All</PopoverTabsTrigger>
-            <PopoverTabsTrigger value="tree">Explore</PopoverTabsTrigger>
-          </PopoverTabsList>
+      <RelationshipHierarchicalContent peer={peer} onSelect={handleSelect} value={value} />
+    </Combobox>
+  );
+});
 
-          <PopoverTabsContent value="list">
-            <RelationshipComboboxList
-              peer={peer}
-              value={value}
-              onSelect={(relationshipNode) => {
-                onChange(relationshipNode);
-                setOpen(false);
-              }}
-            />
-          </PopoverTabsContent>
+export interface IHierarchicalRelationshipInputProps
+  extends Omit<ComboboxTriggerProps, "value" | "onChange"> {
+  onChange: (value: RelationshipNode[]) => void;
+  value?: RelationshipNode[] | null;
+  peer: string;
+}
 
-          <PopoverTabsContent
-            value="tree"
-            style={{
-              maxHeight: "min(var(--radix-popover-content-available-height), 300px)",
-              width: "var(--radix-popover-trigger-width)",
-            }}
-          >
-            <RelationshipHierarchicalComboboxList
-              peer={peer}
-              value={value}
-              onSelect={(relationshipNode) => {
-                onChange(relationshipNode);
-                setOpen(false);
-              }}
-            />
-          </PopoverTabsContent>
-        </PopoverTabs>
-      </ComboboxContent>
+export const RelationshipHierarchicalManyInput = forwardRef<
+  HTMLButtonElement,
+  IHierarchicalRelationshipInputProps
+>(({ value, onChange, peer, className, ...props }, ref) => {
+  const [open, setOpen] = useState(false);
+
+  const handleSelect = (relationship: Node) => {
+    onChange(value ? [...value, relationship] : [relationship]);
+  };
+
+  return (
+    <Combobox open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div
+          className={classNames(
+            inputStyle,
+            "has-[>:last-child:focus]:outline-none has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25  has-[>:last-child:focus]:border-custom-blue-600",
+            "cursor-pointer",
+            className
+          )}
+        >
+          <div className="flex-grow flex flex-wrap gap-2">
+            {value?.map(({ id, display_label }) => (
+              <Badge key={id} className="flex items-center gap-1 pr-0.5">
+                {display_label}
+
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange(value?.filter((item) => item.id !== id));
+                  }}
+                  className="text-gray-500 hover:text-gray-800 h-4 w-4"
+                  aria-label="Remove"
+                  data-testid="remove-option"
+                >
+                  &times;
+                </Button>
+              </Badge>
+            ))}
+          </div>
+
+          <PopoverTrigger ref={ref} asChild {...props}>
+            <button type="button" className="text-gray-600 outline-none w-3.5 h-3.5">
+              <Icon icon="mdi:unfold-more-horizontal" />
+            </button>
+          </PopoverTrigger>
+        </div>
+      </PopoverTrigger>
+
+      <RelationshipHierarchicalContent
+        peer={peer}
+        onSelect={handleSelect}
+        filterItem={(node) => !value?.some((v) => v.id === node.id)}
+      />
     </Combobox>
   );
 });

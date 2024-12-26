@@ -113,14 +113,14 @@ export const DynamicInput = (props: DynamicFieldProps) => {
       return <EnumField {...otherProps} />;
     }
     case "relationship": {
-      if (props.relationship.cardinality === "many") {
-        const { type, ...otherProps } = props;
-        return <RelationshipManyField {...otherProps} />;
-      }
-
       const { schema: peerSchema } = getSchema(props.relationship.peer);
       if (peerSchema && isHierarchicalSchema(peerSchema)) {
         return <RelationshipHierarchicalField {...props} />;
+      }
+
+      if (props.relationship.cardinality === "many") {
+        const { type, ...otherProps } = props;
+        return <RelationshipManyField {...otherProps} />;
       }
 
       return <RelationshipField {...props} />;
