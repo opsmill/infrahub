@@ -64,7 +64,7 @@ export const PcMergeButton = ({
 
       toast(
         <Alert
-          type={ALERT_TYPES.SUCCESS}
+          type={ALERT_TYPES.ERROR}
           message={"An error occurred while merging the proposed changes"}
         />
       );
