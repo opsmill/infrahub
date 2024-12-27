@@ -58,7 +58,7 @@ export const RelationshipHierarchicalContent = ({
 
 export interface RelationshipHierarchicalInputProps
   extends Omit<ComboboxTriggerProps, "value" | "onChange"> {
-  onChange: (value: RelationshipNode) => void;
+  onChange?: (value: RelationshipNode | null) => void;
   value?: RelationshipNode | null;
   peer: string;
 }
@@ -70,7 +70,7 @@ export const RelationshipHierarchicalInput = forwardRef<
   const [open, setOpen] = useState(false);
 
   const handleSelect = (relationship: RelationshipNode) => {
-    onChange(relationship);
+    onChange?.(relationship.id === value?.id ? null : relationship);
     setOpen(false);
   };
 
