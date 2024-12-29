@@ -15,6 +15,10 @@ export default defineConfig({
   },
   plugins: [react(), svgr(), tsconfigPaths()],
   test: {
+    browser: {
+      enabled: true,
+      name: "browser",
+    },
     exclude: [
       "**/node_modules/**",
       "**/dist/**",
@@ -23,7 +27,6 @@ export default defineConfig({
       "**.test.tsx",
     ],
     globals: true,
-    environment: "jsdom",
     coverage: {
       reporter: ["text", "lcovonly"],
       exclude: [
