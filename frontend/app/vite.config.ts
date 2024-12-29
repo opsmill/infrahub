@@ -17,7 +17,8 @@ export default defineConfig({
   test: {
     browser: {
       enabled: true,
-      name: "browser",
+      provider: "playwright",
+      name: "chromium",
     },
     exclude: [
       "**/node_modules/**",
