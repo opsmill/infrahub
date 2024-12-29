@@ -20,13 +20,7 @@ export default defineConfig({
       provider: "playwright",
       name: "chromium",
     },
-    exclude: [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/e2e/**",
-      "**/playwright-report/**",
-      "**.test.tsx",
-    ],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/playwright-report/**"],
     globals: true,
     coverage: {
       reporter: ["text", "lcovonly"],

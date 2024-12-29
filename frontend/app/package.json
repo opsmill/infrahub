@@ -15,8 +15,6 @@
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "test:components": "playwright test -c playwright-ct.config.ts",
-    "test:components:ui": "playwright test -c playwright-ct.config.ts --ui",
     "test:e2e": "playwright test",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:headed": "playwright test --headed",
@@ -128,7 +126,8 @@
     "postcss": "^8.4.23",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.5.3",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "vitest-browser-react": "^0.0.4"
   },
   "overrides": {
     "graphiql-explorer": {
