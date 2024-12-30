@@ -17,7 +17,7 @@ services:
       retries: 10
       start_period: 3s
     ports:
-      - 0:15692
+      - ${INFRAHUB_TESTING_MESSAGE_QUEUE_PORT:-0}:15692
 
   cache:
     image: ${CACHE_DOCKER_IMAGE:-redis:7.2.4}
@@ -45,8 +45,8 @@ services:
       retries: 20
       start_period: 3s
     ports:
-      - 0:2004
-      - 0:6362
+      - ${INFRAHUB_TESTING_DATABASE_PORT:-0}:6362
+      - ${INFRAHUB_TESTING_DATABASE_UI_PORT:-0}:7474
 
   task-manager:
     image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0.11-python3.12}"
@@ -63,7 +63,7 @@ services:
       retries: 20
       start_period: 10s
     ports:
-      - 0:4200
+      - ${INFRAHUB_TESTING_TASK_MANAGER_PORT:-0}:4200
 
   task-manager-db:
     image: "${POSTGRES_DOCKER_IMAGE:-postgres:16-alpine}"
@@ -80,24 +80,23 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${INFRAHUB_IMAGE_VERSION}"
+    image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
-      -w ${WEB_CONCURRENCY:-4}
+      -w ${INFRAHUB_TESTING_WEB_CONCURRENCY}
       --logger-class infrahub.serve.log.GunicornLogger
       infrahub.server:app
     environment:
-      INFRAHUB_PRODUCTION: ${INFRAHUB_PRODUCTION:-false}
-      INFRAHUB_LOG_LEVEL: ${INFRAHUB_LOG_LEVEL:-INFO}
-      INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_BROKER_ADDRESS:-message-queue}
-      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_CACHE_ADDRESS:-cache}
-      INFRAHUB_DB_ADDRESS: ${INFRAHUB_DB_ADDRESS:-database}
-      INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}
-      INFRAHUB_INITIAL_ADMIN_TOKEN: ${INFRAHUB_INITIAL_ADMIN_TOKEN:-06438eb2-8019-4776-878c-0941b1f1d1ec}
-      INFRAHUB_INITIAL_AGENT_TOKEN: ${INFRAHUB_INITIAL_AGENT_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
-      INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_SECURITY_SECRET_KEY:-327f747f-efac-42be-9e73-999f08f86b92"}
-      INFRAHUB_WORKFLOW_PORT: ${INFRAHUB_WORKFLOW_PORT:-4200}
-      PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
+      INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}
+      INFRAHUB_LOG_LEVEL: ${INFRAHUB_TESTING_LOG_LEVEL:-INFO}
+      INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_TESTING_BROKER_ADDRESS}
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
+      INFRAHUB_DB_ADDRESS: ${INFRAHUB_TESTING_DB_ADDRESS}
+      INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_TESTING_WORKFLOW_ADDRESS}
+      INFRAHUB_INITIAL_ADMIN_TOKEN: ${INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN}
+      INFRAHUB_INITIAL_AGENT_TOKEN: ${INFRAHUB_TESTING_INITIAL_AGENT_TOKEN}
+      INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_TESTING_SECURITY_SECRET_KEY}
+      PREFECT_API_URL: ${INFRAHUB_TESTING_PREFECT_API}
     depends_on:
       database:
         condition: service_healthy
@@ -108,10 +107,9 @@ services:
       task-manager:
         condition: service_healthy
     ports:
-      - 0:8000
+      - ${INFRAHUB_TESTING_SERVER_PORT:-0}:8000
     volumes:
       - "storage_data:/opt/infrahub/storage"
-      - "workflow_data:/opt/infrahub/workflow"
     tty: true
     healthcheck:
       test: curl -s -f -o /dev/null http://localhost:8000/api/schema/summary || exit 1
@@ -124,35 +122,30 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${INFRAHUB_IMAGE_VERSION}"
+    image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     environment:
-      INFRAHUB_PRODUCTION: ${INFRAHUB_PRODUCTION:-false}
-      INFRAHUB_LOG_LEVEL: ${INFRAHUB_LOG_LEVEL:-DEBUG}
-      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_GIT_REPOSITORIES_DIRECTORY:-/opt/infrahub/git}
-      INFRAHUB_API_TOKEN: ${INFRAHUB_INITIAL_AGENT_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
-      INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_SECURITY_SECRET_KEY:-327f747f-efac-42be-9e73-999f08f86b92"}
-      INFRAHUB_ADDRESS: ${INFRAHUB_ADDRESS:-http://infrahub-server:8000}
-      INFRAHUB_INTERNAL_ADDRESS: ${INFRAHUB_INTERNAL_ADDRESS:-http://infrahub-server:8000}
-      INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_BROKER_ADDRESS:-message-queue}
-      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_CACHE_ADDRESS:-cache}
-      INFRAHUB_DB_ADDRESS: ${INFRAHUB_DB_ADDRESS:-database}
-      INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}
-      INFRAHUB_TIMEOUT: ${INFRAHUB_TIMEOUT:-60}
-      INFRAHUB_WORKFLOW_PORT: ${INFRAHUB_WORKFLOW_PORT:-4200}
-      PREFECT_API_URL: http://${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}:${INFRAHUB_WORKFLOW_PORT:-4200}/api
+      INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}
+      INFRAHUB_LOG_LEVEL: ${INFRAHUB_TESTING_LOG_LEVEL}
+      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_TESTING_GIT_REPOSITORIES_DIRECTORY}
+      INFRAHUB_API_TOKEN: ${INFRAHUB_TESTING_INITIAL_AGENT_TOKEN}
+      INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_TESTING_SECURITY_SECRET_KEY}
+      INFRAHUB_ADDRESS: ${INFRAHUB_TESTING_ADDRESS}
+      INFRAHUB_INTERNAL_ADDRESS: ${INFRAHUB_TESTING_INTERNAL_ADDRESS}
+      INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_TESTING_BROKER_ADDRESS}
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
+      INFRAHUB_DB_ADDRESS: ${INFRAHUB_TESTING_DB_ADDRESS:-database}
+      INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_TESTING_WORKFLOW_ADDRESS}
+      INFRAHUB_TIMEOUT: ${INFRAHUB_TESTING_TIMEOUT}
+      PREFECT_API_URL: ${INFRAHUB_TESTING_PREFECT_API}
     depends_on:
       - infrahub-server
     volumes:
-      - "git_data:/opt/infrahub/git"
-      - "git_remote_data:/remote"
+      - "./${INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_REMOTE_GIT_DIRECTORY}"
     tty: true
 
 volumes:
   database_data:
   database_logs:
-  git_data:
-  git_remote_data:
   storage_data:
   workflow_db:
-  workflow_data:

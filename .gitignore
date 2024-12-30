@@ -38,3 +38,4 @@ sync/dist/
 helm/charts/
 helm/Chart.lock
 
+python_testcontainers/dist/*

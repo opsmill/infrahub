@@ -5,14 +5,14 @@ from functools import cached_property
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel
 from testcontainers.compose import DockerCompose
 from typing_extensions import Self
 
-from infrahub import __version__ as infrahub_version
+from infrahub_testcontainers import __version__ as infrahub_version
 
 
-class ContainerService(BaseModel):
+@dataclass
+class ContainerService:
     container: str
     port: int
 
@@ -22,22 +22,27 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
     "task-manager": ContainerService(container="task-manager", port=4200),
 }
 
-PROJECT_ENV_VARIABLES = {
-    "INFRAHUB_PRODUCTION": "false",
-    "INFRAHUB_DB_ADDRESS": "database",
-    "INFRAHUB_LOG_LEVEL": "DEBUG",
-    "INFRAHUB_GIT_REPOSITORIES_DIRECTORY": "/opt/infrahub/git",
-    "INFRAHUB_API_TOKEN": "44af444d-3b26-410d-9546-b758657e026c",
-    "INFRAHUB_INITIAL_ADMIN_TOKEN": "06438eb2-8019-4776-878c-0941b1f1d1ec",
-    "INFRAHUB_INITIAL_AGENT_TOKEN": "44af444d-3b26-410d-9546-b758657e026c",
-    "INFRAHUB_SECURITY_SECRET_KEY": "327f747f-efac-42be-9e73-999f08f86b92",
-    "INFRAHUB_ADDRESS": "http://infrahub-server:8000",
-    "INFRAHUB_INTERNAL_ADDRESS": "http://infrahub-server:8000",
-    "INFRAHUB_BROKER_ADDRESS": "message-queue",
-    "INFRAHUB_CACHE_ADDRESS": "cache",
-    "INFRAHUB_WORKFLOW_ADDRESS": "task-manager",
-    "INFRAHUB_TIMEOUT": 60,
-    "PREFECT_API_URL": "http://task-manager:4200/api",
+PROJECT_ENV_VARIABLES: dict[str, str] = {
+    "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",
+    "INFRAHUB_TESTING_IMAGE_VERSION": infrahub_version,
+    "INFRAHUB_TESTING_PRODUCTION": "false",
+    "INFRAHUB_TESTING_DB_ADDRESS": "database",
+    "INFRAHUB_TESTING_LOG_LEVEL": "DEBUG",
+    "INFRAHUB_TESTING_GIT_REPOSITORIES_DIRECTORY": "/opt/infrahub/git",
+    "INFRAHUB_TESTING_API_TOKEN": "44af444d-3b26-410d-9546-b758657e026c",
+    "INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN": "06438eb2-8019-4776-878c-0941b1f1d1ec",
+    "INFRAHUB_TESTING_INITIAL_AGENT_TOKEN": "44af444d-3b26-410d-9546-b758657e026c",
+    "INFRAHUB_TESTING_SECURITY_SECRET_KEY": "327f747f-efac-42be-9e73-999f08f86b92",
+    "INFRAHUB_TESTING_ADDRESS": "http://infrahub-server:8000",
+    "INFRAHUB_TESTING_INTERNAL_ADDRESS": "http://infrahub-server:8000",
+    "INFRAHUB_TESTING_BROKER_ADDRESS": "message-queue",
+    "INFRAHUB_TESTING_CACHE_ADDRESS": "cache",
+    "INFRAHUB_TESTING_WORKFLOW_ADDRESS": "task-manager",
+    "INFRAHUB_TESTING_TIMEOUT": "60",
+    "INFRAHUB_TESTING_PREFECT_API": "http://task-manager:4200/api",
+    "INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY": "repos",
+    "INFRAHUB_TESTING_INTERNAL_REMOTE_GIT_DIRECTORY": "/remote",
+    "INFRAHUB_TESTING_WEB_CONCURRENCY": "4",
 }
 
 
@@ -53,7 +58,7 @@ class InfrahubDockerCompose(DockerCompose):
         if not version:
             version = infrahub_version
 
-        infrahub_image_version = os.environ.get("INFRAHUB_IMAGE_VER", None)
+        infrahub_image_version = os.environ.get("INFRAHUB_TESTING_IMAGE_VER", None)
         if version == "local" and infrahub_image_version:
             version = infrahub_image_version
 
@@ -81,11 +86,12 @@ class InfrahubDockerCompose(DockerCompose):
     def create_env_file(cls, directory: Path, version: str) -> Path:
         env_file = directory / ".env"
 
-        PROJECT_ENV_VARIABLES.update({"INFRAHUB_IMAGE_VERSION": version})
+        PROJECT_ENV_VARIABLES.update({"INFRAHUB_TESTING_IMAGE_VERSION": version})
 
         with env_file.open(mode="w", encoding="utf-8") as file:
             for key, value in PROJECT_ENV_VARIABLES.items():
-                file.write(f"{key}={value}\n")
+                env_var_value = os.environ.get(key, value)
+                file.write(f"{key}={env_var_value}\n")
         return env_file.absolute()
 
     # TODO would be good to the support for project_name upstream
