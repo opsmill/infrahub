@@ -1,1 +1,0 @@
-Improved response time of menu endpoint
