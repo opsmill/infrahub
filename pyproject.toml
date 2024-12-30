@@ -19,6 +19,7 @@ classifiers = [
 packages = [
     { include = "infrahub", from = "backend" },
     { include = "infrahub_sdk", from = "python_sdk" },
+    { include = "infrahub_testcontainers", from = "python_testcontainers" },
 ]
 
 [tool.poetry.dependencies]
