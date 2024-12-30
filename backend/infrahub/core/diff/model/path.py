@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
     from neo4j.graph import Path as Neo4jPath
     from neo4j.graph import Relationship as Neo4jRelationship
+    from pendulum import Interval
 
     from infrahub.graphql.initialization import GraphqlContext
 
@@ -415,6 +416,10 @@ class EnrichedDiffRoot(BaseSummary):
     def __hash__(self) -> int:
         return hash(self.uuid)
 
+    @property
+    def time_range(self) -> Interval:
+        return self.to_time.obj - self.from_time.obj
+
     def get_nodes_without_parents(self) -> set[EnrichedDiffNode]:
         nodes_with_parent_uuids = set()
         for n in self.nodes:
@@ -503,6 +508,17 @@ class EnrichedDiffs:
     diff_branch_name: str
     base_branch_diff: EnrichedDiffRoot
     diff_branch_diff: EnrichedDiffRoot
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}("
+            f"branch_uuid={self.diff_branch_diff.uuid},"
+            f"base_uuid={self.base_branch_diff.uuid},"
+            f"branch_name={self.diff_branch_name},"
+            f"base_name={self.base_branch_name},"
+            f"from_time={self.diff_branch_diff.from_time},"
+            f"to_time={self.diff_branch_diff.to_time})"
+        )
 
     @classmethod
     def from_calculated_diffs(cls, calculated_diffs: CalculatedDiffs) -> EnrichedDiffs:

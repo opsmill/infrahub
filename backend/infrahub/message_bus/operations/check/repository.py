@@ -216,7 +216,7 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
     )
 
 
-@flow(name="git-repository-user-check", flow_run_name="Execute user defined Check", retries=3)
+@flow(name="git-repository-user-check", flow_run_name="Execute user defined Check '{message.name}'")
 async def user_check(message: messages.CheckRepositoryUserCheck, service: InfrahubServices) -> None:
     await add_tags(branches=[message.branch_name], nodes=[message.proposed_change])
     log = get_run_logger()
@@ -245,6 +245,8 @@ async def user_check(message: messages.CheckRepositoryUserCheck, service: Infrah
             log.info("The check passed")
         else:
             log.warning("The check reported failures")
+            for log_entry in check_run.log_entries:
+                log.warning(log_entry)
         log_entries = check_run.log_entries
     except CheckError as exc:
         log.warning("The check failed to run")

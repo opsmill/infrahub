@@ -371,7 +371,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             if worktree.identifier == identifier:
                 return worktree
 
-        raise RepositoryError(identifier=identifier, message="Unble to get worktree")
+        raise RepositoryError(identifier=identifier, message=f"Unable to get worktree : {identifier}")
 
     def get_commit_worktree(self, commit: str) -> Worktree:
         """Access a specific commit worktree."""
@@ -397,6 +397,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if self.client:
             return self.client
         return self.service.client
+
+    def get_location(self) -> str:
+        if self.location:
+            return self.location
+        raise ValueError(f"location hasn't been provided for this repository ({self.name})")
 
     async def get_branches_from_graph(self) -> dict[str, BranchInGraph]:
         """Return a dict with all the branches present in the graph.
@@ -504,6 +509,48 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         log.debug(f"Branch {branch_name} created in the Graph", repository=self.name, branch=branch_name)
         return branch
+
+    async def create_branch_in_git(self, branch_name: str, branch_id: str | None = None) -> bool:
+        """Create new branch in the repository, assuming the branch has been created in the graph already."""
+
+        repo = self.get_git_repo_main()
+
+        # Check if the branch already exists locally, if it does do nothing
+        local_branches = self.get_branches_from_local(include_worktree=False)
+        if branch_name in local_branches:
+            return False
+
+        # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
+        repo.git.branch(branch_name)
+        self.create_branch_worktree(branch_name=branch_name, branch_id=branch_id or branch_name)
+
+        # If there is not remote configured, we are done
+        #  Since the branch is a match for the main branch we don't need to create a commit worktree
+        # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
+        if not self.has_origin:
+            log.debug(
+                f"Branch {branch_name} created in Git without tracking a remote branch.",
+                repository=self.name,
+                branch=branch_name,
+            )
+            return True
+
+        remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
+
+        if remote_branch:
+            br_repo = self.get_git_repo_worktree(identifier=branch_name)
+            br_repo.head.reference.set_tracking_branch(remote_branch[0])
+            br_repo.remotes.origin.pull(branch_name)
+            self.create_commit_worktree(str(br_repo.head.reference.commit))
+            log.debug(
+                f"Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}.",
+                repository=self.name,
+                branch=branch_name,
+            )
+        else:
+            log.debug(f"Branch {branch_name} created in Git without tracking a remote branch.", repository=self.name)
+
+        return True
 
     def create_commit_worktree(self, commit: str) -> Union[bool, Worktree]:
         """Create a new worktree for a given commit."""
@@ -651,7 +698,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return True
 
-    async def pull(self, branch_name: str) -> Union[bool, str]:
+    async def pull(
+        self,
+        branch_name: str,
+        branch_id: str | None = None,
+        create_if_missing: bool = False,
+        update_commit_value: bool = True,
+    ) -> Union[bool, str]:
         """Pull the latest update from the remote repository on a given branch."""
 
         if not self.has_origin:
@@ -660,24 +713,40 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if branch_name == self.default_branch and branch_name != registry.default_branch:
             identifier = "main"
 
-        repo = self.get_git_repo_worktree(identifier=identifier)
-        if not repo:
-            raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}")
-
+        repo: Repo | None = None
         try:
-            commit_before = str(repo.head.commit)
-            repo.remotes.origin.pull(branch_name)
-        except GitCommandError as exc:
-            self._raise_enriched_error(error=exc, branch_name=branch_name)
+            repo = self.get_git_repo_worktree(identifier=identifier)
+        except RepositoryError as exc:
+            if not create_if_missing:
+                raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}") from exc
 
-        commit_after = str(repo.head.commit)
+        if repo:
+            try:
+                commit_before = str(repo.head.commit)
+                repo.remotes.origin.pull(branch_name)
+            except GitCommandError as exc:
+                self._raise_enriched_error(error=exc, branch_name=branch_name)
 
-        if commit_after == commit_before:
-            return True
+            commit_after = str(repo.head.commit)
 
-        self.create_commit_worktree(commit=commit_after)
-        infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
-        await self.update_commit_value(branch_name=infrahub_branch, commit=commit_after)
+            if commit_after == commit_before:
+                return True
+
+            self.create_commit_worktree(commit=commit_after)
+            infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+
+        elif branch_id:
+            await self.create_branch_in_git(branch_name=branch_name, branch_id=branch_id)
+            repo = self.get_git_repo_worktree(identifier=branch_name)
+            commit_after = str(repo.head.commit)
+        else:
+            raise ValueError(
+                f"Unable to identify the worktree for the branch : {branch_name} "
+                "and unable to pull the branch because the branch)id is missing"
+            )
+
+        if update_commit_value:
+            await self.update_commit_value(branch_name=infrahub_branch, commit=commit_after)
 
         return commit_after
 

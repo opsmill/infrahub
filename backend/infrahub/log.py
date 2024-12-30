@@ -22,6 +22,10 @@ def get_logger(name: str = "infrahub") -> structlog.stdlib.BoundLogger:
     return structlog.stdlib.get_logger(name)
 
 
+def get_run_logger(name: str = "infrahub.tasks") -> logging.Logger:
+    return logging.getLogger(name)
+
+
 def get_log_data() -> dict[str, Any]:
     return structlog.contextvars.get_contextvars()
 

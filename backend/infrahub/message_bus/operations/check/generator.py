@@ -1,6 +1,6 @@
 from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.node import InfrahubNode
-from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
+from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig
 from prefect import flow
 from prefect.logging import get_run_logger
 
@@ -59,8 +59,8 @@ async def run(message: messages.CheckGeneratorRun, service: InfrahubServices) ->
 
     check_message = "Instance successfully generated"
     try:
-        log.info(f"repo information {file_info}")
-        log.info(f"Root directory : {repository.directory_root}")
+        log.debug(f"repo information {file_info}")
+        log.debug(f"Root directory : {repository.directory_root}")
         generator_class = generator_definition.load_class(
             import_root=repository.directory_root, relative_path=file_info.relative_repo_path_dir
         )
@@ -87,7 +87,7 @@ async def run(message: messages.CheckGeneratorRun, service: InfrahubServices) ->
         check_message = f"Failed to execute generator: {str(exc)}"
         log.exception(check_message, exc_info=exc)
 
-    log.debug("Generator run completed, starting update")
+    log.info("Generator run completed, starting update")
     await generator_instance.update(do_full_update=True)
 
     check = None

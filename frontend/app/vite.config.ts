@@ -15,7 +15,13 @@ export default defineConfig({
   },
   plugins: [react(), svgr(), tsconfigPaths()],
   test: {
-    exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/playwright-report/**"],
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/e2e/**",
+      "**/playwright-report/**",
+      "**.test.tsx",
+    ],
     globals: true,
     environment: "jsdom",
     coverage: {

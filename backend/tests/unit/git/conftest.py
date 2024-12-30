@@ -10,7 +10,7 @@ from git import Repo
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
 from infrahub_sdk.node import InfrahubNode
-from infrahub_sdk.schema import SchemaRoot as ClientSchemaRoot
+from infrahub_sdk.schema import SchemaRootAPI as ClientSchemaRoot
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx import HTTPXMock
 
@@ -217,7 +217,7 @@ async def git_repo_03_w_client(git_repo_03: InfrahubRepository, client: Infrahub
 async def git_repo_04(
     client: InfrahubClient, git_upstream_repo_03: dict[str, str | Path], git_repos_dir: Path, branch01: BranchData
 ) -> InfrahubRepository:
-    """Git Repository with git_upstream_repo_01 as remote
+    """Git Repository with git_upstream_repo_03 as remote
     The repo has 2 local branches : main and branch01
     The content of the branch branch01 has been  updated after the repo has been initialized
     to generate a diff between the local and the remote branch branch01.

@@ -104,6 +104,7 @@ const HierarchicalExplorer = ({
           onSelect={onSelect}
           value={value}
           removeSelectedNode={handleRemoveNode}
+          filterItem={filterItem}
         />
       </>
     );

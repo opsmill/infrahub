@@ -108,6 +108,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 location=obj.location.value,
                 ref=obj.ref.value,
                 infrahub_branch_name=branch.name,
+                infrahub_branch_id=str(branch.get_uuid()),
                 internal_status=obj.internal_status.value,
                 created_by=authenticated_user,
             )
@@ -124,6 +125,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 location=obj.location.value,
                 default_branch_name=obj.default_branch.value,
                 infrahub_branch_name=branch.name,
+                infrahub_branch_id=str(branch.get_uuid()),
                 internal_status=obj.internal_status.value,
                 created_by=authenticated_user,
             )
@@ -192,6 +194,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             ref=obj.ref.value,
             commit=new_commit,
             infrahub_branch_name=branch.name,
+            infrahub_branch_id=str(branch.get_uuid()),
         )
         if context.service:
             await context.service.workflow.submit_workflow(

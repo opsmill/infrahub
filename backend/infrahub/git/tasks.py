@@ -71,6 +71,7 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
                 repository_name=model.repository_name,
                 repository_kind=InfrahubKind.REPOSITORY,
                 infrahub_branch_name=model.infrahub_branch_name,
+                infrahub_branch_id=model.infrahub_branch_id,
             )
             await service.send(message=notification)
 
@@ -104,15 +105,16 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
                 repository_name=model.repository_name,
                 repository_kind=InfrahubKind.REPOSITORY,
                 infrahub_branch_name=model.infrahub_branch_name,
+                infrahub_branch_id=model.infrahub_branch_id,
             )
             await service.send(message=notification)
 
 
-@flow(name="git_repositories_create_branch", flow_run_name="Create branch in Git Repositories")
+@flow(name="git-repositories-create-branch", flow_run_name="Create branch '{branch}' in Git Repositories")
 async def create_branch(branch: str, branch_id: str) -> None:
     """Request to the creation of git branches in available repositories."""
     service = services.service
-    await add_branch_tag(branch_name=branch)
+    await add_tags(branches=[branch])
     repositories: list[CoreRepository] = await service.client.filters(kind=CoreRepository)
     batch = await service.client.create_batch()
     for repository in repositories:
@@ -123,6 +125,7 @@ async def create_branch(branch: str, branch_id: str) -> None:
             branch_id=branch_id,
             repository_name=repository.name.value,
             repository_id=repository.id,
+            repository_location=repository.location.value,
         )
 
     async for _, _ in batch.execute():
@@ -192,6 +195,7 @@ async def sync_remote_repositories() -> None:
                     repository_name=repository_data.repository.name.value,
                     repository_kind=repository_data.repository.get_kind(),
                     infrahub_branch_name=infrahub_branch,
+                    infrahub_branch_id=branches[infrahub_branch].id,
                 )
                 await service.send(message=message)
             except RepositoryError as exc:
@@ -199,29 +203,39 @@ async def sync_remote_repositories() -> None:
 
 
 @task(
-    name="git-branch-create", task_run_name="Create Branch {branch} in repository {repository_name}", cache_policy=NONE
+    name="git-branch-create",
+    task_run_name="Create branch '{branch}' in repository {repository_name}",
+    cache_policy=NONE,
 )
 async def git_branch_create(
-    client: InfrahubClient, branch: str, branch_id: str, repository_id: str, repository_name: str
+    client: InfrahubClient,
+    branch: str,
+    branch_id: str,
+    repository_id: str,
+    repository_name: str,
+    repository_location: str,
 ) -> None:
     service = services.service
-
-    repo = await InfrahubRepository.init(id=repository_id, name=repository_name, client=client)
+    log = get_run_logger()
+    repo = await InfrahubRepository.init(
+        id=repository_id, name=repository_name, location=repository_location, client=client
+    )
 
     async with lock.registry.get(name=repository_name, namespace="repository"):
-        await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id)
+        await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id, push_origin=True)
 
-        if repo.location:
-            # New branch has been pushed remotely, tell workers to fetch it
-            message = messages.RefreshGitFetch(
-                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
-                location=repo.location,
-                repository_id=str(repo.id),
-                repository_name=repo.name,
-                repository_kind=InfrahubKind.REPOSITORY,
-                infrahub_branch_name=branch,
-            )
-            await service.send(message=message)
+        # New branch has been pushed remotely, tell workers to fetch it
+        message = messages.RefreshGitFetch(
+            meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+            location=repo.get_location(),
+            repository_id=str(repo.id),
+            repository_name=repo.name,
+            repository_kind=InfrahubKind.REPOSITORY,
+            infrahub_branch_name=branch,
+            infrahub_branch_id=branch_id,
+        )
+        await service.send(message=message)
+        log.debug("Sent message to all workers to fetch the latest version of the repository (RefreshGitFetch)")
 
 
 @flow(name="artifact-definition-generate", flow_run_name="Generate all artifacts")
@@ -265,10 +279,10 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
         await artifact.save()
 
 
-@flow(name="request_artifact_definitions_generate", flow_run_name="Generate artifacts")
+@flow(name="request_artifact_definitions_generate", flow_run_name="Trigger Generation of Artifacts for ")
 async def generate_request_artifact_definition(model: RequestArtifactDefinitionGenerate) -> None:
     service = services.service
-    await add_branch_tag(branch_name=model.branch)
+    await add_tags(branches=[model.branch])
 
     artifact_definition = await service.client.get(
         kind=InfrahubKind.ARTIFACTDEFINITION, id=model.artifact_definition, branch=model.branch
@@ -386,6 +400,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
             repository_name=model.repository_name,
             repository_kind=InfrahubKind.READONLYREPOSITORY,
             infrahub_branch_name=model.infrahub_branch_name,
+            infrahub_branch_id=model.infrahub_branch_id,
         )
         await service.send(message=message)
 
@@ -430,6 +445,7 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
                     repository_name=repo.name,
                     repository_kind=InfrahubKind.REPOSITORY,
                     infrahub_branch_name=model.destination_branch,
+                    infrahub_branch_id=model.destination_branch_id,
                 )
                 await service.send(message=message)
 

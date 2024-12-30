@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
+import ujson
 from infrahub_sdk.protocols import CoreNode  # noqa: TCH002
 from prefect import flow
 from prefect.automations import AutomationCore
@@ -227,12 +228,15 @@ async def process_jinja2(
     object_id: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
-    updated_fields: list[str] | None = None,
+    updated_fields: str | None = None,
 ) -> None:
     log = get_run_logger()
     service = services.service
 
     await add_tags(branches=[branch_name])
+    updates: list[str] = []
+    if isinstance(updated_fields, str):
+        updates = ujson.loads(updated_fields)
 
     target_branch_schema = (
         branch_name if branch_name in registry.get_altered_schema_branches() else registry.default_branch
@@ -242,9 +246,7 @@ async def process_jinja2(
 
     computed_macros = [
         attrib
-        for attrib in schema_branch.computed_attributes.get_impacted_jinja2_targets(
-            kind=node_kind, updates=updated_fields
-        )
+        for attrib in schema_branch.computed_attributes.get_impacted_jinja2_targets(kind=node_kind, updates=updates)
         if attrib.kind == computed_attribute_kind and attrib.attribute.name == computed_attribute_name
     ]
     for computed_macro in computed_macros:
@@ -369,6 +371,7 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:  # p
                             "object_id": "{{ event.resource['infrahub.node.id'] }}",
                             "computed_attribute_name": computed_attribute.attribute.name,
                             "computed_attribute_kind": computed_attribute.kind,
+                            "updated_fields": "{{ event.payload['fields'] | tojson }}",
                         },
                         job_variables={},
                     )
@@ -432,6 +435,7 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:  # p
                                 "object_id": "{{ event.resource['infrahub.node.id'] }}",
                                 "computed_attribute_name": computed_attribute.attribute.name,
                                 "computed_attribute_kind": computed_attribute.kind,
+                                "updated_fields": "{{ event.payload['fields'] | tojson }}",
                             },
                             job_variables={},
                         )

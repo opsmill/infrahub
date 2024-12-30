@@ -21,7 +21,7 @@ from infrahub_sdk.protocols import (
     CoreTransformJinja2,
     CoreTransformPython,
 )
-from infrahub_sdk.schema import (
+from infrahub_sdk.schema.repository import (
     InfrahubCheckDefinitionConfig,
     InfrahubGeneratorDefinitionConfig,
     InfrahubJinja2TransformConfig,
@@ -139,8 +139,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             await self.ensure_location_is_defined()
             await self.create_locally(infrahub_branch_name=self.infrahub_branch_name, update_commit_value=False)
             service.log.info(f"Initialized the local directory for {self.name} because it was missing.")
-            if commit:
-                self.get_commit_worktree(commit=commit)
+
+        if commit:
+            self.get_commit_worktree(commit=commit)
 
         service.log.debug(
             f"Initiated the object on an existing directory for {self.name}",

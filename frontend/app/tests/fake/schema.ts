@@ -1,6 +1,8 @@
 import { IProfileSchema, iGenericSchema, iNodeSchema } from "@/state/atoms/schema.atom";
 
-export const generateNodeSchema = (overrides?: Partial<iNodeSchema>): iNodeSchema => {
+export const generateNodeSchema = (
+  overrides?: Partial<iNodeSchema>
+): iNodeSchema & { kind: string } => {
   return {
     id: "18102d49-2480-33e9-3cbd-c51702dfa1e2",
     state: "present",

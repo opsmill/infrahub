@@ -1,3 +1,5 @@
+import random
+
 from .constants import WorkflowTag, WorkflowType
 from .models import WorkerPoolDefinition, WorkflowDefinition
 
@@ -27,7 +29,7 @@ TRANSFORM_PYTHON_RENDER = WorkflowDefinition(
 ANONYMOUS_TELEMETRY_SEND = WorkflowDefinition(
     name="anonymous_telemetry_send",
     type=WorkflowType.INTERNAL,
-    cron="0 2 * * *",
+    cron=f"{random.randint(0, 59)} 2 * * *",
     module="infrahub.tasks.telemetry",
     function="send_telemetry_push",
 )
@@ -132,7 +134,7 @@ GIT_REPOSITORIES_SYNC = WorkflowDefinition(
 )
 
 GIT_REPOSITORIES_CREATE_BRANCH = WorkflowDefinition(
-    name="git_repositories_create_branch",
+    name="git-repositories-create-branch",
     type=WorkflowType.CORE,
     module="infrahub.git.tasks",
     function="create_branch",
@@ -231,8 +233,8 @@ PROPOSED_CHANGE_MERGE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
-UPDATE_GRAPHQL_QUERY_GROUP = WorkflowDefinition(
-    name="update_graphql_query_group",
+GRAPHQL_QUERY_GROUP_UPDATE = WorkflowDefinition(
+    name="graphql-query-group-update",
     type=WorkflowType.CORE,
     module="infrahub.groups.tasks",
     function="update_graphql_query_group",
@@ -419,6 +421,7 @@ workflows = [
     GIT_REPOSITORIES_SYNC,
     GIT_REPOSITORY_ADD,
     GIT_REPOSITORY_ADD_READ_ONLY,
+    GRAPHQL_QUERY_GROUP_UPDATE,
     IPAM_RECONCILIATION,
     PROCESS_COMPUTED_MACRO,
     PROPOSED_CHANGE_MERGE,
@@ -441,7 +444,6 @@ workflows = [
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
-    UPDATE_GRAPHQL_QUERY_GROUP,
     WEBHOOK_CONFIGURE,
     WEBHOOK_SEND,
     WEBHOOK_TRIGGER,
