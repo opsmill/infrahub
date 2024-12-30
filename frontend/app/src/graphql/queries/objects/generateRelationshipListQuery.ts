@@ -23,7 +23,7 @@ export const generateRelationshipListQuery = ({
 
   const request = {
     query: {
-      __name: "GetRelationshipList",
+      __name: "GetRelationshipList" + peer,
       [peer]: {
         __args: {
           ...args,

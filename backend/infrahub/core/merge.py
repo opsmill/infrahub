@@ -3,27 +3,27 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub.core.constants import RepositoryInternalStatus
+from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaUpdateValidationResult
 from infrahub.core.protocols import CoreRepository
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
-from infrahub.message_bus import messages
 
-from .diff.branch_differ import BranchDiffer
+from ..git.models import GitRepositoryMerge
+from ..workflows.catalogue import GIT_REPOSITORIES_MERGE
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.diff.coordinator import DiffCoordinator
     from infrahub.core.diff.merger.merger import DiffMerger
+    from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.models import SchemaUpdateConstraintInfo, SchemaUpdateMigrationInfo
     from infrahub.core.schema.manager import SchemaDiff
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
-
-    from .diff.model.diff import DataConflict
 
 
 class BranchMerger:
@@ -33,6 +33,7 @@ class BranchMerger:
         source_branch: Branch,
         diff_coordinator: DiffCoordinator,
         diff_merger: DiffMerger,
+        diff_repository: DiffRepository,
         destination_branch: Optional[Branch] = None,
         service: Optional[InfrahubServices] = None,
     ):
@@ -41,8 +42,9 @@ class BranchMerger:
         self.db = db
         self.diff_coordinator = diff_coordinator
         self.diff_merger = diff_merger
+        self.diff_repository = diff_repository
         self.migrations: list[SchemaUpdateMigrationInfo] = []
-        self._graph_diff: Optional[BranchDiffer] = None
+        self._merge_at = Timestamp()
 
         self._source_schema: Optional[SchemaBranch] = None
         self._destination_schema: Optional[SchemaBranch] = None
@@ -76,12 +78,6 @@ class BranchMerger:
             raise ValueError("BranchMerger hasn't been initialized with a service object")
         return self._service
 
-    async def get_graph_diff(self) -> BranchDiffer:
-        if not self._graph_diff:
-            self._graph_diff = await BranchDiffer.init(db=self.db, branch=self.source_branch)
-
-        return self._graph_diff
-
     async def get_initial_source_branch(self) -> SchemaBranch:
         """Retrieve the schema of the source branch when the branch was created.
         For now we are querying the full schema, but this is something we'll need to revisit in the future by either:
@@ -100,8 +96,15 @@ class BranchMerger:
         return self._initial_source_schema
 
     async def has_schema_changes(self) -> bool:
-        graph_diff = await self.get_graph_diff()
-        return await graph_diff.has_schema_changes()
+        diff_summary = await self.diff_repository.summary(
+            base_branch_name=self.destination_branch.name,
+            diff_branch_names=[self.source_branch.name],
+            tracking_id=BranchTrackingId(name=self.source_branch.name),
+            filters={"kind": {"includes": ["SchemaNode", "SchemaAttribute", "SchemaRelationship"]}},
+        )
+        if not diff_summary:
+            return False
+        return bool(diff_summary.num_added or diff_summary.num_removed or diff_summary.num_updated)
 
     async def update_schema(self) -> bool:
         """After the merge, if there was some changes, we need to:
@@ -163,29 +166,9 @@ class BranchMerger:
         validation = SchemaUpdateValidationResult.init(diff=diff_3way, schema=target_schema)
         return validation.constraints
 
-    async def validate_branch(self) -> list[DataConflict]:
-        """
-        Validate if a branch is eligible to be merged.
-        - Must be conflict free both for data and repository
-        - All checks must pass
-        - Check schema changes
-
-        Need to support with and without rebase
-
-        Need to return a list of violations, must be multiple
-        """
-
-        return await self.validate_graph()
-
-    async def validate_graph(self) -> list[DataConflict]:
-        # Check the diff and ensure the branch doesn't have some conflict
-        diff = await self.get_graph_diff()
-        return await diff.get_conflicts()
-
     async def merge(
         self,
         at: Optional[Union[str, Timestamp]] = None,
-        conflict_resolution: Optional[dict[str, bool]] = None,  # pylint: disable=unused-argument
     ) -> None:
         """Merge the current branch into main."""
         if self.source_branch.name == registry.default_branch:
@@ -197,7 +180,7 @@ class BranchMerger:
         conflict_map = enriched_diff.get_all_conflicts()
         errors: list[str] = []
         for conflict_path, conflict in conflict_map.items():
-            if conflict.selected_branch is None:
+            if conflict.selected_branch is None or conflict.resolvable is False:
                 errors.append(conflict_path)
 
         if errors:
@@ -207,9 +190,12 @@ class BranchMerger:
 
         # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
         # From the Graph or From the repositories
-        at = Timestamp(at)
-        await self.diff_merger.merge_graph(at=at)
+        self._merge_at = Timestamp(at)
+        await self.diff_merger.merge_graph(at=self._merge_at)
         await self.merge_repositories()
+
+    async def rollback(self) -> None:
+        await self.diff_merger.rollback(at=self._merge_at)
 
     async def merge_repositories(self) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
@@ -217,7 +203,6 @@ class BranchMerger:
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
 
         repos_in_branch_list = await NodeManager.query(schema=CoreRepository, db=self.db, branch=self.source_branch)
-        events = []
         for repo in repos_in_branch_list:
             # Check if the repo, exist in main, if not ignore this repo
             if repo.id not in repos_in_main:
@@ -227,16 +212,15 @@ class BranchMerger:
                 continue
 
             if self.source_branch.sync_with_git or repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
-                events.append(
-                    messages.GitRepositoryMerge(
-                        repository_id=repo.id,
-                        repository_name=repo.name.value,
-                        internal_status=repo.internal_status.value,
-                        source_branch=self.source_branch.name,
-                        destination_branch=registry.default_branch,
-                        default_branch=repo.default_branch.value,
-                    )
+                model = GitRepositoryMerge(
+                    repository_id=repo.id,
+                    repository_name=repo.name.value,
+                    internal_status=repo.internal_status.value,
+                    source_branch=self.source_branch.name,
+                    destination_branch=self.destination_branch.name,
+                    destination_branch_id=str(self.destination_branch.get_uuid()),
+                    default_branch=repo.default_branch.value,
                 )
-
-        for event in events:
-            await self.service.send(message=event)
+                await self.service.workflow.submit_workflow(
+                    workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model}
+                )

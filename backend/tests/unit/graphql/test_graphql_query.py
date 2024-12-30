@@ -2,7 +2,6 @@ from typing import Dict, Literal
 
 import pytest
 from deepdiff import DeepDiff
-from graphql import graphql
 
 from infrahub import __version__, config
 from infrahub.core import registry
@@ -15,6 +14,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 
 
 async def test_info_query(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
@@ -2071,20 +2071,31 @@ async def test_query_attribute_node_property_owner(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
-    person_tag_schema: None,
+    car_person_schema: SchemaBranch,
     first_account: Node,
 ):
     p1 = await Node.init(db=db, schema="TestPerson")
-    await p1.new(db=db, firstname="John", lastname="Doe", _owner=first_account)
+    await p1.new(db=db, name="John", _owner=first_account)
     await p1.save(db=db)
 
+    c1 = await Node.init(db=db, schema="TestCar")
+    await c1.new(
+        db=db,
+        name="volt",
+        nbr_seats=4,
+        is_electric=True,
+        owner={"id": p1},
+    )
+    await c1.save(db=db)
+
+    # test node-level query
     query = """
     query {
         TestPerson {
             edges {
                 node {
                     id
-                    firstname {
+                    name {
                         value
                         owner {
                             id
@@ -2109,13 +2120,60 @@ async def test_query_attribute_node_property_owner(
     )
 
     assert result1.errors is None
-    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"]
-    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"]["id"] == first_account.id
-    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"][
+    assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"]
+    assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"]["id"] == first_account.id
+    assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"][
         "display_label"
     ] == await first_account.render_display_label(db=db)
-    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["is_from_profile"] is False
+    assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["is_from_profile"] is False
     assert gql_params.context.related_node_ids == {p1.id, first_account.id}
+
+    # test relationship-level query
+    query = """
+    query {
+        TestCar {
+            edges {
+                node {
+                    id
+                    owner {
+                        node {
+                            id
+                            name {
+                                value
+                                owner {
+                                    id
+                                    display_label
+                                }
+                                is_from_profile
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+    """
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result2 = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result2.errors is None
+
+    assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"]
+    assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"]["id"] == first_account.id
+    assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"][
+        "display_label"
+    ] == await first_account.render_display_label(db=db)
+    assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["is_from_profile"] is False
+    assert gql_params.context.related_node_ids == {c1.id, p1.id, first_account.id}
 
 
 async def test_query_relationship_node_property(
@@ -2150,6 +2208,7 @@ async def test_query_relationship_node_property(
     )
     await c2.save(db=db)
 
+    # test many relationship query
     query = """
     query {
         TestPerson {
@@ -2208,6 +2267,63 @@ async def test_query_relationship_node_property(
     assert results["Jane"]["cars"]["edges"][0]["properties"]["owner"] is None
     assert results["Jane"]["cars"]["edges"][0]["properties"]["source"]
     assert results["Jane"]["cars"]["edges"][0]["properties"]["source"]["id"] == first_account.id
+    assert gql_params.context.related_node_ids == {p1.id, p2.id, c1.id, c2.id, first_account.id}
+
+    # test single relationship query
+    query = """
+    query {
+        TestCar {
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                    owner {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                        properties {
+                            owner {
+                                id
+                            }
+                            source {
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+
+    results = {item["node"]["name"]["value"]: item["node"] for item in result.data["TestCar"]["edges"]}
+    assert set(results.keys()) == {"volt", "bolt"}
+
+    assert results["volt"]["owner"]["node"]["name"]["value"] == "John"
+    assert results["volt"]["owner"]["properties"]["owner"]
+    assert results["volt"]["owner"]["properties"]["owner"]["id"] == first_account.id
+    assert results["volt"]["owner"]["properties"]["source"] is None
+
+    assert results["bolt"]["owner"]["node"]["name"]["value"] == "Jane"
+    assert results["bolt"]["owner"]["properties"]["owner"] is None
+    assert results["bolt"]["owner"]["properties"]["source"]
+    assert results["bolt"]["owner"]["properties"]["source"]["id"] == first_account.id
     assert gql_params.context.related_node_ids == {p1.id, p2.id, c1.id, c2.id, first_account.id}
 
 

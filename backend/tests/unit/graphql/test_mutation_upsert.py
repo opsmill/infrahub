@@ -1,7 +1,5 @@
 from uuid import uuid4
 
-from graphql import graphql
-
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -10,6 +8,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.constants import TestKind
+from tests.helpers.graphql import graphql
 from tests.helpers.schema import TICKET
 
 

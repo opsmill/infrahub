@@ -8,6 +8,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.core.timestamp import Timestamp
+from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -41,7 +42,12 @@ async def resolver_graphql_query(
                 schema=graphql_schema,
                 source=graphql_query.query.value,
                 context_value=context.__class__(
-                    db=db, branch=context.branch, at=Timestamp(), related_node_ids=set(), types=context.types
+                    db=db,
+                    branch=context.branch,
+                    at=Timestamp(),
+                    related_node_ids=set(),
+                    types=context.types,
+                    single_relationship_resolver=SingleRelationshipResolver(),
                 ),
                 root_value=None,
                 variable_values=params or {},

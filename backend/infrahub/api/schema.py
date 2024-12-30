@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import (
     BaseModel,
     Field,
@@ -12,7 +12,7 @@ from pydantic import (
 )
 from starlette.responses import JSONResponse
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
@@ -27,12 +27,15 @@ from infrahub.core.models import (  # noqa: TCH001
 )
 from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, SchemaRoot
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TCH001
-from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
+from infrahub.core.validators.models.validate_migration import (
+    SchemaValidateMigrationData,
+    SchemaValidatorPathResponseData,
+)
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.events import EventMeta
+from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.exceptions import MigrationError, PermissionDeniedError
-from infrahub.log import get_logger
-from infrahub.message_bus import Meta, messages
-from infrahub.services import services
+from infrahub.log import get_log_data, get_logger
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
@@ -242,37 +245,46 @@ async def get_json_schema_by_kind(schema_kind: str, branch: Branch = Depends(get
 async def load_schema(
     request: Request,
     schemas: SchemasLoadAPI,
-    background_tasks: BackgroundTasks,
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
     account_session: AccountSession = Depends(get_current_user),
 ) -> SchemaUpdate:
+    has_permission = False
+    has_branch_permission = branch.name not in (GLOBAL_BRANCH_NAME, registry.default_branch)
     for permission_backend in registry.permission_backends:
-        if not await permission_backend.has_permission(
-            db=db,
-            account_session=account_session,
-            permission=GlobalPermission(
-                action=GlobalPermissions.MANAGE_SCHEMA.value,
-                decision=(
-                    PermissionDecision.ALLOW_DEFAULT
-                    if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
-                    else PermissionDecision.ALLOW_OTHER
-                ).value,
-            ),
-            branch=branch,
-        ):
-            raise PermissionDeniedError("You are not allowed to manage the schema")
+        if not has_permission:
+            has_permission = await permission_backend.has_permission(
+                db=db,
+                account_session=account_session,
+                permission=GlobalPermission(
+                    action=GlobalPermissions.MANAGE_SCHEMA.value,
+                    decision=(
+                        PermissionDecision.ALLOW_DEFAULT
+                        if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+                        else PermissionDecision.ALLOW_OTHER
+                    ).value,
+                ),
+                branch=branch,
+            )
 
-        if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch) and not await permission_backend.has_permission(
-            db=db,
-            account_session=account_session,
-            permission=GlobalPermission(
-                action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-                decision=PermissionDecision.ALLOW_DEFAULT.value,
-            ),
-            branch=branch,
-        ):
-            raise PermissionDeniedError("You are not allowed to edit the schema in the default branch")
+        if not has_branch_permission:
+            has_branch_permission = await permission_backend.has_permission(
+                db=db,
+                account_session=account_session,
+                permission=GlobalPermission(
+                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
+                    decision=PermissionDecision.ALLOW_DEFAULT.value,
+                ),
+                branch=branch,
+            )
+
+        if has_permission and has_branch_permission:
+            break
+
+    if not has_permission:
+        raise PermissionDeniedError("You are not allowed to manage the schema")
+    if not has_branch_permission:
+        raise PermissionDeniedError("You are not allowed to edit the schema in the default branch")
 
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
@@ -301,13 +313,14 @@ async def load_schema(
             schema_branch=candidate_schema,
             constraints=result.constraints,
         )
-        error_messages = await service.workflow.execute_workflow(
+        responses = await service.workflow.execute_workflow(
             workflow=SCHEMA_VALIDATE_MIGRATION,
-            expected_return=list[str],
+            expected_return=list[SchemaValidatorPathResponseData],
             parameters={"message": validate_migration_data},
         )
+        error_messages = [violation.message for response in responses for violation in response.violations]
         if error_messages:
-            raise SchemaNotValidError(message=",\n".join(error_messages))
+            raise SchemaNotValidError(",\n".join(error_messages))
 
         # ----------------------------------------------------------
         # Update the schema
@@ -353,14 +366,16 @@ async def load_schema(
         if migration_error_msgs:
             raise MigrationError(message=",\n".join(migration_error_msgs))
 
-        if config.SETTINGS.broker.enable:
-            message = messages.EventSchemaUpdate(
-                branch=branch.name,
-                meta=Meta(initiator_id=WORKER_IDENTITY),
-            )
-            background_tasks.add_task(services.send, message)
-
     await service.component.refresh_schema_hash(branches=[branch.name])
+
+    log_data = get_log_data()
+    request_id = log_data.get("request_id", "")
+    event = SchemaUpdatedEvent(
+        branch=branch.name,
+        schema_hash=branch.active_schema_hash.main,
+        meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id, account_id=account_session.account_id),
+    )
+    await service.event.send(event=event)
 
     return SchemaUpdate(hash=updated_hash, previous_hash=original_hash, diff=result.diff)
 
@@ -394,11 +409,12 @@ async def check_schema(
         schema_branch=candidate_schema,
         constraints=result.constraints,
     )
-    error_messages = await service.workflow.execute_workflow(
+    responses = await service.workflow.execute_workflow(
         workflow=SCHEMA_VALIDATE_MIGRATION,
-        expected_return=list[str],
+        expected_return=list[SchemaValidatorPathResponseData],
         parameters={"message": validate_migration_data},
     )
+    error_messages = [violation.message for response in responses for violation in response.violations]
     if error_messages:
         raise SchemaNotValidError(message=",\n".join(error_messages))
 

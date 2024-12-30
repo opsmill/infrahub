@@ -1,5 +1,5 @@
-import os
-from typing import Generator
+from pathlib import Path
+from typing import AsyncGenerator, Generator
 
 import pytest
 from infrahub_sdk import Config, InfrahubClient
@@ -25,6 +25,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.server import app, app_initialization
 from infrahub.services import services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.message_bus import BusSimulator
 
 from .test_client import InfrahubTestClient
@@ -32,10 +33,9 @@ from .test_client import InfrahubTestClient
 
 class TestInfrahub:
     @pytest.fixture(scope="class")
-    def local_storage_dir(self, tmpdir_factory: pytest.TempdirFactory) -> str:
-        storage_dir = os.path.join(str(tmpdir_factory.getbasetemp().strpath), "storage")
-        if not os.path.exists(storage_dir):
-            os.mkdir(storage_dir)
+    def local_storage_dir(self, tmpdir_factory: pytest.TempdirFactory) -> Path:
+        storage_dir = Path(tmpdir_factory.getbasetemp().strpath) / "storage"
+        storage_dir.mkdir(parents=True, exist_ok=True)
 
         config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
         config.SETTINGS.storage.local.path_ = storage_dir
@@ -43,7 +43,7 @@ class TestInfrahub:
         return storage_dir
 
     @pytest.fixture(scope="class")
-    async def default_branch(self, local_storage_dir: str, db: InfrahubDatabase) -> Branch:
+    async def default_branch(self, local_storage_dir: Path, db: InfrahubDatabase) -> Branch:
         registry.delete_all()
         await delete_all_nodes(db=db)
         await create_root_node(db=db)
@@ -67,9 +67,10 @@ class TestInfrahubApp(TestInfrahub):
         config.OVERRIDE.message_bus = original
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_local(self) -> Generator[WorkflowLocalExecution, None, None]:
+    async def workflow_local(self) -> AsyncGenerator[WorkflowLocalExecution, None]:
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
+        await setup_task_manager()
         config.OVERRIDE.workflow = workflow
         yield workflow
         config.OVERRIDE.workflow = original
@@ -99,8 +100,8 @@ class TestInfrahubApp(TestInfrahub):
         # This call emits an ERROR because it calls registry-webhook-config-refresh flow within a local worker
         # while services.service.client is not set. There might be a design issue here: a client is needed while
         # the app is being initialized.
-        await app_initialization(app)
-        return InfrahubTestClient(app=app)
+        await app_initialization(app, enable_scheduler=False)
+        return InfrahubTestClient(app=app, base_url="http://testserver")
 
     @pytest.fixture(scope="class")
     async def client(

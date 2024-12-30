@@ -21,11 +21,8 @@ class MutationNodeGetterById(MutationNodeGetterInterface):
         node_schema: MainSchemaTypes,
         data: InputObjectType,
         branch: Branch,
-        at: str,
     ) -> Optional[Node]:
         node = None
         if "id" not in data:
             return node
-        return await self.node_manager.get_one(
-            id=str(data["id"]), db=self.db, at=at, branch=branch, kind=node_schema.kind
-        )
+        return await self.node_manager.get_one(id=str(data["id"]), db=self.db, branch=branch, kind=node_schema.kind)

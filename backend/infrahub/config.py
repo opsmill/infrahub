@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import os.path
 import ssl
 import sys
 from dataclasses import dataclass
@@ -11,7 +10,16 @@ from typing import TYPE_CHECKING, Any, Optional
 
 import toml
 from infrahub_sdk.utils import generate_uuid
-from pydantic import AliasChoices, BaseModel, Field, PrivateAttr, ValidationError, computed_field, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    Field,
+    PrivateAttr,
+    ValidationError,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Self
 
@@ -118,10 +126,18 @@ class WorkflowDriver(str, Enum):
     WORKER = "worker"
 
 
+class ExtraLogLevel(str, Enum):
+    CRITICAL = "CRITICAL"
+    ERROR = "ERROR"
+    WARNING = "WARNING"
+    INFO = "INFO"
+    DEBUG = "DEBUG"
+
+
 class MainSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_")
-    docs_index_path: str = Field(
-        default="/opt/infrahub/docs/build/search-index.json",
+    docs_index_path: Path = Field(
+        default=Path("/opt/infrahub/docs/build/search-index.json"),
         description="Full path of saved json containing pre-indexed documentation",
     )
     internal_address: Optional[str] = Field(default=None)
@@ -138,15 +154,25 @@ class MainSettings(BaseSettings):
         description="List of modules to handle permissions, they will be run in the given order",
     )
 
+    @field_validator("docs_index_path", mode="before")
+    @classmethod
+    def convert_to_path(cls, value: Path | str) -> Path:
+        return Path(value) if isinstance(value, str) else value
+
 
 class FileSystemStorageSettings(BaseSettings):
     # Make variable lookup case-sensitive to avoid fetching $PATH value
     model_config = SettingsConfigDict(case_sensitive=True)
-    path_: str = Field(
-        default="/opt/infrahub/storage",
+    path_: Path = Field(
+        default=Path("/opt/infrahub/storage"),
         alias="path",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_LOCAL_PATH", "infrahub_storage_local_path", "path"),
     )
+
+    @field_validator("path_", mode="before")
+    @classmethod
+    def convert_to_path(cls, value: Path | str) -> Path:
+        return Path(value) if isinstance(value, str) else value
 
 
 class S3StorageSettings(BaseSettings):
@@ -206,9 +232,9 @@ class DatabaseSettings(BaseSettings):
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: Optional[str] = Field(default=None, description="File path to CA cert or bundle in PEM format")
     query_size_limit: int = Field(
-        default=5000,
+        default=5_000,
         ge=1,
-        le=20000,
+        le=20_000,
         description="The max number of records to fetch in a single query before performing internal pagination.",
     )
     max_depth_search_hierarchy: int = Field(
@@ -300,6 +326,12 @@ class WorkflowSettings(BaseSettings):
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     driver: WorkflowDriver = WorkflowDriver.WORKER
     default_worker_type: str = "infrahubasync"
+    extra_loggers: list[str] = Field(
+        default_factory=list, description="A list of additional logger that will be captured during task execution."
+    )
+    extra_log_level: ExtraLogLevel = Field(
+        default=ExtraLogLevel.INFO, description="Log level applied to all extra loggers."
+    )
     worker_polling_interval: int = Field(
         default=2, ge=1, le=30, description="Specify how often the worker should poll the server for tasks (sec)"
     )
@@ -690,22 +722,22 @@ class Override:
 class ConfiguredSettings:  # pylint: disable=too-many-public-methods
     settings: Optional[Settings] = None
 
-    def initialize(self, config_file: Optional[str] = None) -> None:
+    def initialize(self, config_file: Path | str | None = None) -> None:
         """Initialize the settings if they have not been initialized."""
         if self.initialized:
             return
         if not config_file:
-            config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
-            config_file = os.path.abspath(config_file_name)
+            config_file_name: str = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+            config_file = Path(config_file_name).resolve()
         self.settings = load(config_file)
 
-    def initialize_and_exit(self, config_file: Optional[str] = None) -> None:
+    def initialize_and_exit(self, config_file: Path | str | None = None) -> None:
         """Initialize the settings if they have not been initialized, exit on failures."""
         if self.initialized:
             return
         if not config_file:
             config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
-            config_file = os.path.abspath(config_file_name)
+            config_file = Path(config_file_name).resolve()
         load_and_exit(config_file)
 
     @property
@@ -809,18 +841,19 @@ class Settings(BaseSettings):
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
 
-def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> Settings:
+def load(config_file_name: Path | str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> Settings:
     """Load configuration.
 
     Configuration is loaded from a config file in toml format that contains the settings,
     or from a dictionary of those settings passed in as "config_data"
     """
+    config_file = Path(config_file_name)
 
     if config_data:
         return Settings(**config_data)
 
-    if os.path.exists(config_file_name):
-        config_string = Path(config_file_name).read_text(encoding="utf-8")
+    if config_file.exists():
+        config_string = config_file.read_text(encoding="utf-8")
         config_tmp = toml.loads(config_string)
 
         return Settings(**config_tmp)
@@ -828,7 +861,7 @@ def load(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str
     return Settings()
 
 
-def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> None:
+def load_and_exit(config_file_name: Path | str = "infrahub.toml", config_data: Optional[dict[str, Any]] = None) -> None:
     """Calls load, but wraps it in a try except block.
 
     This is done to handle a ValidationError which is raised when settings are specified but invalid.

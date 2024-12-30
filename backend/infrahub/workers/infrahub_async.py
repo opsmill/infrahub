@@ -10,6 +10,7 @@ from infrahub_sdk.exceptions import Error as SdkError
 from prefect import settings as prefect_settings
 from prefect.client.schemas.objects import FlowRun
 from prefect.flow_engine import run_flow_async
+from prefect.logging.handlers import APILogHandler
 from prefect.workers.base import BaseJobConfiguration, BaseVariables, BaseWorker, BaseWorkerResult
 from prometheus_client import start_http_server
 
@@ -35,14 +36,13 @@ from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
 WORKER_QUERY_SECONDS = "2"
-WORKER_PERSIST_RESULT = "true"
 WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"redisstoragecontainer/{TASK_RESULT_STORAGE_NAME}"
+DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]
 
 
 class InfrahubWorkerAsyncConfiguration(BaseJobConfiguration):
     env: dict[str, str | None] = {
         "PREFECT_WORKER_QUERY_SECONDS": WORKER_QUERY_SECONDS,
-        "PREFECT_RESULTS_PERSIST_BY_DEFAULT": WORKER_PERSIST_RESULT,
         "PREFECT_DEFAULT_RESULT_STORAGE_BLOCK": WORKER_DEFAULT_RESULT_STORAGE_BLOCK,
     }
     labels: dict[str, str] = {
@@ -87,6 +87,8 @@ class InfrahubWorkerAsync(BaseWorker):
             config_file = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
             config.load_and_exit(config_file_name=config_file)
 
+        self._init_logger()
+
         # Start metric endpoint
         if metric_port is None or metric_port != 0:
             metric_port = metric_port or int(os.environ.get("INFRAHUB_METRICS_PORT", 8000))
@@ -118,6 +120,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
         initialize_repositories_directory()
         build_component_registry()
+        await service.scheduler.start_schedule()
         self._logger.info("Worker initialization completed .. ")
 
     async def run(
@@ -148,6 +151,15 @@ class InfrahubWorkerAsync(BaseWorker):
             status_code=0,
             identifier=str(flow_run.id),
         )
+
+    def _init_logger(self) -> None:
+        """Initialize loggers to use the API handle provided by Prefect."""
+        api_handler = APILogHandler()
+
+        for logger_name in config.SETTINGS.workflow.extra_loggers + DEFAULT_TASK_LOGGERS:
+            logger = logging.getLogger(logger_name)
+            logger.setLevel(config.SETTINGS.workflow.extra_log_level.value)
+            logger.addHandler(api_handler)
 
     async def _init_infrahub_client(self, client: InfrahubClient | None = None) -> InfrahubClient:
         if not client:

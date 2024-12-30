@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
-from infrahub.core.query import Query
+from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
@@ -24,6 +24,7 @@ class SchemaNodeInfo(BaseModel):
 
 class NodeDuplicateQuery(Query):
     name = "node_duplicate"
+    type = QueryType.WRITE
     insert_return: bool = False
 
     def __init__(

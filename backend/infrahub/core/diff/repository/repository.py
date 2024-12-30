@@ -24,6 +24,7 @@ from ..query.drop_tracking_id import EnrichedDiffDropTrackingIdQuery
 from ..query.empty_roots import EnrichedDiffEmptyRootsQuery
 from ..query.filters import EnrichedDiffQueryFilters
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
+from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
 from ..query.save import EnrichedDiffRootsCreateQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
@@ -172,17 +173,19 @@ class DiffRepository:
         self,
         base_branch_name: str,
         diff_branch_names: list[str],
-        from_time: Timestamp,
-        to_time: Timestamp,
+        from_time: Timestamp | None = None,
+        to_time: Timestamp | None = None,
+        tracking_id: TrackingId | None = None,
         filters: dict | None = None,
     ) -> DiffSummaryCounters | None:
         query = await DiffSummaryQuery.init(
             db=self.db,
             base_branch_name=base_branch_name,
             diff_branch_names=diff_branch_names,
+            filters=EnrichedDiffQueryFilters(**dict(filters or {})),
             from_time=from_time,
             to_time=to_time,
-            filters=EnrichedDiffQueryFilters(**dict(filters or {})),
+            tracking_id=tracking_id,
         )
         await query.execute(db=self.db)
         return query.get_summary()
@@ -221,6 +224,18 @@ class DiffRepository:
         for neo4j_node in query.get_empty_root_nodes():
             diff_roots.append(self.deserializer.build_diff_root(root_node=neo4j_node))
         return diff_roots
+
+    async def diff_has_conflicts(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+    ) -> bool:
+        query = await EnrichedDiffHasConflictQuery.init(
+            db=self.db, diff_branch_name=diff_branch_name, tracking_id=tracking_id, diff_id=diff_id
+        )
+        await query.execute(db=self.db)
+        return await query.has_conflict()
 
     async def get_conflict_by_id(self, conflict_id: str) -> EnrichedDiffConflict:
         query = await EnrichedDiffConflictQuery.init(db=self.db, conflict_id=conflict_id)

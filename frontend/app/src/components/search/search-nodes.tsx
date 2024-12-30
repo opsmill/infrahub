@@ -8,6 +8,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
+import { POOLS_PEER } from "@/screens/ipam/constants";
 import { constructPath } from "@/utils/fetch";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/utils/objects";
@@ -62,24 +63,29 @@ type NodesOptionsProps = {
 };
 
 const NodesOptions = ({ node }: NodesOptionsProps) => {
-  const { schema } = useSchema(node.kind);
+  const { isGeneric, schema } = useSchema(node.kind);
   const { data, loading, error } = useObjectDetails(schema!, node.id);
 
   if (!schema) return null;
-  const columns = getSchemaObjectColumns({ schema, forListView: true, limit: 7 });
 
   if (loading) return <SearchResultNodeSkeleton />;
 
-  if (error) {
-    return (
-      <div className="text-sm text-red-600">
-        Error loading object details for {node.kind} (id: {node.id})
-      </div>
-    );
-  }
+  if (error) return null;
 
   const objectDetailsData = schema && data?.[node.kind]?.edges[0]?.node;
   if (!objectDetailsData) return <div className="text-sm">No data found for this object</div>;
+
+  const useIpNamespace =
+    !isGeneric &&
+    schema?.inherit_from?.some((generic) => {
+      return POOLS_PEER.includes(generic);
+    });
+
+  const columns = getSchemaObjectColumns({
+    schema,
+    forListView: true,
+    limit: useIpNamespace ? 6 : 7,
+  });
 
   const url = constructPath(
     getObjectDetailsUrl(objectDetailsData.id, objectDetailsData.__typename)
@@ -92,7 +98,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
         className="text-lg px-2 py-0.5 text-custom-blue-700"
       />
 
-      <div className="flex-grow text-sm">
+      <div className="flex-grow text-sm overflow-auto">
         <div className="flex justify-between">
           <span className="mr-1 font-semibold text-custom-blue-800">
             {objectDetailsData?.display_label}
@@ -107,6 +113,13 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
         </div>
 
         <div className="mt-1 text-gray-600 flex gap-5">
+          {useIpNamespace && (
+            <NodeAttribute
+              title={"IP Namespace"}
+              value={{ value: objectDetailsData?.ip_namespace?.node?.display_label }}
+            />
+          )}
+
           {columns
             .filter(({ name }) => !["name", "label"].includes(name))
             .map((column) => (
@@ -125,7 +138,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
 type NodeAttributeProps = {
   title: string;
-  kind: string;
+  kind?: string;
   value:
     | { value: string | number | boolean | null }
     | { value: string | null; label: string; color: string }
@@ -149,21 +162,23 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           return (
             <div className="h-4 w-4 rounded mt-0.5" style={{ background: value.value as string }} />
           );
-        case SCHEMA_ATTRIBUTE_KIND.DATETIME:
+        case SCHEMA_ATTRIBUTE_KIND.DATETIME: {
           const date = typeof value.value === "string" ? new Date(value.value) : new Date();
           return format(date, "yyyy/MM/dd HH:mm");
-        case SCHEMA_ATTRIBUTE_KIND.DROPDOWN:
+        }
+        case SCHEMA_ATTRIBUTE_KIND.DROPDOWN: {
           if (!("color" in value)) return value.value;
 
           const color = value.color === "" ? "#f1f1f1" : value.color;
           return (
             <div
-              className="px-1.5 rounded text-gray-700 font-medium text-center border border-transparent"
+              className="px-1.5 rounded text-gray-700 font-medium text-center border border-transparent truncate"
               style={{ background: `${color}40` }}
             >
               {value.label}
             </div>
           );
+        }
       }
       return value.value;
     }
@@ -172,9 +187,9 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
   };
 
   return (
-    <div className="flex flex-col text-xxs whitespace-nowrap leading-3">
+    <div className="flex flex-col text-xxs whitespace-nowrap leading-3 overflow-hidden">
       <span>{title}</span>
-      <span className="font-medium text-gray-800">{formatValue() || "-"}</span>
+      <span className="font-medium text-gray-800 truncate">{formatValue() || "-"}</span>
     </div>
   );
 };

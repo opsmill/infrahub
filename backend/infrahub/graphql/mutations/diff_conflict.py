@@ -10,6 +10,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.manager import NodeManager
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.exceptions import ProcessingError
 from infrahub.graphql.enums import ConflictSelection as GraphQlConflictSelection
 
 if TYPE_CHECKING:
@@ -48,6 +49,9 @@ class ResolveDiffConflict(Mutation):
         diff_repo = await component_registry.get_component(DiffRepository, db=context.db, branch=context.branch)
 
         selection = ConflictSelection(data.selected_branch.value) if data.selected_branch else None
+        conflict = await diff_repo.get_conflict_by_id(conflict_id=data.conflict_id)
+        if conflict.resolvable is False:
+            raise ProcessingError("Conflict must be resolved manually on conflicting branch(es)")
         await diff_repo.update_conflict_by_id(conflict_id=data.conflict_id, selection=selection)
 
         core_data_checks = await NodeManager.query(

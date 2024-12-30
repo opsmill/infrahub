@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any, Optional, Union
 
 
@@ -60,16 +61,28 @@ class GraphQLQueryError(Error):
 
 
 class RepositoryError(Error):
-    def __init__(self, identifier: str, message: Optional[str] = None) -> None:
+    def __init__(self, identifier: str, message: str | None = None) -> None:
         self.identifier = identifier
         self.message = message or f"An error occurred with GitRepository '{identifier}'."
         super().__init__(self.message)
 
 
+class RepositoryInvalidFileSystemError(RepositoryError):
+    def __init__(
+        self,
+        identifier: str,
+        directory: Path,
+        message: str | None = None,
+    ) -> None:
+        super().__init__(identifier=identifier)
+        self.directory = directory
+        self.message = message or f"Invalid file system for {identifier}, Local directory {directory} missing."
+
+
 class CommitNotFoundError(Error):
     HTTP_CODE: int = 400
 
-    def __init__(self, identifier: str, commit: str, message: Optional[str] = None) -> None:
+    def __init__(self, identifier: str, commit: str, message: str | None = None) -> None:
         self.identifier = identifier
         self.commit = commit
         self.message = message or f"Commit {commit} not found with GitRepository '{identifier}'."
@@ -79,7 +92,7 @@ class CommitNotFoundError(Error):
 class DataTypeNotFoundError(Error):
     HTTP_CODE: int = 400
 
-    def __init__(self, name: str, message: Optional[str] = None) -> None:
+    def __init__(self, name: str, message: str | None = None) -> None:
         self.name = name
         self.message = message or f"Unable to find the DataType '{name}'."
         super().__init__(self.message)
@@ -88,7 +101,7 @@ class DataTypeNotFoundError(Error):
 class RepositoryFileNotFoundError(Error):
     HTTP_CODE: int = 404
 
-    def __init__(self, repository_name: str, location: str, commit: str, message: Optional[str] = None) -> None:
+    def __init__(self, repository_name: str, location: str, commit: str, message: str | None = None) -> None:
         self.repository_name = repository_name
         self.location = location
         self.commit = commit
@@ -99,7 +112,7 @@ class RepositoryFileNotFoundError(Error):
 class FileOutOfRepositoryError(Error):
     HTTP_CODE: int = 403
 
-    def __init__(self, repository_name: str, location: str, commit: str, message: Optional[str] = None) -> None:
+    def __init__(self, repository_name: str, location: str, commit: str, message: str | None = None) -> None:
         self.repository_name = repository_name
         self.location = location
         self.commit = commit
@@ -108,7 +121,7 @@ class FileOutOfRepositoryError(Error):
 
 
 class TransformError(Error):
-    def __init__(self, repository_name: str, location: str, commit: str, message: Optional[str] = None) -> None:
+    def __init__(self, repository_name: str, location: str, commit: str, message: str | None = None) -> None:
         self.repository_name = repository_name
         self.location = location
         self.commit = commit
@@ -120,7 +133,7 @@ class TransformError(Error):
 
 class CheckError(Error):
     def __init__(
-        self, repository_name: str, location: str, class_name: str, commit: str, message: Optional[str] = None
+        self, repository_name: str, location: str, class_name: str, commit: str, message: str | None = None
     ) -> None:
         self.repository_name = repository_name
         self.location = location
@@ -134,7 +147,7 @@ class CheckError(Error):
 
 
 class TransformNotFoundError(TransformError):
-    def __init__(self, repository_name: str, location: str, commit: str, message: Optional[str] = None) -> None:
+    def __init__(self, repository_name: str, location: str, commit: str, message: str | None = None) -> None:
         self.message = (
             message or f"Unable to locate the transform function at '{repository_name}::{commit}::{location}'."
         )
@@ -144,7 +157,7 @@ class TransformNotFoundError(TransformError):
 class BranchNotFoundError(Error):
     HTTP_CODE: int = 400
 
-    def __init__(self, identifier: str, message: Optional[str] = None) -> None:
+    def __init__(self, identifier: str, message: str | None = None) -> None:
         self.identifier = identifier
         self.message = message or f"Branch: {identifier} not found."
         super().__init__(self.message)
@@ -154,7 +167,7 @@ class NodeNotFoundError(Error):
     HTTP_CODE: int = 404
 
     def __init__(
-        self, node_type: str, identifier: str, branch_name: Optional[str] = None, message: Optional[str] = None
+        self, node_type: str, identifier: str, branch_name: str | None = None, message: str | None = None
     ) -> None:
         self.node_type = node_type
         self.identifier = identifier
@@ -172,7 +185,7 @@ class NodeNotFoundError(Error):
 class ResourceNotFoundError(Error):
     HTTP_CODE: int = 404
 
-    def __init__(self, message: Optional[str] = None) -> None:
+    def __init__(self, message: str | None = None) -> None:
         self.message = message or "The requested resource was not found"
         super().__init__(self.message)
 
@@ -181,7 +194,7 @@ class AuthorizationError(Error):
     HTTP_CODE: int = 401
     message: str = "Access to the requested resource was denied"
 
-    def __init__(self, message: Optional[str] = None) -> None:
+    def __init__(self, message: str | None = None) -> None:
         self.message = message or self.message
         super().__init__(self.message)
 
@@ -190,7 +203,7 @@ class PermissionDeniedError(Error):
     HTTP_CODE: int = 403
     message: str = "The requested operation was not authorized"
 
-    def __init__(self, message: Optional[str] = None) -> None:
+    def __init__(self, message: str | None = None) -> None:
         self.message = message or self.message
         super().__init__(self.message)
 
@@ -199,7 +212,7 @@ class ProcessingError(Error):
     HTTP_CODE: int = 400
     message: str = "Unable to process the request"
 
-    def __init__(self, message: Optional[str] = None) -> None:
+    def __init__(self, message: str | None = None) -> None:
         self.message = message or self.message
         super().__init__(self.message)
 
@@ -208,7 +221,7 @@ class PoolExhaustedError(Error):
     HTTP_CODE: int = 409
     message: str = "No more resources available in the pool"
 
-    def __init__(self, message: Optional[str] = None) -> None:
+    def __init__(self, message: str | None = None) -> None:
         self.message = message or self.message
         super().__init__(self.message)
 
@@ -216,7 +229,7 @@ class PoolExhaustedError(Error):
 class SchemaNotFoundError(Error):
     HTTP_CODE: int = 422
 
-    def __init__(self, branch_name: str, identifier: str, message: Optional[str] = None) -> None:
+    def __init__(self, branch_name: str, identifier: str, message: str | None = None) -> None:
         self.branch_name = branch_name
         self.identifier = identifier
         self.message = message or f"Unable to find the schema {identifier} in the database."
@@ -328,3 +341,11 @@ class HTTPServerTimeoutError(HTTPServerError):
 
 class HTTPServerSSLError(HTTPServerError):
     HTTP_CODE = 503
+
+
+class MergeFailedError(Error):
+    HTTP_CODE: int = 500
+
+    def __init__(self, branch_name: str) -> None:
+        self.message = f"Failed to merge branch '{branch_name}'"
+        super().__init__(self.message)

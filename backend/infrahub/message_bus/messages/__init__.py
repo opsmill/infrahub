@@ -13,37 +13,18 @@ from .event_node_mutated import EventNodeMutated
 from .event_schema_update import EventSchemaUpdate
 from .event_worker_newprimaryapi import EventWorkerNewPrimaryAPI
 from .finalize_validator_execution import FinalizeValidatorExecution
-from .git_diff_namesonly import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from .git_file_get import GitFileGet, GitFileGetResponse
-from .git_repository_add import GitRepositoryAdd
 from .git_repository_connectivity import GitRepositoryConnectivity
-from .git_repository_importobjects import GitRepositoryImportObjects
-from .git_repository_merge import GitRepositoryMerge
-from .git_repository_read_only_add import GitRepositoryAddReadOnly
-from .git_repository_read_only_pull import GitRepositoryPullReadOnly
-from .proposed_change.request_proposedchange_dataintegrity import RequestProposedChangeDataIntegrity
 from .proposed_change.request_proposedchange_refreshartifacts import RequestProposedChangeRefreshArtifacts
-from .proposed_change.request_proposedchange_repositorychecks import RequestProposedChangeRepositoryChecks
-from .proposed_change.request_proposedchange_rungenerators import RequestProposedChangeRunGenerators
-from .proposed_change.request_proposedchange_runtests import RequestProposedChangeRunTests
-from .proposed_change.request_proposedchange_schemaintegrity import RequestProposedChangeSchemaIntegrity
+from .refresh_git_fetch import RefreshGitFetch
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
-from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
-from .request_generatordefinition_run import RequestGeneratorDefinitionRun
-from .request_graphqlquerygroup_update import RequestGraphQLQueryGroupUpdate
-from .request_proposed_change_cancel import RequestProposedChangeCancel
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
 from .request_repository_checks import RequestRepositoryChecks
 from .request_repository_userchecks import RequestRepositoryUserChecks
-from .schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
-from .schema_validator_path import SchemaValidatorPath, SchemaValidatorPathResponse
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
-from .trigger_generatordefinition_run import TriggerGeneratorDefinitionRun
-from .trigger_proposed_change_cancel import TriggerProposedChangeCancel
-from .trigger_webhook_actions import TriggerWebhookActions
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "check.artifact.create": CheckArtifactCreate,
@@ -59,45 +40,23 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "event.schema.update": EventSchemaUpdate,
     "event.worker.new_primary_api": EventWorkerNewPrimaryAPI,
     "finalize.validator.execution": FinalizeValidatorExecution,
-    "git.diff.names_only": GitDiffNamesOnly,
     "git.file.get": GitFileGet,
-    "git.repository.add": GitRepositoryAdd,
     "git.repository.connectivity": GitRepositoryConnectivity,
-    "git.repository.merge": GitRepositoryMerge,
-    "git.repository.add_read_only": GitRepositoryAddReadOnly,
-    "git.repository.import_objects": GitRepositoryImportObjects,
-    "git.repository.pull_read_only": GitRepositoryPullReadOnly,
-    "schema.migration.path": SchemaMigrationPath,
-    "schema.validator.path": SchemaValidatorPath,
+    "refresh.git.fetch": RefreshGitFetch,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
-    "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
-    "request.generator_definition.run": RequestGeneratorDefinitionRun,
-    "request.graphql_query_group.update": RequestGraphQLQueryGroupUpdate,
-    "request.proposed_change.cancel": RequestProposedChangeCancel,
-    "request.proposed_change.data_integrity": RequestProposedChangeDataIntegrity,
     "request.proposed_change.pipeline": RequestProposedChangePipeline,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
-    "request.proposed_change.repository_checks": RequestProposedChangeRepositoryChecks,
-    "request.proposed_change.run_generators": RequestProposedChangeRunGenerators,
-    "request.proposed_change.schema_integrity": RequestProposedChangeSchemaIntegrity,
-    "request.proposed_change.run_tests": RequestProposedChangeRunTests,
     "request.repository.checks": RequestRepositoryChecks,
     "request.repository.user_checks": RequestRepositoryUserChecks,
     "send.echo.request": SendEchoRequest,
-    "trigger.generator_definition.run": TriggerGeneratorDefinitionRun,
-    "trigger.proposed_change.cancel": TriggerProposedChangeCancel,
-    "trigger.webhook.actions": TriggerWebhookActions,
 }
 
 RESPONSE_MAP: dict[str, type[InfrahubResponse]] = {
-    "git.diff.names_only": GitDiffNamesOnlyResponse,
     "git.file.get": GitFileGetResponse,
     "send.echo.request": SendEchoRequestResponse,
-    "schema.migration.path": SchemaMigrationPathResponse,
-    "schema.validator.path": SchemaValidatorPathResponse,
 }
 
 PRIORITY_MAP = {
@@ -113,7 +72,6 @@ PRIORITY_MAP = {
     "request.artifact.generate": 2,
     "request.git.sync": 4,
     "request.proposed_change.pipeline": 5,
-    "request.proposed_change.repository_checks": 5,
     "transform.jinja.template": 4,
     "transform.python.data": 4,
 }

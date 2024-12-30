@@ -969,27 +969,6 @@
                     "branch": "aware",
                     "optional": false,
                     "order_weight": 5000
-                },
-                {
-                    "name": "role",
-                    "kind": "Text",
-                    "namespace": "Attribute",
-                    "label": null,
-                    "description": null,
-                    "default_value": "read-only",
-                    "enum": [
-                        "admin",
-                        "read-only",
-                        "read-write"
-                    ],
-                    "regex": null,
-                    "max_length": null,
-                    "min_length": null,
-                    "inherited": false,
-                    "unique": false,
-                    "branch": "aware",
-                    "optional": false,
-                    "order_weight": 6000
                 }
             ],
             "relationships": [

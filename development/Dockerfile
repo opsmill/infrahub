@@ -37,13 +37,11 @@ WORKDIR /source
 
 RUN npm install --omit=dev
 COPY frontend/app/ /source/
-RUN npm run build && npm cache clean --force \
+RUN npm run build && npm cache clean --force
 
 # ****************************************************************
 # STAGE : Documentation
 # ****************************************************************
-FROM frontend
-
 ENV DOCS_IN_APP=1
 
 RUN mkdir /docs

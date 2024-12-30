@@ -3,7 +3,7 @@ import ipaddress
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.initialization import create_branch, create_ipam_namespace, get_default_ipnamespace
+from infrahub.core.initialization import create_branch, get_default_ipnamespace
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import IPPrefixReconcileQuery
@@ -12,7 +12,6 @@ from infrahub.database import InfrahubDatabase
 
 
 async def test_ipprefix_reconcile_query_simple(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01):
-    await create_ipam_namespace(db=db)
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     prefix_140 = ip_dataset_01["net140"]

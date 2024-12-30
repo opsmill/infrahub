@@ -18,6 +18,7 @@ class DiffCalculator:
         diff_branch: Branch,
         from_time: Timestamp,
         to_time: Timestamp,
+        include_unchanged: bool = True,
         previous_node_specifiers: set[NodeFieldSpecifier] | None = None,
     ) -> CalculatedDiffs:
         if diff_branch.name == registry.default_branch:
@@ -30,6 +31,7 @@ class DiffCalculator:
             schema_manager=registry.schema,
             from_time=from_time,
             to_time=to_time,
+            previous_node_field_specifiers=previous_node_specifiers,
         )
         branch_diff_query = await DiffAllPathsQuery.init(
             db=self.db,
@@ -44,9 +46,9 @@ class DiffCalculator:
             diff_parser.read_result(query_result=query_result)
 
         if base_branch.name != diff_branch.name:
-            branch_node_specifiers = diff_parser.get_node_field_specifiers_for_branch(branch_name=diff_branch.name)
-            new_node_field_specifiers = branch_node_specifiers - (previous_node_specifiers or set())
-            current_node_field_specifiers = (previous_node_specifiers or set()) - new_node_field_specifiers
+            new_node_field_specifiers = diff_parser.get_new_node_field_specifiers()
+            current_node_field_specifiers = diff_parser.get_current_node_field_specifiers()
+
             base_diff_query = await DiffAllPathsQuery.init(
                 db=self.db,
                 branch=base_branch,
@@ -62,8 +64,7 @@ class DiffCalculator:
             await base_diff_query.execute(db=self.db)
             for query_result in base_diff_query.get_results():
                 diff_parser.read_result(query_result=query_result)
-
-        diff_parser.parse()
+        diff_parser.parse(include_unchanged=include_unchanged)
         return CalculatedDiffs(
             base_branch_name=base_branch.name,
             diff_branch_name=diff_branch.name,

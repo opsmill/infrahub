@@ -3,8 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from graphql import graphql
-
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import InfrahubKind, PermissionAction
@@ -16,6 +14,7 @@ from infrahub.core.registry import registry
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.permissions.constants import BranchRelativePermissionDecision, PermissionDecisionFlag
 from infrahub.permissions.local_backend import LocalPermissionBackend
+from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch

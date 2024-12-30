@@ -3,6 +3,7 @@ from infrahub.utils import InfrahubStringEnum
 
 class WorkflowType(InfrahubStringEnum):
     INTERNAL = "internal"
+    CORE = "core"
     USER = "user"
 
 
@@ -13,6 +14,7 @@ class WorkflowTag(InfrahubStringEnum):
     BRANCH = "branch/{identifier}"
     WORKFLOWTYPE = "workflow-type/{identifier}"
     DATABASE_CHANGE = "database-change"
+    RELATED_NODE = "node/{identifier}"
 
     def render(self, identifier: str | None = None) -> str:
         if identifier is None:

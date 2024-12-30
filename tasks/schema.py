@@ -6,8 +6,8 @@ from invoke.tasks import task
 
 from .utils import REPO_BASE
 
-SDK_DIRECTORY = f"{REPO_BASE}/generated/python-sdk"
-INFRAHUB_DIRECTORY = f"{REPO_BASE}/generated/infrahub"
+SDK_DIRECTORY = REPO_BASE / "generated" / "python-sdk"
+INFRAHUB_DIRECTORY = REPO_BASE / "generated" / "infrahub"
 
 
 @task
@@ -21,7 +21,7 @@ def generate_jsonschema(context: Context) -> None:
 def generate_infrahub_node_schema() -> None:
     from infrahub.api.schema import SchemaLoadAPI
 
-    schema_dir = Path(f"{INFRAHUB_DIRECTORY}/schema")
+    schema_dir = INFRAHUB_DIRECTORY / "schema"
     schema_dir.mkdir(parents=True, exist_ok=True)
 
     schema = SchemaLoadAPI.model_json_schema()
@@ -34,9 +34,9 @@ def generate_infrahub_node_schema() -> None:
 
 
 def generate_sdk_repository_config() -> None:
-    from infrahub_sdk.schema import InfrahubRepositoryConfig
+    from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
 
-    repository_dir = Path(f"{SDK_DIRECTORY}/repository-config")
+    repository_dir = SDK_DIRECTORY / "repository-config"
     repository_dir.mkdir(parents=True, exist_ok=True)
     schema = json.dumps(InfrahubRepositoryConfig.model_json_schema(), indent=4)
 

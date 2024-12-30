@@ -21,6 +21,8 @@ exceptions:
   - CA certificates
   - CI
   - Codespaces
+  - Computed Attribute
+  - Computed Attributes
   - CoreArtifactTarget
   - CoreRepository
   - CoreGroup
@@ -68,6 +70,7 @@ exceptions:
   - TLS
   - Tony Stark
   - TransformPython
+  - Trusted Root Certificate Store
   - UI
   - Vale
   - VS Code

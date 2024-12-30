@@ -1,0 +1,151 @@
+---
+# yamllint disable rule:line-length
+# The following environment variables are part of the Infrahub configuration options.
+# For detailed information on these configuration options, please refer to the Infrahub documentation:
+# https://docs.infrahub.app/reference/configuration
+services:
+  message-queue:
+    image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:3.13.7-management}
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: infrahub
+      RABBITMQ_DEFAULT_PASS: infrahub
+    healthcheck:
+      test: rabbitmq-diagnostics -q check_port_connectivity
+      interval: 5s
+      timeout: 30s
+      retries: 10
+      start_period: 3s
+    ports:
+      - ${INFRAHUB_TESTING_MESSAGE_QUEUE_PORT:-0}:15692
+
+  cache:
+    image: ${CACHE_DOCKER_IMAGE:-redis:7.2.4}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  database:
+    image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.20.0-community}
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/admin
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      NEO4J_dbms_security_auth__minimum__password__length: 4
+    volumes:
+      - "database_data:/data"
+      - "database_logs:/logs"
+    healthcheck:
+      test: wget http://localhost:7474 || exit 1
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 3s
+    ports:
+      - ${INFRAHUB_TESTING_DATABASE_PORT:-0}:6362
+      - ${INFRAHUB_TESTING_DATABASE_UI_PORT:-0}:7474
+
+  task-manager:
+    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0.11-python3.12}"
+    command: prefect server start --host 0.0.0.0 --ui
+    depends_on:
+      task-manager-db:
+        condition: service_healthy
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
+    healthcheck:
+      test: /usr/local/bin/httpx http://localhost:4200/api/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    ports:
+      - ${INFRAHUB_TESTING_TASK_MANAGER_PORT:-0}:4200
+
+  task-manager-db:
+    image: "${POSTGRES_DOCKER_IMAGE:-postgres:16-alpine}"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=prefect
+    volumes:
+      - workflow_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  infrahub-server:
+    image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
+    command: >
+      gunicorn --config backend/infrahub/serve/gunicorn_config.py
+      -w ${INFRAHUB_TESTING_WEB_CONCURRENCY}
+      --logger-class infrahub.serve.log.GunicornLogger
+      infrahub.server:app
+    environment:
+      INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}
+      INFRAHUB_LOG_LEVEL: ${INFRAHUB_TESTING_LOG_LEVEL:-INFO}
+      INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_TESTING_BROKER_ADDRESS}
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
+      INFRAHUB_DB_ADDRESS: ${INFRAHUB_TESTING_DB_ADDRESS}
+      INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_TESTING_WORKFLOW_ADDRESS}
+      INFRAHUB_INITIAL_ADMIN_TOKEN: ${INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN}
+      INFRAHUB_INITIAL_AGENT_TOKEN: ${INFRAHUB_TESTING_INITIAL_AGENT_TOKEN}
+      INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_TESTING_SECURITY_SECRET_KEY}
+      PREFECT_API_URL: ${INFRAHUB_TESTING_PREFECT_API}
+    depends_on:
+      database:
+        condition: service_healthy
+      message-queue:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+      task-manager:
+        condition: service_healthy
+    ports:
+      - ${INFRAHUB_TESTING_SERVER_PORT:-0}:8000
+    volumes:
+      - "storage_data:/opt/infrahub/storage"
+    tty: true
+    healthcheck:
+      test: curl -s -f -o /dev/null http://localhost:8000/api/schema/summary || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  task-worker:
+    deploy:
+      mode: replicated
+      replicas: 2
+    image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
+    command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
+    environment:
+      INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}
+      INFRAHUB_LOG_LEVEL: ${INFRAHUB_TESTING_LOG_LEVEL}
+      INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_TESTING_GIT_REPOSITORIES_DIRECTORY}
+      INFRAHUB_API_TOKEN: ${INFRAHUB_TESTING_INITIAL_AGENT_TOKEN}
+      INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_TESTING_SECURITY_SECRET_KEY}
+      INFRAHUB_ADDRESS: ${INFRAHUB_TESTING_ADDRESS}
+      INFRAHUB_INTERNAL_ADDRESS: ${INFRAHUB_TESTING_INTERNAL_ADDRESS}
+      INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_TESTING_BROKER_ADDRESS}
+      INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
+      INFRAHUB_DB_ADDRESS: ${INFRAHUB_TESTING_DB_ADDRESS:-database}
+      INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_TESTING_WORKFLOW_ADDRESS}
+      INFRAHUB_TIMEOUT: ${INFRAHUB_TESTING_TIMEOUT}
+      PREFECT_API_URL: ${INFRAHUB_TESTING_PREFECT_API}
+    depends_on:
+      - infrahub-server
+    volumes:
+      - "./${INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_REMOTE_GIT_DIRECTORY}"
+    tty: true
+
+volumes:
+  database_data:
+  database_logs:
+  storage_data:
+  workflow_db:

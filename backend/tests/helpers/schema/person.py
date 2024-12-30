@@ -8,6 +8,7 @@ PERSON = NodeSchema(
     include_in_menu=True,
     label="Person",
     default_filter="name__value",
+    display_labels=["name__value"],
     attributes=[
         AttributeSchema(name="name", kind="Text"),
         AttributeSchema(name="description", kind="Text", optional=True),

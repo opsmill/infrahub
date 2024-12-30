@@ -47,7 +47,8 @@ class DiffQuery(Query):
 
 
 class DiffNodeQuery(DiffQuery):
-    name: str = "diff_node"
+    name = "diff_node"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -113,7 +114,8 @@ class DiffNodeQuery(DiffQuery):
 
 
 class DiffAttributeQuery(DiffQuery):
-    name: str = "diff_attribute"
+    name = "diff_attribute"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -175,8 +177,8 @@ class DiffAttributeQuery(DiffQuery):
 
 
 class DiffRelationshipQuery(DiffQuery):
-    name: str = "diff_relationship"
-    type: QueryType = QueryType.READ
+    name = "diff_relationship"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -260,8 +262,8 @@ class DiffRelationshipQuery(DiffQuery):
 
 
 class DiffRelationshipPropertyQuery(DiffQuery):
-    name: str = "diff_relationship_property"
-    type: QueryType = QueryType.READ
+    name = "diff_relationship_property"
+    type = QueryType.READ
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
@@ -317,7 +319,8 @@ class DiffRelationshipPropertyQuery(DiffQuery):
 
 
 class DiffNodePropertiesByIDSRangeQuery(Query):
-    name: str = "diff_node_properties_range_ids"
+    name = "diff_node_properties_range_ids"
+    type = QueryType.READ
 
     def __init__(self, ids: list[str], diff_from: str, diff_to: str, account=None, **kwargs):
         self.account = account
@@ -362,7 +365,8 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
 
 
 class DiffNodePropertiesByIDSQuery(Query):
-    name: str = "diff_node_properties_ids"
+    name = "diff_node_properties_ids"
+    type = QueryType.READ
     order_by: list[str] = ["a.name"]
 
     def __init__(
@@ -414,8 +418,7 @@ class DiffNodePropertiesByIDSQuery(Query):
 
 class DiffRelationshipPropertiesByIDSRangeQuery(Query):
     name = "diff_relationship_properties_range_ids"
-
-    type: QueryType = QueryType.READ
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -469,8 +472,8 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
 
 
 class DiffCountChanges(Query):
-    name: str = "diff_count_changes"
-    type: QueryType = QueryType.READ
+    name = "diff_count_changes"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -522,7 +525,8 @@ class DiffCountChanges(Query):
 class DiffAllPathsQuery(DiffQuery):
     """Gets the required Cypher paths for a diff"""
 
-    name: str = "diff_node"
+    name = "diff_node"
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -664,7 +668,7 @@ CALL {
             AND (from_time <= diff_rel.from < $to_time)
             AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
             AND r_root.from <= diff_rel.from
-            AND (r_root.to IS NULL OR r_root.to >= diff_rel.from)
+            AND (r_root.to IS NULL OR diff_rel.branch <> r_root.branch OR r_root.to >= diff_rel.from)
             RETURN root, r_root, p, diff_rel, q
             UNION ALL
             WITH node_field_specifiers_list, from_time
@@ -679,7 +683,7 @@ CALL {
             AND (from_time <= diff_rel.from < $to_time)
             AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
             AND r_root.from <= diff_rel.from
-            AND (r_root.to IS NULL OR r_root.to >= diff_rel.from)
+            AND (r_root.to IS NULL OR diff_rel.branch <> r_root.branch OR r_root.to >= diff_rel.from)
             RETURN root, r_root, p, diff_rel, q
         }
         WITH root, r_root, p, diff_rel, q, from_time

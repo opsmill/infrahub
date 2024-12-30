@@ -1,7 +1,7 @@
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { classNames } from "@/utils/common";
 import { type VariantProps, cva } from "class-variance-authority";
-import { forwardRef } from "react";
+import { HTMLAttributes, forwardRef } from "react";
 
 export const initials = (name: string) =>
   name
@@ -28,14 +28,13 @@ const avatarVariants = cva("rounded-full flex justify-center items-center", {
   },
 });
 
-interface tAvatar extends VariantProps<typeof avatarVariants> {
+interface AvatarProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof avatarVariants> {
   name?: string;
   text?: string;
-  className?: string;
   isLoading?: boolean;
 }
 
-export const Avatar = forwardRef<HTMLButtonElement, tAvatar>((props: tAvatar, ref) => {
+export const Avatar = forwardRef<HTMLDivElement, AvatarProps>((props: AvatarProps, ref) => {
   const { name, text, variant, size, className, isLoading, ...otherProps } = props;
 
   if (isLoading) {
@@ -47,7 +46,7 @@ export const Avatar = forwardRef<HTMLButtonElement, tAvatar>((props: tAvatar, re
   }
 
   return (
-    <button
+    <div
       ref={ref}
       className={classNames(avatarVariants({ variant, size, className }))}
       {...otherProps}
@@ -55,6 +54,6 @@ export const Avatar = forwardRef<HTMLButtonElement, tAvatar>((props: tAvatar, re
       {name && initials(name)}
       {text}
       {!name && !text && "-"}
-    </button>
+    </div>
   );
 });

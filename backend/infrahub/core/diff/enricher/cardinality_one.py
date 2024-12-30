@@ -92,8 +92,6 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
             prop_action = self._determine_action(
                 previous_value=earliest_prop.previous_value, new_value=latest_prop.new_value
             )
-            if prop_action is DiffAction.UNCHANGED:
-                continue
             consolidated_properties.add(
                 EnrichedDiffProperty(
                     property_type=prop_type,

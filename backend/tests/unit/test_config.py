@@ -3,8 +3,7 @@ from tests.conftest import TestHelper
 
 
 def test_load_sso_config(helper: TestHelper) -> None:
-    fixture_dir = helper.get_fixtures_dir()
-    config_file = str(fixture_dir / "config_files" / "sso_config_methods.toml")
+    config_file = str(helper.get_fixtures_dir() / "config_files" / "sso_config_methods.toml")
 
     config = load(config_file_name=config_file)
     assert config.security.public_sso_config.enabled

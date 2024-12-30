@@ -10,13 +10,14 @@ from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 from infrahub.tasks.artifact import define_artifact
 from infrahub.tasks.check import set_check_status
+from infrahub.workflows.utils import add_tags
 
 log = get_logger()
 
 
-@flow(name="git-repository-check-artifact-create")
+@flow(name="git-repository-check-artifact-create", flow_run_name="Check artifact creation")
 async def create(message: messages.CheckArtifactCreate, service: InfrahubServices) -> None:
-    log.debug("Creating artifact", message=message)
+    await add_tags(branches=[message.branch_name], nodes=[message.target_id])
     validator = await service.client.get(
         kind=InfrahubKind.ARTIFACTVALIDATOR, id=message.validator_id, include=["checks"]
     )

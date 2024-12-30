@@ -7,9 +7,14 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.graphql.manager import GraphQLSchemaManager
 
 from .car import CAR
+from .child import CHILD
+from .color import COLOR
+from .location import CONTINENT, COUNTRY, LOCATION, SITE
 from .manufacturer import MANUFACTURER
 from .person import PERSON
+from .thing import THING
 from .ticket import TICKET
+from .tshirt import TSHIRT
 from .widget import WIDGET
 
 if TYPE_CHECKING:
@@ -17,19 +22,38 @@ if TYPE_CHECKING:
 
 
 CAR_SCHEMA = SchemaRoot(nodes=[CAR, MANUFACTURER, PERSON])
+LOCATION_SCHEMA = SchemaRoot(generics=[LOCATION], nodes=[CONTINENT, COUNTRY, SITE])
 
 
-async def load_schema(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None) -> None:
-    default_branch_name = registry.default_branch
-    branch_schema = registry.schema.get_schema_branch(name=branch_name or default_branch_name)
-    tmp_schema = branch_schema.duplicate()
-    tmp_schema.load_schema(schema=schema)
-    tmp_schema.process()
-
+async def load_schema(
+    db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None, update_db: bool = False
+) -> None:
+    branch_name = branch_name or registry.default_branch
+    branch_schema = registry.schema.get_schema_branch(name=branch_name)
+    registry.schema.register_schema(schema=schema, branch=branch_name)
     await registry.schema.update_schema_branch(
-        schema=tmp_schema, db=db, branch=branch_name or default_branch_name, update_db=True
+        schema=branch_schema.duplicate(), db=db, branch=branch_name, update_db=update_db
     )
+    branch = registry.get_branch_from_registry(branch_name)
+    branch.update_schema_hash()
+    await branch.save(db=db)
     GraphQLSchemaManager.clear_cache()
 
 
-__all__ = ["CAR", "CAR_SCHEMA", "MANUFACTURER", "PERSON", "TICKET", "WIDGET"]
+__all__ = [
+    "CAR",
+    "CAR_SCHEMA",
+    "CHILD",
+    "COLOR",
+    "CONTINENT",
+    "COUNTRY",
+    "LOCATION",
+    "LOCATION_SCHEMA",
+    "MANUFACTURER",
+    "PERSON",
+    "SITE",
+    "THING",
+    "TICKET",
+    "TSHIRT",
+    "WIDGET",
+]

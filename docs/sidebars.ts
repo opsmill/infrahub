@@ -81,6 +81,7 @@ const sidebars: SidebarsConfig = {
         'guides/check',
         'guides/resource-manager',
         'guides/managing-api-tokens',
+        'guides/computed-attributes',
       ],
     },
     {
@@ -97,6 +98,7 @@ const sidebars: SidebarsConfig = {
         'topics/check',
         'topics/metadata',
         'topics/database-backup',
+        'topics/developer-guide',
         'topics/local-demo-environment',
         'topics/generator',
         'topics/graphql',
@@ -114,6 +116,7 @@ const sidebars: SidebarsConfig = {
         'topics/schema',
         'topics/transformation',
         'topics/auth',
+        'topics/computed-attributes',
       ],
     },
     {
@@ -312,6 +315,7 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_1_0',
             'release-notes/infrahub/release-1_0_10',
             'release-notes/infrahub/release-1_0_9',
             'release-notes/infrahub/release-1_0_8',

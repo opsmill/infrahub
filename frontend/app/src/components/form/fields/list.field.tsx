@@ -1,11 +1,12 @@
+import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 import { LabelFormField } from "@/components/form/fields/common";
-import { FormFieldProps } from "@/components/form/type";
+import { FormAttributeValue, FormFieldProps } from "@/components/form/type";
 import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
-import List from "@/components/list";
+import { List } from "@/components/list";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
 
 const ListField = ({
-  defaultValue,
+  defaultValue = DEFAULT_FORM_FIELD_VALUE,
   description,
   label,
   name,
@@ -17,7 +18,18 @@ const ListField = ({
     <FormField
       key={name}
       name={name}
-      rules={rules}
+      rules={{
+        validate: {
+          ...rules?.validate,
+          required: (fieldData: FormAttributeValue) => {
+            if (rules?.required) {
+              return (Array.isArray(fieldData.value) && fieldData.value.length > 0) || "Required";
+            }
+
+            return true;
+          },
+        },
+      }}
       defaultValue={defaultValue}
       render={({ field }) => {
         const fieldData = field.value;
@@ -34,13 +46,12 @@ const ListField = ({
 
             <FormInput>
               <List
-                isProtected={props.disabled}
                 {...field}
+                {...props}
                 value={fieldData?.value ?? ""}
                 onChange={(newValue) => {
                   field.onChange(updateFormFieldValue(newValue, defaultValue));
                 }}
-                {...props}
               />
             </FormInput>
 

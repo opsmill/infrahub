@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from typing_extensions import Self
 
 from infrahub.core.constants import InfrahubKind, PermissionDecision
-from infrahub.core.query import Query
+from infrahub.core.query import Query, QueryType
 from infrahub.core.registry import registry
 
 if TYPE_CHECKING:
@@ -62,6 +62,7 @@ class ObjectPermission:
 
 class AccountGlobalPermissionQuery(Query):
     name: str = "account_global_permissions"
+    type: QueryType = QueryType.READ
 
     def __init__(self, account_id: str, **kwargs: Any):
         self.account_id = account_id
@@ -176,6 +177,7 @@ class AccountGlobalPermissionQuery(Query):
 
 class AccountObjectPermissionQuery(Query):
     name: str = "account_object_permissions"
+    type: QueryType = QueryType.READ
 
     def __init__(self, account_id: str, **kwargs: Any):
         self.account_id = account_id
@@ -327,6 +329,7 @@ async def fetch_permissions(account_id: str, db: InfrahubDatabase, branch: Branc
 
 class AccountRoleGlobalPermissionQuery(Query):
     name: str = "account_role_global_permissions"
+    type: QueryType = QueryType.READ
 
     def __init__(self, role_id: str, **kwargs: Any):
         self.role_id = role_id
@@ -416,6 +419,7 @@ class AccountRoleGlobalPermissionQuery(Query):
 
 class AccountRoleObjectPermissionQuery(Query):
     name: str = "account_role_object_permissions"
+    type: QueryType = QueryType.READ
 
     def __init__(self, role_id: str, **kwargs: Any):
         self.role_id = role_id
@@ -542,6 +546,7 @@ async def fetch_role_permissions(role_id: str, db: InfrahubDatabase, branch: Bra
 
 class AccountTokenValidateQuery(Query):
     name: str = "account_token_validate"
+    type: QueryType = QueryType.READ
 
     def __init__(self, token: str, **kwargs: Any):
         self.token = token
@@ -554,9 +559,7 @@ class AccountTokenValidateQuery(Query):
         self.params.update(token_params)
 
         account_filter_perms, account_params = self.branch.get_query_filter_relationships(
-            rel_labels=["r31", "r32", "r41", "r42", "r5", "r6", "r7", "r8"],
-            at=self.at,
-            include_outside_parentheses=True,
+            rel_labels=["r31", "r41", "r5", "r6"], at=self.at, include_outside_parentheses=True
         )
         self.params.update(account_params)
 
@@ -568,7 +571,6 @@ class AccountTokenValidateQuery(Query):
         WHERE %s
         WITH at
         MATCH (at)-[r31]-(:Relationship)-[r41]-(acc:CoreGenericAccount)-[r5:HAS_ATTRIBUTE]-(an:Attribute {name: "name"})-[r6:HAS_VALUE]-(av:AttributeValue)
-        MATCH (at)-[r32]-(:Relationship)-[r42]-(acc:CoreGenericAccount)-[r7:HAS_ATTRIBUTE]-(ar:Attribute {name: "role"})-[r8:HAS_VALUE]-(avr:AttributeValue)
         WHERE %s
         """ % (
             "\n AND ".join(token_filter_perms),
@@ -577,7 +579,7 @@ class AccountTokenValidateQuery(Query):
 
         self.add_to_query(query)
 
-        self.return_labels = ["at", "av", "avr", "acc"]
+        self.return_labels = ["at", "av", "acc"]
 
     def get_account_name(self) -> Optional[str]:
         """Return the account name that matched the query or None."""
@@ -593,18 +595,9 @@ class AccountTokenValidateQuery(Query):
 
         return None
 
-    def get_account_role(self) -> str:
-        """Return the account role that matched the query or a None."""
-        if result := self.get_result():
-            return result.get("avr").get("value")
 
-        return "read-only"
-
-
-async def validate_token(
-    token: str, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None
-) -> tuple[Optional[str], str]:
+async def validate_token(token: str, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> str | None:
     branch = await registry.get_branch(db=db, branch=branch)
     query = await AccountTokenValidateQuery.init(db=db, branch=branch, token=token)
     await query.execute(db=db)
-    return query.get_account_id(), query.get_account_role()
+    return query.get_account_id()

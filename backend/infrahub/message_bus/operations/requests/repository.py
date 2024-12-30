@@ -2,21 +2,21 @@ from typing import List
 
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
+from prefect.logging import get_run_logger
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.timestamp import Timestamp
-from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
+from infrahub.workflows.utils import add_tags
 
-log = get_logger()
 
-
-@flow(name="repository-check")
+@flow(name="repository-check", flow_run_name="Running repository checks for repository {message.repository}")
 async def checks(message: messages.RequestRepositoryChecks, service: InfrahubServices) -> None:
     """Request to start validation checks on a specific repository."""
-    log.info("Running repository checks", repository_id=message.repository, proposed_change_id=message.proposed_change)
+    await add_tags(branches=[message.source_branch], nodes=[message.proposed_change])
+    log = get_run_logger()
 
     events: List[InfrahubMessage] = []
 
@@ -76,7 +76,7 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
     )
 
     checks_in_execution = ",".join(check_execution_ids)
-    log.info("Checks in execution", checks=checks_in_execution)
+    log.info(f"Checks in execution {checks_in_execution}")
     await service.cache.set(
         key=f"validator_execution_id:{validator_execution_id}:checks",
         value=checks_in_execution,
@@ -96,46 +96,40 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
         await service.send(message=event)
 
 
-@flow(name="repository-users-check")
+@flow(
+    name="repository-users-check",
+    flow_run_name="Evaluating user-defined checks on repository {message.repository_name}",
+)
 async def user_checks(message: messages.RequestRepositoryUserChecks, service: InfrahubServices) -> None:
     """Request to start validation checks on a specific repository for User-defined checks."""
-    async with service.task_report(
-        related_node=message.proposed_change,
-        title=f"{message.branch_diff.get_repository(message.repository).repository_name} - Evaluating User Defined Checks",
-    ) as task_report:
-        log.info(
-            "Evaluating user-defined checks",
-            repository_id=message.repository,
-            proposed_change_id=message.proposed_change,
-        )
-        events: List[InfrahubMessage] = []
 
-        repository = await service.client.get(
-            kind=InfrahubKind.GENERICREPOSITORY, id=message.repository, branch=message.source_branch, fragment=True
-        )
-        await repository.checks.fetch()
+    await add_tags(branches=[message.source_branch], nodes=[message.proposed_change])
+    log = get_run_logger()
 
-        for relationship in repository.checks.peers:
-            log.info("Adding check for user defined check")
-            check_definition = relationship.peer
-            events.append(
-                messages.CheckRepositoryCheckDefinition(
-                    check_definition_id=check_definition.id,
-                    repository_id=repository.id,
-                    repository_name=repository.name.value,
-                    commit=repository.commit.value,
-                    file_path=check_definition.file_path.value,
-                    class_name=check_definition.class_name.value,
-                    branch_name=message.source_branch,
-                    proposed_change=message.proposed_change,
-                    branch_diff=message.branch_diff,
-                )
+    events: List[InfrahubMessage] = []
+
+    repository = await service.client.get(
+        kind=InfrahubKind.GENERICREPOSITORY, id=message.repository_id, branch=message.source_branch, fragment=True
+    )
+    await repository.checks.fetch()
+
+    for relationship in repository.checks.peers:
+        log.info("Adding check for user defined check")
+        check_definition = relationship.peer
+        events.append(
+            messages.CheckRepositoryCheckDefinition(
+                check_definition_id=check_definition.id,
+                repository_id=repository.id,
+                repository_name=repository.name.value,
+                commit=repository.commit.value,
+                file_path=check_definition.file_path.value,
+                class_name=check_definition.class_name.value,
+                branch_name=message.source_branch,
+                proposed_change=message.proposed_change,
+                branch_diff=message.branch_diff,
             )
-
-        for event in events:
-            event.assign_meta(parent=message)
-            await service.send(message=event)
-
-        await task_report.info(
-            f"Requested {len(repository.checks.peers)} user defined checks", proposed_change=message.proposed_change
         )
+
+    for event in events:
+        event.assign_meta(parent=message)
+        await service.send(message=event)

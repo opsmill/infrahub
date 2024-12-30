@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
-import os
 import sys
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 import jinja2
@@ -17,12 +15,13 @@ from infrahub_sdk.protocols import (
     CoreArtifactDefinition,
     CoreCheckDefinition,
     CoreGeneratorDefinition,
+    CoreGenericRepository,
     CoreGraphQLQuery,
     CoreTransformation,
     CoreTransformJinja2,
     CoreTransformPython,
 )
-from infrahub_sdk.schema import (
+from infrahub_sdk.schema.repository import (
     InfrahubCheckDefinitionConfig,
     InfrahubGeneratorDefinitionConfig,
     InfrahubJinja2TransformConfig,
@@ -31,13 +30,19 @@ from infrahub_sdk.schema import (
 )
 from infrahub_sdk.utils import compare_lists
 from infrahub_sdk.yaml import SchemaFile
+from prefect import flow, task
+from prefect.cache_policies import NONE
+from prefect.logging import get_run_logger
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
+from typing_extensions import Self
 
 from infrahub.core.constants import InfrahubKind, RepositorySyncStatus
-from infrahub.exceptions import CheckError, TransformError
+from infrahub.events.repository_action import CommitUpdatedEvent
+from infrahub.exceptions import CheckError, RepositoryInvalidFileSystemError, TransformError
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
-from infrahub.log import get_logger
+from infrahub.services import InfrahubServices
+from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
     import types
@@ -51,8 +56,6 @@ if TYPE_CHECKING:
     from infrahub.message_bus import messages
 
 # pylint: disable=too-many-lines
-
-log = get_logger("infrahub.git")
 
 
 class ArtifactGenerateResult(BaseModel):
@@ -126,11 +129,42 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     class that uses an "InfrahubRepository" or "InfrahubReadOnlyRepository" as input
     """
 
+    @classmethod
+    async def init(cls, commit: str | None = None, service: InfrahubServices | None = None, **kwargs: Any) -> Self:
+        service = service or InfrahubServices()
+        self = cls(service=service, **kwargs)
+        try:
+            self.validate_local_directories()
+        except RepositoryInvalidFileSystemError:
+            await self.ensure_location_is_defined()
+            await self.create_locally(infrahub_branch_name=self.infrahub_branch_name, update_commit_value=False)
+            service.log.info(f"Initialized the local directory for {self.name} because it was missing.")
+
+        if commit:
+            self.get_commit_worktree(commit=commit)
+
+        service.log.debug(
+            f"Initiated the object on an existing directory for {self.name}",
+        )
+        return self
+
+    async def ensure_location_is_defined(self) -> None:
+        if self.location:
+            return
+        client = self.get_client()
+        repo = await client.get(
+            kind=CoreGenericRepository, name__value=self.name, exclude=["tags", "credential"], raise_when_missing=True
+        )
+        self.location = repo.location.value
+
+    @flow(name="import-object-from-file", flow_run_name="Import objects")
     async def import_objects_from_files(
         self, infrahub_branch_name: str, git_branch_name: Optional[str] = None, commit: Optional[str] = None
     ) -> None:
         if not commit:
             commit = self.get_commit_value(branch_name=git_branch_name or infrahub_branch_name)
+
+        await add_tags(branches=[infrahub_branch_name], nodes=[str(self.id)])
 
         self.create_commit_worktree(commit)
         await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.SYNCING)
@@ -166,6 +200,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         if error:
             raise error
 
+        await self.service.event.send(
+            CommitUpdatedEvent(
+                branch=infrahub_branch_name, commit=commit, repository_name=self.name, repository_id=str(self.id)
+            )
+        )
+
     async def _update_sync_status(self, branch_name: str, status: RepositorySyncStatus) -> None:
         update_status = """
         mutation UpdateRepositoryStatus(
@@ -190,10 +230,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             tracker="mutation-repository-update-admin-status",
         )
 
+    @task(name="import-jinja2-tansforms", task_run_name="Import Jinja2 transform", cache_policy=NONE)
     async def import_jinja2_transforms(
-        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+        self,
+        branch_name: str,
+        commit: str,  # pylint: disable=unused-argument
+        config_file: InfrahubRepositoryConfig,
     ) -> None:
-        log.debug("Importing all Jinja2 transforms", repository=self.name, branch=branch_name, commit=commit)
+        log = get_run_logger()
 
         schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name)
 
@@ -207,7 +251,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         local_transforms: dict[str, InfrahubRepositoryJinja2] = {}
 
         # Process the list of local Jinja2 Transforms to organize them by name
-        await self.log.info(f"Found {len(config_file.jinja2_transforms)} Jinja2 transforms in the repository")
+        log.info(f"Found {len(config_file.jinja2_transforms)} Jinja2 transforms in the repository")
 
         for config_transform in config_file.jinja2_transforms:
             try:
@@ -238,31 +282,21 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         )
 
         for transform_name in only_local:
-            log.info(
-                f"New Jinja2 Transform {transform_name!r} found, creating", repository=self.name, branch=branch_name
-            )
+            log.info(f"New Jinja2 Transform {transform_name!r} found, creating")
             await self.create_jinja2_transform(branch_name=branch_name, data=local_transforms[transform_name])
 
         for transform_name in present_in_both:
             if not await self.compare_jinja2_transform(
                 existing_transform=transforms_in_graph[transform_name], local_transform=local_transforms[transform_name]
             ):
-                log.info(
-                    f"New version of the Jinja2 Transform '{transform_name}' found, updating",
-                    repository=self.name,
-                    branch=branch_name,
-                )
+                log.info(f"New version of the Jinja2 Transform '{transform_name}' found, updating")
                 await self.update_jinja2_transform(
                     existing_transform=transforms_in_graph[transform_name],
                     local_transform=local_transforms[transform_name],
                 )
 
         for transform_name in only_graph:
-            log.info(
-                f"Jinja2 Transform '{transform_name}' not found locally in branch {branch_name}, deleting",
-                repository=self.name,
-                branch=branch_name,
-            )
+            log.info(f"Jinja2 Transform '{transform_name}' not found locally in branch {branch_name}, deleting")
             await transforms_in_graph[transform_name].delete()
 
     async def create_jinja2_transform(self, branch_name: str, data: InfrahubRepositoryJinja2) -> CoreTransformJinja2:
@@ -303,11 +337,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         await existing_transform.save()
 
+    @task(name="import-artifact-definitions", task_run_name="Import Artifact Definitions", cache_policy=NONE)
     async def import_artifact_definitions(
-        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+        self,
+        branch_name: str,
+        commit: str,  # pylint: disable=unused-argument
+        config_file: InfrahubRepositoryConfig,
     ) -> None:
-        log.debug("Importing all Artifact Definitions", repository=self.name, branch=branch_name, commit=commit)
-
+        log = get_run_logger()
         schema = await self.sdk.schema.get(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch_name)
 
         artifact_defs_in_graph = {
@@ -320,7 +357,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         local_artifact_defs: dict[str, InfrahubRepositoryArtifactDefinitionConfig] = {}
 
         # Process the list of local Artifact Definitions to organize them by name
-        await self.log.info(f"Found {len(config_file.artifact_definitions)} artifact definitions in the repository")
+        log.info(f"Found {len(config_file.artifact_definitions)} artifact definitions in the repository")
 
         for artdef in config_file.artifact_definitions:
             try:
@@ -341,9 +378,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         )
 
         for artdef_name in only_local:
-            log.info(
-                f"New Artifact Definition {artdef_name!r} found, creating", repository=self.name, branch=branch_name
-            )
+            log.info(f"New Artifact Definition {artdef_name!r} found, creating")
             await self.create_artifact_definition(branch_name=branch_name, data=local_artifact_defs[artdef_name])
 
         for artdef_name in present_in_both:
@@ -351,11 +386,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 existing_artifact_definition=artifact_defs_in_graph[artdef_name],
                 local_artifact_definition=local_artifact_defs[artdef_name],
             ):
-                log.info(
-                    f"New version of the Artifact Definition '{artdef_name}' found, updating",
-                    repository=self.name,
-                    branch=branch_name,
-                )
+                log.info(f"New version of the Artifact Definition '{artdef_name}' found, updating")
                 await self.update_artifact_definition(
                     existing_artifact_definition=artifact_defs_in_graph[artdef_name],
                     local_artifact_definition=local_artifact_defs[artdef_name],
@@ -407,30 +438,22 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         await existing_artifact_definition.save()
 
+    @task(name="repository-get-config", task_run_name="get repository config", cache_policy=NONE)
     async def get_repository_config(self, branch_name: str, commit: str) -> Optional[InfrahubRepositoryConfig]:
         branch_wt = self.get_worktree(identifier=commit or branch_name)
+        log = get_run_logger()
 
         config_file_name = ".infrahub.yml"
-        config_file = Path(os.path.join(branch_wt.directory, config_file_name))
+        config_file = branch_wt.directory / config_file_name
         if not config_file.is_file():
-            log.debug(
-                f"Unable to find the configuration file {config_file_name}, skipping",
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-            )
+            log.debug(f"Unable to find the configuration file {config_file_name}, skipping")
             return None
 
         config_file_content = config_file.read_text(encoding="utf-8")
         try:
             data = yaml.safe_load(config_file_content)
         except yaml.YAMLError as exc:
-            await self.log.error(
-                f"Unable to load the configuration file in YAML format {config_file_name} : {exc}",
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-            )
+            log.error(f"Unable to load the configuration file in YAML format {config_file_name} : {exc}")
             return None
 
         # Convert data to a dictionary to avoid it being `None` if the yaml file is just an empty document
@@ -438,29 +461,24 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         try:
             configuration = InfrahubRepositoryConfig(**data)
-            await self.log.info(f"Successfully parsed {config_file_name}")
+            log.info(f"Successfully parsed {config_file_name}")
             return configuration
         except PydanticValidationError as exc:
-            await self.log.error(
-                f"Unable to load the configuration file {config_file_name}, the format is not valid  : {exc}",
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-            )
+            log.error(f"Unable to load the configuration file {config_file_name}, the format is not valid  : {exc}")
             return None
 
+    @task(name="import-schema-files", task_run_name="Import schema files", cache_policy=NONE)
     async def import_schema_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig) -> None:
         # pylint: disable=too-many-branches
+        log = get_run_logger()
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
         schemas_data: list[SchemaFile] = []
 
         for schema in config_file.schemas:
-            full_schema = Path(branch_wt.directory, schema)
+            full_schema = branch_wt.directory / schema
             if not full_schema.exists():
-                await self.log.warning(
-                    f"Unable to find the schema {schema}", repository=self.name, branch=branch_name, commit=commit
-                )
+                log.warning(f"Unable to find the schema {schema}")
 
             if full_schema.is_file():
                 schema_file = SchemaFile(identifier=str(schema), location=full_schema)
@@ -471,7 +489,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                     extension=["yaml", "yml", "json"], branch_name=branch_name, commit=commit, directory=full_schema
                 )
                 for item in files:
-                    identifier = str(item).replace(branch_wt.directory, "")
+                    identifier = str(item.relative_to(branch_wt.directory))
                     schema_file = SchemaFile(identifier=identifier, location=item)
                     schema_file.load_content()
                     schemas_data.append(schema_file)
@@ -484,24 +502,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         for schema_file in schemas_data:
             if schema_file.valid:
                 continue
-            await self.log.error(
-                f"Unable to load the file {schema_file.identifier}, {schema_file.error_message}",
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-            )
+            log.error(f"Unable to load the file {schema_file.identifier}, {schema_file.error_message}")
 
         # Valid data format of content
         for schema_file in schemas_data:
             try:
                 self.sdk.schema.validate(schema_file.content)
             except PydanticValidationError as exc:
-                await self.log.error(
-                    f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}",
-                    repository=self.name,
-                    branch=branch_name,
-                    commit=commit,
-                )
+                log.error(f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}")
                 raise ValidationError(
                     identifier=str(self.id),
                     message=f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}",
@@ -523,25 +531,22 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             else:
                 error_messages.append(f"{response.errors}")
 
-            await self.log.error(
-                f"Unable to load the schema : {', '.join(error_messages)}", repository=self.name, commit=commit
-            )
+            log.error(f"Unable to load the schema : {', '.join(error_messages)}")
 
             raise ValidationError(
                 identifier=str(self.id), message=f"Unable to load the schema : {', '.join(error_messages)}"
             )
 
         for schema_file in schemas_data:
-            await self.log.info(
-                f"schema '{schema_file.identifier}' loaded successfully!", repository=self.name, commit=commit
-            )
+            log.info(f"schema '{schema_file.identifier}' loaded successfully!")
 
+    @task(name="import-graphql-queries", task_run_name="Import GraphQL Queries", cache_policy=NONE)
     async def import_all_graphql_query(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
         """Search for all .gql file and import them as GraphQL query."""
+        log = get_run_logger()
 
-        log.debug("Importing all GraphQL Queries", repository=self.name, branch=branch_name, commit=commit)
         commit_wt = self.get_worktree(identifier=commit)
         local_queries = {
             query.name: query.load_query(relative_path=commit_wt.directory) for query in config_file.queries
@@ -563,35 +568,20 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         for query_name in only_local:
             query = local_queries[query_name]
-            await self.log.info(
-                f"New Graphql Query {query_name!r} found, creating",
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-            )
+            log.info(f"New Graphql Query {query_name!r} found, creating")
             await self.create_graphql_query(branch_name=branch_name, name=query_name, query_string=query)
 
         for query_name in present_in_both:
             local_query = local_queries[query_name]
             graph_query = queries_in_graph[query_name]
             if local_query != graph_query.query.value:
-                await self.log.info(
-                    f"New version of the Graphql Query {query_name!r} found, updating",
-                    repository=self.name,
-                    branch=branch_name,
-                    commit=commit,
-                )
+                log.info(f"New version of the Graphql Query {query_name!r} found, updating")
                 graph_query.query.value = local_query
                 await graph_query.save()
 
         for query_name in only_graph:
             graph_query = queries_in_graph[query_name]
-            await self.log.info(
-                f"Graphql Query {query_name!r} not found locally, deleting",
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-            )
+            log.info(f"Graphql Query {query_name!r} not found locally, deleting")
             await graph_query.delete()
 
     async def create_graphql_query(self, branch_name: str, name: str, query_string: str) -> CoreGraphQLQuery:
@@ -608,32 +598,33 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         await obj.save()
         return obj
 
+    @task(name="import-python-check-definitions", task_run_name="Import Python Check Definitions", cache_policy=NONE)
     async def import_python_check_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
+        log = get_run_logger()
+
         commit_wt = self.get_worktree(identifier=commit)
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
         # Ensure the path for this repository is present in sys.path
-        if self.directory_root not in sys.path:
-            sys.path.append(self.directory_root)
+        if str(self.directory_root) not in sys.path:
+            sys.path.append(str(self.directory_root))
 
         checks = []
-        await self.log.info(f"Found {len(config_file.check_definitions)} check definitions in the repository")
+        log.info(f"Found {len(config_file.check_definitions)} check definitions in the repository")
         for check in config_file.check_definitions:
-            log.debug(self.name, import_type="check_definition", file=check.file_path)
+            log.debug(f"{self.name}, file={check.file_path}")
 
             file_info = extract_repo_file_information(
-                full_filename=os.path.join(branch_wt.directory, check.file_path.as_posix()),
+                full_filename=branch_wt.directory / check.file_path,
                 repo_directory=self.directory_root,
                 worktree_directory=commit_wt.directory,
             )
             try:
                 module = importlib.import_module(file_info.module_name)
             except ModuleNotFoundError as exc:
-                await self.log.warning(
-                    self.name, import_type="check_definition", file=check.file_path.as_posix(), error=str(exc)
-                )
+                log.warning(f"{self.name},  file={check.file_path.as_posix()} error={str(exc)}")
                 raise
 
             checks.extend(
@@ -658,12 +649,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         )
 
         for check_name in only_local:
-            await self.log.info(
-                f"New CheckDefinition {check_name!r} found, creating",
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-            )
+            log.info(f"New CheckDefinition {check_name!r} found, creating")
             await self.create_python_check_definition(
                 branch_name=branch_name, check=local_check_definitions[check_name]
             )
@@ -673,39 +659,32 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 check=local_check_definitions[check_name],
                 existing_check=check_definition_in_graph[check_name],
             ):
-                await self.log.info(
-                    f"New version of CheckDefinition {check_name!r} found, updating",
-                    repository=self.name,
-                    branch=branch_name,
-                    commit=commit,
-                )
+                log.info(f"New version of CheckDefinition {check_name!r} found, updating")
                 await self.update_python_check_definition(
                     check=local_check_definitions[check_name],
                     existing_check=check_definition_in_graph[check_name],
                 )
 
         for check_name in only_graph:
-            await self.log.info(
-                f"CheckDefinition '{check_name!r}' not found locally, deleting",
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-            )
+            log.info(f"CheckDefinition '{check_name!r}' not found locally, deleting")
             await check_definition_in_graph[check_name].delete()
 
+    @task(name="import-generator-definitions", task_run_name="Import Generator Definitions", cache_policy=NONE)
     async def import_generator_definitions(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
+        log = get_run_logger()
+
         commit_wt = self.get_worktree(identifier=commit)
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
         generators = []
-        await self.log.info(f"Found {len(config_file.generator_definitions)} generator definitions in the repository")
+        log.info(f"Found {len(config_file.generator_definitions)} generator definitions in the repository")
 
         for generator in config_file.generator_definitions:
-            await self.log.info(f"Processing generator {generator.name} ({generator.file_path})")
+            log.info(f"Processing generator {generator.name} ({generator.file_path})")
             file_info = extract_repo_file_information(
-                full_filename=os.path.join(branch_wt.directory, generator.file_path.as_posix()),
+                full_filename=branch_wt.directory / generator.file_path,
                 repo_directory=self.directory_root,
                 worktree_directory=commit_wt.directory,
             )
@@ -726,12 +705,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         )
 
         for generator_name in only_local:
-            await self.log.info(
-                f"New GeneratorDefinition {generator_name!r} found, creating",
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-            )
+            log.info(f"New GeneratorDefinition {generator_name!r} found, creating")
             await self._create_generator_definition(
                 branch_name=branch_name, generator=local_generator_definitions[generator_name]
             )
@@ -742,12 +716,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 existing_generator=generator_definition_in_graph[generator_name],
                 branch_name=branch_name,
             ):
-                await self.log.info(
-                    f"New version of GeneratorDefinition {generator_name!r} found, updating",
-                    repository=self.name,
-                    branch=branch_name,
-                    commit=commit,
-                )
+                log.info(f"New version of GeneratorDefinition {generator_name!r} found, updating")
 
                 await self._update_generator_definition(
                     generator=local_generator_definitions[generator_name],
@@ -755,12 +724,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 )
 
         for generator_name in only_graph:
-            await self.log.info(
-                f"GeneratorDefinition '{generator_name!r}' not found locally, deleting",
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-            )
+            log.info(f"GeneratorDefinition '{generator_name!r}' not found locally, deleting")
             await generator_definition_in_graph[generator_name].delete()
 
     async def _generator_requires_update(
@@ -795,33 +759,33 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             return True
         return False
 
+    @task(name="import-python-transforms", task_run_name="Import Python Transforms", cache_policy=NONE)
     async def import_python_transforms(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
+        log = get_run_logger()
         commit_wt = self.get_worktree(identifier=commit)
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
         # Ensure the path for this repository is present in sys.path
-        if self.directory_root not in sys.path:
-            sys.path.append(self.directory_root)
+        if str(self.directory_root) not in sys.path:
+            sys.path.append(str(self.directory_root))
 
         transforms = []
-        await self.log.info(f"Found {len(config_file.python_transforms)} Python transforms in the repository")
+        log.info(f"Found {len(config_file.python_transforms)} Python transforms in the repository")
 
         for transform in config_file.python_transforms:
-            log.debug(self.name, import_type="python_transform", file=transform.file_path)
+            log.debug(f"{self.name}, file={transform.file_path}")
 
             file_info = extract_repo_file_information(
-                full_filename=os.path.join(branch_wt.directory, transform.file_path.as_posix()),
+                full_filename=branch_wt.directory / transform.file_path,
                 repo_directory=self.directory_root,
                 worktree_directory=commit_wt.directory,
             )
             try:
                 module = importlib.import_module(file_info.module_name)
             except ModuleNotFoundError as exc:
-                await self.log.warning(
-                    self.name, import_type="python_transform", file=transform.file_path.as_posix(), error=str(exc)
-                )
+                log.warning(f"{self.name}, file={transform.file_path.as_posix()} error={str(exc)}")
                 raise
 
             transforms.extend(
@@ -846,12 +810,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         )
 
         for transform_name in only_local:
-            await self.log.info(
-                f"New TransformPython {transform_name!r} found, creating",
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-            )
+            log.info(f"New TransformPython {transform_name!r} found, creating")
             await self.create_python_transform(
                 branch_name=branch_name, transform=local_transform_definitions[transform_name]
             )
@@ -861,26 +820,17 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 local_transform=local_transform_definitions[transform_name],
                 existing_transform=transform_definition_in_graph[transform_name],
             ):
-                await self.log.info(
-                    f"New version of TransformPython {transform_name!r} found, updating",
-                    repository=self.name,
-                    branch=branch_name,
-                    commit=commit,
-                )
+                log.info(f"New version of TransformPython {transform_name!r} found, updating")
                 await self.update_python_transform(
                     local_transform=local_transform_definitions[transform_name],
                     existing_transform=transform_definition_in_graph[transform_name],
                 )
 
         for transform_name in only_graph:
-            await self.log.info(
-                f"TransformPython {transform_name!r} not found locally, deleting",
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-            )
+            log.info(f"TransformPython {transform_name!r} not found locally, deleting")
             await transform_definition_in_graph[transform_name].delete()
 
+    @task(name="check-definition-get", task_run_name="Get Check Definition", cache_policy=NONE)
     async def get_check_definition(
         self,
         branch_name: str,
@@ -888,6 +838,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         file_path: str,
         check_definition: InfrahubCheckDefinitionConfig,
     ) -> list[CheckDefinitionInformation]:
+        log = get_run_logger()
         if check_definition.class_name not in dir(module):
             return []
 
@@ -913,17 +864,17 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             )
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            await self.log.error(
-                f"An error occurred while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} ",
-                repository=self.name,
-                branch=branch_name,
+            log.error(
+                f"An error occurred while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} "
             )
             raise
         return checks
 
+    @task(name="python-transform-get", task_run_name="Get Python Transform", cache_policy=NONE)
     async def get_python_transforms(
         self, branch_name: str, module: types.ModuleType, file_path: str, transform: InfrahubPythonTransformConfig
     ) -> list[TransformPythonInformation]:
+        log = get_run_logger()
         if transform.class_name not in dir(module):
             return []
 
@@ -946,10 +897,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             )
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            await self.log.error(
-                f"An error occurred while processing the PythonTransform {transform.name} from {file_path} : {exc} ",
-                repository=self.name,
-                branch=branch_name,
+            log.error(
+                f"An error occurred while processing the PythonTransform {transform.name} from {file_path} : {exc} "
             )
             raise
 
@@ -1113,14 +1062,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             return False
         return True
 
+    @flow(name="import-python-files", flow_run_name="Import Python file")
     async def import_all_python_files(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
+        await add_tags(branches=[branch_name], nodes=[str(self.id)])
+
         await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
         await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)
         await self.import_generator_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
 
+    @task(name="jinja2-template-render", task_run_name="Render Jinja2 template", cache_policy=NONE)
     async def render_jinja2_template(self, commit: str, location: str, data: dict) -> str:
+        log = get_run_logger()
         commit_worktree = self.get_commit_worktree(commit=commit)
 
         self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
@@ -1131,9 +1085,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
             template = templateEnv.get_template(location)
             return template.render(**data)
         except Exception as exc:
-            log.error(str(exc), exc_info=True, repository=self.name, commit=commit, location=location)
+            log.error(str(exc), exc_info=True)
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
 
+    @task(name="python-check-execute", task_run_name="Execute Python Check", cache_policy=NONE)
     async def execute_python_check(
         self,
         branch_name: str,
@@ -1144,27 +1099,28 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         params: Optional[dict] = None,
     ) -> InfrahubCheck:
         """Execute A Python Check stored in the repository."""
+        log = get_run_logger()
 
         commit_worktree = self.get_commit_worktree(commit=commit)
 
         self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
 
         # Ensure the path for this repository is present in sys.path
-        if self.directory_root not in sys.path:
-            sys.path.append(self.directory_root)
+        if str(self.directory_root) not in sys.path:
+            sys.path.append(str(self.directory_root))
 
         try:
             file_info = extract_repo_file_information(
-                full_filename=os.path.join(commit_worktree.directory, location),
+                full_filename=commit_worktree.directory / location,
                 repo_directory=self.directory_root,
                 worktree_directory=commit_worktree.directory,
             )
 
             module = importlib.import_module(file_info.module_name)
 
-            check_class: InfrahubCheck = getattr(module, class_name)
+            check_class: type[InfrahubCheck] = getattr(module, class_name)
 
-            check = await check_class.init(
+            check = check_class(
                 root_directory=commit_worktree.directory, branch=branch_name, client=client, params=params
             )
             await check.run()
@@ -1173,43 +1129,30 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         except ModuleNotFoundError as exc:
             error_msg = "Unable to load the check file"
-            log.error(error_msg, repository=self.name, branch=branch_name, commit=commit, location=location)
+            log.error(error_msg)
             raise CheckError(
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
             ) from exc
 
         except AttributeError as exc:
             error_msg = f"Unable to find the class {class_name}"
-            log.error(
-                error_msg,
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-                class_name=class_name,
-                location=location,
-            )
+            log.error(error_msg)
             raise CheckError(
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
             ) from exc
 
         except Exception as exc:
-            log.critical(
-                str(exc),
-                exc_info=True,
-                repository=self.name,
-                branch=branch_name,
-                commit=commit,
-                class_name=class_name,
-                location=location,
-            )
+            log.critical(str(exc), exc_info=True)
             raise CheckError(
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=str(exc)
             ) from exc
 
+    @task(name="python-transform-execute", task_run_name="Execute Python Transform", cache_policy=NONE)
     async def execute_python_transform(
         self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: Optional[dict] = None
     ) -> Any:
         """Execute A Python Transform stored in the repository."""
+        log = get_run_logger()
 
         if "::" not in location:
             raise ValueError("Transformation location not valid, it must contains a double colons (::)")
@@ -1217,23 +1160,17 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         file_path, class_name = location.split("::")
         commit_worktree = self.get_commit_worktree(commit=commit)
 
-        log.debug(
-            f"Will run Python Transform from {class_name} at {location}",
-            repository=self.name,
-            branch=branch_name,
-            commit=commit,
-            location=location,
-        )
+        log.debug(f"Will run Python Transform from {class_name} at {location}")
 
         self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=file_path)
 
         # Ensure the path for this repository is present in sys.path
-        if self.directory_root not in sys.path:
-            sys.path.append(self.directory_root)
+        if str(self.directory_root) not in sys.path:
+            sys.path.append(str(self.directory_root))
 
         try:
             file_info = extract_repo_file_information(
-                full_filename=os.path.join(commit_worktree.directory, file_path),
+                full_filename=commit_worktree.directory / file_path,
                 repo_directory=self.directory_root,
                 worktree_directory=commit_worktree.directory,
             )
@@ -1247,22 +1184,20 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         except ModuleNotFoundError as exc:
             error_msg = f"Unable to load the transform file {location}"
-            log.error(error_msg, repository=self.name, branch=branch_name, commit=commit, location=location)
+            log.error(error_msg)
             raise TransformError(
                 repository_name=self.name, commit=commit, location=location, message=error_msg
             ) from exc
 
         except AttributeError as exc:
             error_msg = f"Unable to find the class {class_name} in {location}"
-            log.error(error_msg, repository=self.name, branch=branch_name, commit=commit, location=location)
+            log.error(error_msg)
             raise TransformError(
                 repository_name=self.name, commit=commit, location=location, message=error_msg
             ) from exc
 
         except Exception as exc:
-            log.critical(
-                str(exc), exc_info=True, repository=self.name, branch=branch_name, commit=commit, location=location
-            )
+            log.critical(str(exc), exc_info=True)
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
 
     async def artifact_generate(

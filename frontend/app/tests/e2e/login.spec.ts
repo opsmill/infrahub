@@ -100,7 +100,7 @@ test.describe("/login", () => {
       await page.getByRole("button", { name: "Log in" }).click();
 
       await expect(page.locator("#alert-error-sign-in")).toContainText(
-        "Invalid username and password"
+        "Invalid username or password"
       );
     });
 

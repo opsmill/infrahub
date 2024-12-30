@@ -1,9 +1,8 @@
-import os
-
 from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.node import InfrahubNode
-from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
+from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig
 from prefect import flow
+from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind, ValidatorConclusion
@@ -13,17 +12,29 @@ from infrahub.git.repository import get_initialized_repo
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 from infrahub.tasks.check import set_check_status
+from infrahub.workflows.utils import add_tags
 
 # pylint: disable=duplicate-code
 
 
-@flow(name="git-repository-check-generator-run")
+@flow(
+    name="git-repository-check-generator-run",
+    flow_run_name="Execute Generator {message.generator_definition.definition_name} for {message.target_name}",
+)
 async def run(message: messages.CheckGeneratorRun, service: InfrahubServices) -> None:
+    if message.proposed_change:
+        await add_tags(branches=[message.branch_name], nodes=[message.proposed_change], db_change=True)
+    else:
+        await add_tags(branches=[message.branch_name], nodes=[message.repository_id], db_change=True)
+
+    log = get_run_logger()
+
     repository = await get_initialized_repo(
         repository_id=message.repository_id,
         name=message.repository_name,
         service=service,
         repository_kind=message.repository_kind,
+        commit=message.commit,
     )
 
     conclusion = ValidatorConclusion.SUCCESS
@@ -40,7 +51,7 @@ async def run(message: messages.CheckGeneratorRun, service: InfrahubServices) ->
     commit_worktree = repository.get_commit_worktree(commit=message.commit)
 
     file_info = extract_repo_file_information(
-        full_filename=os.path.join(commit_worktree.directory, generator_definition.file_path.as_posix()),
+        full_filename=commit_worktree.directory / generator_definition.file_path,
         repo_directory=repository.directory_root,
         worktree_directory=commit_worktree.directory,
     )
@@ -48,6 +59,8 @@ async def run(message: messages.CheckGeneratorRun, service: InfrahubServices) ->
 
     check_message = "Instance successfully generated"
     try:
+        log.debug(f"repo information {file_info}")
+        log.debug(f"Root directory : {repository.directory_root}")
         generator_class = generator_definition.load_class(
             import_root=repository.directory_root, relative_path=file_info.relative_repo_path_dir
         )
@@ -67,11 +80,14 @@ async def run(message: messages.CheckGeneratorRun, service: InfrahubServices) ->
         conclusion = ValidatorConclusion.FAILURE
         generator_instance.status.value = GeneratorInstanceStatus.ERROR.value
         check_message = f"Failed to import generator: {exc.message}"
+        log.exception(check_message, exc_info=exc)
     except Exception as exc:  # pylint: disable=broad-exception-caught
         conclusion = ValidatorConclusion.FAILURE
         generator_instance.status.value = GeneratorInstanceStatus.ERROR.value
         check_message = f"Failed to execute generator: {str(exc)}"
+        log.exception(check_message, exc_info=exc)
 
+    log.info("Generator run completed, starting update")
     await generator_instance.update(do_full_update=True)
 
     check = None

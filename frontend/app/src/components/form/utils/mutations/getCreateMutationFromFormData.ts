@@ -50,7 +50,6 @@ export const getCreateMutationFromFormData = (
           };
         }
       }
-
       const fieldValue = fieldData.value === "" ? null : fieldData.value;
       return {
         ...acc,

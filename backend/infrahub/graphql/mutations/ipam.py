@@ -1,10 +1,12 @@
 import ipaddress
+from ipaddress import IPv4Interface
 from typing import TYPE_CHECKING, Any, Optional
 
 from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo
 from typing_extensions import Self
 
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -15,6 +17,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.mutations.node_getter.interface import MutationNodeGetterInterface
+from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_logger
 
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
@@ -67,12 +70,11 @@ class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
     ):
         if data["id"] == registry.default_ipnamespace:
             raise ValueError("Cannot delete default IPAM namespace")
 
-        return await super().mutate_delete(info=info, data=data, branch=branch, at=at)
+        return await super().mutate_delete(info=info, data=data, branch=branch)
 
 
 class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
@@ -93,6 +95,29 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
 
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
+    @staticmethod
+    def _get_lock_name(namespace_id: str, branch: Branch) -> str | None:
+        if not branch.is_default:
+            # Do not lock on other branches as reconciliation will be performed at least when merging in main branch.
+            return None
+        return build_object_lock_name(InfrahubKind.IPADDRESS + "_" + namespace_id)
+
+    @classmethod
+    async def _mutate_create_object_and_reconcile(
+        cls,
+        data: InputObjectType,
+        branch: Branch,
+        db: InfrahubDatabase,
+        ip_address: IPv4Interface | ipaddress.IPv6Interface,
+        namespace_id: str,
+    ) -> Node:
+        address = await cls.mutate_create_object(data=data, db=db, branch=branch)
+        reconciler = IpamReconciler(db=db, branch=branch)
+        reconciled_address = await reconciler.reconcile(
+            ip_value=ip_address, namespace=namespace_id, node_uuid=address.get_id()
+        )
+        return reconciled_address
+
     @classmethod
     @retry_db_transaction(name="ipaddress_create")
     async def mutate_create(
@@ -100,7 +125,6 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
@@ -109,15 +133,36 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         namespace_id = await validate_namespace(db=db, data=data)
 
         async with db.start_transaction() as dbt:
-            address = await cls.mutate_create_object(data=data, db=dbt, branch=branch, at=at)
-            reconciler = IpamReconciler(db=dbt, branch=branch)
-            reconciled_address = await reconciler.reconcile(
-                ip_value=ip_address, namespace=namespace_id, node_uuid=address.get_id()
-            )
-
-        result = await cls.mutate_create_to_graphql(info=info, db=db, obj=reconciled_address)
+            if lock_name := cls._get_lock_name(namespace_id, branch):
+                async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
+                    reconciled_address = await cls._mutate_create_object_and_reconcile(
+                        data=data, branch=branch, db=dbt, ip_address=ip_address, namespace_id=namespace_id
+                    )
+            else:
+                reconciled_address = await cls._mutate_create_object_and_reconcile(
+                    data=data, branch=branch, db=dbt, ip_address=ip_address, namespace_id=namespace_id
+                )
+            result = await cls.mutate_create_to_graphql(info=info, db=dbt, obj=reconciled_address)
 
         return reconciled_address, result
+
+    @classmethod
+    async def _mutate_update_object_and_reconcile(
+        cls,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        db: InfrahubDatabase,
+        address: Node,
+        namespace_id: str,
+    ) -> Node:
+        address = await cls.mutate_update_object(db=db, info=info, data=data, branch=branch, obj=address)
+        reconciler = IpamReconciler(db=db, branch=branch)
+        ip_address = ipaddress.ip_interface(address.address.value)
+        reconciled_address = await reconciler.reconcile(
+            ip_value=ip_address, node_uuid=address.get_id(), namespace=namespace_id
+        )
+        return reconciled_address
 
     @classmethod
     @retry_db_transaction(name="ipaddress_update")
@@ -126,7 +171,6 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ) -> tuple[Node, Self]:
@@ -138,7 +182,6 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            at=at,
             include_owner=True,
             include_source=True,
         )
@@ -146,12 +189,15 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         namespace_id = await validate_namespace(db=db, data=data, existing_namespace_id=namespace.id)
         try:
             async with db.start_transaction() as dbt:
-                address = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=address)
-                reconciler = IpamReconciler(db=dbt, branch=branch)
-                ip_address = ipaddress.ip_interface(address.address.value)
-                reconciled_address = await reconciler.reconcile(
-                    ip_value=ip_address, node_uuid=address.get_id(), namespace=namespace_id
-                )
+                if lock_name := cls._get_lock_name(namespace_id, branch):
+                    async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
+                        reconciled_address = await cls._mutate_update_object_and_reconcile(
+                            info=info, data=data, branch=branch, address=address, namespace_id=namespace_id, db=dbt
+                        )
+                else:
+                    reconciled_address = await cls._mutate_update_object_and_reconcile(
+                        info=info, data=data, branch=branch, address=address, namespace_id=namespace_id, db=dbt
+                    )
 
                 result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=reconciled_address)
         except ValidationError as exc:
@@ -165,7 +211,6 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         node_getters: list[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
     ) -> tuple[Node, Self, bool]:
@@ -174,7 +219,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
 
         await validate_namespace(db=db, data=data)
         prefix, result, created = await super().mutate_upsert(
-            info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=db
+            info=info, data=data, branch=branch, node_getters=node_getters, database=db
         )
 
         return prefix, result, created
@@ -185,9 +230,8 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
     ):
-        return await super().mutate_delete(info=info, data=data, branch=branch, at=at)
+        return await super().mutate_delete(info=info, data=data, branch=branch)
 
 
 class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
@@ -208,6 +252,26 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
 
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
+    @staticmethod
+    def _get_lock_name(namespace_id: str, branch: Branch) -> str | None:
+        if not branch.is_default:
+            # Do not lock on other branches as reconciliation will be performed at least when merging in main branch.
+            return None
+        return build_object_lock_name(InfrahubKind.IPPREFIX + "_" + namespace_id)
+
+    @classmethod
+    async def _mutate_create_object_and_reconcile(
+        cls,
+        data: InputObjectType,
+        branch: Branch,
+        db: InfrahubDatabase,
+        namespace_id: str,
+    ) -> Node:
+        prefix = await cls.mutate_create_object(data=data, db=db, branch=branch)
+        return await cls._reconcile_prefix(
+            branch=branch, db=db, prefix=prefix, namespace_id=namespace_id, is_delete=False
+        )
+
     @classmethod
     @retry_db_transaction(name="ipprefix_create")
     async def mutate_create(
@@ -215,24 +279,41 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
-        ip_network = ipaddress.ip_network(data["prefix"]["value"])
         namespace_id = await validate_namespace(db=db, data=data)
 
         async with db.start_transaction() as dbt:
-            prefix = await cls.mutate_create_object(data=data, db=dbt, branch=branch, at=at)
-            reconciler = IpamReconciler(db=dbt, branch=branch)
-            reconciled_prefix = await reconciler.reconcile(
-                ip_value=ip_network, namespace=namespace_id, node_uuid=prefix.get_id()
-            )
+            if lock_name := cls._get_lock_name(namespace_id, branch):
+                async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
+                    reconciled_prefix = await cls._mutate_create_object_and_reconcile(
+                        data=data, branch=branch, db=dbt, namespace_id=namespace_id
+                    )
+            else:
+                reconciled_prefix = await cls._mutate_create_object_and_reconcile(
+                    data=data, branch=branch, db=dbt, namespace_id=namespace_id
+                )
 
-        result = await cls.mutate_create_to_graphql(info=info, db=db, obj=reconciled_prefix)
+            result = await cls.mutate_create_to_graphql(info=info, db=dbt, obj=reconciled_prefix)
 
         return reconciled_prefix, result
+
+    @classmethod
+    async def _mutate_update_object_and_reconcile(
+        cls,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        db: InfrahubDatabase,
+        prefix: Node,
+        namespace_id: str,
+    ) -> Node:
+        prefix = await cls.mutate_update_object(db=db, info=info, data=data, branch=branch, obj=prefix)
+        return await cls._reconcile_prefix(
+            branch=branch, db=db, prefix=prefix, namespace_id=namespace_id, is_delete=False
+        )
 
     @classmethod
     @retry_db_transaction(name="ipprefix_update")
@@ -241,7 +322,6 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ) -> tuple[Node, Self]:
@@ -253,7 +333,6 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
-            at=at,
             include_owner=True,
             include_source=True,
         )
@@ -261,13 +340,15 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         namespace_id = await validate_namespace(db=db, data=data, existing_namespace_id=namespace.id)
         try:
             async with db.start_transaction() as dbt:
-                prefix = await cls.mutate_update_object(db=dbt, info=info, data=data, branch=branch, obj=prefix)
-                reconciler = IpamReconciler(db=dbt, branch=branch)
-                ip_network = ipaddress.ip_network(prefix.prefix.value)
-                reconciled_prefix = await reconciler.reconcile(
-                    ip_value=ip_network, node_uuid=prefix.get_id(), namespace=namespace_id
-                )
-
+                if lock_name := cls._get_lock_name(namespace_id, branch):
+                    async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
+                        reconciled_prefix = await cls._mutate_update_object_and_reconcile(
+                            info=info, data=data, prefix=prefix, db=dbt, namespace_id=namespace_id, branch=branch
+                        )
+                else:
+                    reconciled_prefix = await cls._mutate_update_object_and_reconcile(
+                        info=info, data=data, prefix=prefix, db=dbt, namespace_id=namespace_id, branch=branch
+                    )
                 result = await cls.mutate_update_to_graphql(db=dbt, info=info, obj=reconciled_prefix)
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
@@ -280,7 +361,6 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         node_getters: list[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
     ):
@@ -289,10 +369,26 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
 
         await validate_namespace(db=db, data=data)
         prefix, result, created = await super().mutate_upsert(
-            info=info, data=data, branch=branch, at=at, node_getters=node_getters, database=db
+            info=info, data=data, branch=branch, node_getters=node_getters, database=db
         )
 
         return prefix, result, created
+
+    @classmethod
+    async def _reconcile_prefix(
+        cls,
+        branch: Branch,
+        db: InfrahubDatabase,
+        prefix: Node,
+        namespace_id: str,
+        is_delete: bool,
+    ) -> Node:
+        reconciler = IpamReconciler(db=db, branch=branch)
+        ip_network = ipaddress.ip_network(prefix.prefix.value)
+        reconciled_prefix = await reconciler.reconcile(
+            ip_value=ip_network, node_uuid=prefix.get_id(), namespace=namespace_id, is_delete=is_delete
+        )
+        return reconciled_prefix
 
     @classmethod
     @retry_db_transaction(name="ipprefix_delete")
@@ -301,14 +397,11 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = context.db
 
-        prefix = await NodeManager.get_one(
-            data.get("id"), context.db, branch=branch, at=at, prefetch_relationships=True
-        )
+        prefix = await NodeManager.get_one(data.get("id"), context.db, branch=branch, prefetch_relationships=True)
         if not prefix:
             raise NodeNotFoundError(branch, cls._meta.schema.kind, data.get("id"))
 
@@ -316,11 +409,16 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         namespace_id = namespace_rels[0].peer_id
         try:
             async with context.db.start_transaction() as dbt:
-                reconciler = IpamReconciler(db=dbt, branch=branch)
-                ip_network = ipaddress.ip_network(prefix.prefix.value)
-                reconciled_prefix = await reconciler.reconcile(
-                    ip_value=ip_network, node_uuid=prefix.get_id(), namespace=namespace_id, is_delete=True
-                )
+                if lock_name := cls._get_lock_name(namespace_id, branch):
+                    async with InfrahubMultiLock(lock_registry=lock.registry, locks=[lock_name]):
+                        reconciled_prefix = await cls._reconcile_prefix(
+                            branch=branch, db=dbt, prefix=prefix, namespace_id=namespace_id, is_delete=True
+                        )
+                else:
+                    reconciled_prefix = await cls._reconcile_prefix(
+                        branch=branch, db=dbt, prefix=prefix, namespace_id=namespace_id, is_delete=True
+                    )
+
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
 

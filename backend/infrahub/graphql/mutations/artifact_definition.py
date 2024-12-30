@@ -48,12 +48,11 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
 
-        artifact_definition, result = await super().mutate_create(info=info, data=data, branch=branch, at=at)
+        artifact_definition, result = await super().mutate_create(info=info, data=data, branch=branch)
 
         if context.service:
             model = RequestArtifactDefinitionGenerate(branch=branch.name, artifact_definition=artifact_definition.id)
@@ -69,13 +68,12 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
 
-        artifact_definition, result = await super().mutate_update(info=info, data=data, branch=branch, at=at)
+        artifact_definition, result = await super().mutate_update(info=info, data=data, branch=branch)
 
         if context.service:
             model = RequestArtifactDefinitionGenerate(branch=branch.name, artifact_definition=artifact_definition.id)

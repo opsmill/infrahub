@@ -1,7 +1,13 @@
+from unittest.mock import patch
+
 import pytest
 from typer.testing import CliRunner
 
-from infrahub.git_credential.helper import app, parse_helper_get_input
+# This patch prevents `OSError: pytest: reading from stdin while output is captured!  Consider using `-s`.`
+# to be raised at import time. Patching is not an issue as `sys.stdin` is not used
+# as runner.invoke also patches `sys.stdin`.
+with patch("sys.stdin"):
+    from infrahub.git_credential.helper import app, parse_helper_get_input
 
 runner = CliRunner(mix_stderr=False)
 

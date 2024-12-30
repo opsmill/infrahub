@@ -1,7 +1,6 @@
 import os
 
 import pytest
-from graphql import graphql
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -20,9 +19,10 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 from tests.test_data.dataset04 import load_data
 
-NBR_WARMUP = int(os.getenv("INFRAHUB_BENCHMARK_NBR_WARMUP", 5))
+NBR_WARMUP = int(os.getenv("INFRAHUB_BENCHMARK_NBR_WARMUP", "5"))
 
 
 @pytest.fixture(scope="module")

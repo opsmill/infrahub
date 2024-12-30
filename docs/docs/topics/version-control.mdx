@@ -34,6 +34,18 @@ Branches are meant to be short lived, from a few seconds to a few weeks, and are
 
 > Currently only a single level of hierarchy is supported, meaning that all branches must be created from the default branch and be merged into the default branch.
 
+:::info
+
+The main branch in Infrahub has additional locks, which other branches don't have, to ensure data and schema integrity.
+
+There is a downside to this approach. Creating data in bulk or concurrently will be slower in the main branch, compared to doing this in a branch other than main. The consequence is that you might create a data or schema integrity issue, when creating data concurrently in a branch.
+
+The proposed change process, running our internal CI pipeline, will detect these kind of issues and inform you about their existence. In such a scenario you will be unable to merge the branch and will be forced to remediate the integrity issues first.
+
+Typically triggering a rebase for the branch should be sufficient.
+
+:::
+
 ### Create a branch
 
 Branches in Infrahub are designed to be lightweight, while the recommendation is to keep the lifespan of a branch short, it's possible to have 10s of branches open at the same time.

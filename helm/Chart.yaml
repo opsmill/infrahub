@@ -15,12 +15,12 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 3.2.8
+version: 4.1.0
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "1.0.10"
+appVersion: "1.1.0"
 
 dependencies:
   - name: neo4j
@@ -39,15 +39,11 @@ dependencies:
     version: "14.4.1"
     repository: "oci://registry-1.docker.io/bitnamicharts"
     condition: rabbitmq.enabled
-  - name: nfs-server-provisioner
-    version: "1.8.0"
-    repository: "https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/"
-    condition: nfs-server-provisioner.enabled
   - name: nats
     version: "1.1.12"
     repository: "https://nats-io.github.io/k8s/helm/charts/"
     condition: nats.enabled
   - name: prefect-server
-    version: "2024.7.25191224"
+    version: "2024.10.15184517"
     repository: "https://prefecthq.github.io/prefect-helm"
     condition: prefect-server.enabled

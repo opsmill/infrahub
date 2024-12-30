@@ -1,15 +1,13 @@
 import { TASK_OBJECT } from "@/config/constants";
 import useQuery from "@/hooks/useQuery";
-import { gql } from "@apollo/client";
 
-import { BADGE_TYPES, Badge } from "@/components/display/badge";
 import { DateDisplay } from "@/components/display/date-display";
-import { DurationDisplay } from "@/components/display/duration-display";
 import { List } from "@/components/table/list";
+import { Badge } from "@/components/ui/badge";
 import { Id } from "@/components/ui/id";
 import { SearchInput } from "@/components/ui/search-input";
 import { QSP } from "@/config/qsp";
-import { getTaskItemDetails } from "@/graphql/queries/tasks/getTasksItemDetails";
+import { TASK_DETAILS } from "@/graphql/queries/tasks/getTasksItemDetails";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { forwardRef, useImperativeHandle, useState } from "react";
@@ -17,28 +15,27 @@ import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Logs, tLog } from "./logs";
 
-export const getConclusionBadge: { [key: string]: any } = {
-  success: <Badge type={BADGE_TYPES.VALIDATE}>success</Badge>,
-  unknown: <Badge type={BADGE_TYPES.LIGHT}>unknown</Badge>,
-  failure: <Badge type={BADGE_TYPES.CANCEL}>failure</Badge>,
+export const getStateBadge: { [key: string]: any } = {
+  SCHEDULED: <Badge variant={"blue"}>SCHEDULED</Badge>,
+  PENDING: <Badge variant={"blue-outline"}>PENDING</Badge>,
+  RUNNING: <Badge variant={"green-outline"}>RUNNING</Badge>,
+  COMPLETED: <Badge variant={"green"}>COMPLETED</Badge>,
+  FAILED: <Badge variant={"red"}>FAILED</Badge>,
+  CANCELLED: <Badge variant={"red-outline"}>CANCELLED</Badge>,
+  CRASHED: <Badge variant={"yellow"}>CRASHED</Badge>,
+  PAUSED: <Badge variant={"blue-outline"}>PAUSED</Badge>,
+  CANCELLING: <Badge variant={"gray"}>CANCELLING</Badge>,
 };
 
 export const TaskItemDetails = forwardRef((_, ref) => {
-  const [taskId] = useQueryParam(QSP.TASK_ID, StringParam);
+  const [idFromQsp] = useQueryParam(QSP.TASK_ID, StringParam);
   const [search, setSearch] = useState("");
 
-  const { task } = useParams();
+  const { task: idFromParams } = useParams();
 
-  const queryString = getTaskItemDetails({
-    kind: TASK_OBJECT,
-    id: taskId || task,
-  });
+  const ids = idFromParams || idFromQsp ? [idFromParams || idFromQsp] : undefined;
 
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { loading, error, data = {}, refetch } = useQuery(query);
+  const { loading, error, data = {}, refetch } = useQuery(TASK_DETAILS, { variables: { ids } });
 
   // Provide refetch function to parent
   useImperativeHandle(ref, () => ({ refetch }));
@@ -48,7 +45,7 @@ export const TaskItemDetails = forwardRef((_, ref) => {
   }
 
   if (loading) {
-    return <LoadingScreen hideText />;
+    return <LoadingScreen message="Loading task..." />;
   }
 
   const result = data ? (data[TASK_OBJECT] ?? {}) : {};
@@ -65,16 +62,16 @@ export const TaskItemDetails = forwardRef((_, ref) => {
       label: "Title",
     },
     {
-      name: "conclusion",
-      label: "Conclusion",
+      name: "state",
+      label: "State",
     },
     {
       name: "related_node",
       label: "Related node",
     },
     {
-      name: "duration",
-      label: "Duration",
+      name: "progress",
+      label: "Progress",
     },
     {
       name: "updated_at",
@@ -88,10 +85,11 @@ export const TaskItemDetails = forwardRef((_, ref) => {
     values: {
       id: object.id,
       title: object.title,
-      conclusion: getConclusionBadge[object.conclusion],
-      related_node: <Id id={object.related_node} kind={object.related_node_kind} preventCopy />,
-      related_node_kind: object.related_node_kind,
-      duration: <DurationDisplay date={object.created_at} endDate={object.updated_at} />,
+      state: getStateBadge[object.state],
+      related_node: object.related_node_kind && (
+        <Id id={object.related_node} kind={object.related_node_kind} preventCopy />
+      ),
+      progress: object.progress,
       updated_at: <DateDisplay date={object.updated_at} />,
     },
   };

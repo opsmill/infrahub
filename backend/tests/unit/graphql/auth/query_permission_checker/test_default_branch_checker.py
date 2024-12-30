@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 
 from infrahub.auth import AccountSession, AuthType
-from infrahub.core.constants import AccountRole, GlobalPermissions, InfrahubKind, PermissionDecision
+from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.exceptions import PermissionDeniedError
@@ -60,7 +60,7 @@ class TestDefaultBranchPermission:
     @pytest.mark.parametrize(
         "user",
         [
-            AccountSession(account_id="abc", auth_type=AuthType.JWT, role=AccountRole.ADMIN),
+            AccountSession(account_id="abc", auth_type=AuthType.JWT),
             AccountSession(authenticated=False, account_id="anonymous", auth_type=AuthType.NONE),
         ],
     )

@@ -222,14 +222,13 @@ A first version of our K8S helm-chart is available in our repository.
 
 The following are required for production deployments using Helm:
 
-* data persistence must be enabled (except for the Infrahub API Server if using S3 storage)
+* data persistence for the database must be enabled
 * multiple replicas of the Infrahub API Server and Infrahub Task workers should be deployed: you can make use of the `affinity` variable to define the affinity policy for the pods
-* a shared storage should be available for use by the Task workers (through a StorageClass that supports RWX accesses)
 * S3 storage should be configured for the Infrahub API Server
 
 :::warning
 
-We do not recommend using the included dependencies (Neo4j, RabbitMQ, Redis, NFS) for production.
+We do not recommend using the included dependencies (Neo4j, RabbitMQ, Redis) for production.
 They are present to ease deployment on non-production environments.
 
 :::
@@ -237,10 +236,6 @@ They are present to ease deployment on non-production environments.
 You can use the following values example:
 
 ```yaml
-global:
-  infrahubTag: stable
-  imagePullPolicy: Always
-
 infrahubServer:
   replicas: 3
   affinity:
@@ -273,7 +268,7 @@ infrahubServer:
       AWS_S3_BUCKET_NAME: infrahub-data
       AWS_S3_ENDPOINT_URL: https://s3
 
-infrahubGit:
+infrahubTaskWorker:
   replicas: 3
   affinity:
     podAntiAffinity:
@@ -283,11 +278,8 @@ infrahubGit:
             - key: service
               operator: In
               values:
-              - infrahub-git
+              - infrahub-task-worker
           topologyKey: topology.kubernetes.io/zone
-  persistence:
-    enabled: true
-    storageClassName: standard-rwx # using GCP Filestore
 
 neo4j:
   services:
@@ -300,9 +292,6 @@ neo4j:
         storageClassName: premium-rwo
         requests:
           storage: 100Gi
-
-nfs-server-provisioner:
-  enabled: false
 ```
 
 ```shell

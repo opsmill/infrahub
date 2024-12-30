@@ -40,6 +40,7 @@ default_branch = Branch(
 
 class Migration012RenameTypeAttributeData(AttributeRenameQuery):
     name = "migration_012_rename_attr_type"
+    type = QueryType.WRITE
 
     def __init__(self, **kwargs: Any):
         new_attr = AttributeInfo(
@@ -80,6 +81,7 @@ class Migration012RenameTypeAttributeData(AttributeRenameQuery):
 
 class Migration012AddLabelData(NodeDuplicateQuery):
     name = "migration_012_add_labels"
+    type = QueryType.WRITE
 
     def __init__(self, **kwargs: Any):
         new_node = SchemaNodeInfo(
@@ -128,7 +130,7 @@ class Migration012AddLabelData(NodeDuplicateQuery):
 
 class Migration012RenameTypeAttributeSchema(SchemaAttributeUpdateQuery):
     name = "migration_012_rename_type_attr_schema"
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
     insert_return = False
 
     def __init__(self, **kwargs: Any):
@@ -147,6 +149,7 @@ class Migration012RenameTypeAttributeSchema(SchemaAttributeUpdateQuery):
 
 class Migration012RenameRelationshipAccountTokenData(RelationshipDuplicateQuery):
     name = "migration_012_rename_rel_account_token_data"
+    type = QueryType.WRITE
 
     def __init__(self, **kwargs: Any):
         new_rel = SchemaRelationshipInfo(
@@ -170,6 +173,7 @@ class Migration012RenameRelationshipAccountTokenData(RelationshipDuplicateQuery)
 
 class Migration012RenameRelationshipRefreshTokenData(RelationshipDuplicateQuery):
     name = "migration_012_rename_rel_refresh_token_data"
+    type = QueryType.WRITE
 
     def __init__(self, **kwargs: Any):
         new_rel = SchemaRelationshipInfo(
@@ -193,6 +197,7 @@ class Migration012RenameRelationshipRefreshTokenData(RelationshipDuplicateQuery)
 
 class Migration012RenameRelationshipThreadData(RelationshipDuplicateQuery):
     name = "migration_012_rename_rel_thread_data"
+    type = QueryType.WRITE
 
     def __init__(self, **kwargs: Any):
         new_rel = SchemaRelationshipInfo(
@@ -216,6 +221,7 @@ class Migration012RenameRelationshipThreadData(RelationshipDuplicateQuery):
 
 class Migration012RenameRelationshipCommentData(RelationshipDuplicateQuery):
     name = "migration_012_rename_rel_comment_data"
+    type = QueryType.WRITE
 
     def __init__(self, **kwargs: Any):
         new_rel = SchemaRelationshipInfo(
@@ -239,7 +245,7 @@ class Migration012RenameRelationshipCommentData(RelationshipDuplicateQuery):
 
 class Migration012DeleteOldElementsSchema(DeleteElementInSchemaQuery):
     name = "migration_012_delete_old_elements_schema"
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
     insert_return = False
 
     def __init__(self, **kwargs: Any):
@@ -257,7 +263,7 @@ class Migration012DeleteOldElementsSchema(DeleteElementInSchemaQuery):
 
 class Migration012UpdateDisplayLabels(SchemaAttributeUpdateQuery):
     name = "migration_012_display_labels"
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
     insert_return = False
 
     def __init__(self, **kwargs: Any):
@@ -275,7 +281,7 @@ class Migration012UpdateDisplayLabels(SchemaAttributeUpdateQuery):
 
 class Migration012UpdateOrderBy(SchemaAttributeUpdateQuery):
     name = "migration_012_order_by"
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
     insert_return = False
 
     def __init__(self, **kwargs: Any):
@@ -293,7 +299,7 @@ class Migration012UpdateOrderBy(SchemaAttributeUpdateQuery):
 
 class Migration012UpdateDefaultFilter(SchemaAttributeUpdateQuery):
     name = "migration_012_reset_default_filter"
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
     insert_return = False
 
     def __init__(self, **kwargs: Any):
@@ -311,7 +317,7 @@ class Migration012UpdateDefaultFilter(SchemaAttributeUpdateQuery):
 
 class Migration012UpdateHFID(SchemaAttributeUpdateQuery):
     name = "migration_012_reset_hfid"
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
     insert_return = False
 
     def __init__(self, **kwargs: Any):

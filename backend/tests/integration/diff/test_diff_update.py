@@ -7,7 +7,7 @@ import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchConflictKeep, DiffAction, InfrahubKind, ProposedChangeState
+from infrahub.core.constants import BranchConflictKeep, DiffAction, InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import BranchTrackingId, ConflictSelection, EnrichedDiffRoot
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -16,6 +16,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.services.adapters.cache.redis import RedisCache
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -112,6 +113,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         default_branch,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
+        prefect_test_fixture,
     ) -> dict[str, Node]:
         await load_schema(db, schema=CAR_SCHEMA)
         john = await Node.init(schema=TestKind.PERSON, db=db)
@@ -723,12 +725,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         nodes_by_id = {n.uuid: n for n in diff.nodes}
         kara_node = nodes_by_id[kara_id]
         assert kara_node.action is DiffAction.UPDATED
-        assert kara_node.contains_conflict
         assert kara_node.conflict
         assert kara_node.conflict.base_branch_action is DiffAction.REMOVED
         assert kara_node.conflict.base_branch_value is None
         assert kara_node.conflict.diff_branch_action is DiffAction.UPDATED
         assert kara_node.conflict.diff_branch_value is None
+        assert kara_node.conflict.resolvable is False
         self.track_item(
             "node_removed",
             TrackedConflict(
@@ -742,25 +744,9 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert len(kara_node.attributes) == 1
         height_attribute = kara_node.attributes.pop()
         assert height_attribute.name == "height"
-        assert height_attribute.contains_conflict
         properties_by_type = {p.property_type: p for p in height_attribute.properties}
         value_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
-        assert value_property.conflict
-        attr_conflict = value_property.conflict
-        assert attr_conflict.base_branch_action is DiffAction.REMOVED
-        assert attr_conflict.base_branch_value is None
-        assert attr_conflict.diff_branch_action is DiffAction.UPDATED
-        assert attr_conflict.diff_branch_value == str(kara_branch.height.value)
-        self.track_item(
-            "node_removed_attribute_value",
-            TrackedConflict(
-                conflict_id=attr_conflict.uuid,
-                keep_branch=BranchConflictKeep.TARGET,
-                conflict_selection=ConflictSelection.BASE_BRANCH,
-                expected_value=None,
-                node_id=kara_node.uuid,
-            ),
-        )
+        assert not value_property.conflict
 
     async def test_diff_resolve_attribute_value_conflict(
         self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
@@ -815,7 +801,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         cardinality_one_property_conflict_b = self.retrieve_item("cardinality_one_property_conflict_b")
         cardinality_many_property_conflict = self.retrieve_item("cardinality_many_property_conflict")
         node_removed_conflict = self.retrieve_item("node_removed")
-        node_removed_attribute_value_conflict = self.retrieve_item("node_removed_attribute_value")
 
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
@@ -827,7 +812,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             cardinality_one_property_conflict_b.conflict_id,
             cardinality_many_property_conflict.conflict_id,
             node_removed_conflict.conflict_id,
-            node_removed_attribute_value_conflict.conflict_id,
         }
         attr_value_data_check = data_checks_by_conflict_id[attribute_value_conflict.conflict_id]
         peer_data_check = data_checks_by_conflict_id[peer_conflict.conflict_id]
@@ -841,15 +825,11 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             cardinality_many_property_conflict.conflict_id
         ]
         node_removed_data_check = data_checks_by_conflict_id[node_removed_conflict.conflict_id]
-        node_removed_attr_value_data_check = data_checks_by_conflict_id[
-            node_removed_attribute_value_conflict.conflict_id
-        ]
         assert attr_value_data_check.keep_branch.value.value == attribute_value_conflict.keep_branch.value
         assert peer_data_check.keep_branch.value is None
         assert cardinality_one_property_data_check_a.keep_branch.value is None
         assert cardinality_one_property_data_check_b.keep_branch.value is None
         assert cardinality_many_property_data_check.keep_branch.value is None
-        assert node_removed_attr_value_data_check.keep_branch.value is None
         assert node_removed_data_check.keep_branch.value is None
 
     async def test_resolve_peer_conflict(
@@ -1072,71 +1052,39 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
     ) -> None:
         node_removed_conflict = self.retrieve_item("node_removed")
-        node_removed_attribute_value_conflict = self.retrieve_item("node_removed_attribute_value")
-        result = await client.execute_graphql(
-            query=CONFLICT_SELECTION_QUERY,
-            variables={
-                "conflict_id": node_removed_conflict.conflict_id,
-                "selected_branch": node_removed_conflict.conflict_selection.name,
-            },
-        )
-        assert result["ResolveDiffConflict"]["ok"]
-        result = await client.execute_graphql(
-            query=CONFLICT_SELECTION_QUERY,
-            variables={
-                "conflict_id": node_removed_attribute_value_conflict.conflict_id,
-                "selected_branch": node_removed_attribute_value_conflict.conflict_selection.name,
-            },
-        )
-        assert result["ResolveDiffConflict"]["ok"]
+        with pytest.raises(GraphQLError) as exc:
+            await client.execute_graphql(
+                query=CONFLICT_SELECTION_QUERY,
+                variables={
+                    "conflict_id": node_removed_conflict.conflict_id,
+                    "selected_branch": node_removed_conflict.conflict_selection.name,
+                },
+            )
+        assert "Conflict must be resolved manually" in exc.value.message
 
         diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
         kara_main = initial_dataset["kara"]
+        # manually reset updated value
         kara_branch = await NodeManager.get_one(db=db, branch=diff_branch, id=kara_main.get_id())
-        diff = await self.get_branch_diff(db=db, branch=diff_branch)
+        kara_branch.height.value = kara_main.height.value
+        await kara_branch.save(db=db)
+        # update the diff
+        result = await client.execute_graphql(
+            query=DIFF_UPDATE_QUERY, variables={"branch_name": BRANCH_NAME, "wait_for_completion": True}
+        )
+        assert result["DiffUpdate"]["ok"]
 
         # check EnrichedDiff
+        diff = await self.get_branch_diff(db=db, branch=diff_branch)
         assert len(diff.nodes) == 9
         nodes_by_id = {n.uuid: n for n in diff.nodes}
-        kara_node = nodes_by_id[kara_main.get_id()]
-        assert kara_node.action is DiffAction.UPDATED
-        assert kara_node.conflict
-        assert kara_node.conflict.uuid == node_removed_conflict.conflict_id
-        assert kara_node.conflict.base_branch_action is DiffAction.REMOVED
-        assert kara_node.conflict.base_branch_value is None
-        assert kara_node.conflict.diff_branch_action is DiffAction.UPDATED
-        assert kara_node.conflict.diff_branch_value is None
-        assert kara_node.conflict.selected_branch == node_removed_conflict.conflict_selection
-        assert len(kara_node.attributes) == 1
-        height_attribute = kara_node.attributes.pop()
-        assert height_attribute.name == "height"
-        properties_by_type = {p.property_type: p for p in height_attribute.properties}
-        value_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
-        assert value_property.conflict
-        attr_conflict = value_property.conflict
-        assert attr_conflict.uuid == node_removed_attribute_value_conflict.conflict_id
-        assert attr_conflict.base_branch_action is DiffAction.REMOVED
-        assert attr_conflict.base_branch_value is None
-        assert attr_conflict.diff_branch_action is DiffAction.UPDATED
-        assert attr_conflict.diff_branch_value == str(kara_branch.height.value)
-        assert attr_conflict.selected_branch == node_removed_attribute_value_conflict.conflict_selection
+        resolved_kara_node = nodes_by_id[kara_main.id]
+        assert resolved_kara_node.action is DiffAction.UNCHANGED
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
         core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
         data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
-        assert {
-            node_removed_conflict.conflict_id,
-            node_removed_attribute_value_conflict.conflict_id,
-        } <= set(data_checks_by_conflict_id.keys())
-        node_removed_data_check = data_checks_by_conflict_id[node_removed_conflict.conflict_id]
-        node_removed_attr_value_data_check = data_checks_by_conflict_id[
-            node_removed_attribute_value_conflict.conflict_id
-        ]
-        assert node_removed_data_check.keep_branch.value.value == node_removed_conflict.keep_branch.value
-        assert (
-            node_removed_attr_value_data_check.keep_branch.value.value
-            == node_removed_attribute_value_conflict.keep_branch.value
-        )
+        assert node_removed_conflict.conflict_id not in set(data_checks_by_conflict_id.keys())
 
     async def test_expected_core_data_checks(
         self, db: InfrahubDatabase, initial_dataset, default_branch, client: InfrahubClient
@@ -1146,16 +1094,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         cardinality_one_property_conflict_a = self.retrieve_item("cardinality_one_property_conflict_a")
         cardinality_one_property_conflict_b = self.retrieve_item("cardinality_one_property_conflict_b")
         cardinality_many_property_conflict = self.retrieve_item("cardinality_many_property_conflict")
-        node_removed_conflict = self.retrieve_item("node_removed")
-        node_removed_attribute_value_conflict = self.retrieve_item("node_removed_attribute_value")
         tracked_conflicts = [
             attribute_value_conflict,
             peer_conflict,
             cardinality_one_property_conflict_a,
             cardinality_one_property_conflict_b,
             cardinality_many_property_conflict,
-            node_removed_conflict,
-            node_removed_attribute_value_conflict,
         ]
 
         # check CoreDataChecks
@@ -1186,8 +1130,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         cardinality_one_property_conflict_a = self.retrieve_item("cardinality_one_property_conflict_a")
         cardinality_one_property_conflict_b = self.retrieve_item("cardinality_one_property_conflict_b")
         cardinality_many_property_conflict = self.retrieve_item("cardinality_many_property_conflict")
-        node_removed_conflict = self.retrieve_item("node_removed")
-        node_removed_attribute_value_conflict = self.retrieve_item("node_removed_attribute_value")
 
         pc = await NodeManager.get_one(db=db, id=pc_id)
         validators = await pc.validations.get_peers(db=db)
@@ -1204,8 +1146,6 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             cardinality_one_property_conflict_a.conflict_id,
             cardinality_one_property_conflict_b.conflict_id,
             cardinality_many_property_conflict.conflict_id,
-            node_removed_conflict.conflict_id,
-            node_removed_attribute_value_conflict.conflict_id,
         }
         assert len(core_data_checks) == len(data_checks_by_conflict_id)
 
@@ -1256,11 +1196,9 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert john_main.age.value == attribute_value_conflict.expected_value
 
         # validate node removed conflict
-        # TODO: node deleted on main is not un-deleted during conflict resolution
-        # node_removed_attribute_value_conflict = self.retrieve_item("node_removed_attribute_value")
-        # kara_id = initial_dataset["kara"].get_id()
-        # kara_main = await NodeManager.get_one(db=db, branch=default_branch, id=kara_id)
-        # assert kara_main.height.value == node_removed_attribute_value_conflict.expected_value
+        kara_id = initial_dataset["kara"].get_id()
+        kara_main = await NodeManager.get_one(db=db, branch=default_branch, id=kara_id)
+        assert kara_main is None
 
         # peer update conflict
         peer_conflict = self.retrieve_item("peer_conflict")

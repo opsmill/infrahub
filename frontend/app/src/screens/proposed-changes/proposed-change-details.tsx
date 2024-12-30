@@ -1,11 +1,13 @@
+import Accordion from "@/components/display/accordion";
 import { Avatar } from "@/components/display/avatar";
 import { DateDisplay } from "@/components/display/date-display";
 import { MarkdownViewer } from "@/components/editor/markdown-viewer";
 import { Property, PropertyList } from "@/components/table/property-list";
 import { Badge } from "@/components/ui/badge";
-import { CardWithBorder } from "@/components/ui/card";
+import { Card, CardWithBorder } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
-import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT } from "@/config/constants";
+import { TASK_DETAILS_CHECK } from "@/graphql/queries/tasks/checkTasksItemDetails";
 import useQuery from "@/hooks/useQuery";
 import { PcApproveButton } from "@/screens/proposed-changes/action-button/pc-approve-button";
 import { PcCloseButton } from "@/screens/proposed-changes/action-button/pc-close-button";
@@ -21,8 +23,11 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { TaskDisplay } from "../branches/task-display";
+import LoadingScreen from "../loading-screen/loading-screen";
 import { getObjectPermissionsQuery } from "../permission/queries/getObjectPermissions";
 import { getPermission } from "../permission/utils";
+import { PROPOSED_CHANGE_MERGE_WORKFLOW } from "../tasks/constants";
 
 export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const { proposedChangeId } = useParams();
@@ -30,7 +35,17 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
 
   const navigate = useNavigate();
 
-  const { data } = useQuery(gql(getObjectPermissionsQuery(PROPOSED_CHANGES_OBJECT)));
+  const { data } = useQuery(gql(getObjectPermissionsQuery(PROPOSED_CHANGES_OBJECT)), {
+    pollInterval: 2000,
+  });
+
+  const { loading: loadingCheck, data: checkData } = useQuery(TASK_DETAILS_CHECK, {
+    variables: {
+      workflow: [PROPOSED_CHANGE_MERGE_WORKFLOW],
+      relatedNodes: proposedChangeId ? [proposedChangeId] : undefined,
+    },
+    pollInterval: 2000,
+  });
 
   const permission = getPermission(data?.[PROPOSED_CHANGES_OBJECT]?.permissions?.edges);
 
@@ -113,7 +128,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
             proposedChangeId={proposedChangeId!}
             state={state}
             sourceBranch={proposedChangesDetails?.source_branch?.value}
-            disabled={!permission.update.isAllowed}
+            disabled={!permission.update.isAllowed || (checkData && checkData[TASK_OBJECT].count)}
           />
           <PcCloseButton
             proposedChangeId={proposedChangeId!}
@@ -126,48 +141,59 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
   ];
 
   return (
-    <div
-      className={classNames(
-        "grid grid-cols-3 gap-2 p-2.5 items-start bg-stone-50 flex-grow",
-        className
-      )}
-      {...props}
-    >
-      <div className="col-start-1 col-end-3 space-y-4">
-        {proposedChangesDetails?.description?.value && (
-          <CardWithBorder contentClassName="p-4" data-testid="pc-description">
-            <div className="flex items-center gap-2 mb-2">
-              <Avatar name={proposedChangesDetails?.created_by?.node?.display_label} size="sm" />
+    <div className="bg-stone-50 p-2.5 flex flex-col flex-grow gap-2.5">
+      {loadingCheck && <LoadingScreen hideText />}
 
-              {proposedChangesDetails?.created_by?.node?.display_label}
-
-              <DateDisplay
-                date={proposedChangesDetails.description.updated_at}
-                className="ml-auto text-xs font-normal text-gray-600"
+      {!loadingCheck && checkData && !!checkData[TASK_OBJECT].count && (
+        <Card>
+          <Accordion title={<div className="font-normal text-xs">Actions in progress</div>}>
+            <div className="mt-2">
+              <TaskDisplay
+                relatedNode={proposedChangeId}
+                workflow={[PROPOSED_CHANGE_MERGE_WORKFLOW]}
               />
             </div>
+          </Accordion>
+        </Card>
+      )}
 
-            <MarkdownViewer markdownText={proposedChangesDetails.description.value} />
-          </CardWithBorder>
-        )}
+      <div className={classNames("grid grid-cols-3 gap-2", className)} {...props}>
+        <div className="col-start-1 col-end-3 space-y-4">
+          {proposedChangesDetails?.description?.value && (
+            <CardWithBorder contentClassName="p-4" data-testid="pc-description">
+              <div className="flex items-center gap-2 mb-2">
+                <Avatar name={proposedChangesDetails?.created_by?.node?.display_label} size="sm" />
 
-        <Conversations />
+                {proposedChangesDetails?.created_by?.node?.display_label}
+
+                <DateDisplay
+                  date={proposedChangesDetails.description.updated_at}
+                  className="ml-auto text-xs font-normal text-gray-600"
+                />
+              </div>
+
+              <MarkdownViewer markdownText={proposedChangesDetails.description.value} />
+            </CardWithBorder>
+          )}
+
+          <Conversations />
+        </div>
+
+        <CardWithBorder className="col-start-3 col-end-4 min-w-[300px]">
+          <CardWithBorder.Title className="flex justify-between items-center">
+            <div
+              onClick={() => navigate(path)}
+              className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
+            >
+              Proposed change
+            </div>
+
+            <ProposedChangeEditTrigger proposedChangesDetails={proposedChangesDetails} />
+          </CardWithBorder.Title>
+
+          <PropertyList properties={proposedChangeProperties} />
+        </CardWithBorder>
       </div>
-
-      <CardWithBorder className="col-start-3 col-end-4 min-w-[300px]">
-        <CardWithBorder.Title className="flex justify-between items-center">
-          <div
-            onClick={() => navigate(path)}
-            className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
-          >
-            Proposed change
-          </div>
-
-          <ProposedChangeEditTrigger proposedChangesDetails={proposedChangesDetails} />
-        </CardWithBorder.Title>
-
-        <PropertyList properties={proposedChangeProperties} />
-      </CardWithBorder>
     </div>
   );
 };

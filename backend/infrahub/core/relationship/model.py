@@ -425,8 +425,14 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 await self.set_peer(value=peer)
 
         if not self.peer_id and self.peer_hfid:
+            peer_schema = db.schema.get(name=self.schema.peer, branch=self.branch)
+            kind = (
+                self.data["kind"]
+                if isinstance(self.data, dict) and "kind" in self.data and peer_schema.is_generic_schema
+                else self.schema.peer
+            )
             peer = await registry.manager.get_one_by_hfid(
-                db=db, hfid=self.peer_hfid, branch=self.branch, kind=self.schema.peer, fields={"display_label": None}
+                db=db, hfid=self.peer_hfid, branch=self.branch, kind=kind, fields={"display_label": None}
             )
             if peer:
                 await self.set_peer(value=peer)
@@ -761,6 +767,12 @@ class RelationshipManager:
 
         return iter(self._relationships)
 
+    def get_one(self) -> Relationship | None:
+        if not self.has_fetched_relationships:
+            raise LookupError("you can't get a relationship before the cache has been populated.")
+
+        return self._relationships[0] if self._relationships else None
+
     def __len__(self) -> int:
         if not self.has_fetched_relationships:
             raise LookupError("you can't count relationships before the cache has been populated.")
@@ -837,23 +849,23 @@ class RelationshipManager:
     async def get_peers(
         self,
         db: InfrahubDatabase,
-        branch_agnostic: bool,
         peer_type: type[PeerType],
+        branch_agnostic: bool = ...,
     ) -> Mapping[str, PeerType]: ...
 
     @overload
     async def get_peers(
         self,
         db: InfrahubDatabase,
-        branch_agnostic: bool,
         peer_type: Literal[None] = None,
+        branch_agnostic: bool = ...,
     ) -> Mapping[str, Node]: ...
 
     async def get_peers(
         self,
         db: InfrahubDatabase,
-        branch_agnostic: bool = False,
         peer_type: type[PeerType] | None = None,  # pylint: disable=unused-argument
+        branch_agnostic: bool = False,
     ) -> Mapping[str, Node | PeerType]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]

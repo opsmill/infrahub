@@ -2,8 +2,8 @@ from typing import Optional
 
 from pydantic import Field
 
+from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.message_bus import InfrahubMessage
-from infrahub.message_bus.types import ProposedChangeGeneratorDefinition
 
 
 class CheckGeneratorRun(InfrahubMessage):
@@ -23,3 +23,4 @@ class CheckGeneratorRun(InfrahubMessage):
     query: str = Field(..., description="The name of the query to use when collecting data")
     variables: dict = Field(..., description="Input variables when running the generator")
     validator_id: str = Field(..., description="The ID of the validator")
+    proposed_change: str | None = Field(None, description="The unique ID of the Proposed Change")

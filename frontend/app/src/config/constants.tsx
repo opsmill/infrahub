@@ -65,6 +65,8 @@ export const NUMBER_POOL_OBJECT = "CoreNumberPool";
 
 export const TASK_OBJECT = "InfrahubTask";
 
+export const TASKS_STATUS_OBJECT = "InfrahubTaskBranchStatus";
+
 export const ADMIN_ROLES = ["admin"];
 
 export const MENU_EXCLUDELIST = [

@@ -1,5 +1,5 @@
-import os
 from pathlib import Path
+from typing import AsyncGenerator
 
 import pytest
 import yaml
@@ -17,9 +17,10 @@ from infrahub.core.utils import count_relationships, delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.server import app, app_initialization
+from infrahub.services import services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
-from tests.adapters.log import FakeTaskReportLogger
+from infrahub.workflows.initialization import setup_task_manager
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.test_client import InfrahubTestClient
@@ -34,11 +35,11 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
     branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
     tmp_schema = branch_schema.duplicate()
 
-    for file_name in os.listdir(base_dir):
-        file_path = os.path.join(base_dir, file_name)
+    for file_name in base_dir.iterdir():
+        file_path = base_dir / file_name
 
-        if file_path.endswith((".yml", ".yaml")):
-            schema_txt = Path(file_path).read_text(encoding="utf-8")
+        if file_path.suffix in (".yml", ".yaml"):
+            schema_txt = file_path.read_text(encoding="utf-8")
             loaded_schema = yaml.safe_load(schema_txt)
             tmp_schema.load_schema(schema=SchemaRoot(**loaded_schema))
     tmp_schema.process()
@@ -48,9 +49,10 @@ async def load_infrastructure_schema(db: InfrahubDatabase):
 
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
-    def workflow_local(prefect_test_fixture):
+    async def workflow_local(self, prefect_test_fixture):
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
+        await setup_task_manager()
         config.OVERRIDE.workflow = workflow
         yield workflow
         config.OVERRIDE.workflow = original
@@ -72,11 +74,14 @@ class TestInfrahubClient:
         return InfrahubTestClient(app=app)
 
     @pytest.fixture
-    async def client(self, test_client: InfrahubTestClient, integration_helper):
+    async def client(self, test_client: InfrahubTestClient, integration_helper) -> AsyncGenerator[InfrahubClient, None]:
         admin_token = await integration_helper.create_token()
         config = Config(api_token=admin_token, requester=test_client.async_request)
-
-        return InfrahubClient(config=config)
+        sdk_client = InfrahubClient(config=config)
+        original_service_client = services.service._client
+        services.service.set_client(sdk_client)
+        yield sdk_client
+        services.service.set_client(original_service_client)
 
     @pytest.fixture(scope="class")
     async def query_99(self, db: InfrahubDatabase, test_client):
@@ -108,7 +113,6 @@ class TestInfrahubClient:
             id=obj.id,
             name=git_repo_infrahub_demo_edge.name,
             location=git_repo_infrahub_demo_edge.path,
-            task_report=FakeTaskReportLogger(),
             client=client,
         )
 
@@ -315,7 +319,6 @@ class TestGetMissingFile(TestInfrahubApp):
             id=obj.id,
             name=git_repo_car_dealership.name,
             location=git_repo_car_dealership.path,
-            task_report=FakeTaskReportLogger(),
             client=client,
         )
 

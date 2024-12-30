@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from typing import Optional, Any, TYPE_CHECKING
 
 from infrahub.core.models import HashableModel
-from infrahub.core.constants import AllowOverrideType, HashableModelState
+from infrahub.core.constants import AllowOverrideType, ComputedAttributeKind, HashableModelState
+from infrahub.core.schema.computed_attribute import ComputedAttribute  # noqa: TCH001
 from infrahub.core.schema.dropdown import DropdownChoice  # noqa: TCH001
 
 if TYPE_CHECKING:

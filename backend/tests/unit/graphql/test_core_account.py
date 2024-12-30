@@ -1,20 +1,18 @@
 import bcrypt
-import pytest
-from graphql import graphql
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
-from infrahub.core.constants import AccountRole, GlobalPermissions, PermissionAction, PermissionDecision
+from infrahub.core.constants import GlobalPermissions, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.permissions.local_backend import LocalPermissionBackend
+from tests.helpers.graphql import graphql
 
 
-@pytest.mark.parametrize("role", [e.value for e in AccountRole])
-async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch: Branch, first_account, role):
+async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch: Branch, first_account):
     new_password = "NewP@ssw0rd"
     new_description = "what a cool description"
     query = """
@@ -29,9 +27,7 @@ async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch
         db=db,
         include_subscription=False,
         branch=default_branch,
-        account_session=AccountSession(
-            authenticated=True, account_id=first_account.id, role=role, auth_type=AuthType.JWT
-        ),
+        account_session=AccountSession(authenticated=True, account_id=first_account.id, auth_type=AuthType.JWT),
     )
 
     result = await graphql(
@@ -102,9 +98,7 @@ async def test_permissions(
         db=db,
         include_subscription=False,
         branch=default_branch,
-        account_session=AccountSession(
-            authenticated=True, account_id=first_account.id, role=first_account.role.value, auth_type=AuthType.JWT
-        ),
+        account_session=AccountSession(authenticated=True, account_id=first_account.id, auth_type=AuthType.JWT),
     )
 
     result = await graphql(

@@ -22,9 +22,9 @@ ORGANIZATIONS = (
 )
 
 ACCOUNTS = (
-    # (name, type, password, rights)
-    ("security-builder", "Script", "Password123", "read-write"),
-    ("John Doe", "User", "Password123", "read-write"),
+    # (name, type, password)
+    ("security-builder", "Script", "Password123"),
+    ("John Doe", "User", "Password123"),
 )
 
 APPLICATIONS = (
@@ -168,7 +168,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         obj = await client.create(
             branch=branch,
             kind="CoreAccount",
-            data={"name": account[0], "password": account[2], "type": account[1], "role": account[3]},
+            data={"name": account[0], "password": account[2], "type": account[1]},
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=account[0], node=obj)

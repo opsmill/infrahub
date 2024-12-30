@@ -8,7 +8,6 @@ import { SearchActions } from "./search-actions";
 import { SearchAnywhereContext } from "./search-anywhere-context";
 import { SearchDocs } from "./search-docs";
 import { SearchNodes } from "./search-nodes";
-
 type SearchModalProps = {
   isCollapsed?: boolean;
 };

@@ -78,7 +78,7 @@ class TestDiffRebase(TestInfrahubApp):
         client: InfrahubClient,
         bus_simulator: BusSimulator,
     ) -> dict[str, Node]:
-        await load_schema(db, schema=CAR_SCHEMA)
+        await load_schema(db, schema=CAR_SCHEMA, update_db=True)
         john = await Node.init(schema=TestKind.PERSON, db=db)
         await john.new(db=db, name="John", height=175, description="The famous Joe Doe")
         await john.save(db=db)
@@ -243,13 +243,21 @@ class TestDiffRebase(TestInfrahubApp):
             assert manufacturer_element.peer_id == new_peer_id
             assert manufacturer_element.action is DiffAction.UPDATED
             assert manufacturer_element.conflict is None
-            assert len(manufacturer_element.properties) == 1
-            related_prop = manufacturer_element.properties.pop()
-            assert related_prop.property_type is DatabaseEdgeType.IS_RELATED
+            properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
+            assert set(properties_by_type.keys()) == {
+                DatabaseEdgeType.IS_RELATED,
+                DatabaseEdgeType.IS_VISIBLE,
+                DatabaseEdgeType.IS_PROTECTED,
+            }
+            related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
             assert related_prop.action is DiffAction.UPDATED
             assert related_prop.previous_value == koenigsegg_id
             assert related_prop.new_value == new_peer_id
             assert related_prop.conflict is None
+            for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, "True"), (DatabaseEdgeType.IS_PROTECTED, "False")):
+                diff_prop = properties_by_type[prop_type]
+                assert diff_prop.action is DiffAction.UNCHANGED
+                assert diff_prop.previous_value == diff_prop.new_value == value
             for manufacturer_id, expected_action in (
                 (koenigsegg_id, DiffAction.REMOVED),
                 (new_peer_id, DiffAction.ADDED),
@@ -335,13 +343,22 @@ class TestDiffRebase(TestInfrahubApp):
         assert manufacturer_element.conflict.base_branch_value == cyberdyne_id
         assert manufacturer_element.conflict.diff_branch_action is DiffAction.UPDATED
         assert manufacturer_element.conflict.diff_branch_value == omnicorp_id
-        assert len(manufacturer_element.properties) == 1
-        related_prop = manufacturer_element.properties.pop()
+        properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
+        assert set(properties_by_type.keys()) == {
+            DatabaseEdgeType.IS_RELATED,
+            DatabaseEdgeType.IS_VISIBLE,
+            DatabaseEdgeType.IS_PROTECTED,
+        }
+        related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.property_type is DatabaseEdgeType.IS_RELATED
         assert related_prop.action is DiffAction.UPDATED
         assert related_prop.previous_value == koenigsegg_id
         assert related_prop.new_value == omnicorp_id
         assert related_prop.conflict is None
+        for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, "True"), (DatabaseEdgeType.IS_PROTECTED, "False")):
+            diff_prop = properties_by_type[prop_type]
+            assert diff_prop.action is DiffAction.UNCHANGED
+            assert diff_prop.previous_value == diff_prop.new_value == value
         for manufacturer_id, expected_action in ((koenigsegg_id, DiffAction.REMOVED), (omnicorp_id, DiffAction.ADDED)):
             manufacturer_node = nodes_by_id[manufacturer_id]
             assert len(manufacturer_node.relationships) == 1
@@ -421,13 +438,22 @@ class TestDiffRebase(TestInfrahubApp):
         assert manufacturer_element.peer_id == cyberdyne_id
         assert manufacturer_element.action is DiffAction.UPDATED
         assert manufacturer_element.conflict is None
-        assert len(manufacturer_element.properties) == 1
-        related_prop = manufacturer_element.properties.pop()
+        properties_by_type = {p.property_type: p for p in manufacturer_element.properties}
+        assert set(properties_by_type.keys()) == {
+            DatabaseEdgeType.IS_RELATED,
+            DatabaseEdgeType.IS_VISIBLE,
+            DatabaseEdgeType.IS_PROTECTED,
+        }
+        related_prop = properties_by_type[DatabaseEdgeType.IS_RELATED]
         assert related_prop.property_type is DatabaseEdgeType.IS_RELATED
         assert related_prop.action is DiffAction.UPDATED
         assert related_prop.previous_value == koenigsegg_id
         assert related_prop.new_value == cyberdyne_id
         assert related_prop.conflict is None
+        for prop_type, value in ((DatabaseEdgeType.IS_VISIBLE, "True"), (DatabaseEdgeType.IS_PROTECTED, "False")):
+            diff_prop = properties_by_type[prop_type]
+            assert diff_prop.action is DiffAction.UNCHANGED
+            assert diff_prop.previous_value == diff_prop.new_value == value
         for manufacturer_id, expected_action in ((koenigsegg_id, DiffAction.REMOVED), (cyberdyne_id, DiffAction.ADDED)):
             manufacturer_node = nodes_by_id[manufacturer_id]
             assert len(manufacturer_node.relationships) == 1

@@ -117,8 +117,7 @@ class NodeQuery(Query):
 
 class NodeCreateAllQuery(NodeQuery):
     name = "node_create_all"
-
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     raise_error_if_empty: bool = True
 
@@ -397,7 +396,8 @@ class NodeCheckIDQuery(Query):
 
 
 class NodeListGetAttributeQuery(Query):
-    name: str = "node_list_get_attribute"
+    name = "node_list_get_attribute"
+    type = QueryType.READ
 
     property_type_mapping = {
         "HAS_VALUE": ("r2", "av"),
@@ -586,15 +586,17 @@ class GroupedPeerNodes:
 
 class NodeListGetRelationshipsQuery(Query):
     name: str = "node_list_get_relationship"
+    type: QueryType = QueryType.READ
     insert_return: bool = False
 
-    def __init__(self, ids: list[str], **kwargs):
+    def __init__(self, ids: list[str], relationship_identifiers: list[str] | None = None, **kwargs):
         self.ids = ids
-
+        self.relationship_identifiers = relationship_identifiers
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ids"] = self.ids
+        self.params["relationship_identifiers"] = self.relationship_identifiers
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
         self.params.update(rels_params)
@@ -602,17 +604,20 @@ class NodeListGetRelationshipsQuery(Query):
         query = """
         MATCH (n:Node) WHERE n.uuid IN $ids
         MATCH paths_in = ((n)<-[r1:IS_RELATED]-(rel:Relationship)<-[r2:IS_RELATED]-(peer))
-        WHERE all(r IN relationships(paths_in) WHERE (%(filters)s))
+        WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
+        AND all(r IN relationships(paths_in) WHERE (%(filters)s))
         RETURN n, rel, peer, r1, r2, "inbound" as direction
         UNION
         MATCH (n:Node) WHERE n.uuid IN $ids
         MATCH paths_out = ((n)-[r1:IS_RELATED]->(rel:Relationship)-[r2:IS_RELATED]->(peer))
-        WHERE all(r IN relationships(paths_out) WHERE (%(filters)s))
+        WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
+        AND all(r IN relationships(paths_out) WHERE (%(filters)s))
         RETURN n, rel, peer, r1, r2, "outbound" as direction
         UNION
         MATCH (n:Node) WHERE n.uuid IN $ids
         MATCH paths_bidir = ((n)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(peer))
-        WHERE all(r IN relationships(paths_bidir) WHERE (%(filters)s))
+        WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
+        AND all(r IN relationships(paths_bidir) WHERE (%(filters)s))
         RETURN n, rel, peer, r1, r2, "bidirectional" as direction
         """ % {"filters": rels_filter}
 
@@ -638,7 +643,7 @@ class NodeListGetRelationshipsQuery(Query):
 
 
 class NodeGetKindQuery(Query):
-    name: str = "node_get_kind_query"
+    name = "node_get_kind_query"
     type = QueryType.READ
 
     def __init__(self, ids: list[str], **kwargs: Any) -> None:
@@ -663,7 +668,8 @@ class NodeGetKindQuery(Query):
 
 
 class NodeListGetInfoQuery(Query):
-    name: str = "node_list_get_info"
+    name = "node_list_get_info"
+    type = QueryType.READ
 
     def __init__(self, ids: list[str], account=None, **kwargs: Any) -> None:
         self.account = account
@@ -794,6 +800,7 @@ class FieldAttributeRequirement:
 
 class NodeGetListQuery(Query):
     name = "node_get_list"
+    type = QueryType.READ
 
     def __init__(
         self, schema: NodeSchema, filters: Optional[dict] = None, partial_match: bool = False, **kwargs: Any
@@ -1198,8 +1205,7 @@ class NodeGetListQuery(Query):
 
 class NodeGetHierarchyQuery(Query):
     name = "node_get_hierarchy"
-
-    type: QueryType = QueryType.READ
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -1256,6 +1262,7 @@ class NodeGetHierarchyQuery(Query):
             WITH %(with_clause)s
             RETURN peer as peer1, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
             ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
+            LIMIT 1
         }
         WITH peer1 as peer, is_active
         """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}

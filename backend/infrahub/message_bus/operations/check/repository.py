@@ -2,6 +2,7 @@ from typing import List
 
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
+from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.core.constants import InfrahubKind
@@ -9,104 +10,72 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import CheckError
 from infrahub.git.repository import InfrahubRepository
-from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
+from infrahub.workflows.utils import add_tags
 
-log = get_logger()
 
-
-@flow(name="git-repository-check-definition")
+@flow(
+    name="git-repository-check-definition",
+    flow_run_name="Run user defined checks for repository {message.repository_name}",
+)
 async def check_definition(message: messages.CheckRepositoryCheckDefinition, service: InfrahubServices) -> None:
+    await add_tags(branches=[message.branch_name], nodes=[message.proposed_change])
+    log = get_run_logger()
+
     definition = await service.client.get(
         kind=InfrahubKind.CHECKDEFINITION, id=message.check_definition_id, branch=message.branch_name
     )
-    async with service.task_report(
-        related_node=message.proposed_change,
-        title=f"{definition.name.value} check triggered for {message.repository_name}",
-    ) as task_report:
-        proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
-        validator_execution_id = str(UUIDT())
-        check_execution_ids: List[str] = []
-        await proposed_change.validations.fetch()
-        validator = None
-        events: List[InfrahubMessage] = []
+    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
+    validator_execution_id = str(UUIDT())
+    check_execution_ids: List[str] = []
+    await proposed_change.validations.fetch()
+    validator = None
+    events: List[InfrahubMessage] = []
 
-        for relationship in proposed_change.validations.peers:
-            existing_validator = relationship.peer
+    for relationship in proposed_change.validations.peers:
+        existing_validator = relationship.peer
 
-            if (
-                existing_validator.typename == InfrahubKind.USERVALIDATOR
-                and existing_validator.repository.id == message.repository_id
-                and existing_validator.check_definition.id == message.check_definition_id
-            ):
-                validator = existing_validator
-                service.log.info("Found the same validator", validator=validator)
+        if (
+            existing_validator.typename == InfrahubKind.USERVALIDATOR
+            and existing_validator.repository.id == message.repository_id
+            and existing_validator.check_definition.id == message.check_definition_id
+        ):
+            validator = existing_validator
+            service.log.info("Found the same validator", validator=validator)
 
-        if validator:
-            validator.conclusion.value = "unknown"
-            validator.state.value = "queued"
-            validator.started_at.value = ""
-            validator.completed_at.value = ""
-            await validator.save()
-        else:
-            validator = await service.client.create(
-                kind=InfrahubKind.USERVALIDATOR,
-                data={
-                    "label": f"Check: {definition.name.value}",
-                    "proposed_change": message.proposed_change,
-                    "repository": message.repository_id,
-                    "check_definition": message.check_definition_id,
-                },
-            )
-            await validator.save()
+    if validator:
+        validator.conclusion.value = "unknown"
+        validator.state.value = "queued"
+        validator.started_at.value = ""
+        validator.completed_at.value = ""
+        await validator.save()
+    else:
+        validator = await service.client.create(
+            kind=InfrahubKind.USERVALIDATOR,
+            data={
+                "label": f"Check: {definition.name.value}",
+                "proposed_change": message.proposed_change,
+                "repository": message.repository_id,
+                "check_definition": message.check_definition_id,
+            },
+        )
+        await validator.save()
 
-        if definition.targets.id:
-            # Check against a group of targets
-            await definition.targets.fetch()
-            group = definition.targets.peer
-            await group.members.fetch()
-            await task_report.info(
-                f"Running check against {group.name.value} with {len(group.members.peers)} members",
-                proposed_change=proposed_change,
-                check_definition=message.check_definition_id,
-            )
-            for relationship in group.members.peers:
-                member = relationship.peer
+    if definition.targets.id:
+        # Check against a group of targets
+        await definition.targets.fetch()
+        group = definition.targets.peer
+        await group.members.fetch()
+        for relationship in group.members.peers:
+            member = relationship.peer
 
-                check_execution_id = str(UUIDT())
-                check_execution_ids.append(check_execution_id)
-                events.append(
-                    messages.CheckRepositoryUserCheck(
-                        name=member.display_label,
-                        validator_id=validator.id,
-                        validator_execution_id=validator_execution_id,
-                        check_execution_id=check_execution_id,
-                        repository_id=message.repository_id,
-                        repository_name=message.repository_name,
-                        commit=message.commit,
-                        file_path=message.file_path,
-                        class_name=message.class_name,
-                        branch_name=message.branch_name,
-                        check_definition_id=message.check_definition_id,
-                        proposed_change=message.proposed_change,
-                        variables=member.extract(params=definition.parameters.value),
-                        branch_diff=message.branch_diff,
-                    )
-                )
-
-        else:
             check_execution_id = str(UUIDT())
             check_execution_ids.append(check_execution_id)
-            await task_report.info(
-                "Running global check",
-                proposed_change=proposed_change,
-                check_definition=message.check_definition_id,
-            )
             events.append(
                 messages.CheckRepositoryUserCheck(
-                    name=definition.name.value,
+                    name=member.display_label,
                     validator_id=validator.id,
                     validator_execution_id=validator_execution_id,
                     check_execution_id=check_execution_id,
@@ -118,45 +87,66 @@ async def check_definition(message: messages.CheckRepositoryCheckDefinition, ser
                     branch_name=message.branch_name,
                     check_definition_id=message.check_definition_id,
                     proposed_change=message.proposed_change,
+                    variables=member.extract(params=definition.parameters.value),
                     branch_diff=message.branch_diff,
                 )
             )
 
-        checks_in_execution = ",".join(check_execution_ids)
-        log.info("Checks in execution", checks=checks_in_execution)
-        await service.cache.set(
-            key=f"validator_execution_id:{validator_execution_id}:checks",
-            value=checks_in_execution,
-            expires=KVTTL.TWO_HOURS,
-        )
+    else:
+        check_execution_id = str(UUIDT())
+        check_execution_ids.append(check_execution_id)
         events.append(
-            messages.FinalizeValidatorExecution(
-                start_time=Timestamp().to_string(),
+            messages.CheckRepositoryUserCheck(
+                name=definition.name.value,
                 validator_id=validator.id,
                 validator_execution_id=validator_execution_id,
-                validator_type=InfrahubKind.USERVALIDATOR,
+                check_execution_id=check_execution_id,
+                repository_id=message.repository_id,
+                repository_name=message.repository_name,
+                commit=message.commit,
+                file_path=message.file_path,
+                class_name=message.class_name,
+                branch_name=message.branch_name,
+                check_definition_id=message.check_definition_id,
+                proposed_change=message.proposed_change,
+                branch_diff=message.branch_diff,
             )
         )
 
-        for event in events:
-            event.assign_meta(parent=message)
-            await service.send(message=event)
+    checks_in_execution = ",".join(check_execution_ids)
+    log.info(f"Checks in execution {checks_in_execution}")
+    await service.cache.set(
+        key=f"validator_execution_id:{validator_execution_id}:checks",
+        value=checks_in_execution,
+        expires=KVTTL.TWO_HOURS,
+    )
+    events.append(
+        messages.FinalizeValidatorExecution(
+            start_time=Timestamp().to_string(),
+            validator_id=validator.id,
+            validator_execution_id=validator_execution_id,
+            validator_type=InfrahubKind.USERVALIDATOR,
+        )
+    )
+
+    for event in events:
+        event.assign_meta(parent=message)
+        await service.send(message=event)
 
 
-@flow(name="git-repository-check-merge-conflict")
+@flow(
+    name="git-repository-check-merge-conflict",
+    flow_run_name="Check for merge conflicts between {message.source_branch} and {message.target_branch}",
+)
 async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, service: InfrahubServices) -> None:
     """Runs a check to see if there are merge conflicts between two branches."""
-    log.info(
-        "Checking for merge conflicts",
-        repository_id=message.repository_id,
-        proposed_change_id=message.proposed_change,
-    )
+    await add_tags(branches=[message.source_branch], nodes=[message.proposed_change])
 
     success_condition = "-"
     validator = await service.client.get(kind=InfrahubKind.REPOSITORYVALIDATOR, id=message.validator_id)
     await validator.checks.fetch()
 
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, service=service)
     async with lock.registry.get(name=message.repository_name, namespace="repository"):
         conflicts = await repo.get_conflicts(source_branch=message.source_branch, dest_branch=message.target_branch)
 
@@ -226,12 +216,17 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
     )
 
 
-@flow(name="git-repository-user-check")
+@flow(name="git-repository-user-check", flow_run_name="Execute user defined Check '{message.name}'")
 async def user_check(message: messages.CheckRepositoryUserCheck, service: InfrahubServices) -> None:
+    await add_tags(branches=[message.branch_name], nodes=[message.proposed_change])
+    log = get_run_logger()
+
     validator = await service.client.get(kind=InfrahubKind.USERVALIDATOR, id=message.validator_id)
     await validator.checks.fetch()
 
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
+    repo = await InfrahubRepository.init(
+        id=message.repository_id, name=message.repository_name, commit=message.commit, service=service
+    )
     conclusion = "failure"
     severity = "critical"
     log_entries = ""
@@ -247,12 +242,15 @@ async def user_check(message: messages.CheckRepositoryUserCheck, service: Infrah
         if check_run.passed:
             conclusion = "success"
             severity = "info"
-            log.info("The check passed", check_execution_id=message.check_execution_id)
+            log.info("The check passed")
         else:
-            log.warning("The check reported failures", check_execution_id=message.check_execution_id)
+            log.warning("The check reported failures")
+            for log_entry in check_run.log_entries:
+                log.warning(log_entry)
         log_entries = check_run.log_entries
     except CheckError as exc:
-        log.warning("The check failed to run", check_execution_id=message.check_execution_id)
+        log.warning("The check failed to run")
+        log.error(exc.message)
         log_entries = f"FATAL Error/n:{exc.message}"
 
     check = None

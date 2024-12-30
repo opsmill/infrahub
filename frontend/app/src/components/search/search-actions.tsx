@@ -56,17 +56,20 @@ export const SearchActions = () => {
   const resultsMenu = menuItems.filter(({ label }) =>
     label.toLowerCase().includes(queryLowerCased)
   );
-  const resultsSchema = models.filter(
-    ({ kind, label, description }) =>
+  const resultsSchema = models.filter(({ kind, label, description }) => {
+    return (
       kind?.toLowerCase().includes(queryLowerCased) ||
       label?.toLowerCase().includes(queryLowerCased) ||
       description?.toLowerCase().includes(queryLowerCased)
-  );
+    );
+  });
 
   const results = [...resultsMenu, ...resultsSchema];
+
   if (results.length === 0) return null;
 
   const firstThreeMatches = results.slice(0, 3);
+
   return (
     <SearchAnywhereGroup heading="Go to">
       {firstThreeMatches.map((result) => {

@@ -1,66 +1,110 @@
-import { forwardRef, useState } from "react";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
 
+import { Button } from "@/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { FormFieldError } from "@/screens/edit-form-hook/form";
-import { Input } from "./inputs/input";
-import { MultipleInput } from "./inputs/multiple-input";
-import { SelectOption } from "./inputs/select";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { inputStyle } from "@/components/ui/style";
+import { classNames } from "@/utils/common";
 
-type OpsListProps = {
-  id?: string;
-  value: (string | SelectOption)[];
-  onChange: (value: (string | SelectOption)[]) => void;
-  error?: FormFieldError;
-  isProtected?: boolean;
-  disabled?: boolean;
-};
+export interface ListProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> {
+  defaultValue?: string[];
+  value?: string[];
+  onChange?: (value: string[]) => void;
+}
 
-const List = forwardRef<HTMLInputElement, OpsListProps>((props, ref) => {
-  const { value = [], onChange, id, error, isProtected, disabled } = props;
+export const List = React.forwardRef<HTMLInputElement, ListProps>(
+  ({ defaultValue = [], value, onChange, className, disabled, ...props }, ref) => {
+    const [internalValue, setInternalValue] = useState<string[]>(defaultValue);
+    const items = value ?? internalValue;
 
-  const [inputValue, sertInputValue] = useState("");
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
 
-  const handleInputChange = (newValue: string) => {
-    sertInputValue(newValue);
-  };
+        const trimmedItem = event.currentTarget.value.trim();
+        if (!trimmedItem) return;
 
-  const handleKeyDown = (event: any) => {
-    if (event.key === "Enter") {
-      // Prevent default behaviour
-      event.preventDefault();
-      event.stopPropagation();
+        if (items.includes(trimmedItem)) {
+          toast(<Alert message="Item already exists in the list" type={ALERT_TYPES.INFO} />);
+          return;
+        }
 
-      // Build new array with unique items
-      const newArray = Array.from(new Set([...(value || []), inputValue]));
+        const newValue = [...items, trimmedItem];
+        onChange?.(newValue);
+        setInternalValue(newValue);
 
-      onChange(newArray);
-
-      // Init input
-      sertInputValue("");
-
-      if (newArray.length === value.length) {
-        toast(<Alert message="Item already in the list" type={ALERT_TYPES.INFO} />);
+        event.currentTarget.value = "";
       }
-    }
-  };
+    };
 
+    const handleDelete = (itemToDelete: string) => {
+      if (disabled) return;
+
+      const newValue = items.filter((item) => item !== itemToDelete);
+      onChange?.(newValue);
+      setInternalValue(newValue);
+    };
+
+    return (
+      <div>
+        <Input
+          ref={ref}
+          placeholder="Add a new item + hit 'enter'"
+          className={classNames("mb-1", className)}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          {...props}
+        />
+
+        <ListItems items={items} disabled={disabled} onDelete={handleDelete} />
+      </div>
+    );
+  }
+);
+
+const ListItems = ({
+  items,
+  disabled,
+  onDelete,
+}: { items: string[]; disabled?: boolean; onDelete: (item: string) => void }) => {
   return (
-    <div>
-      <Input
-        ref={ref}
-        id={id}
-        onChange={handleInputChange}
-        error={error}
-        disabled={isProtected}
-        placeholder="Add a new item + hit 'enter'"
-        className="mb-1"
-        onKeyDown={handleKeyDown}
-        value={inputValue}
-      />
-      <MultipleInput value={value} onChange={onChange} disabled={disabled} />
+    <div
+      className={classNames(
+        inputStyle,
+        "gap-1.5 flex-wrap",
+        disabled && "cursor-not-allowed bg-gray-100"
+      )}
+    >
+      {items.length > 0 ? (
+        items.map((item) => (
+          <Badge
+            key={item}
+            className={classNames(
+              "text-sm font-normal gap-1.5 py-0",
+              disabled && "opacity-70 bg-gray-200 cursor-not-allowed"
+            )}
+          >
+            <span>{item}</span>
+            {!disabled && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => onDelete(item)}
+                className="text-gray-500 hover:text-gray-800 h-4 w-4"
+                aria-label="Remove"
+              >
+                &times;
+              </Button>
+            )}
+          </Badge>
+        ))
+      ) : (
+        <span className="text-gray-400 italic mx-auto">Empty list</span>
+      )}
     </div>
   );
-});
-
-export default List;
+};

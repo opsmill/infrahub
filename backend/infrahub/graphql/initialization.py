@@ -8,6 +8,7 @@ from starlette.background import BackgroundTasks
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError
+from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
 
 from .manager import GraphQLSchemaManager
 
@@ -32,6 +33,7 @@ class GraphqlContext:
     db: InfrahubDatabase
     branch: Branch
     types: dict
+    single_relationship_resolver: SingleRelationshipResolver
     at: Optional[Timestamp] = None
     related_node_ids: Optional[set] = None
     service: Optional[InfrahubServices] = None
@@ -48,6 +50,12 @@ class GraphqlContext:
         if self.account_session:
             return self.account_session
         raise InitializationError("GraphQLContext doesn't contain an account_session")
+
+    @property
+    def active_service(self) -> InfrahubServices:
+        if self.service:
+            return self.service
+        raise InitializationError("GraphQLContext doesn't contain a service")
 
 
 def prepare_graphql_params(
@@ -80,6 +88,7 @@ def prepare_graphql_params(
         context=GraphqlContext(
             db=db,
             branch=branch,
+            single_relationship_resolver=SingleRelationshipResolver(),
             at=Timestamp(at),
             types=gqlm.get_graphql_types(),
             related_node_ids=set(),

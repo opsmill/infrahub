@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/develop.json
+---
+python_transforms:
+  - name: TShirtPitch
+    class_name: TShirtPitch
+    file_path: "transforms/tshirt_pitch.py"
+
+queries:
+  - name: tshirt_colors
+    file_path: "transforms/tshirt_colors.gql"

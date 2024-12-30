@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -12,23 +11,22 @@ from git import Blob, Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
 from infrahub_sdk import InfrahubClient  # noqa: TCH002
-from infrahub_sdk.task_report import InfrahubTaskReportLogger  # noqa: TCH002
+from prefect import Flow, Task
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
-from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CommitNotFoundError,
     FileOutOfRepositoryError,
-    InitializationError,
     RepositoryError,
     RepositoryFileNotFoundError,
+    RepositoryInvalidFileSystemError,
 )
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
-from infrahub.git.directory import initialize_repositories_directory
+from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
 from infrahub.git.worktree import Worktree
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices  # noqa: TCH001
@@ -66,24 +64,22 @@ class RepoFileInformation(BaseModel):
 
 
 def extract_repo_file_information(
-    full_filename: str, repo_directory: str, worktree_directory: Optional[str] = None
+    full_filename: Path, repo_directory: Path, worktree_directory: Path | None = None
 ) -> RepoFileInformation:
     """Extract all the relevant and required information from a filename.
 
     Args:
-        full_filename (str): Absolute path to the file to load Example:/opt/infrahub/git/repo01/commits/71da[..]4b7/myfile.py
-        root_directory: Absolute path to the root of the repository directory. Example:/opt/infrahub/git/repo01
-        worktree_directory (str, optional): Absolute path to the root of the worktree directory. Defaults to None.
+        full_filename (Path): Absolute path to the file to load Example:/opt/infrahub/git/repo01/commits/71da[..]4b7/myfile.py
+        root_directory (Path): Absolute path to the root of the repository directory. Example:/opt/infrahub/git/repo01
+        worktree_directory (Path, optional): Absolute path to the root of the worktree directory. Defaults to None.
         Example: /opt/infrahub/git/repo01/commits/71da[..]4b7/
 
     Returns:
         RepoFileInformation: Pydantic object to store all information about this file
     """
-    full_path = Path(full_filename)
-    abs_directory = full_path.parent.resolve()
-
-    filename = full_path.name
-    filename_wo_ext = full_path.stem
+    abs_directory = full_filename.parent.resolve()
+    filename = full_filename.name
+    filename_wo_ext = full_filename.stem
 
     relative_repo_path_dir = abs_directory.relative_to(repo_directory)
 
@@ -102,7 +98,7 @@ def extract_repo_file_information(
         absolute_path_dir=str(abs_directory),
         relative_path_dir=str(path_in_repo),
         relative_repo_path_dir=str(relative_repo_path_dir),
-        extension=full_path.suffix,
+        extension=full_filename.suffix,
         relative_path_file=str(file_path),
     )
 
@@ -111,7 +107,7 @@ class BranchInGraph(BaseModel):
     id: str
     name: str
     sync_with_git: bool
-    commit: Optional[str] = None
+    commit: str | None = None
 
 
 class BranchInRemote(BaseModel):
@@ -140,9 +136,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
     id: UUID = Field(..., description="Internal UUID of the repository")
     name: str = Field(..., description="Primary name of the repository")
-    default_branch_name: Optional[str] = Field(None, description="Default branch to use when pulling the repository")
-    type: Optional[str] = None
-    location: Optional[str] = Field(None, description="Location of the remote repository")
+    default_branch_name: str | None = Field(None, description="Default branch to use when pulling the repository")
+    type: str | None = None
+    location: str | None = Field(None, description="Location of the remote repository")
     has_origin: bool = Field(
         False, description="Flag to indicate if a remote repository (named origin) is present in the config."
     )
@@ -157,13 +153,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         ..., description="Service object with access to the message queue, the database etc.."
     )
     is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
-    task_report: Optional[InfrahubTaskReportLogger] = Field(default=None)
 
     internal_status: str = Field("active", description="Internal status: Active, Inactive, Staging")
-    infrahub_branch_name: Optional[str] = Field(
-        None, description="Infrahub branch on which to sync the remote repository"
-    )
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    infrahub_branch_name: str | None = Field(None, description="Infrahub branch on which to sync the remote repository")
+    model_config = ConfigDict(arbitrary_types_allowed=True, ignored_types=(Flow, Task))
 
     @property
     def sdk(self) -> InfrahubClient:
@@ -177,40 +170,34 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         return self.default_branch_name or registry.default_branch
 
     @property
-    def log(self) -> InfrahubTaskReportLogger:
-        if self.task_report:
-            return self.task_report
-        raise InitializationError("The repository has not been initialized with a TaskReport")
+    def legacy_directory_root(self) -> Path:
+        """Return the legacy path to the root directory for this repository."""
+        return get_repositories_directory() / self.name
 
     @property
-    def directory_root(self) -> str:
+    def directory_root(self) -> Path:
         """Return the path to the root directory for this repository."""
-        current_dir = os.getcwd()
-        repositories_directory = config.SETTINGS.git.repositories_directory
-        if not os.path.isabs(repositories_directory):
-            repositories_directory = os.path.join(current_dir, config.SETTINGS.git.repositories_directory)
-
-        return os.path.join(repositories_directory, self.name)
+        return get_repositories_directory() / str(self.id)
 
     @property
-    def directory_default(self) -> str:
+    def directory_default(self) -> Path:
         """Return the path to the directory of the main branch."""
-        return os.path.join(self.directory_root, "main")
+        return self.directory_root / "main"
 
     @property
-    def directory_branches(self) -> str:
+    def directory_branches(self) -> Path:
         """Return the path to the directory where the worktrees of all the branches are stored."""
-        return os.path.join(self.directory_root, BRANCHES_DIRECTORY_NAME)
+        return self.directory_root / BRANCHES_DIRECTORY_NAME
 
     @property
-    def directory_commits(self) -> str:
+    def directory_commits(self) -> Path:
         """Return the path to the directory where the worktrees of all the commits are stored."""
-        return os.path.join(self.directory_root, COMMITS_DIRECTORY_NAME)
+        return self.directory_root / COMMITS_DIRECTORY_NAME
 
     @property
-    def directory_temp(self) -> str:
+    def directory_temp(self) -> Path:
         """Return the path to the directory where the temp worktrees of all the commits pending validation are stored."""
-        return os.path.join(self.directory_root, TEMPORARY_DIRECTORY_NAME)
+        return self.directory_root / TEMPORARY_DIRECTORY_NAME
 
     def get_git_repo_main(self) -> Repo:
         """Return Git Repo object of the main repository.
@@ -237,10 +224,37 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if worktree := self.get_worktree(identifier=identifier):
             return Repo(worktree.directory)
 
-        raise RepositoryError(
-            identifier=self.name,
-            message=f"Unable to find the worktree {identifier}.",
-        )
+        raise RepositoryError(identifier=self.name, message=f"Unable to find the worktree {identifier}.")
+
+    def relocate_directory_root(self) -> None:
+        """Move an old repository directory based on its name to a directory based on its ID.
+
+        This method will also take care of removing the legacy directory if:
+        1. The regular directory exists
+        2. The regular directory does not exist but will be created after renaming the legacy one
+        """
+        legacy = self.legacy_directory_root
+        current = self.directory_root
+
+        if not legacy.exists():
+            return
+
+        if not legacy.is_dir():
+            log.error("A file named after the repository should not exist", repository=self.name)
+            return
+
+        if current.is_dir():
+            log.warning(
+                f"Found legacy directory at {self.legacy_directory_root} but {self.directory_root} exists, deleting legacy directory",
+                repository=self.name,
+            )
+            shutil.rmtree(self.legacy_directory_root)
+        else:
+            log.warning(
+                f"Found legacy directory at {self.legacy_directory_root}, moving it to {self.directory_root}",
+                repository=self.name,
+            )
+            legacy.rename(self.directory_root)
 
     def validate_local_directories(self) -> bool:
         """Check if the local directories structure to ensure that the repository has been properly initialized.
@@ -258,10 +272,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         ]
 
         for directory in directories_to_validate:
-            if not os.path.isdir(directory):
-                raise RepositoryError(
+            if not directory.is_dir():
+                raise RepositoryInvalidFileSystemError(
                     identifier=self.name,
-                    message=f"Invalid file system for {self.name}, Local directory {directory} missing.",
+                    directory=directory,
                 )
 
         # Validate that a worktree for the commit in main is present
@@ -283,7 +297,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 identifier=self.name, message="The initial commit is missing for {self.name}"
             ) from exc
 
-        if not os.path.isdir(os.path.join(self.directory_commits, commit)):
+        if not (self.directory_commits / commit).is_dir():
             raise RepositoryError(
                 identifier=self.name, message=f"The directory for the main commit is missing for {self.name}"
             )
@@ -291,7 +305,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         return True
 
     async def create_locally(
-        self, checkout_ref: Optional[str] = None, infrahub_branch_name: Optional[str] = None
+        self, checkout_ref: str | None = None, infrahub_branch_name: str | None = None, update_commit_value: bool = True
     ) -> bool:
         """Ensure the required directory already exist in the filesystem or create them if needed.
 
@@ -308,18 +322,18 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             )
 
         # Check if the root, commits and branches directories are already present, create them if needed
-        if os.path.isdir(self.directory_root):
+        if self.directory_root.is_dir():
             shutil.rmtree(self.directory_root)
             log.warning(f"Found an existing directory at {self.directory_root}, deleted it", repository=self.name)
-        elif os.path.isfile(self.directory_root):
-            os.remove(self.directory_root)
+        elif self.directory_root.is_file():
+            self.directory_root.unlink()
             log.warning(f"Found an existing file at {self.directory_root}, deleted it", repository=self.name)
 
         # Initialize directory structure
-        os.makedirs(self.directory_root)
-        os.makedirs(self.directory_branches)
-        os.makedirs(self.directory_commits)
-        os.makedirs(self.directory_temp)
+        self.directory_root.mkdir(parents=True)
+        self.directory_branches.mkdir(parents=True)
+        self.directory_commits.mkdir(parents=True)
+        self.directory_temp.mkdir(parents=True)
 
         try:
             repo = Repo.clone_from(self.location, self.directory_default)
@@ -333,7 +347,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         # TODO Need to handle the potential exceptions coming from repo.git.worktree
         commit = str(repo.head.commit)
         self.create_commit_worktree(commit=commit)
-        await self.update_commit_value(branch_name=infrahub_branch_name or self.default_branch, commit=commit)
+        if update_commit_value:
+            await self.update_commit_value(branch_name=infrahub_branch_name or self.default_branch, commit=commit)
 
         return True
 
@@ -356,7 +371,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             if worktree.identifier == identifier:
                 return worktree
 
-        raise RepositoryError(identifier=identifier, message="Unble to get worktree")
+        raise RepositoryError(identifier=identifier, message=f"Unable to get worktree : {identifier}")
 
     def get_commit_worktree(self, commit: str) -> Worktree:
         """Access a specific commit worktree."""
@@ -377,6 +392,16 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         responses = repo.git.worktree("list", "--porcelain").split("\n\n")
 
         return [Worktree.init(response) for response in responses]
+
+    def get_client(self) -> InfrahubClient:
+        if self.client:
+            return self.client
+        return self.service.client
+
+    def get_location(self) -> str:
+        if self.location:
+            return self.location
+        raise ValueError(f"location hasn't been provided for this repository ({self.name})")
 
     async def get_branches_from_graph(self) -> dict[str, BranchInGraph]:
         """Return a dict with all the branches present in the graph.
@@ -480,10 +505,52 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         """
 
         # TODO need to handle the exception properly
-        branch = await self.sdk.branch.create(branch_name=branch_name, background_execution=True)
+        branch = await self.sdk.branch.create(branch_name=branch_name)
 
         log.debug(f"Branch {branch_name} created in the Graph", repository=self.name, branch=branch_name)
         return branch
+
+    async def create_branch_in_git(self, branch_name: str, branch_id: str | None = None) -> bool:
+        """Create new branch in the repository, assuming the branch has been created in the graph already."""
+
+        repo = self.get_git_repo_main()
+
+        # Check if the branch already exists locally, if it does do nothing
+        local_branches = self.get_branches_from_local(include_worktree=False)
+        if branch_name in local_branches:
+            return False
+
+        # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
+        repo.git.branch(branch_name)
+        self.create_branch_worktree(branch_name=branch_name, branch_id=branch_id or branch_name)
+
+        # If there is not remote configured, we are done
+        #  Since the branch is a match for the main branch we don't need to create a commit worktree
+        # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
+        if not self.has_origin:
+            log.debug(
+                f"Branch {branch_name} created in Git without tracking a remote branch.",
+                repository=self.name,
+                branch=branch_name,
+            )
+            return True
+
+        remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
+
+        if remote_branch:
+            br_repo = self.get_git_repo_worktree(identifier=branch_name)
+            br_repo.head.reference.set_tracking_branch(remote_branch[0])
+            br_repo.remotes.origin.pull(branch_name)
+            self.create_commit_worktree(str(br_repo.head.reference.commit))
+            log.debug(
+                f"Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}.",
+                repository=self.name,
+                branch=branch_name,
+            )
+        else:
+            log.debug(f"Branch {branch_name} created in Git without tracking a remote branch.", repository=self.name)
+
+        return True
 
     def create_commit_worktree(self, commit: str) -> Union[bool, Worktree]:
         """Create a new worktree for a given commit."""
@@ -492,7 +559,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if self.has_worktree(identifier=commit):
             return False
 
-        directory = os.path.join(self.directory_commits, commit)
+        directory = self.directory_commits / commit
         worktree = Worktree(identifier=commit, directory=str(directory), commit=commit)
 
         repo = self.get_git_repo_main()
@@ -517,7 +584,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         try:
             repo = self.get_git_repo_main()
-            repo.git.worktree("add", os.path.join(self.directory_branches, branch_id), branch_name)
+            repo.git.worktree("add", self.directory_branches / branch_id, branch_name)
         except GitCommandError as exc:
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
@@ -562,6 +629,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             return False
 
         log.debug("Fetching the latest updates from remote origin.", repository=self.name)
+
+        self.relocate_directory_root()
 
         repo = self.get_git_repo_main()
         try:
@@ -629,7 +698,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return True
 
-    async def pull(self, branch_name: str) -> Union[bool, str]:
+    async def pull(
+        self,
+        branch_name: str,
+        branch_id: str | None = None,
+        create_if_missing: bool = False,
+        update_commit_value: bool = True,
+    ) -> Union[bool, str]:
         """Pull the latest update from the remote repository on a given branch."""
 
         if not self.has_origin:
@@ -638,24 +713,40 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if branch_name == self.default_branch and branch_name != registry.default_branch:
             identifier = "main"
 
-        repo = self.get_git_repo_worktree(identifier=identifier)
-        if not repo:
-            raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}")
-
+        repo: Repo | None = None
         try:
-            commit_before = str(repo.head.commit)
-            repo.remotes.origin.pull(branch_name)
-        except GitCommandError as exc:
-            self._raise_enriched_error(error=exc, branch_name=branch_name)
+            repo = self.get_git_repo_worktree(identifier=identifier)
+        except RepositoryError as exc:
+            if not create_if_missing:
+                raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}") from exc
 
-        commit_after = str(repo.head.commit)
+        if repo:
+            try:
+                commit_before = str(repo.head.commit)
+                repo.remotes.origin.pull(branch_name)
+            except GitCommandError as exc:
+                self._raise_enriched_error(error=exc, branch_name=branch_name)
 
-        if commit_after == commit_before:
-            return True
+            commit_after = str(repo.head.commit)
 
-        self.create_commit_worktree(commit=commit_after)
-        infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
-        await self.update_commit_value(branch_name=infrahub_branch, commit=commit_after)
+            if commit_after == commit_before:
+                return True
+
+            self.create_commit_worktree(commit=commit_after)
+            infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+
+        elif branch_id:
+            await self.create_branch_in_git(branch_name=branch_name, branch_id=branch_id)
+            repo = self.get_git_repo_worktree(identifier=branch_name)
+            commit_after = str(repo.head.commit)
+        else:
+            raise ValueError(
+                f"Unable to identify the worktree for the branch : {branch_name} "
+                "and unable to pull the branch because the branch)id is missing"
+            )
+
+        if update_commit_value:
+            await self.update_commit_value(branch_name=infrahub_branch, commit=commit_after)
 
         return commit_after
 
@@ -682,8 +773,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     async def find_files(
         self,
         extension: Union[str, list[str]],
-        branch_name: Optional[str] = None,
-        commit: Optional[str] = None,
+        branch_name: str | None = None,
+        commit: str | None = None,
         directory: Optional[Path] = None,
     ) -> list[Path]:
         """Return the path of all files matching a specific extension in a given Branch or Commit."""
@@ -711,11 +802,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return path.read_text(encoding="UTF-8")
 
-    def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> Path:
+    def validate_location(self, commit: str, worktree_directory: Path, file_path: str) -> Path:
         """Validate that a file is found inside a repository and return a corresponding `pathlib.Path` object for it."""
-        path = Path(worktree_directory, file_path).resolve()
+        path = (worktree_directory / file_path).resolve()
 
-        if not str(path).startswith(worktree_directory):
+        if not path.is_relative_to(worktree_directory):
             raise FileOutOfRepositoryError(repository_name=self.name, commit=commit, location=file_path)
 
         if not path.exists():

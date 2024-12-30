@@ -47,7 +47,7 @@ ESCAPED_REPO_PATH = escape_path(REPO_BASE)
 def project_ver() -> str:
     """Find version from pyproject.toml to use for docker image tagging."""
 
-    with Path(f"{REPO_BASE}/pyproject.toml").open(encoding="utf-8") as file:
+    with (REPO_BASE / "pyproject.toml").open(encoding="utf-8") as file:
         return toml.load(file)["tool"]["poetry"].get("version", "latest")
 
 

@@ -9,9 +9,11 @@ export const GET_IP_NAMESPACES = gql`
           id
           name {
             id
+            value
           }
           description {
             id
+            value
           }
           ... on IpamNamespace {
             default {

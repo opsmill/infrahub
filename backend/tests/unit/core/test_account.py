@@ -27,24 +27,24 @@ async def test_validate_token(db: InfrahubDatabase, default_branch, register_cor
     account_token_schema = registry.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN, branch=default_branch)
 
     user1 = await Node.init(db=db, schema=account_schema)
-    await user1.new(db=db, name="user1", password="User1Password123", role="read-write")
+    await user1.new(db=db, name="user1", password="User1Password123")
     await user1.save(db=db)
     token1 = await Node.init(db=db, schema=account_token_schema)
     await token1.new(db=db, token="123456789", account=user1)
     await token1.save(db=db)
 
-    assert await validate_token(token="123456789", db=db) == (user1.id, "read-write")
-    assert await validate_token(token="987654321", db=db) == (None, "read-only")
+    assert await validate_token(token="123456789", db=db) == user1.id
+    assert await validate_token(token="987654321", db=db) is None
 
 
 async def test_account_status(db: InfrahubDatabase, default_branch, register_core_models_schema):
     account_schema = registry.schema.get_node_schema(name=InfrahubKind.ACCOUNT, branch=default_branch)
 
     user1 = await Node.init(db=db, schema=account_schema)
-    await user1.new(db=db, name="user1", password="User1Password123", role="read-write")
+    await user1.new(db=db, name="user1", password="User1Password123")
     await user1.save(db=db)
     user2 = await Node.init(db=db, schema=account_schema)
-    await user2.new(db=db, name="user2", password="User1Password123", role="read-write", status="inactive")
+    await user2.new(db=db, name="user2", password="User1Password123", status="inactive")
     await user2.save(db=db)
 
     await validate_active_account(db=db, account_id=user1.id)
@@ -57,10 +57,10 @@ async def test_authenticate_with_password(db: InfrahubDatabase, default_branch, 
     account_schema = registry.schema.get_node_schema(name=InfrahubKind.ACCOUNT, branch=default_branch)
 
     user1 = await Node.init(db=db, schema=account_schema)
-    await user1.new(db=db, name="user1", password="User1Password123", role="read-write")
+    await user1.new(db=db, name="user1", password="User1Password123")
     await user1.save(db=db)
     user2 = await Node.init(db=db, schema=account_schema)
-    await user2.new(db=db, name="user2", password="User1Password123", role="read-write", status="inactive")
+    await user2.new(db=db, name="user2", password="User1Password123", status="inactive")
     await user2.save(db=db)
 
     assert await authenticate_with_password(
@@ -77,14 +77,14 @@ async def test_authenticate_token(db: InfrahubDatabase, default_branch, register
     account_token_schema = registry.schema.get_node_schema(name=InfrahubKind.ACCOUNTTOKEN, branch=default_branch)
 
     user1 = await Node.init(db=db, schema=account_schema)
-    await user1.new(db=db, name="user1", password="User1Password123", role="read-write")
+    await user1.new(db=db, name="user1", password="User1Password123")
     await user1.save(db=db)
     token1 = await Node.init(db=db, schema=account_token_schema)
     await token1.new(db=db, token="123456789", account=user1)
     await token1.save(db=db)
 
     user2 = await Node.init(db=db, schema=account_schema)
-    await user2.new(db=db, name="user2", password="User1Password123", role="read-write", status="inactive")
+    await user2.new(db=db, name="user2", password="User1Password123", status="inactive")
     await user2.save(db=db)
     token2 = await Node.init(db=db, schema=account_token_schema)
     await token2.new(db=db, token="abcdef", account=user2)

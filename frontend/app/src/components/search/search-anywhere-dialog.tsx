@@ -25,6 +25,7 @@ export function SearchAnywhereDialog({
         "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]"
       )}
       data-testid="search-anywhere"
+      className="overflow-hidden"
       shouldFilter={false}
       label="Search anywhere"
     >

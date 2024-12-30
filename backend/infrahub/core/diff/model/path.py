@@ -130,6 +130,7 @@ class EnrichedDiffConflict:
     base_branch_changed_at: Timestamp | None = field(default=None, kw_only=True)
     diff_branch_changed_at: Timestamp | None = field(default=None, kw_only=True)
     selected_branch: ConflictSelection | None = field(default=None)
+    resolvable: bool = field(default=True)
 
 
 @dataclass
@@ -174,6 +175,10 @@ class EnrichedDiffAttribute(BaseSummary):
     def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
         return {prop.path_identifier: prop.conflict for prop in self.properties if prop.conflict}
 
+    def clear_conflicts(self) -> None:
+        for prop in self.properties:
+            prop.conflict = None
+
     @classmethod
     def from_calculated_attribute(cls, calculated_attribute: DiffAttribute) -> EnrichedDiffAttribute:
         return EnrichedDiffAttribute(
@@ -206,6 +211,11 @@ class EnrichedDiffSingleRelationship(BaseSummary):
             all_conflicts[self.path_identifier] = self.conflict
         all_conflicts.update({prop.path_identifier: prop.conflict for prop in self.properties if prop.conflict})
         return all_conflicts
+
+    def clear_conflicts(self) -> None:
+        self.conflict = None
+        for prop in self.properties:
+            prop.conflict = None
 
     def get_property(self, property_type: DatabaseEdgeType) -> EnrichedDiffProperty:
         for prop in self.properties:
@@ -245,6 +255,10 @@ class EnrichedDiffRelationship(BaseSummary):
         for element in self.relationships:
             all_conflicts.update(element.get_all_conflicts())
         return all_conflicts
+
+    def clear_conflicts(self) -> None:
+        for element in self.relationships:
+            element.clear_conflicts()
 
     @property
     def include_in_response(self) -> bool:
@@ -298,6 +312,13 @@ class EnrichedDiffNode(BaseSummary):
         for relationship in self.relationships:
             all_conflicts.update(relationship.get_all_conflicts())
         return all_conflicts
+
+    def clear_conflicts(self) -> None:
+        for attr in self.attributes:
+            attr.clear_conflicts()
+        for rel in self.relationships:
+            rel.clear_conflicts()
+        self.conflict = None
 
     def get_parent_info(self, context: GraphqlContext | None = None) -> ParentNodeInfo | None:
         for r in self.relationships:

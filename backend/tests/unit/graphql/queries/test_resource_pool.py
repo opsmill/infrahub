@@ -1,5 +1,4 @@
 import pytest
-from graphql import graphql
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -14,6 +13,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 from tests.helpers.schema import TICKET, load_schema
 
 

@@ -3,25 +3,26 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from infrahub_sdk.batch import InfrahubBatch
-from prefect import flow
+from prefect import flow, task
+from prefect.cache_policies import NONE
+from prefect.logging import get_run_logger
 
-from infrahub.message_bus.messages.schema_migration_path import (
-    SchemaMigrationPathData,
-)
-from infrahub.message_bus.operations.schema.migration import schema_path_migrate
+from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.migrations import MIGRATION_MAP
+from infrahub.core.path import SchemaPath  # noqa: TCH001
 from infrahub.services import services
 from infrahub.workflows.utils import add_branch_tag
 
-from .models import SchemaApplyMigrationData  # noqa: TCH001
+from .models import SchemaApplyMigrationData, SchemaMigrationPathResponseData
 
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
 
 
-@flow(name="schema_apply_migrations")
+@flow(name="schema_apply_migrations", flow_run_name="Apply schema migrations", persist_result=True)
 async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str]:
-    service = services.service
     await add_branch_tag(branch_name=message.branch.name)
+    log = get_run_logger()
 
     batch = InfrahubBatch()
     error_messages: list[str] = []
@@ -30,10 +31,7 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
         return error_messages
 
     for migration in message.migrations:
-        service.log.info(
-            f"Preparing migration for {migration.migration_name!r} ({migration.routing_key})",
-            branch=message.branch.name,
-        )
+        log.info(f"Preparing migration for {migration.migration_name!r} ({migration.routing_key})")
 
         new_node_schema: Optional[MainSchemaTypes] = None
         previous_node_schema: Optional[MainSchemaTypes] = None
@@ -51,7 +49,8 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
                 f"Unable to find the previous version of the schema for {migration.path.schema_kind}, in order to run the migration."
             )
 
-        msg = SchemaMigrationPathData(
+        batch.add(
+            task=schema_path_migrate,
             branch=message.branch,
             migration_name=migration.migration_name,
             new_node_schema=new_node_schema,
@@ -59,9 +58,56 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
             schema_path=migration.path,
         )
 
-        batch.add(task=schema_path_migrate, message=msg)
-
     async for _, result in batch.execute():
         error_messages.extend(result.errors)
 
     return error_messages
+
+
+@task(
+    name="schema-path-migrate",
+    task_run_name="Migrate Schema Path {migration_name} on {branch.name}",
+    description="Apply a given migration to the database",
+    retries=3,
+    cache_policy=NONE,
+)
+async def schema_path_migrate(
+    branch: Branch,
+    migration_name: str,
+    schema_path: SchemaPath,
+    new_node_schema: MainSchemaTypes | None = None,
+    previous_node_schema: MainSchemaTypes | None = None,
+) -> SchemaMigrationPathResponseData:
+    service = services.service
+    log = get_run_logger()
+
+    async with service.database.start_session() as db:
+        node_kind = None
+        if new_node_schema:
+            node_kind = new_node_schema.kind
+        elif previous_node_schema:
+            node_kind = previous_node_schema.kind
+
+        log.info(
+            f"Migration for {node_kind} starting {schema_path.get_path()}",
+        )
+        migration_class = MIGRATION_MAP.get(migration_name)
+        if not migration_class:
+            raise ValueError(f"Unable to find the migration class for {migration_name}")
+
+        migration = migration_class(  # type: ignore[call-arg]
+            new_node_schema=new_node_schema,  # type: ignore[arg-type]
+            previous_node_schema=previous_node_schema,  # type: ignore[arg-type]
+            schema_path=schema_path,
+        )
+        execution_result = await migration.execute(db=db, branch=branch)
+
+        log.info(f"Migration completed for {migration_name}")
+        log.debug(f"execution_result {execution_result}")
+
+        return SchemaMigrationPathResponseData(
+            migration_name=migration_name,
+            schema_path=schema_path,
+            errors=execution_result.errors,
+            nbr_migrations_executed=execution_result.nbr_migrations_executed,
+        )
