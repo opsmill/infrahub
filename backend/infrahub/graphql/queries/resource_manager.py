@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from graphene import Field, Float, Int, List, ObjectType, String
+from graphene import Field, Float, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core import registry
@@ -69,7 +69,7 @@ def _validate_pool_type(pool_id: str, pool: Optional[CoreNode] = None) -> CoreNo
 
 class PoolAllocated(ObjectType):
     count = Field(Int, required=True, description="The number of allocations within the selected pool.")
-    edges = Field(List(of_type=PoolAllocatedEdge, required=True), required=True)
+    edges = Field(List(of_type=NonNull(PoolAllocatedEdge), required=True), required=True)
 
     @staticmethod
     async def resolve(  # pylint: disable=unused-argument
@@ -160,7 +160,7 @@ class PoolUtilization(ObjectType):
     utilization_default_branch = Field(
         Float, required=True, description="The overall utilization of the pool isolated to the default branch."
     )
-    edges = Field(List(of_type=IPPrefixUtilizationEdge, required=True), required=True)
+    edges = Field(List(of_type=NonNull(IPPrefixUtilizationEdge), required=True), required=True)
 
     @staticmethod
     async def resolve(  # pylint: disable=unused-argument,too-many-branches
@@ -311,9 +311,10 @@ InfrahubResourcePoolAllocated = Field(
     limit=Int(required=False),
     offset=Int(required=False),
     resolver=PoolAllocated.resolve,
+    required=True,
 )
 
 
 InfrahubResourcePoolUtilization = Field(
-    PoolUtilization, pool_id=String(required=True), resolver=PoolUtilization.resolve
+    PoolUtilization, pool_id=String(required=True), resolver=PoolUtilization.resolve, required=True
 )

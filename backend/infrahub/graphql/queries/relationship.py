@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 
 class Relationships(ObjectType):
-    edges = List(RelationshipNode)
-    count = Int()
+    edges = List(of_type=NonNull(RelationshipNode), required=True)
+    count = Int(required=True)
 
     @staticmethod
     async def resolve(
@@ -74,9 +74,10 @@ class Relationships(ObjectType):
 
 Relationship = Field(
     Relationships,
-    resolver=Relationships.resolve,
-    limit=Int(required=False),
-    offset=Int(required=False),
     ids=List(NonNull(String), required=True),
     excluded_namespaces=List(String),
+    limit=Int(required=False),
+    offset=Int(required=False),
+    resolver=Relationships.resolve,
+    required=True,
 )

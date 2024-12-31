@@ -413,7 +413,9 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
                 if rel.cardinality == "one":
                     peer_type = self.get_type(name=f"NestedEdged{peer_schema.kind}")
-                    node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=single_relationship_resolver)
+                    node_type._meta.fields[rel.name] = graphene.Field(
+                        peer_type, resolver=single_relationship_resolver, required=True
+                    )
 
                 elif rel.cardinality == "many":
                     peer_type = self.get_type(name=f"NestedPaginated{peer_schema.kind}")
@@ -424,7 +426,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                         peer_filters["include_descendants"] = graphene.Boolean()
 
                     node_type._meta.fields[rel.name] = graphene.Field(
-                        peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
+                        peer_type, required=True, resolver=many_relationship_resolver, **peer_filters
                     )
 
             if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
@@ -442,16 +444,16 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 peer_type_edge = self.get_type(name=f"NestedEdged{hierarchy_name}")
 
                 node_type._meta.fields["parent"] = graphene.Field(
-                    peer_type_edge, required=False, resolver=single_relationship_resolver
+                    peer_type_edge, required=True, resolver=single_relationship_resolver
                 )
                 node_type._meta.fields["children"] = graphene.Field(
-                    peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
+                    peer_type, required=True, resolver=many_relationship_resolver, **peer_filters
                 )
                 node_type._meta.fields["ancestors"] = graphene.Field(
-                    peer_type, required=False, resolver=ancestors_resolver, **peer_filters
+                    peer_type, required=True, resolver=ancestors_resolver, **peer_filters
                 )
                 node_type._meta.fields["descendants"] = graphene.Field(
-                    peer_type, required=False, resolver=descendants_resolver, **peer_filters
+                    peer_type, required=True, resolver=descendants_resolver, **peer_filters
                 )
 
     def generate_query_mixin(self) -> type[object]:
@@ -472,6 +474,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             class_attrs[node_schema.kind] = graphene.Field(
                 node_type,
                 resolver=default_paginated_list_resolver,
+                required=True,
                 **node_filters,
             )
             if node_name == InfrahubKind.GENERICACCOUNT:
@@ -553,7 +556,9 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         main_attrs = {
             "id": graphene.Field(graphene.String, required=True, description="Unique identifier"),
             "hfid": graphene.Field(
-                graphene.List(of_type=graphene.String), required=False, description="Human friendly identifier"
+                graphene.List(of_type=graphene.NonNull(graphene.String)),
+                required=False,
+                description="Human friendly identifier",
             ),
             "_updated_at": graphene.DateTime(required=False),
             "display_label": graphene.String(required=False),
@@ -583,7 +588,9 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         main_attrs = {
             "id": graphene.Field(graphene.String, required=False, description="Unique identifier"),
             "hfid": graphene.Field(
-                graphene.List(of_type=graphene.String), required=False, description="Human friendly identifier"
+                graphene.List(of_type=graphene.NonNull(graphene.String)),
+                required=False,
+                description="Human friendly identifier",
             ),
             "display_label": graphene.String(required=False),
             "Meta": type("Meta", (object,), meta_attrs),
@@ -929,12 +936,12 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         }
 
         main_attrs: dict[str, Any] = {
-            "node": graphene.Field(node, required=False),
+            "node": graphene.Field(node, required=True),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
         if relation_property:
-            main_attrs["properties"] = graphene.Field(relation_property)
+            main_attrs["properties"] = graphene.Field(relation_property, required=True)
 
         graphql_edged_object = type(object_name, (InfrahubObject,), main_attrs)
 
@@ -961,8 +968,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         }
 
         main_attrs: dict[str, Any] = {
-            "count": graphene.Int(required=False),
-            "edges": graphene.List(of_type=edge),
+            "count": graphene.Int(required=True),
+            "edges": graphene.List(of_type=graphene.NonNull(edge), required=True),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
@@ -992,13 +999,13 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         }
 
         main_attrs: dict[str, Any] = {
-            "node": graphene.Field(base_interface, required=False),
+            "node": graphene.Field(base_interface, required=True),
             "_updated_at": graphene.DateTime(required=False),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
         if relation_property:
-            main_attrs["properties"] = graphene.Field(relation_property)
+            main_attrs["properties"] = graphene.Field(relation_property, required=True)
 
         object_name = f"NestedEdged{schema.kind}"
         nested_interface_object = type(object_name, (InfrahubObject,), main_attrs)
@@ -1019,8 +1026,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         }
 
         main_attrs: dict[str, Any] = {
-            "count": graphene.Int(required=False),
-            "edges": graphene.List(of_type=base_interface),
+            "count": graphene.Int(required=True),
+            "edges": graphene.List(of_type=graphene.NonNull(base_interface)),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 

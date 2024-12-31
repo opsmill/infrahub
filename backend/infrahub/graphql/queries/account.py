@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Field, Int, List, ObjectType, String
+from graphene import Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core import registry
@@ -29,7 +29,7 @@ class AccountTokenEdge(ObjectType):
 
 class AccountTokenEdges(ObjectType):
     count = Field(Int, required=True)
-    edges = Field(List(of_type=AccountTokenEdge, required=True), required=True)
+    edges = Field(List(of_type=NonNull(AccountTokenEdge), required=True), required=True)
 
 
 async def resolve_account_tokens(
@@ -64,7 +64,11 @@ async def resolve_account_tokens(
 
 
 AccountToken = Field(
-    AccountTokenEdges, resolver=resolve_account_tokens, limit=Int(required=False), offset=Int(required=False)
+    AccountTokenEdges,
+    limit=Int(required=False),
+    offset=Int(required=False),
+    resolver=resolve_account_tokens,
+    required=True,
 )
 
 
@@ -97,12 +101,12 @@ class AccountObjectPermissionEdge(ObjectType):
 
 class AccountGlobalPermissionEdges(ObjectType):
     count = Field(Int, required=True)
-    edges = Field(List(of_type=AccountGlobalPermissionEdge, required=True), required=True)
+    edges = Field(List(of_type=NonNull(AccountGlobalPermissionEdge), required=True), required=True)
 
 
 class AccountObjectPermissionEdges(ObjectType):
     count = Field(Int, required=True)
-    edges = Field(List(of_type=AccountObjectPermissionEdge, required=True), required=True)
+    edges = Field(List(of_type=NonNull(AccountObjectPermissionEdge), required=True), required=True)
 
 
 class AccountPermissionsEdges(ObjectType):
@@ -164,4 +168,4 @@ async def resolve_account_permissions(
     return response
 
 
-AccountPermissions = Field(AccountPermissionsEdges, resolver=resolve_account_permissions)
+AccountPermissions = Field(AccountPermissionsEdges, resolver=resolve_account_permissions, required=True)

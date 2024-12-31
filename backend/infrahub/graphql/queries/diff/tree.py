@@ -519,7 +519,6 @@ class DiffTreeQueryFilters(InputObjectType):
 DiffTreeQuery = Field(
     DiffTree,
     name=String(),
-    resolver=DiffTreeResolver().resolve,
     branch=String(),
     from_time=DateTime(),
     to_time=DateTime(),
@@ -528,14 +527,17 @@ DiffTreeQuery = Field(
     filters=DiffTreeQueryFilters(),
     limit=Int(),
     offset=Int(),
+    resolver=DiffTreeResolver().resolve,
+    required=True,
 )
 
 DiffTreeSummaryQuery = Field(
     DiffTreeSummary,
     name=String(),
-    resolver=DiffTreeResolver().summary,
     branch=String(),
     from_time=DateTime(),
     to_time=DateTime(),
     filters=DiffTreeQueryFilters(),
+    resolver=DiffTreeResolver().summary,
+    required=True,
 )
