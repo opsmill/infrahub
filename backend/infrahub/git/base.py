@@ -478,6 +478,25 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         raise NotImplementedError()
 
+    def has_conflicting_changes(self, repo: Repo, branch_name: str) -> bool:
+        """Use merge tree to spot conflicts and tell if there is any."""
+        info = repo.remotes.origin.fetch(branch_name)
+
+        target = repo.branches[self.default_branch]
+        remote_branch = repo.commit(info[0].ref)
+
+        merge_base = repo.merge_base(target.commit, remote_branch)[0]
+        merge_tree_output = repo.git.merge_tree(merge_base.hexsha, target.commit.hexsha, remote_branch.hexsha)
+
+        log.debug(
+            f"Merging {branch_name} into will bring changes",
+            repository=self.name,
+            branch=branch_name,
+            merge_structure=merge_tree_output,
+        )
+
+        return any(marker in merge_tree_output for marker in ("<<<<<<<", "=======", ">>>>>>>"))
+
     async def update_commit_value(self, branch_name: str, commit: str) -> bool:
         """Compare the value of the commit in the graph with the current commit on the filesystem.
         update it if they don't match.
@@ -673,12 +692,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return sorted(list(new_branches)), sorted(updated_branches)
 
-    async def validate_remote_branch(self, branch_name: str) -> bool:
-        """Validate a branch present on the remote repository.
-        To check a branch we need to first create a worktree in the temporary folder then apply some checks:
-        - xxx
+    def validate_remote_branch(self, branch_name: str) -> bool:
+        """Process a remote branch to validate that we can use it safely.
 
-        At the end, we need to delete the worktree in the temporary folder.
+        - Make sure that the branch name won't conflict with infrahub's default branch
+        - Make sure that a representation if the branch can be created in the database
+        - Make sure that there are no conflicts that would prevent it from being merged
         """
         if branch_name == registry.default_branch and branch_name != self.default_branch:
             # If the default branch of Infrahub and the git repository differs we map the repository
@@ -686,6 +705,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             # repository if it matches the default branch of Infrahub
             log.warning("Ignoring import of mismatched default branch", branch=branch_name, repository=self.name)
             return False
+
         try:
             # Check if the branch can be created in the database
             Branch(name=branch_name)
@@ -694,6 +714,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 "Git branch failed validation.", branch_name=branch_name, errors=[error["msg"] for error in e.errors()]
             )
             return False
+
+        # Make sure the branch won't conflict on merge
+        # if self.has_conflicting_changes(repo=self.get_git_repo_main(), branch_name=branch_name):
+        #     log.warning(
+        #         f"Remote branch {branch_name} will cause conflicts, they need to be fixed for the worktree to be populated",
+        #         repository=self.name,
+        #         branch=branch_name,
+        #     )
+        #     return False
 
         # Find the commit on the remote branch
         # Check out the commit in a worktree
@@ -858,10 +887,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 message=f"Authentication failed for {name}, please validate the credentials.",
             ) from error
 
-        if "Need to specify how to reconcile" in error.stderr:
+        if any(err in error.stderr for err in ("Need to specify how to reconcile", "because you have unmerged files")):
             raise RepositoryError(
                 identifier=name,
-                message=f"Unable to pull the branch {branch_name} for repository {name}, there is a conflict that must be resolved.",
+                message=f"Unable to pull the branch {branch_name} for repository {name}, there are conflicts that must be resolved.",
             ) from error
 
         if "fatal: could not read Username for" in error.stderr and "terminal prompts disable" in error.stderr:
