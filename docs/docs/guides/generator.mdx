@@ -10,12 +10,12 @@ Within Infrahub a generator is defined in an [external repository](/topics/repos
 
 The goal of this guide is to develop a Generator and add it to Infrahub, we will achieve this by following these steps.
 
-1. Create an entry for the generator within an .infrahub.yml file.
-2. Identify the relevant data you want to extract from the database using a [GraphQL query](/topics/graphql), that can take an input parameter to filter the data
-3. Write a Python script that uses the GraphQL query to read information from the system and generates new data based on the response
-4. Test the generator with infrahubctl
-5. Create a Git repository
-6. Add the repository to Infrahub as an external repository
+1. Create a Git repository
+2. Create an entry for the generator within an .infrahub.yml file.
+3. Identify the relevant data you want to extract from the database using a [GraphQL query](/topics/graphql), that can take an input parameter to filter the data
+4. Write a Python script that uses the GraphQL query to read information from the system and generates new data based on the response
+5. Test the generator with infrahubctl
+6. Push changes to GitHub and add the repository to Infrahub as an external repository
 7. Validate that the generator works by triggering it through a proposed change
 
 ## Preparations
@@ -83,7 +83,19 @@ Perform these steps in the [Infrahub UI](http://localhost:8000).
 Any widget object must be added to or be part of the **widgets** group to be tied to the generator.
 :::
 
-## 1. Create an .infrahub.yml file
+## 1. Create GitHub repository
+
+Follow GitHub's instructions on [creating a new repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository).
+
+:::info Initialize with a README
+For ease, it is suggested to **Initialize this repository with: Add a README file**.
+
+This allows you to clone the repository down without any extra commands.
+:::
+
+Once the repository is created, [clone the repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) down and change directory into the cloned folder.
+
+## 2. Create an .infrahub.yml file
 
 The [.infrahub.yml](/topics/infrahub-yml) file allows you to tie the different [components of a generator](/topics/generator) together into a working unit.
 
@@ -158,7 +170,7 @@ Read more on the [Infrahub Python SDK](/python-sdk).
 
 See [this topic](/topics/infrahub-yml) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
 
-## 2. Identify the relevant data
+## 3. Identify the relevant data
 
 Here we define a GraphQL query that we will use to gather the information that will be passed into the generator.
 
@@ -212,7 +224,7 @@ Create a local directory on your computer where we will store the generator file
 mkdir example_generator
 ```
 
-## 3. Create a Python Generator
+## 4. Create a Python Generator
 
 The Generator class needs to implement a `generate` function that receives a `data` parameter that contains the response from the GraphQL query.
 
@@ -264,7 +276,7 @@ The goal of this generator will be to create a number of resources that depends 
 <!-- vale Infrahub.spelling = NO -->
 Store this class within a new file called **widget_generator.py** within the **example_generator** directory.
 
-## 4. Test the generator using infrahubctl
+## 5. Test the generator using infrahubctl
 
 Using infrahubctl you can first verify that the **.infrahub.yml** file is formatted correctly by listing available generators.
 
@@ -277,7 +289,7 @@ Generators defined in repository: 1
 widget_generator (widget_generator.py::Generator) Target: widgets
 ```
 
-:::note
+:::warning
 
 When running a generator with `infrahubctl` the [SDK tracking](/python-sdk/topics/tracking) feature isn't used. The reason for this is that internally Infrahub uses the ID of the generator_definition to control the tracking, this isn't available from the outside. For this reason it is recommended to create test branches when developing generators and validating the results.
 
@@ -298,35 +310,34 @@ Now you should see the tree [TestResource](http://localhost:8000/objects/TestRes
 
 ![resources](../media/guides/generator_pc_3.png)
 
-Load the following schema using the [infrahubctl branch](/infrahubctl/infrahubctl-branch) command.
+Merge the changes into the **main** branch using [infrahubctl branch](/infrahubctl/infrahubctl-branch) command.
 
 ```shell
 infrahubctl branch merge 'test-branch1'
 ```
 
-## 5. Create a Git repository
+## 6. Commit and add repository to Infrahub
 
 The root directory should include the **.infrahub.yml** file and **example_generator** folder.
 
 - `.infrahub.yml`: Contains the definition for the generator
 
-Within the `example_generator` folder you should now have 2 files:
+Within the **example_generator** folder you should now have 2 files:
 
 - `widget_query.gql`: Contains the GraphQL query
 - `widget_generator.py`: Contains the Python code for the generator
 
-Before we can run our generator in an Proposed Change (PC) pipeline we must add the files to a local Git repository and push them up to a remote Git repository.
+Before we can run our generator in an Proposed Change (PC) pipeline we must push the files up to the remote Git repository we created in **Step 1**.
 
 ```shell
-git init --initial-branch=main
 git add .
-git commit -m "First commit"
+git commit -m "Add generator"
 git push
 ```
 
-With this step completed you can [add your repository to Infrahub](/guides/repository) and then the generators will be executed as part of the proposed change CI pipeline.
+Now that we have the latest changes, [add your repository to Infrahub](/guides/repository) and then the generators will be executed as part of the proposed change CI pipeline.
 
-## 6. Generator in the CI pipeline
+## 7. Generator in the CI pipeline
 
 1. Navigate to [widgets](http://localhost:8000/objects/TestWidget) in the Infrahub UI
 2. Create a new branch named **widget-3**
