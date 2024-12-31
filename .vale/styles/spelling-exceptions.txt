@@ -100,7 +100,7 @@ rebased
 Redoc
 repo
 REST
-ressources
+resources
 schema_mapping
 sdk
 subcommand
