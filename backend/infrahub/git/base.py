@@ -540,7 +540,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if remote_branch:
             br_repo = self.get_git_repo_worktree(identifier=branch_name)
             br_repo.head.reference.set_tracking_branch(remote_branch[0])
-            br_repo.remotes.origin.pull(branch_name)
+            try:
+                br_repo.remotes.origin.pull(branch_name)
+            except GitCommandError as exc:
+                self._raise_enriched_error(error=exc, branch_name=branch_name)
             self.create_commit_worktree(str(br_repo.head.reference.commit))
             log.debug(
                 f"Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}.",
