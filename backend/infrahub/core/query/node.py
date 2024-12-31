@@ -454,7 +454,8 @@ class NodeListGetAttributeQuery(Query):
         WITH n1 as n, r1, a1 as a
         WHERE r1.status = "active"
         WITH n, r1, a
-        MATCH (a)-[:HAS_VALUE]-(av:AttributeValue)
+        MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
+        WHERE %(branch_filter)s
         CALL {
             WITH a, av
             MATCH (a)-[r:HAS_VALUE]-(av:AttributeValue)
