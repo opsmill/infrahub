@@ -716,13 +716,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             return False
 
         # Make sure the branch won't conflict on merge
-        # if self.has_conflicting_changes(repo=self.get_git_repo_main(), branch_name=branch_name):
-        #     log.warning(
-        #         f"Remote branch {branch_name} will cause conflicts, they need to be fixed for the worktree to be populated",
-        #         repository=self.name,
-        #         branch=branch_name,
-        #     )
-        #     return False
+        if self.has_conflicting_changes(repo=self.get_git_repo_main(), branch_name=branch_name):
+            log.warning(
+                f"Remote branch {branch_name} will cause conflicts, they need to be fixed for the worktree to be populated",
+                repository=self.name,
+                branch=branch_name,
+            )
+            return False
 
         # Find the commit on the remote branch
         # Check out the commit in a worktree
