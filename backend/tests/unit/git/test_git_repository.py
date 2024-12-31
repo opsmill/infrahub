@@ -357,7 +357,7 @@ async def test_pull_branch_conflict(git_repo_06: InfrahubRepository):
     with pytest.raises(RepositoryError) as exc:
         await repo.pull(branch_name=branch_name)
 
-    assert "there is a conflict that must be resolved" in str(exc.value)
+    assert "there are conflicts that must be resolved" in str(exc.value)
 
 
 async def test_pull_main(git_repo_05: InfrahubRepository):
