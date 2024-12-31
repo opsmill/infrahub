@@ -21,7 +21,7 @@ import { toast } from "react-toastify";
 
 import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 import DropdownField from "@/components/form/fields/dropdown.field";
-import RelationshipField from "@/components/form/fields/relationship.field";
+import RelationshipManyField from "@/components/form/fields/relationship-many.field";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
 import { useSchema } from "@/hooks/useSchema";
@@ -157,7 +157,7 @@ export const ObjectPermissionForm = ({
           rules={{ required: true, validate: { required: isRequired } }}
         />
 
-        <RelationshipField
+        <RelationshipManyField
           name="roles"
           label="Roles"
           relationship={{
@@ -175,7 +175,7 @@ export const ObjectPermissionForm = ({
             </Button>
           )}
 
-          <FormSubmit>{currentObject ? "Update" : "Create"}</FormSubmit>
+          <FormSubmit>Save</FormSubmit>
         </div>
       </Form>
     </div>
@@ -261,7 +261,7 @@ const NodeSelect = () => {
       />
 
       <DropdownField
-        key={nameOptions.length} // Re render optons depending on namespace selected
+        key={selectedNamespaceField?.value}
         name={"name"}
         label="Name"
         defaultValue={DEFAULT_FORM_FIELD_VALUE}

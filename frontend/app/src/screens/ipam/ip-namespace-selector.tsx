@@ -1,10 +1,18 @@
-import { Select, SelectOption } from "@/components/inputs/select";
 import { Skeleton } from "@/components/skeleton";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxTrigger,
+} from "@/components/ui/combobox";
+import { IpamNamespace } from "@/generated/graphql";
 import { GET_IP_NAMESPACES } from "@/graphql/queries/ipam/ip-namespaces";
 import useQuery from "@/hooks/useQuery";
+import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
-import { useEffect } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect, useId } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { defaultIpNamespaceAtom } from "./common/namespace.state";
@@ -12,7 +20,8 @@ import { constructPathForIpam } from "./common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IPAM_TABS, NAMESPACE_GENERIC } from "./constants";
 
 export default function IpNamespaceSelector() {
-  const { loading, data, error } = useQuery(GET_IP_NAMESPACES);
+  const currentBranchName = useAtomValue(currentBranchAtom);
+  const { loading, data, error } = useQuery(GET_IP_NAMESPACES, { skip: !currentBranchName });
 
   if (loading) {
     return <Skeleton className="h-10 w-80" />;
@@ -23,32 +32,33 @@ export default function IpNamespaceSelector() {
   }
 
   const namespaces = data?.[NAMESPACE_GENERIC]?.edges.map((edge: any) => edge.node) ?? [];
-  const defaultNamespace = namespaces.find((result: any) => result.default?.value === true);
 
-  return <IpNamespaceSelectorContent namespaces={namespaces} defaultNamespace={defaultNamespace} />;
+  return <IpNamespaceSelectorContent namespaces={namespaces} />;
 }
 
 type IpNamespaceSelectorContentProps = {
-  namespaces: Array<any>;
-  defaultNamespace: any;
+  namespaces: Array<IpamNamespace>;
 };
 
-const IpNamespaceSelectorContent = ({
-  namespaces,
-  defaultNamespace,
-}: IpNamespaceSelectorContentProps) => {
+const IpNamespaceSelectorContent = ({ namespaces }: IpNamespaceSelectorContentProps) => {
   const { prefix, ip_address } = useParams();
   const navigate = useNavigate();
   const [ipamTab] = useQueryParam(IPAM_QSP.TAB, StringParam);
   const [namespaceQSP, setNamespaceQSP] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
-  const [defaultIpNamespace, setDefaultIpNamespace] = useAtom(defaultIpNamespaceAtom);
+  const setDefaultIpNamespace = useSetAtom(defaultIpNamespaceAtom);
+  const selectedNamespace = namespaces.find((result) => result.id === namespaceQSP);
+  const defaultNamespace = namespaces.find((result) => result.default?.value === true);
+  const currentNamespace = selectedNamespace || defaultNamespace;
+  const id = useId();
 
   useEffect(() => {
-    setDefaultIpNamespace(defaultNamespace.id);
+    if (defaultNamespace) {
+      setDefaultIpNamespace(defaultNamespace.id);
+    }
   }, []);
 
-  const handleNamespaceChange = (newValue: SelectOption) => {
-    if (!newValue?.id || newValue?.id === defaultIpNamespace) {
+  const handleNamespaceChange = (newValue: IpamNamespace) => {
+    if (!newValue.id || newValue.id === defaultNamespace?.id) {
       setNamespaceQSP(undefined); // Removes QSP for default namespace
     } else {
       setNamespaceQSP(newValue.id);
@@ -69,18 +79,31 @@ const IpNamespaceSelectorContent = ({
   return (
     <div className="flex gap-2 items-center">
       <Icon icon="mdi:chevron-right" />
-      <span>Namespace</span>
-      <Select
-        value={namespaceQSP ?? defaultNamespace.id}
-        onChange={handleNamespaceChange}
-        options={namespaces.map((option) => ({
-          id: option.id,
-          name: option.display_label,
-          description: option.description?.value,
-        }))}
-        data-testid="namespace-select"
-        preventEmpty
-      />
+      <label htmlFor={id}>Namespace</label>
+
+      <Combobox>
+        <ComboboxTrigger id={id} data-testid="namespace-select">
+          {selectedNamespace?.display_label ?? defaultNamespace?.display_label}
+        </ComboboxTrigger>
+
+        <ComboboxContent align="start">
+          <ComboboxList fitTriggerWidth={false} className="max-w-md">
+            {namespaces.map((namespace) => (
+              <ComboboxItem
+                key={namespace.id}
+                value={namespace.id}
+                selectedValue={currentNamespace?.id}
+                onSelect={() => handleNamespaceChange(namespace)}
+              >
+                <div className="overflow-hidden">
+                  <div className="truncate font-semibold">{namespace.display_label}</div>
+                  <p className="text-xs truncate text-gray-500">{namespace.description?.value}</p>
+                </div>
+              </ComboboxItem>
+            ))}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
     </div>
   );
 };

@@ -20,7 +20,7 @@ const getQuery = (schema?: IModelSchema, filters?: Array<Filter>) => {
   const generics = useAtomValue(genericsState);
   const profiles = useAtomValue(profilesAtom);
 
-  const kindFilter = filters?.find((filter) => filter.name == "kind__value");
+  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
 
   const kindFilterSchema = [...nodes, ...generics, ...profiles].find(
     ({ kind }) => kind === kindFilter?.value

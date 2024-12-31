@@ -28,3 +28,4 @@ yarn-error.log*
 /blob-report/
 /playwright/.cache/
 /tests/e2e/.auth/
+node_modules/

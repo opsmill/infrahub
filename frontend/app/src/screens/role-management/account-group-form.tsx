@@ -1,7 +1,7 @@
 import { Button } from "@/components/buttons/button-primitive";
 import DropdownField from "@/components/form/fields/dropdown.field";
 import InputField from "@/components/form/fields/input.field";
-import RelationshipField from "@/components/form/fields/relationship.field";
+import RelationshipManyField from "@/components/form/fields/relationship-many.field";
 import { NodeFormProps } from "@/components/form/node-form";
 import { FormFieldValue } from "@/components/form/type";
 import { getCurrentFieldValue } from "@/components/form/utils/getFieldDefaultValue";
@@ -144,7 +144,7 @@ export const AccountGroupForm = ({
 
         <DropdownField name="group_type" label="Type" items={typeOptions} />
 
-        <RelationshipField
+        <RelationshipManyField
           name="roles"
           label="Roles"
           relationship={{
@@ -155,7 +155,7 @@ export const AccountGroupForm = ({
           options={roles.value}
         />
 
-        <RelationshipField
+        <RelationshipManyField
           name="members"
           label="Members"
           relationship={{
@@ -173,7 +173,7 @@ export const AccountGroupForm = ({
             </Button>
           )}
 
-          <FormSubmit>{currentObject ? "Update" : "Create"}</FormSubmit>
+          <FormSubmit>Save</FormSubmit>
         </div>
       </Form>
     </div>

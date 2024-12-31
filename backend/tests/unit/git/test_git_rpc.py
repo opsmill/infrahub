@@ -71,7 +71,7 @@ class TestAddRepository:
         patch.stopall()
         services.service = self.original_services
 
-    async def test_git_rpc_create_successful(self, git_upstream_repo_01: dict[str, str]):
+    async def test_git_rpc_create_successful(self, prefect_test_fixture, git_upstream_repo_01: dict[str, str]):
         repo_id = str(UUIDT())
         model = GitRepositoryAdd(
             repository_id=repo_id,
@@ -79,8 +79,11 @@ class TestAddRepository:
             location=str(git_upstream_repo_01["path"]),
             default_branch_name=self.default_branch_name,
             infrahub_branch_name=self.default_branch_name,
+            infrahub_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
             internal_status="active",
         )
+
+        self.mock_repo.import_objects_from_files = AsyncMock()
 
         with (
             patch("infrahub.git.tasks.lock") as mock_infra_lock,
@@ -88,7 +91,6 @@ class TestAddRepository:
         ):
             mock_infra_lock.registry = AsyncMock(spec=InfrahubLockRegistry)
             mock_repo_class.new.return_value = self.mock_repo
-
             await add_git_repository(model=model)
 
             mock_infra_lock.registry.get.assert_called_once_with(
@@ -113,7 +115,9 @@ class TestAddRepository:
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
 
 
-async def test_git_rpc_merge(git_repo_01: InfrahubRepository, branch01: BranchData, helper: TestHelper):
+async def test_git_rpc_merge(
+    prefect_test_fixture, git_repo_01: InfrahubRepository, branch01: BranchData, helper: TestHelper
+):
     repo = git_repo_01
 
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
@@ -125,6 +129,7 @@ async def test_git_rpc_merge(git_repo_01: InfrahubRepository, branch01: BranchDa
         repository_name=repo.name,
         source_branch="branch01",
         destination_branch="main",
+        destination_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
         internal_status=RepositoryInternalStatus.ACTIVE.value,
         default_branch="main",
     )
@@ -149,7 +154,11 @@ async def test_git_rpc_merge(git_repo_01: InfrahubRepository, branch01: BranchDa
 
 
 async def test_git_rpc_diff(
-    git_repo_01: InfrahubRepository, branch01: BranchData, branch02: BranchData, helper: TestHelper
+    prefect_test_fixture,
+    git_repo_01: InfrahubRepository,
+    branch01: BranchData,
+    branch02: BranchData,
+    helper: TestHelper,
 ):
     repo = git_repo_01
 
@@ -218,8 +227,11 @@ class TestAddReadOnly:
             location=str(git_upstream_repo_01["path"]),
             ref="branch01",
             infrahub_branch_name="read-only-branch",
+            infrahub_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
             internal_status="active",
         )
+
+        self.mock_repo.import_objects_from_files = AsyncMock()
 
         await add_git_repository_read_only(model=model)
 
@@ -262,6 +274,7 @@ class TestPullReadOnly:
             ref=self.ref,
             commit=self.commit,
             infrahub_branch_name=self.infrahub_branch_name,
+            infrahub_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
         )
 
         lock_patcher = patch("infrahub.git.tasks.lock")
@@ -287,6 +300,8 @@ class TestPullReadOnly:
         self.mock_repo_class.init.assert_not_awaited()
 
     async def test_existing_repository(self):
+        self.mock_repo.import_objects_from_files = AsyncMock()
+
         await pull_read_only(model=self.model)
 
         self.mock_infra_lock.registry.get(name=self.repo_name, namespace="repository")
@@ -306,8 +321,9 @@ class TestPullReadOnly:
         assert len(self.recorder.messages) > 0
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
 
-    async def test_new_repository(self):
+    async def test_new_repository(self, prefect_test_fixture):
         self.mock_repo_class.init.side_effect = RepositoryError(self.repo_name, "it is broken")
+        self.mock_repo.import_objects_from_files = AsyncMock()
 
         await pull_read_only(model=self.model)
 

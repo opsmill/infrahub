@@ -5,6 +5,7 @@ import { PasswordDisplay } from "@/components/display/password-display";
 import { TextDisplay } from "@/components/display/text-display";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { MarkdownViewer } from "@/components/editor/markdown-viewer";
+import { Link } from "@/components/ui/link";
 import { MAX_VALUE_LENGTH_DISPLAY, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import {
   AnyAttribute,
@@ -166,6 +167,7 @@ export type AttributeType =
 export type Node = {
   id: string;
   display_label: string;
+  badge?: string;
   __typename: string;
 };
 
@@ -196,13 +198,18 @@ export const ObjectAttributeValue = ({
     case SCHEMA_ATTRIBUTE_KIND.NUMBER:
     case SCHEMA_ATTRIBUTE_KIND.BANDWIDTH:
     case SCHEMA_ATTRIBUTE_KIND.EMAIL:
-    case SCHEMA_ATTRIBUTE_KIND.URL:
     case SCHEMA_ATTRIBUTE_KIND.MAC_ADDRESS:
     case SCHEMA_ATTRIBUTE_KIND.FILE:
     case SCHEMA_ATTRIBUTE_KIND.IP_HOST:
     case SCHEMA_ATTRIBUTE_KIND.IP_NETWORK:
     case SCHEMA_ATTRIBUTE_KIND.ANY:
       return <TextDisplay>{getTextValue(attributeValue).toString()}</TextDisplay>;
+    case SCHEMA_ATTRIBUTE_KIND.URL:
+      return (
+        <Link to={getTextValue(attributeValue).toString()} target="_blank" rel="noreferrer">
+          {getTextValue(attributeValue).toString()}
+        </Link>
+      );
     case SCHEMA_ATTRIBUTE_KIND.BOOLEAN:
     case SCHEMA_ATTRIBUTE_KIND.CHECKBOX:
       return attributeValue ? <CheckIcon className="h-4 w-4" /> : <XMarkIcon className="h-4 w-4" />;
@@ -213,14 +220,15 @@ export const ObjectAttributeValue = ({
     case SCHEMA_ATTRIBUTE_KIND.PASSWORD:
     case SCHEMA_ATTRIBUTE_KIND.HASHED_PASSWORD:
       return <PasswordDisplay value={getTextValue(attributeValue)} />;
-    case SCHEMA_ATTRIBUTE_KIND.DROPDOWN:
+    case SCHEMA_ATTRIBUTE_KIND.DROPDOWN: {
       const dropdownAttribute = attributeValue as Dropdown;
       return (
         <ColorDisplay value={getTextValue(dropdownAttribute)} color={dropdownAttribute.color} />
       );
+    }
     case SCHEMA_ATTRIBUTE_KIND.COLOR:
       return <ColorDisplay color={attributeValue.value} />;
-    case SCHEMA_ATTRIBUTE_KIND.LIST:
+    case SCHEMA_ATTRIBUTE_KIND.LIST: {
       const items = attributeValue.value?.map((value?: string) => value ?? "-").slice(0, 5);
 
       const rest = attributeValue.value.slice(5).length;
@@ -234,6 +242,7 @@ export const ObjectAttributeValue = ({
           {items?.length !== attributeValue.value?.length && <i>{`(${rest} more)`}</i>}
         </div>
       );
+    }
     case SCHEMA_ATTRIBUTE_KIND.JSON:
       return <CodeEditor value={JSON.stringify(attributeValue.value ?? "", null, 2)} disabled />;
     default:

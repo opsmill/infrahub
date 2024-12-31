@@ -61,17 +61,24 @@ log = get_logger()
 if TYPE_CHECKING:
     from pydantic import ValidationInfo
 
+
 # pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines
 
 
 class SchemaBranch:
-    def __init__(self, cache: dict, name: str | None = None, data: dict[str, dict[str, str]] | None = None):
+    def __init__(
+        self,
+        cache: dict,
+        name: str | None = None,
+        data: dict[str, dict[str, str]] | None = None,
+        computed_attributes: ComputedAttributes | None = None,
+    ):
         self._cache: dict[str, Union[NodeSchema, GenericSchema]] = cache
         self.name: str | None = name
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
         self.profiles: dict[str, str] = {}
-        self.computed_attributes = ComputedAttributes()
+        self.computed_attributes = computed_attributes or ComputedAttributes()
 
         if data:
             self.nodes = data.get("nodes", {})
@@ -105,7 +112,7 @@ class SchemaBranch:
     def get_all_kind_id_map(self, exclude_profiles: bool = False) -> dict[str, str]:
         kind_id_map = {}
         if exclude_profiles:
-            names = self.node_names + [gn for gn in self.generic_names if gn != InfrahubKind.PROFILE]
+            names = self.node_names + self.generic_names
         else:
             names = self.all_names
         for name in names:
@@ -228,8 +235,21 @@ class SchemaBranch:
         #     else:
         #         del self.generics[item_kind]
 
-    def validate_update(self, other: SchemaBranch, enforce_update_support: bool = True) -> SchemaUpdateValidationResult:
-        diff = self.diff(other=other)
+    def validate_node_deletions(self, diff: SchemaDiff) -> None:
+        """Given a diff, check if a deleted node is still used in relationships of other nodes."""
+        removed_schema_names = set(diff.removed.keys())
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+            for relationship in node.relationships:
+                if relationship.peer in removed_schema_names:
+                    raise ValueError(
+                        f"'{relationship.peer}' has been removed but is still referenced in '{name}.{relationship.name}'; keep it or delete the "
+                        "relationship"
+                    )
+
+    def validate_update(
+        self, other: SchemaBranch, diff: SchemaDiff, enforce_update_support: bool = True
+    ) -> SchemaUpdateValidationResult:
         result = SchemaUpdateValidationResult.init(
             diff=diff, schema=other, enforce_update_support=enforce_update_support
         )
@@ -238,7 +258,12 @@ class SchemaBranch:
 
     def duplicate(self, name: Optional[str] = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
-        return self.__class__(name=name, data=copy.deepcopy(self.to_dict()), cache=self._cache)
+        return self.__class__(
+            name=name,
+            data=copy.deepcopy(self.to_dict()),
+            cache=self._cache,
+            computed_attributes=self.computed_attributes.duplicate(),
+        )
 
     def set(self, name: str, schema: MainSchemaTypes) -> str:
         """Store a NodeSchema or GenericSchema associated with a specific name.
@@ -1570,15 +1595,19 @@ class SchemaBranch:
 
     def manage_profile_schemas(self) -> None:
         if not self.has(name=InfrahubKind.PROFILE):
+            # TODO: This logic is actually only for testing purposes as since 1.0.9 CoreProfile is loaded in db.
+            #  Ideally, we would remove this and instead load CoreProfile properly within tests.
             core_profile_schema = GenericSchema(**core_profile_schema_definition)
             self.set(name=core_profile_schema.kind, schema=core_profile_schema)
-        else:
-            core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
 
         profile_schema_kinds = set()
         for node_name in self.node_names + self.generic_names:
             node = self.get(name=node_name, duplicate=False)
-            if node.namespace in RESTRICTED_NAMESPACES or not node.generate_profile:
+            if (
+                node.namespace in RESTRICTED_NAMESPACES
+                or not node.generate_profile
+                or node.state == HashableModelState.ABSENT
+            ):
                 try:
                     self.delete(name=self._get_profile_kind(node_kind=node.kind))
                 except SchemaNotFoundError:

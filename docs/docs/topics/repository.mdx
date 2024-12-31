@@ -27,9 +27,7 @@ The [Infrahub web server](/reference/api-server) will never connect directly wit
 
 ![](../media/repository_architecture.excalidraw.svg)
 
-Infrahub stores all of the data that it needs for every remote repository in a directory defined by the `git.repositories_directory` setting in `infrahub.toml`. When the Task worker receives an instruction to update a remote repository, it pulls data from the remote repositories and saves it to the filesystem in the `git.repositories_directory` directory. The Task worker then parses the new data and sends the necessary GraphQL mutations to the Infrahub web server. Infrahub attempts to update `Repository` with any changes in the remote repository several times per minute. Read-only repositories are only updated when specifically requested.
-
-Please note that each Task worker must have access to the same directory on the file system so that they can share work among each other.
+Infrahub stores all of the data that it needs for every remote repository in a directory defined by the `INFRAHUB_GIT_REPOSITORIES_DIRECTORY` setting in `docker-compose.yml`. When the Task worker receives an instruction to update a remote repository, it pulls data from the remote repositories and saves it to the filesystem in the `INFRAHUB_GIT_REPOSITORIES_DIRECTORY` directory. The Task worker then parses the new data and sends the necessary GraphQL mutations to the Infrahub web server. Infrahub attempts to update `Repository` with any changes in the remote repository several times per minute. Read-only repositories are only updated when specifically requested.
 
 <!-- vale off -->
 ## Read-only Repository vs. Repository {#read-only-vs-core}

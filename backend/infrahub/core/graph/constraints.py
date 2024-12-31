@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, ForwardRef, Optional, Union, get_origin
 from pydantic import BaseModel
 from typing_extensions import Self
 
+from infrahub.core.query import QueryType
+
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
@@ -255,7 +257,7 @@ class ConstraintManagerNeo4j(ConstraintManagerBase):
 
     async def list(self) -> list[ConstraintInfo]:
         query = "SHOW CONSTRAINTS"
-        records = await self.db.execute_query(query=query, params={}, name="constraint_show")
+        records = await self.db.execute_query(query=query, params={}, name="constraint_show", type=QueryType.READ)
         results = []
         for record in records:
             results.append(
@@ -285,7 +287,7 @@ class ConstraintManagerMemgraph(ConstraintManagerBase):
 
     async def list(self) -> list[ConstraintInfo]:
         query = "SHOW CONSTRAINT INFO"
-        records = await self.db.execute_query(query=query, params={}, name="constraint_show")
+        records = await self.db.execute_query(query=query, params={}, name="constraint_show", type=QueryType.READ)
         results = []
         for record in records:
             results.append(ConstraintInfo(item_name="n_a", item_label=record["label"], property=record["properties"]))

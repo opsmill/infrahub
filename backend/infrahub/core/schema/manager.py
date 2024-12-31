@@ -3,9 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from infrahub import lock
-from infrahub.core.constants import (
-    InfrahubKind,
-)
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import (
     HashableModelDiff,
@@ -165,8 +162,8 @@ class SchemaManager(NodeManager):
                 schema_diff = None
                 if limit:
                     schema_diff = SchemaBranchDiff(
-                        nodes=[name for name in list(schema.nodes.keys()) if name in limit],
-                        generics=[name for name in list(schema.generics.keys()) if name in limit],
+                        added_nodes=[name for name in list(schema.nodes.keys()) if name in limit],
+                        added_generics=[name for name in list(schema.generics.keys()) if name in limit],
                     )
 
             updated_schema = await self.load_schema_from_db(
@@ -195,13 +192,19 @@ class SchemaManager(NodeManager):
 
         branch = await registry.get_branch(branch=branch, db=db)
 
-        item_kinds = []
+        added_nodes = []
+        added_generics = []
         for item_kind, item_diff in diff.added.items():
             item = schema.get(name=item_kind, duplicate=False)
             node = await self.load_node_to_db(node=item, branch=branch, db=db)
             schema.set(name=item_kind, schema=node)
-            item_kinds.append(item_kind)
+            if item.is_node_schema:
+                added_nodes.append(item_kind)
+            else:
+                added_generics.append(item_kind)
 
+        changed_nodes = []
+        changed_generics = []
         for item_kind, item_diff in diff.changed.items():
             item = schema.get(name=item_kind, duplicate=False)
             if item_diff:
@@ -209,18 +212,30 @@ class SchemaManager(NodeManager):
             else:
                 node = await self.update_node_in_db(node=item, branch=branch, db=db)
             schema.set(name=item_kind, schema=node)
-            item_kinds.append(item_kind)
+            if item.is_node_schema:
+                changed_nodes.append(item_kind)
+            else:
+                changed_generics.append(item_kind)
 
+        removed_nodes = []
+        removed_generics = []
         for item_kind, item_diff in diff.removed.items():
             item = schema.get(name=item_kind, duplicate=False)
             node = await self.delete_node_in_db(node=item, branch=branch, db=db)
             schema.delete(name=item_kind)
+            if item.is_node_schema:
+                removed_nodes.append(item_kind)
+            else:
+                removed_generics.append(item_kind)
 
-        schema_diff = SchemaBranchDiff(
-            nodes=[name for name in schema.node_names if name in item_kinds],
-            generics=[name for name in schema.generic_names if name in item_kinds],
+        return SchemaBranchDiff(
+            added_nodes=added_nodes,
+            added_generics=added_generics,
+            changed_nodes=changed_nodes,
+            changed_generics=changed_generics,
+            removed_nodes=removed_nodes,
+            removed_generics=removed_generics,
         )
-        return schema_diff
 
     async def load_schema_to_db(
         self,
@@ -234,8 +249,6 @@ class SchemaManager(NodeManager):
         branch = await registry.get_branch(branch=branch, db=db)
 
         for item_kind in schema.node_names + schema.generic_names:
-            if item_kind == InfrahubKind.PROFILE:
-                continue
             if limit and item_kind not in limit:
                 continue
             item = schema.get(name=item_kind, duplicate=False)
@@ -579,7 +592,7 @@ class SchemaManager(NodeManager):
         if not branch.is_default and branch.origin_branch:
             origin_branch: Branch = await registry.get_branch(branch=branch.origin_branch, db=db)
 
-            if origin_branch.schema_hash.main == branch.schema_hash.main:
+            if origin_branch.active_schema_hash.main == branch.active_schema_hash.main:
                 origin_schema = self.get_schema_branch(name=origin_branch.name)
                 new_branch_schema = origin_schema.duplicate()
                 self.set_schema_branch(name=branch.name, schema=new_branch_schema)
@@ -587,7 +600,7 @@ class SchemaManager(NodeManager):
                 return new_branch_schema
 
         current_schema = self.get_schema_branch(name=branch.name)
-        schema_diff = current_schema.get_hash_full().compare(branch.schema_hash)
+        schema_diff = current_schema.get_hash_full().compare(branch.active_schema_hash)
         branch_schema = await self.load_schema_from_db(
             db=db, branch=branch, schema=current_schema, schema_diff=schema_diff
         )
@@ -624,7 +637,7 @@ class SchemaManager(NodeManager):
         has_filters = False
 
         # If a diff is provided but is empty there is nothing to query
-        if schema_diff is not None and not schema_diff:
+        if schema_diff is not None and not schema_diff.has_diff:
             return schema
 
         if schema_diff:
@@ -641,6 +654,12 @@ class SchemaManager(NodeManager):
                 if filter_value["namespace__values"]:
                     filters[node_type] = filter_value
                     has_filters = True
+            for removed_generic in schema_diff.removed_generics:
+                if removed_generic in schema.generic_names:
+                    schema.delete(name=removed_generic)
+            for removed_node in schema_diff.removed_nodes:
+                if removed_node in schema.node_names:
+                    schema.delete(name=removed_node)
 
         if not has_filters or filters["generics"]:
             generic_schema = self.get(name="SchemaGeneric", branch=branch)

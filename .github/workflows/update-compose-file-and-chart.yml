@@ -44,11 +44,11 @@ jobs:
         run: "poetry install --all-extras"
 
       - name: "Update Docker Env variable in docker-compose.yml file"
-        run: "poetry run invoke dev.gen-config-env -u"
+        run: "poetry run invoke release.gen-config-env -u"
       - name: "Update Infrahub Image Version in docker-compose.yml file"
-        run: "poetry run invoke dev.update-docker-compose"
+        run: "poetry run invoke release.update-docker-compose"
       - name: "Update AppVersion in helm/chart.yaml file"
-        run: "poetry run invoke dev.update-helm-chart"
+        run: "poetry run invoke release.update-helm-chart"
       - name: Commit docker-compose.yml and helm
         uses: github-actions-x/commit@v2.9
         with:

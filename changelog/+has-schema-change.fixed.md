@@ -1,1 +1,0 @@
-Update logic to check if the changes on a branch include schema changes to use the new diff

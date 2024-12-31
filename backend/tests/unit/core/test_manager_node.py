@@ -7,6 +7,7 @@ from infrahub.core.manager import NodeManager, identify_node_class
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeToProcess
 from infrahub.core.registry import registry
+from infrahub.core.relationship import Relationship
 from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -252,15 +253,65 @@ async def test_get_many(db: InfrahubDatabase, default_branch: Branch, criticalit
     assert len(nodes) == 2
 
 
-async def test_get_many_prefetch(db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main):
-    nodes = await NodeManager.get_many(db=db, ids=[person_jack_tags_main.id], prefetch_relationships=True)
+async def test_get_many_prefetch(
+    db: InfrahubDatabase, person_jack_tags_main, tag_blue_main, tag_red_main, branch: Branch
+):
+    nodes = await NodeManager.get_many(
+        db=db, branch=branch, ids=[person_jack_tags_main.id], prefetch_relationships=True
+    )
 
     assert len(nodes) == 1
     assert nodes[person_jack_tags_main.id]
-    tags = await nodes[person_jack_tags_main.id].tags.get(db=db)
-    assert len(tags) == 2
-    assert tags[0]._peer
-    assert tags[1]._peer
+    tag_rels = await nodes[person_jack_tags_main.id].tags.get(db=db)
+    assert len(tag_rels) == 2
+    assert {t.peer_id for t in tag_rels} == {tag_blue_main.id, tag_red_main.id}
+    assert isinstance(tag_rels[0]._peer, Node)
+    assert tag_rels[0]._peer.get_kind() == "BuiltinTag"
+    assert isinstance(tag_rels[1]._peer, Node)
+    assert tag_rels[1]._peer.get_kind() == "BuiltinTag"
+
+    # remove a tag
+    person_branch = await NodeManager.get_one(db=db, branch=branch, id=person_jack_tags_main.id)
+    await person_branch.tags.update(db=db, data=[tag_blue_main])
+    await person_branch.save(db=db)
+
+    # check that prefetch respects removed relationships
+    updated_nodes = await NodeManager.get_many(
+        db=db, branch=branch, ids=[person_jack_tags_main.id], prefetch_relationships=True
+    )
+    assert len(updated_nodes) == 1
+    assert updated_nodes[person_jack_tags_main.id]
+    tag_rels = await updated_nodes[person_jack_tags_main.id].tags.get(db=db)
+    assert len(tag_rels) == 1
+    assert {t.peer_id for t in tag_rels} == {tag_blue_main.id}
+    assert isinstance(tag_rels[0]._peer, Node)
+    assert tag_rels[0]._peer.get_kind() == "BuiltinTag"
+
+
+async def test_get_many_prefetch_hierarchical(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+):
+    nodes_to_query = ["europe", "asia", "paris", "chicago", "london-r1"]
+    node_ids = [hierarchical_location_data[value].id for value in nodes_to_query]
+    nodes = await NodeManager.get_many(db=db, ids=node_ids, prefetch_relationships=True)
+    assert len(nodes) == 5
+
+    paris_id = hierarchical_location_data["paris"].id
+    europe_id = hierarchical_location_data["europe"].id
+
+    assert nodes[paris_id]
+    children_paris = await nodes[paris_id].children.get(db=db)
+    assert len(children_paris) == 2
+    parent_paris = await nodes[paris_id].parent.get(db=db)
+    assert isinstance(parent_paris, Relationship)
+    assert parent_paris.peer_id == europe_id
+
+    europe_id = hierarchical_location_data["europe"].id
+    assert nodes[europe_id]
+    children_europe = await nodes[europe_id].children.get(db=db)
+    assert len(children_europe) == 2
+    parent_europe = await nodes[europe_id].parent.get(db=db)
+    assert parent_europe is None
 
 
 async def test_get_many_with_profile(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):
@@ -357,6 +408,45 @@ async def test_get_many_branch_agnostic(
     assert node_map[criticality_low.id].get_branch_based_on_support_type().name == branch.name
     assert node_map[criticality_medium.id].get_branch_based_on_support_type().name == branch.name
     assert node_map[new_crit.id].get_branch_based_on_support_type().name == branch.name
+
+
+async def test_get_many_relationship_fields(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+):
+    nodes_to_query = ["europe", "asia", "paris", "chicago", "london-r1"]
+    node_ids = [hierarchical_location_data[value].id for value in nodes_to_query]
+    fields = {"parent": None}
+    nodes = await NodeManager.get_many(db=db, ids=node_ids, fields=fields)
+    assert len(nodes) == 5
+
+    paris_id = hierarchical_location_data["paris"].id
+    europe_id = hierarchical_location_data["europe"].id
+
+    assert nodes[paris_id]
+    parent_europe_rel = nodes[paris_id].parent.get_one()
+    assert parent_europe_rel.peer_id == europe_id
+    # make sure we did not get the whole peer node, just the ID
+    assert parent_europe_rel._peer is None
+    europe_parent_node = await nodes[paris_id].parent.get_peer(db=db)
+    assert europe_parent_node.get_kind() == "LocationRegion"
+    assert europe_parent_node.get_id() == europe_id
+    # make sure we didn't get the children relationships even though they have the same identifier
+    with pytest.raises(LookupError):
+        list(nodes[paris_id].children)
+    # make sure we didn't get other relationships
+    with pytest.raises(LookupError):
+        list(nodes[paris_id].things)
+
+    assert nodes[europe_id]
+    # europe has no parent
+    with pytest.raises(LookupError):
+        nodes[europe_id].parent.get_one()
+    # make sure we didn't get the children relationships even though they have the same identifier
+    with pytest.raises(LookupError):
+        list(nodes[europe_id].children)
+    # make sure we didn't get other relationships
+    with pytest.raises(LookupError):
+        list(nodes[europe_id].things)
 
 
 async def test_query_no_filter(

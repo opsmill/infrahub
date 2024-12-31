@@ -1,5 +1,4 @@
 import pytest
-from graphql import graphql
 from infrahub_sdk.client import InfrahubClient
 
 from infrahub.core import registry
@@ -9,6 +8,7 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 

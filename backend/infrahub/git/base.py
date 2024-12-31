@@ -11,6 +11,7 @@ from git import Blob, Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
 from infrahub_sdk import InfrahubClient  # noqa: TCH002
+from prefect import Flow, Task
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
@@ -22,6 +23,7 @@ from infrahub.exceptions import (
     FileOutOfRepositoryError,
     RepositoryError,
     RepositoryFileNotFoundError,
+    RepositoryInvalidFileSystemError,
 )
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
@@ -105,7 +107,7 @@ class BranchInGraph(BaseModel):
     id: str
     name: str
     sync_with_git: bool
-    commit: Optional[str] = None
+    commit: str | None = None
 
 
 class BranchInRemote(BaseModel):
@@ -134,9 +136,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
     id: UUID = Field(..., description="Internal UUID of the repository")
     name: str = Field(..., description="Primary name of the repository")
-    default_branch_name: Optional[str] = Field(None, description="Default branch to use when pulling the repository")
-    type: Optional[str] = None
-    location: Optional[str] = Field(None, description="Location of the remote repository")
+    default_branch_name: str | None = Field(None, description="Default branch to use when pulling the repository")
+    type: str | None = None
+    location: str | None = Field(None, description="Location of the remote repository")
     has_origin: bool = Field(
         False, description="Flag to indicate if a remote repository (named origin) is present in the config."
     )
@@ -153,10 +155,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
 
     internal_status: str = Field("active", description="Internal status: Active, Inactive, Staging")
-    infrahub_branch_name: Optional[str] = Field(
-        None, description="Infrahub branch on which to sync the remote repository"
-    )
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    infrahub_branch_name: str | None = Field(None, description="Infrahub branch on which to sync the remote repository")
+    model_config = ConfigDict(arbitrary_types_allowed=True, ignored_types=(Flow, Task))
 
     @property
     def sdk(self) -> InfrahubClient:
@@ -273,9 +273,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         for directory in directories_to_validate:
             if not directory.is_dir():
-                raise RepositoryError(
+                raise RepositoryInvalidFileSystemError(
                     identifier=self.name,
-                    message=f"Invalid file system for {self.name}, Local directory {directory} missing.",
+                    directory=directory,
                 )
 
         # Validate that a worktree for the commit in main is present
@@ -305,7 +305,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         return True
 
     async def create_locally(
-        self, checkout_ref: Optional[str] = None, infrahub_branch_name: Optional[str] = None
+        self, checkout_ref: str | None = None, infrahub_branch_name: str | None = None, update_commit_value: bool = True
     ) -> bool:
         """Ensure the required directory already exist in the filesystem or create them if needed.
 
@@ -347,7 +347,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         # TODO Need to handle the potential exceptions coming from repo.git.worktree
         commit = str(repo.head.commit)
         self.create_commit_worktree(commit=commit)
-        await self.update_commit_value(branch_name=infrahub_branch_name or self.default_branch, commit=commit)
+        if update_commit_value:
+            await self.update_commit_value(branch_name=infrahub_branch_name or self.default_branch, commit=commit)
 
         return True
 
@@ -370,7 +371,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             if worktree.identifier == identifier:
                 return worktree
 
-        raise RepositoryError(identifier=identifier, message="Unble to get worktree")
+        raise RepositoryError(identifier=identifier, message=f"Unable to get worktree : {identifier}")
 
     def get_commit_worktree(self, commit: str) -> Worktree:
         """Access a specific commit worktree."""
@@ -391,6 +392,16 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         responses = repo.git.worktree("list", "--porcelain").split("\n\n")
 
         return [Worktree.init(response) for response in responses]
+
+    def get_client(self) -> InfrahubClient:
+        if self.client:
+            return self.client
+        return self.service.client
+
+    def get_location(self) -> str:
+        if self.location:
+            return self.location
+        raise ValueError(f"location hasn't been provided for this repository ({self.name})")
 
     async def get_branches_from_graph(self) -> dict[str, BranchInGraph]:
         """Return a dict with all the branches present in the graph.
@@ -498,6 +509,48 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         log.debug(f"Branch {branch_name} created in the Graph", repository=self.name, branch=branch_name)
         return branch
+
+    async def create_branch_in_git(self, branch_name: str, branch_id: str | None = None) -> bool:
+        """Create new branch in the repository, assuming the branch has been created in the graph already."""
+
+        repo = self.get_git_repo_main()
+
+        # Check if the branch already exists locally, if it does do nothing
+        local_branches = self.get_branches_from_local(include_worktree=False)
+        if branch_name in local_branches:
+            return False
+
+        # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
+        repo.git.branch(branch_name)
+        self.create_branch_worktree(branch_name=branch_name, branch_id=branch_id or branch_name)
+
+        # If there is not remote configured, we are done
+        #  Since the branch is a match for the main branch we don't need to create a commit worktree
+        # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
+        if not self.has_origin:
+            log.debug(
+                f"Branch {branch_name} created in Git without tracking a remote branch.",
+                repository=self.name,
+                branch=branch_name,
+            )
+            return True
+
+        remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
+
+        if remote_branch:
+            br_repo = self.get_git_repo_worktree(identifier=branch_name)
+            br_repo.head.reference.set_tracking_branch(remote_branch[0])
+            br_repo.remotes.origin.pull(branch_name)
+            self.create_commit_worktree(str(br_repo.head.reference.commit))
+            log.debug(
+                f"Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}.",
+                repository=self.name,
+                branch=branch_name,
+            )
+        else:
+            log.debug(f"Branch {branch_name} created in Git without tracking a remote branch.", repository=self.name)
+
+        return True
 
     def create_commit_worktree(self, commit: str) -> Union[bool, Worktree]:
         """Create a new worktree for a given commit."""
@@ -645,7 +698,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return True
 
-    async def pull(self, branch_name: str) -> Union[bool, str]:
+    async def pull(
+        self,
+        branch_name: str,
+        branch_id: str | None = None,
+        create_if_missing: bool = False,
+        update_commit_value: bool = True,
+    ) -> Union[bool, str]:
         """Pull the latest update from the remote repository on a given branch."""
 
         if not self.has_origin:
@@ -654,24 +713,40 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if branch_name == self.default_branch and branch_name != registry.default_branch:
             identifier = "main"
 
-        repo = self.get_git_repo_worktree(identifier=identifier)
-        if not repo:
-            raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}")
-
+        repo: Repo | None = None
         try:
-            commit_before = str(repo.head.commit)
-            repo.remotes.origin.pull(branch_name)
-        except GitCommandError as exc:
-            self._raise_enriched_error(error=exc, branch_name=branch_name)
+            repo = self.get_git_repo_worktree(identifier=identifier)
+        except RepositoryError as exc:
+            if not create_if_missing:
+                raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}") from exc
 
-        commit_after = str(repo.head.commit)
+        if repo:
+            try:
+                commit_before = str(repo.head.commit)
+                repo.remotes.origin.pull(branch_name)
+            except GitCommandError as exc:
+                self._raise_enriched_error(error=exc, branch_name=branch_name)
 
-        if commit_after == commit_before:
-            return True
+            commit_after = str(repo.head.commit)
 
-        self.create_commit_worktree(commit=commit_after)
-        infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
-        await self.update_commit_value(branch_name=infrahub_branch, commit=commit_after)
+            if commit_after == commit_before:
+                return True
+
+            self.create_commit_worktree(commit=commit_after)
+            infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+
+        elif branch_id:
+            await self.create_branch_in_git(branch_name=branch_name, branch_id=branch_id)
+            repo = self.get_git_repo_worktree(identifier=branch_name)
+            commit_after = str(repo.head.commit)
+        else:
+            raise ValueError(
+                f"Unable to identify the worktree for the branch : {branch_name} "
+                "and unable to pull the branch because the branch)id is missing"
+            )
+
+        if update_commit_value:
+            await self.update_commit_value(branch_name=infrahub_branch, commit=commit_after)
 
         return commit_after
 
@@ -698,8 +773,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     async def find_files(
         self,
         extension: Union[str, list[str]],
-        branch_name: Optional[str] = None,
-        commit: Optional[str] = None,
+        branch_name: str | None = None,
+        commit: str | None = None,
         directory: Optional[Path] = None,
     ) -> list[Path]:
         """Return the path of all files matching a specific extension in a given Branch or Commit."""

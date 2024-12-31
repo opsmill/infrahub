@@ -3,6 +3,7 @@ from infrahub.utils import InfrahubStringEnum
 
 class WorkflowType(InfrahubStringEnum):
     INTERNAL = "internal"
+    CORE = "core"
     USER = "user"
 
 

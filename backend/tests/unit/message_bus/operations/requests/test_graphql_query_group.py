@@ -1,6 +1,4 @@
-import os
 import uuid
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -18,9 +16,7 @@ from tests.helpers.utils import init_global_service
 
 @pytest.fixture
 async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
-    response_text = Path(os.path.join(helper.get_fixtures_dir(), "schemas", "schema_02.json")).read_text(
-        encoding="UTF-8"
-    )
+    response_text = (helper.get_fixtures_dir() / "schemas" / "schema_02.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=ujson.loads(response_text))
     return httpx_mock
@@ -49,7 +45,7 @@ async def test_graphql_group_update(db: InfrahubDatabase, httpx_mock: HTTPXMock,
     )
     service = InfrahubServices(client=client, workflow=WorkflowLocalExecution())
 
-    with init_global_service(service), patch("infrahub.groups.tasks.add_branch_tag"):
+    with init_global_service(service), patch("infrahub.groups.tasks.add_tags"):
         # add_branch_tag requires a prefect client, ie it does not work with WorkflowLocal
         response1 = {
             "data": {

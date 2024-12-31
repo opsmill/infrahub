@@ -1,10 +1,9 @@
-from graphql import graphql
-
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 
 
 async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, register_core_models_schema):

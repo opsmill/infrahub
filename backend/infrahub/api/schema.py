@@ -27,7 +27,10 @@ from infrahub.core.models import (  # noqa: TCH001
 )
 from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, SchemaRoot
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TCH001
-from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
+from infrahub.core.validators.models.validate_migration import (
+    SchemaValidateMigrationData,
+    SchemaValidatorPathResponseData,
+)
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent
@@ -132,10 +135,13 @@ def evaluate_candidate_schemas(
         for schema in schemas_to_evaluate.schemas:
             candidate_schema.load_schema(schema=schema)
         candidate_schema.process()
+
+        schema_diff = branch_schema.diff(other=candidate_schema)
+        candidate_schema.validate_node_deletions(diff=schema_diff)
     except ValueError as exc:
         raise SchemaNotValidError(message=str(exc)) from exc
 
-    result = branch_schema.validate_update(other=candidate_schema)
+    result = branch_schema.validate_update(other=candidate_schema, diff=schema_diff)
 
     if result.errors:
         raise SchemaNotValidError(message=", ".join([error.to_string() for error in result.errors]))
@@ -307,13 +313,14 @@ async def load_schema(
             schema_branch=candidate_schema,
             constraints=result.constraints,
         )
-        error_messages = await service.workflow.execute_workflow(
+        responses = await service.workflow.execute_workflow(
             workflow=SCHEMA_VALIDATE_MIGRATION,
-            expected_return=list[str],
+            expected_return=list[SchemaValidatorPathResponseData],
             parameters={"message": validate_migration_data},
         )
+        error_messages = [violation.message for response in responses for violation in response.violations]
         if error_messages:
-            raise SchemaNotValidError(message=",\n".join(error_messages))
+            raise SchemaNotValidError(",\n".join(error_messages))
 
         # ----------------------------------------------------------
         # Update the schema
@@ -402,11 +409,12 @@ async def check_schema(
         schema_branch=candidate_schema,
         constraints=result.constraints,
     )
-    error_messages = await service.workflow.execute_workflow(
+    responses = await service.workflow.execute_workflow(
         workflow=SCHEMA_VALIDATE_MIGRATION,
-        expected_return=list[str],
+        expected_return=list[SchemaValidatorPathResponseData],
         parameters={"message": validate_migration_data},
     )
+    error_messages = [violation.message for response in responses for violation in response.violations]
     if error_messages:
         raise SchemaNotValidError(message=",\n".join(error_messages))
 

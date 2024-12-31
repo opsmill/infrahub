@@ -1,46 +1,78 @@
 from __future__ import annotations
 
 from infrahub_sdk.batch import InfrahubBatch
-from prefect import flow
+from prefect import flow, task
+from prefect.cache_policies import NONE
+from prefect.logging import get_run_logger
 
-from infrahub.message_bus.messages.schema_validator_path import (
-    SchemaValidatorPathData,
+from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.path import SchemaPath  # noqa: TCH001
+from infrahub.core.schema import GenericSchema, NodeSchema  # noqa: TCH001
+from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
+from infrahub.core.validators.model import (
+    SchemaConstraintValidatorRequest,
 )
-from infrahub.message_bus.operations.schema.validator import schema_path_validate
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.services import services
-from infrahub.workflows.utils import add_branch_tag
+from infrahub.workflows.utils import add_tags
 
-from .models.validate_migration import SchemaValidateMigrationData  # noqa: TCH001
+from .models.validate_migration import SchemaValidateMigrationData, SchemaValidatorPathResponseData
 
 
-@flow(name="schema_validate_migrations", flow_run_name="Validate schema migrations")
-async def schema_validate_migrations(message: SchemaValidateMigrationData) -> list[str]:
+@flow(name="schema_validate_migrations", flow_run_name="Validate schema migrations", persist_result=True)
+async def schema_validate_migrations(message: SchemaValidateMigrationData) -> list[SchemaValidatorPathResponseData]:
     batch = InfrahubBatch(return_exceptions=True)
-    error_messages: list[str] = []
-    service = services.service
-    await add_branch_tag(branch_name=message.branch.name)
+    log = get_run_logger()
+    await add_tags(branches=[message.branch.name])
 
     if not message.constraints:
-        return error_messages
+        log.info("No constaint to validate")
+        return []
 
+    log.info(f"{len(message.constraints)} constraint(s) to validate")
+    # NOTE this task is a good candidate to add a progress bar
     for constraint in message.constraints:
-        service.log.info(
-            f"Preparing validator for constraint {constraint.constraint_name!r} ({constraint.routing_key})",
-            branch=message.branch.name,
-            constraint_name=constraint.constraint_name,
-            routing_key=constraint.routing_key,
-        )
-
-        msg = SchemaValidatorPathData(
+        batch.add(
+            task=schema_path_validate,
             branch=message.branch,
             constraint_name=constraint.constraint_name,
             node_schema=message.schema_branch.get(name=constraint.path.schema_kind),
             schema_path=constraint.path,
         )
-        batch.add(task=schema_path_validate, message=msg)
 
-    async for _, result in batch.execute():
-        for violation in result.violations:
-            error_messages.append(violation.message)
+    results = [result async for _, result in batch.execute()]
+    return results
 
-    return error_messages
+
+@task(
+    name="schema-path-validate",
+    task_run_name="Validate schema path {constraint_name} in {branch.name}",
+    description="Validate if a given migration is compatible with the existing data",
+    retries=3,
+    cache_policy=NONE,
+)
+async def schema_path_validate(
+    branch: Branch,
+    constraint_name: str,
+    node_schema: NodeSchema | GenericSchema,
+    schema_path: SchemaPath,
+) -> SchemaValidatorPathResponseData:
+    service = services.service
+
+    async with service.database.start_session() as db:
+        constraint_request = SchemaConstraintValidatorRequest(
+            branch=branch,
+            constraint_name=constraint_name,
+            node_schema=node_schema,
+            schema_path=schema_path,
+        )
+
+        component_registry = get_component_registry()
+        aggregated_constraint_checker = await component_registry.get_component(
+            AggregatedConstraintChecker, db=db, branch=branch
+        )
+        violations = await aggregated_constraint_checker.run_constraints(constraint_request)
+
+        return SchemaValidatorPathResponseData(
+            violations=violations, constraint_name=constraint_name, schema_path=schema_path
+        )

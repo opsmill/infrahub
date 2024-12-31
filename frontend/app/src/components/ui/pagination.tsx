@@ -1,27 +1,13 @@
-import { Select, SelectDirection, SelectOption } from "@/components/inputs/select";
 import usePagination from "@/hooks/usePagination";
 import { classNames } from "@/utils/common";
 import ReactPaginate from "react-paginate";
+import { Combobox, ComboboxContent, ComboboxItem, ComboboxTrigger } from "./combobox";
+import { Command, CommandList } from "./command";
 
 type tPaginationType = {
   count?: number;
   className?: string;
 };
-
-const limitOptions: SelectOption[] = [
-  {
-    id: 10,
-    name: "10",
-  },
-  {
-    id: 20,
-    name: "20",
-  },
-  {
-    id: 50,
-    name: "50",
-  },
-];
 
 export const Pagination = (props: tPaginationType) => {
   const { count = 0, className } = props;
@@ -56,13 +42,13 @@ export const Pagination = (props: tPaginationType) => {
     setPagination(newPagination);
   };
 
-  const handleLimitChange = (newLimit: SelectOption) => {
-    if (newLimit.id === limit) {
+  const handleLimitChange = (newLimit: number) => {
+    if (newLimit === limit) {
       return;
     }
 
     const newPagination = {
-      limit: newLimit.id,
+      limit: newLimit,
       offset,
     };
 
@@ -90,20 +76,41 @@ export const Pagination = (props: tPaginationType) => {
         className
       )}
     >
-      <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-        <div className="flex items-center">
+      <div className="flex flex-wrap flex-1 gap-2 justify-between">
+        <div className="flex items-center gap-4">
           <div className="text-sm text-gray-700">{paginationText}</div>
 
-          <div className="w-[75px] ml-8">
-            <Select
-              options={limitOptions}
-              value={limit}
-              onChange={handleLimitChange}
-              direction={SelectDirection.OVER}
-              preventEmpty
-            />
+          <div>
+            <Combobox>
+              <ComboboxTrigger data-testid="pagination-size-select">{limit}</ComboboxTrigger>
+
+              <ComboboxContent>
+                <Command>
+                  <CommandList>
+                    {[10, 20, 50].map((option) => {
+                      const optionAsString = option.toString();
+                      const currentLimitAsString = limit.toString();
+
+                      return (
+                        <ComboboxItem
+                          key={option}
+                          value={optionAsString}
+                          selectedValue={currentLimitAsString}
+                          onSelect={() => {
+                            handleLimitChange(option);
+                          }}
+                        >
+                          {optionAsString}
+                        </ComboboxItem>
+                      );
+                    })}
+                  </CommandList>
+                </Command>
+              </ComboboxContent>
+            </Combobox>
           </div>
         </div>
+
         <div>
           <ReactPaginate
             initialPage={currentPage}

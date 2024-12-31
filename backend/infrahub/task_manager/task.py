@@ -23,6 +23,7 @@ from prefect.client.schemas.sorting import (
     FlowRunSort,
 )
 
+from infrahub.core.constants import TaskConclusion
 from infrahub.core.query.node import NodeGetKindQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
@@ -85,7 +86,7 @@ class PrefectTask:
         logs_flow = FlowLogs()
         all_logs = await client.read_logs(log_filter=LogFilter(flow_run_id=LogFilterFlowRunId(any_=flow_ids)))
         for flow_log in all_logs:
-            if flow_log.flow_run_id:
+            if flow_log.flow_run_id and flow_log.message not in ["Finished in state Completed()"]:
                 logs_flow.logs[flow_log.flow_run_id].append(flow_log)
 
         return logs_flow
@@ -241,7 +242,9 @@ class PrefectTask:
                         {
                             "node": {
                                 "title": flow.name,
-                                "conclusion": CONCLUSION_STATE_MAPPING[flow.state_name].value,
+                                "conclusion": CONCLUSION_STATE_MAPPING.get(
+                                    flow.state_name, TaskConclusion.UNKNOWN
+                                ).value,
                                 "state": flow.state_type,
                                 "progress": progress_flow.data.get(flow.id, None),
                                 "parameters": flow.parameters,
@@ -250,8 +253,8 @@ class PrefectTask:
                                 "workflow": workflow_names.get(flow.flow_id, None),
                                 "related_node": related_nodes_info.id.get(flow.id, None),
                                 "related_node_kind": related_nodes_info.kind.get(flow.id, None),
-                                "created_at": flow.created.to_iso8601_string(),
-                                "updated_at": flow.updated.to_iso8601_string(),
+                                "created_at": flow.created.to_iso8601_string(),  # type: ignore
+                                "updated_at": flow.updated.to_iso8601_string(),  # type: ignore
                                 "start_time": flow.start_time.to_iso8601_string() if flow.start_time else None,
                                 "id": flow.id,
                                 "logs": {"edges": logs},

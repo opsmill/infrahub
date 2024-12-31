@@ -1,5 +1,4 @@
 import re
-from pathlib import Path
 from typing import Optional
 
 import ujson
@@ -84,7 +83,7 @@ class SearchDocs:
         """
 
         try:
-            with Path(config.SETTINGS.main.docs_index_path).open(encoding="utf-8") as f:
+            with config.SETTINGS.main.docs_index_path.open(encoding="utf-8") as f:
                 search_index = ujson.loads(f.read())
                 self._title_documents = search_index[0]["documents"]
                 heading_json = search_index[1]
@@ -92,7 +91,7 @@ class SearchDocs:
                 self._heading_index = Index.load(heading_json["index"])
         except FileNotFoundError as exc:
             raise NodeNotFoundError(
-                identifier=config.SETTINGS.main.docs_index_path,
+                identifier=str(config.SETTINGS.main.docs_index_path),
                 message="documentation index not found",
                 node_type="file",
             ) from exc

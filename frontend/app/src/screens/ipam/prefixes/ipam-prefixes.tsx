@@ -5,7 +5,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import IpamIPPrefixDetails from "./ipam-prefix-details";
 import IpamIPPrefixesSummary from "./ipam-prefixes-summary";
 
-const IpamIPPrefixes = forwardRef((props, ref) => {
+const IpamIPPrefixes = forwardRef((_, ref) => {
   const [qspTab] = useQueryParam(IPAM_QSP.TAB, StringParam);
 
   switch (qspTab) {

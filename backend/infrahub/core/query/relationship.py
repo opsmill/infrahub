@@ -276,8 +276,7 @@ class RelationshipCreateQuery(RelationshipQuery):
 
 class RelationshipUpdatePropertyQuery(RelationshipQuery):
     name = "relationship_property_update"
-
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     def __init__(
         self,
@@ -358,8 +357,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
 class RelationshipDataDeleteQuery(RelationshipQuery):
     name = "relationship_data_delete"
-
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     def __init__(
         self,
@@ -425,8 +423,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
 
 class RelationshipDeleteQuery(RelationshipQuery):
     name = "relationship_delete"
-
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -513,8 +510,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
 class RelationshipGetPeerQuery(Query):
     name = "relationship_get_peer"
-
-    type: QueryType = QueryType.READ
+    type = QueryType.READ
 
     def __init__(
         self,
@@ -720,7 +716,7 @@ class RelationshipGetPeerQuery(Query):
         return [peer.peer_id for peer in self.get_peers()]
 
     def get_peers(self) -> Generator[RelationshipPeerData, None, None]:
-        for result in self.get_results_group_by(("peer", "uuid")):
+        for result in self.get_results_group_by(("peer", "uuid"), ("source_node", "uuid")):
             rels = result.get("rels")
             data = RelationshipPeerData(
                 source_id=result.get_node("source_node").get("uuid"),
@@ -797,8 +793,7 @@ class RelationshipGetQuery(RelationshipQuery):
 
 class RelationshipGetByIdentifierQuery(Query):
     name = "relationship_get_identifier"
-
-    type: QueryType = QueryType.READ
+    type = QueryType.READ
 
     def __init__(
         self,

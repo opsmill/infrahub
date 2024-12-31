@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.schema import GenericSchema as SDKGenericSchema
+from infrahub_sdk.schema import GenericSchemaAPI as SDKGenericSchema
 
 from infrahub.core.registry import registry
 from infrahub.core.schema import core_models

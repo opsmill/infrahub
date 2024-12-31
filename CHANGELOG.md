@@ -1,9 +1,9 @@
-# Infrahub Changelog
+# Infrahub changelog
 
 This is the changelog for Infrahub.
 All notable changes to this project will be documented in this file.
 
-Issue tracking is located in [Github](https://github.com/opsmill/infrahub/issues).
+Issue tracking is located in [GitHub](https://github.com/opsmill/infrahub/issues).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -11,35 +11,127 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
-## [1.1.0](https://github.com/opsmill/infrahub/tree/v1.1.0) - 2024-11-29
+## [Infrahub - v1.1.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.0) - 2024-12-30
 
 ### Removed
 
 - Remove at parameter from GraphQL mutate functions ([#3587](https://github.com/opsmill/infrahub/issues/3587))
-- Remove the "role" attribute of base schema account node
-  - This attribute was no longer useful as roles are defined as dedicated nodes and are tightly related to permissions
+- Remove the "role" attribute of base schema account node. This attribute was no longer useful as roles are defined as dedicated nodes and are tightly related to permissions.
 - Remove the /api/diff/data and /api/diff/schema endpoints that have been replaced by the DiffTree GraphQL query
 
 ### Added
 
-- Add a "deprecation" property to attribute and relationship schema in order to allow users to identify deprecated fields for nodes and provide a user-friendly message about the deprecation reasons ([#4245](https://github.com/opsmill/infrahub/issues/4245))
+- Add support for computed attributes. The computed attributes allows you to define a schema attribute as read only and provide logic for how the attribute should be updated. The logic that updates a computed attribute can be a Jinja2 template or a Python Transform. Aside from the initial creation when using a Jinja2 template the updates will be done asynchronously in the background. ([#3637](https://github.com/opsmill/infrahub/issues/3637))
+- Add a "deprecation" property to attribute and relationship schema in order to allow users to identify deprecated fields for nodes and provide a user-friendly message about the deprecation reasons. ([#4245](https://github.com/opsmill/infrahub/issues/4245))
+- Enhanced relationship inputs for hierarchical models with a new way to navigate and select objects directly within the hierarchy. ([#4636](https://github.com/opsmill/infrahub/issues/4636))
 - Add ability to use node HFID to create a related node on a generic relationship ([#4649](https://github.com/opsmill/infrahub/issues/4649))
+
+### Changed
+
+- More efficient logic for retrieving cardinality-one relationships within a GraphQL query ([#522](https://github.com/opsmill/infrahub/issues/522))
+- Change strings referring to file system paths to pathlib.Path objects ([#3545](https://github.com/opsmill/infrahub/issues/3545))
+- Improved response time of menu endpoint
 
 ### Fixed
 
 - Fix search anywhere so it looks at Groups ([#3173](https://github.com/opsmill/infrahub/issues/3173))
-- Loosened up logic to determine when an artifact needs to be regenerated during a proposed change. This is to ensure that we always generate a new artifact if required. Until some other sections are refactored this will also mean that Infrahub will generate artifacts in a few situations where it's not strictly required. This last part is a temporary solution. ([#4198](https://github.com/opsmill/infrahub/issues/4198))
+- Display the IP Namespace for prefixes and IP addresses in the search anywhere ([#3577](https://github.com/opsmill/infrahub/issues/3577))
 - Use the repository object ID as name for its git working copy directory ([#4296](https://github.com/opsmill/infrahub/issues/4296))
 - Search anywhere now supports IPv6 extended format ([#4613](https://github.com/opsmill/infrahub/issues/4613))
+- - Update action buttons UI in the branch details view
+  - Pre-fill the source branch select when creating a proposed change from the branch details view
+  ([#4678](https://github.com/opsmill/infrahub/issues/4678))
 - Synchronise git repository clones and updates for task workers in order to remove the need for a shared storage ([#4789](https://github.com/opsmill/infrahub/issues/4789))
+- FIX: Resolved edge cases in 'Search Anywhere' that were causing old results to be displayed. ([#4863](https://github.com/opsmill/infrahub/issues/4863))
 - Remove Profile in registry for renamed schema nodes ([#4909](https://github.com/opsmill/infrahub/issues/4909))
 - Forbid changing the "optional" property of an inherited attribute to not break GraphQL schema generation ([#4936](https://github.com/opsmill/infrahub/issues/4936))
+- Send a request to the backend on logout to delete session cookies and prevent remaining information ([#4962](https://github.com/opsmill/infrahub/issues/4962))
+- Fix query to correctly send the variables in the tasks details view ([#5002](https://github.com/opsmill/infrahub/issues/5002), [#5118](https://github.com/opsmill/infrahub/issues/5118))
+- Update alerts type on errors with proposed changes and branches ([#5293](https://github.com/opsmill/infrahub/issues/5293))
+- - Verify the tasks related to the proposed changes view to show or hide the tasks accordion in the details view
+  - Disable the merge button if there is an ongoing merge
+  - Add poll-interval to the proposed changes query to be up to date on the state and disable the merge button if the proposed change is already merged
 - Add support for irresolvable conflicts to the diff logic and DiffTree GraphQL query
-- Fix a bug that prevented updating a relationship during a merge if ONLY the metadata was updated and not the peer
-- Fix permission check when using multiple backends, if one grants a permission the next ones must not be queried
+- Fix a bug that prevented updating a relationship during a merge if ONLY the metadata was updated and not the peer.
+- Fix permission check when using multiple backends, if one grants a permission the next ones must not be queried.
+- Update logic to check if the changes on a branch include schema changes to use the new diff
 - Update the api/diff/artifacts endpoint to use a dedicated query
+- Verify if the requested branch exists. If it doesn't, it redirects to the homepage on the default branch.
 
-## [1.0.7](https://github.com/opsmill/infrahub/tree/v1.0.7) - 2024-11-20
+  This helps avoid query issues, such as empty results (for example, an empty menu) or incorrect queries being sent.
+
+## [Infrahub - v1.0.10](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.10) - 2024-12-20
+
+### Added
+
+- Make URL fields clickable in the details view ([#5005](https://github.com/opsmill/infrahub/issues/5005))
+
+### Fixed
+
+- Support directionality in the query to get all peer IDs for a given group of nodes ([#3065](https://github.com/opsmill/infrahub/issues/3065))
+- Fix errors when executing `infrahub db update-core-schema` command that were impacting migrations from prior versions ([#5186](https://github.com/opsmill/infrahub/pull/5186), [#5254](https://github.com/opsmill/infrahub/pull/5254))
+
+## [Infrahub - v1.0.9](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.9) - 2024-12-13
+
+### Added
+
+- Adding `invoke` tasks to assist with release process. ([#4519](https://github.com/opsmill/infrahub/issues/4519))
+- Add pagination and backend search in new combobox for relationships.
+- Added custom Towncrier template to remove extra space after new Changelog entries.
+- In schema viewer, we now display `Hierarchical` value for generics.
+
+### Fixed
+
+- Update delete constraints to correctly account for relationships on generics and relationships for which the peer kind is a generic. ([#4332](https://github.com/opsmill/infrahub/issues/4332))
+- Fix error when `pool` was used a relationship name. ([#4807](https://github.com/opsmill/infrahub/issues/4807))
+- Ensure that deleted schema nodes are removed from all workers and that the schema is in sync without having to restart. ([#4836](https://github.com/opsmill/infrahub/issues/4836))
+- Consistently use "Save" on all object forms submit buttons. ([#4850](https://github.com/opsmill/infrahub/issues/4850))
+- Search shortcuts show `Cmd` on macOS and `Ctrl` on other systems. ([#4861](https://github.com/opsmill/infrahub/issues/4861))
+- Update the parent relationship query to populate the dropdown options when editing an object, ensuring the current parent is correctly selected for the current node. ([#5035](https://github.com/opsmill/infrahub/issues/5035))
+- Correctly refresh menu after access token has expired. ([#5099](https://github.com/opsmill/infrahub/issues/5099))
+- On the object permission form, fix the name option selection when changing the namespace to get the latest options and to be able to choose a name option. ([#5100](https://github.com/opsmill/infrahub/issues/5100))
+- Prevent adding a new mandatory attribute or relationship to the schema if some nodes are already present in the database. ([#5106](https://github.com/opsmill/infrahub/issues/5106))
+- Refresh branch hash on local worker during branch create. ([#5130](https://github.com/opsmill/infrahub/issues/5130))
+- Fix uniqueness constraint check with enum based attributes. ([#5132](https://github.com/opsmill/infrahub/issues/5132))
+- Editing old `CHANGELOG.md` entries to use uniform formatting from new Towncrier template.
+- Store CoreProfile in database to ensure consistent initial schema hash. Prior to this the schema was reported as being out of sync when starting the application for the first time. This error wouldn't have hade any impact but was confusing. The workaround would be to load a schema or restart the application at least once after first time initialization.
+- Use the branch uuid instead of the internal database id to track the hash of the schema in the cache.
+
+## [Infrahub - v1.0.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.8) - 2024-12-03
+
+### Added
+
+- Add `sso_user_default_group` security setting to provide the name of a group to which SSO users will be assigned if the identity provider does not gives a list of groups to use ([#4924](https://github.com/opsmill/infrahub/issues/4924))
+- Added a 'append_git_suffix' configuration setting for Git repositories that allows you to define domains for auto appending '.git' to repositories defined with an HTTP URL ([#5077](https://github.com/opsmill/infrahub/issues/5077))
+
+### Fixed
+
+- Loosened up logic to determine when an artifact needs to be regenerated during a proposed change. This is to ensure that we always generate a new artifact if required. Until some other parts are refactored this will also need that we will generate artifacts in a few situations where it's not strictly required. This last part is a temporary solution. ([#4198](https://github.com/opsmill/infrahub/issues/4198))
+- Migrates from headless UI combobox to `cmdk` to resolve focus behavior issues when there is no result in the search anywhere ([#4715](https://github.com/opsmill/infrahub/issues/4715))
+- Fix GraphQL mutations to make user permissions updates work correctly
+  - Update the alert message to better reflect the changes (between creation and update)
+  - Fix the objects delete modal on the global permission view
+  - Fix the global permission update mutation
+
+  ([#4881](https://github.com/opsmill/infrahub/issues/4881), [#4952](https://github.com/opsmill/infrahub/issues/4952))
+- Validate that a deleted schema node is not used in any relationship when loading a new schema ([#4912](https://github.com/opsmill/infrahub/issues/4912))
+- Set content type of artifact when rendered to fix artifact content type if artifact definition has changed ([#4969](https://github.com/opsmill/infrahub/issues/4969))
+- Raise error if pool allocation misses data to create node ([#5006](https://github.com/opsmill/infrahub/issues/5006))
+- Process new schema before replacing branch in registry to avoid causing the GraphQL schema to be generated while the new schema is still loading ([#5008](https://github.com/opsmill/infrahub/issues/5008))
+- Added a check on repository import and sync to wait until the schema has converged before importing additional objects when the repository contains an updated schema ([#5051](https://github.com/opsmill/infrahub/issues/5051))
+- Fix artifact definition targets when changed in repository so that it's reflected in the database ([#5060](https://github.com/opsmill/infrahub/issues/5060))
+- GraphQL query with filters on attribute of type List return the expected result ([#5091](https://github.com/opsmill/infrahub/issues/5091))
+- Prevent adding a new mandatory attribute or relationship to the schema if some nodes are already present in the database ([#5106](https://github.com/opsmill/infrahub/issues/5106))
+- Ensure that permission queries are run in non isolated mode so that updates from the default branch are automatically reflected in other branches ([#5110](https://github.com/opsmill/infrahub/issues/5110))
+- Add retry for transient database errors during IP reconciliation tasks
+- Corrected configuration for prefect worker to never prompt for Git credentials on the console
+- Fix artifact object relationship by enforcing it to be an artifact target
+- Fix bug in IP reconciliation query around deleted nodes and relationships
+- Fix issue that could cause diff generation to crash if a schema was renamed
+- Fixes a bug that prevented running a generator from a read-only repository
+- Generator groups are correctly created after merging a proposed change
+
+## [Infrahub - v1.0.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.7) - 2024-11-20
 
 ### Fixed
 
@@ -48,7 +140,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fix a bug in the query to delete a relationship that could create unnecessary "deleted" edges on the database
 - Fix bug in incremental diff addition for nodes within a hierarchy
 
-## [1.0.6](https://github.com/opsmill/infrahub/tree/v1.0.6) - 2024-11-18
+## [Infrahub - v1.0.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.6) - 2024-11-18
 
 ### Fixed
 
@@ -57,23 +149,23 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Session is now correctly cleared when logging out from the web UI ([#4962](https://github.com/opsmill/infrahub/issues/4962))
 - Anonymous user will get a 401 response when trying to load a schema
 
-## [1.0.5](https://github.com/opsmill/infrahub/tree/v1.0.5) - 2024-11-15
+## [Infrahub - v1.0.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.5) - 2024-11-15
 
 ### Fixed
 
 - Node attribute name can now be `type` ([#4381](https://github.com/opsmill/infrahub/issues/4381))
 
-## [1.0.4](https://github.com/opsmill/infrahub/tree/v1.0.4) - 2024-11-13
+## [Infrahub - v1.0.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.4) - 2024-11-13
 
 ### Fixed
 
 - Profiles now have a Human-Friendly Identifier (HFID) defined based on `profile_name` ([#4758](https://github.com/opsmill/infrahub/issues/4758))
-- Workers out of sync after deleting node from schema ([[#4836](https://github.com/opsmill/infrahub/issues/4836)])
+- Workers out of sync after deleting node from schema ([#4836](https://github.com/opsmill/infrahub/issues/4836))
 - Infrahub returns a proper error message when trying to load a schema with generic with the same Kind as an existing node ([#4837](https://github.com/opsmill/infrahub/issues/4837))
 - Default to using HTTP GET for UserInfo endpoints (OAuth2/OIDC) ([#4898](https://github.com/opsmill/infrahub/issues/4898))
 - Remove Profile in registry for renamed schema nodes ([#4909](https://github.com/opsmill/infrahub/issues/4909))
 
-## [1.0.3](https://github.com/opsmill/infrahub/tree/v1.0.2) - 2024-11-08
+## [Infrahub - v1.0.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.2) - 2024-11-08
 
 ### Fixed
 
@@ -81,14 +173,14 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fix hierarchical schema update logic to correctly update peer on parent of new child node ([#4839](https://github.com/opsmill/infrahub/issues/4839))
 - Define the version of numpy to install in pyproject.toml
 
-## [1.0.2](https://github.com/opsmill/infrahub/tree/v1.0.2) - 2024-11-06
+## [Infrahub - v1.0.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.2) - 2024-11-06
 
 ### Fixed
 
 - Update branch merge logic to use smaller queries outside of a transaction to allow merging a branch with many changes ([#4448](https://github.com/opsmill/infrahub/issues/4448))
 - Ensure the GraphQL query InfrahubResourcePoolUtilization works properly when the schema is different in the branch ([#4761](https://github.com/opsmill/infrahub/issues/4761))
 
-## [1.0.1](https://github.com/opsmill/infrahub/tree/v1.0.1) - 2024-10-31
+## [Infrahub - v1.0.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.1) - 2024-10-31
 
 ### Fixed
 
@@ -97,7 +189,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Avoid sending an empty list to the load schema API on repository import if it's not required
 - Update demo environment to work with Infrahub 1.0
 
-## [1.0.0](https://github.com/opsmill/infrahub/tree/v1.0.0) - 2024-10-30
+## [Infrahub - v1.0.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.0.0) - 2024-10-30
 
 ### Removed
 
@@ -149,13 +241,13 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fixes an issue where docker compose would output ANSI control characters that don't support it
 - Prevent temporary directories generated by Docusaurus to be imported by Docker
 
-## [0.16.4](https://github.com/opsmill/infrahub/tree/v0.16.4) - 2024-10-17
+## [Infrahub - v0.16.4](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.4) - 2024-10-17
 
 ### Fixed
 
 - Fixed an issue on the UI where a new relationship was being added to the main branch instead of the current branch. ([#4598](https://github.com/opsmill/infrahub/issues/4598))
 
-## [0.16.3](https://github.com/opsmill/infrahub/tree/v0.16.3) - 2024-10-10
+## [Infrahub - v0.16.3](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.3) - 2024-10-10
 
 ### Removed
 
@@ -166,7 +258,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Save a diff in smaller pieces instead of all at once to prevent out-of-memory error. ([#4511](https://github.com/opsmill/infrahub/issues/4511))
 - Fixes exception handling section in the Python SDK batch guide.
 
-## [0.16.2](https://github.com/opsmill/infrahub/tree/v0.16.2) - 2024-10-01
+## [Infrahub - v0.16.2](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.2) - 2024-10-01
 
 ### Fixed
 
@@ -178,7 +270,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Fix performance issue for GraphQL queries that only count nodes. ([#4454](https://github.com/opsmill/infrahub/issues/4454))
 - Fix ability to construct HFID for upsert mutations where a number attribute is used. ([#4460](https://github.com/opsmill/infrahub/issues/4460))
 
-## [0.16.1](https://github.com/opsmill/infrahub/tree/v0.16.1) - 2024-09-24
+## [Infrahub - v0.16.1](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.1) - 2024-09-24
 
 The largest change in this version is the movement of the Infrahub SDK into a
 [separate repository](https://github.com/opsmill/infrahub-sdk-python) and package.
@@ -243,7 +335,7 @@ git submodule update --init
 - Added cancel button in repository form ([#4402](https://github.com/opsmill/infrahub/issues/4402))
 - Fixes the tasks pagination in the proposed changes tab ([#4434](https://github.com/opsmill/infrahub/issues/4434))
 
-## [0.16.0](https://github.com/opsmill/infrahub/tree/v0.16.0) - 2024-09-11
+## [Infrahub - v0.16.0](https://github.com/opsmill/infrahub/tree/infrahub-v0.16.0) - 2024-09-11
 
 ### Removed
 
@@ -292,7 +384,7 @@ git submodule update --init
 - Do not allow '/' character in repository name to avoid sync failure. ([#4120](https://github.com/opsmill/infrahub/issues/4120))
 - Can't close a comment thread on an Artifact. ([#4189](https://github.com/opsmill/infrahub/issues/4189))
 
-## [0.15.3](https://github.com/opsmill/infrahub/tree/v0.15.3) - 2024-08-13
+## [Infrahub - v0.15.3](https://github.com/opsmill/infrahub/tree/infrahub-v0.15.3) - 2024-08-13
 
 ### Added
 

@@ -39,6 +39,16 @@ export const getFiltersFromFormData = (formData: Record<string, FormFieldValue>)
     }
 
     if (Array.isArray(fieldValue)) {
+      if (fieldValue.every((value) => typeof value === "string")) {
+        return [
+          ...acc,
+          {
+            name: `${fieldName}__values`,
+            value: fieldValue,
+          },
+        ];
+      }
+
       return [
         ...acc,
         {

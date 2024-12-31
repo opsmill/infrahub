@@ -2,7 +2,7 @@ from typing import Any, Dict
 from uuid import uuid4
 
 import pytest
-from graphql import ExecutionResult, graphql
+from graphql import ExecutionResult
 from infrahub_sdk.graphql import Query
 from prefect.artifacts import ArtifactRequest
 from prefect.client.orchestration import PrefectClient, get_client
@@ -16,6 +16,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.tasks.dummy import dummy_flow, dummy_flow_broken
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
+from tests.helpers.graphql import graphql
 
 CREATE_TASK = """
 mutation CreateTask(
@@ -149,6 +150,13 @@ async def prefect_client(local_prefect_server):
 
 
 @pytest.fixture
+async def delete_flow_runs(prefect_client: PrefectClient):
+    flows = await prefect_client.read_flow_runs()
+    for flow in flows:
+        await prefect_client.delete_flow_run(flow_run_id=flow.id)
+
+
+@pytest.fixture
 async def flow_runs_data(prefect_client: PrefectClient, tag_blue, account_bob):
     branch1_tag = WorkflowTag.BRANCH.render(identifier="branch1")
     db_tag = WorkflowTag.DATABASE_CHANGE.render()
@@ -232,150 +240,12 @@ async def run_query(db: InfrahubDatabase, branch: Branch, query: str, variables:
     )
 
 
-async def test_task_query_infrahub(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, local_prefect_server
-):
-    red = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
-    await red.new(db=db, name="Red", description="The Red tag")
-    await red.save(db=db)
-
-    green = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
-    await green.new(db=db, name="Green", description="The Green tag")
-    await green.save(db=db)
-
-    blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
-    await blue.new(db=db, name="Blue", description="The Blue tag")
-    await blue.save(db=db)
-
-    bob = await Node.init(db=db, schema=InfrahubKind.ACCOUNT, branch=default_branch)
-    await bob.new(db=db, name="bob", password=str(uuid4()))
-    await bob.save(db=db)
-
-    result = await run_query(
-        db=db,
-        branch=default_branch,
-        query=CREATE_TASK,
-        variables={
-            "conclusion": "UNKNOWN",
-            "title": "Blue Task 1",
-            "related_node": blue.get_id(),
-            "created_by": bob.get_id(),
-            "logs": {"message": "Starting task", "severity": "INFO"},
-        },
-    )
-    assert result.errors is None
-    assert result.data
-
-    result = await run_query(
-        db=db,
-        branch=default_branch,
-        query=CREATE_TASK,
-        variables={
-            "conclusion": "UNKNOWN",
-            "title": "Red Task 1",
-            "related_node": red.get_id(),
-            "created_by": bob.get_id(),
-            "logs": {"message": "Starting task", "severity": "INFO"},
-        },
-    )
-    assert result.errors is None
-    assert result.data
-
-    result = await run_query(
-        db=db,
-        branch=default_branch,
-        query=CREATE_TASK,
-        variables={
-            "conclusion": "UNKNOWN",
-            "title": "Green Task 1",
-            "related_node": green.get_id(),
-            "created_by": bob.get_id(),
-            "logs": {"message": "Starting task", "severity": "INFO"},
-        },
-    )
-    assert result.errors is None
-    assert result.data
-
-    result = await run_query(
-        db=db,
-        branch=default_branch,
-        query=CREATE_TASK,
-        variables={
-            "conclusion": "UNKNOWN",
-            "title": "Blue Task 1",
-            "related_node": blue.get_id(),
-            "created_by": bob.get_id(),
-            "logs": {"message": "Starting task", "severity": "INFO"},
-        },
-    )
-    assert result.errors is None
-    assert result.data
-
-    result = await run_query(
-        db=db,
-        branch=default_branch,
-        query=CREATE_TASK,
-        variables={
-            "conclusion": "SUCCESS",
-            "title": "Blue Task 2",
-            "related_node": blue.get_id(),
-            "created_by": bob.get_id(),
-            "logs": [
-                {"message": "Starting task", "severity": "INFO"},
-                {"message": "Finalizing task", "severity": "INFO"},
-            ],
-        },
-    )
-    assert result.errors is None
-    assert result.data
-
-    all_tasks = await run_query(
-        db=db,
-        branch=default_branch,
-        query=QUERY_TASK,
-        variables={},
-    )
-    assert all_tasks.errors is None
-    assert all_tasks.data
-    assert all_tasks.data["InfrahubTask"]["count"] >= 5
-
-    blue_tasks = await run_query(
-        db=db,
-        branch=default_branch,
-        query=QUERY_TASK,
-        variables={"related_nodes": blue.get_id()},
-    )
-    assert blue_tasks.errors is None
-    assert blue_tasks.data
-    assert blue_tasks.data["InfrahubTask"]["count"] == 3
-
-    red_blue_tasks = await run_query(
-        db=db,
-        branch=default_branch,
-        query=QUERY_TASK,
-        variables={"related_nodes": [red.get_id(), blue.get_id()]},
-    )
-    assert red_blue_tasks.errors is None
-    assert red_blue_tasks.data
-    assert red_blue_tasks.data["InfrahubTask"]["count"] == 4
-
-    all_logs = await run_query(
-        db=db,
-        branch=default_branch,
-        query=QUERY_TASK_WITH_LOGS,
-        variables={},
-    )
-    assert all_logs.errors is None
-    assert all_logs.data
-    logs = []
-    for task in all_logs.data["InfrahubTask"]["edges"]:
-        [logs.append(log) for log in task["node"]["logs"]["edges"]]
-
-    assert len(logs) == 6
-
-
 async def test_task_query_prefect(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs,
+    flow_runs_data,
 ):
     result = await run_query(
         db=db,
@@ -400,7 +270,11 @@ async def test_task_query_prefect(
 
 
 async def test_task_query_filter_workflow(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    delete_flow_runs,
+    flow_runs_data,
 ):
     QUERY = """
     query {
@@ -437,7 +311,7 @@ async def test_task_query_filter_workflow(
 
 
 async def test_task_query_filter_workflow_state(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
 ):
     QUERY = """
     query {
@@ -468,7 +342,7 @@ async def test_task_query_filter_workflow_state(
 
 
 async def test_task_query_filter_id(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
 ):
     dummy_completed_br1_db = flow_runs_data["dummy-completed-br1-db"]
     dummy_running_br1 = flow_runs_data["dummy-running-br1"]
@@ -501,7 +375,7 @@ async def test_task_query_filter_id(
 
 
 async def test_task_query_filter_branch(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
 ):
     QUERY = """
     query TaskQuery(
@@ -539,7 +413,7 @@ async def test_task_query_filter_branch(
 
 
 async def test_task_query_filter_state(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
 ):
     QUERY = """
     query {
@@ -575,7 +449,7 @@ async def test_task_query_filter_state(
 
 
 async def test_task_query_partial_text(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, flow_runs_data
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, delete_flow_runs, flow_runs_data
 ):
     QUERY = """
     query {
@@ -708,21 +582,6 @@ async def test_task_query_both(
     account_bob,
     flow_runs_data,
 ):
-    create_task = await run_query(
-        db=db,
-        branch=default_branch,
-        query=CREATE_TASK,
-        variables={
-            "conclusion": "UNKNOWN",
-            "title": "Blue Task 1",
-            "related_node": tag_blue.get_id(),
-            "created_by": account_bob.get_id(),
-            "logs": {"message": "Starting task", "severity": "INFO"},
-        },
-    )
-    assert create_task.errors is None
-    assert create_task.data
-
     result = await run_query(
         db=db,
         branch=default_branch,
@@ -734,7 +593,6 @@ async def test_task_query_both(
 
     task_names = sorted([task["node"]["title"] for task in result.data["InfrahubTask"]["edges"]])
     assert task_names == [
-        "Blue Task 1",
         "dummy-completed-account-br1-db",
         "dummy-completed-br1-db",
         "dummy-completed-no-branch",

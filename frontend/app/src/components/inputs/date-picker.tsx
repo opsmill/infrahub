@@ -3,11 +3,12 @@ import "react-datepicker/dist/react-datepicker.css";
 
 import { Button } from "@/components/buttons/button";
 import { Input } from "@/components/inputs/input";
+import { classNames } from "@/utils/common";
 import { format, isValid } from "date-fns";
 import { forwardRef, useEffect, useRef, useState } from "react";
 
 export const DatePicker = forwardRef<HTMLInputElement, any>((props, ref) => {
-  const { id, date, onChange, disabled, isProtected } = props;
+  const { id, date, onChange, disabled, isProtected, className } = props;
 
   const currentDate = date && isValid(date) ? date : null;
 
@@ -49,7 +50,7 @@ export const DatePicker = forwardRef<HTMLInputElement, any>((props, ref) => {
       ref={ref}
       value={text}
       onChange={handleChangeInput}
-      className="rounded-r-none"
+      className={classNames("rounded-r-none", className)}
       disabled={disabled || isProtected}
     />
   ));

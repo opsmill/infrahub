@@ -234,4 +234,50 @@ describe("getUpdateMutationFromFormData - test", () => {
       field1: { is_default: true },
     });
   });
+
+  describe("Attribute of kind list", () => {
+    it("set correctly attribute of kind list when initial value is null", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildField({
+          name: "listField",
+          type: "List",
+          defaultValue: { source: null, value: null },
+        }),
+      ];
+      const formData: Record<string, FormAttributeValue> = {
+        listField: { source: { type: "user" }, value: ["item2", "item3"] },
+      };
+
+      // WHEN
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        listField: { value: ["item2", "item3"] },
+      });
+    });
+
+    it("set correctly attribute of kind list when initial has items", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildField({
+          name: "listField",
+          type: "List",
+          defaultValue: { source: { type: "user" }, value: ["item1"] },
+        }),
+      ];
+      const formData: Record<string, FormAttributeValue> = {
+        listField: { source: { type: "user" }, value: ["item2", "item3"] },
+      };
+
+      // WHEN
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        listField: { value: ["item2", "item3"] },
+      });
+    });
+  });
 });

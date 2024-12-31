@@ -1,4 +1,5 @@
 import { BUTTON_TYPES, Button } from "@/components/buttons/button";
+import { inputStyle } from "@/components/ui/style";
 import { classNames } from "@/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { forwardRef, useState } from "react";
@@ -47,16 +48,13 @@ export const Input = forwardRef((props: any, ref: any) => {
       <input
         onChange={handleInputChange}
         className={classNames(
-          `block w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400
-          border-gray-300 bg-custom-white
-          sm:text-sm sm:leading-6 px-2
-          focus:ring-2 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 focus:outline-none
-          disabled:cursor-not-allowed disabled:bg-gray-100`,
-          className ?? "",
+          inputStyle,
+          className,
           error && error?.message ? "ring-red-500 focus:ring-red-600" : "",
           props.type === "password" ? "pr-14" : ""
         )}
         type={type === "password" && display ? "text" : type}
+        ref={ref}
         {...propsToPass}
       />
 

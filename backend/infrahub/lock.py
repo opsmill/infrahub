@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
     from infrahub.services import InfrahubServices
 
+
 registry: InfrahubLockRegistry = None
 
 
@@ -46,8 +47,8 @@ GLOBAL_GRAPH_LOCK = "global.graph"
 class InfrahubMultiLock:
     """Context manager to allow multiple locks to be reserved together"""
 
-    def __init__(self, _registry: InfrahubLockRegistry, locks: Optional[list[str]] = None) -> None:
-        self.registry = _registry
+    def __init__(self, lock_registry: InfrahubLockRegistry, locks: Optional[list[str]] = None) -> None:
+        self.registry = lock_registry
         self.locks = locks or []
 
     async def __aenter__(self):
@@ -245,12 +246,16 @@ class InfrahubLockRegistry:
         await self.get(name=LOCAL_SCHEMA_LOCK).event.wait()
 
     def global_schema_lock(self) -> InfrahubMultiLock:
-        return InfrahubMultiLock(_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_SCHEMA_LOCK])
+        return InfrahubMultiLock(lock_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_SCHEMA_LOCK])
 
     def global_graph_lock(self) -> InfrahubMultiLock:
-        return InfrahubMultiLock(_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK])
+        return InfrahubMultiLock(lock_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK])
 
 
 def initialize_lock(local_only: bool = False, service: Optional[InfrahubServices] = None) -> None:
     global registry  # pylint: disable=global-statement
     registry = InfrahubLockRegistry(local_only=local_only, service=service)
+
+
+def build_object_lock_name(name: str) -> str:
+    return f"global.object.{name}"

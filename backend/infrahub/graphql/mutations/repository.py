@@ -3,8 +3,10 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, Optional, cast
 
+import httpx
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 
+from infrahub import config
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository, CoreRepository
@@ -106,6 +108,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 location=obj.location.value,
                 ref=obj.ref.value,
                 infrahub_branch_name=branch.name,
+                infrahub_branch_id=str(branch.get_uuid()),
                 internal_status=obj.internal_status.value,
                 created_by=authenticated_user,
             )
@@ -122,6 +125,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 location=obj.location.value,
                 default_branch_name=obj.default_branch.value,
                 infrahub_branch_name=branch.name,
+                infrahub_branch_id=str(branch.get_uuid()),
                 internal_status=obj.internal_status.value,
                 created_by=authenticated_user,
             )
@@ -190,6 +194,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             ref=obj.ref.value,
             commit=new_commit,
             infrahub_branch_name=branch.name,
+            infrahub_branch_id=str(branch.get_uuid()),
         )
         if context.service:
             await context.service.workflow.submit_workflow(
@@ -206,7 +211,9 @@ def cleanup_payload(data: InputObjectType | dict[str, Any]) -> None:
         and data["location"].get("value")
         and re.match(http_without_dotgit, data["location"]["value"])
     ):
-        data["location"]["value"] = f'{data["location"]["value"]}.git'
+        url = httpx.URL(data["location"]["value"])
+        if url.host in config.SETTINGS.git.append_git_suffix:
+            data["location"]["value"] = f'{data["location"]["value"]}.git'
 
 
 class ProcessRepository(Mutation):

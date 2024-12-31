@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from prefect.events.schemas.automations import Automation  # noqa: TCH002
@@ -10,6 +10,8 @@ from typing_extensions import Self
 
 if TYPE_CHECKING:
     from uuid import UUID
+
+    from infrahub_sdk.data import RepositoryData
 
     from infrahub.core.schema.schema_branch_computed import PythonDefinition
 
@@ -28,8 +30,8 @@ class ComputedAttributeAutomations(BaseModel):
             if len(name_split) != 3:
                 continue
 
-            identifier = name_split[1]
-            scope = name_split[2]
+            scope = name_split[1]
+            identifier = name_split[2]
 
             obj.data[identifier][scope] = automation
 
@@ -46,12 +48,15 @@ class ComputedAttributeAutomations(BaseModel):
         return False
 
     def return_obsolete(self, keep: list[UUID]) -> list[UUID]:
-        remove = []
+        return [automation_id for automation_id in self.all_automation_ids if automation_id not in keep]
+
+    @property
+    def all_automation_ids(self) -> list[UUID]:
+        automation_ids: list[UUID] = []
         for identifier in self.data.values():
             for automation in identifier.values():
-                if automation.id not in keep:
-                    remove.append(automation.id)
-        return remove
+                automation_ids.append(automation.id)
+        return automation_ids
 
 
 @dataclass
@@ -63,6 +68,13 @@ class PythonTransformComputedAttribute:
     query_name: str
     query_models: list[str]
     computed_attribute: PythonDefinition
+    default_schema: bool
+    branch_commit: dict[str, str] = field(default_factory=dict)
+
+    def populate_branch_commit(self, repository_data: RepositoryData | None = None) -> None:
+        if repository_data:
+            for branch, commit in repository_data.branches.items():
+                self.branch_commit[branch] = commit
 
 
 @dataclass

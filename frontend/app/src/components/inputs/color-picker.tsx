@@ -6,7 +6,7 @@ import { ColorResult, Colorful, HsvaColor } from "@uiw/react-color/src/index";
 import { forwardRef, useState } from "react";
 
 export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
-  const { id, disabled, value, onChange } = props;
+  const { id, disabled, value, onChange, className } = props;
 
   const [hsva, setHsva] = useState<string | HsvaColor>(value ?? { h: 0, s: 0, v: 0, a: 0 }); // Used for colorfule
 
@@ -48,7 +48,7 @@ export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
         value={value ?? ""}
         style={getInputStyle()}
         onChange={(e) => handleInputChange(e.target.value)}
-        className="flex-1"
+        className={classNames("flex-1", className)}
       />
       <div className="flex">
         <PopOver

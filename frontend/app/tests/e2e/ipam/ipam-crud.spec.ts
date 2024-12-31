@@ -130,10 +130,7 @@ test.describe("/ipam - Ipam home page", () => {
         await page.getByText("Summary").click();
         await page.getByRole("link", { name: "All Prefixes" }).click();
         // Set pagination limit to 50 to display the prefix to delete
-        await page
-          .getByTestId("ipam-main-content")
-          .getByTestId("select-open-option-button")
-          .click();
+        await page.getByTestId("ipam-main-content").getByTestId("pagination-size-select").click();
         await page.getByText("50").click();
         await page
           .getByRole("row", { name: "11.0.0.0/8" })

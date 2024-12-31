@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Optional, Union
 from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.manager import NodeManager
-from infrahub.core.models import SchemaBranchDiff, SchemaUpdateValidationResult
+from infrahub.core.models import SchemaUpdateValidationResult
 from infrahub.core.protocols import CoreRepository
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
@@ -49,8 +49,6 @@ class BranchMerger:
         self._source_schema: Optional[SchemaBranch] = None
         self._destination_schema: Optional[SchemaBranch] = None
         self._initial_source_schema: Optional[SchemaBranch] = None
-
-        self.schema_diff: Optional[SchemaBranchDiff] = None
 
         self._service = service
 
@@ -113,6 +111,10 @@ class BranchMerger:
         - update the schema in the registry
         - Identify if we need to execute some migrations
         """
+
+        # NOTE we need to revisit how to calculate an accurate diff to pull only what needs to be updated from the schema
+        # for now the best solution is to pull everything to ensure the integrity of the schema
+
         if not await self.has_schema_changes():
             return False
 
@@ -215,7 +217,8 @@ class BranchMerger:
                     repository_name=repo.name.value,
                     internal_status=repo.internal_status.value,
                     source_branch=self.source_branch.name,
-                    destination_branch=registry.default_branch,
+                    destination_branch=self.destination_branch.name,
+                    destination_branch_id=str(self.destination_branch.get_uuid()),
                     default_branch=repo.default_branch.value,
                 )
                 await self.service.workflow.submit_workflow(

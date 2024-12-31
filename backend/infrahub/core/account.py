@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from typing_extensions import Self
 
 from infrahub.core.constants import InfrahubKind, PermissionDecision
-from infrahub.core.query import Query
+from infrahub.core.query import Query, QueryType
 from infrahub.core.registry import registry
 
 if TYPE_CHECKING:
@@ -62,6 +62,7 @@ class ObjectPermission:
 
 class AccountGlobalPermissionQuery(Query):
     name: str = "account_global_permissions"
+    type: QueryType = QueryType.READ
 
     def __init__(self, account_id: str, **kwargs: Any):
         self.account_id = account_id
@@ -71,7 +72,7 @@ class AccountGlobalPermissionQuery(Query):
         self.params["account_id"] = self.account_id
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic, is_isolated=False
         )
         self.params.update(branch_params)
 
@@ -176,6 +177,7 @@ class AccountGlobalPermissionQuery(Query):
 
 class AccountObjectPermissionQuery(Query):
     name: str = "account_object_permissions"
+    type: QueryType = QueryType.READ
 
     def __init__(self, account_id: str, **kwargs: Any):
         self.account_id = account_id
@@ -185,7 +187,7 @@ class AccountObjectPermissionQuery(Query):
         self.params["account_id"] = self.account_id
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic, is_isolated=False
         )
         self.params.update(branch_params)
 
@@ -327,6 +329,7 @@ async def fetch_permissions(account_id: str, db: InfrahubDatabase, branch: Branc
 
 class AccountRoleGlobalPermissionQuery(Query):
     name: str = "account_role_global_permissions"
+    type: QueryType = QueryType.READ
 
     def __init__(self, role_id: str, **kwargs: Any):
         self.role_id = role_id
@@ -336,7 +339,7 @@ class AccountRoleGlobalPermissionQuery(Query):
         self.params["role_id"] = self.role_id
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic, is_isolated=False
         )
         self.params.update(branch_params)
 
@@ -416,6 +419,7 @@ class AccountRoleGlobalPermissionQuery(Query):
 
 class AccountRoleObjectPermissionQuery(Query):
     name: str = "account_role_object_permissions"
+    type: QueryType = QueryType.READ
 
     def __init__(self, role_id: str, **kwargs: Any):
         self.role_id = role_id
@@ -425,7 +429,7 @@ class AccountRoleObjectPermissionQuery(Query):
         self.params["role_id"] = self.role_id
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic, is_isolated=False
         )
         self.params.update(branch_params)
 
@@ -542,6 +546,7 @@ async def fetch_role_permissions(role_id: str, db: InfrahubDatabase, branch: Bra
 
 class AccountTokenValidateQuery(Query):
     name: str = "account_token_validate"
+    type: QueryType = QueryType.READ
 
     def __init__(self, token: str, **kwargs: Any):
         self.token = token

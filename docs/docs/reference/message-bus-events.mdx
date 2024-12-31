@@ -77,6 +77,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **query** | The name of the query to use when collecting data | string | None |
 | **variables** | Input variables when running the generator | object | None |
 | **validator_id** | The ID of the validator | string | None |
+| **proposed_change** | The unique ID of the Proposed Change | N/A | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -351,48 +352,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 
 
 <!-- vale off -->
-### Schema Migration
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event schema.migration.path
-<!-- vale on -->
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The name of the branch to target | N/A | None |
-| **migration_name** | The name of the migration to run | string | None |
-| **new_node_schema** | new Schema of Node or Generic to process | N/A | None |
-| **previous_node_schema** | Previous Schema of Node or Generic to process | N/A | None |
-| **schema_path** | SchemaPath to the element of the schema to migrate | N/A | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Schema Validator
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event schema.validator.path
-<!-- vale on -->
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The name of the branch to target | N/A | None |
-| **constraint_name** | The name of the constraint to validate | string | None |
-| **node_schema** | Schema of Node or Generic to validate | N/A | None |
-| **schema_path** | SchemaPath to the element of the schema to validate | N/A | None |
-<!-- vale on -->
-
-
-<!-- vale off -->
 ### Refresh Git
 <!-- vale on -->
 
@@ -413,6 +372,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **repository_kind** | The type of repository | string | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+| **infrahub_branch_id** | Id of the Infrahub branch on which to sync the remote repository | string | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -571,7 +531,8 @@ For more detailed explanations on how to use these events within Infrahub, see t
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
 | **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository** | The unique ID of the Repository | string | None |
+| **repository_id** | The unique ID of the Repository | string | None |
+| **repository_name** | The name of the Repository | string | None |
 | **source_branch** | The source branch | string | None |
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **target_branch** | The target branch | string | None |
@@ -668,6 +629,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **query** | The name of the query to use when collecting data | string | None |
 | **variables** | Input variables when running the generator | object | None |
 | **validator_id** | The ID of the validator | string | None |
+| **proposed_change** | The unique ID of the Proposed Change | N/A | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -955,50 +917,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 
 
 <!-- vale off -->
-### Schema Migration
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event schema.migration.path
-<!-- vale on -->
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The name of the branch to target | N/A | None |
-| **migration_name** | The name of the migration to run | string | None |
-| **new_node_schema** | new Schema of Node or Generic to process | N/A | None |
-| **previous_node_schema** | Previous Schema of Node or Generic to process | N/A | None |
-| **schema_path** | SchemaPath to the element of the schema to migrate | N/A | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Schema Validator
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event schema.validator.path
-<!-- vale on -->
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The name of the branch to target | N/A | None |
-| **constraint_name** | The name of the constraint to validate | string | None |
-| **node_schema** | Schema of Node or Generic to validate | N/A | None |
-| **schema_path** | SchemaPath to the element of the schema to validate | N/A | None |
-<!-- vale on -->
-
-
-<!-- vale off -->
 ### Refresh Git
 <!-- vale on -->
 
@@ -1020,6 +938,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **repository_name** | The name of the repository | string | None |
 | **repository_kind** | The type of repository | string | None |
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
+| **infrahub_branch_id** | Id of the Infrahub branch on which to sync the remote repository | string | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -1186,7 +1105,8 @@ For more detailed explanations on how to use these events within Infrahub, see t
 |-----|-------------|------|---------------|
 | **meta** | Meta properties for the message | N/A | None |
 | **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository** | The unique ID of the Repository | string | None |
+| **repository_id** | The unique ID of the Repository | string | None |
+| **repository_name** | The name of the Repository | string | None |
 | **source_branch** | The source branch | string | None |
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **target_branch** | The target branch | string | None |

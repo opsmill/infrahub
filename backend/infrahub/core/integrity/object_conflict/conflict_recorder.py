@@ -1,7 +1,6 @@
 from typing import Sequence, cast
 
-import infrahub.core.constants.infrahubkind as InfrahubKind
-from infrahub.core.constants import ValidatorConclusion, ValidatorState
+from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.diff.model.diff import ObjectConflict
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node

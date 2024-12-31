@@ -8,5 +8,4 @@ services:
   task-worker:
     volumes:
       - ../:/source
-      - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"

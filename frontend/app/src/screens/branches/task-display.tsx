@@ -109,13 +109,13 @@ export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps)
 
 function Log({ message, severity, timestamp }: tLog) {
   return (
-    <div className="flex flex-col bg-white rounded-md p-4 gap-2">
+    <div className="flex flex-col bg-white rounded-md p-2 gap-2">
       <div className="flex items-center justify-between">
         {getSeverityBadge[severity]}
         <DateDisplay date={timestamp} />
       </div>
 
-      <pre className="text-xs">{message}</pre>
+      <pre className="text-xs whitespace-pre-wrap">{message}</pre>
     </div>
   );
 }

@@ -15,10 +15,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { QSP } from "@/config/qsp";
 import { CREATE_PROPOSED_CHANGE } from "@/graphql/mutations/proposed-changes/createProposedChange";
-import { GET_ALL_ACCOUNTS } from "@/graphql/queries/accounts/getAllAccounts";
 import { useAuth } from "@/hooks/useAuth";
-import useQuery, { useMutation } from "@/hooks/useQuery";
+import { useMutation } from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { branchesState } from "@/state/atoms/branches.atom";
 import { branchesToSelectOptions } from "@/utils/branches";
@@ -28,16 +28,17 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { StringParam, useQueryParam } from "use-query-params";
 
 export const ProposedChangeCreateForm = () => {
   const { user } = useAuth();
+  const [sourceBranch] = useQueryParam(QSP.SOURCE_BRANCH, StringParam);
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.find((branch) => branch.is_default);
   const sourceBranches = branches.filter((branch) => !branch.is_default);
   const navigate = useNavigate();
 
   const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGES_OBJECT);
-  const { data: getAllAccountsData } = useQuery(GET_ALL_ACCOUNTS);
 
   const [createProposedChange, { error }] = useMutation(CREATE_PROPOSED_CHANGE);
 
@@ -71,7 +72,7 @@ export const ProposedChangeCreateForm = () => {
       <Card className="flex flex-wrap md:flex-nowrap items-start gap-4 justify-center w-full shadow-sm border-gray-300">
         <FormField
           name="source_branch"
-          defaultValue=""
+          defaultValue={sourceBranch}
           rules={{
             required: "Required",
             validate: {
@@ -157,8 +158,9 @@ export const ProposedChangeCreateForm = () => {
             <FormInput>
               <RelationshipManyInput
                 {...field}
-                relationship={
-                  proposedChangeSchema.relationships?.find((rel) => rel.name === "reviewers")!
+                peer={
+                  proposedChangeSchema.relationships?.find((rel) => rel.name === "reviewers")
+                    ?.peer ?? ""
                 }
               />
             </FormInput>

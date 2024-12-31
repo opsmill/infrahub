@@ -9,12 +9,15 @@ import JsonField from "@/components/form/fields/json.field";
 import ListField from "@/components/form/fields/list.field";
 import NumberField from "@/components/form/fields/number.field";
 import PasswordInputField from "@/components/form/fields/password-input.field";
+import RelationshipHierarchicalField from "@/components/form/fields/relationship-hierarchical.field";
 import RelationshipManyField from "@/components/form/fields/relationship-many.field";
 import RelationshipField from "@/components/form/fields/relationship.field";
 import TextareaField from "@/components/form/fields/textarea.field";
 import { DynamicFieldProps, FormFieldValue } from "@/components/form/type";
 import { Form, FormProps, FormRef, FormSubmit } from "@/components/ui/form";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { getSchema } from "@/screens/schema/get-schema";
+import { isHierarchicalSchema } from "@/screens/schema/utils";
 import { warnUnexpectedType } from "@/utils/common";
 import { forwardRef } from "react";
 
@@ -110,6 +113,11 @@ export const DynamicInput = (props: DynamicFieldProps) => {
       return <EnumField {...otherProps} />;
     }
     case "relationship": {
+      const { schema: peerSchema } = getSchema(props.relationship.peer);
+      if (peerSchema && isHierarchicalSchema(peerSchema)) {
+        return <RelationshipHierarchicalField {...props} />;
+      }
+
       if (props.relationship.cardinality === "many") {
         const { type, ...otherProps } = props;
         return <RelationshipManyField {...otherProps} />;

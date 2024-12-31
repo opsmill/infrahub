@@ -1,8 +1,10 @@
+from pathlib import Path
+
 from invoke import Context, task
 
 from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
-MAIN_DIRECTORY = "tasks"
+MAIN_DIRECTORY = Path("tasks")
 NAMESPACE = "MAIN"
 
 
@@ -15,8 +17,8 @@ def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with ruff")
-    exec_cmd = f"ruff format {MAIN_DIRECTORY} models utilities --config {REPO_BASE}/pyproject.toml && "
-    exec_cmd += f"ruff check --fix {MAIN_DIRECTORY} models utilities --config {REPO_BASE}/pyproject.toml"
+    exec_cmd = f"ruff format {MAIN_DIRECTORY} models utilities --config {REPO_BASE / 'pyproject.toml'} && "
+    exec_cmd += f"ruff check --fix {MAIN_DIRECTORY} models utilities --config {REPO_BASE / 'pyproject.toml'}"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 

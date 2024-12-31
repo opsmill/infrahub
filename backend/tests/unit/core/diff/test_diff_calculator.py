@@ -730,7 +730,7 @@ async def test_relationship_one_property_branch_update(
     single_relationship = single_relationships_by_peer_id[person_john_main.id]
     assert single_relationship.peer_id == person_john_main.id
     assert single_relationship.action is DiffAction.REMOVED
-    assert len(single_relationship.properties) == 2
+    assert len(single_relationship.properties) == 3
     assert before_main_change < single_relationship.changed_at < after_main_change
     property_diff_by_type = {p.property_type: p for p in single_relationship.properties}
     property_diff = property_diff_by_type[DatabaseEdgeType.IS_RELATED]
@@ -742,6 +742,12 @@ async def test_relationship_one_property_branch_update(
     property_diff = property_diff_by_type[DatabaseEdgeType.IS_VISIBLE]
     assert property_diff.property_type == DatabaseEdgeType.IS_VISIBLE
     assert property_diff.previous_value is True
+    assert property_diff.new_value is None
+    assert property_diff.action is DiffAction.REMOVED
+    assert before_main_change < property_diff.changed_at < after_main_change
+    property_diff = property_diff_by_type[DatabaseEdgeType.IS_PROTECTED]
+    assert property_diff.property_type == DatabaseEdgeType.IS_PROTECTED
+    assert property_diff.previous_value is False
     assert property_diff.new_value is None
     assert property_diff.action is DiffAction.REMOVED
     assert before_main_change < property_diff.changed_at < after_main_change
@@ -2874,4 +2880,5 @@ async def test_diff_relationship_property_update_on_main(
     assert len(node_diff.relationships) == 1
     diff_rel = node_diff.relationships.pop()
     assert diff_rel.name == "owner"
-    assert diff_rel.action is DiffAction.ADDED
+    assert diff_rel.action is DiffAction.UPDATED
+    assert {elem.action for elem in diff_rel.relationships} == {DiffAction.ADDED, DiffAction.REMOVED}

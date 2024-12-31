@@ -26,6 +26,7 @@ from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import DatabaseError
+from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
 from infrahub.menu.menu import default_menu
 from infrahub.menu.utils import create_menu_children
@@ -175,6 +176,16 @@ async def initialization(db: InfrahubDatabase) -> None:
                     branch=branch.name,
                 )
                 await branch.save(db=db)
+
+    default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+    gqlm.get_graphql_schema(
+        include_query=True,
+        include_mutation=True,
+        include_subscription=True,
+        include_types=True,
+    )
 
     # ---------------------------------------------------
     # Load Default Namespace

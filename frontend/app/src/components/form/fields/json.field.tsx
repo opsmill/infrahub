@@ -45,7 +45,8 @@ const JsonField = ({
                     // Store the value as JSON
                     const newValue = JSON.parse(value);
                     field.onChange(updateFormFieldValue(newValue, defaultValue));
-                  } catch (e) {
+                  } catch (error) {
+                    console.error(error);
                     field.onChange(updateFormFieldValue(value, defaultValue));
                   }
                 }}

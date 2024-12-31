@@ -10,6 +10,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
 from infrahub.core.node.standard import StandardNode
+from infrahub.core.query import QueryType
 from infrahub.core.query.branch import (
     DeleteBranchRelationshipsQuery,
     GetAllBranchInternalRelationshipQuery,
@@ -139,7 +140,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
 
         params = {"name": name}
 
-        results = await db.execute_query(query=query, params=params, name="branch_get_by_name")
+        results = await db.execute_query(query=query, params=params, name="branch_get_by_name", type=QueryType.READ)
 
         if len(results) == 0:
             raise BranchNotFoundError(identifier=name)

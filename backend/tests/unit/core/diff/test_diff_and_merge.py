@@ -14,12 +14,14 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from tests.unit.core.test_utils import verify_all_linked_edges_deleted
 
 
 class TestDiffAndMerge:
@@ -643,3 +645,94 @@ class TestDiffAndMerge:
         # validate that car remains deleted after rollback
         rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
         assert rolled_back_car is None
+
+    async def test_delete_with_many_relationship_added(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
+    ):
+        # remove TestCar relationship to TestPerson
+        car_schema = car_person_schema_unregistered.get(name="TestCar")
+        car_schema.relationships = []
+        registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+        # initial data
+        person_1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+        await person_1.new(db=db, name="Alice", height=160)
+        await person_1.save(db=db)
+        person_2 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+        await person_2.new(db=db, name="Bob", height=161)
+        await person_2.save(db=db)
+        car_1 = await Node.init(db=db, schema="TestCar", branch=default_branch)
+        await car_1.new(db=db, name="smart", nbr_seats=2, is_electric=True)
+        await car_1.save(db=db)
+        car_2 = await Node.init(db=db, schema="TestCar", branch=default_branch)
+        await car_2.new(db=db, name="big", nbr_seats=12, is_electric=False)
+        await car_2.save(db=db)
+        # make the branch
+        branch2 = await create_branch(db=db, branch_name="branch2")
+
+        # add relationship on main
+        person_1_main = await NodeManager.get_one(db=db, id=person_1.id)
+        await person_1_main.cars.update(db=db, data=[car_1, car_2])
+        await person_1_main.save(db=db)
+        # delete node on branch
+        person_1_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_1.id)
+        await person_1_branch.delete(db=db)
+
+        # check that there are no conflicts
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        conflicts_map = enriched_diff.get_all_conflicts()
+        assert len(conflicts_map) == 0
+
+        # merge the branch
+        at = Timestamp()
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=at)
+
+        # validate that person_1 is deleted
+        deleted_person = await NodeManager.get_one(db=db, id=person_1.id)
+        assert deleted_person is None
+        # validate that all attributes and relationships connected to person_1,
+        # including the relationship connecting car_1 and person_1 is deleted,
+        # requires a special query b/c TestCar has no relationship to TestPerson in the schema
+        await verify_all_linked_edges_deleted(db=db, node_uuid=person_1.id, branch_name=default_branch.name)
+
+    @pytest.mark.parametrize("selection", [ConflictSelection.BASE_BRANCH, ConflictSelection.DIFF_BRANCH])
+    async def test_attribute_update_with_conflict(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        person_john_main: Node,
+        selection: ConflictSelection,
+    ):
+        main_value = 200
+        branch_value = 150
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        person_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_john_main.id)
+        person_main.height.value = main_value
+        await person_main.save(db=db)
+        person_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_john_main.id)
+        person_branch.height.value = branch_value
+        await person_branch.save(db=db)
+
+        # set the conflict resolution
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        conflicts_map = enriched_diff.get_all_conflicts()
+        assert len(conflicts_map) == 1
+        expected_path = f"data/{person_john_main.id}/height/value"
+        assert expected_path in conflicts_map
+        conflict = conflicts_map[expected_path]
+        await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=selection)
+
+        # merge the branch
+        at = Timestamp()
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=at)
+
+        # validate that person has correct age
+        updated_person = await NodeManager.get_one(db=db, branch=default_branch, id=person_john_main.id)
+        if selection is ConflictSelection.DIFF_BRANCH:
+            assert updated_person.height.value == branch_value
+        else:
+            assert updated_person.height.value == main_value

@@ -64,12 +64,8 @@ test.describe("Object filters", () => {
     await expect(page.getByRole("link", { name: "Connected to jfk1-edge2" })).toBeVisible();
 
     await page.getByTestId("apply-filters").click();
-    await page
-      .getByTestId("side-panel-container")
-      .getByText("Device")
-      .locator("../..")
-      .getByTestId("select-open-option-button")
-      .click();
+
+    await page.getByLabel("Device").click();
     await page.getByRole("option", { name: "atl1-core1" }).click();
     await page.getByRole("button", { name: "Apply filters" }).click();
 
@@ -87,7 +83,9 @@ test.describe("Object filters", () => {
     await expect(page.getByTestId("side-panel-container").getByText("Object")).toBeVisible();
 
     await page.getByLabel("kind").click();
-    await expect(page.getByRole("option", { name: "Tag Builtin", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("option", { name: "BGP Session Infra", exact: true })
+    ).toBeVisible();
   });
 
   test("should correctly filter from a kind", async ({ page }) => {

@@ -135,10 +135,9 @@ def s3_storage_bucket() -> str:
 
 @pytest.fixture
 def file1_in_storage(local_storage_dir: Path, helper) -> str:
-    fixture_dir = helper.get_fixtures_dir()
     file1_identifier = str(UUIDT())
 
-    files_dir = fixture_dir / "schemas"
+    files_dir = helper.get_fixtures_dir() / "schemas"
 
     filenames = [item.name for item in files_dir.iterdir() if item.is_file()]
     shutil.copyfile(files_dir / filenames[0], local_storage_dir / file1_identifier)
@@ -2120,14 +2119,14 @@ async def hierarchical_location_schema(
 @pytest.fixture
 async def hierarchical_location_data_simple(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple
-) -> Dict[str, Node]:
+) -> dict[str, Node]:
     return await _build_hierarchical_location_data(db=db)
 
 
 @pytest.fixture
 async def hierarchical_location_data(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
-) -> Dict[str, Node]:
+) -> dict[str, Node]:
     return await _build_hierarchical_location_data(db=db)
 
 
@@ -2414,7 +2413,7 @@ async def builtin_schema() -> SchemaRoot:
     return SchemaRoot(**SCHEMA)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 async def ipam_schema() -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "nodes": [

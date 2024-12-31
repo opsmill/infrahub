@@ -21,7 +21,7 @@ export const Id = (props: tId) => {
     ${queryString}
   `;
 
-  const { loading, error, data } = useQuery(query, { variable: { ids: [id] } });
+  const { loading, error, data } = useQuery(query, { variables: { ids: [id] } });
 
   const object = data?.[kind]?.edges?.[0]?.node ?? {};
 

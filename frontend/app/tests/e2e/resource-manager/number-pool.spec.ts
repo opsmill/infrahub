@@ -18,7 +18,7 @@ test.describe("/resource-manager - Resource Manager", () => {
     await page.getByRole("option", { name: "Speed" }).click();
     await page.getByLabel("Start range *").fill("1");
     await page.getByLabel("End range *").fill("10");
-    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Number pool created")).toBeVisible();
   });
 

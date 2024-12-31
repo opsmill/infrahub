@@ -1,0 +1,35 @@
+[project]
+name = "infrahub-testing"
+version = "1.1.0b2"
+requires-python = ">=3.9"
+
+[tool.poetry]
+name = "infrahub-testcontainers"
+version = "1.1.0b2"
+description = "Testcontainers instance for Infrahub to easily build integration tests"
+authors = ["OpsMill <info@opsmill.com>"]
+readme = "README.md"
+license = "Apache-2.0"
+homepage = "https://opsmill.com"
+repository = "https://github.com/opsmill/infrahub"
+packages = [{ include = "infrahub_testcontainers" }]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+include = [
+    "infrahub_testcontainers/docker-compose.test.yml"
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+testcontainers = "~4.8"
+pytest = "*"
+
+

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 from pydantic import TypeAdapter
+from structlog.dev import plain_traceback
 
 if TYPE_CHECKING:
     from structlog.types import Processor
@@ -21,6 +22,10 @@ def get_logger(name: str = "infrahub") -> structlog.stdlib.BoundLogger:
     return structlog.stdlib.get_logger(name)
 
 
+def get_run_logger(name: str = "infrahub.tasks") -> logging.Logger:
+    return logging.getLogger(name)
+
+
 def get_log_data() -> dict[str, Any]:
     return structlog.contextvars.get_contextvars()
 
@@ -29,7 +34,7 @@ def set_log_data(key: str, value: Any) -> None:
     structlog.contextvars.bind_contextvars(**{key: value})
 
 
-def configure_logging(production: bool = True, log_level: str = "INFO") -> None:
+def configure_logging(production: bool, log_level: str) -> None:
     # Importing prefect.main here triggers prefect.logging.configuration.setup_logging()
     # to be executed, this function wipes out the previous logging configuration and
     # starts from a clean slate. After this has been imported once we can reinject
@@ -57,7 +62,7 @@ def configure_logging(production: bool = True, log_level: str = "INFO") -> None:
     if production:
         log_renderer = structlog.processors.JSONRenderer()
     else:
-        log_renderer = structlog.dev.ConsoleRenderer()
+        log_renderer = structlog.dev.ConsoleRenderer(exception_formatter=plain_traceback)
 
     formatter = structlog.stdlib.ProcessorFormatter(
         foreign_pre_chain=shared_processors,

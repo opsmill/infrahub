@@ -24,7 +24,7 @@ const ObjectHeader = ({ schema, objectId }: ObjectHeaderProps) => {
 const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
   const [filters] = useFilters();
   const { data, loading, error } = useObjectItems(schema, filters);
-  const kindFilter = filters?.find((filter) => filter.name == "kind__value");
+  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
 
   const schemaKind = kindFilter?.value || (schema.kind as string);
   const { count, permissions } = data?.[schemaKind] ?? { count: undefined, permissions: undefined };
