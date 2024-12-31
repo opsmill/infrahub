@@ -2,8 +2,8 @@ import { PROFILE_KIND, TASK_OBJECT } from "@/config/constants";
 import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import { getPermission } from "@/screens/permission/utils";
+import { isGenericSchema } from "@/screens/schema/utils";
 import { IModelSchema, genericsState } from "@/state/atoms/schema.atom";
-import { isGeneric } from "@/utils/common";
 import { getSchemaObjectColumns, getTabs } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
@@ -28,7 +28,7 @@ export const useObjectDetails = (schema: IModelSchema, objectId: string) => {
           queryProfiles:
             !profileGenericSchema?.used_by?.includes(schema?.kind!) &&
             schema?.kind !== PROFILE_KIND &&
-            !isGeneric(schema) &&
+            !isGenericSchema(schema) &&
             schema?.generate_profile,
           hasPermissions: !isProfileSchema,
         })

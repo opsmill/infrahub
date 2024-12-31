@@ -14,7 +14,7 @@ from infrahub.worker import WORKER_IDENTITY
 log = get_logger()
 
 
-@flow(name="git-repository-check-connectivity")
+@flow(name="git-repository-check-connectivity", flow_run_name="Check connectivity for {message.repository_name}")
 async def connectivity(message: messages.GitRepositoryConnectivity, service: InfrahubServices) -> None:
     response_data = GitRepositoryConnectivityResponseData(message="Successfully accessed repository", success=True)
 
@@ -54,4 +54,9 @@ async def fetch(message: messages.RefreshGitFetch, service: InfrahubServices) ->
         )
 
     await repo.fetch()
-    await repo.pull(branch_name=message.infrahub_branch_name)
+    await repo.pull(
+        branch_name=message.infrahub_branch_name,
+        branch_id=message.infrahub_branch_id,
+        create_if_missing=True,
+        update_commit_value=False,
+    )

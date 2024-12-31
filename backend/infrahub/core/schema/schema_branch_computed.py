@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -71,9 +72,19 @@ class RegisteredNodeComputedAttribute(BaseModel):
 
 
 class ComputedAttributes:
-    def __init__(self) -> None:
-        self._computed_python_transform_attribute_map: dict[str, list[AttributeSchema]] = {}
-        self._computed_jinja2_attribute_map: dict[str, RegisteredNodeComputedAttribute] = {}
+    def __init__(
+        self,
+        transform_attribute_map: dict[str, list[AttributeSchema]] | None = None,
+        jinja2_attribute_map: dict[str, RegisteredNodeComputedAttribute] | None = None,
+    ) -> None:
+        self._computed_python_transform_attribute_map: dict[str, list[AttributeSchema]] = transform_attribute_map or {}
+        self._computed_jinja2_attribute_map: dict[str, RegisteredNodeComputedAttribute] = jinja2_attribute_map or {}
+
+    def duplicate(self) -> ComputedAttributes:
+        return self.__class__(
+            transform_attribute_map=deepcopy(self._computed_python_transform_attribute_map),
+            jinja2_attribute_map=deepcopy(self._computed_jinja2_attribute_map),
+        )
 
     def add_python_attribute(self, node: NodeSchema, attribute: AttributeSchema) -> None:
         if node.kind not in self._computed_python_transform_attribute_map:

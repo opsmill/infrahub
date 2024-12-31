@@ -767,6 +767,12 @@ class RelationshipManager:
 
         return iter(self._relationships)
 
+    def get_one(self) -> Relationship | None:
+        if not self.has_fetched_relationships:
+            raise LookupError("you can't get a relationship before the cache has been populated.")
+
+        return self._relationships[0] if self._relationships else None
+
     def __len__(self) -> int:
         if not self.has_fetched_relationships:
             raise LookupError("you can't count relationships before the cache has been populated.")
@@ -949,11 +955,13 @@ class RelationshipManager:
         for peer_id in details.peer_ids_present_local_only:
             await self.remove(peer_id=peer_id, db=db)
 
-    async def get(self, db: InfrahubDatabase) -> Union[Relationship, list[Relationship]]:
+    async def get(self, db: InfrahubDatabase) -> Relationship | list[Relationship] | None:
         rels = await self.get_relationships(db=db)
 
-        if self.schema.cardinality == "one":
+        if self.schema.cardinality == "one" and rels:
             return rels[0]
+        if self.schema.cardinality == "one" and not rels:
+            return None
 
         return rels
 

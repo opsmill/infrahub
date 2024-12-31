@@ -94,7 +94,7 @@ class TestBranchMutations(TestInfrahubApp):
         from infrahub.core import registry
 
         branch = await client.branch.create(branch_name="branch_to_delete")
-        branch_server_id = registry.branch[branch.name].id
+        branch_server_id = registry.branch[branch.name].uuid
 
         query = Mutation(
             mutation="BranchDelete",
@@ -113,7 +113,7 @@ class TestBranchMutations(TestInfrahubApp):
 
     async def test_branch_delete(self, initial_dataset: str, client: InfrahubClient) -> None:
         branch = await client.branch.create(branch_name="branch_to_delete_sync")
-        branch_server_id = registry.branch[branch.name].id
+        branch_server_id = registry.branch[branch.name].uuid
         query = Mutation(
             mutation="BranchDelete",
             input_data={"data": {"name": branch.name}},

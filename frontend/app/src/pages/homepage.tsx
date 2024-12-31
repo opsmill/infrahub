@@ -32,10 +32,10 @@ const Homepage = () => {
       <div className="py-4 flex flex-wrap gap-4">
         <HelperCard
           icon="mdi:learn-outline"
-          title="Getting Started with Infrahub"
-          description="Discover the main components and concepts behind Infrahub."
-          docLabel="Get started"
-          docTo="https://docs.infrahub.app/tutorials/getting-started/"
+          title="Infrahub Labs"
+          description="Explore our hands-on labs for a deep dive into Infrahub's usage and features."
+          docLabel="Labs"
+          docTo="https://opsmill.instruqt.com/pages/labs"
         />
 
         <HelperCard
@@ -46,6 +46,14 @@ const Homepage = () => {
           docTo="https://docs.infrahub.app/topics/schema/"
           gotoLabel="Explore Schema"
           goto="/schema"
+        />
+
+        <HelperCard
+          icon="mdi:bookshelf"
+          title="Schema Library"
+          description="Offers a collection of schemas designed to streamline and standardize infrastructure-related data structures."
+          docLabel="Schema Library"
+          docTo="https://github.com/opsmill/schema-library/"
         />
 
         <HelperCard

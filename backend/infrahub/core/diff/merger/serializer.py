@@ -161,6 +161,16 @@ class DiffMergeSerializer:
             if node.conflict and node.conflict.selected_branch is ConflictSelection.BASE_BRANCH:
                 continue
             node_action = self._get_action(action=node.action, conflict=node.conflict)
+            if node_action is DiffAction.REMOVED:
+                serialized_node_diffs.append(
+                    NodeMergeDict(
+                        uuid=node.uuid,
+                        action=self._to_action_str(action=node_action),
+                        attributes=[],
+                        relationships=[],
+                    )
+                )
+                continue
             serial_attr_diffs = []
             for attr_diff in node.attributes:
                 serial_attr_diff, attribute_property_diff = self._serialize_attribute(
@@ -169,7 +179,7 @@ class DiffMergeSerializer:
                 if serial_attr_diff:
                     serial_attr_diffs.append(serial_attr_diff)
                 serialized_property_diffs.append(attribute_property_diff)
-            relationship_diffs = []
+            relationship_diffs: list[RelationshipMergeDict] = []
             for rel_diff in node.relationships:
                 relationship_identifier = self._get_relationship_identifier(
                     schema_kind=node.kind, relationship_name=rel_diff.name

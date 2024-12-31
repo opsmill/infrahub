@@ -11,7 +11,8 @@ from infrahub.core.constants import AttributeDBNodeType, RelationshipDirection, 
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.query.utils import find_node_schema
-from infrahub.core.utils import extract_field_filters
+from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
     from infrahub.core.schema import GenericSchema, NodeSchema
-    from infrahub.core.schema.attribute_schema import AttributeSchema
     from infrahub.core.schema.profile_schema import ProfileSchema
     from infrahub.core.schema.relationship_schema import RelationshipSchema
     from infrahub.database import InfrahubDatabase
@@ -117,8 +117,7 @@ class NodeQuery(Query):
 
 class NodeCreateAllQuery(NodeQuery):
     name = "node_create_all"
-
-    type: QueryType = QueryType.WRITE
+    type = QueryType.WRITE
 
     raise_error_if_empty: bool = True
 
@@ -397,7 +396,8 @@ class NodeCheckIDQuery(Query):
 
 
 class NodeListGetAttributeQuery(Query):
-    name: str = "node_list_get_attribute"
+    name = "node_list_get_attribute"
+    type = QueryType.READ
 
     property_type_mapping = {
         "HAS_VALUE": ("r2", "av"),
@@ -555,48 +555,95 @@ class NodeListGetAttributeQuery(Query):
         return data
 
 
+class GroupedPeerNodes:
+    def __init__(self):
+        # {node_id: [rel_name, ...]}
+        self._rel_names_by_node_id: dict[str, set[str]] = defaultdict(set)
+        # {(node_id, rel_name): {RelationshipDirection: {peer_id, ...}}}
+        self._rel_directions_map: dict[tuple[str, str], dict[RelationshipDirection, set[str]]] = defaultdict(dict)
+
+    def add_peer(self, node_id: str, rel_name: str, peer_id: str, direction: RelationshipDirection) -> None:
+        self._rel_names_by_node_id[node_id].add(rel_name)
+        if direction not in self._rel_directions_map[node_id, rel_name]:
+            self._rel_directions_map[node_id, rel_name][direction] = set()
+        self._rel_directions_map[node_id, rel_name][direction].add(peer_id)
+
+    def get_peer_ids(self, node_id: str, rel_name: str, direction: RelationshipDirection) -> set[str]:
+        if (node_id, rel_name) not in self._rel_directions_map:
+            return set()
+        return self._rel_directions_map[node_id, rel_name].get(direction, set())
+
+    def get_all_peers(self) -> set[str]:
+        all_peers_set = set()
+        for peer_direction_map in self._rel_directions_map.values():
+            for peer_ids in peer_direction_map.values():
+                all_peers_set.update(peer_ids)
+        return all_peers_set
+
+    def has_node(self, node_id: str) -> bool:
+        return node_id in self._rel_names_by_node_id
+
+
 class NodeListGetRelationshipsQuery(Query):
     name: str = "node_list_get_relationship"
+    type: QueryType = QueryType.READ
+    insert_return: bool = False
 
-    def __init__(self, ids: list[str], **kwargs):
+    def __init__(self, ids: list[str], relationship_identifiers: list[str] | None = None, **kwargs):
         self.ids = ids
-
+        self.relationship_identifiers = relationship_identifiers
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         self.params["ids"] = self.ids
+        self.params["relationship_identifiers"] = self.relationship_identifiers
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at, branch_agnostic=self.branch_agnostic)
         self.params.update(rels_params)
 
-        query = (
-            """
-        MATCH (n) WHERE n.uuid IN $ids
-        MATCH p = ((n)-[r1:IS_RELATED]-(rel:Relationship)-[r2:IS_RELATED]-(peer))
-        WHERE all(r IN relationships(p) WHERE (%s))
-        """
-            % rels_filter
-        )
+        query = """
+        MATCH (n:Node) WHERE n.uuid IN $ids
+        MATCH paths_in = ((n)<-[r1:IS_RELATED]-(rel:Relationship)<-[r2:IS_RELATED]-(peer))
+        WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
+        AND all(r IN relationships(paths_in) WHERE (%(filters)s))
+        RETURN n, rel, peer, r1, r2, "inbound" as direction
+        UNION
+        MATCH (n:Node) WHERE n.uuid IN $ids
+        MATCH paths_out = ((n)-[r1:IS_RELATED]->(rel:Relationship)-[r2:IS_RELATED]->(peer))
+        WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
+        AND all(r IN relationships(paths_out) WHERE (%(filters)s))
+        RETURN n, rel, peer, r1, r2, "outbound" as direction
+        UNION
+        MATCH (n:Node) WHERE n.uuid IN $ids
+        MATCH paths_bidir = ((n)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(peer))
+        WHERE ($relationship_identifiers IS NULL OR rel.name in $relationship_identifiers)
+        AND all(r IN relationships(paths_bidir) WHERE (%(filters)s))
+        RETURN n, rel, peer, r1, r2, "bidirectional" as direction
+        """ % {"filters": rels_filter}
 
         self.add_to_query(query)
 
-        self.return_labels = ["n", "rel", "peer", "r1", "r2"]
+        self.return_labels = ["n", "rel", "peer", "r1", "r2", "direction"]
 
-    def get_peers_group_by_node(self) -> dict[str, dict[str, list[str]]]:
-        peers_by_node = defaultdict(lambda: defaultdict(list))
-
+    def get_peers_group_by_node(self) -> GroupedPeerNodes:
+        gpn = GroupedPeerNodes()
         for result in self.get_results_group_by(("n", "uuid"), ("rel", "name"), ("peer", "uuid")):
             node_id = result.get("n").get("uuid")
             rel_name = result.get("rel").get("name")
             peer_id = result.get("peer").get("uuid")
+            direction = str(result.get("direction"))
+            direction_enum = {
+                "inbound": RelationshipDirection.INBOUND,
+                "outbound": RelationshipDirection.OUTBOUND,
+                "bidirectional": RelationshipDirection.BIDIR,
+            }.get(direction)
+            gpn.add_peer(node_id=node_id, rel_name=rel_name, peer_id=peer_id, direction=direction_enum)
 
-            peers_by_node[node_id][rel_name].append(peer_id)
-
-        return peers_by_node
+        return gpn
 
 
 class NodeGetKindQuery(Query):
-    name: str = "node_get_kind_query"
+    name = "node_get_kind_query"
     type = QueryType.READ
 
     def __init__(self, ids: list[str], **kwargs: Any) -> None:
@@ -621,7 +668,8 @@ class NodeGetKindQuery(Query):
 
 
 class NodeListGetInfoQuery(Query):
-    name: str = "node_list_get_info"
+    name = "node_list_get_info"
+    type = QueryType.READ
 
     def __init__(self, ids: list[str], account=None, **kwargs: Any) -> None:
         self.account = account
@@ -752,6 +800,7 @@ class FieldAttributeRequirement:
 
 class NodeGetListQuery(Query):
     name = "node_get_list"
+    type = QueryType.READ
 
     def __init__(
         self, schema: NodeSchema, filters: Optional[dict] = None, partial_match: bool = False, **kwargs: Any
@@ -1090,6 +1139,14 @@ class NodeGetListQuery(Query):
                         f"toLower(toString({far.final_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
                     )
                 continue
+            if far.field and isinstance(far.field, AttributeSchema) and far.field.kind == "List":
+                if isinstance(far.field_attr_comparison_value, list):
+                    self.params[var_name] = build_regex_attrs(values=far.field_attr_comparison_value)
+                else:
+                    self.params[var_name] = build_regex_attrs(values=[far.field_attr_comparison_value])
+
+                where_parts.append(f"toString({far.final_value_query_variable}) =~ ${var_name}")
+                continue
 
             where_parts.append(f"{far.final_value_query_variable} {far.comparison_operator} ${var_name}")
         if where_parts:
@@ -1148,8 +1205,7 @@ class NodeGetListQuery(Query):
 
 class NodeGetHierarchyQuery(Query):
     name = "node_get_hierarchy"
-
-    type: QueryType = QueryType.READ
+    type = QueryType.READ
 
     def __init__(
         self,

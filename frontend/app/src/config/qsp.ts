@@ -5,6 +5,7 @@ export const QSP = {
   BRANCH_FILTER_TIME_FROM: "time_from",
   BRANCH_FILTER_TIME_TO: "time_to",
   BRANCH: "branch",
+  SOURCE_BRANCH: "source_branch",
   KIND: "kind",
   DATETIME: "at",
   FILTER: "filters",

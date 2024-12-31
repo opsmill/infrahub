@@ -1,15 +1,20 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.3/schema.json",
-  "vcs": { "enabled": false, "clientKind": "git", "useIgnoreFile": false },
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "vcs": {
+    "clientKind": "git",
+    "enabled": true,
+    "useIgnoreFile": true
+  },
   "files": {
     "ignoreUnknown": false,
     "ignore": [
       "./coverage",
       "./dist",
       "./playwright-report",
-      "./src/generated",
       "./test-results",
-      "./tests/e2e/.auth"
+      "./tests/e2e/.auth",
+      "./src/generated",
+      "./src/infraops.d.ts"
     ]
   },
   "formatter": {
@@ -48,12 +53,11 @@
         "useSimplifiedLogicExpression": "off"
       },
       "correctness": {
-        "noSwitchDeclarations": "off",
         "noUndeclaredDependencies": "error",
         "noUndeclaredVariables": "off",
-        "noUnusedFunctionParameters": "off",
+        "noUnusedFunctionParameters": "error",
         "noUnusedImports": "error",
-        "noUnusedVariables": "off",
+        "noUnusedVariables": "error",
         "useExhaustiveDependencies": "off",
         "useHookAtTopLevel": "off",
         "useImportExtensions": "off"
@@ -95,7 +99,6 @@
           "level": "error",
           "options": { "allow": ["assert", "error", "info", "warn"] }
         },
-        "noDoubleEquals": "off",
         "noEmptyBlock": "off",
         "noEmptyBlockStatements": "off",
         "noEvolvingTypes": "off",

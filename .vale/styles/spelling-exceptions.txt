@@ -1,6 +1,7 @@
 agent
 Alibaba
 Ansible
+append_git_suffix
 APIs
 artifact_definitions
 artifact_name
@@ -12,6 +13,7 @@ class_name
 CloudFormation
 codespace
 codespaces
+combobox
 config
 Config
 content_type
@@ -103,9 +105,12 @@ schema_mapping
 sdk
 subcommand
 subnet
+subtyping
+Subtyping
 template_path
 toml
 Towncrier
+towncrier
 uncheck
 uniqueness_constraints
 userinfo
@@ -113,10 +118,13 @@ validator
 upsert
 Upserting
 upserting
+uuid
+UUID
 validators
 Version Control
 Vitest
 Yaml
 yamllint
+YouTube
 vscode
 VSCode

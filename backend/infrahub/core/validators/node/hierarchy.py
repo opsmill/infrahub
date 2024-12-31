@@ -145,7 +145,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
 class NodeHierarchyChecker(ConstraintCheckerInterface):
     query_classes = [NodeHierarchyUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]) -> None:
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None) -> None:
         self.db = db
         self.branch = branch
 

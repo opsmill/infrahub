@@ -113,6 +113,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         default_branch,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
+        prefect_test_fixture,
     ) -> dict[str, Node]:
         await load_schema(db, schema=CAR_SCHEMA)
         john = await Node.init(schema=TestKind.PERSON, db=db)

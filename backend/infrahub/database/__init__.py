@@ -27,6 +27,7 @@ from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.core import registry
+from infrahub.core.query import QueryType
 from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
@@ -135,20 +136,22 @@ class InfrahubDatabase:
         self,
         driver: AsyncDriver,
         mode: InfrahubDatabaseMode = InfrahubDatabaseMode.DRIVER,
-        db_type: Optional[DatabaseType] = None,
-        db_manager: Optional[DatabaseManager] = None,
-        schemas: Optional[list[SchemaBranch]] = None,
-        session: Optional[AsyncSession] = None,
+        db_type: DatabaseType | None = None,
+        default_neo4j_runtime: Neo4jRuntime = Neo4jRuntime.DEFAULT,
+        db_manager: DatabaseManager | None = None,
+        schemas: list[SchemaBranch] | None = None,
+        session: AsyncSession | None = None,
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
-        transaction: Optional[AsyncTransaction] = None,
-        queries_names_to_config: Optional[dict[str, QueryConfig]] = None,
+        transaction: AsyncTransaction | None = None,
+        queries_names_to_config: dict[str, QueryConfig] | None = None,
     ):
         self._mode: InfrahubDatabaseMode = mode
         self._driver: AsyncDriver = driver
-        self._session: Optional[AsyncSession] = session
+        self._session: AsyncSession | None = session
         self._session_mode: InfrahubDatabaseSessionMode = session_mode
         self._is_session_local: bool = False
-        self._transaction: Optional[AsyncTransaction] = transaction
+        self._transaction: AsyncTransaction | None = transaction
+        self.default_neo4j_runtime = default_neo4j_runtime
         self.queries_names_to_config = queries_names_to_config if queries_names_to_config is not None else {}
 
         if schemas:
@@ -204,6 +207,7 @@ class InfrahubDatabase:
         return self.__class__(
             mode=InfrahubDatabaseMode.SESSION,
             db_type=self.db_type,
+            default_neo4j_runtime=self.default_neo4j_runtime,
             schemas=schemas or self._schemas.values(),
             db_manager=self.manager,
             driver=self._driver,
@@ -218,6 +222,7 @@ class InfrahubDatabase:
         return self.__class__(
             mode=InfrahubDatabaseMode.TRANSACTION,
             db_type=self.db_type,
+            default_neo4j_runtime=self.default_neo4j_runtime,
             schemas=schemas or self._schemas.values(),
             db_manager=self.manager,
             driver=self._driver,
@@ -302,8 +307,11 @@ class InfrahubDatabase:
         params: dict[str, Any] | None = None,
         name: str = "undefined",
         context: dict[str, str] | None = None,
+        type: QueryType | None = None,  # pylint: disable=redefined-builtin
     ) -> list[Record]:
-        results, _ = await self.execute_query_with_metadata(query=query, params=params, name=name, context=context)
+        results, _ = await self.execute_query_with_metadata(
+            query=query, params=params, name=name, context=context, type=type
+        )
         return results
 
     async def execute_query_with_metadata(
@@ -312,27 +320,36 @@ class InfrahubDatabase:
         params: dict[str, Any] | None = None,
         name: str = "undefined",
         context: dict[str, str] | None = None,
+        type: QueryType | None = None,  # pylint: disable=redefined-builtin
     ) -> tuple[list[Record], dict[str, Any]]:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
             span.set_attribute("query", query)
             if name:
                 span.set_attribute("query_name", name)
 
-            runtime = Neo4jRuntime.UNDEFINED
+            runtime = self.default_neo4j_runtime
 
-            try:
-                query_config = self.queries_names_to_config[name]
-                if self.db_type == DatabaseType.NEO4J:
-                    runtime = self.queries_names_to_config[name].neo4j_runtime
-                    if runtime not in [Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED]:
-                        query = f"CYPHER runtime = {runtime.value}\n" + query
-                if query_config.profile_memory:
+            if self.db_type == DatabaseType.NEO4J:
+                query_config = self.queries_names_to_config.get(name, None)
+
+                if query_config and query_config.neo4j_runtime not in [Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED]:
+                    runtime = query_config.neo4j_runtime
+
+                if (
+                    type
+                    and type == QueryType.READ
+                    and runtime not in [Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED]
+                    and not (self.is_transaction and runtime in [Neo4jRuntime.PARALLEL])
+                ):
+                    query = f"CYPHER runtime = {runtime.value}\n" + query
+                else:
+                    runtime = Neo4jRuntime.DEFAULT
+
+                if query_config and query_config.profile_memory:
                     query = "PROFILE\n" + query
-            except KeyError:
-                pass  # No specific config for this query
 
             labels = {
-                "type": self._session_mode.value,
+                "type": type.value if type else self._session_mode.value,
                 "query": name,
                 "runtime": runtime.value,
                 "context1": "",

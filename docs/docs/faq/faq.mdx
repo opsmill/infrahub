@@ -36,9 +36,15 @@ It provides a centralized platform to define, version, and generate your infrast
 
 Please see our [Getting Started](../tutorials/getting-started/) tutorial to learn how to use Infrahub.
 
-### Where can I deploy Infrahub?
+### How can I spin up a instance of Infrahub to see it in action?
 
-You can test out Infrahub via [GitHub Codespaces](https://github.com/opsmill/infrahub#quick-start)
+You can test out Infrahub via:
+
+[Always-On Sandbox](https://demo.infrahub.app/) - Instantly login to the UI of a demo environment of Infrahub with sample data pre-loaded.
+
+For longer term tests, you can deploy a local instance of Infrahub by referring to our guide: [Installing Infrahub](https://docs.infrahub.app/guides/installation)
+
+### Where can I deploy Infrahub?
 
 Infrahub is a platform-agnostic solution that can be deployed in various environments, including:
 
@@ -56,7 +62,7 @@ In the future, we plan to offer a managed Cloud SaaS offering of Infrahub. Pleas
 To install and set up Infrahub:
 
 1. Download the latest version of Infrahub from the [GitHub repository](https://github.com/opsmill/infrahub)
-2. [Deploy](../guides/installation): Deploy Infrahub using the appropriate method for your environment such as Docker Compose, Helm charts
+2. [Deploy](../guides/installation): Deploy Infrahub using the appropriate method for your environment such as Docker Compose, Helm charts, or building locally.
 
 Detailed installation guides and tutorials are available in [Installing Infrahub](../guides/installation) guide.
 
@@ -87,7 +93,7 @@ The current data handling capabilities of Infrahub are still being actively deve
 
 Yes, Infrahub can be deployed in production.
 
-If you are planning to deploy Infrahub in a critical environment we recommend reaching out to our customer success team via [Discord](https://discord.gg/opsmill) or contact@opsmill.com
+If you are planning to deploy Infrahub in a critical environment we recommend reaching out to our customer success team via [Discord](https://discord.gg/opsmill) or [contact@opsmill.com](mailto:contact@opsmill.com).
 
 ### How can I get involved?
 
@@ -108,13 +114,13 @@ If you need assistance with Infrahub, you can reach out to the community and the
 - Discord: Join the Infrahub [Discord](https://discord.gg/opsmill) server to ask questions, get support, and engage with other users.
 - GitHub Issues: Submit issues or questions on the Infrahub GitHub repository (https://github.com/opsmill/infrahub/issues).
 
-### Will there be paid support or an Enterprise version of Infrahub?
+### Is there a paid support option or an Enterprise version of Infrahub?
 
-While Infrahub is currently an open-source project, the team is developing a plan for paid support and an enterprise version with additional features and services in the future. More information about these plans will be shared as the project progresses.
+Yes! Infrahub Enterprise is deployed in diverse infrastructure environments with 24/7 support. Contact us at [opsmill.com](https://opsmill.com) for more information about Infrahub Enterprise.
 
 ### I have generated my configurations with Infrahub, how can I deploy them to my devices?
 
-Infrahub is designed to be the source of truth for your infrastructure data and configurations. It does not directly connect to or deploy configurations to your infrastructure devices. Instead, Infrahub integrates with tools like Nornir and Ansible, which can be used to deploy the generated configurations to your infrastructure.
+Infrahub is designed to be the source of truth for your infrastructure data and configurations. It does not directly connect to or deploy configurations to your infrastructure devices. Instead, Infrahub integrates with tools like Nornir, Terraform and Ansible, which can be used to deploy the generated configurations to your infrastructure.
 
 Please see the documentation on [integrations](../integrations) for more information.
 

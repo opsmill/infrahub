@@ -38,7 +38,7 @@ type NodeDiffProps = {
 };
 
 // Handle QSP to filter from the status
-const buildFilters = (filters: DiffFilter, qsp?: String | null) => {
+const buildFilters = (filters: DiffFilter, qsp?: string | null) => {
   const statusFilter = {
     ...filters?.status,
     includes: Array.from(

@@ -9,6 +9,8 @@ from .attribute_regex import SchemaAttributeRegexConstraintDependency
 from .attribute_uniqueness import SchemaAttributeUniqueConstraintDependency
 from .generate_profile import SchemaGenerateProfileConstraintDependency
 from .inherit_from import SchemaInheritFromConstraintDependency
+from .node_attribute import SchemaNodeAttributeAddConstraintDependency
+from .node_relationship import SchemaNodeRelationshipAddConstraintDependency
 from .relationship_count import SchemaRelationshipCountConstraintDependency
 from .relationship_optional import SchemaRelationshipOptionalConstraintDependency
 from .uniqueness import SchemaUniquenessConstraintDependency
@@ -30,6 +32,8 @@ class AggregatedSchemaConstraintsDependency(DependencyBuilder[AggregatedConstrai
                 SchemaAttributeChoicesConstraintDependency.build(context=context),
                 SchemaAttributeEnumConstraintDependency.build(context=context),
                 SchemaAttributLengthConstraintDependency.build(context=context),
+                SchemaNodeAttributeAddConstraintDependency.build(context=context),
+                SchemaNodeRelationshipAddConstraintDependency.build(context=context),
             ],
             db=context.db,
             branch=context.branch,

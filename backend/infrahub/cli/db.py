@@ -35,17 +35,18 @@ from infrahub.core.initialization import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph import get_graph_migrations
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
+from infrahub.core.migrations.schema.tasks import schema_apply_migrations
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
+from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
 from infrahub.log import get_logger
-from infrahub.services import InfrahubServices
+from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.message_bus.local import BusSimulator
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
@@ -142,6 +143,10 @@ async def migrate(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Check the current format of the internal graph and apply the necessary migrations"""
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
     log = get_logger()
 
     config.load_and_exit(config_file_name=config_file)
@@ -214,6 +219,7 @@ async def update_core_schema(  # pylint: disable=too-many-statements
             service = InfrahubServices(
                 database=db, message_bus=BusSimulator(database=db), workflow=WorkflowLocalExecution()
             )
+            services.prepare(service)
             await initialize_registry(db=db)
 
             default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
@@ -235,7 +241,11 @@ async def update_core_schema(  # pylint: disable=too-many-statements
             candidate_schema.load_schema(schema=SchemaRoot(**deprecated_models))
             candidate_schema.process()
 
-            result = branch_schema.validate_update(other=candidate_schema, enforce_update_support=False)
+            schema_diff = branch_schema.diff(other=candidate_schema)
+            branch_schema.validate_node_deletions(diff=schema_diff)
+            result = branch_schema.validate_update(
+                other=candidate_schema, diff=schema_diff, enforce_update_support=False
+            )
             if result.errors:
                 rprint(f"{error_badge} | Unable to update the schema, due to failed validations")
                 for error in result.errors:
@@ -259,11 +269,8 @@ async def update_core_schema(  # pylint: disable=too-many-statements
                 schema_branch=candidate_schema,
                 constraints=result.constraints,
             )
-            error_messages = await service.workflow.execute_workflow(
-                workflow=SCHEMA_VALIDATE_MIGRATION,
-                expected_return=list[str],
-                parameters={"message": validate_migration_data},
-            )
+            responses = await schema_validate_migrations(message=validate_migration_data)
+            error_messages = [violation.message for response in responses for violation in response.violations]
             if error_messages:
                 rprint(f"{error_badge} | Unable to update the schema, due to failed validations")
                 for message in error_messages:
@@ -304,11 +311,7 @@ async def update_core_schema(  # pylint: disable=too-many-statements
                 previous_schema=origin_schema,
                 migrations=result.migrations,
             )
-            migration_error_msgs = await service.workflow.execute_workflow(
-                workflow=SCHEMA_APPLY_MIGRATION,
-                expected_return=list[str],
-                parameters={"message": apply_migration_data},
-            )
+            migration_error_msgs = await schema_apply_migrations(message=apply_migration_data)
 
             if migration_error_msgs:
                 rprint(f"{error_badge} | Some error(s) happened while running the schema migrations")

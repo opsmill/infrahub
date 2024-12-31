@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from enum import IntFlag
 
-from prefect import flow
+from prefect import flow, task
+from prefect.logging import get_run_logger
 from pydantic import BaseModel
 
 from infrahub import lock
@@ -11,7 +12,6 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.registry import registry
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.git.repository import InfrahubRepository
-from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import (
     ProposedChangeArtifactDefinition,
@@ -34,8 +34,7 @@ from infrahub.workflows.catalogue import (
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
 )
-
-log = get_logger()
+from infrahub.workflows.utils import add_tags
 
 
 class DefinitionSelect(IntFlag):
@@ -64,13 +63,15 @@ class DefinitionSelect(IntFlag):
         return "Doesn't require changes due to no relevant modified kinds or file changes in Git"
 
 
-@flow(name="proposed-changed-pipeline")
+@flow(name="proposed-changed-pipeline", flow_run_name="Execute Pipeline")
 async def pipeline(message: messages.RequestProposedChangePipeline, service: InfrahubServices) -> None:
     events: list[InfrahubMessage] = []
 
     repositories = await _get_proposed_change_repositories(message=message, service=service)
 
-    if message.source_branch_sync_with_git and await _validate_repository_merge_conflicts(repositories=repositories):
+    if message.source_branch_sync_with_git and await _validate_repository_merge_conflicts(
+        repositories=repositories, service=service
+    ):
         for repo in repositories:
             if not repo.read_only and repo.internal_status == RepositoryInternalStatus.ACTIVE.value:
                 events.append(
@@ -86,14 +87,15 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             await service.send(message=event)
         return
 
-    await _gather_repository_repository_diffs(repositories=repositories)
+    await _gather_repository_repository_diffs(repositories=repositories, service=service)
 
-    destination_branch = await registry.get_branch(db=service.database, branch=message.destination_branch)
-    source_branch = await registry.get_branch(db=service.database, branch=message.source_branch)
-    component_registry = get_component_registry()
     async with service.database.start_transaction() as dbt:
+        destination_branch = await registry.get_branch(db=dbt, branch=message.destination_branch)
+        source_branch = await registry.get_branch(db=dbt, branch=message.source_branch)
+        component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbt, branch=source_branch)
         await diff_coordinator.update_branch_diff(base_branch=destination_branch, diff_branch=source_branch)
+
     diff_summary = await service.client.get_diff_summary(branch=message.source_branch)
     branch_diff = ProposedChangeBranchDiff(diff_summary=diff_summary, repositories=repositories)
     await _populate_subscribers(branch_diff=branch_diff, service=service, branch=message.source_branch)
@@ -186,9 +188,12 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
 
 @flow(
     name="proposed-changed-refresh-artifact",
-    flow_run_name="Refreshing artifacts for change_proposal={message.proposed_change}",
+    flow_run_name="Trigger artifacts refresh",
 )
 async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifacts, service: InfrahubServices) -> None:
+    await add_tags(branches=[message.source_branch], nodes=[message.proposed_change])
+    log = get_run_logger()
+
     definition_information = await service.client.execute_graphql(
         query=GATHER_ARTIFACT_DEFINITIONS,
         branch_name=message.source_branch,
@@ -226,6 +231,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
             )
 
         if select:
+            log.info(f"Trigger processing of {artifact_definition.definition_name}")
             msg = messages.RequestArtifactDefinitionCheck(
                 artifact_definition=artifact_definition,
                 branch_diff=message.branch_diff,
@@ -510,26 +516,39 @@ async def _get_proposed_change_repositories(
     return _parse_proposed_change_repositories(message=message, source=source_all, destination=destination_all)
 
 
-async def _validate_repository_merge_conflicts(repositories: list[ProposedChangeRepository]) -> bool:
+@task(name="proposed-change-validate-repository-conflicts", task_run_name="Validate conflicts on repository")
+async def _validate_repository_merge_conflicts(
+    repositories: list[ProposedChangeRepository], service: InfrahubServices
+) -> bool:
+    log = get_run_logger()
     conflicts = False
     for repo in repositories:
         if repo.has_diff and not repo.is_staging:
-            git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name)
+            git_repo = await InfrahubRepository.init(
+                id=repo.repository_id, name=repo.repository_name, client=service.client
+            )
             async with lock.registry.get(name=repo.repository_name, namespace="repository"):
                 repo.conflicts = await git_repo.get_conflicts(
                     source_branch=repo.source_branch, dest_branch=repo.destination_branch
                 )
                 if repo.conflicts:
+                    log.info(f"{len(repo.conflicts)} conflict(s) identified on {repo.repository_name}")
                     conflicts = True
+                else:
+                    log.info(f"no conflict identified for {repo.repository_name}")
 
     return conflicts
 
 
-async def _gather_repository_repository_diffs(repositories: list[ProposedChangeRepository]) -> None:
+async def _gather_repository_repository_diffs(
+    repositories: list[ProposedChangeRepository], service: InfrahubServices
+) -> None:
     for repo in repositories:
         if repo.has_diff and repo.source_commit and repo.destination_commit:
             # TODO we need to find a way to return all files in the repo if the repo is new
-            git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name)
+            git_repo = await InfrahubRepository.init(
+                id=repo.repository_id, name=repo.repository_name, client=service.client
+            )
 
             files_changed: list[str] = []
             files_added: list[str] = []

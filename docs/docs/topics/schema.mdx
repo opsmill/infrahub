@@ -239,11 +239,135 @@ nodes:
 
 </details>
 
-::: warning
+:::warning
 
 When you create a relationship of kind Component, automatically the `on_delete` property of the relationship will get set to the value `cascade`. This means that when you delete a node, all the related nodes of that relationship will also be deleted.
 
 :::
+
+#### Direction and Identifier in relationships
+
+Relationships in Infrahub schema connect nodes while defining how those connections behave and are traversed.
+Direction and identifier both constitute critical qualities for good relationship management.
+
+##### Direction
+
+The **direction** attribute defines the flow of the relationship:
+
+- **Bidirectional**: Supports traversal in both directions. This is the **default value** if no direction is indicated.
+- **Outbound**: Defines a relationship that runs from the source node to the target node.
+- **Inbound**: Defines a relationship that flows from the target node to the source node.
+
+Even if a relationship is `bidirectional`, you still have to create it on both nodes to allow you to easily traverse them in both directions.
+
+For detailed information, see the [Relationship Reference Guide](/reference/schema/relationship#direction)
+
+##### Identifier
+
+To maintain consistent traversal, the **identifier** serves as the relationship's unique key and must match on both ends.
+If no identifier is provided, one will be generated automatically. It is encouraged to establish distinct ones for clarity and maintenance.
+
+If no identifier is specified, one will be automatically generated in the format `<node_kind_a>__<node_kind_z>`.
+Example: `infraautonomoussystem__organizationgeneric`
+
+For detailed information, see the [Relationship Reference Guide](/reference/schema/relationship#identifier)
+
+##### Examples
+
+<details>
+  <summary>Example 1: Bidirectional Relationship with `device__interfaces`</summary>
+
+Here's an example schema that uses the identifier `device__interfaces` in a bidirectional connection to ensure that devices and interfaces can refer to each other seamlessly.
+
+```yaml {6,15} showLineNumbers
+  - name: Interface
+    namespace: Infra
+    relationships:
+      - name: device
+        peer: InfraDevice
+        identifier: "device__interfaces"
+        optional: false
+        cardinality: one
+        kind: Parent
+
+  - name: Device
+    namespace: Infra
+    relationships:
+      - name: interfaces
+        peer: InfraInterface
+        identifier: "device__interfaces"
+        cardinality: many
+        kind: Component
+```
+
+</details>
+
+<details>
+  <summary>Example 2: Relationships in InfraBGPGroup</summary>
+
+`InfraBGPGroup` has two relationships with the same node, `InfraAutonomousSystem`. To avoid issues with the auto-generated identifiers, we should specifically specify the ones we want.
+By including `bgppeergroup__local_as` and `bgppeergroup__remote_as`, we can clearly represent each relationship role.
+
+```yaml {5-6,11-12} showLineNumbers
+- name: BGPGroup
+  namespace: Infra
+  relationships:
+    - name: local_as
+      identifier: "bgppeergroup__local_as"
+      peer: InfraAutonomousSystem
+      optional: true
+      cardinality: one
+      kind: Attribute
+    - name: remote_as
+      identifier: "bgppeergroup__remote_as"
+      peer: InfraAutonomousSystem
+      optional: true
+      cardinality: one
+      kind: Attribute
+```
+
+</details>
+
+<details>
+  <summary>info Example 3: Reflexive Relationships in Employee</summary>
+
+This example demonstrates how direction (`inbound` for `leader` and `outbound` for `team_members`) distinguishes connections within the same node type `OrganizationEmployee`.
+The `employee_team_relationship` identifier connects the `leader` and `team_members` relationships while maintaining their distinct roles.
+Since both sides of the relationship share the same `Kind`, we must avoid the default `bidrectional` assumption, therefore we have to specify a direction.
+
+```yaml {15-16,24-25} showLineNumbers
+nodes:
+  - name: Employee
+    namespace: Organization
+    description: "An employee in the organization with leadership and team relationships."
+    label: "Employee"
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        description: "Name of the employee."
+    relationships:
+      - name: leader
+        label: Leader
+        peer: OrganizationEmployee
+        direction: inbound
+        identifier: "employee_team_relationship"
+        cardinality: one
+        kind: Attribute
+        optional: true
+        description: "The leader guiding this team member."
+      - name: team_members
+        label: Team Members
+        peer: OrganizationEmployee
+        direction: outbound
+        identifier: "employee_team_relationship"
+        cardinality: many
+        kind: Attribute
+        optional: true
+        description: "Employees who are part of this leader's team."
+````
+
+</details>
 
 <!-- vale off -->
 ### Uniqueness Constraints
@@ -291,8 +415,8 @@ Having a human friendly way to identify an object is very important to build rob
 
 In the network industry:
 
-- the `hfid` of a device could be its `name` : `atl1-edge01`
-- the `hfid` of an interface could be the combination of the name of the device and the name of the interface: (`atl1-edge01`, `Ethernet1`)
+- The `hfid` of a device could be its `name` : `atl1-edge01`
+- The `hfid` of an interface could be the combination of the name of the device and the name of the interface: (`atl1-edge01`, `Ethernet1`)
 
 :::
 

@@ -18,11 +18,9 @@ import { isRequired } from "@/components/form/utils/validation";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { AuthContextType } from "@/hooks/useAuth";
 import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
-import { store } from "@/state";
-import { IModelSchema, genericsState, schemaState } from "@/state/atoms/schema.atom";
+import { IModelSchema } from "@/state/atoms/schema.atom";
 import { sortByOrderWeight } from "@/utils/common";
 import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
-import { getRelationshipOptions } from "@/utils/getSchemaObjectColumns";
 
 type GetFormFieldsFromSchema = {
   schema: IModelSchema;
@@ -85,9 +83,6 @@ export const getFormFieldsFromSchema = ({
     };
 
     if ("peer" in attribute) {
-      const nodes = store.get(schemaState);
-      const generics = store.get(genericsState);
-
       const currentRelationshipData = initialObject?.[attribute.name] as
         | RelationshipType
         | undefined;
@@ -100,7 +95,6 @@ export const getFormFieldsFromSchema = ({
           isFilterForm,
         }),
         parent: getRelationshipParent(currentRelationshipData),
-        options: getRelationshipOptions(initialObject, attribute, nodes, generics),
         relationship: attribute,
         schema,
       };

@@ -27,7 +27,7 @@ export const getStateBadge: { [key: string]: any } = {
   CANCELLING: <Badge variant={"gray"}>CANCELLING</Badge>,
 };
 
-export const TaskItemDetails = forwardRef((props, ref) => {
+export const TaskItemDetails = forwardRef((_, ref) => {
   const [idFromQsp] = useQueryParam(QSP.TASK_ID, StringParam);
   const [search, setSearch] = useState("");
 

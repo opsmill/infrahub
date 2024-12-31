@@ -137,8 +137,10 @@ async def token(
 
     _validate_response(response=userinfo_response)
     user_info = userinfo_response.json()
-
     sso_groups = user_info.get("groups", [])
+    if not sso_groups and config.SETTINGS.security.sso_user_default_group:
+        sso_groups = [config.SETTINGS.security.sso_user_default_group]
+
     user_token = await signin_sso_account(db=db, account_name=user_info["name"], sso_groups=sso_groups)
 
     response.set_cookie(

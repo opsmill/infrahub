@@ -41,9 +41,10 @@ async def test_schema_validate_migrations(
     )
 
     message = SchemaValidateMigrationData(branch=default_branch, schema_branch=schema, constraints=constraints)
-    errors = await schema_validate_migrations(
+    responses = await schema_validate_migrations(
         message=message,
     )
 
-    assert len(errors) == 1
-    assert "is not compatible with the constraint 'attribute.regex.update'" in errors[0]
+    assert len(responses) == 1
+    assert len(responses[0].violations) == 1
+    assert "is not compatible with the constraint 'attribute.regex.update'" in responses[0].violations[0].message

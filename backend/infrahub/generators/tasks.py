@@ -1,8 +1,9 @@
 from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreGeneratorInstance
-from infrahub_sdk.schema import InfrahubGeneratorDefinitionConfig
+from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig
 from prefect import flow, task
+from prefect.cache_policies import NONE
 
 from infrahub import lock
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
@@ -32,6 +33,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
         name=model.repository_name,
         service=service,
         repository_kind=model.repository_kind,
+        commit=model.commit,
     )
 
     generator_definition = InfrahubGeneratorDefinitionConfig(
@@ -76,7 +78,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
     await generator_instance.update(do_full_update=True)
 
 
-@task
+@task(name="generator-define-instance", task_run_name="Define Instance", cache_policy=NONE)
 async def _define_instance(model: RequestGeneratorRun, service: InfrahubServices) -> CoreGeneratorInstance:
     if model.generator_instance:
         instance = await service.client.get(
@@ -174,8 +176,18 @@ async def request_generator_definition_run(model: RequestGeneratorDefinitionRun)
         instance_by_member[instance.object.peer.id] = instance.id
 
     repository = await service.client.get(
-        kind=InfrahubKind.REPOSITORY, branch=model.branch, id=model.generator_definition.repository_id
+        kind=InfrahubKind.REPOSITORY,
+        branch=model.branch,
+        id=model.generator_definition.repository_id,
+        raise_when_missing=False,
     )
+    if not repository:
+        repository = await service.client.get(
+            kind=InfrahubKind.READONLYREPOSITORY,
+            branch=model.branch,
+            id=model.generator_definition.repository_id,
+            raise_when_missing=True,
+        )
 
     for relationship in group.members.peers:
         member = relationship.peer

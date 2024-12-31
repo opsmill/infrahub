@@ -601,8 +601,26 @@ async def test_schema_branch_add_profile_schema(schema_all_in_one):
     }
 
 
+async def test_schema_branch_diff_core_profile(schema_all_in_one):
+    core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
+    schema_all_in_one["generics"].append(core_profile_schema)
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+    schema.process_inheritance()
+    schema.manage_profile_schemas()
+
+    new_schema = schema.duplicate()
+    profile_schema = new_schema.get(name=InfrahubKind.PROFILE, duplicate=True)
+    profile_schema.description = "New description"
+    new_schema.set(name=InfrahubKind.PROFILE, schema=profile_schema)
+
+    diff = new_schema.diff(other=schema)
+    assert diff.all == ["CoreProfile"]
+
+
 async def test_schema_branch_add_profile_schema_respects_flag(schema_all_in_one):
-    core_profile_schema = _get_schema_by_kind(core_models, kind="CoreProfile")
+    core_profile_schema = _get_schema_by_kind(core_models, kind=InfrahubKind.PROFILE)
     schema_all_in_one["generics"].append(core_profile_schema)
     builtin_tag_schema = _get_schema_by_kind(schema_all_in_one, kind="BuiltinTag")
     builtin_tag_schema["generate_profile"] = False
@@ -1950,7 +1968,8 @@ async def test_schema_branch_validate_check_missing(
     node.attributes[0].unique = False
     new_schema.set(name="BuiltinCriticality", schema=node)
 
-    result = schema_branch.validate_update(other=new_schema)
+    diff = schema_branch.diff(other=new_schema)
+    result = schema_branch.validate_update(other=new_schema, diff=diff)
     assert result.model_dump(exclude=["diff"]) == {
         "constraints": [
             {
@@ -1968,6 +1987,62 @@ async def test_schema_branch_validate_check_missing(
         "errors": [],
         "migrations": [],
     }
+
+
+async def test_schema_branch_validate_node_deletion(
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    }
+                ],
+            },
+            {
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ]
+    }
+    schema = SchemaRoot(**FULL_SCHEMA)
+    schema.generate_uuid()
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema)
+
+    FULL_SCHEMA["nodes"].pop(1)
+
+    broken_schema = SchemaRoot(**FULL_SCHEMA)
+    broken_schema_branch = SchemaBranch(cache={}, name="test-broken")
+    broken_schema_branch.load_schema(schema=broken_schema)
+
+    diff = schema_branch.diff(other=broken_schema_branch)
+    assert "BuiltinTag" in diff.removed
+
+    with pytest.raises(ValueError, match="'BuiltinTag' has been removed but is still referenced"):
+        schema_branch.validate_node_deletions(diff=diff)
 
 
 async def test_schema_branch_validate_add_node_relationships(
@@ -2039,9 +2114,31 @@ async def test_schema_branch_validate_add_node_relationships(
     new_schema = schema_branch.duplicate()
     new_schema.load_schema(schema=schema2)
 
-    result = schema_branch.validate_update(other=new_schema)
+    diff = schema_branch.diff(other=new_schema)
+    result = schema_branch.validate_update(other=new_schema, diff=diff)
     assert result.model_dump(exclude=["diff"]) == {
-        "constraints": [],
+        "constraints": [
+            {
+                "constraint_name": "node.relationship.add",
+                "path": {
+                    "field_name": "primary_tag",
+                    "path_type": SchemaPathType.RELATIONSHIP,
+                    "property_name": None,
+                    "schema_id": None,
+                    "schema_kind": "BuiltinCriticality",
+                },
+            },
+            {
+                "constraint_name": "node.relationship.add",
+                "path": {
+                    "field_name": "tags",
+                    "path_type": SchemaPathType.RELATIONSHIP,
+                    "property_name": None,
+                    "schema_id": None,
+                    "schema_kind": "BuiltinCriticality",
+                },
+            },
+        ],
         "enforce_update_support": True,
         "errors": [],
         "migrations": [],
@@ -2422,6 +2519,7 @@ async def test_load_schema(
 
     schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
     await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
+    default_branch.update_schema_hash()
     schema11 = registry.schema.get_schema_branch(name=default_branch.name)
     schema2 = await registry.schema.load_schema(db=db, branch=default_branch.name)
 

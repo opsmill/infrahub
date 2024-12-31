@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from graphql import graphql
-
 from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, internal_schema
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.constants import TestKind
+from tests.helpers.graphql import graphql
 from tests.helpers.schema import CHILD, LOCATION_SCHEMA, THING, load_schema
 
 if TYPE_CHECKING:

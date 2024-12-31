@@ -1,4 +1,3 @@
-import { IModelSchema, iGenericSchema } from "@/state/atoms/schema.atom";
 import { type ClassValue, clsx } from "clsx";
 import * as R from "ramda";
 import { twMerge } from "tailwind-merge";
@@ -33,7 +32,8 @@ export const parseJwt = (token: string | null) => {
 
   try {
     return JSON.parse(atob(token.split(".")[1]));
-  } catch (e) {
+  } catch (error) {
+    console.error(error);
     return null;
   }
 };
@@ -83,8 +83,4 @@ export const getTextColor = (background?: string) => {
 // Raise TS error when not every case is handled
 export function warnUnexpectedType(x: never) {
   console.warn(`unexpected type ${x}`);
-}
-
-export function isGeneric(schema: IModelSchema): schema is iGenericSchema {
-  return "used_by" in schema;
 }

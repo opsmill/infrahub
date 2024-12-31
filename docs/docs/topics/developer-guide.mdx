@@ -1,0 +1,133 @@
+---
+title: Developer Guide
+---
+
+# Developer guide
+
+Infrahub support various form of extensibility that rely on users providing their own code that then will be executed by Infrahub.
+This guide provides best practices to help you develop robust, efficient, and maintainable extensions.
+
+The following features in Infrahub are based on user provided code :
+
+- [**Transforms** (Python and Jinja2)](./transformation.mdx): Used to generate [Artifacts](./artifact.mdx) and define [Computed Attributes](./computed-attributes.mdx).
+- [**Generators**](./generator.mdx): Automate complex tasks by generating outputs dynamically.
+- [**Checks**](./check.mdx): Validate your infrastructure with custom rules.
+
+## Development lifecycle
+
+### Development
+
+#### Execute your code locally
+
+During development, you can use the `infrahubctl` CLI to execute your code locally. This provides an environment similar to Infrahub's execution environment, enabling quick testing without deploying your code.
+
+Key points:
+
+- Your code can be executed locally without needing to be checked into Git or pushed to the server.
+- GraphQL queries, if required, will be discovered and executed locally.
+- The branch to use in Infrahub can be auto-detected from Git or specified explicitly in the CLI.
+
+Refer to the command documentation for details:
+
+| Command                        | Description                                                  |
+|--------------------------------|--------------------------------------------------------------|
+| [`infrahubctl transform`](../infrahubctl/infrahubctl-transform.mdx) | Execute Python transforms locally.                          |
+| [`infrahubctl render`](../infrahubctl/infrahubctl-render.mdx)       | Render Jinja2 transforms locally.                           |
+| [`infrahubctl generator`](../infrahubctl/infrahubctl-generator.mdx) | Test custom generators.                                     |
+| [`infrahubctl check`](../infrahubctl/infrahubctl-check.mdx)         | Run local checks                                            |
+
+#### Typing & protocols (Python)
+
+Infrahub supports Python Typing and Protocols to improve the developer experience by providing static analysis and detecting issues early.
+
+:::info What are Protocols?
+
+Protocols are a way to define structural subtyping in Python, allowing you to specify expected behavior without requiring inheritance. Infrahub leverages this to enforce typing for flexible schemas.
+
+:::
+
+##### Generating protocols
+
+You can generate Protocols for your schema with the `infrahubctl protocols` command. The schema can be provided locally or pulled from a running Infrahub instance.
+
+```shell
+infrahubctl protocols --schema my-schema.yaml --output protocols.py
+```
+
+> If you don’t have a Python module, save the protocols in a protocols.py file in the same directory as your script.
+
+##### Using protocols in code
+
+The python SDK natively supports Protocol in place of `kind` for most functions that interact with objects (`all`, `filters`, `get`, `create`)
+
+```python
+# With Protocols
+from infrahub_sdk.protocols import BuiltinTag
+
+tags = await client.all(kind=BuiltinTag)
+for tag in tags:
+    print(tag.name.value)  # Type-safe access to the 'name' attribute
+```
+
+Same code without Protocols
+
+```python
+# Without Protocols
+tags = await client.all(kind="BuiltinTag")
+for tag in tags:
+    print(tag.name.value)  # May raise type errors as attributes are not checked
+```
+
+:::info Protocol for Infrahub Schema
+
+Protocols for all objects natively provided by Infrahub are available within the SDK in `infrahub_sdk.protocols`
+
+:::
+
+##### Learn more about Python protocols
+
+- [Python Protocols: Leveraging Structural Subtyping - Real Python](https://realpython.com/python-protocol/)
+- [What are "Protocols" In Python? - YouTube](https://www.youtube.com/watch?v=2jN11lyKvfA)
+
+#### Git integration
+
+Infrahub integrates seamlessly with Git, allowing you to use your current branch name as the default branch. To enable this feature, set the environment variable:
+
+```shell
+export INFRAHUB_DEFAULT_BRANCH_FROM_GIT=true
+```
+
+### Testing
+
+Testing is crucial for maintaining high-quality code. Infrahub provides a testing framework based on Pytest to simplify unit and integration tests.
+
+Refer to the [Testing Framework Documentation](./resources-testing-framework.mdx) for details.
+
+:::warning Under Construction
+
+This section is still under development. Contact the team via Discord for additional resources.
+
+:::
+
+## Logging (Python)
+
+You can use Python’s standard logging library to gain insights into the execution of your code. Infrahub captures logs from the `infrahub.tasks` logger by default.
+
+The logger `infrahub.tasks` is configure by default and it's possible to configure additional loggers using the settings (see below)
+
+```python
+import logging
+
+log = logging.getLogger("infrahub.tasks")
+log.info("This log will be captured within the task")
+```
+
+### Configuring additional loggers
+
+To capture logs from additional loggers, configure them using the environment variable `INFRAHUB_WORKFLOW_EXTRA_LOGGERS`.
+The level of the extra loggers can be controlled with the environment variable `INFRAHUB_WORKFLOW_EXTRA_LOG_LEVEL`.
+
+```shell
+export INFRAHUB_WORKFLOW_EXTRA_LOGGERS = '["mylogger", "otherlogger"]'
+export INFRAHUB_WORKFLOW_EXTRA_LOG_LEVEL = "DEBUG"
+```

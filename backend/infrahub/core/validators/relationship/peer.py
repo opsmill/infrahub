@@ -108,7 +108,7 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
 class RelationshipPeerChecker(ConstraintCheckerInterface):
     query_classes = [RelationshipPeerUpdateValidatorQuery]
 
-    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch]) -> None:
+    def __init__(self, db: InfrahubDatabase, branch: Optional[Branch] = None) -> None:
         self.db = db
         self.branch = branch
 

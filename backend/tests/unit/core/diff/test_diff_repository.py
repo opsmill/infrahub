@@ -614,3 +614,34 @@ class TestDiffRepositorySaveAndLoad:
         )
         retrieved_map = {summary.kind: summary for summary in retrieved_node_field_summaries}
         assert expected_map == retrieved_map
+
+    async def test_drop_tracking_ids(self, diff_repository: DiffRepository, reset_database):
+        base_branch_name = "main"
+        no_tracking_id_diff = EnrichedRootFactory.build(base_branch_name=base_branch_name, tracking_id=None)
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=no_tracking_id_diff)
+        tracking_id_diff_1 = EnrichedRootFactory.build(base_branch_name=base_branch_name)
+        tracking_id_1 = BranchTrackingId(name=tracking_id_diff_1.diff_branch_name)
+        tracking_id_diff_1.tracking_id = tracking_id_1
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=tracking_id_diff_1)
+        tracking_id_diff_2 = EnrichedRootFactory.build(base_branch_name=base_branch_name)
+        tracking_id_2 = BranchTrackingId(name=tracking_id_diff_2.diff_branch_name)
+        tracking_id_diff_2.tracking_id = tracking_id_2
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=tracking_id_diff_2)
+
+        await diff_repository.drop_tracking_ids(tracking_ids=[tracking_id_1])
+
+        # verify tracking ID 1 diff cannot be retrieved by tracking ID
+        with pytest.raises(ResourceNotFoundError, match="Cannot find diff"):
+            await diff_repository.get_one(
+                diff_branch_name=tracking_id_diff_1.diff_branch_name, tracking_id=tracking_id_1
+            )
+        # verify tracking ID 2 diff can be retrieved by tracking ID
+        diff_2 = await diff_repository.get_one(
+            diff_branch_name=tracking_id_diff_2.diff_branch_name, tracking_id=tracking_id_2
+        )
+        assert diff_2.tracking_id == tracking_id_2
+        # verify tracking ID 1 diff can be retrieved by UUID and has no tracking ID
+        diff_1 = await diff_repository.get_one(
+            diff_branch_name=tracking_id_diff_1.diff_branch_name, diff_id=tracking_id_diff_1.uuid
+        )
+        assert diff_1.tracking_id is None

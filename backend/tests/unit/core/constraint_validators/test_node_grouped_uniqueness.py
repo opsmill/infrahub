@@ -75,6 +75,41 @@ class TestNodeGroupedUniquenessConstraint:
         with pytest.raises(ValidationError, match="Violates uniqueness constraint 'name-color'"):
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
 
+    async def test_uniqueness_constraint_no_conflict_attribute_enum(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_accord_main: Node,
+        car_camry_main: Node,
+        car_volt_main: Node,
+    ):
+        car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
+        car_schema.uniqueness_constraints = [["nbr_seats__value", "name__value"]]
+        attr = car_schema.get_attribute("nbr_seats")
+        attr.optional = False
+        attr.enum = [2, 4, 5, 7]
+
+        await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
+
+    async def test_uniqueness_constraint_conflict_attribute_enum(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_accord_main: Node,
+        car_camry_main: Node,
+        car_volt_main: Node,
+    ):
+        car_schema = registry.schema.get("TestCar", branch=default_branch, duplicate=False)
+        attr = car_schema.get_attribute("nbr_seats")
+        attr.optional = False
+        attr.enum = [2, 4, 5, 7]
+
+        car_accord_main.name.value = "camry"
+        car_accord_main.get_schema().uniqueness_constraints = [["nbr_seats__value", "name__value"]]
+
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'nbr_seats-name'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
+
     async def test_uniqueness_constraint_no_conflict_one_relationship(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple
     ):

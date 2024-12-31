@@ -37,7 +37,7 @@ from .mutations.repository import InfrahubRepositoryMutation
 from .mutations.resource_manager import (
     InfrahubNumberPoolMutation,
 )
-from .resolver import (
+from .resolvers.resolver import (
     account_resolver,
     ancestors_resolver,
     default_paginated_list_resolver,

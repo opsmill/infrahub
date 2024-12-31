@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import enum
 
-from infrahub.core.constants import infrahubkind as InfrahubKind
+from infrahub.core.constants import infrahubkind as InfrahubKind  # noqa: N812
 from infrahub.exceptions import ValidationError
 from infrahub.utils import InfrahubNumberEnum, InfrahubStringEnum
 

@@ -163,7 +163,7 @@ async def configure_webhooks() -> None:
                     deployment_id=deployment_id_webhook_trigger,
                     parameters={
                         "event_type": "{{ event.resource['infrahub.node.kind'] }}.{{ event.resource['infrahub.node.action'] }}",
-                        "event_data": "{{ event.payload | tojson }}",
+                        "event_data": "{{ event.payload['data'] | tojson }}",
                     },
                     job_variables={},
                 ),

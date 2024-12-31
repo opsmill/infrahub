@@ -34,10 +34,6 @@ from .mutations.schema import (
     SchemaEnumAdd,
     SchemaEnumRemove,
 )
-from .mutations.task import (
-    TaskCreate,
-    TaskUpdate,
-)
 from .queries import (
     AccountPermissions,
     AccountToken,
@@ -100,8 +96,6 @@ class InfrahubBaseMutation(ObjectType):
 
     InfrahubRepositoryProcess = ProcessRepository.Field()
     InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
-    InfrahubTaskCreate = TaskCreate.Field()
-    InfrahubTaskUpdate = TaskUpdate.Field()
     InfrahubUpdateComputedAttribute = UpdateComputedAttribute.Field()
 
     RelationshipAdd = RelationshipAdd.Field()

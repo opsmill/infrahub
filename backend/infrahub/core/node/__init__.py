@@ -91,7 +91,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     async def get_path_value(self, db: InfrahubDatabase, path: str) -> str:
         schema_path = self._schema.parse_schema_path(
-            path=path, schema=registry.schema.get_schema_branch(name=self._branch.name)
+            path=path, schema=db.schema.get_schema_branch(name=self._branch.name)
         )
 
         if not schema_path.has_property:
@@ -218,7 +218,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return cls(**attrs)
 
-    async def process_pool(self, db: InfrahubDatabase, attribute: BaseAttribute, errors: list) -> None:
+    async def handle_pool(self, db: InfrahubDatabase, attribute: BaseAttribute, errors: list) -> None:
         """Evaluate if a resource has been requested from a pool and apply the resource
 
         This method only works on number pools, currently Integer is the only type that has the from_pool
@@ -350,7 +350,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 )
                 if not self._existing:
                     attribute: BaseAttribute = getattr(self, attr_schema.name)
-                    await self.process_pool(db=db, attribute=attribute, errors=errors)
+                    await self.handle_pool(db=db, attribute=attribute, errors=errors)
 
                     attribute.validate(value=attribute.value, name=attribute.name, schema=attribute.schema)
             except ValidationError as exc:
@@ -366,7 +366,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 await getattr(self, f"process_{name}")(db=db)
 
     async def _process_macros(self, db: InfrahubDatabase) -> None:
-        schema_branch = registry.schema.get_schema_branch(name=self._branch.name)
+        schema_branch = db.schema.get_schema_branch(self._branch.name)
         allowed_path_types = (
             SchemaElementPathType.ATTR_WITH_PROP
             | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
@@ -623,10 +623,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def to_graphql(
         self,
         db: InfrahubDatabase,
-        fields: Optional[dict] = None,
-        related_node_ids: Optional[set] = None,
+        fields: dict | None = None,
+        related_node_ids: set | None = None,
         filter_sensitive: bool = False,
-        permissions: Optional[dict] = None,
+        permissions: dict | None = None,
     ) -> dict:
         """Generate GraphQL Payload for all attributes
 
@@ -685,6 +685,27 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 response[field_name] = await field.to_graphql(
                     db=db, filter_sensitive=filter_sensitive, permissions=permissions
                 )
+
+        for relationship_schema in self.get_schema().relationships:
+            peer_rels = []
+            if not fields or relationship_schema.name not in fields:
+                continue
+            rel_manager = getattr(self, relationship_schema.name, None)
+            if rel_manager is None:
+                continue
+            try:
+                if relationship_schema.cardinality is RelationshipCardinality.ONE:
+                    rel = rel_manager.get_one()
+                    if rel:
+                        peer_rels = [rel]
+                else:
+                    peer_rels = list(rel_manager)
+                if peer_rels:
+                    response[relationship_schema.name] = [
+                        {"node": {"id": relationship.peer_id}} for relationship in peer_rels if relationship.peer_id
+                    ]
+            except LookupError:
+                continue
 
         return response
 

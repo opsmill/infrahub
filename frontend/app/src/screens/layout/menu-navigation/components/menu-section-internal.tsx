@@ -43,7 +43,7 @@ const RecursiveInternalMenuItem: React.FC<{ item: MenuItem }> = ({ item }) => {
 };
 
 const CollapsedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
-  <Link to={constructPath(item.path)}>
+  <Link to={constructPath(item.path)} tabIndex={-1}>
     <CollapsedButton icon={item.icon} tooltipContent={item.label} />
   </Link>
 );

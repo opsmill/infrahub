@@ -78,7 +78,7 @@ class TestPreviousVersions(TestInfrahubApp):
                                 {"name": "description", "kind": "Text", "optional": True},
                                 {"name": "age", "kind": "Number", "optional": True},
                             ],
-                            "inherit_from": ["LineageOwner", "LineageSource"],
+                            "inherit_from": ["LineageOwner", "LineageSource", "CoreArtifactTarget"],
                         },
                     ],
                 }

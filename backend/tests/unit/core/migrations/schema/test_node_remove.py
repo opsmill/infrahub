@@ -1,6 +1,3 @@
-from infrahub_sdk import InfrahubClient
-from infrahub_sdk.uuidt import UUIDT
-
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
@@ -12,9 +9,6 @@ from infrahub.core.migrations.schema.node_remove import (
 from infrahub.core.path import SchemaPath
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus import Meta
-from infrahub.message_bus.messages import SchemaMigrationPath, SchemaMigrationPathResponse
-from infrahub.services import InfrahubServices
 
 
 async def test_query_out_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
@@ -101,33 +95,4 @@ async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accor
     assert not execution_result.errors
     assert execution_result.nbr_migrations_executed == 2
     assert await count_relationships(db=db) == count_rels + 14
-    assert await count_nodes(db=db, label="TestCar") == 2
-
-
-async def test_rpc(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, helper):
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
-    candidate_schema = schema.duplicate()
-    candidate_schema.delete(name="TestCar")
-
-    correlation_id = str(UUIDT())
-    message = SchemaMigrationPath(
-        migration_name="node.remove",
-        new_node_schema=None,
-        previous_node_schema=schema.get(name="TestCar"),
-        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
-        branch=default_branch,
-        meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
-    )
-
-    bus_simulator = helper.get_message_bus_simulator()
-    service = InfrahubServices(message_bus=bus_simulator, client=InfrahubClient(), database=db)
-    bus_simulator.service = service
-
-    assert await count_nodes(db=db, label="TestCar") == 2
-
-    response = await service.message_bus.rpc(message=message, response_class=SchemaMigrationPathResponse)
-    assert response.passed
-    assert not response.data.errors
-    assert response.data.nbr_migrations_executed == 2
-
     assert await count_nodes(db=db, label="TestCar") == 2

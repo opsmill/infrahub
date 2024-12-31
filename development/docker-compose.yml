@@ -183,7 +183,6 @@ services:
       INFRAHUB_DB_PROTOCOL: bolt
       INFRAHUB_STORAGE_DRIVER: local
     volumes:
-      - "git_data:/opt/infrahub/git"
       - "git_remote_data:/remote"
     tty: true
     labels:
@@ -191,6 +190,5 @@ services:
       com.github.job: "${JOB_NAME:-unknown}"
 
 volumes:
-  git_data:
   git_remote_data:
   storage_data:

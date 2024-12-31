@@ -2,7 +2,6 @@ from typing import Dict, Literal
 
 import pytest
 from deepdiff import DeepDiff
-from graphql import graphql
 
 from infrahub import __version__, config
 from infrahub.core import registry
@@ -15,6 +14,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.helpers.graphql import graphql
 
 
 async def test_info_query(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
@@ -1535,6 +1535,74 @@ async def test_query_filter_relationship_id(
     assert len(result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"]) == 2
 
 
+@pytest.mark.parametrize(
+    "graphql_filter,expected_results",
+    [
+        ('mylist__value: "tree"', ["obj1", "obj2"]),
+        ("mylist__value: 2", ["obj2", "obj3", "obj5"]),
+        ('mylist__value: "one", level__value: 2', ["obj2"]),
+        ('mylist__values: ["one"]', ["obj1", "obj2", "obj3"]),
+        ('mylist__values: ["one", "two"]', ["obj1", "obj2", "obj3", "obj5"]),
+        ('mylist__values: ["one", "two"]', ["obj1", "obj2", "obj3", "obj5"]),
+        ('mylist__values: ["one", 5]', ["obj1", "obj2", "obj3", "obj4"]),
+        ("mylist__value: true", ["obj3"]),
+        ("mylist__values: [true]", ["obj3"]),
+        ("mylist__values: [true, false]", ["obj3", "obj5"]),
+    ],
+)
+async def test_query_filter_list(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    graphql_filter: str,
+    expected_results: list[str],
+):
+    obj1 = await Node.init(db=db, schema=criticality_schema)
+    await obj1.new(db=db, name="obj1", level=1, mylist=["one", "two", "tree", 5])
+    await obj1.save(db=db)
+    obj2 = await Node.init(db=db, schema=criticality_schema)
+    await obj2.new(db=db, name="obj2", level=2, mylist=["one", 2, "tree"])
+    await obj2.save(db=db)
+    obj3 = await Node.init(db=db, schema=criticality_schema)
+    await obj3.new(db=db, name="obj3", level=3, mylist=["one", "two", True, 2])
+    await obj3.save(db=db)
+    obj4 = await Node.init(db=db, schema=criticality_schema)
+    await obj4.new(db=db, name="obj4", level=4, mylist=["anotherone", "twotree", "true", "2", 5])
+    await obj4.save(db=db)
+    obj5 = await Node.init(db=db, schema=criticality_schema)
+    await obj5.new(db=db, name="obj5", level=5, mylist=["oneone", "two", False, 2])
+    await obj5.save(db=db)
+
+    query = """
+    query {
+        TestCriticality(%(filter)s) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % {"filter": graphql_filter}
+
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    names = sorted([item["node"]["name"]["value"] for item in result.data["TestCriticality"]["edges"]])
+    assert names == expected_results
+
+
 async def test_query_attribute_multiple_values(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
 ):
@@ -2003,20 +2071,31 @@ async def test_query_attribute_node_property_owner(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
-    person_tag_schema: None,
+    car_person_schema: SchemaBranch,
     first_account: Node,
 ):
     p1 = await Node.init(db=db, schema="TestPerson")
-    await p1.new(db=db, firstname="John", lastname="Doe", _owner=first_account)
+    await p1.new(db=db, name="John", _owner=first_account)
     await p1.save(db=db)
 
+    c1 = await Node.init(db=db, schema="TestCar")
+    await c1.new(
+        db=db,
+        name="volt",
+        nbr_seats=4,
+        is_electric=True,
+        owner={"id": p1},
+    )
+    await c1.save(db=db)
+
+    # test node-level query
     query = """
     query {
         TestPerson {
             edges {
                 node {
                     id
-                    firstname {
+                    name {
                         value
                         owner {
                             id
@@ -2041,13 +2120,60 @@ async def test_query_attribute_node_property_owner(
     )
 
     assert result1.errors is None
-    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"]
-    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"]["id"] == first_account.id
-    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"][
+    assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"]
+    assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"]["id"] == first_account.id
+    assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["owner"][
         "display_label"
     ] == await first_account.render_display_label(db=db)
-    assert result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["is_from_profile"] is False
+    assert result1.data["TestPerson"]["edges"][0]["node"]["name"]["is_from_profile"] is False
     assert gql_params.context.related_node_ids == {p1.id, first_account.id}
+
+    # test relationship-level query
+    query = """
+    query {
+        TestCar {
+            edges {
+                node {
+                    id
+                    owner {
+                        node {
+                            id
+                            name {
+                                value
+                                owner {
+                                    id
+                                    display_label
+                                }
+                                is_from_profile
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+    """
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result2 = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result2.errors is None
+
+    assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"]
+    assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"]["id"] == first_account.id
+    assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["owner"][
+        "display_label"
+    ] == await first_account.render_display_label(db=db)
+    assert result2.data["TestCar"]["edges"][0]["node"]["owner"]["node"]["name"]["is_from_profile"] is False
+    assert gql_params.context.related_node_ids == {c1.id, p1.id, first_account.id}
 
 
 async def test_query_relationship_node_property(
@@ -2082,6 +2208,7 @@ async def test_query_relationship_node_property(
     )
     await c2.save(db=db)
 
+    # test many relationship query
     query = """
     query {
         TestPerson {
@@ -2140,6 +2267,63 @@ async def test_query_relationship_node_property(
     assert results["Jane"]["cars"]["edges"][0]["properties"]["owner"] is None
     assert results["Jane"]["cars"]["edges"][0]["properties"]["source"]
     assert results["Jane"]["cars"]["edges"][0]["properties"]["source"]["id"] == first_account.id
+    assert gql_params.context.related_node_ids == {p1.id, p2.id, c1.id, c2.id, first_account.id}
+
+    # test single relationship query
+    query = """
+    query {
+        TestCar {
+            edges {
+                node {
+                    id
+                    name {
+                        value
+                    }
+                    owner {
+                        node {
+                            name {
+                                value
+                            }
+                        }
+                        properties {
+                            owner {
+                                id
+                            }
+                            source {
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    gql_params = prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+
+    results = {item["node"]["name"]["value"]: item["node"] for item in result.data["TestCar"]["edges"]}
+    assert set(results.keys()) == {"volt", "bolt"}
+
+    assert results["volt"]["owner"]["node"]["name"]["value"] == "John"
+    assert results["volt"]["owner"]["properties"]["owner"]
+    assert results["volt"]["owner"]["properties"]["owner"]["id"] == first_account.id
+    assert results["volt"]["owner"]["properties"]["source"] is None
+
+    assert results["bolt"]["owner"]["node"]["name"]["value"] == "Jane"
+    assert results["bolt"]["owner"]["properties"]["owner"] is None
+    assert results["bolt"]["owner"]["properties"]["source"]
+    assert results["bolt"]["owner"]["properties"]["source"]["id"] == first_account.id
     assert gql_params.context.related_node_ids == {p1.id, p2.id, c1.id, c2.id, first_account.id}
 
 

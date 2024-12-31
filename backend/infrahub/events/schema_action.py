@@ -3,7 +3,7 @@ from typing import Any
 from pydantic import Field
 
 from infrahub.message_bus import InfrahubMessage
-from infrahub.message_bus.messages.event_schema_update import EventSchemaUpdate
+from infrahub.message_bus.messages.refresh_registry_branches import RefreshRegistryBranches
 
 from .models import InfrahubBranchEvent
 
@@ -28,8 +28,9 @@ class SchemaUpdatedEvent(InfrahubBranchEvent):
 
     def get_messages(self) -> list[InfrahubMessage]:
         return [
-            EventSchemaUpdate(
-                branch=self.branch,
-                meta=self.get_message_meta(),
-            )
+            RefreshRegistryBranches(),
+            # EventSchemaUpdate(
+            #     branch=self.branch,
+            #     meta=self.get_message_meta(),
+            # )
         ]

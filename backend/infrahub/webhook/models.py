@@ -84,9 +84,13 @@ class TransformWebhook(Webhook):
     async def _prepare_payload(self) -> None:
         repo: Union[InfrahubReadOnlyRepository, InfrahubRepository]
         if self.repository_kind == InfrahubKind.READONLYREPOSITORY:
-            repo = await InfrahubReadOnlyRepository.init(id=self.repository_id, name=self.repository_name)
+            repo = await InfrahubReadOnlyRepository.init(
+                id=self.repository_id, name=self.repository_name, client=self.service.client
+            )
         else:
-            repo = await InfrahubRepository.init(id=self.repository_id, name=self.repository_name)
+            repo = await InfrahubRepository.init(
+                id=self.repository_id, name=self.repository_name, client=self.service.client
+            )
 
         default_branch = repo.default_branch
         commit = repo.get_commit_value(branch_name=default_branch)

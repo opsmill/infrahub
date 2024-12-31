@@ -2,6 +2,7 @@ from typing import List
 
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
+from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.core.constants import InfrahubKind
@@ -9,16 +10,20 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import CheckError
 from infrahub.git.repository import InfrahubRepository
-from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
+from infrahub.workflows.utils import add_tags
 
-log = get_logger()
 
-
-@flow(name="git-repository-check-definition")
+@flow(
+    name="git-repository-check-definition",
+    flow_run_name="Run user defined checks for repository {message.repository_name}",
+)
 async def check_definition(message: messages.CheckRepositoryCheckDefinition, service: InfrahubServices) -> None:
+    await add_tags(branches=[message.branch_name], nodes=[message.proposed_change])
+    log = get_run_logger()
+
     definition = await service.client.get(
         kind=InfrahubKind.CHECKDEFINITION, id=message.check_definition_id, branch=message.branch_name
     )
@@ -109,7 +114,7 @@ async def check_definition(message: messages.CheckRepositoryCheckDefinition, ser
         )
 
     checks_in_execution = ",".join(check_execution_ids)
-    log.info("Checks in execution", checks=checks_in_execution)
+    log.info(f"Checks in execution {checks_in_execution}")
     await service.cache.set(
         key=f"validator_execution_id:{validator_execution_id}:checks",
         value=checks_in_execution,
@@ -129,20 +134,19 @@ async def check_definition(message: messages.CheckRepositoryCheckDefinition, ser
         await service.send(message=event)
 
 
-@flow(name="git-repository-check-merge-conflict")
+@flow(
+    name="git-repository-check-merge-conflict",
+    flow_run_name="Check for merge conflicts between {message.source_branch} and {message.target_branch}",
+)
 async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, service: InfrahubServices) -> None:
     """Runs a check to see if there are merge conflicts between two branches."""
-    log.info(
-        "Checking for merge conflicts",
-        repository_id=message.repository_id,
-        proposed_change_id=message.proposed_change,
-    )
+    await add_tags(branches=[message.source_branch], nodes=[message.proposed_change])
 
     success_condition = "-"
     validator = await service.client.get(kind=InfrahubKind.REPOSITORYVALIDATOR, id=message.validator_id)
     await validator.checks.fetch()
 
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, service=service)
     async with lock.registry.get(name=message.repository_name, namespace="repository"):
         conflicts = await repo.get_conflicts(source_branch=message.source_branch, dest_branch=message.target_branch)
 
@@ -202,7 +206,8 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
         )
         await check.save()
 
-    await NodeManager.delete(db=service.database, nodes=list(existing_checks.values()))
+    async with service.database.start_session() as db:
+        await NodeManager.delete(db=db, nodes=list(existing_checks.values()))
 
     await service.cache.set(
         key=f"validator_execution_id:{message.validator_execution_id}:check_execution_id:{message.check_execution_id}",
@@ -211,12 +216,17 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
     )
 
 
-@flow(name="git-repository-user-check")
+@flow(name="git-repository-user-check", flow_run_name="Execute user defined Check '{message.name}'")
 async def user_check(message: messages.CheckRepositoryUserCheck, service: InfrahubServices) -> None:
+    await add_tags(branches=[message.branch_name], nodes=[message.proposed_change])
+    log = get_run_logger()
+
     validator = await service.client.get(kind=InfrahubKind.USERVALIDATOR, id=message.validator_id)
     await validator.checks.fetch()
 
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
+    repo = await InfrahubRepository.init(
+        id=message.repository_id, name=message.repository_name, commit=message.commit, service=service
+    )
     conclusion = "failure"
     severity = "critical"
     log_entries = ""
@@ -232,12 +242,15 @@ async def user_check(message: messages.CheckRepositoryUserCheck, service: Infrah
         if check_run.passed:
             conclusion = "success"
             severity = "info"
-            log.info("The check passed", check_execution_id=message.check_execution_id)
+            log.info("The check passed")
         else:
-            log.warning("The check reported failures", check_execution_id=message.check_execution_id)
+            log.warning("The check reported failures")
+            for log_entry in check_run.log_entries:
+                log.warning(log_entry)
         log_entries = check_run.log_entries
     except CheckError as exc:
-        log.warning("The check failed to run", check_execution_id=message.check_execution_id)
+        log.warning("The check failed to run")
+        log.error(exc.message)
         log_entries = f"FATAL Error/n:{exc.message}"
 
     check = None
