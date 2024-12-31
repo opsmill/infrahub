@@ -200,6 +200,7 @@ def get_enum_mappings() -> dict:
     from infrahub.config import (
         BrokerDriver,
         CacheDriver,
+        ExtraLogLevel,
         Oauth2Provider,
         OIDCProvider,
         SSOProtocol,
@@ -222,6 +223,7 @@ def get_enum_mappings() -> dict:
         TraceExporterType,
         TraceTransportProtocol,
         WorkflowDriver,
+        ExtraLogLevel,
         DatabaseType,
     ]:
         for item in enum_class:
