@@ -16,7 +16,7 @@ from ..model.path import (
     EnrichedDiffProperty,
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
-    EnrichedDiffRootEmpty,
+    EnrichedDiffRootMetadata,
     EnrichedDiffSingleRelationship,
     deserialize_tracking_id,
 )
@@ -157,14 +157,14 @@ class EnrichedDiffDeserializer:
         return enriched_root
 
     @classmethod
-    def build_diff_root_empty(cls, root_node: Neo4jNode) -> EnrichedDiffRootEmpty:
+    def build_diff_root_empty(cls, root_node: Neo4jNode) -> EnrichedDiffRootMetadata:
         from_time = Timestamp(str(root_node.get("from_time")))
         to_time = Timestamp(str(root_node.get("to_time")))
         tracking_id_str = cls._get_str_or_none_property_value(node=root_node, property_name="tracking_id")
         tracking_id = None
         if tracking_id_str:
             tracking_id = deserialize_tracking_id(tracking_id_str=tracking_id_str)
-        return EnrichedDiffRootEmpty(
+        return EnrichedDiffRootMetadata(
             base_branch_name=str(root_node.get("base_branch")),
             diff_branch_name=str(root_node.get("diff_branch")),
             from_time=from_time,

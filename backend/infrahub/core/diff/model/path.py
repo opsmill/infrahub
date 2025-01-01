@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field, replace
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional
+from uuid import uuid4
 
 from infrahub.core.constants import (
     BranchSupportType,
@@ -405,7 +406,7 @@ class EnrichedDiffNode(BaseSummary):
 
 
 @dataclass
-class EnrichedDiffRootEmpty(BaseSummary):
+class EnrichedDiffRootMetadata(BaseSummary):
     base_branch_name: str
     diff_branch_name: str
     from_time: Timestamp
@@ -421,9 +422,27 @@ class EnrichedDiffRootEmpty(BaseSummary):
     def time_range(self) -> Interval:
         return self.to_time.obj - self.from_time.obj
 
+    def update_metadata(
+        self,
+        from_time: Timestamp | None = None,
+        to_time: Timestamp | None = None,
+        tracking_id: TrackingId | None = None,
+    ) -> bool:
+        is_changed = False
+        if from_time and self.from_time != from_time:
+            self.from_time = from_time
+            is_changed = True
+        if to_time and self.to_time != to_time:
+            self.to_time = to_time
+            is_changed = True
+        if self.tracking_id != tracking_id:
+            self.tracking_id = tracking_id
+            is_changed = True
+        return is_changed
+
 
 @dataclass
-class EnrichedDiffRoot(EnrichedDiffRootEmpty):
+class EnrichedDiffRoot(EnrichedDiffRootMetadata):
     nodes: set[EnrichedDiffNode] = field(default_factory=set)
 
     def __hash__(self) -> int:
@@ -460,7 +479,7 @@ class EnrichedDiffRoot(EnrichedDiffRootEmpty):
         return all_conflicts
 
     @classmethod
-    def from_empty_root(cls, empty_root: EnrichedDiffRootEmpty) -> EnrichedDiffRoot:
+    def from_empty_root(cls, empty_root: EnrichedDiffRootMetadata) -> EnrichedDiffRoot:
         return EnrichedDiffRoot(**asdict(empty_root))
 
     @classmethod
@@ -522,11 +541,11 @@ class EnrichedDiffRoot(EnrichedDiffRootEmpty):
 
 
 @dataclass
-class EnrichedDiffsEmpty:
+class EnrichedDiffsMetadata:
     base_branch_name: str
     diff_branch_name: str
-    base_branch_diff: EnrichedDiffRootEmpty
-    diff_branch_diff: EnrichedDiffRootEmpty
+    base_branch_diff: EnrichedDiffRootMetadata
+    diff_branch_diff: EnrichedDiffRootMetadata
 
     def __repr__(self) -> str:
         return (
@@ -539,9 +558,31 @@ class EnrichedDiffsEmpty:
             f"to_time={self.diff_branch_diff.to_time})"
         )
 
+    def update_metadata(
+        self,
+        from_time: Timestamp | None = None,
+        to_time: Timestamp | None = None,
+        tracking_id: TrackingId | None = None,
+    ) -> bool:
+        is_changed = self.base_branch_diff.update_metadata(
+            from_time=from_time, to_time=to_time, tracking_id=tracking_id
+        )
+        is_changed |= self.diff_branch_diff.update_metadata(
+            from_time=from_time, to_time=to_time, tracking_id=tracking_id
+        )
+        return is_changed
+
+    def set_fresh_uuids(self) -> None:
+        base_uuid = str(uuid4())
+        branch_uuid = str(uuid4())
+        self.base_branch_diff.uuid = base_uuid
+        self.base_branch_diff.partner_uuid = branch_uuid
+        self.diff_branch_diff.uuid = branch_uuid
+        self.diff_branch_diff.partner_uuid = base_uuid
+
 
 @dataclass
-class EnrichedDiffs(EnrichedDiffsEmpty):
+class EnrichedDiffs(EnrichedDiffsMetadata):
     base_branch_diff: EnrichedDiffRoot
     diff_branch_diff: EnrichedDiffRoot
 
@@ -574,6 +615,10 @@ class EnrichedDiffs(EnrichedDiffsEmpty):
             base_branch_diff=base_branch_diff,
             diff_branch_diff=diff_branch_diff,
         )
+
+    @property
+    def is_empty(self) -> bool:
+        return len(self.base_branch_diff.nodes) == 0 and len(self.diff_branch_diff.nodes) == 0
 
 
 @dataclass

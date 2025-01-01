@@ -576,7 +576,9 @@ class TestDiffAndMerge:
         await car_main.save(db=db)
 
         # check that the conflict is removed
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=branch2
+        )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 0
 
