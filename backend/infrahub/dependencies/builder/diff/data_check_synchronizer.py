@@ -3,6 +3,7 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 
 from .conflicts_extractor import DiffConflictsExtractorDependency
 from .data_check_conflict_recorder import DataCheckConflictRecorderDependency
+from .repository import DiffRepositoryDependency
 
 
 class DiffDataCheckSynchronizerDependency(DependencyBuilder[DiffDataCheckSynchronizer]):
@@ -12,4 +13,5 @@ class DiffDataCheckSynchronizerDependency(DependencyBuilder[DiffDataCheckSynchro
             db=context.db,
             conflicts_extractor=DiffConflictsExtractorDependency.build(context=context),
             conflict_recorder=DataCheckConflictRecorderDependency.build(context=context),
+            diff_repository=DiffRepositoryDependency.build(context=context),
         )

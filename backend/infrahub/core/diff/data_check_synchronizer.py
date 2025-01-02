@@ -9,7 +9,9 @@ from infrahub.exceptions import SchemaNotFoundError
 from infrahub.proposed_change.constants import ProposedChangeState
 
 from .conflicts_extractor import DiffConflictsExtractor
-from .model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot
+from .model.diff import DataConflict
+from .model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot, EnrichedDiffRootMetadata
+from .repository.repository import DiffRepository
 
 
 class DiffDataCheckSynchronizer:
@@ -18,12 +20,28 @@ class DiffDataCheckSynchronizer:
         db: InfrahubDatabase,
         conflicts_extractor: DiffConflictsExtractor,
         conflict_recorder: ObjectConflictValidatorRecorder,
+        diff_repository: DiffRepository,
     ):
         self.db = db
         self.conflicts_extractor = conflicts_extractor
         self.conflict_recorder = conflict_recorder
+        self.diff_repository = diff_repository
+        self._enriched_conflicts_map: dict[str, EnrichedDiffConflict] | None = None
+        self._data_conflicts: list[DataConflict] | None = None
 
-    async def synchronize(self, enriched_diff: EnrichedDiffRoot) -> list[Node]:
+    def _get_enriched_conflicts_map(self, enriched_diff: EnrichedDiffRoot) -> dict[str, EnrichedDiffConflict]:
+        if self._enriched_conflicts_map is None:
+            self._enriched_conflicts_map = enriched_diff.get_all_conflicts()
+        return self._enriched_conflicts_map
+
+    async def _get_data_conflicts(self, enriched_diff: EnrichedDiffRoot) -> list[DataConflict]:
+        if self._data_conflicts is None:
+            self._data_conflicts = await self.conflicts_extractor.get_data_conflicts(enriched_diff_root=enriched_diff)
+        return self._data_conflicts
+
+    async def synchronize(self, enriched_diff: EnrichedDiffRoot | EnrichedDiffRootMetadata) -> list[Node]:
+        self._enriched_conflicts_map = None
+        self._data_conflicts = None
         try:
             proposed_changes = await NodeManager.query(
                 db=self.db,
@@ -35,10 +53,18 @@ class DiffDataCheckSynchronizer:
             proposed_changes = []
         if not proposed_changes:
             return []
-        enriched_conflicts_map = enriched_diff.get_all_conflicts()
-        data_conflicts = await self.conflicts_extractor.get_data_conflicts(enriched_diff_root=enriched_diff)
         all_data_checks = []
         for pc in proposed_changes:
+            if not isinstance(enriched_diff, EnrichedDiffRoot):
+                has_validator = bool(await self.conflict_recorder.get_validator(proposed_change=pc))
+                if has_validator:
+                    continue
+                enriched_diff = await self.diff_repository.get_one(
+                    diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
+                )
+
+            data_conflicts = await self._get_data_conflicts(enriched_diff=enriched_diff)
+            enriched_conflicts_map = self._get_enriched_conflicts_map(enriched_diff=enriched_diff)
             core_data_checks = await self.conflict_recorder.record_conflicts(
                 proposed_change_id=pc.get_id(), conflicts=data_conflicts
             )

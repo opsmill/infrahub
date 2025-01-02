@@ -163,6 +163,7 @@ class DiffCoordinator:
                 force_branch_refresh=False,
             )
             if not isinstance(enriched_diffs, EnrichedDiffs):
+                await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
                 return enriched_diffs.diff_branch_diff
 
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.base_branch_diff)
@@ -197,6 +198,7 @@ class DiffCoordinator:
                 force_branch_refresh=False,
             )
             if not isinstance(enriched_diffs, EnrichedDiffs):
+                await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
                 return await self._finalize_diff_root_metadata(diff_root_metadata=enriched_diffs.diff_branch_diff)
 
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.base_branch_diff)
@@ -330,7 +332,6 @@ class DiffCoordinator:
         tracking_id: TrackingId | None = None,
         force_branch_refresh: bool = False,
     ) -> EnrichedDiffs | EnrichedDiffsMetadata:
-        diff_uuids_to_delete = []
         # start with empty diffs b/c we only care about their metadata for now, hydrate them with data as needed
         empty_diff_pairs = await self.diff_repo.get_empty_diff_pairs(
             base_branch_names=[base_branch.name],
@@ -338,12 +339,6 @@ class DiffCoordinator:
             from_time=from_time,
             to_time=to_time,
         )
-        if tracking_id:
-            for diff_pair in empty_diff_pairs:
-                if diff_pair.base_branch_diff.tracking_id == tracking_id:
-                    diff_uuids_to_delete.append(diff_pair.base_branch_diff.uuid)
-                if diff_pair.diff_branch_diff.tracking_id == tracking_id:
-                    diff_uuids_to_delete.append(diff_pair.diff_branch_diff.uuid)
         aggregated_enriched_diffs = await self._aggregate_enriched_diffs(
             diff_request=EnrichedDiffRequest(
                 base_branch=base_branch,
@@ -354,9 +349,22 @@ class DiffCoordinator:
             ),
             partial_enriched_diffs=empty_diff_pairs if not force_branch_refresh else None,
         )
+        if tracking_id:
+            diff_uuids_to_delete: list[str] = []
+            for diff_pair in empty_diff_pairs:
+                if (
+                    diff_pair.base_branch_diff.tracking_id == tracking_id
+                    and diff_pair.base_branch_diff.uuid != aggregated_enriched_diffs.base_branch_diff.uuid
+                ):
+                    diff_uuids_to_delete.append(diff_pair.base_branch_diff.uuid)
+                if (
+                    diff_pair.diff_branch_diff.tracking_id == tracking_id
+                    and diff_pair.diff_branch_diff.uuid != aggregated_enriched_diffs.diff_branch_diff.uuid
+                ):
+                    diff_uuids_to_delete.append(diff_pair.diff_branch_diff.uuid)
 
-        if diff_uuids_to_delete:
-            await self.diff_repo.delete_diff_roots(diff_root_uuids=diff_uuids_to_delete)
+            if diff_uuids_to_delete:
+                await self.diff_repo.delete_diff_roots(diff_root_uuids=diff_uuids_to_delete)
 
         # this is an EnrichedDiffsMetadata, so there are no nodes to enrich
         if not isinstance(aggregated_enriched_diffs, EnrichedDiffs):
@@ -519,7 +527,7 @@ class DiffCoordinator:
 
         return previous_diff_pair
 
-    async def _update_core_data_checks(self, enriched_diff: EnrichedDiffRoot) -> list[Node]:
+    async def _update_core_data_checks(self, enriched_diff: EnrichedDiffRoot | EnrichedDiffRootMetadata) -> list[Node]:
         return await self.data_check_synchronizer.synchronize(enriched_diff=enriched_diff)
 
     async def _calculate_enriched_diff(
