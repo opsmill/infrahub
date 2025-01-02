@@ -333,7 +333,7 @@ class DiffCoordinator:
         force_branch_refresh: bool = False,
     ) -> EnrichedDiffs | EnrichedDiffsMetadata:
         # start with empty diffs b/c we only care about their metadata for now, hydrate them with data as needed
-        empty_diff_pairs = await self.diff_repo.get_empty_diff_pairs(
+        diff_pairs_metadata = await self.diff_repo.get_diff_pairs_metadata(
             base_branch_names=[base_branch.name],
             diff_branch_names=[diff_branch.name],
             from_time=from_time,
@@ -347,11 +347,11 @@ class DiffCoordinator:
                 to_time=to_time,
                 tracking_id=tracking_id,
             ),
-            partial_enriched_diffs=empty_diff_pairs if not force_branch_refresh else None,
+            partial_enriched_diffs=diff_pairs_metadata if not force_branch_refresh else None,
         )
         if tracking_id:
             diff_uuids_to_delete: list[str] = []
-            for diff_pair in empty_diff_pairs:
+            for diff_pair in diff_pairs_metadata:
                 if (
                     diff_pair.base_branch_diff.tracking_id == tracking_id
                     and diff_pair.base_branch_diff.uuid != aggregated_enriched_diffs.base_branch_diff.uuid

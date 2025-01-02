@@ -230,7 +230,7 @@ class DiffRepository:
         await query.execute(db=self.db)
         return await query.get_time_ranges()
 
-    async def get_empty_diff_pairs(
+    async def get_diff_pairs_metadata(
         self,
         diff_branch_names: list[str] | None = None,
         base_branch_names: list[str] | None = None,
