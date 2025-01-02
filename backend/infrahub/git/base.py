@@ -498,8 +498,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             merge_base = repo.merge_base(target.commit, source)[0]
             merge_tree_output = repo.git.merge_tree(merge_base.hexsha, target.commit.hexsha, source.commit.hexsha)
 
-        breakpoint()
-
         log.debug(
             f"Merging {source_branch} into will bring changes",
             repository=self.name,
