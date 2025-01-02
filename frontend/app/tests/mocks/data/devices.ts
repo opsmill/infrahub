@@ -1,6 +1,7 @@
 import { permissionsAllow } from "./permissions";
 
 export const deviceDetailsMocksId = "bd3110b9-5923-45e9-b643-776b8151c074";
+export const deviceDetailsMocksHfid = "atl1-edge1";
 export const deviceSiteMocksId = "06c3ab9e-535e-41af-bf4b-ec9134cc4353";
 export const deviceSiteOwnerMocksId = "1790adb9-7030-259c-35c7-d8e28044d715";
 export const deviceSiteSourceMocksId = "1790adb9-7030-259c-35c7-d8e28044d715";
@@ -1113,6 +1114,7 @@ query InfraDevice {
     edges {
       node {
         id
+        hfid
         display_label
         profiles {
           edges {
@@ -1374,6 +1376,7 @@ export const deviceDetailsMocksData = {
       {
         node: {
           id: deviceDetailsMocksId,
+          hfid: deviceDetailsMocksHfid,
           display_label: deviceDetailsName,
           name: {
             value: deviceDetailsName,
