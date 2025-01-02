@@ -478,20 +478,32 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         raise NotImplementedError()
 
-    def has_conflicting_changes(self, repo: Repo, branch_name: str) -> bool:
+    def has_conflicting_changes(self, target_branch: str, source_branch: str) -> bool:
         """Use merge tree to spot conflicts and tell if there is any."""
-        info = repo.remotes.origin.fetch(branch_name)
+        repo = self.get_git_repo_main()
 
-        target = repo.branches[self.default_branch]
-        remote_branch = repo.commit(info[0].ref)
+        if repo.remotes:
+            # Ensure we have the latest changes from the remote
+            info = repo.remotes.origin.fetch(source_branch)
 
-        merge_base = repo.merge_base(target.commit, remote_branch)[0]
-        merge_tree_output = repo.git.merge_tree(merge_base.hexsha, target.commit.hexsha, remote_branch.hexsha)
+            target = repo.branches[target_branch]
+            source = repo.commit(info[0].ref)
+
+            merge_base = repo.merge_base(target.commit, source)[0]
+            merge_tree_output = repo.git.merge_tree(merge_base.hexsha, target.commit.hexsha, source.hexsha)
+        else:
+            target = repo.branches[target_branch]
+            source = repo.branches[source_branch]
+
+            merge_base = repo.merge_base(target.commit, source)[0]
+            merge_tree_output = repo.git.merge_tree(merge_base.hexsha, target.commit.hexsha, source.commit.hexsha)
+
+        breakpoint()
 
         log.debug(
-            f"Merging {branch_name} into will bring changes",
+            f"Merging {source_branch} into will bring changes",
             repository=self.name,
-            branch=branch_name,
+            branch=source_branch,
             merge_structure=merge_tree_output,
         )
 
@@ -716,9 +728,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             return False
 
         # Make sure the branch won't conflict on merge
-        if self.has_conflicting_changes(repo=self.get_git_repo_main(), branch_name=branch_name):
+        if self.has_conflicting_changes(target_branch=self.default_branch_name, source_branch=branch_name):
             log.warning(
-                f"Remote branch {branch_name} will cause conflicts, they need to be fixed for the worktree to be populated",
+                f"Remote branch {branch_name} will cause conflicts, they need to be resolved before importing into Infrahub",
                 repository=self.name,
                 branch=branch_name,
             )
