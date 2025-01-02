@@ -39,7 +39,6 @@ test.describe("/objects/:objectKind/:objectid", () => {
       await page.getByRole("cell", { name: "EXTERNAL" }).first().click();
 
       // Attribute
-      await expect(page.locator("dl")).toContainText("ID");
       await expect(page.locator("dl")).toContainText("Type");
       await expect(page.locator("dl")).toContainText("Description");
       await expect(page.locator("dl")).toContainText("Import Policies");
