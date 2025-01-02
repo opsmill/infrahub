@@ -7,40 +7,57 @@ services:
   #  - Loki to receive logs from promtail
   #  - Promtail to parse logs from different source
   # --------------------------------------------------------------------------------
-  # promtail:
-  #   image: grafana/promtail:2.8.4
-  #   volumes:
-  #     - ./promtail/config.yml:/etc/promtail/config.yml
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #     - /var/lib/docker/containers:/var/lib/docker/containers
-  #   depends_on:
-  #     - loki
-  # loki:
-  #   image: grafana/loki:2.8.4
-  #   command:
-  #     - '-config.file=/etc/loki/config.yml'
-  #     - '-config.expand-env=true'
-  #   volumes:
-  #     - type: bind
-  #       source: ./loki/config.yml
-  #       target: /etc/loki/config.yml
-  #       read_only: true
-  #     - loki_data:/loki
-  #   ports:
-  #     - "3100:3100"
+  promtail:
+    profiles: [debug]
+    image: grafana/promtail:2.8.4
+    volumes:
+      - ./promtail/config.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers
+    depends_on:
+      - loki
 
-  # tempo:
-  #   image: grafana/tempo:latest
-  #   volumes:
-  #     - type: bind
-  #       source: ./tempo/config.yml
-  #       target: /etc/tempo.yaml
-  #       read_only: true
-  #     - tempo_data:/tmp/tempo
-  #   command:
-  #     - '-config.file=/etc/tempo.yaml'
-  #   ports:
-  #     - "3200:3200"
+  loki:
+    profiles: [debug]
+    image: grafana/loki:3.3.2
+    command:
+      - '-config.file=/etc/loki/config.yml'
+      - '-config.expand-env=true'
+    volumes:
+      - type: bind
+        source: ./loki/config.yml
+        target: /etc/loki/config.yml
+        read_only: true
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+
+  init:
+    profiles: [trace]
+    image: grafana/tempo:latest
+    user: root
+    entrypoint:
+      - "chown"
+      - "10001:10001"
+      - "/var/tempo"
+    volumes:
+      - tempo_data:/var/tempo
+
+  tempo:
+    profiles: [trace]
+    image: grafana/tempo:2.6.1
+    volumes:
+      - type: bind
+        source: ./tempo/config.yml
+        target: /etc/tempo.yaml
+        read_only: true
+      - tempo_data:/tmp/tempo
+    command:
+      - '-config.file=/etc/tempo.yaml'
+    ports:
+      - "3200:3200"
+    depends_on:
+      - init
 
   task-manager-exporter:
     profiles: [debug]
@@ -52,6 +69,9 @@ services:
     depends_on:
       task-manager:
         condition: service_healthy
+    labels:
+      namespace: "prefect"
+      pod: "prefect-exporter"
 
   prometheus:
     profiles: [debug]
@@ -69,8 +89,38 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=1d'
       - '--web.enable-lifecycle'
+      - '--web.enable-remote-write-receiver'
     ports:
       - "9090:9090"
+
+  node-exporter:
+    profiles: [debug]
+    image: prom/node-exporter:latest
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+
+  cadvisor:
+    profiles: [debug]
+    image: gcr.io/cadvisor/cadvisor:latest
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8080:8080"
 
   grafana:
     profiles: [debug]
@@ -85,7 +135,10 @@ services:
       - "3500:3000"
     depends_on:
       - prometheus
+      - loki
 
 volumes:
   grafana_data:
   prometheus_data:
+  loki_data:
+  tempo_data:

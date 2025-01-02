@@ -78,6 +78,8 @@ scrape_configs:
                 logger: ''
                 message: ''
                 timestamp: ''
+                namespace: ''
+                pod: ''
           # Creating a loki label `infrahub-promtail` in case we want to use other job/source later
           - static_labels:
                 job: "infrahub-promtail"
@@ -86,3 +88,7 @@ scrape_configs:
           - source_labels: ['__meta_docker_container_name']
             regex: '/(.*)'
             target_label: 'container'
+          - source_labels: ['__meta_docker_container_label_namespace']
+            target_label: 'namespace'
+          - source_labels: ['__meta_docker_container_label_pod']
+            target_label: 'pod'

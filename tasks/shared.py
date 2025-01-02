@@ -26,6 +26,7 @@ class Namespace(str, Enum):
     DEFAULT = "default"  # aka demo
     DEV = "dev"
     TEST = "test"
+    DEBUG = "debug"
 
 
 INVOKE_SUDO = os.getenv("INVOKE_SUDO", None)
@@ -35,6 +36,7 @@ INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
 INFRAHUB_ADDRESS = os.getenv("INFRAHUB_ADDRESS", "http://localhost:8000")
 
 INFRAHUB_DEBUG: bool = str_to_bool(value=os.getenv("INFRAHUB_DEBUG", "false"))
+INFRAHUB_DEBUG_TRACE: bool = str_to_bool(value=os.getenv("INFRAHUB_DEBUG_TRACE", "false"))
 INFRAHUB_USE_NATS: bool = str_to_bool(os.getenv("INFRAHUB_USE_NATS", "false"))
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
@@ -197,6 +199,12 @@ def get_compose_cmd(namespace: Namespace) -> str:
 
     if INFRAHUB_DEBUG:
         options.append("--profile debug")
+        if INFRAHUB_DEBUG_TRACE:
+            options.append("--profile trace")
+            os.environ["INFRAHUB_TRACE_ENABLE"] = "True"
+            os.environ["INFRAHUB_TRACE_INSECURE"] = "True"
+            os.environ["INFRAHUB_TRACE_EXPORTER_TYPE"] = "otlp"
+            os.environ["INFRAHUB_TRACE_EXPORTER_ENDPOINT"] = "http://tempo:4317"
 
     if dumb_terminal():
         options.append("--ansi never")
