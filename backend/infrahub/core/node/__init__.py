@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union, overload
 
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
+from opentelemetry import trace
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, ComputedAttributeKind, InfrahubKind, RelationshipCardinality
@@ -620,6 +621,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at)
         await query.execute(db=db)
 
+    @trace.get_tracer(__name__).start_as_current_span("Node.to_graphql")
     async def to_graphql(
         self,
         db: InfrahubDatabase,

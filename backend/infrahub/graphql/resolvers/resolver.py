@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional
 
 from infrahub_sdk.utils import extract_fields
+from opentelemetry import trace
 
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
 
 
+@trace.get_tracer(__name__).start_as_current_span("account_resolver")
 async def account_resolver(
     root: dict,  # pylint: disable=unused-argument
     info: GraphQLResolveInfo,
@@ -41,6 +43,7 @@ async def account_resolver(
         raise NodeNotFoundError(node_type=InfrahubKind.GENERICACCOUNT, identifier=context.account_session.account_id)
 
 
+@trace.get_tracer(__name__).start_as_current_span("default_resolver")
 async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
     """Not sure why but the default resolver returns sometime 4 positional args and sometime 2.
 
@@ -118,6 +121,7 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
         return await objs[0].to_graphql(db=db, fields=fields, related_node_ids=context.related_node_ids)
 
 
+@trace.get_tracer(__name__).start_as_current_span("parent_field_name_resolver")
 async def parent_field_name_resolver(parent: dict[str, dict], info: GraphQLResolveInfo) -> dict:
     """This resolver gets used when we know that the parent resolver has already gathered the required information.
 
@@ -127,6 +131,7 @@ async def parent_field_name_resolver(parent: dict[str, dict], info: GraphQLResol
     return parent[info.field_name]
 
 
+@trace.get_tracer(__name__).start_as_current_span("default_paginated_list_resolver")
 async def default_paginated_list_resolver(
     root: dict,  # pylint: disable=unused-argument
     info: GraphQLResolveInfo,
@@ -206,12 +211,14 @@ async def default_paginated_list_resolver(
         return response
 
 
+@trace.get_tracer(__name__).start_as_current_span("single_relationship_resolver")
 async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs: Any) -> dict[str, Any]:
     context: GraphqlContext = info.context
     resolver = context.single_relationship_resolver
     return await resolver.resolve(parent=parent, info=info, **kwargs)
 
 
+@trace.get_tracer(__name__).start_as_current_span("many_relationship_resolver")
 async def many_relationship_resolver(
     parent: dict, info: GraphQLResolveInfo, include_descendants: Optional[bool] = False, **kwargs: Any
 ) -> dict[str, Any]:
@@ -330,6 +337,7 @@ async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs)
     )
 
 
+@trace.get_tracer(__name__).start_as_current_span("hierarchy_resolver")
 async def hierarchy_resolver(
     direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs
 ) -> dict[str, Any]:
