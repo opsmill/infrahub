@@ -1,3 +1,4 @@
+import { ObjectDetailsButton } from "@/components/menu/object-details-button";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { Skeleton } from "@/components/skeleton";
 import graphqlClient from "@/graphql/graphqlClientApollo";
@@ -73,10 +74,12 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
       isReloadLoading={loading}
       reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
       end={
-        <ObjectHelpButton
+        <ObjectDetailsButton
           kind={schema.kind}
           documentationUrl={schema.documentation}
           className="ml-auto"
+          id={objectId}
+          hfid={objectDetailsData.hfid.join()}
         />
       }
       data-testid="object-header"
