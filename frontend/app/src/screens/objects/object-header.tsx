@@ -74,13 +74,16 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
       isReloadLoading={loading}
       reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
       end={
-        <ObjectDetailsButton
-          kind={schema.kind}
-          documentationUrl={schema.documentation}
-          className="ml-auto"
-          id={objectId}
-          hfid={objectDetailsData?.hfid.join()}
-        />
+        objectDetailsData?.hfid &&
+        objectId && (
+          <ObjectDetailsButton
+            kind={schema.kind}
+            documentationUrl={schema.documentation}
+            className="ml-auto"
+            id={objectId}
+            hfid={objectDetailsData?.hfid.join()}
+          />
+        )
       }
       data-testid="object-header"
     />
