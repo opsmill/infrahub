@@ -79,7 +79,7 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
           documentationUrl={schema.documentation}
           className="ml-auto"
           id={objectId}
-          hfid={objectDetailsData.hfid.join()}
+          hfid={objectDetailsData?.hfid.join()}
         />
       }
       data-testid="object-header"
