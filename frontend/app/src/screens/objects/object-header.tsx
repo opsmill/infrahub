@@ -70,7 +70,7 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
           (objectDetailsData?.display_label ?? `${schema.label} not found`)
         )
       }
-      description={schema.description}
+      description={objectDetailsData?.description?.value ?? schema.description}
       isReloadLoading={loading}
       reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
       end={
