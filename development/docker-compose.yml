@@ -188,6 +188,8 @@ services:
     labels:
       com.github.run_id: "${GITHUB_RUN_ID:-unknown}"
       com.github.job: "${JOB_NAME:-unknown}"
+      namespace: "prefect"
+      pod: "prefect-agent"
 
 volumes:
   git_remote_data:
