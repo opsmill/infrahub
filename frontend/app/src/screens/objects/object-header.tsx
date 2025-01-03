@@ -1,3 +1,4 @@
+import { ObjectDetailsButton } from "@/components/menu/object-details-button";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { Skeleton } from "@/components/skeleton";
 import graphqlClient from "@/graphql/graphqlClientApollo";
@@ -60,24 +61,31 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
 
   const objectDetailsData = data?.[schema.kind!]?.edges[0]?.node;
 
+  const title = loading ? (
+    <Skeleton className="h-6 w-60" />
+  ) : (
+    <div className="flex items-center gap-3">
+      {objectDetailsData?.display_label ?? `${schema.label} not found`}
+
+      <ObjectDetailsButton id={objectId} hfid={JSON.stringify(objectDetailsData?.hfid)} />
+    </div>
+  );
+
   return (
     <Content.CardTitle
-      title={
-        loading ? (
-          <Skeleton className="h-6 w-60" />
-        ) : (
-          (objectDetailsData?.display_label ?? `${schema.label} not found`)
-        )
-      }
-      description={schema.description}
+      title={title}
+      description={objectDetailsData?.description?.value ?? schema.description}
       isReloadLoading={loading}
       reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
       end={
-        <ObjectHelpButton
-          kind={schema.kind}
-          documentationUrl={schema.documentation}
-          className="ml-auto"
-        />
+        objectDetailsData?.hfid &&
+        objectId && (
+          <ObjectHelpButton
+            kind={schema.kind}
+            documentationUrl={schema.documentation}
+            className="ml-auto"
+          />
+        )
       }
       data-testid="object-header"
     />

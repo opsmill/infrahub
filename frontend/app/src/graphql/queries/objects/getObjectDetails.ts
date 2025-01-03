@@ -7,6 +7,7 @@ query {{kind}} {
     edges {
       node {
         id
+        hfid
         display_label
 
         {{#if queryProfiles}}
