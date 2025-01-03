@@ -804,12 +804,18 @@ class NodeGetListQuery(Query):
     type = QueryType.READ
 
     def __init__(
-        self, schema: NodeSchema, filters: Optional[dict] = None, partial_match: bool = False, **kwargs: Any
+        self,
+        schema: NodeSchema,
+        filters: Optional[dict] = None,
+        partial_match: bool = False,
+        ordering: bool = True,
+        **kwargs: Any,
     ) -> None:
         self.schema = schema
         self.filters = filters
         self.partial_match = partial_match
         self._variables_to_track = ["n", "rb"]
+        self.ordering = ordering
         self._validate_filters()
 
         super().__init__(**kwargs)
@@ -1176,7 +1182,7 @@ class NodeGetListQuery(Query):
                         types=[FieldAttributeRequirementType.FILTER],
                     )
                     index += 1
-        if not self.schema.order_by:
+        if not self.schema.order_by or not self.ordering:
             return list(field_requirements_map.values())
 
         for order_by_path in self.schema.order_by:
