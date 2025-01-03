@@ -61,27 +61,29 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
 
   const objectDetailsData = data?.[schema.kind!]?.edges[0]?.node;
 
+  const title = loading ? (
+    <Skeleton className="h-6 w-60" />
+  ) : (
+    <div className="flex items-center gap-3">
+      {objectDetailsData?.display_label ?? `${schema.label} not found`}
+
+      <ObjectDetailsButton id={objectId} hfid={objectDetailsData?.hfid.join()} />
+    </div>
+  );
+
   return (
     <Content.CardTitle
-      title={
-        loading ? (
-          <Skeleton className="h-6 w-60" />
-        ) : (
-          (objectDetailsData?.display_label ?? `${schema.label} not found`)
-        )
-      }
+      title={title}
       description={objectDetailsData?.description?.value ?? schema.description}
       isReloadLoading={loading}
       reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
       end={
         objectDetailsData?.hfid &&
         objectId && (
-          <ObjectDetailsButton
+          <ObjectHelpButton
             kind={schema.kind}
             documentationUrl={schema.documentation}
             className="ml-auto"
-            id={objectId}
-            hfid={objectDetailsData?.hfid.join()}
           />
         )
       }
