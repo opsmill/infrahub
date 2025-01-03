@@ -31,7 +31,7 @@ export const isHierarchicalSchema = (
   return "hierarchy" in schema && !!schema.hierarchy;
 };
 
-export const getRootSchemaOfHierarchicalSchema = (schema: iNodeSchema): iNodeSchema | null => {
+export const getRootSchemaOfHierarchicalSchema = (schema: iNodeSchema): iNodeSchema => {
   const nodes = store.get(schemaState);
   const parentSchema = nodes.find(({ kind }) => kind === schema.parent);
 

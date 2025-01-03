@@ -4,7 +4,7 @@ import { Command, CommandInput, CommandList } from "@/components/ui/command";
 import { Spinner } from "@/components/ui/spinner";
 import { useSchema } from "@/hooks/useSchema";
 import ErrorScreen from "@/screens/errors/error-screen";
-import { relationshipsInfiniteQueryOptions } from "@/screens/objects/relationships/domain/get-relationships";
+import { relationshipsInfiniteQueryOptions } from "@/screens/objects/relationships/domain/get-relationships/get-relationships.query";
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
 import { getRootSchemaOfHierarchicalSchema, isHierarchicalSchema } from "@/screens/schema/utils";
 import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
