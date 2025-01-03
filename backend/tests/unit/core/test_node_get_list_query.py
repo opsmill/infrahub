@@ -391,6 +391,22 @@ async def test_query_NodeGetListQuery_order_by(
     assert query.get_node_ids() == [car_camry_main.id, car_yaris_main.id, car_accord_main.id, car_volt_main.id]
 
 
+async def test_query_NodeGetListQuery_order_by_disabled(
+    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+):
+    schema = registry.schema.get(name="TestCar", branch=branch)
+    schema.order_by = ["owner__name__value", "name__value"]
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        ordering=False,
+    )
+    await query.execute(db=db)
+    assert query.get_node_ids() == sorted([car_camry_main.id, car_yaris_main.id, car_accord_main.id, car_volt_main.id])
+
+
 async def test_query_NodeGetListQuery_order_by_optional_relationship_nulls(
     db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
 ):
