@@ -137,34 +137,36 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
     return url;
   };
 
-  const rows = edges?.map((edge: any) => ({
-    link: getUrl(edge.node.id),
-    values: {
-      title: {
-        display: edge.node.title,
+  const rows = edges?.map((edge: any) => {
+    return {
+      link: getUrl(edge.node.id),
+      values: {
+        title: {
+          display: edge.node.title,
+        },
+        branch: {
+          display: edge.node.branch,
+        },
+        state: {
+          display: getStateBadge[edge.node.state],
+        },
+        related_node: {
+          display: edge.node.related_node_kind && (
+            <Id id={edge.node.related_node} kind={edge.node.related_node_kind} preventCopy />
+          ),
+        },
+        progress: {
+          display: edge.node.progress,
+        },
+        workflow: {
+          display: edge.node.workflow,
+        },
+        updated_at: {
+          display: <DateDisplay date={edge.node.updated_at} />,
+        },
       },
-      branch: {
-        display: edge.node.branch,
-      },
-      state: {
-        display: getStateBadge[edge.node.state],
-      },
-      related_node: {
-        display: edge.node.related_node_kind && (
-          <Id id={edge.node.related_node} kind={edge.node.related_node_kind} preventCopy />
-        ),
-      },
-      progress: {
-        display: edge.node.progress,
-      },
-      workflow: {
-        display: edge.node.workflow,
-      },
-      updated_at: {
-        display: <DateDisplay date={edge.node.updated_at} />,
-      },
-    },
-  }));
+    };
+  });
 
   return (
     <Content.Card>
