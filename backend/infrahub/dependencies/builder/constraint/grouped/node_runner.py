@@ -15,7 +15,7 @@ class NodeConstraintRunnerDependency(DependencyBuilder[NodeConstraintRunner]):
             db=context.db,
             branch=context.branch,
             node_constraints=[
-                NodeAttributeUniquenessConstraintDependency.build(context=context),
+                NodeAttributeUniquenessConstraintDependency.build(context=context), # NOTE we probably don't need this Checker, it's redundant with NodeGroupedUniquenessConstraintDependency
                 NodeGroupedUniquenessConstraintDependency.build(context=context),
             ],
             relationship_manager_constraints=[
