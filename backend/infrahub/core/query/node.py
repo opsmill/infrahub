@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from copy import copy
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from enum import Enum
@@ -18,6 +19,7 @@ from infrahub.core.query.utils import find_node_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
+from infrahub.graphql.models import OrderModel
 
 if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
@@ -812,15 +814,24 @@ class NodeGetListQuery(Query):
         schema: NodeSchema,
         filters: Optional[dict] = None,
         partial_match: bool = False,
-        ordering: bool = True,
+        order: OrderModel | None = None,
         **kwargs: Any,
     ) -> None:
         self.schema = schema
         self.filters = filters
         self.partial_match = partial_match
         self._variables_to_track = ["n", "rb"]
-        self.ordering = ordering
         self._validate_filters()
+
+        # Force disabling order when `limit` is 1 as it simplifies the query a lot.
+        if "limit" in kwargs and kwargs["limit"] == 1:
+            if order is None:
+                order = OrderModel(disable=True)
+            else:
+                order = copy(order)
+                order.disable = True
+
+        self.order = order
 
         super().__init__(**kwargs)
 
@@ -907,8 +918,8 @@ class NodeGetListQuery(Query):
             self.params["uuid"] = self.filters["id"]
         elif not self.has_filters and not self.schema.order_by:
             use_simple = True
-            self.order_by = ["n.uuid"]
-
+            if self.order is None or self.order.disable is not True:
+                self.order_by = ["n.uuid"]
         if use_simple:
             if where_clause_elements:
                 self.add_to_query(" AND " + " AND ".join(where_clause_elements))
@@ -923,9 +934,11 @@ class NodeGetListQuery(Query):
         await self._add_node_filter_attributes(
             db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
         )
-        await self._add_node_order_attributes(
-            db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
-        )
+        should_order = self.schema.order_by and (self.order is None or self.order.disable is not True)
+        if should_order:
+            await self._add_node_order_attributes(
+                db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
+            )
 
         if use_profiles:
             await self._add_profiles_per_node_query(db=db, branch_filter=branch_filter)
@@ -935,15 +948,15 @@ class NodeGetListQuery(Query):
             await self._add_profile_rollups(field_attribute_requirements=field_attribute_requirements)
 
         self._add_final_filter(field_attribute_requirements=field_attribute_requirements)
-        self.order_by = []
-        for far in field_attribute_requirements:
-            if not far.is_order:
-                continue
-            if far.supports_profile:
-                self.order_by.append(far.final_value_query_variable)
-                continue
-            self.order_by.append(far.node_value_query_variable)
-        self.order_by.append("n.uuid")
+        if should_order:
+            for far in field_attribute_requirements:
+                if not far.is_order:
+                    continue
+                if far.supports_profile:
+                    self.order_by.append(far.final_value_query_variable)
+                    continue
+                self.order_by.append(far.node_value_query_variable)
+            self.order_by.append("n.uuid")
 
     async def _add_node_filter_attributes(
         self,
@@ -1212,7 +1225,9 @@ class NodeGetListQuery(Query):
                         types=[FieldAttributeRequirementType.FILTER],
                     )
                     index += 1
-        if not self.schema.order_by or not self.ordering:
+
+        disable_order = self.order.disable if self.order is not None else False
+        if not self.schema.order_by or disable_order:
             return list(field_requirements_map.values())
 
         for order_by_path in self.schema.order_by:

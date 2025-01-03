@@ -79,6 +79,10 @@ GraphQLTypes = Union[
 ]
 
 
+class OrderInput(graphene.InputObjectType):
+    disable = graphene.Boolean(required=False)
+
+
 @dataclass
 class GraphqlMutations:
     create: type[InfrahubMutation]
@@ -864,7 +868,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             dict: A Dictionary containing all the filters with their name as the key and their Type as value
         """
 
-        filters: dict[str, Any] = {"offset": graphene.Int(), "limit": graphene.Int()}
+        filters: dict[str, Any] = {"offset": graphene.Int(), "limit": graphene.Int(), "order": OrderInput()}
         default_filters: list[str] = list(filters.keys())
 
         filters["ids"] = graphene.List(graphene.ID)

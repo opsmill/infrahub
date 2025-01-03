@@ -16,6 +16,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.models import OrderModel
 from tests.helpers.schema import WIDGET
 
 
@@ -401,10 +402,10 @@ async def test_query_NodeGetListQuery_order_by_disabled(
         db=db,
         branch=branch,
         schema=schema,
-        ordering=False,
+        order=OrderModel(disable=True),
     )
     await query.execute(db=db)
-    assert query.get_node_ids() == sorted([car_camry_main.id, car_yaris_main.id, car_accord_main.id, car_volt_main.id])
+    assert set(query.get_node_ids()) == {car_camry_main.id, car_yaris_main.id, car_accord_main.id, car_volt_main.id}
 
 
 async def test_query_NodeGetListQuery_order_by_optional_relationship_nulls(

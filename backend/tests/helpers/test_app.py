@@ -67,7 +67,7 @@ class TestInfrahubApp(TestInfrahub):
         config.OVERRIDE.message_bus = original
 
     @pytest.fixture(scope="class", autouse=True)
-    async def workflow_local(self, prefect: Generator[str, None, None]) -> AsyncGenerator[WorkflowLocalExecution, None]:
+    async def workflow_local(self) -> AsyncGenerator[WorkflowLocalExecution, None]:
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
         await setup_task_manager()

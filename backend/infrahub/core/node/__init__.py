@@ -18,6 +18,7 @@ from infrahub.support.macro import MacroDefinition
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
+from ...graphql.models import OrderModel
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
@@ -609,7 +610,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         # Update the relationship to the branch itself
         query = await NodeGetListQuery.init(
-            db=db, schema=self._schema, filters={"id": self.id}, branch=self._branch, at=delete_at
+            db=db,
+            schema=self._schema,
+            filters={"id": self.id},
+            branch=self._branch,
+            at=delete_at,
+            order=OrderModel(disable=True),
         )
         await query.execute(db=db)
         result = query.get_result()

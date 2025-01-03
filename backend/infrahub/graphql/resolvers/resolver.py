@@ -9,6 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.exceptions import NodeNotFoundError
 
+from ..models import OrderModel
 from ..parser import extract_selection
 from ..permissions import get_permissions
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
@@ -33,6 +34,7 @@ async def account_resolver(
             filters={"ids": [context.account_session.account_id]},
             fields=fields,
             db=db,
+            order=OrderModel(disable=True),
         )
         if results:
             account_profile = await results[0].to_graphql(db=db, fields=fields)
@@ -132,6 +134,7 @@ async def default_paginated_list_resolver(
     info: GraphQLResolveInfo,
     offset: int | None = None,
     limit: int | None = None,
+    order: OrderModel | None = None,
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
@@ -173,6 +176,7 @@ async def default_paginated_list_resolver(
                 include_source=True,
                 include_owner=True,
                 partial_match=partial_match,
+                order=order,
             )
 
         if "count" in fields:
