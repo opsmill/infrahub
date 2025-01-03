@@ -506,26 +506,29 @@ class DiffCoordinator:
                 previous_diff_pair = single_enriched_diffs
                 continue
 
-            if isinstance(single_enriched_diffs, EnrichedDiffs) and single_enriched_diffs.is_empty:
-                if previous_diff_pair:
-                    previous_diff_pair.base_branch_diff.to_time = single_enriched_diffs.base_branch_diff.to_time
-                    previous_diff_pair.diff_branch_diff.to_time = single_enriched_diffs.diff_branch_diff.to_time
-                else:
-                    previous_diff_pair = single_enriched_diffs
-                continue
-
-            if not isinstance(previous_diff_pair, EnrichedDiffs):
-                previous_diff_pair = await self.diff_repo.hydrate_diff_pair(enriched_diffs_empty=previous_diff_pair)
-            if not isinstance(single_enriched_diffs, EnrichedDiffs):
-                single_enriched_diffs = await self.diff_repo.hydrate_diff_pair(
-                    enriched_diffs_empty=single_enriched_diffs
-                )
-
-            previous_diff_pair = await self.diff_combiner.combine(
-                earlier_diffs=previous_diff_pair, later_diffs=single_enriched_diffs
-            )
+            previous_diff_pair = await self._combine_diffs(earlier=previous_diff_pair, later=single_enriched_diffs)
 
         return previous_diff_pair
+
+    async def _combine_diffs(
+        self, earlier: EnrichedDiffs | EnrichedDiffsMetadata, later: EnrichedDiffs | EnrichedDiffsMetadata
+    ) -> EnrichedDiffs | EnrichedDiffsMetadata:
+        # if one of the diffs is hydrated and has no data, we can combine them without hydrating the other
+        if isinstance(earlier, EnrichedDiffs) and earlier.is_empty:
+            later.base_branch_diff.from_time = earlier.base_branch_diff.from_time
+            later.diff_branch_diff.from_time = earlier.diff_branch_diff.from_time
+            return later
+        if isinstance(later, EnrichedDiffs) and later.is_empty:
+            earlier.base_branch_diff.to_time = later.base_branch_diff.to_time
+            earlier.diff_branch_diff.to_time = later.diff_branch_diff.to_time
+            return earlier
+
+        if not isinstance(earlier, EnrichedDiffs):
+            earlier = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=earlier)
+        if not isinstance(later, EnrichedDiffs):
+            later = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=later)
+
+        return await self.diff_combiner.combine(earlier_diffs=earlier, later_diffs=later)
 
     async def _update_core_data_checks(self, enriched_diff: EnrichedDiffRoot | EnrichedDiffRootMetadata) -> list[Node]:
         return await self.data_check_synchronizer.synchronize(enriched_diff=enriched_diff)

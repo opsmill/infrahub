@@ -123,16 +123,18 @@ class DiffRepository:
             for dbr in diff_branch_roots
         ]
 
-    async def hydrate_diff_pair(self, enriched_diffs_empty: EnrichedDiffsMetadata) -> EnrichedDiffs:
+    async def hydrate_diff_pair(self, enriched_diffs_metadata: EnrichedDiffsMetadata) -> EnrichedDiffs:
         hydrated_base_diff = await self.get_one(
-            diff_branch_name=enriched_diffs_empty.base_branch_name, diff_id=enriched_diffs_empty.base_branch_diff.uuid
+            diff_branch_name=enriched_diffs_metadata.base_branch_name,
+            diff_id=enriched_diffs_metadata.base_branch_diff.uuid,
         )
         hydrated_branch_diff = await self.get_one(
-            diff_branch_name=enriched_diffs_empty.diff_branch_name, diff_id=enriched_diffs_empty.diff_branch_diff.uuid
+            diff_branch_name=enriched_diffs_metadata.diff_branch_name,
+            diff_id=enriched_diffs_metadata.diff_branch_diff.uuid,
         )
         return EnrichedDiffs(
-            base_branch_name=enriched_diffs_empty.base_branch_name,
-            diff_branch_name=enriched_diffs_empty.diff_branch_name,
+            base_branch_name=enriched_diffs_metadata.base_branch_name,
+            diff_branch_name=enriched_diffs_metadata.diff_branch_name,
             base_branch_diff=hydrated_base_diff,
             diff_branch_diff=hydrated_branch_diff,
         )
