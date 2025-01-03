@@ -148,7 +148,7 @@ def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default
     )
 
 
-async def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
+def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
     query = """
     query {
         CoreGraphQLQuery {
@@ -222,8 +222,8 @@ async def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, de
 #     }
 #     """
 
-#     gql_params = await prepare_graphql_params(
-#         db=db, include_mutation=False, include_subscription=False, branch=default_branch
+#     gql_params = exec_async(
+#         prepare_graphql_params, db=db, include_mutation=False, include_subscription=False, branch=default_branch
 #     )
 #     aio_benchmark(
 #         graphql,
