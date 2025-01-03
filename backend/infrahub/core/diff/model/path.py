@@ -479,7 +479,7 @@ class EnrichedDiffRoot(EnrichedDiffRootMetadata):
         return all_conflicts
 
     @classmethod
-    def from_empty_root(cls, empty_root: EnrichedDiffRootMetadata) -> EnrichedDiffRoot:
+    def from_root_metadata(cls, empty_root: EnrichedDiffRootMetadata) -> EnrichedDiffRoot:
         return EnrichedDiffRoot(**asdict(empty_root))
 
     @classmethod

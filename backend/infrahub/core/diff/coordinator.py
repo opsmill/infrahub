@@ -197,6 +197,7 @@ class DiffCoordinator:
                 tracking_id=tracking_id,
                 force_branch_refresh=False,
             )
+            # metadata-only diff, so no nodes to enrich
             if not isinstance(enriched_diffs, EnrichedDiffs):
                 await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
                 return await self._finalize_diff_root_metadata(diff_root_metadata=enriched_diffs.diff_branch_diff)
@@ -406,6 +407,7 @@ class DiffCoordinator:
         """
         aggregated_enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata | None = None
         if not partial_enriched_diffs:
+            # no existing diffs to use in calculating this diff, so calculate the whole thing and return it
             aggregated_enriched_diffs = await self._calculate_enriched_diff(
                 diff_request=diff_request, is_incremental_diff=False
             )
@@ -458,9 +460,9 @@ class DiffCoordinator:
         if not aggregated_enriched_diffs:
             return self._build_enriched_diffs_with_no_nodes(diff_request=diff_request)
 
-        # a diff exists in the database that covers at least part of this time period,
-        # but it might need to have its start or end time extended to cover time ranges
-        # with no changes
+        # metadata-only diff, means that a diff exists in the database that covers at least
+        # part of this time period, but it might need to have its start or end time extended
+        # to cover time ranges with no changes
         if not isinstance(aggregated_enriched_diffs, EnrichedDiffs):
             return aggregated_enriched_diffs
 
@@ -523,6 +525,7 @@ class DiffCoordinator:
             earlier.diff_branch_diff.to_time = later.diff_branch_diff.to_time
             return earlier
 
+        # hydrate the diffs to combine, if necessary
         if not isinstance(earlier, EnrichedDiffs):
             earlier = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=earlier)
         if not isinstance(later, EnrichedDiffs):

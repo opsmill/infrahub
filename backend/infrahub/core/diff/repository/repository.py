@@ -25,11 +25,11 @@ from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
 from ..query.drop_tracking_id import EnrichedDiffDropTrackingIdQuery
-from ..query.empty_roots import EnrichedDiffEmptyRootsQuery
 from ..query.field_specifiers import EnrichedDiffFieldSpecifiersQuery
 from ..query.filters import EnrichedDiffQueryFilters
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
 from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
+from ..query.roots_metadata import EnrichedDiffRootsMetadataQuery
 from ..query.save import EnrichedDiffRootsCreateQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
@@ -241,7 +241,7 @@ class DiffRepository:
     ) -> list[EnrichedDiffsMetadata]:
         if diff_branch_names and base_branch_names:
             diff_branch_names += base_branch_names
-        empty_roots = await self.get_empty_roots(
+        empty_roots = await self.get_roots_metadata(
             diff_branch_names=diff_branch_names,
             base_branch_names=base_branch_names,
             from_time=from_time,
@@ -263,14 +263,14 @@ class DiffRepository:
             )
         return pairs
 
-    async def get_empty_roots(
+    async def get_roots_metadata(
         self,
         diff_branch_names: list[str] | None = None,
         base_branch_names: list[str] | None = None,
         from_time: Timestamp | None = None,
         to_time: Timestamp | None = None,
     ) -> list[EnrichedDiffRootMetadata]:
-        query = await EnrichedDiffEmptyRootsQuery.init(
+        query = await EnrichedDiffRootsMetadataQuery.init(
             db=self.db,
             diff_branch_names=diff_branch_names,
             base_branch_names=base_branch_names,
@@ -279,8 +279,8 @@ class DiffRepository:
         )
         await query.execute(db=self.db)
         diff_roots = []
-        for neo4j_node in query.get_empty_root_nodes():
-            diff_roots.append(self.deserializer.build_diff_root_empty(root_node=neo4j_node))
+        for neo4j_node in query.get_root_nodes_metadata():
+            diff_roots.append(self.deserializer.build_diff_root_metadata(root_node=neo4j_node))
         return diff_roots
 
     async def diff_has_conflicts(

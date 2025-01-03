@@ -55,10 +55,13 @@ class DiffDataCheckSynchronizer:
             return []
         all_data_checks = []
         for pc in proposed_changes:
+            # if the enriched_diff is EnrichedDiffRootMetadata, then it has no new data in it
             if not isinstance(enriched_diff, EnrichedDiffRoot):
                 has_validator = bool(await self.conflict_recorder.get_validator(proposed_change=pc))
+                # if this pc does not have a validator, then it is a new ProposedChange
                 if has_validator:
                     continue
+                # if this is a new ProposedChange, we need to hydrate then EnrichedDiffRoot so that we can get the conflicts from it
                 enriched_diff = await self.diff_repository.get_one(
                     diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
                 )

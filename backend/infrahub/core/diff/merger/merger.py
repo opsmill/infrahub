@@ -31,7 +31,7 @@ class DiffMerger:
         self.serializer = serializer
 
     async def merge_graph(self, at: Timestamp) -> None:
-        enriched_diffs = await self.diff_repository.get_empty_roots(
+        enriched_diffs = await self.diff_repository.get_roots_metadata(
             diff_branch_names=[self.source_branch.name], base_branch_names=[self.destination_branch.name]
         )
         latest_diff = None

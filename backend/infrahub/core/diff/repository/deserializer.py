@@ -151,13 +151,13 @@ class EnrichedDiffDeserializer:
         root_uuid = str(root_node.get("uuid"))
         if root_uuid in self._diff_root_map:
             return self._diff_root_map[root_uuid]
-        root_empty = self.build_diff_root_empty(root_node=root_node)
-        enriched_root = EnrichedDiffRoot.from_empty_root(empty_root=root_empty)
+        root_empty = self.build_diff_root_metadata(root_node=root_node)
+        enriched_root = EnrichedDiffRoot.from_root_metadata(empty_root=root_empty)
         self._diff_root_map[root_uuid] = enriched_root
         return enriched_root
 
     @classmethod
-    def build_diff_root_empty(cls, root_node: Neo4jNode) -> EnrichedDiffRootMetadata:
+    def build_diff_root_metadata(cls, root_node: Neo4jNode) -> EnrichedDiffRootMetadata:
         from_time = Timestamp(str(root_node.get("from_time")))
         to_time = Timestamp(str(root_node.get("to_time")))
         tracking_id_str = cls._get_str_or_none_property_value(node=root_node, property_name="tracking_id")

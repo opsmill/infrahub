@@ -326,7 +326,7 @@ class TestMergeDiff:
         check_idempotent: bool,
     ):
         empty_diff_root.nodes = {added_person_node_diff}
-        mock_diff_repository.get_empty_roots.return_value = [empty_diff_root]
+        mock_diff_repository.get_roots_metadata.return_value = [empty_diff_root]
         mock_diff_repository.get_one.return_value = empty_diff_root
         at = Timestamp()
 
@@ -380,7 +380,7 @@ class TestMergeDiff:
         person_branch = await NodeManager.get_one(db=db, branch=source_branch, id=person_node_main.id)
         await person_branch.delete(db=db)
         empty_diff_root.nodes = {deleted_person_node_diff}
-        mock_diff_repository.get_empty_roots.return_value = [empty_diff_root]
+        mock_diff_repository.get_roots_metadata.return_value = [empty_diff_root]
         mock_diff_repository.get_one.return_value = empty_diff_root
         at = Timestamp()
 
@@ -433,7 +433,7 @@ class TestMergeDiff:
         )
         deleted_node_diff.conflict = node_conflict
         empty_diff_root.nodes = {deleted_node_diff}
-        mock_diff_repository.get_empty_roots.return_value = [empty_diff_root]
+        mock_diff_repository.get_roots_metadata.return_value = [empty_diff_root]
         mock_diff_repository.get_one.return_value = empty_diff_root
         at = Timestamp()
 
@@ -654,7 +654,7 @@ class TestMergeDiff:
         await car_branch.save(db=db)
 
         empty_diff_root.nodes = {updated_person_node_diff, updated_car_diff}
-        mock_diff_repository.get_empty_roots.return_value = [empty_diff_root]
+        mock_diff_repository.get_roots_metadata.return_value = [empty_diff_root]
         mock_diff_repository.get_one.return_value = empty_diff_root
         at = Timestamp()
 
