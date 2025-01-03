@@ -134,6 +134,7 @@ class InfrahubDatabaseProfiler(InfrahubDatabase):
 
         # Do the query and measure duration
         time_start = time.time()
+        print(f"{query=}")
         response, metadata = await super().execute_query_with_metadata(query=query, params=params, name=name, type=type)
         duration_time = time.time() - time_start
 
