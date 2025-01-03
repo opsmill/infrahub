@@ -3,6 +3,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 from functools import partial
+from opentelemetry import trace
 from pathlib import Path
 from typing import AsyncGenerator, Awaitable, Callable
 
@@ -58,42 +59,45 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
             exporter_endpoint=config.SETTINGS.trace.exporter_endpoint,
             exporter_protocol=config.SETTINGS.trace.exporter_protocol,
         )
-
-    # Initialize database Driver and load local registry
-    database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
-    database.manager.index.init(nodes=node_indexes, rels=rel_indexes)
-
-    build_component_registry()
-
-    workflow = config.OVERRIDE.workflow or (
-        WorkflowWorkerExecution()
-        if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
-        else WorkflowLocalExecution()
-    )
-
-    message_bus = config.OVERRIDE.message_bus or (
-        NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
-    )
-    cache = config.OVERRIDE.cache or (
-        NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
-    )
-    service = InfrahubServices(
-        cache=cache,
-        database=database,
-        message_bus=message_bus,
-        workflow=workflow,
-        component_type=ComponentType.API_SERVER,
-    )
-    await service.initialize()
-    initialize_lock(service=service)
-    # We must initialize DB after initialize lock and initialize lock depends on cache initialization
-    async with application.state.db.start_session() as db:
-        await initialization(db=db)
-    services.prepare(service=service)
-    application.state.service = service
-    application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
-    if enable_scheduler:
-        await service.scheduler.start_schedule()
+    with trace.get_tracer(__name__).start_as_current_span("app_initialization"):
+        # Initialize database Driver and load local registry
+        database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
+        database.manager.index.init(nodes=node_indexes, rels=rel_indexes)
+    
+        build_component_registry()
+    
+        workflow = config.OVERRIDE.workflow or (
+            WorkflowWorkerExecution()
+            if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
+            else WorkflowLocalExecution()
+        )
+    
+        message_bus = config.OVERRIDE.message_bus or (
+            NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
+        )
+        cache = config.OVERRIDE.cache or (
+            NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
+        )
+        service = InfrahubServices(
+            cache=cache,
+            database=database,
+            message_bus=message_bus,
+            workflow=workflow,
+            component_type=ComponentType.API_SERVER,
+        )
+        with trace.get_tracer(__name__).start_as_current_span("service.initialize"):
+            await service.initialize()
+            initialize_lock(service=service)
+        # We must initialize DB after initialize lock and initialize lock depends on cache initialization
+        async with application.state.db.start_session() as db:
+            with trace.get_tracer(__name__).start_as_current_span("db.initialization"):
+                await initialization(db=db)
+        with trace.get_tracer(__name__).start_as_current_span("services.prepare"):
+            services.prepare(service=service)
+        application.state.service = service
+        application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
+        if enable_scheduler:
+            await service.scheduler.start_schedule()
 
 
 async def shutdown(application: FastAPI) -> None:
