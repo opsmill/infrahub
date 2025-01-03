@@ -56,7 +56,7 @@ async def dataset04(db: InfrahubDatabase, default_branch, register_default_schem
     await load_data(db=db, nbr_query=250)
 
 
-async def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
+def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
     query = """
     query {
         CoreGraphQLQuery {
@@ -74,8 +74,8 @@ async def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, 
     }
     """
 
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    gql_params = exec_async(
+        prepare_graphql_params, db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
 
     for _ in range(NBR_WARMUP):
@@ -98,7 +98,7 @@ async def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, 
     )
 
 
-async def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
+def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
     query = """
     query {
         CoreGraphQLQuery {
@@ -124,8 +124,8 @@ async def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, d
     }
     """
 
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    gql_params = exec_async(
+        prepare_graphql_params, db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
 
     for _ in range(NBR_WARMUP):
@@ -174,8 +174,8 @@ async def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, de
     }
     """
 
-    gql_params = await prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    gql_params = exec_async(
+        prepare_graphql_params, db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
 
     for _ in range(NBR_WARMUP):
