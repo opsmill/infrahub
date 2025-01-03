@@ -847,23 +847,28 @@ class NodeGetListQuery(Query):
         where_clause_elements = []
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at, branch_agnostic=self.branch_agnostic
+            at=self.at,
+            branch_agnostic=self.branch_agnostic,
+        )
+        branch_filter_deleted_nodes, _ = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic, variable_name="r_filter"
         )
         self.params.update(branch_params)
 
         query = """
-        MATCH (n:%(node_kind)s)
-        CALL {
-            WITH n
-            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
-            WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
+        MATCH (root:Root)<-[r:IS_PART_OF]-(n:%(node_kind)s)
+        WHERE NOT n.uuid IN COLLECT {
+            MATCH (:Root)<-[r_filter:IS_PART_OF]-(n_filter:%(node_kind)s)
+            WHERE %(branch_filter_deleted)s AND r_filter.branch_level > 1 AND r_filter.status = "deleted"
+            RETURN n_filter.uuid
+        } AND %(branch_filter)s AND r.status = "active"
         WITH n, r as rb
-        WHERE rb.status = "active"
-        """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
+        """ % {
+            "branch_filter": branch_filter,
+            "branch_filter_deleted": branch_filter_deleted_nodes,
+            "node_kind": self.schema.kind,
+        }
+
         self.add_to_query(query)
         use_simple = False
         if self.filters and "id" in self.filters:
@@ -875,11 +880,11 @@ class NodeGetListQuery(Query):
             self.order_by = ["n.uuid"]
         if use_simple:
             if where_clause_elements:
-                self.add_to_query(" AND " + " AND ".join(where_clause_elements))
+                self.add_to_query("WHERE " + " AND ".join(where_clause_elements))
             return
 
         if self.filters and "ids" in self.filters:
-            self.add_to_query("AND n.uuid IN $node_ids")
+            self.add_to_query("WHERE n.uuid IN $node_ids")
             self.params["node_ids"] = self.filters["ids"]
 
         field_attribute_requirements = self._get_field_requirements()
