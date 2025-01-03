@@ -35,15 +35,7 @@ class GlobalPermission:
         if len(parts) != 3 and parts[0] != "global":
             raise ValueError(f"{input} is not a valid format for a Global permission")
 
-        # FIXME there is probably a better way to convert the decision
-        decision = PermissionDecision.DENY
-        if parts[2] == "allow_default":
-            decision = PermissionDecision.ALLOW_DEFAULT
-        elif parts[2] == "allow_all":
-            decision = PermissionDecision.ALLOW_ALL
-        elif parts[2] == "allow_other":
-            decision = PermissionDecision.ALLOW_OTHER
-        return cls(action=str(parts[1]), decision=decision)
+        return cls(action=parts[1], decision=PermissionDecision[parts[2].upper()])
 
 
 @dataclass
