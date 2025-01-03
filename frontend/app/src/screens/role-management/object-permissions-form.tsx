@@ -20,7 +20,7 @@ import { toast } from "react-toastify";
 
 import DropdownField from "@/components/form/fields/dropdown.field";
 import RelationshipManyField from "@/components/form/fields/relationship-many.field";
-import { NodeSelect } from "@/components/form/node-select";
+import { NameSelect } from "@/components/form/name-select";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
 import { useSchema } from "@/hooks/useSchema";
@@ -136,7 +136,7 @@ export const ObjectPermissionForm = ({
   return (
     <div className={"bg-custom-white flex flex-col flex-1 overflow-auto p-4"}>
       <Form form={form} onSubmit={handleSubmit}>
-        <NodeSelect />
+        <NameSelect />
 
         <DropdownField
           name="action"
