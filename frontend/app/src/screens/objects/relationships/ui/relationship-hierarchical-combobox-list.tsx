@@ -27,16 +27,11 @@ export const RelationshipHierarchicalComboboxList = ({
   filterItem,
 }: RelationshipHierarchicalComboboxListProps) => {
   const { isNode, schema: peerSchema } = useSchema(peer);
-
   if (!isNode || !peerSchema || !isHierarchicalSchema(peerSchema)) {
     return <div>This schema is not a node with hierarchy</div>;
   }
 
   const rootSchema = getRootSchemaOfHierarchicalSchema(peerSchema);
-
-  if (!rootSchema) {
-    return <div>We couldn't find the root hierarchy schema for {peerSchema.label}</div>;
-  }
 
   return (
     <HierarchicalExplorer
@@ -136,6 +131,7 @@ const HierarchicalExplorer = ({
       }}
     >
       <CommandInput autoFocus placeholder="Filter..." onValueChange={setSearchDebounced} />
+
       <CommandList>
         {isPending ? (
           <Spinner className="flex justify-center m-2" />
