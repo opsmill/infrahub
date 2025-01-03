@@ -263,6 +263,22 @@ async def test_query_NodeGetListQuery_deleted_node(
     assert len(query.get_node_ids()) == 2
 
 
+# This tests the "simple" case for NodeGetListQuery
+async def test_query_NodeGetListQuery_nofilter_deleted_node(
+    db: InfrahubDatabase, car_accord_main, car_camry_main: Node, car_volt_main, car_yaris_main, branch: Branch
+):
+    node_to_delete = await NodeManager.get_one(id=car_camry_main.id, db=db, branch=branch)
+    await node_to_delete.delete(db=db)
+
+    schema = registry.schema.get(name="TestCar", branch=branch)
+    schema.order_by = ["owner__name__value"]
+
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=schema)
+    await query.execute(db=db)
+
+    assert len(query.get_node_ids()) == 3
+
+
 async def test_query_NodeGetListQuery_filter_relationship(
     db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
 ):
