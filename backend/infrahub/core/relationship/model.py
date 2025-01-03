@@ -432,10 +432,14 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                 else self.schema.peer
             )
             peer = await registry.manager.get_one_by_hfid(
-                db=db, hfid=self.peer_hfid, branch=self.branch, kind=kind, fields={"display_label": None}
+                db=db,
+                hfid=self.peer_hfid,
+                branch=self.branch,
+                kind=kind,
+                fields={"display_label": None},
+                raise_on_error=True,
             )
-            if peer:
-                await self.set_peer(value=peer)
+            await self.set_peer(value=peer)
 
         if not self.peer_id and self.from_pool and "id" in self.from_pool:
             pool_id = str(self.from_pool.get("id"))
