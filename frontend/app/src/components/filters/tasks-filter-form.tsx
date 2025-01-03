@@ -7,7 +7,6 @@ import { classNames } from "@/utils/common";
 import { useAtomValue } from "jotai";
 import { forwardRef } from "react";
 import DropdownField from "../form/fields/dropdown.field";
-import { NodeSelect } from "../form/node-select";
 import { getObjectFromFilters } from "./utils/getObjectFromFilters";
 
 export interface FilterFormProps extends FormProps {
@@ -47,8 +46,6 @@ export const TasksFilterForm = forwardRef<FormRef, FilterFormProps>(
         <DropdownField name="branch" label="Branch" items={branchesOptions} />
 
         <DropdownField name="state" label="State" items={statesOptions} />
-
-        <NodeSelect />
 
         <div className="text-right">
           {onCancel && (

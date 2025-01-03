@@ -5,7 +5,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { QSP } from "@/config/qsp";
+import { ReactComponent as TasksStatusIcon } from "@/images/icons/tasks-status.svg";
+import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
+import { Link } from "react-router-dom";
 import { CopyToClipboard } from "../buttons/copy-to-clipboard";
 
 interface ObjectDetailsButtonProps extends ButtonProps {
@@ -15,6 +19,11 @@ interface ObjectDetailsButtonProps extends ButtonProps {
 }
 
 export const ObjectDetailsButton = ({ id, hfid, ...props }: ObjectDetailsButtonProps) => {
+  const taskFilter = {
+    name: "node__value",
+    value: id,
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -38,6 +47,20 @@ export const ObjectDetailsButton = ({ id, hfid, ...props }: ObjectDetailsButtonP
           >
             Copy HFID
           </CopyToClipboard>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem asChild>
+          <Link
+            to={constructPath("/tasks", [
+              { name: QSP.FILTER, value: JSON.stringify([taskFilter]) },
+            ])}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <TasksStatusIcon />
+            Tasks
+            <Icon icon="mdi:open-in-new" />
+          </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
