@@ -37,6 +37,9 @@ services:
     depends_on:
       task-manager-db:
         condition: service_healthy
+    labels:
+      namespace: "prefect"
+      pod: "prefect-server"
   task-manager-db:
     profiles: [demo, dev]
     image: postgres:16-alpine
