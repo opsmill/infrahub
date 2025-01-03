@@ -7,6 +7,7 @@ import { classNames } from "@/utils/common";
 import { useAtomValue } from "jotai";
 import { forwardRef } from "react";
 import DropdownField from "../form/fields/dropdown.field";
+import { NodeSelect } from "../form/node-select";
 import { getObjectFromFilters } from "./utils/getObjectFromFilters";
 
 export interface FilterFormProps extends FormProps {
@@ -35,21 +36,19 @@ export const TasksFilterForm = forwardRef<FormRef, FilterFormProps>(
         ref={ref}
         onSubmit={onSubmit}
         className={classNames("bg-custom-white flex flex-col flex-1 overflow-auto p-4", className)}
+        defaultValues={{
+          branch: currentFilters?.branch,
+          state: currentFilters?.state,
+          namespace: currentFilters?.namespace,
+          name: currentFilters?.name,
+        }}
         {...props}
       >
-        <DropdownField
-          name="branch"
-          label="Branch"
-          items={branchesOptions}
-          defaultValue={currentFilters?.branch}
-        />
+        <DropdownField name="branch" label="Branch" items={branchesOptions} />
 
-        <DropdownField
-          name="state"
-          label="State"
-          items={statesOptions}
-          defaultValue={currentFilters?.state}
-        />
+        <DropdownField name="state" label="State" items={statesOptions} />
+
+        <NodeSelect />
 
         <div className="text-right">
           {onCancel && (

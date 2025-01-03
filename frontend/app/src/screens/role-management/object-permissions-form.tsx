@@ -1,6 +1,6 @@
 import { Button } from "@/components/buttons/button-primitive";
 import { NodeFormProps } from "@/components/form/node-form";
-import { FormAttributeValue, FormFieldValue } from "@/components/form/type";
+import { FormFieldValue } from "@/components/form/type";
 import { getCurrentFieldValue } from "@/components/form/utils/getFieldDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
@@ -10,22 +10,20 @@ import graphqlClient from "@/graphql/graphqlClientApollo";
 import { createObject } from "@/graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { namespacesState, schemaState } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
 import { stringifyWithoutQuotes } from "@/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { FieldValues, useForm, useFormContext } from "react-hook-form";
+import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
 import DropdownField from "@/components/form/fields/dropdown.field";
 import RelationshipManyField from "@/components/form/fields/relationship-many.field";
+import { NodeSelect } from "@/components/form/node-select";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/components/form/utils/validation";
 import { useSchema } from "@/hooks/useSchema";
-import { useEffect } from "react";
 import { objectDecisionOptions } from "./constants";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
@@ -179,95 +177,5 @@ export const ObjectPermissionForm = ({
         </div>
       </Form>
     </div>
-  );
-};
-
-const NodeSelect = () => {
-  const namespaces = useAtomValue(namespacesState);
-  const nodes = useAtomValue(schemaState);
-
-  const form = useFormContext();
-  const selectedNamespaceField: FormAttributeValue = form.watch("namespace");
-  const selectedNameField: FormAttributeValue = form.watch("name");
-
-  const namespaceOptions = [
-    {
-      value: "*",
-      label: "*",
-    },
-    ...namespaces.map((namespace) => {
-      return {
-        value: namespace.name,
-        label: namespace.name,
-      };
-    }),
-  ];
-
-  const selectedNamespace =
-    selectedNamespaceField?.value === "*"
-      ? { value: "*", name: "*" }
-      : namespaces
-          .filter((namespace) => {
-            if (!selectedNameField?.value) {
-              return true;
-            }
-
-            return namespace.used_by?.includes(selectedNameField?.value);
-          })
-          .find((namespace) => {
-            return namespace.name === selectedNamespaceField?.value;
-          });
-
-  const nameOptions = [
-    {
-      value: "*",
-      label: "*",
-    },
-    ...nodes
-      .filter((node) => {
-        if (!selectedNamespace || selectedNamespace?.name === "*") return true;
-
-        return node.namespace === selectedNamespace?.name;
-      })
-      .map((node) => ({
-        value: node.name,
-        label: node.label,
-        badge: node.namespace,
-      })),
-  ];
-
-  useEffect(() => {
-    // Break if namespace already set
-    if (selectedNamespaceField?.value) return;
-
-    // Break if no name is provided
-    if (!selectedNameField?.value) return;
-
-    // Get current node from form field value
-    const currentNode = nodes.find((node) => node.name === selectedNameField?.value);
-    if (!currentNode) return;
-
-    form.setValue("namespace", { value: currentNode.namespace, label: currentNode.namespace });
-  }, [selectedNameField?.value]);
-
-  return (
-    <>
-      <DropdownField
-        name={"namespace"}
-        label="Namespace"
-        defaultValue={DEFAULT_FORM_FIELD_VALUE}
-        items={namespaceOptions}
-        rules={{ required: true, validate: { required: isRequired } }}
-      />
-
-      <DropdownField
-        key={selectedNamespaceField?.value}
-        name={"name"}
-        label="Name"
-        defaultValue={DEFAULT_FORM_FIELD_VALUE}
-        items={nameOptions}
-        rules={{ required: true, validate: { required: isRequired } }}
-      />
-    </>
   );
 };
