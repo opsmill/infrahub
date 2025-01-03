@@ -41,19 +41,9 @@ export const TasksFilterForm = forwardRef<FormRef, FilterFormProps>(
         }}
         {...props}
       >
-        <DropdownField
-          name="branch"
-          label="Branch"
-          items={branchesOptions}
-          defaultValue={currentFilters?.branch}
-        />
+        <DropdownField name="branch" label="Branch" items={branchesOptions} />
 
-        <DropdownField
-          name="state"
-          label="State"
-          items={statesOptions}
-          defaultValue={currentFilters?.state}
-        />
+        <DropdownField name="state" label="State" items={statesOptions} />
 
         <div className="text-right">
           {onCancel && (
