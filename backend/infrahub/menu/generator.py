@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.core import registry
 from infrahub.core.protocols import CoreMenuItem
 from infrahub.log import get_logger
-from infrahub.permissions.constants import AssignedPermissions
-from infrahub.permissions.local_backend import LocalPermissionBackend
+from infrahub.permissions import PermissionManager
 
 from .constants import FULL_DEFAULT_MENU
 from .models import MenuDict, MenuItemDict
@@ -28,18 +27,15 @@ async def generate_restricted_menu(
 ) -> MenuDict:
     menu = await generate_menu(db=db, branch=branch, menu_items=menu_items)
 
-    permissions = AssignedPermissions(global_permissions=[], object_permissions=[])
-    perm_backend = LocalPermissionBackend()
-
+    permissions: PermissionManager | None = None
     if account:
-        permissions = await perm_backend.load_permissions(db=db, account_session=account, branch=branch)
+        permissions = PermissionManager(account_session=account)
+        await permissions.load_permissions(db=db, branch=branch)
 
     for item in menu.data.values():
         has_permission: bool | None = None
         for permission in item.get_global_permissions():
-            has_permission = perm_backend.resolve_global_permission(
-                permissions=permissions["global_permissions"], permission_to_check=permission
-            )
+            has_permission = permissions is not None and permissions.has_permission(permission=permission)
             if has_permission:
                 has_permission = True
             elif has_permission is None:

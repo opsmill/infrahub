@@ -97,7 +97,7 @@ async def test_create_artifact_definition(
     recorder = BusRecorder()
     service = InfrahubServices(message_bus=recorder, workflow=WorkflowLocalExecution())
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, service=service)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch, service=service)
 
     with patch(
         "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
@@ -154,7 +154,7 @@ async def test_update_artifact_definition(
     recorder = BusRecorder()
     service = InfrahubServices(message_bus=recorder, workflow=WorkflowLocalExecution())
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, service=service)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch, service=service)
     with patch(
         "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
     ) as mock_submit_workflow:

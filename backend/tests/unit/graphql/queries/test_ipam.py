@@ -125,7 +125,7 @@ async def test_ipprefix_nextavailable(
 ):
     obj = ip_dataset_01[prefix]
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     query = """
     query($prefix: String!, $prefix_length: Int!) {
@@ -166,7 +166,7 @@ async def test_ipaddress_nextavailable(
 ):
     obj = ip_dataset_02[prefix]
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     query = """
     query($prefix: String!, $prefix_length: Int) {

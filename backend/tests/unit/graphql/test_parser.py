@@ -32,7 +32,7 @@ async def test_simple_directive(db: InfrahubDatabase, default_branch: Branch, cr
     }
     """
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -89,7 +89,7 @@ async def test_directive_exclude(db: InfrahubDatabase, default_branch: Branch, c
     }
     """
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -147,7 +147,7 @@ async def test_directive_merge_fields(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(

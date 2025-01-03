@@ -69,15 +69,10 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
                     )
                 )
 
-        for permission in permissions:
-            has_permission = False
-            for permission_backend in registry.permission_backends:
-                if has_permission := await permission_backend.has_permission(
-                    db=db, account_session=account_session, permission=permission, branch=branch
-                ):
-                    break
-            if not has_permission:
-                raise PermissionDeniedError(f"You do not have the following permission: {permission}")
+        if not query_parameters.context.active_permissions.has_permissions(permissions=permissions):
+            raise PermissionDeniedError(
+                f"You do not have one of the following permissions: {' | '.join([str(p) for p in permissions])}"
+            )
 
         return CheckerResolution.TERMINATE
 
@@ -120,14 +115,10 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         if not is_account_operation or operation_names == ["AccountProfile"]:
             return CheckerResolution.NEXT_CHECKER
 
-        has_permission = False
-        for permission_backend in registry.permission_backends:
-            if has_permission := await permission_backend.has_permission(
-                db=db, account_session=account_session, permission=self.permission_required, branch=branch
-            ):
-                break
-
-        if not has_permission and analyzed_query.contains_mutation:
+        if (
+            not query_parameters.context.active_permissions.has_permission(permission=self.permission_required)
+            and analyzed_query.contains_mutation
+        ):
             raise PermissionDeniedError("You do not have the permission to manage user accounts, groups or roles")
 
         return CheckerResolution.NEXT_CHECKER
@@ -169,14 +160,7 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         if not is_permission_operation:
             return CheckerResolution.NEXT_CHECKER
 
-        has_permission = False
-        for permission_backend in registry.permission_backends:
-            if has_permission := await permission_backend.has_permission(
-                db=db, account_session=account_session, permission=self.permission_required, branch=branch
-            ):
-                break
-
-        if not has_permission:
+        if not query_parameters.context.active_permissions.has_permission(permission=self.permission_required):
             raise PermissionDeniedError("You do not have the permission to manage permissions")
 
         return CheckerResolution.NEXT_CHECKER
@@ -218,14 +202,7 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         if not is_repository_operation or not analyzed_query.contains_mutation:
             return CheckerResolution.NEXT_CHECKER
 
-        has_permission = False
-        for permission_backend in registry.permission_backends:
-            if has_permission := await permission_backend.has_permission(
-                db=db, account_session=account_session, permission=self.permission_required, branch=branch
-            ):
-                break
-
-        if not has_permission:
+        if not query_parameters.context.active_permissions.has_permission(permission=self.permission_required):
             raise PermissionDeniedError("You do not have the permission to manage repositories")
 
         return CheckerResolution.NEXT_CHECKER

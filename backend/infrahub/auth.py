@@ -22,8 +22,6 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreGenericAccount
     from infrahub.database import InfrahubDatabase
 
-# from ..datatypes import AuthResult
-
 
 class AuthType(str, Enum):
     NONE = "none"

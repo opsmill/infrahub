@@ -28,7 +28,7 @@ async def get_permissions(db: InfrahubDatabase, schema: MainSchemaTypes, context
     response: dict[str, Any] = {"count": len(schema_objects), "edges": []}
 
     nodes = await report_schema_permissions(
-        db=db, schemas=schema_objects, branch=context.branch, account_session=context.active_account_session
+        db=db, branch=context.branch, account_session=context.active_account_session, schemas=schema_objects
     )
     response["edges"] = [{"node": node} for node in nodes]
 

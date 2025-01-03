@@ -23,7 +23,7 @@ async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_
     """
         % person_john_main.id
     )
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -50,7 +50,7 @@ async def test_upsert_existing_simple_object_by_default_filter(
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -79,7 +79,7 @@ async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_jo
     }
     """ % ("Ellen Ripley", 179)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -110,7 +110,7 @@ async def test_upsert_create_simple_object_with_id(db: InfrahubDatabase, person_
     }
     """ % (fresh_id, "Dwayne Hicks", 168)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -141,7 +141,7 @@ async def test_cannot_upsert_new_object_without_required_fields(db: InfrahubData
     """
         % fresh_id
     )
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -169,7 +169,7 @@ async def test_id_for_other_schema_raises_error(
     """
         % car_accord_main.id
     )
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -195,7 +195,7 @@ async def test_update_by_id_to_nonunique_value_raises_error(
     """
         % person_john_main.id
     )
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -242,7 +242,7 @@ async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_p
     """
         % person1.id
     )
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -296,7 +296,7 @@ async def test_with_hfid_new(db: InfrahubDatabase, default_branch, animal_person
         % person1.id
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -351,7 +351,7 @@ async def test_with_constructed_hfid(db: InfrahubDatabase, default_branch, anima
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     # Create initial node
     initial_weight = 14
@@ -428,7 +428,7 @@ async def test_with_constructed_hfid_with_numbers(
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     update_result = await graphql(
         schema=gql_params.schema,

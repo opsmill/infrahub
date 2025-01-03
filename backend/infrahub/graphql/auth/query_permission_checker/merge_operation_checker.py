@@ -1,6 +1,5 @@
 from infrahub import config
 from infrahub.auth import AccountSession
-from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
@@ -31,14 +30,7 @@ class MergeBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         branch: Branch,
     ) -> CheckerResolution:
         if "BranchMerge" in [operation.name for operation in analyzed_query.operations]:
-            has_permission = False
-            for permission_backend in registry.permission_backends:
-                if has_permission := await permission_backend.has_permission(
-                    db=db, account_session=account_session, permission=self.permission_required, branch=branch
-                ):
-                    break
-
-            if not has_permission:
+            if not query_parameters.context.active_permissions.has_permission(permission=self.permission_required):
                 raise PermissionDeniedError("You are not allowed to merge a branch")
 
             return CheckerResolution.TERMINATE

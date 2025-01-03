@@ -14,6 +14,7 @@ from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
+from infrahub.permissions import PermissionManager
 from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 
@@ -63,23 +64,23 @@ async def generate_artifact(
     branch_params: BranchParams = Depends(get_branch_params),
     account_session: AccountSession = Depends(get_current_user),
 ) -> None:
+    permission_manager = PermissionManager(account_session=account_session)
+    await permission_manager.load_permissions(db=db, branch=branch_params.branch)
+
     permission_decision = (
         PermissionDecisionFlag.ALLOW_DEFAULT
         if branch_params.branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
         else PermissionDecisionFlag.ALLOW_OTHER
     )
-    for permission in [
+    permissions = [
         ObjectPermission(namespace="Core", name="Artifact", action=action.value, decision=permission_decision)
         for action in (PermissionAction.CREATE, PermissionAction.UPDATE)
-    ]:
-        has_permission = False
-        for permission_backend in registry.permission_backends:
-            if has_permission := await permission_backend.has_permission(
-                db=db, account_session=account_session, permission=permission, branch=branch_params.branch
-            ):
-                break
-        if not has_permission:
-            raise PermissionDeniedError(f"You do not have the following permission: {permission}")
+    ]
+
+    if not permission_manager.has_permissions(permissions=permissions):
+        raise PermissionDeniedError(
+            f"You do not have the following permission: {' | '.join([str(p) for p in permissions])}"
+        )
 
     # Verify that the artifact definition exists for the requested branch
     artifact_definition = await registry.manager.get_one_by_id_or_default_filter(

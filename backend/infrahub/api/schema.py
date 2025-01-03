@@ -36,6 +36,7 @@ from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.exceptions import MigrationError, PermissionDeniedError
 from infrahub.log import get_log_data, get_logger
+from infrahub.permissions import PermissionManager
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
@@ -249,41 +250,27 @@ async def load_schema(
     branch: Branch = Depends(get_branch_dep),
     account_session: AccountSession = Depends(get_current_user),
 ) -> SchemaUpdate:
-    has_permission = False
-    has_branch_permission = branch.name not in (GLOBAL_BRANCH_NAME, registry.default_branch)
-    for permission_backend in registry.permission_backends:
-        if not has_permission:
-            has_permission = await permission_backend.has_permission(
-                db=db,
-                account_session=account_session,
-                permission=GlobalPermission(
-                    action=GlobalPermissions.MANAGE_SCHEMA.value,
-                    decision=(
-                        PermissionDecision.ALLOW_DEFAULT
-                        if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
-                        else PermissionDecision.ALLOW_OTHER
-                    ).value,
-                ),
-                branch=branch,
-            )
+    permission_manager = PermissionManager(account_session=account_session)
+    await permission_manager.load_permissions(db=db, branch=branch)
 
-        if not has_branch_permission:
-            has_branch_permission = await permission_backend.has_permission(
-                db=db,
-                account_session=account_session,
-                permission=GlobalPermission(
-                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-                    decision=PermissionDecision.ALLOW_DEFAULT.value,
-                ),
-                branch=branch,
-            )
-
-        if has_permission and has_branch_permission:
-            break
-
-    if not has_permission:
+    if not permission_manager.has_permission(
+        permission=GlobalPermission(
+            action=GlobalPermissions.MANAGE_SCHEMA.value,
+            decision=(
+                PermissionDecision.ALLOW_DEFAULT
+                if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+                else PermissionDecision.ALLOW_OTHER
+            ).value,
+        )
+    ):
         raise PermissionDeniedError("You are not allowed to manage the schema")
-    if not has_branch_permission:
+
+    if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch) and not permission_manager.has_permission(
+        permission=GlobalPermission(
+            action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
+            decision=PermissionDecision.ALLOW_DEFAULT.value,
+        ),
+    ):
         raise PermissionDeniedError("You are not allowed to edit the schema in the default branch")
 
     service: InfrahubServices = request.app.state.service

@@ -56,7 +56,7 @@ async def dataset04(db: InfrahubDatabase, default_branch, register_default_schem
     await load_data(db=db, nbr_query=250)
 
 
-def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
+async def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
     query = """
     query {
         CoreGraphQLQuery {
@@ -74,7 +74,7 @@ def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, defaul
     }
     """
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
 
@@ -98,7 +98,7 @@ def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, defaul
     )
 
 
-def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
+async def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
     query = """
     query {
         CoreGraphQLQuery {
@@ -124,7 +124,7 @@ def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default
     }
     """
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
 
@@ -148,7 +148,7 @@ def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default
     )
 
 
-def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
+async def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, default_branch: Branch, dataset04):
     query = """
     query {
         CoreGraphQLQuery {
@@ -174,7 +174,7 @@ def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, default_
     }
     """
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
 
@@ -222,7 +222,7 @@ def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, default_
 #     }
 #     """
 
-#     gql_params = prepare_graphql_params(
+#     gql_params = await prepare_graphql_params(
 #         db=db, include_mutation=False, include_subscription=False, branch=default_branch
 #     )
 #     aio_benchmark(

@@ -26,7 +26,9 @@ async def test_info_query(db: InfrahubDatabase, default_branch: Branch, critical
     }
     """
 
-    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
     result = await graphql(
         schema=params.schema,
         source=query,
@@ -62,7 +64,7 @@ async def test_simple_query(db: InfrahubDatabase, default_branch: Branch, critic
     }
     """
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -103,7 +105,7 @@ async def test_simple_query_with_offset_and_limit(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -150,7 +152,7 @@ async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Bran
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -202,7 +204,7 @@ async def test_display_label_multiple_items(db: InfrahubDatabase, default_branch
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -253,7 +255,7 @@ async def test_display_label_default_value(db: InfrahubDatabase, default_branch:
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -294,7 +296,7 @@ async def test_display_hfid(db: InfrahubDatabase, default_branch: Branch, animal
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -348,7 +350,7 @@ async def test_display_hfid_related_node(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -397,7 +399,7 @@ async def test_display_label_generic(db: InfrahubDatabase, default_branch: Branc
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -461,7 +463,7 @@ async def test_all_attributes(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -546,7 +548,7 @@ async def test_nested_query(db: InfrahubDatabase, default_branch: Branch, car_pe
     }
     """
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -617,7 +619,7 @@ async def test_double_nested_query(db: InfrahubDatabase, default_branch: Branch,
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -723,7 +725,7 @@ async def test_nested_query_single_relationship(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -800,7 +802,7 @@ async def test_display_label_nested_query(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -912,7 +914,7 @@ async def test_query_typename(db: InfrahubDatabase, default_branch: Branch, car_
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -964,7 +966,7 @@ async def test_query_filter_ids(db: InfrahubDatabase, default_branch: Branch, cr
     """
         % obj1.id
     )
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -994,7 +996,7 @@ async def test_query_filter_ids(db: InfrahubDatabase, default_branch: Branch, cr
         obj1.id,
         obj2.id,
     )
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1030,7 +1032,7 @@ async def test_query_filter_relationship_isnull(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1098,7 +1100,7 @@ async def test_query_filter_attribute_isnull(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1162,7 +1164,7 @@ async def test_query_filter_local_attrs(db: InfrahubDatabase, default_branch: Br
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1206,7 +1208,7 @@ async def test_query_filter_on_enum(
         }
     }
     """ % (enum_value)
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1267,7 +1269,7 @@ async def test_query_multiple_filters(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1296,7 +1298,7 @@ async def test_query_multiple_filters(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1325,7 +1327,7 @@ async def test_query_multiple_filters(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1357,7 +1359,7 @@ async def test_query_multiple_filters(
         p1.id,
         m2.id,
     )
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1420,7 +1422,7 @@ async def test_query_filter_relationships(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1466,7 +1468,7 @@ async def test_query_filter_relationships_with_generic(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1510,7 +1512,7 @@ async def test_query_filter_relationships_with_generic_filter(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1585,7 +1587,7 @@ async def test_query_filter_relationship_id(
     """
         % c1.id
     )
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1627,7 +1629,7 @@ async def test_query_filter_relationship_id(
         c1.id,
         c4.id,
     )
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1696,7 +1698,7 @@ async def test_query_filter_list(
     }
     """ % {"filter": graphql_filter}
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1732,7 +1734,7 @@ async def test_query_attribute_multiple_values(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1796,7 +1798,7 @@ async def test_query_relationship_multiple_values(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1844,7 +1846,7 @@ async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: B
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1885,7 +1887,7 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1915,7 +1917,7 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, at=time1, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -1956,7 +1958,7 @@ async def test_query_attribute_updated_at(db: InfrahubDatabase, default_branch: 
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result1 = await graphql(
@@ -1978,7 +1980,7 @@ async def test_query_attribute_updated_at(db: InfrahubDatabase, default_branch: 
     p12.firstname.value = "Jim"
     await p12.save(db=db)
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result2 = await graphql(
@@ -2014,7 +2016,7 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result1 = await graphql(
@@ -2032,7 +2034,7 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
     await p2.new(db=db, firstname="Jane", lastname="Doe")
     await p2.save(db=db)
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result2 = await graphql(
@@ -2088,7 +2090,7 @@ async def test_query_relationship_updated_at(db: InfrahubDatabase, default_branc
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result1 = await graphql(
@@ -2106,7 +2108,7 @@ async def test_query_relationship_updated_at(db: InfrahubDatabase, default_branc
     await p1.new(db=db, firstname="John", lastname="Doe", tags=[t1, t2])
     await p1.save(db=db)
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result2 = await graphql(
@@ -2159,7 +2161,7 @@ async def test_query_attribute_node_property_source(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result1 = await graphql(
@@ -2217,7 +2219,7 @@ async def test_query_attribute_node_property_owner(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result1 = await graphql(
@@ -2263,7 +2265,7 @@ async def test_query_attribute_node_property_owner(
 
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result2 = await graphql(
@@ -2350,7 +2352,7 @@ async def test_query_relationship_node_property(
     }
     """
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -2409,7 +2411,7 @@ async def test_query_relationship_node_property(
     }
     """
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -2471,7 +2473,7 @@ async def test_query_attribute_flag_property(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result1 = await graphql(
@@ -2498,7 +2500,7 @@ async def test_query_branches(db: InfrahubDatabase, default_branch: Branch, regi
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result1 = await graphql(
@@ -2532,7 +2534,7 @@ async def test_query_multiple_branches(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result1 = await graphql(
@@ -2582,7 +2584,7 @@ async def test_multiple_queries(db: InfrahubDatabase, default_branch: Branch, pe
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result1 = await graphql(
@@ -2627,7 +2629,7 @@ async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -2692,7 +2694,7 @@ async def test_model_rel_interface(db: InfrahubDatabase, default_branch: Branch,
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -2753,7 +2755,7 @@ async def test_model_rel_interface_reverse(db: InfrahubDatabase, default_branch:
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -2786,7 +2788,7 @@ async def test_generic_root_with_pagination(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -2828,7 +2830,7 @@ async def test_generic_root_with_filters(
     }
     """
 
-    gql_params = prepare_graphql_params(db=db, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -2887,7 +2889,7 @@ async def test_member_of_groups(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -2956,7 +2958,7 @@ async def test_hierarchical_location_parent_filter(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -3008,7 +3010,7 @@ async def test_hierarchical_location_ancestors(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -3064,7 +3066,7 @@ async def test_hierarchical_location_descendants(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -3119,7 +3121,7 @@ async def test_hierarchical_location_descendants_filters_attr(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -3172,7 +3174,7 @@ async def test_hierarchical_location_descendants_filters_ids(
         hierarchical_location_data["beijing-r1"].id,
         hierarchical_location_data["singapore-r2"].id,
     )
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -3222,7 +3224,7 @@ async def test_hierarchical_location_include_descendants(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -3275,7 +3277,7 @@ async def test_hierarchical_groups_descendants(
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(

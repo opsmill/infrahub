@@ -12,7 +12,7 @@ from infrahub.core.registry import registry
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-    from infrahub.permissions.constants import AssignedPermissions
+    from infrahub.permissions import AssignedPermissions
 
 
 # pylint: disable=redefined-builtin

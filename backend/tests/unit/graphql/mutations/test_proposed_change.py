@@ -83,7 +83,7 @@ async def test_create_invalid_branch_combinations(db: InfrahubDatabase, default_
     source_branch = Branch(name=branch_name)
     await source_branch.save(db=db)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     no_source = await graphql(
         schema=gql_params.schema,
         source=CREATE_PROPOSED_CHANGE,

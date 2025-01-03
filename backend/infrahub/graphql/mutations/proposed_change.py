@@ -13,13 +13,13 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.message_bus import messages
+from infrahub.permissions import PermissionManager
 from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.workflows.catalogue import PROPOSED_CHANGE_MERGE
 
@@ -94,17 +94,14 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 
         has_merge_permission = False
         if context.account_session:
-            for permission_backend in registry.permission_backends:
-                if has_merge_permission := await permission_backend.has_permission(
-                    db=context.db,
-                    account_session=context.active_account_session,
-                    permission=GlobalPermission(
-                        action=GlobalPermissions.MERGE_PROPOSED_CHANGE.value,
-                        decision=PermissionDecision.ALLOW_ALL.value,
-                    ),
-                    branch=branch,
-                ):
-                    break
+            permissions = PermissionManager(account_session=context.account_session)
+            await permissions.load_permissions(db=context.db, branch=branch)
+            has_merge_permission = permissions.has_permission(
+                permission=GlobalPermission(
+                    action=GlobalPermissions.MERGE_PROPOSED_CHANGE.value,
+                    decision=PermissionDecision.ALLOW_ALL.value,
+                )
+            )
         else:
             has_merge_permission = True
 

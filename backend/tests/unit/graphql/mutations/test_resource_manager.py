@@ -82,7 +82,7 @@ async def test_create_object_and_assign_prefix_from_pool(db: InfrahubDatabase, d
         % pool.id
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -147,7 +147,7 @@ async def test_update_object_and_assign_prefix_from_pool(db: InfrahubDatabase, d
     }
     """ % (obj.id, pool.id)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -228,7 +228,7 @@ async def test_create_object_and_assign_address_from_pool(
         % pool.id
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -292,7 +292,7 @@ async def test_prefix_pool_get_resource(
         % pool.id
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -356,7 +356,7 @@ async def test_prefix_pool_get_resource_with_identifier(
         % pool.id
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -418,7 +418,7 @@ async def test_prefix_pool_get_resource_with_prefix_length(
         % pool.id
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -473,7 +473,7 @@ async def test_address_pool_get_resource(
         % pool.id
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -533,7 +533,7 @@ async def test_address_pool_get_resource_with_identifier(
         % pool.id
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -594,7 +594,7 @@ async def test_address_pool_get_resource_with_prefix_length(
         % pool.id
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -666,7 +666,7 @@ async def test_test_number_pool_creation_errors(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
 ):
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     no_model = await graphql(
         schema=gql_params.schema,
@@ -750,7 +750,7 @@ async def test_test_number_pool_creation_errors(
 
 async def test_test_number_pool_update(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     create_ok = await graphql(
         schema=gql_params.schema,

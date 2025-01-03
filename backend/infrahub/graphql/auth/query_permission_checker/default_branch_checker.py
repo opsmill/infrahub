@@ -37,13 +37,6 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         query_parameters: GraphqlParams,
         branch: Branch,
     ) -> CheckerResolution:
-        has_permission = False
-        for permission_backend in registry.permission_backends:
-            if has_permission := await permission_backend.has_permission(
-                db=db, account_session=account_session, permission=self.permission_required, branch=branch
-            ):
-                break
-
         operates_on_default_branch = analyzed_query.branch is None or analyzed_query.branch.name in (
             GLOBAL_BRANCH_NAME,
             registry.default_branch,
@@ -53,7 +46,7 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         )
 
         if (
-            not has_permission
+            not query_parameters.context.active_permissions.has_permission(permission=self.permission_required)
             and operates_on_default_branch
             and analyzed_query.contains_mutation
             and not is_exempt_operation
