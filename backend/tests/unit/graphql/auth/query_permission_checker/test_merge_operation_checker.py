@@ -132,10 +132,15 @@ class TestMergeBranchPermission:
         graphql_query.operations = [MagicMock()]
         graphql_query.operations[0].name = operation_name
 
-        graphql_context = MagicMock(spec=GraphqlContext)
-        graphql_context.permissions = permission_manager
-        query_parameters = MagicMock(spec=GraphqlParams)
-        query_parameters.context = graphql_context
+        graphql_context = GraphqlContext(
+            db=MagicMock(),
+            branch=MagicMock(),
+            types=MagicMock(),
+            single_relationship_resolver=MagicMock(),
+            account_session=session,
+            permissions=permission_manager,
+        )
+        query_parameters = GraphqlParams(schema=MagicMock(), context=graphql_context)
 
         if checker_resolution is None:
             with pytest.raises(PermissionDeniedError, match=r"You are not allowed to merge a branch"):

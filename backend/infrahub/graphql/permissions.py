@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.registry import registry
 from infrahub.core.schema import GenericSchema
-from infrahub.permissions.report import report_schema_permissions
+from infrahub.permissions import report_schema_permissions
 
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes

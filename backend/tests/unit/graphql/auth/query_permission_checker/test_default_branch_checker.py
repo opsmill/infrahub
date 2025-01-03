@@ -92,10 +92,15 @@ class TestDefaultBranchPermission:
         graphql_query.contains_mutation = contains_mutation
         graphql_query.operation_names = ["CreateTags"]
 
-        graphql_context = MagicMock(spec=GraphqlContext)
-        graphql_context.permissions = permission_manager
-        query_parameters = MagicMock(spec=GraphqlParams)
-        query_parameters.context = graphql_context
+        graphql_context = GraphqlContext(
+            db=MagicMock(),
+            branch=MagicMock(),
+            types=MagicMock(),
+            single_relationship_resolver=MagicMock(),
+            account_session=session,
+            permissions=permission_manager,
+        )
+        query_parameters = GraphqlParams(schema=MagicMock(), context=graphql_context)
 
         resolution = await checker.check(
             db=db,
@@ -126,10 +131,15 @@ class TestDefaultBranchPermission:
         graphql_query.contains_mutation = contains_mutation
         graphql_query.operation_names = ["CreateTags"]
 
-        graphql_context = MagicMock(spec=GraphqlContext)
-        graphql_context.permissions = permission_manager
-        query_parameters = MagicMock(spec=GraphqlParams)
-        query_parameters.context = graphql_context
+        graphql_context = GraphqlContext(
+            db=MagicMock(),
+            branch=MagicMock(),
+            types=MagicMock(),
+            single_relationship_resolver=MagicMock(),
+            account_session=session,
+            permissions=permission_manager,
+        )
+        query_parameters = GraphqlParams(schema=MagicMock(), context=graphql_context)
 
         if not contains_mutation or branch_name != "main":
             resolution = await checker.check(
