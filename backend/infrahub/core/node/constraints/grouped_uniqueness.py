@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Iterable, Optional
 
 from infrahub.core import registry
+from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.schema import (
     MainSchemaTypes,
     SchemaAttributePath,
@@ -151,16 +152,44 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
     ) -> None:
         schema_branch = self.db.schema.get_schema_branch(name=self.branch.name)
         path_groups = node_schema.get_unique_constraint_schema_attribute_paths(schema_branch=schema_branch)
-        query_request = self._build_query_request(
-            updated_node=node, node_schema=node_schema, path_groups=path_groups, filters=filters
-        )
-        if not query_request:
-            return
-        query = await NodeUniqueAttributeConstraintQuery.init(
-            db=self.db, branch=self.branch, at=at, query_request=query_request, min_count_required=0
-        )
-        await query.execute(db=self.db)
-        await self._check_results(updated_node=node, path_groups=path_groups, query_results=query.get_results())
+
+        for path_group in path_groups:
+            query_request = self._build_query_request(
+                updated_node=node, node_schema=node_schema, path_groups=[path_group], filters=filters
+            )
+
+            if not query_request:
+                continue
+
+            if query_request.has_attributes_only:
+                query_filters: dict[str, str] = {
+                    f"{attr.attribute_name}__{attr.property_name}": attr.value
+                    for attr in query_request.unique_attribute_paths
+                    if attr.value
+                }
+                get_node_query = await NodeGetListQuery.init(
+                    db=self.db,
+                    schema=node_schema,
+                    branch=self.branch,
+                    filters=query_filters,
+                    at=at,
+                    partial_match=False,
+                    branch_agnostic=False,
+                )
+                await get_node_query.execute(db=self.db)
+                node_ids = get_node_query.get_node_ids()
+
+                if (node.id in node_ids and len(node_ids) > 1) or (node.id not in node_ids and len(node_ids) > 0):
+                    raise ValidationError(query_request.get_error_message())
+
+            else:
+                query = await NodeUniqueAttributeConstraintQuery.init(
+                    db=self.db, branch=self.branch, at=at, query_request=query_request, min_count_required=0
+                )
+                await query.execute(db=self.db)
+                await self._check_results(
+                    updated_node=node, path_groups=[path_group], query_results=query.get_results()
+                )
 
     async def check(self, node: Node, at: Optional[Timestamp] = None, filters: Optional[list[str]] = None) -> None:
         node_schema = node.get_schema()

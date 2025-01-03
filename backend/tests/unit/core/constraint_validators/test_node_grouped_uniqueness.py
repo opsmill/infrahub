@@ -67,6 +67,7 @@ class TestNodeGroupedUniquenessConstraint:
         car_volt_main: Node,
     ):
         car_accord_main.name.value = "camry"
+        car_accord_main.color.value = "#123456"
         car_accord_main.get_schema().uniqueness_constraints = [
             ["name__value", "color__value"],
             ["nbr_seats__value", "name__value"],

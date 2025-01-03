@@ -58,6 +58,16 @@ class NodeUniquenessQueryRequest(BaseModel):
             )
         )
 
+    @property
+    def has_attributes_only(self) -> bool:
+        if self.relationship_attribute_paths:
+            return False
+        return True
+
+    def get_error_message(self) -> str:
+        uniqueness_constaints = [f"{attr.attribute_name}__{attr.property_name}" for attr in self.unique_attribute_paths]
+        return f"Violates uniqueness constraint '{uniqueness_constaints}'"
+
 
 class NonUniqueRelatedAttribute(BaseModel):
     relationship: RelationshipSchema
