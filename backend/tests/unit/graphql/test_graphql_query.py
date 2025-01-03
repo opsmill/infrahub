@@ -9,7 +9,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -639,115 +639,6 @@ async def test_double_nested_query(db: InfrahubDatabase, default_branch: Branch,
     assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["node"]["name"]["value"] == "John"
 
     assert gql_params.context.related_node_ids == {p1.id, p2.id, c1.id, c2.id, c3.id}
-
-
-async def test_nested_query_single_relationship(
-    db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema
-):
-    raw_schema = {
-        "version": "1.0",
-        "generics": [
-            {
-                "name": "Generic",
-                "namespace": "Location",
-                "hierarchical": True,
-                "attributes": [{"name": "name", "optional": False, "kind": "Text"}],
-                "relationships": [{"name": "devices", "peer": "InfraDevice", "cardinality": "many", "optional": True}],
-            }
-        ],
-        "nodes": [
-            {
-                "name": "Device",
-                "namespace": "Infra",
-                "attributes": [{"name": "name", "kind": "Text", "optional": False}],
-                "relationships": [
-                    {"name": "location", "peer": "LocationGeneric", "optional": False, "cardinality": "one"}
-                ],
-            },
-            {
-                "name": "Site",
-                "namespace": "Location",
-                "inherit_from": ["LocationGeneric"],
-                "attributes": [{"name": "description", "optional": False, "kind": "Text"}],
-            },
-        ],
-    }
-    schema = SchemaRoot(**raw_schema)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-
-    site_schema = schema_branch.get_node(name="LocationSite")
-    device_schema = schema_branch.get_node(name="InfraDevice")
-
-    site1 = await Node.init(db=db, schema=site_schema, branch=default_branch)
-    await site1.new(db=db, name="site1", description="test")
-    await site1.save(db=db)
-
-    device1 = await Node.init(db=db, schema=device_schema, branch=default_branch)
-    await device1.new(db=db, name="device1", location=site1)
-    await device1.save(db=db)
-
-    device2 = await Node.init(db=db, schema=device_schema, branch=default_branch)
-    await device2.new(db=db, name="device2", location=site1)
-    await device2.save(db=db)
-
-    query = """
-    fragment LocationData on LocationSite {
-        name {
-            value
-        }
-        devices {
-            edges {
-                node {
-                    name {
-                        value
-                    }
-                }
-            }
-        }
-    }
-
-    query {
-        InfraDevice {
-            edges {
-                node {
-                    name {
-                        value
-                    }
-                    location {
-                        node {
-                            ... LocationData
-                        }
-                    }
-                }
-            }
-        }
-    }
-    """
-    gql_params = prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
-    )
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-
-    result_per_name = {
-        result["node"]["name"]["value"]: result["node"] for result in result.data["InfraDevice"]["edges"]
-    }
-    assert sorted(result_per_name.keys()) == ["device1", "device2"]
-    expected_location_data = {
-        "node": {
-            "name": {"value": "site1"},
-            "devices": {"edges": [{"node": {"name": {"value": "device1"}}}, {"node": {"name": {"value": "device2"}}}]},
-        }
-    }
-    assert result.data["InfraDevice"]["edges"][0]["node"]["location"] == expected_location_data
-    assert result.data["InfraDevice"]["edges"][1]["node"]["location"] == expected_location_data
 
 
 async def test_display_label_nested_query(

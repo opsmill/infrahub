@@ -1,1 +1,0 @@
-Fix an issue with session management that could lead to the crash of the GraphQL resolver

@@ -165,5 +165,4 @@ class SingleRelationshipResolver:
         node = await loader.load(key=peer_id)
         if not node:
             return None
-        async with db.start_session() as dbs:
-            return await node.to_graphql(db=dbs, fields=node_fields, related_node_ids=related_node_ids)
+        return await node.to_graphql(db=db, fields=node_fields, related_node_ids=related_node_ids)
