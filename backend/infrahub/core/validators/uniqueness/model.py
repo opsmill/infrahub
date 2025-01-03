@@ -39,10 +39,8 @@ class NodeUniquenessQueryRequest(BaseModel):
     unique_attribute_paths: set[QueryAttributePath] = Field(default_factory=set)
     relationship_attribute_paths: set[QueryRelationshipAttributePath] = Field(default_factory=set)
 
-    def __bool__(self) -> bool:
-        if self.unique_attribute_paths or self.relationship_attribute_paths:
-            return True
-        return False
+    def is_empty(self) -> bool:
+        return not self.unique_attribute_paths and not self.relationship_attribute_paths
 
     def __str__(self) -> str:
         return (
@@ -65,7 +63,9 @@ class NodeUniquenessQueryRequest(BaseModel):
         return True
 
     def get_error_message(self) -> str:
-        uniqueness_constaints = [f"{attr.attribute_name}__{attr.property_name}" for attr in self.unique_attribute_paths]
+        uniqueness_constaints = sorted(
+            [f"{attr.attribute_name}__{attr.property_name}" for attr in self.unique_attribute_paths]
+        )
         return f"Violates uniqueness constraint '{uniqueness_constaints}'"
 
 

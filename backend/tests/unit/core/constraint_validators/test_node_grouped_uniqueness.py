@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 from infrahub.core import registry
@@ -31,7 +33,7 @@ class TestNodeGroupedUniquenessConstraint:
         car_accord_main.name.value = "camry"
         car_accord_main.get_schema().uniqueness_constraints = [["name__value"]]
 
-        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'name'"):
+        with pytest.raises(ValidationError, match=re.escape("Violates uniqueness constraint '['name__value']'")):
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
 
     async def test_uniqueness_constraint_filters(
@@ -66,14 +68,34 @@ class TestNodeGroupedUniquenessConstraint:
         car_camry_main: Node,
         car_volt_main: Node,
     ):
-        car_accord_main.name.value = "camry"
-        car_accord_main.color.value = "#123456"
+        car_accord_main.name.value = car_camry_main.name.value
         car_accord_main.get_schema().uniqueness_constraints = [
             ["name__value", "color__value"],
-            ["nbr_seats__value", "name__value"],
         ]
 
-        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'name-color'"):
+        with pytest.raises(
+            ValidationError, match=re.escape("Violates uniqueness constraint '['color__value', 'name__value']'")
+        ):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
+
+    async def test_uniqueness_constraint_conflict_multiple_constraints(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_accord_main: Node,
+        car_camry_main: Node,
+        car_volt_main: Node,
+    ):
+        car_accord_main.nbr_seats.value = car_camry_main.nbr_seats.value
+        car_accord_main.color.value = car_camry_main.color.value
+        car_accord_main.get_schema().uniqueness_constraints = [
+            ["name__value", "color__value"],
+            ["nbr_seats__value", "color__value"],
+        ]
+
+        with pytest.raises(
+            ValidationError, match=re.escape("Violates uniqueness constraint '['color__value', 'nbr_seats__value']'")
+        ):
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
 
     async def test_uniqueness_constraint_no_conflict_attribute_enum(
@@ -108,7 +130,7 @@ class TestNodeGroupedUniquenessConstraint:
         car_accord_main.name.value = "camry"
         car_accord_main.get_schema().uniqueness_constraints = [["nbr_seats__value", "name__value"]]
 
-        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'nbr_seats-name'"):
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint ['name__value', 'nbr_seats__value']"):
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
 
     async def test_uniqueness_constraint_no_conflict_one_relationship(

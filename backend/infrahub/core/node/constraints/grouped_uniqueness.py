@@ -150,6 +150,11 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         at: Optional[Timestamp] = None,
         filters: Optional[list[str]] = None,
     ) -> None:
+        """
+        Raises a `ValidationError` if database contains at least one node having same `uniqueness_constraint` attributes
+        than input `node` ones.
+        """
+
         schema_branch = self.db.schema.get_schema_branch(name=self.branch.name)
         path_groups = node_schema.get_unique_constraint_schema_attribute_paths(schema_branch=schema_branch)
 
@@ -158,7 +163,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                 updated_node=node, node_schema=node_schema, path_groups=[path_group], filters=filters
             )
 
-            if not query_request:
+            if query_request.is_empty():
                 continue
 
             if query_request.has_attributes_only:
@@ -179,6 +184,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                 await get_node_query.execute(db=self.db)
                 node_ids = get_node_query.get_node_ids()
 
+                # Node may or may not already exist in the database.
                 if (node.id in node_ids and len(node_ids) > 1) or (node.id not in node_ids and len(node_ids) > 0):
                     raise ValidationError(query_request.get_error_message())
 

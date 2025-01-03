@@ -112,7 +112,7 @@ class UniquenessChecker(ConstraintCheckerInterface):
     ) -> list[NonUniqueNode]:
         query_request = await self.build_query_request(schema)
 
-        if not query_request:
+        if query_request.is_empty():
             return []
 
         query = await NodeUniqueAttributeConstraintQuery.init(

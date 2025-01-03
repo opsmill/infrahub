@@ -140,7 +140,7 @@ async def test_create_check_unique(db: InfrahubDatabase, default_branch, car_per
 
     assert result.errors
     assert len(result.errors) == 1
-    assert "An object already exist" in result.errors[0].message
+    assert "Violates uniqueness constraint '['name__value']'" in result.errors[0].message
 
 
 async def test_create_check_unique_across_branch(db: InfrahubDatabase, default_branch, car_person_schema):
@@ -172,7 +172,7 @@ async def test_create_check_unique_across_branch(db: InfrahubDatabase, default_b
 
     assert result.errors
     assert len(result.errors) == 1
-    assert "An object already exist" in result.errors[0].message
+    assert "Violates uniqueness constraint '['name__value']'" in result.errors[0].message
 
 
 async def test_create_check_unique_in_branch(db: InfrahubDatabase, default_branch, car_person_schema):
@@ -203,7 +203,7 @@ async def test_create_check_unique_in_branch(db: InfrahubDatabase, default_branc
 
     assert result.errors
     assert len(result.errors) == 1
-    assert "An object already exist" in result.errors[0].message
+    assert "Violates uniqueness constraint '['name__value']'" in result.errors[0].message
 
 
 async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribute_types_schema):

@@ -1,21 +1,18 @@
 import inspect
 from pathlib import Path
-from pickle import FALSE
 
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.initialization import create_branch
-from infrahub.core.manager import NodeManager
-from infrahub.core.query.diff import DiffAllPathsQuery
 from infrahub.core.query.node import NodeGetListQuery
-from infrahub.core.timestamp import Timestamp
+from infrahub.core.validators.uniqueness.model import NodeUniquenessQueryRequest, QueryAttributePath
+from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
 from infrahub.database.constants import Neo4jRuntime
 from infrahub.log import get_logger
-from tests.helpers.constants import NEO4J_COMMUNITY_IMAGE, NEO4J_ENTERPRISE_IMAGE
+from tests.helpers.constants import NEO4J_ENTERPRISE_IMAGE
 from tests.helpers.query_benchmark.benchmark_config import BenchmarkConfig
 from tests.helpers.query_benchmark.car_person_generators import (
-    CarWithDiffInSecondBranchGenerator, CarGenerator,
+    CarGenerator,
 )
 from tests.helpers.query_benchmark.data_generator import load_data_and_profile
 from tests.query_benchmark.conftest import RESULTS_FOLDER
@@ -30,17 +27,35 @@ log = get_logger()
 @pytest.mark.parametrize(
     "benchmark_config, ordering",
     [
-        (BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=False), False),
-        (BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=False), True),
+        # (BenchmarkConfig(neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=False), False),
+        (
+            BenchmarkConfig(
+                neo4j_runtime=Neo4jRuntime.PARALLEL, neo4j_image=NEO4J_ENTERPRISE_IMAGE, load_db_indexes=False
+            ),
+            True,
+        ),
     ],
 )
-async def test_node_get_list_ordering(benchmark_config, car_person_schema_root, graph_generator, increase_query_size_limit, ordering):
+async def test_node_get_list_ordering_vs_uniqueness(
+    benchmark_config, car_person_schema_root, graph_generator, increase_query_size_limit, ordering
+):
     # Initialization
     db_profiling_queries, default_branch = await start_db_and_create_default_branch(
         neo4j_image=benchmark_config.neo4j_image,
         load_indexes=benchmark_config.load_db_indexes,
     )
     registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
+
+    query_request = NodeUniquenessQueryRequest(
+        kind="TestCar",
+        unique_attribute_paths={
+            QueryAttributePath(attribute_name="name", property_name="value"),
+            # QueryAttributePath(attribute_name="nbr_seats", property_name="value"),
+        },
+        # relationship_attribute_paths={
+        #     QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="name")
+        # },
+    )
 
     # Build function to profile
     async def init_and_execute():
@@ -50,13 +65,20 @@ async def test_node_get_list_ordering(benchmark_config, car_person_schema_root, 
             schema=car_node_schema,
             branch=default_branch,
             ordering=ordering,
+            filters={"name": "aaaa"},
         )
-        res = await query.execute(db=db_profiling_queries)
-        print(f"{len(res.get_node_ids())=}")
-        return res
+        res_node_get_list = await query.execute(db=db_profiling_queries)
+        print(f"{len(res_node_get_list.get_node_ids())=}")
 
+        query_uniqueness = await NodeUniqueAttributeConstraintQuery.init(
+            db=db_profiling_queries,
+            branch=default_branch,
+            query_request=query_request,
+        )
+        await query_uniqueness.execute(db=db_profiling_queries)
+        print(f"{query_uniqueness.results=}")
 
-    nb_cars = 10_000
+    nb_cars = 5_000
     cars_generator = CarGenerator(db=db_profiling_queries)
     test_name = inspect.currentframe().f_code.co_name
     module_name = Path(__file__).stem
@@ -67,7 +89,7 @@ async def test_node_get_list_ordering(benchmark_config, car_person_schema_root, 
     await load_data_and_profile(
         data_generator=cars_generator,
         func_call=init_and_execute,
-        profile_frequency=1_000,
+        profile_frequency=500,
         nb_elements=nb_cars,
         graphs_output_location=graph_output_location,
         test_label=test_label,
