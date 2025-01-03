@@ -320,12 +320,12 @@ async def test_ipprefix_create(
 
 async def test_ipprefix_create_with_ipnamespace(
     db: InfrahubDatabase,
-    default_branch: Branch,
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
+    branch: Branch,
 ):
-    ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE, branch=default_branch)
+    ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE, branch=branch)
     await ns.new(db=db, name="ns1")
     await ns.save(db=db)
 
@@ -349,7 +349,7 @@ async def test_ipprefix_create_with_ipnamespace(
     }
     """
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     supernet = ipaddress.ip_network("2001:db8::/32")
     result = await graphql(
@@ -363,7 +363,9 @@ async def test_ipprefix_create_with_ipnamespace(
     assert result.data["IpamIPPrefixCreate"]["ok"]
     assert result.data["IpamIPPrefixCreate"]["object"]["id"]
 
-    ip_prefix = await registry.manager.get_one(id=result.data["IpamIPPrefixCreate"]["object"]["id"], db=db)
+    ip_prefix = await registry.manager.get_one(
+        id=result.data["IpamIPPrefixCreate"]["object"]["id"], db=db, branch=branch
+    )
     ip_namespace = await ip_prefix.ip_namespace.get_peer(db=db)
     assert ip_namespace.id == ns.id
 
@@ -448,17 +450,17 @@ async def test_ipprefix_update(
 
 async def test_ipprefix_update_within_namespace(
     db: InfrahubDatabase,
-    default_branch: Branch,
     default_ipnamespace: Node,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
+    branch: Branch,
 ):
     """Make sure a prefix can be updated within a namespace."""
-    test_ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    test_ns = await Node.init(db=db, branch=branch, schema=InfrahubKind.NAMESPACE)
     await test_ns.new(db=db, name="test")
     await test_ns.save(db=db)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     subnet = ipaddress.ip_network("2001:db8::/48")
     result = await graphql(

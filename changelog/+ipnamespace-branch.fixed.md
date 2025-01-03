@@ -1,0 +1,1 @@
+Fixed an issue that prevented using an IP Namespace on a branch
