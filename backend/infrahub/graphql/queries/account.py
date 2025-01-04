@@ -8,7 +8,6 @@ from infrahub_sdk.utils import extract_fields_first_node
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import InternalAccountToken
 from infrahub.exceptions import PermissionDeniedError
-from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -120,12 +119,9 @@ async def resolve_account_permissions(
 
     fields = await extract_fields_first_node(info)
 
-    permission_manager = PermissionManager(account_session=context.account_session)
-    await permission_manager.load_permissions(db=context.db, branch=context.branch)
-
     response: dict[str, dict[str, Any]] = {}
     if "global_permissions" in fields:
-        global_list = permission_manager.permissions["global_permissions"]
+        global_list = context.active_permissions.permissions["global_permissions"]
         response["global_permissions"] = {"count": len(global_list)}
         response["global_permissions"]["edges"] = [
             {
@@ -140,7 +136,7 @@ async def resolve_account_permissions(
             for obj in global_list
         ]
     if "object_permissions" in fields:
-        object_list = permission_manager.permissions["object_permissions"]
+        object_list = context.active_permissions.permissions["object_permissions"]
         response["object_permissions"] = {"count": len(object_list)}
         response["object_permissions"]["edges"] = [
             {

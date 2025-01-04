@@ -12,7 +12,6 @@ from infrahub.database import retry_db_transaction
 from infrahub.events import EventMeta, NodeMutatedEvent
 from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.log import get_log_data
-from infrahub.permissions import PermissionManager
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -55,10 +54,7 @@ class UpdateComputedAttribute(Mutation):
         if context.branch.name == registry.default_branch:
             required_decision = PermissionDecision.ALLOW_DEFAULT
 
-        permission_manager = PermissionManager(account_session=context.active_account_session)
-        await permission_manager.load_permissions(db=context.db, branch=context.branch)
-
-        if not permission_manager.has_permission(
+        if not context.active_permissions.has_permission(
             permission=ObjectPermission(
                 namespace=node_schema.namespace,
                 name=node_schema.name,
