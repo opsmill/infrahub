@@ -117,7 +117,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     )
                 )
             except PermissionDeniedError as exc:
-                raise ValidationError(str(exc))
+                raise ValidationError(str(exc)) from exc
 
         if updated_state == ProposedChangeState.MERGED:
             data["state"]["value"] = ProposedChangeState.MERGING.value

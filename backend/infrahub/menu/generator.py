@@ -22,7 +22,7 @@ def get_full_name(obj: CoreMenuItem) -> str:
     return f"{obj.namespace.value}{obj.name.value}"
 
 
-def _has_item_permission(item: CoreMenuItem, permissions: PermissionManager | None) -> bool:
+def _has_item_permission(item: MenuItemDict, permissions: PermissionManager | None) -> bool:
     if not permissions:
         return False
 

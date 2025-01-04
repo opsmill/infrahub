@@ -22,11 +22,11 @@ class BranchRelativePermissionDecision(StrEnum):
 
 
 GLOBAL_PERMISSION_DENIAL_MESSAGE = {
-    GlobalPermissions.EDIT_DEFAULT_BRANCH: "You are not allowed to change data in the default branch",
-    GlobalPermissions.MERGE_BRANCH: "You are not allowed to merge a branch",
-    GlobalPermissions.MERGE_PROPOSED_CHANGE: "You are not allowed to merge proposed changes",
-    GlobalPermissions.MANAGE_SCHEMA: "You are not allowed to manage the schema",
-    GlobalPermissions.MANAGE_ACCOUNTS: "You are not allowed to manage user accounts, groups or roles",
-    GlobalPermissions.MANAGE_PERMISSIONS: "You are not allowed to manage permissions",
-    GlobalPermissions.MANAGE_REPOSITORIES: "You are not allowed to manage repositories",
+    GlobalPermissions.EDIT_DEFAULT_BRANCH.value: "You are not allowed to change data in the default branch",
+    GlobalPermissions.MERGE_BRANCH.value: "You are not allowed to merge a branch",
+    GlobalPermissions.MERGE_PROPOSED_CHANGE.value: "You are not allowed to merge proposed changes",
+    GlobalPermissions.MANAGE_SCHEMA.value: "You are not allowed to manage the schema",
+    GlobalPermissions.MANAGE_ACCOUNTS.value: "You are not allowed to manage user accounts, groups or roles",
+    GlobalPermissions.MANAGE_PERMISSIONS.value: "You are not allowed to manage permissions",
+    GlobalPermissions.MANAGE_REPOSITORIES.value: "You are not allowed to manage repositories",
 }
