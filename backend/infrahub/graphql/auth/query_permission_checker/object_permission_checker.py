@@ -7,7 +7,6 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, Infra
 from infrahub.core.manager import get_schema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.initialization import GraphqlParams
 from infrahub.permissions.constants import PermissionDecisionFlag
@@ -69,10 +68,7 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
                     )
                 )
 
-        if not query_parameters.context.active_permissions.has_permissions(permissions=permissions):
-            raise PermissionDeniedError(
-                f"You do not have one of the following permissions: {' | '.join([str(p) for p in permissions])}"
-            )
+        query_parameters.context.active_permissions.raise_for_permissions(permissions=permissions)
 
         return CheckerResolution.TERMINATE
 
@@ -115,11 +111,8 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         if not is_account_operation or operation_names == ["AccountProfile"]:
             return CheckerResolution.NEXT_CHECKER
 
-        if (
-            not query_parameters.context.active_permissions.has_permission(permission=self.permission_required)
-            and analyzed_query.contains_mutation
-        ):
-            raise PermissionDeniedError("You do not have the permission to manage user accounts, groups or roles")
+        if analyzed_query.contains_mutation:
+            query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
 
         return CheckerResolution.NEXT_CHECKER
 
@@ -160,8 +153,7 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         if not is_permission_operation:
             return CheckerResolution.NEXT_CHECKER
 
-        if not query_parameters.context.active_permissions.has_permission(permission=self.permission_required):
-            raise PermissionDeniedError("You do not have the permission to manage permissions")
+        query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
 
         return CheckerResolution.NEXT_CHECKER
 
@@ -202,7 +194,6 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         if not is_repository_operation or not analyzed_query.contains_mutation:
             return CheckerResolution.NEXT_CHECKER
 
-        if not query_parameters.context.active_permissions.has_permission(permission=self.permission_required):
-            raise PermissionDeniedError("You do not have the permission to manage repositories")
+        query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
 
         return CheckerResolution.NEXT_CHECKER

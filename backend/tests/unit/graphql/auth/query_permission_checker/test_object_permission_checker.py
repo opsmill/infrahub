@@ -463,7 +463,7 @@ class TestAccountManagerPermissions:
             assert resolution == CheckerResolution.NEXT_CHECKER
         else:
             with pytest.raises(
-                PermissionDeniedError, match=r"You do not have the permission to manage user accounts, groups or roles"
+                PermissionDeniedError, match=r"You are not allowed to manage user accounts, groups or roles"
             ):
                 await checker.check(
                     db=db,
@@ -583,7 +583,7 @@ class TestPermissionManagerPermissions:
             )
             assert resolution == CheckerResolution.NEXT_CHECKER
         else:
-            with pytest.raises(PermissionDeniedError, match=r"You do not have the permission to manage permissions"):
+            with pytest.raises(PermissionDeniedError, match=r"You are not allowed to manage permissions"):
                 await checker.check(
                     db=db,
                     account_session=session,
@@ -702,7 +702,7 @@ class TestRepositoryManagerPermissions:
             )
             assert resolution == CheckerResolution.NEXT_CHECKER
         else:
-            with pytest.raises(PermissionDeniedError, match=r"You do not have the permission to manage repositories"):
+            with pytest.raises(PermissionDeniedError, match=r"You are not allowed to manage repositories"):
                 await checker.check(
                     db=db,
                     account_session=session,

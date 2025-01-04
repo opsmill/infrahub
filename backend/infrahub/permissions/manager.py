@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, Sequence
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
-from infrahub.permissions.constants import PermissionDecisionFlag
+from infrahub.exceptions import PermissionDeniedError
+from infrahub.permissions.constants import GLOBAL_PERMISSION_DENIAL_MESSAGE, PermissionDecisionFlag
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
@@ -109,3 +110,24 @@ class PermissionManager:
     def has_permissions(self, permissions: Sequence[GlobalPermission | ObjectPermission]) -> bool:
         """Same as `has_permission` but for multiple permissions, return `True` only if all permissions are granted."""
         return all(self.has_permission(permission=permission) for permission in permissions)
+
+    def raise_for_permission(self, permission: GlobalPermission | ObjectPermission) -> None:
+        """Same as `has_permission` but raise a `PermissionDeniedError` if the permission is not granted."""
+        if self.has_permission(permission=permission):
+            return
+
+        if isinstance(permission, GlobalPermission) and permission.action in GLOBAL_PERMISSION_DENIAL_MESSAGE:
+            message = GLOBAL_PERMISSION_DENIAL_MESSAGE[permission.action]
+        else:
+            message = f"You do not have the following permission: {permission!s}"
+
+        raise PermissionDeniedError(message=message)
+
+    def raise_for_permissions(self, permissions: Sequence[GlobalPermission | ObjectPermission]) -> None:
+        """Same as `has_permissions` but raise a `PermissionDeniedError` if any of the permissions is not granted."""
+        if self.has_permissions(permissions=permissions):
+            return
+
+        raise PermissionDeniedError(
+            f"You do not have one of the following permissions: {' | '.join([str(p) for p in permissions])}"
+        )

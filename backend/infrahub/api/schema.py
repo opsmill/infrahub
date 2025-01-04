@@ -34,7 +34,7 @@ from infrahub.core.validators.models.validate_migration import (
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent
-from infrahub.exceptions import MigrationError, PermissionDeniedError
+from infrahub.exceptions import MigrationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import PermissionManager
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
@@ -253,7 +253,7 @@ async def load_schema(
     permission_manager = PermissionManager(account_session=account_session)
     await permission_manager.load_permissions(db=db, branch=branch)
 
-    if not permission_manager.has_permission(
+    permission_manager.raise_for_permission(
         permission=GlobalPermission(
             action=GlobalPermissions.MANAGE_SCHEMA.value,
             decision=(
@@ -262,16 +262,14 @@ async def load_schema(
                 else PermissionDecision.ALLOW_OTHER
             ).value,
         )
-    ):
-        raise PermissionDeniedError("You are not allowed to manage the schema")
+    )
 
-    if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch) and not permission_manager.has_permission(
-        permission=GlobalPermission(
-            action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-            decision=PermissionDecision.ALLOW_DEFAULT.value,
-        ),
-    ):
-        raise PermissionDeniedError("You are not allowed to edit the schema in the default branch")
+    if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch):
+        permission_manager.raise_for_permission(
+            permission=GlobalPermission(
+                action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_DEFAULT.value
+            ),
+        )
 
     service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)

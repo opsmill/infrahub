@@ -5,7 +5,6 @@ from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.initialization import GraphqlParams
 
@@ -45,14 +44,7 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
             operation_name in self.exempt_operations for operation_name in analyzed_query.operation_names
         )
 
-        if (
-            not query_parameters.context.active_permissions.has_permission(permission=self.permission_required)
-            and operates_on_default_branch
-            and analyzed_query.contains_mutation
-            and not is_exempt_operation
-        ):
-            raise PermissionDeniedError(
-                f"You are not allowed to change data in the default branch '{registry.default_branch}'"
-            )
+        if operates_on_default_branch and analyzed_query.contains_mutation and not is_exempt_operation:
+            query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
 
         return CheckerResolution.NEXT_CHECKER

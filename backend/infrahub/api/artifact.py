@@ -11,7 +11,7 @@ from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
 from infrahub.core.protocols import CoreArtifactDefinition
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
+from infrahub.exceptions import NodeNotFoundError
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
 from infrahub.permissions import PermissionManager
@@ -76,11 +76,7 @@ async def generate_artifact(
         ObjectPermission(namespace="Core", name="Artifact", action=action.value, decision=permission_decision)
         for action in (PermissionAction.CREATE, PermissionAction.UPDATE)
     ]
-
-    if not permission_manager.has_permissions(permissions=permissions):
-        raise PermissionDeniedError(
-            f"You do not have the following permission: {' | '.join([str(p) for p in permissions])}"
-        )
+    permission_manager.raise_for_permissions(permissions=permissions)
 
     # Verify that the artifact definition exists for the requested branch
     artifact_definition = await registry.manager.get_one_by_id_or_default_filter(

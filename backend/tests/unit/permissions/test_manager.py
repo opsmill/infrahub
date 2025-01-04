@@ -1,3 +1,5 @@
+import pytest
+
 from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission, ObjectPermission
@@ -5,6 +7,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionAction, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import PermissionDeniedError
 from infrahub.permissions import LocalPermissionBackend, PermissionManager
 from infrahub.permissions.constants import PermissionDecisionFlag
 
@@ -92,10 +95,16 @@ async def test_has_permission_global(
     permission_manager = PermissionManager(account_session=session_first_account)
     await permission_manager.load_permissions(db=db, branch=default_branch)
     assert permission_manager.has_permission(permission=allow_default_branch_edition)
+    try:
+        permission_manager.raise_for_permission(permission=allow_default_branch_edition)
+    except PermissionDeniedError:
+        pytest.fail("PermissionDeniedError raised unexpectedly")
 
     permission_manager = PermissionManager(account_session=session_second_account)
     await permission_manager.load_permissions(db=db, branch=default_branch)
     assert not permission_manager.has_permission(permission=allow_default_branch_edition)
+    with pytest.raises(PermissionDeniedError):
+        permission_manager.raise_for_permission(permission=allow_default_branch_edition)
 
 
 async def test_has_permission_object(
@@ -171,10 +180,16 @@ async def test_has_permission_object(
     permission_manager = PermissionManager(account_session=session_first_account)
     await permission_manager.load_permissions(db=db, branch=default_branch)
     assert not permission_manager.has_permission(permission=permission)
+    with pytest.raises(PermissionDeniedError):
+        permission_manager.raise_for_permission(permission=permission)
 
     permission_manager = PermissionManager(account_session=session_second_account)
     await permission_manager.load_permissions(db=db, branch=default_branch)
     assert permission_manager.has_permission(permission=permission)
+    try:
+        permission_manager.raise_for_permission(permission=permission)
+    except PermissionDeniedError:
+        pytest.fail("PermissionDeniedError raised unexpectedly")
 
 
 async def test_report_permission_object(
