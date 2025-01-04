@@ -22,17 +22,6 @@ def get_full_name(obj: CoreMenuItem) -> str:
     return f"{obj.namespace.value}{obj.name.value}"
 
 
-def _has_item_permission(item: MenuItemDict, permissions: PermissionManager | None) -> bool:
-    if not permissions:
-        return False
-
-    for permission in item.get_global_permissions():
-        if permissions.has_permission(permission=permission):
-            return True
-
-    return False
-
-
 async def generate_restricted_menu(
     db: InfrahubDatabase, branch: Branch, menu_items: list[CoreMenuItem], account: AccountSession | None = None
 ) -> MenuDict:
@@ -44,7 +33,12 @@ async def generate_restricted_menu(
         await permissions.load_permissions(db=db, branch=branch)
 
     for item in menu.data.values():
-        item.hidden = not _has_item_permission(item=item, permissions=permissions)
+        has_permission = True
+        for permission in item.get_global_permissions():
+            has_permission = permissions is not None and permissions.has_permission(permission=permission)
+
+        if not has_permission:
+            item.hidden = True
 
     return menu
 
