@@ -22,7 +22,7 @@ jobs:
           python-version: "3.12"
       - name: "Setup environment"
         run: |
-          pipx install poetry
+          pipx install poetry==1.8.5
       - name: "Validate pyproject.toml and consistency with poetry.lock"
         run: |
           poetry check
