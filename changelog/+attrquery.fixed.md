@@ -1,1 +1,0 @@
-Fix query response time when the number of historical value for a given attribute is large
