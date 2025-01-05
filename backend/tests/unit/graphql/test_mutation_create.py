@@ -499,6 +499,37 @@ async def test_create_object_with_single_relationship(db: InfrahubDatabase, defa
     assert len(result.data["TestCarCreate"]["object"]["id"]) == 36  # length of an UUID
 
 
+async def test_create_object_with_invalid_single_relationship_fails(
+    db: InfrahubDatabase, default_branch, hierarchical_location_schema
+):
+    query = """
+    mutation {
+        LocationSiteCreate(
+            data: {
+                name: { value: "NewSite" },
+                parent: { hfid: ["pretend region"] }
+            }
+        ) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert len(result.errors) == 1
+    gql_error = result.errors[0]
+    assert "Unable to find the node pretend region / LocationRegion in the database." in gql_error.message
+
+
 async def test_create_object_with_single_relationship_flag_property(
     db: InfrahubDatabase, default_branch, car_person_schema
 ):
