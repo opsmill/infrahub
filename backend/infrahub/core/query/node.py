@@ -7,7 +7,11 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, AsyncIterator, Generator, Optional, Union
 
 from infrahub import config
-from infrahub.core.constants import AttributeDBNodeType, RelationshipDirection, RelationshipHierarchyDirection
+from infrahub.core.constants import (
+    AttributeDBNodeType,
+    RelationshipDirection,
+    RelationshipHierarchyDirection,
+)
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.query.utils import find_node_schema
@@ -814,6 +818,18 @@ class NodeGetListQuery(Query):
 
         super().__init__(**kwargs)
 
+    @property
+    def has_filters(self) -> bool:
+        if not self.filters or self.has_filter_by_id:
+            return False
+        return True
+
+    @property
+    def has_filter_by_id(self) -> bool:
+        if self.filters and "id" in self.filters:
+            return True
+        return False
+
     def _validate_filters(self) -> None:
         if not self.filters:
             return
@@ -851,28 +867,42 @@ class NodeGetListQuery(Query):
         )
         self.params.update(branch_params)
 
-        query = """
-        MATCH (n:%(node_kind)s)
-        CALL {
-            WITH n
-            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+        # The initial subquery is used to filter out deleted nodes because we can have multiple valid results per branch
+        #   and we need to filter out the one that have been deleted in the branch.
+        # If we are on the default branch, the subquery is not required because only one valid result is expected at a given time
+        if not self.branch.is_default:
+            topquery = """
+            MATCH (n:%(node_kind)s)
+            CALL {
+                WITH n
+                MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+                WHERE %(branch_filter)s
+                RETURN r
+                ORDER BY r.branch_level DESC, r.from DESC
+                LIMIT 1
+            }
+            WITH n, r as rb
+            WHERE rb.status = "active"
+            """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
+            self.add_to_query(topquery)
+        else:
+            topquery = """
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n:%(node_kind)s)
             WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n, r as rb
-        WHERE rb.status = "active"
-        """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
-        self.add_to_query(query)
+            WITH n, r as rb
+            WHERE rb.status = "active"
+            """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
+            self.add_to_query(topquery)
+
         use_simple = False
-        if self.filters and "id" in self.filters:
+        if self.has_filter_by_id and self.filters:
             use_simple = True
             where_clause_elements.append("n.uuid = $uuid")
             self.params["uuid"] = self.filters["id"]
-        if not self.filters and not self.schema.order_by:
+        elif not self.has_filters and not self.schema.order_by:
             use_simple = True
             self.order_by = ["n.uuid"]
+
         if use_simple:
             if where_clause_elements:
                 self.add_to_query(" AND " + " AND ".join(where_clause_elements))
