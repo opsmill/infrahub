@@ -179,18 +179,17 @@ async def initialization(db: InfrahubDatabase) -> None:
                         branch=branch.name,
                     )
                     await branch.save(db=db)
-    with trace.get_tracer(__name__).start_as_current_span("default_branch.schema_has_been_initialized"):
-        default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+    default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     with trace.get_tracer(__name__).start_as_current_span("GraphQLSchemaManager.get_manager_for_branch"):
             gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
-            with trace.get_tracer(__name__).start_as_current_span("gqlm.get_graphql_schema"):
-                gqlm.get_graphql_schema(
-                    include_query=True,
-                    include_mutation=True,
-                    include_subscription=True,
-                    include_types=True,
-                )
+            gqlm.get_graphql_schema(
+                include_query=True,
+                include_mutation=True,
+                include_subscription=True,
+                include_types=True,
+            )
 
     # ---------------------------------------------------
     # Load Default Namespace

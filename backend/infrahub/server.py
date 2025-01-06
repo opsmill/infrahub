@@ -92,8 +92,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
         async with application.state.db.start_session() as db:
             with trace.get_tracer(__name__).start_as_current_span("db.initialization"):
                 await initialization(db=db)
-        with trace.get_tracer(__name__).start_as_current_span("services.prepare"):
-            services.prepare(service=service)
+        services.prepare(service=service)
         application.state.service = service
         application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
         if enable_scheduler:
