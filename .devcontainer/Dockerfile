@@ -36,5 +36,5 @@ USER vscode
 
 RUN pip install toml invoke
 
-RUN curl -sSL https://install.python-poetry.org | python3 - \
+RUN curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.5 python3 - \
     && echo "export PATH=\"$HOME/.local/bin:$PATH\"" >> $HOME/.bashrc
