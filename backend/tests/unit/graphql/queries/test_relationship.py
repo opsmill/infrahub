@@ -34,7 +34,7 @@ async def test_relationship(
     }
     """
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     # No identifiers
     result = await graphql(

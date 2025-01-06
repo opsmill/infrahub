@@ -12,8 +12,8 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccountRole
 from infrahub.core.registry import registry
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.permissions import LocalPermissionBackend
 from infrahub.permissions.constants import BranchRelativePermissionDecision, PermissionDecisionFlag
-from infrahub.permissions.local_backend import LocalPermissionBackend
 from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
@@ -173,7 +173,7 @@ class TestObjectPermissions:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        gql_params = prepare_graphql_params(
+        gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
 
@@ -200,7 +200,7 @@ class TestObjectPermissions:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=branch2, account_session=session)
+        gql_params = await prepare_graphql_params(db=db, include_mutation=True, branch=branch2, account_session=session)
         result = await graphql(schema=gql_params.schema, source=QUERY_TAGS, context_value=gql_params.context)
         assert not result.errors
         assert result.data
@@ -222,7 +222,7 @@ class TestObjectPermissions:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        gql_params = prepare_graphql_params(
+        gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
 
@@ -261,7 +261,7 @@ class TestObjectPermissions:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        gql_params = prepare_graphql_params(
+        gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
 
@@ -290,7 +290,7 @@ class TestObjectPermissions:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=branch2, account_session=session)
+        gql_params = await prepare_graphql_params(db=db, include_mutation=True, branch=branch2, account_session=session)
 
         result = await graphql(schema=gql_params.schema, source=QUERY_TAGS, context_value=gql_params.context)
         assert not result.errors
@@ -324,6 +324,7 @@ class TestObjectPermissions:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
+        gql_params = await prepare_graphql_params(db=db, include_mutation=True, branch=branch2, account_session=session)
         result = await graphql(schema=gql_params.schema, source=QUERY_TAGS, context_value=gql_params.context)
         assert not result.errors
         assert result.data
@@ -434,7 +435,7 @@ class TestAttributePermissions:
             session_id=str(uuid4()),
             auth_type=AuthType.JWT,
         )
-        gql_params = prepare_graphql_params(
+        gql_params = await prepare_graphql_params(
             db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
         )
 
@@ -458,7 +459,7 @@ class TestAttributePermissions:
             session_id=str(uuid4()),
             auth_type=AuthType.JWT,
         )
-        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=branch2, account_session=session)
+        gql_params = await prepare_graphql_params(db=db, include_mutation=True, branch=branch2, account_session=session)
 
         result = await graphql(schema=gql_params.schema, source=QUERY_TAGS_ATTR, context_value=gql_params.context)
 

@@ -225,7 +225,7 @@ mutation NamespaceDelete($namespace_id: String!) {
 
 
 async def test_protected_default_ipnamespace(db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node):
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=DELETE_IPNAMESPACE,
@@ -242,7 +242,7 @@ async def test_delete_regular_ipnamespace(db: InfrahubDatabase, default_branch: 
     await ns1.new(db=db, name="ns1")
     await ns1.save(db=db)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=DELETE_IPNAMESPACE,
@@ -262,7 +262,7 @@ async def test_ipprefix_create(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure prefix can be created and parent/children relationships are set."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     supernet = ipaddress.ip_network("2001:db8::/32")
     result = await graphql(
@@ -349,7 +349,7 @@ async def test_ipprefix_create_with_ipnamespace(
     }
     """
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     supernet = ipaddress.ip_network("2001:db8::/32")
     result = await graphql(
@@ -378,7 +378,7 @@ async def test_ipprefix_create_reverse(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure parent/children relationship are set when creating a parent after a child."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     subnet = ipaddress.ip_network("2001:db8::/48")
     result = await graphql(
@@ -423,7 +423,7 @@ async def test_ipprefix_update(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure a prefix can be updated."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     subnet = ipaddress.ip_network("2001:db8::/48")
     result = await graphql(
@@ -460,7 +460,7 @@ async def test_ipprefix_update_within_namespace(
     await test_ns.new(db=db, name="test")
     await test_ns.save(db=db)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     subnet = ipaddress.ip_network("2001:db8::/48")
     result = await graphql(
@@ -543,7 +543,7 @@ async def test_ipprefix_upsert(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure a prefix can be upserted."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     subnet = ipaddress.ip_network("2001:db8::/48")
     result = await graphql(
@@ -578,7 +578,7 @@ async def test_ipprefix_delete(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure deleting a prefix relocates its children."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     networks = [
         ipaddress.ip_network("2001:db8::/32"),
@@ -653,7 +653,7 @@ async def test_ipaddress_create(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure IP address is properly created and nested under a subnet."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     # Single IP address, no IP prefix
     address = ipaddress.ip_interface("192.0.2.1/24")
@@ -728,7 +728,7 @@ async def test_ipaddress_update(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure an IP address can be updated."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     address = ipaddress.ip_interface("192.0.2.1/24")
     result = await graphql(
@@ -765,7 +765,7 @@ async def test_ipaddress_update_within_namespace(
     await test_ns.new(db=db, name="test")
     await test_ns.save(db=db)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     address = ipaddress.ip_interface("192.0.2.1/24")
     result = await graphql(
@@ -848,7 +848,7 @@ async def test_ipaddress_upsert(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure an IP address can be upsert."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     address = ipaddress.ip_interface("192.0.2.1/24")
     result = await graphql(
@@ -883,7 +883,7 @@ async def test_ipaddress_change_ipprefix(
     register_ipam_schema: SchemaBranch,
 ):
     """Make sure relationship between an address and its prefix is properly managed."""
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     address = ipaddress.ip_interface("2001:db8::1/64")
     result = await graphql(
@@ -1047,7 +1047,7 @@ async def test_prefix_ancestors_descendants(
     await net16.new(db=db, prefix="10.0.0.0/16", parent=net14, ip_namespace=ns1)
     await net16.save(db=db)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     check_before = await graphql(
         schema=gql_params.schema,
         source=GET_PREFIX_HIERARCHY,
@@ -1148,7 +1148,7 @@ async def test_delete_top_level_prefix(
     await net10.new(db=db, prefix="10.0.0.0/10", parent=net8, ip_namespace=ns1)
     await net10.save(db=db)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     delete_top = await graphql(
         schema=gql_params.schema,
         source=DELETE_IPPREFIX,
@@ -1158,7 +1158,7 @@ async def test_delete_top_level_prefix(
     assert not delete_top.errors
     assert delete_top.data["IpamIPPrefixDelete"]["ok"] is True
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     delete_last_prefix = await graphql(
         schema=gql_params.schema,
         source=DELETE_IPPREFIX,

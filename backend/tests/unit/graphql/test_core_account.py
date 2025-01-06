@@ -23,7 +23,7 @@ async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch
     }
     """ % (new_password, new_description)
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db,
         include_subscription=False,
         branch=default_branch,
@@ -71,7 +71,7 @@ async def test_permissions(
     }
     """
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_subscription=False, branch=default_branch, account_session=session_admin
     )
 
@@ -94,7 +94,7 @@ async def test_permissions(
         )
     ]
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db,
         include_subscription=False,
         branch=default_branch,

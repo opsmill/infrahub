@@ -270,4 +270,4 @@ async def test_query_endpoint_missing_privs(
     assert response.status_code == 403
     error = response.json()
     assert error["errors"]
-    assert "You do not have the following permission" in error["errors"][0]["message"]
+    assert "You do not have one of the following permissions" in error["errors"][0]["message"]

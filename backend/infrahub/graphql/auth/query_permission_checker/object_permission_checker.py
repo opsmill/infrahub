@@ -7,7 +7,6 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, Infra
 from infrahub.core.manager import get_schema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.initialization import GraphqlParams
 from infrahub.permissions.constants import PermissionDecisionFlag
@@ -69,15 +68,7 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
                     )
                 )
 
-        for permission in permissions:
-            has_permission = False
-            for permission_backend in registry.permission_backends:
-                if has_permission := await permission_backend.has_permission(
-                    db=db, account_session=account_session, permission=permission, branch=branch
-                ):
-                    break
-            if not has_permission:
-                raise PermissionDeniedError(f"You do not have the following permission: {permission}")
+        query_parameters.context.active_permissions.raise_for_permissions(permissions=permissions)
 
         return CheckerResolution.TERMINATE
 
@@ -120,15 +111,8 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         if not is_account_operation or operation_names == ["AccountProfile"]:
             return CheckerResolution.NEXT_CHECKER
 
-        has_permission = False
-        for permission_backend in registry.permission_backends:
-            if has_permission := await permission_backend.has_permission(
-                db=db, account_session=account_session, permission=self.permission_required, branch=branch
-            ):
-                break
-
-        if not has_permission and analyzed_query.contains_mutation:
-            raise PermissionDeniedError("You do not have the permission to manage user accounts, groups or roles")
+        if analyzed_query.contains_mutation:
+            query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
 
         return CheckerResolution.NEXT_CHECKER
 
@@ -169,15 +153,7 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         if not is_permission_operation:
             return CheckerResolution.NEXT_CHECKER
 
-        has_permission = False
-        for permission_backend in registry.permission_backends:
-            if has_permission := await permission_backend.has_permission(
-                db=db, account_session=account_session, permission=self.permission_required, branch=branch
-            ):
-                break
-
-        if not has_permission:
-            raise PermissionDeniedError("You do not have the permission to manage permissions")
+        query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
 
         return CheckerResolution.NEXT_CHECKER
 
@@ -215,17 +191,7 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
             ) or (isinstance(schema, NodeSchema) and InfrahubKind.GENERICREPOSITORY in schema.inherit_from):
                 break
 
-        if not is_repository_operation or not analyzed_query.contains_mutation:
-            return CheckerResolution.NEXT_CHECKER
-
-        has_permission = False
-        for permission_backend in registry.permission_backends:
-            if has_permission := await permission_backend.has_permission(
-                db=db, account_session=account_session, permission=self.permission_required, branch=branch
-            ):
-                break
-
-        if not has_permission:
-            raise PermissionDeniedError("You do not have the permission to manage repositories")
+        if is_repository_operation and analyzed_query.contains_mutation:
+            query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
 
         return CheckerResolution.NEXT_CHECKER

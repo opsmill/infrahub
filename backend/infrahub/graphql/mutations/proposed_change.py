@@ -13,10 +13,9 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
-from infrahub.exceptions import BranchNotFoundError, ValidationError
+from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.message_bus import messages
@@ -92,22 +91,6 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
     ):
         context: GraphqlContext = info.context
 
-        has_merge_permission = False
-        if context.account_session:
-            for permission_backend in registry.permission_backends:
-                if has_merge_permission := await permission_backend.has_permission(
-                    db=context.db,
-                    account_session=context.active_account_session,
-                    permission=GlobalPermission(
-                        action=GlobalPermissions.MERGE_PROPOSED_CHANGE.value,
-                        decision=PermissionDecision.ALLOW_ALL.value,
-                    ),
-                    branch=branch,
-                ):
-                    break
-        else:
-            has_merge_permission = True
-
         obj = await NodeManager.get_one_by_id_or_default_filter(
             db=context.db,
             kind=cls._meta.schema.kind,
@@ -125,8 +108,16 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             state.validate_state_transition(updated_state)
 
         # Check before starting a transaction, stopping in the middle of the transaction seems to break with memgraph
-        if updated_state == ProposedChangeState.MERGED and not has_merge_permission:
-            raise ValidationError("You do not have the permission to merge proposed changes")
+        if updated_state == ProposedChangeState.MERGED and context.account_session:
+            try:
+                context.active_permissions.raise_for_permission(
+                    permission=GlobalPermission(
+                        action=GlobalPermissions.MERGE_PROPOSED_CHANGE.value,
+                        decision=PermissionDecision.ALLOW_ALL.value,
+                    )
+                )
+            except PermissionDeniedError as exc:
+                raise ValidationError(str(exc)) from exc
 
         if updated_state == ProposedChangeState.MERGED:
             data["state"]["value"] = ProposedChangeState.MERGING.value

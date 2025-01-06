@@ -5,16 +5,14 @@ from typing import TYPE_CHECKING
 from infrahub.core import registry
 from infrahub.core.protocols import CoreMenuItem
 from infrahub.log import get_logger
-from infrahub.permissions.constants import AssignedPermissions
-from infrahub.permissions.local_backend import LocalPermissionBackend
 
 from .constants import FULL_DEFAULT_MENU
 from .models import MenuDict, MenuItemDict
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.permissions import PermissionManager
 
 log = get_logger()
 
@@ -24,28 +22,18 @@ def get_full_name(obj: CoreMenuItem) -> str:
 
 
 async def generate_restricted_menu(
-    db: InfrahubDatabase, branch: Branch, menu_items: list[CoreMenuItem], account: AccountSession | None = None
+    db: InfrahubDatabase, branch: Branch, menu_items: list[CoreMenuItem], account_permissions: PermissionManager | None
 ) -> MenuDict:
     menu = await generate_menu(db=db, branch=branch, menu_items=menu_items)
 
-    permissions = AssignedPermissions(global_permissions=[], object_permissions=[])
-    perm_backend = LocalPermissionBackend()
-
-    if account:
-        permissions = await perm_backend.load_permissions(db=db, account_session=account, branch=branch)
-
     for item in menu.data.values():
-        has_permission: bool | None = None
+        has_permission = True
         for permission in item.get_global_permissions():
-            has_permission = perm_backend.resolve_global_permission(
-                permissions=permissions["global_permissions"], permission_to_check=permission
+            has_permission = account_permissions is not None and account_permissions.has_permission(
+                permission=permission
             )
-            if has_permission:
-                has_permission = True
-            elif has_permission is None:
-                has_permission = False
 
-        if has_permission is False:
+        if not has_permission:
             item.hidden = True
 
     return menu

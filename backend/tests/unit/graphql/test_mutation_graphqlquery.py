@@ -43,7 +43,7 @@ async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, regist
     }
     """ % query_value.replace("\n", " ").replace('"', '\\"')
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -109,7 +109,7 @@ async def test_create_query_with_vars(db: InfrahubDatabase, default_branch, regi
     }
     """ % query_value.replace("\n", " ").replace('"', '\\"')
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -205,7 +205,7 @@ async def test_update_query(db: InfrahubDatabase, default_branch, register_core_
         query_update.replace("\n", " ").replace('"', '\\"'),
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -267,7 +267,7 @@ async def test_update_query_no_update(db: InfrahubDatabase, default_branch, regi
     }
     """ % (obj.id)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
