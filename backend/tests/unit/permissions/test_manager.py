@@ -215,7 +215,7 @@ async def test_has_permission_object(
     permission_manager = PermissionManager(account_session=session_first_account)
     await permission_manager.load_permissions(db=db, branch=default_branch)
     assert not permission_manager.has_permission(permission=permission)
-    with pytest.raises(PermissionDeniedError):
+    with pytest.raises(PermissionDeniedError, match=r"You do not have the following permission"):
         permission_manager.raise_for_permission(permission=permission)
 
     permission_manager = PermissionManager(account_session=session_second_account)
@@ -223,6 +223,111 @@ async def test_has_permission_object(
     assert permission_manager.has_permission(permission=permission)
     try:
         permission_manager.raise_for_permission(permission=permission)
+    except PermissionDeniedError:
+        pytest.fail("PermissionDeniedError raised unexpectedly")
+
+
+async def test_has_permissions_object(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    session_admin: AccountSession,
+    session_first_account: AccountSession,
+    session_second_account: AccountSession,
+):
+    registry.permission_backends = [LocalPermissionBackend()]
+
+    role1_permissions = []
+    for p in [
+        ObjectPermission(
+            namespace="*", name="*", action=PermissionAction.ANY.value, decision=PermissionDecision.ALLOW_ALL.value
+        ),
+        ObjectPermission(
+            namespace="Builtin", name="Tag", action=PermissionAction.ANY.value, decision=PermissionDecision.DENY.value
+        ),
+        ObjectPermission(
+            namespace="Core",
+            name="Repository",
+            action=PermissionAction.ANY.value,
+            decision=PermissionDecision.DENY.value,
+        ),
+    ]:
+        obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+        await obj.new(db=db, namespace=p.namespace, name=p.name, action=p.action, decision=p.decision)
+        await obj.save(db=db)
+        role1_permissions.append(obj)
+
+    role1 = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role1.new(db=db, name="anything but tags", permissions=role1_permissions)
+    await role1.save(db=db)
+
+    group1 = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group1.new(db=db, name="group1", roles=[role1])
+    await group1.save(db=db)
+
+    await group1.members.add(db=db, data={"id": session_first_account.account_id})
+    await group1.members.save(db=db)
+
+    role2_permissions = []
+    for p in [
+        ObjectPermission(
+            namespace="*", name="*", action=PermissionAction.ANY.value, decision=PermissionDecision.DENY.value
+        ),
+        ObjectPermission(
+            namespace="Builtin",
+            name="Tag",
+            action=PermissionAction.ANY.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
+        ),
+        ObjectPermission(
+            namespace="Core",
+            name="Repository",
+            action=PermissionAction.ANY.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
+        ),
+    ]:
+        obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+        await obj.new(db=db, namespace=p.namespace, name=p.name, action=p.action, decision=p.decision)
+        await obj.save(db=db)
+        role2_permissions.append(obj)
+
+    role2 = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role2.new(db=db, name="only tags", permissions=role2_permissions)
+    await role2.save(db=db)
+
+    group2 = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group2.new(db=db, name="group2", roles=[role2])
+    await group2.save(db=db)
+
+    await group2.members.add(db=db, data={"id": session_second_account.account_id})
+    await group2.members.save(db=db)
+
+    permissions = [
+        ObjectPermission(
+            namespace="Builtin",
+            name="Tag",
+            action=PermissionAction.CREATE.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
+        ),
+        ObjectPermission(
+            namespace="Core",
+            name="Repository",
+            action=PermissionAction.CREATE.value,
+            decision=PermissionDecision.ALLOW_ALL.value,
+        ),
+    ]
+
+    permission_manager = PermissionManager(account_session=session_first_account)
+    await permission_manager.load_permissions(db=db, branch=default_branch)
+    assert not permission_manager.has_permissions(permissions=permissions)
+    with pytest.raises(PermissionDeniedError, match=r"You do not have one of the following permissions"):
+        permission_manager.raise_for_permissions(permissions=permissions)
+
+    permission_manager = PermissionManager(account_session=session_second_account)
+    await permission_manager.load_permissions(db=db, branch=default_branch)
+    assert permission_manager.has_permissions(permissions=permissions)
+    try:
+        permission_manager.raise_for_permissions(permissions=permissions)
     except PermissionDeniedError:
         pytest.fail("PermissionDeniedError raised unexpectedly")
 
