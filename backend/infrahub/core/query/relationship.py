@@ -581,23 +581,30 @@ class RelationshipGetPeerQuery(Query):
         branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
         froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
         query = """
-        MATCH (rl:Relationship { name: $rel_identifier })
+        MATCH (source_node:Node)%(arrow_left_start)s[:IS_RELATED]%(arrow_left_end)s(rl:Relationship { name: $rel_identifier })
+        WHERE source_node.uuid IN $source_ids
         CALL {
-            WITH rl
-            MATCH path = (source_node:Node)%(path)s(peer:Node)
+            WITH rl, source_node
+            MATCH path = (source_node)%(path)s(peer:Node)
             WHERE
-                source_node.uuid IN $source_ids AND
                 $source_kind IN LABELS(source_node) AND
                 peer.uuid <> source_node.uuid AND
                 $peer_kind IN LABELS(peer) AND
                 all(r IN relationships(path) WHERE (%(branch_filter)s))
             WITH source_node, peer, rl, relationships(path) as rels, %(branch_level)s AS branch_level, %(froms)s AS froms
-            RETURN source_node, peer as peer, rels, rl as rl1
+            RETURN peer as peer, rels, rl as rl1
             ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
             LIMIT 1
         }
         WITH peer, rl1 as rl, rels, source_node
-        """ % {"path": path_str, "branch_filter": branch_filter, "branch_level": branch_level_str, "froms": froms_str}
+        """ % {
+            "path": path_str,
+            "branch_filter": branch_filter,
+            "branch_level": branch_level_str,
+            "froms": froms_str,
+            "arrow_left_start": arrows.left.start,
+            "arrow_left_end": arrows.left.end,
+        }
 
         self.add_to_query(query)
         where_clause = ['all(r IN rels WHERE r.status = "active")']

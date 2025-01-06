@@ -29,7 +29,10 @@ log = get_logger()
 
 
 async def validate_namespace(
-    db: InfrahubDatabase, data: InputObjectType, existing_namespace_id: Optional[str] = None
+    db: InfrahubDatabase,
+    branch: Branch | str | None,
+    data: InputObjectType,
+    existing_namespace_id: Optional[str] = None,
 ) -> str:
     """Validate or set (if not present) the namespace to pass to the mutation and return its ID."""
     namespace_id: Optional[str] = None
@@ -37,7 +40,9 @@ async def validate_namespace(
         namespace_id = existing_namespace_id or registry.default_ipnamespace
         data["ip_namespace"] = {"id": namespace_id}
     elif "id" in data["ip_namespace"]:
-        namespace = await registry.manager.get_one(db=db, kind=InfrahubKind.IPNAMESPACE, id=data["ip_namespace"]["id"])
+        namespace = await registry.manager.get_one(
+            db=db, branch=branch, kind=InfrahubKind.IPNAMESPACE, id=data["ip_namespace"]["id"]
+        )
         namespace_id = namespace.id
     else:
         raise ValidationError(
@@ -130,7 +135,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         context: GraphqlContext = info.context
         db = database or context.db
         ip_address = ipaddress.ip_interface(data["address"]["value"])
-        namespace_id = await validate_namespace(db=db, data=data)
+        namespace_id = await validate_namespace(db=db, branch=branch, data=data)
 
         async with db.start_transaction() as dbt:
             if lock_name := cls._get_lock_name(namespace_id, branch):
@@ -186,7 +191,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
             include_source=True,
         )
         namespace = await address.ip_namespace.get_peer(db)
-        namespace_id = await validate_namespace(db=db, data=data, existing_namespace_id=namespace.id)
+        namespace_id = await validate_namespace(db=db, branch=branch, data=data, existing_namespace_id=namespace.id)
         try:
             async with db.start_transaction() as dbt:
                 if lock_name := cls._get_lock_name(namespace_id, branch):
@@ -217,7 +222,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         context: GraphqlContext = info.context
         db = database or context.db
 
-        await validate_namespace(db=db, data=data)
+        await validate_namespace(db=db, branch=branch, data=data)
         prefix, result, created = await super().mutate_upsert(
             info=info, data=data, branch=branch, node_getters=node_getters, database=db
         )
@@ -283,7 +288,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
         db = database or context.db
-        namespace_id = await validate_namespace(db=db, data=data)
+        namespace_id = await validate_namespace(db=db, branch=branch, data=data)
 
         async with db.start_transaction() as dbt:
             if lock_name := cls._get_lock_name(namespace_id, branch):
@@ -337,7 +342,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
             include_source=True,
         )
         namespace = await prefix.ip_namespace.get_peer(db)
-        namespace_id = await validate_namespace(db=db, data=data, existing_namespace_id=namespace.id)
+        namespace_id = await validate_namespace(db=db, branch=branch, data=data, existing_namespace_id=namespace.id)
         try:
             async with db.start_transaction() as dbt:
                 if lock_name := cls._get_lock_name(namespace_id, branch):
@@ -367,7 +372,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         context: GraphqlContext = info.context
         db = database or context.db
 
-        await validate_namespace(db=db, data=data)
+        await validate_namespace(db=db, branch=branch, data=data)
         prefix, result, created = await super().mutate_upsert(
             info=info, data=data, branch=branch, node_getters=node_getters, database=db
         )
