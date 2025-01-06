@@ -11,7 +11,6 @@ from infrahub.permissions.constants import BranchRelativePermissionDecision, Per
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema import MainSchemaTypes
-    from infrahub.database import InfrahubDatabase
     from infrahub.permissions.manager import PermissionManager
     from infrahub.permissions.types import KindPermissions
 
@@ -73,7 +72,7 @@ def get_permission_report(  # noqa: PLR0911
 
 
 async def report_schema_permissions(
-    db: InfrahubDatabase, branch: Branch, permission_manager: PermissionManager, schemas: list[MainSchemaTypes]
+    branch: Branch, permission_manager: PermissionManager, schemas: list[MainSchemaTypes]
 ) -> list[KindPermissions]:
     global_permission_report: dict[GlobalPermissions, bool] = {}
     for perm in GlobalPermissions:
