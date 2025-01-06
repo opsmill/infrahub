@@ -54,6 +54,16 @@ yaml_all: &yaml_all
 markdown_all: &markdown_all
   - "**/*.{md,mdx}"
 
+infrahub_reference_generated: &infrahub_reference_generated
+  - "docs/docs/reference/infrahub-cli/*.mdx"
+  - "docs/docs/reference/schema/*.mdx"
+  - "docs/docs/reference/dotinfrahub.mdx"
+  - "docs/docs/python-sdk/reference/config.mdx"
+  - "docs/docs/reference/message-bus-events.mdx"
+
+infrahub_ctl_generated: &infrahub_ctl_generated
+  - "docs/docs/infrahubctl/*.mdx"
+
 backend_all:
   - *backend_files
   - *ci_config
@@ -65,6 +75,10 @@ documentation_all:
   - *development_files
   - *doc_files
   - *markdown_all
+
+documentation_generated_all:
+  - *infrahub_reference_generated
+  - *infrahub_ctl_generated
 
 release_all:
   - *release_files

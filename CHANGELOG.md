@@ -11,6 +11,15 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.1.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.1) - 2025-01-05
+
+### Fixed
+
+- Raise a better error when trying to resolve an invalid HFID for a relationship ([#5360](https://github.com/opsmill/infrahub/issues/5360))
+- Fix an issue with session management that could lead to the crash of the GraphQL resolver
+- Fix query response time when the number of historical value for a given attribute is large
+- Fixed an issue that prevented using an IP Namespace on a branch
+
 ## [Infrahub - v1.1.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.0) - 2024-12-30
 
 ### Removed

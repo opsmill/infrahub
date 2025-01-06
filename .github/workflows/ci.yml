@@ -38,6 +38,7 @@ jobs:
     outputs:
       backend: ${{ steps.changes.outputs.backend_all }}
       documentation: ${{ steps.changes.outputs.documentation_all }}
+      documentation_generated: ${{ steps.changes.outputs.documentation_generated_all }}
       release: ${{ steps.changes.outputs.release_all }}
       frontend: ${{ steps.changes.outputs.frontend_all }}
       helm: ${{ steps.changes.outputs.helm_all }}
@@ -446,7 +447,7 @@ jobs:
           python-version: 3.12
       - name: "Setup environment"
         run: |
-          pipx install poetry
+          pipx install poetry==1.8.5
           poetry config virtualenvs.prefer-active-python true
           pip install invoke toml
       - name: "Install Package"
@@ -540,7 +541,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.python == 'true'
+      (needs.files-changed.outputs.python == 'true') || (needs.files-changed.outputs.documentation_generated == 'true')
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
@@ -555,7 +556,7 @@ jobs:
           python-version: "3.12"
       - name: "Setup Python environment"
         run: |
-          pipx install poetry
+          pipx install poetry==1.8.5
           poetry config virtualenvs.create true --local
           poetry env use 3.12
       - name: "Install dependencies"
