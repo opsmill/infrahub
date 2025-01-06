@@ -218,7 +218,9 @@ async def test_diff_tree_no_changes(
     from_time = datetime.fromisoformat(diff_branch.branched_from)
     to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
 
-    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
     result = await graphql(
         schema=params.schema,
         source=DIFF_TREE_QUERY,
@@ -246,7 +248,9 @@ async def test_diff_tree_no_changes(
 async def test_diff_tree_no_diffs(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, diff_branch: Branch
 ):
-    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
     result = await graphql(
         schema=params.schema,
         source=DIFF_TREE_QUERY,
@@ -260,7 +264,9 @@ async def test_diff_tree_no_diffs(
 
 
 async def test_diff_tree_no_branch(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
-    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
     result = await graphql(
         schema=params.schema,
         source=DIFF_TREE_QUERY,
@@ -305,7 +311,9 @@ async def test_diff_tree_one_attr_change(
     await main_crit.save(db=db)
     await branch_crit.save(db=db)
 
-    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
     result = await graphql(
         schema=params.schema,
         source=DIFF_TREE_QUERY,
@@ -418,7 +426,9 @@ async def test_diff_tree_one_relationship_change(
     jane_label = await person_jane_main.render_display_label(db=db)
 
     enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
-    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
     result = await graphql(
         schema=params.schema,
         source=DIFF_TREE_QUERY,
@@ -673,7 +683,9 @@ async def test_diff_tree_hierarchy_change(
     await rack2_branch.save(db=db)
 
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
-    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
     result = await graphql(
         schema=params.schema,
         source=DIFF_TREE_QUERY,
@@ -698,7 +710,9 @@ async def test_diff_tree_hierarchy_change(
 async def test_diff_tree_summary_no_diffs(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, diff_branch: Branch
 ):
-    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
     result = await graphql(
         schema=params.schema,
         source=DIFF_TREE_QUERY_SUMMARY,
@@ -722,7 +736,9 @@ async def test_diff_tree_summary_no_changes(
     from_time = datetime.fromisoformat(diff_branch.branched_from)
     to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
 
-    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
     result = await graphql(
         schema=params.schema,
         source=DIFF_TREE_QUERY_SUMMARY,
@@ -803,7 +819,9 @@ async def test_diff_summary_filters(
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
     enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
-    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
 
     result = await graphql(
         schema=params.schema,
@@ -900,7 +918,9 @@ async def test_diff_get_filters(
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
-    params = prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
 
     result = await graphql(
         schema=params.schema,

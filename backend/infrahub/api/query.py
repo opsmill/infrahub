@@ -57,7 +57,7 @@ async def execute_query(
         db=db, id=query_id, kind=CoreGraphQLQuery, branch=branch_params.branch, at=branch_params.at
     )
 
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, branch=branch_params.branch, at=branch_params.at, account_session=account_session
     )
     analyzed_query = InfrahubGraphQLQueryAnalyzer(

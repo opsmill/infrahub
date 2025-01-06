@@ -10,7 +10,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
 from infrahub.events import EventMeta, NodeMutatedEvent
-from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError, ValidationError
+from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.log import get_log_data
 from infrahub.worker import WORKER_IDENTITY
 
@@ -50,27 +50,16 @@ class UpdateComputedAttribute(Mutation):
         ):
             raise ValidationError(input_value=f"{node_schema.kind}.{target_attribute.name} is not a computed attribute")
 
-        required_decision = PermissionDecision.ALLOW_OTHER
-        if context.branch.name == registry.default_branch:
-            required_decision = PermissionDecision.ALLOW_DEFAULT
-
-        has_update_permission = False
-        for permission_backend in registry.permission_backends:
-            if has_update_permission := await permission_backend.has_permission(
-                db=context.db,
-                account_session=context.active_account_session,
-                permission=ObjectPermission(
-                    namespace=node_schema.namespace,
-                    name=node_schema.name,
-                    action=PermissionAction.UPDATE.value,
-                    decision=required_decision.value,
-                ),
-                branch=context.branch,
-            ):
-                break
-
-        if not has_update_permission:
-            raise PermissionDeniedError(message="You don't have the required permission to update this object.")
+        context.active_permissions.raise_for_permission(
+            permission=ObjectPermission(
+                namespace=node_schema.namespace,
+                name=node_schema.name,
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value
+                if context.branch.name == registry.default_branch
+                else PermissionDecision.ALLOW_OTHER.value,
+            )
+        )
 
         if not (
             target_node := await NodeManager.get_one(

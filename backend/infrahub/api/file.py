@@ -5,12 +5,7 @@ from typing import TYPE_CHECKING, Optional, Union
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import PlainTextResponse
 
-from infrahub.api.dependencies import (
-    BranchParams,
-    get_branch_params,
-    get_current_user,
-    get_db,
-)
+from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase  # noqa: TCH001

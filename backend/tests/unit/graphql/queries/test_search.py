@@ -32,7 +32,7 @@ async def test_search_anywhere_by_uuid(
     car_yaris_main: Node,
     branch: Branch,
 ):
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     result = await graphql(
         schema=gql_params.schema,
@@ -60,7 +60,7 @@ async def test_search_anywhere_by_string(
     car_yaris_main: Node,
     branch: Branch,
 ):
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     result = await graphql(
         schema=gql_params.schema,
@@ -103,7 +103,7 @@ async def test_search_ipv6_address_extended_format(
     ip_dataset_01,
     branch: Branch,
 ):
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     res_collapsed = await graphql(
         schema=gql_params.schema,
@@ -143,7 +143,7 @@ async def test_search_ipv6_network_extended_format(
     ip_dataset_01,
     branch: Branch,
 ):
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     res_collapsed = await graphql(
         schema=gql_params.schema,
@@ -178,7 +178,7 @@ async def test_search_ipv6_partial_address(
     ip_dataset_01,
     branch: Branch,
 ):
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     res_two_segments = await graphql(
         schema=gql_params.schema,
@@ -227,7 +227,7 @@ async def test_search_ipv4(
     This only tests that ipv6 search specific behavior does not break ipv4 search.
     """
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
 
     result_address = await graphql(
         schema=gql_params.schema,
@@ -296,7 +296,7 @@ async def test_search_groups(
     await group1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
     await group1.save(db=db)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     result = await graphql(
         schema=gql_params.schema,

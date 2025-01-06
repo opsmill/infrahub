@@ -149,7 +149,7 @@ async def default_paginated_list_resolver(
         node_fields = edges.get("node", {})
 
         permission_set: Optional[dict[str, Any]] = None
-        permissions = await get_permissions(db=db, schema=schema, context=context) if context.account_session else None
+        permissions = await get_permissions(schema=schema, context=context) if context.permissions else None
         if fields.get("permissions"):
             response["permissions"] = permissions
 

@@ -74,8 +74,8 @@ def test_query_one_model(exec_async, aio_benchmark, db: InfrahubDatabase, defaul
     }
     """
 
-    gql_params = prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    gql_params = exec_async(
+        prepare_graphql_params, db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
 
     for _ in range(NBR_WARMUP):
@@ -124,8 +124,8 @@ def test_query_rel_many(exec_async, aio_benchmark, db: InfrahubDatabase, default
     }
     """
 
-    gql_params = prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    gql_params = exec_async(
+        prepare_graphql_params, db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
 
     for _ in range(NBR_WARMUP):
@@ -174,8 +174,8 @@ def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, default_
     }
     """
 
-    gql_params = prepare_graphql_params(
-        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    gql_params = exec_async(
+        prepare_graphql_params, db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
 
     for _ in range(NBR_WARMUP):
@@ -222,8 +222,8 @@ def test_query_rel_one(exec_async, aio_benchmark, db: InfrahubDatabase, default_
 #     }
 #     """
 
-#     gql_params = prepare_graphql_params(
-#         db=db, include_mutation=False, include_subscription=False, branch=default_branch
+#     gql_params = exec_async(
+#         prepare_graphql_params, db=db, include_mutation=False, include_subscription=False, branch=default_branch
 #     )
 #     aio_benchmark(
 #         graphql,
