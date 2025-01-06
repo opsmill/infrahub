@@ -101,7 +101,9 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         await load_schema(db=db, schema=schema_step_01)
 
         starbuck = await Node.init(schema=PERSON_KIND, db=db)
-        await starbuck.new(db=db, name="Kara", height=175, description="Starbuck", homeworld="Caprica")
+        await starbuck.new(
+            db=db, name="Kara", height=175, description="Starbuck", homeworld="Caprica", favorite_color="army green"
+        )
         await starbuck.save(db=db)
 
         president = await Node.init(schema=PERSON_KIND, db=db)
@@ -109,15 +111,21 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         await president.save(db=db)
 
         gaius = await Node.init(schema=PERSON_KIND, db=db)
-        await gaius.new(db=db, name="Gaius", height=155, description="'Scientist'", homeworld="Aerilon")
+        await gaius.new(
+            db=db, name="Gaius", height=155, description="'Scientist'", homeworld="Aerilon", favorite_color="Gaius"
+        )
         await gaius.save(db=db)
 
         boomer = await Node.init(schema=CYLON_KIND, db=db)
-        await boomer.new(db=db, name="Sharon", height=165, model_number=8, description="8 (Boomer)")
+        await boomer.new(
+            db=db, name="Sharon", height=165, model_number=8, description="8 (Boomer)", favorite_color="Cylon silver"
+        )
         await boomer.save(db=db)
 
         athena = await Node.init(schema=CYLON_KIND, db=db)
-        await athena.new(db=db, name="Sharon", height=165, model_number=8, description="8 (Athena)")
+        await athena.new(
+            db=db, name="Sharon", height=165, model_number=8, description="8 (Athena)", favorite_color="Cylon chrome"
+        )
         await athena.save(db=db)
 
         caprica = await Node.init(schema=CYLON_KIND, db=db)
