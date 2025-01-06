@@ -6,6 +6,7 @@ from graphql import GraphQLResolveInfo
 from infrahub.core import registry
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.models import RequestDiffUpdate
+from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.workflows.catalogue import DIFF_UPDATE
 
@@ -28,6 +29,7 @@ class DiffUpdateMutation(Mutation):
     ok = Boolean()
 
     @classmethod
+    @retry_db_transaction(name="diff_update")
     async def mutate(
         cls,
         root: dict,  # pylint: disable=unused-argument
