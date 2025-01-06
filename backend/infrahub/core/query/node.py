@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any, AsyncIterator, Generator, Optional, Union
 from infrahub import config
 from infrahub.core.constants import (
     AttributeDBNodeType,
-    BranchSupportType,
     RelationshipDirection,
     RelationshipHierarchyDirection,
 )
@@ -868,7 +867,10 @@ class NodeGetListQuery(Query):
         )
         self.params.update(branch_params)
 
-        if (not self.branch.is_default and not self.has_filters) or self.schema.branch == BranchSupportType.AGNOSTIC:
+        # The initial subquery is used to filter out deleted nodes because we can have multiple valid results per branch
+        #   and we need to filter out the one that have been deleted in the branch.
+        # If we are on the default branch, the subquery is not required because only one valid result is expected at a given time
+        if not self.branch.is_default:
             topquery = """
             MATCH (n:%(node_kind)s)
             CALL {

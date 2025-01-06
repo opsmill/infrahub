@@ -41,6 +41,9 @@ async def test_query_NodeGetListQuery_filter_id(
 async def test_query_NodeGetListQuery_filter_ids(
     db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
 ):
+    node_to_delete = await NodeManager.get_one(id=person_jim_main.id, db=db, branch=branch)
+    await node_to_delete.delete(db=db)
+
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
     person_schema.order_by = ["height__value"]
     query = await NodeGetListQuery.init(
@@ -50,7 +53,7 @@ async def test_query_NodeGetListQuery_filter_ids(
         filters={"ids": [person_jim_main.id, person_john_main.id, person_albert_main.id]},
     )
     await query.execute(db=db)
-    assert query.get_node_ids() == [person_albert_main.id, person_jim_main.id, person_john_main.id]
+    assert set(query.get_node_ids()) == {person_albert_main.id, person_john_main.id}
 
 
 async def test_query_NodeGetListQuery_filter_attribute_isnull(
