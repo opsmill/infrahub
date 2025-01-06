@@ -7,13 +7,12 @@ from infrahub.core.account import GlobalPermission
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.permissions.constants import BranchRelativePermissionDecision, PermissionDecisionFlag
-from infrahub.permissions.manager import PermissionManager
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.database import InfrahubDatabase
+    from infrahub.permissions.manager import PermissionManager
     from infrahub.permissions.types import KindPermissions
 
 
@@ -74,14 +73,11 @@ def get_permission_report(  # noqa: PLR0911
 
 
 async def report_schema_permissions(
-    db: InfrahubDatabase, branch: Branch, account_session: AccountSession, schemas: list[MainSchemaTypes]
+    db: InfrahubDatabase, branch: Branch, permission_manager: PermissionManager, schemas: list[MainSchemaTypes]
 ) -> list[KindPermissions]:
-    permissions_manager = PermissionManager(account_session=account_session)
-    await permissions_manager.load_permissions(db=db, branch=branch)
-
     global_permission_report: dict[GlobalPermissions, bool] = {}
     for perm in GlobalPermissions:
-        global_permission_report[perm] = permissions_manager.resolve_global_permission(
+        global_permission_report[perm] = permission_manager.resolve_global_permission(
             permission_to_check=GlobalPermission(action=perm.value, decision=PermissionDecision.ALLOW_ALL.value)
         )
 
@@ -91,28 +87,28 @@ async def report_schema_permissions(
             {
                 "kind": node.kind,
                 "create": get_permission_report(
-                    permission_manager=permissions_manager,
+                    permission_manager=permission_manager,
                     branch=branch,
                     node=node,
                     action="create",
                     global_permission_report=global_permission_report,
                 ),
                 "delete": get_permission_report(
-                    permission_manager=permissions_manager,
+                    permission_manager=permission_manager,
                     branch=branch,
                     node=node,
                     action="delete",
                     global_permission_report=global_permission_report,
                 ),
                 "update": get_permission_report(
-                    permission_manager=permissions_manager,
+                    permission_manager=permission_manager,
                     branch=branch,
                     node=node,
                     action="update",
                     global_permission_report=global_permission_report,
                 ),
                 "view": get_permission_report(
-                    permission_manager=permissions_manager,
+                    permission_manager=permission_manager,
                     branch=branch,
                     node=node,
                     action="view",

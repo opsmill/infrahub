@@ -324,6 +324,7 @@ class TestObjectPermissions:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
+        gql_params = await prepare_graphql_params(db=db, include_mutation=True, branch=branch2, account_session=session)
         result = await graphql(schema=gql_params.schema, source=QUERY_TAGS, context_value=gql_params.context)
         assert not result.errors
         assert result.data
