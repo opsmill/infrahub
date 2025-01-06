@@ -8,8 +8,28 @@ from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionA
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PermissionDeniedError
-from infrahub.permissions import LocalPermissionBackend, PermissionManager
+from infrahub.permissions import AssignedPermissions, LocalPermissionBackend, PermissionBackend, PermissionManager
 from infrahub.permissions.constants import PermissionDecisionFlag
+
+
+class DummyBackendAllow(PermissionBackend):
+    async def load_permissions(
+        self, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
+    ) -> AssignedPermissions:
+        return {
+            "global_permissions": [],
+            "object_permissions": [ObjectPermission("*", "*", "*", PermissionDecisionFlag.ALLOW_ALL.value)],
+        }
+
+
+class DummyBackendDeny(PermissionBackend):
+    async def load_permissions(
+        self, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
+    ) -> AssignedPermissions:
+        return {
+            "global_permissions": [],
+            "object_permissions": [ObjectPermission("Ipam", "*", "*", PermissionDecisionFlag.DENY.value)],
+        }
 
 
 async def test_load_permissions(
@@ -38,6 +58,21 @@ async def test_load_permissions(
 
     assert "object_permissions" in permission_manager.permissions
     assert not permission_manager.permissions["object_permissions"]
+
+
+async def test_load_permissions_multiple_backends(
+    db: InfrahubDatabase, default_branch: Branch, session_first_account: AccountSession
+):
+    registry.permission_backends = [DummyBackendAllow(), DummyBackendDeny()]
+
+    permission_manager = PermissionManager(account_session=session_first_account)
+    await permission_manager.load_permissions(db=db, branch=default_branch)
+
+    assert "global_permissions" in permission_manager.permissions
+    assert not permission_manager.permissions["global_permissions"]
+
+    assert "object_permissions" in permission_manager.permissions
+    assert len(permission_manager.permissions["object_permissions"]) == 2
 
 
 async def test_has_permission_global(

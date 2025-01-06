@@ -29,8 +29,6 @@ class PermissionManager:
     async def load_permissions(self, db: InfrahubDatabase, branch: Branch) -> None:
         """Load permissions from the configured backends into memory."""
         for permission_backend in registry.permission_backends:
-            # FIXME: this is actually supposed to be a bit more complex
-            # If a backend grants a given permission, the next one must not revoke it
             backend_permissions = await permission_backend.load_permissions(
                 db=db, branch=branch, account_session=self.account_session
             )
