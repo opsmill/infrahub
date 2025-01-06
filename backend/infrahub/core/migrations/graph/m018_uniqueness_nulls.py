@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, Sequence
 from infrahub.core import registry
 from infrahub.core.diff.payload_builder import get_display_labels_per_kind
 from infrahub.core.migrations.shared import MigrationResult
-from infrahub.core.schema import GenericSchema, NodeSchema
+from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot, internal_schema
+from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.dependencies.registry import build_component_registry, get_component_registry
 from infrahub.log import get_logger
@@ -42,7 +43,13 @@ class Migration018(InternalSchemaMigration):
         uniqueness_checker = await component_registry.get_component(UniquenessChecker, db=db, branch=default_branch)
         non_unique_nodes_by_kind: dict[str, list[NonUniqueNode]] = defaultdict(list)
 
-        schema_branch = db.schema.get_schema_branch(name=default_branch.name)
+        manager = SchemaManager()
+        registry.schema = manager
+        internal_schema_root = SchemaRoot(**internal_schema)
+        manager.register_schema(schema=internal_schema_root)
+        schema_branch = await manager.load_schema_from_db(db=db, branch=default_branch)
+        manager.set_schema_branch(name=default_branch.name, schema=schema_branch)
+
         for schema_kind in schema_branch.node_names + schema_branch.generic_names:
             schema = schema_branch.get(name=schema_kind, duplicate=False)
             if not isinstance(schema, (NodeSchema, GenericSchema)):

@@ -2,6 +2,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph import Migration018
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
@@ -11,7 +12,10 @@ from infrahub.database import InfrahubDatabase
 
 @pytest.fixture
 async def car_person_schema(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_internal_models_schema,
+    car_person_schema_unregistered: SchemaRoot,
 ) -> SchemaBranch:
     car_person_schema_unregistered.get("TestCar").uniqueness_constraints = [["color__value", "nbr_seats__value"]]
     return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
@@ -51,16 +55,13 @@ async def car_invisible(db: InfrahubDatabase, default_branch: Branch, person_mai
     return car
 
 
-async def test_migration_018(
+async def test_migration_018_success(
     db: InfrahubDatabase,
     default_branch,
     car_blue,
     car_red,
     car_invisible,
 ):
-    """
-    Test migration correctly identifies nodes with NULL attribute values that violate uniqueness constraint
-    """
     # check no validation errors for now
     async with db.start_session() as dbs:
         migration = Migration018()
@@ -70,8 +71,23 @@ async def test_migration_018(
         validation_result = await migration.validate_migration(db=dbs)
         assert not validation_result.errors
 
-    car_red.color.value = None
-    await car_red.save(db=db)
+
+async def test_migration_018_fail(
+    db: InfrahubDatabase,
+    default_branch,
+    car_blue,
+    car_red,
+    car_invisible,
+    car_person_schema: SchemaBranch,
+):
+    """
+    Test migration correctly identifies nodes with NULL attribute values that violate uniqueness constraint
+    """
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(db=db, schema=schema_branch)
+    car_red_update = await NodeManager.get_one(db=db, id=car_red.id)
+    car_red_update.color.value = None
+    await car_red_update.save(db=db)
 
     # check validation errors for two cars now
     async with db.start_session() as dbs:
