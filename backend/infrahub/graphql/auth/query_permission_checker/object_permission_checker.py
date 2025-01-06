@@ -191,9 +191,7 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
             ) or (isinstance(schema, NodeSchema) and InfrahubKind.GENERICREPOSITORY in schema.inherit_from):
                 break
 
-        if not is_repository_operation or not analyzed_query.contains_mutation:
-            return CheckerResolution.NEXT_CHECKER
-
-        query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
+        if is_repository_operation and analyzed_query.contains_mutation:
+            query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)
 
         return CheckerResolution.NEXT_CHECKER
