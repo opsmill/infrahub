@@ -5,15 +5,14 @@ from typing import TYPE_CHECKING
 from infrahub.core import registry
 from infrahub.core.protocols import CoreMenuItem
 from infrahub.log import get_logger
-from infrahub.permissions import PermissionManager
 
 from .constants import FULL_DEFAULT_MENU
 from .models import MenuDict, MenuItemDict
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.permissions import PermissionManager
 
 log = get_logger()
 
@@ -23,19 +22,14 @@ def get_full_name(obj: CoreMenuItem) -> str:
 
 
 async def generate_restricted_menu(
-    db: InfrahubDatabase, branch: Branch, menu_items: list[CoreMenuItem], account: AccountSession | None = None
+    db: InfrahubDatabase, branch: Branch, menu_items: list[CoreMenuItem], account_permissions: PermissionManager
 ) -> MenuDict:
     menu = await generate_menu(db=db, branch=branch, menu_items=menu_items)
-
-    permissions: PermissionManager | None = None
-    if account:
-        permissions = PermissionManager(account_session=account)
-        await permissions.load_permissions(db=db, branch=branch)
 
     for item in menu.data.values():
         has_permission = True
         for permission in item.get_global_permissions():
-            has_permission = permissions is not None and permissions.has_permission(permission=permission)
+            has_permission = account_permissions.has_permission(permission=permission)
 
         if not has_permission:
             item.hidden = True
