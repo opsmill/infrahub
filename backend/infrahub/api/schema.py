@@ -13,7 +13,7 @@ from pydantic import (
 from starlette.responses import JSONResponse
 
 from infrahub import lock
-from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
+from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db, get_permission_manager
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
@@ -36,7 +36,6 @@ from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.exceptions import MigrationError
 from infrahub.log import get_log_data, get_logger
-from infrahub.permissions import PermissionManager
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import SCHEMA_APPLY_MIGRATION, SCHEMA_VALIDATE_MIGRATION
@@ -46,6 +45,7 @@ if TYPE_CHECKING:
 
     from infrahub.auth import AccountSession
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.permissions import PermissionManager
     from infrahub.services import InfrahubServices
 
 
@@ -249,10 +249,8 @@ async def load_schema(
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
     account_session: AccountSession = Depends(get_current_user),
+    permission_manager: PermissionManager = Depends(get_permission_manager),
 ) -> SchemaUpdate:
-    permission_manager = PermissionManager(account_session=account_session)
-    await permission_manager.load_permissions(db=db, branch=branch)
-
     permission_manager.raise_for_permission(
         permission=GlobalPermission(
             action=GlobalPermissions.MANAGE_SCHEMA.value,

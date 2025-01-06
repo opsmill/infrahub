@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Body, Depends, Request, Response
 from pydantic import BaseModel, Field
 
-from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
+from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db, get_permission_manager
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
@@ -14,12 +14,11 @@ from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
-from infrahub.permissions import PermissionManager
 from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.permissions import PermissionManager
 
 log = get_logger()
 router = APIRouter(prefix="/artifact")
@@ -62,11 +61,8 @@ async def generate_artifact(
     ),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
-    account_session: AccountSession = Depends(get_current_user),
+    permission_manager: PermissionManager = Depends(get_permission_manager),
 ) -> None:
-    permission_manager = PermissionManager(account_session=account_session)
-    await permission_manager.load_permissions(db=db, branch=branch_params.branch)
-
     permission_decision = (
         PermissionDecisionFlag.ALLOW_DEFAULT
         if branch_params.branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
