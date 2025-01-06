@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional
 
+from graphql.type.definition import GraphQLNonNull
 from infrahub_sdk.utils import extract_fields
 
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
@@ -16,7 +17,7 @@ from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.schema import MainSchemaTypes, NodeSchema
+    from infrahub.core.schema import NodeSchema
     from infrahub.graphql.initialization import GraphqlContext
 
 
@@ -70,7 +71,11 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
         raise ValueError(f"expected either 2 or 4 args for default_resolver, got {len(args)}")
 
     # Extract the InfraHub schema by inspecting the GQL Schema
-    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+    node_schema: NodeSchema = (
+        info.parent_type.of_type.graphene_type._meta.schema
+        if isinstance(info.parent_type, GraphQLNonNull)
+        else info.parent_type.graphene_type._meta.schema
+    )
 
     # If the field is an attribute, return its value directly
     if field_name not in node_schema.relationship_names:
@@ -135,7 +140,12 @@ async def default_paginated_list_resolver(
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
-    schema: MainSchemaTypes = info.return_type.graphene_type._meta.schema
+    schema: NodeSchema = (
+        info.return_type.of_type.graphene_type._meta.schema
+        if isinstance(info.return_type, GraphQLNonNull)
+        else info.return_type.graphene_type._meta.schema
+    )
+
     fields = await extract_selection(info.field_nodes[0], schema=schema)
 
     context: GraphqlContext = info.context
@@ -221,7 +231,11 @@ async def many_relationship_resolver(
     fields by only reusing information below the 'node' key.
     """
     # Extract the InfraHub schema by inspecting the GQL Schema
-    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+    node_schema: NodeSchema = (
+        info.parent_type.of_type.graphene_type._meta.schema
+        if isinstance(info.parent_type, GraphQLNonNull)
+        else info.parent_type.graphene_type._meta.schema
+    )
 
     context: GraphqlContext = info.context
 
@@ -339,7 +353,11 @@ async def hierarchy_resolver(
     fields by only reusing information below the 'node' key.
     """
     # Extract the InfraHub schema by inspecting the GQL Schema
-    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+    node_schema: NodeSchema = (
+        info.parent_type.of_type.graphene_type._meta.schema
+        if isinstance(info.parent_type, GraphQLNonNull)
+        else info.parent_type.graphene_type._meta.schema
+    )
 
     context: GraphqlContext = info.context
 

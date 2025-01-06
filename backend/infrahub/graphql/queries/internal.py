@@ -23,4 +23,4 @@ class Info(ObjectType):
         return {"deployment_id": str(registry.id), "version": __version__}
 
 
-InfrahubInfo = Field(Info, resolver=Info.resolve)
+InfrahubInfo = Field(Info, resolver=Info.resolve, required=True)

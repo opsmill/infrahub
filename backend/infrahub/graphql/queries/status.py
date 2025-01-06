@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Field, List, ObjectType, String
+from graphene import Boolean, Field, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.services import services
@@ -30,7 +30,7 @@ class StatusWorkerEdge(ObjectType):
 
 
 class StatusWorkerEdges(ObjectType):
-    edges = Field(List(of_type=StatusWorkerEdge, required=True), required=True)
+    edges = Field(List(of_type=NonNull(StatusWorkerEdge), required=True), required=True)
 
 
 class Status(ObjectType):
@@ -63,4 +63,6 @@ async def resolve_status(
     return response
 
 
-InfrahubStatus = Field(Status, resolver=resolve_status)
+InfrahubStatus = Field(
+    Status, description="Retrieve the status of all infrahub workers.", resolver=resolve_status, required=True
+)

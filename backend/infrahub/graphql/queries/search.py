@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 from typing import TYPE_CHECKING, Any, Optional
 
-from graphene import Boolean, Field, Int, List, ObjectType, String
+from graphene import Boolean, Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node, is_valid_uuid
 
 from infrahub.core.constants import InfrahubKind
@@ -27,7 +27,7 @@ class NodeEdge(ObjectType):
 
 class NodeEdges(ObjectType):
     count = Field(Int, required=True)
-    edges = Field(List(of_type=NodeEdge, required=True), required=False)
+    edges = Field(List(of_type=NonNull(NodeEdge)), required=True)
 
 
 def _collapse_ipv6(s: str) -> str:
@@ -148,4 +148,5 @@ InfrahubSearchAnywhere = Field(
     limit=Int(required=False),
     partial_match=Boolean(required=False),
     resolver=search_resolver,
+    required=True,
 )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from graphene import Argument, Boolean, DateTime, Field, InputObjectType, Int, List, ObjectType, String
+from graphene import Argument, Boolean, DateTime, Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphene import Enum as GrapheneEnum
 from infrahub_sdk.utils import extract_fields
 
@@ -75,7 +75,7 @@ class DiffAttribute(DiffSummaryCounts):
     last_changed_at = DateTime(required=True)
     status = Field(GrapheneDiffActionEnum, required=True)
     path_identifier = String(required=True)
-    properties = List(DiffProperty)
+    properties = List(NonNull(DiffProperty))
     contains_conflict = Boolean(required=True)
     conflict = Field(ConflictDetails, required=False)
 
@@ -88,7 +88,7 @@ class DiffSingleRelationship(DiffSummaryCounts):
     path_identifier = String(required=True)
     contains_conflict = Boolean(required=True)
     conflict = Field(ConflictDetails, required=False)
-    properties = List(DiffProperty)
+    properties = List(NonNull(DiffProperty))
 
 
 class DiffRelationship(DiffSummaryCounts):
@@ -98,7 +98,7 @@ class DiffRelationship(DiffSummaryCounts):
     cardinality = Field(GrapheneCardinalityEnum, required=True)
     status = Field(GrapheneDiffActionEnum, required=True)
     path_identifier = String(required=True)
-    elements = List(DiffSingleRelationship, required=True)
+    elements = List(NonNull(DiffSingleRelationship), required=True)
     contains_conflict = Boolean(required=True)
 
 
@@ -118,8 +118,8 @@ class DiffNode(DiffSummaryCounts):
     contains_conflict = Boolean(required=True)
     last_changed_at = DateTime(required=False)
     parent = Field(DiffNodeParent, required=False)
-    attributes = List(DiffAttribute, required=True)
-    relationships = List(DiffRelationship, required=True)
+    attributes = List(NonNull(DiffAttribute), required=True)
+    relationships = List(NonNull(DiffRelationship), required=True)
 
 
 class DiffTree(DiffSummaryCounts):
@@ -130,7 +130,7 @@ class DiffTree(DiffSummaryCounts):
     num_untracked_base_changes = Int(required=False)
     num_untracked_diff_changes = Int(required=False)
     name = String(required=False)
-    nodes = List(DiffNode)
+    nodes = List(NonNull(DiffNode))
 
 
 class DiffTreeSummary(DiffSummaryCounts):
@@ -519,7 +519,6 @@ class DiffTreeQueryFilters(InputObjectType):
 DiffTreeQuery = Field(
     DiffTree,
     name=String(),
-    resolver=DiffTreeResolver().resolve,
     branch=String(),
     from_time=DateTime(),
     to_time=DateTime(),
@@ -528,14 +527,17 @@ DiffTreeQuery = Field(
     filters=DiffTreeQueryFilters(),
     limit=Int(),
     offset=Int(),
+    resolver=DiffTreeResolver().resolve,
+    required=False,
 )
 
 DiffTreeSummaryQuery = Field(
     DiffTreeSummary,
     name=String(),
-    resolver=DiffTreeResolver().summary,
     branch=String(),
     from_time=DateTime(),
     to_time=DateTime(),
     filters=DiffTreeQueryFilters(),
+    resolver=DiffTreeResolver().summary,
+    required=False,
 )

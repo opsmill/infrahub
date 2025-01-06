@@ -8,6 +8,7 @@ from graphql import (  # pylint: disable=no-name-in-module
     FieldNode,
     FragmentSpreadNode,
     GraphQLList,
+    GraphQLNonNull,
     GraphQLObjectType,
     GraphQLResolveInfo,
     GraphQLSchema,
@@ -222,7 +223,7 @@ def find_types_implementing_interface(
     return results
 
 
-async def extract_schema_models(
+async def extract_schema_models(  # pylint: disable=too-many-branches
     fields: dict, schema: Union[GrapheneObjectType, GraphQLUnionType], root_schema: GraphQLSchema
 ) -> set[str]:
     response = set()
@@ -234,18 +235,34 @@ async def extract_schema_models(
         if field_name not in schema.fields:
             continue
 
-        if isinstance(schema.fields[field_name].type, GrapheneObjectType):
-            object_type = schema.fields[field_name].type
-        elif isinstance(schema.fields[field_name].type, GraphQLList):
-            object_type = schema.fields[field_name].type.of_type
-        elif isinstance(schema.fields[field_name].type, GrapheneInterfaceType):
-            object_type = schema.fields[field_name].type
+        gql_type = schema.fields[field_name].type
+        if isinstance(schema.fields[field_name].type, GraphQLNonNull):
+            gql_type = schema.fields[field_name].type.of_type
+
+        if isinstance(gql_type, GrapheneObjectType):
+            object_type = gql_type
+        elif isinstance(gql_type, GraphQLList):
+            if isinstance(gql_type.of_type, GraphQLNonNull):
+                object_type = gql_type.of_type.of_type
+            else:
+                object_type = gql_type.of_type
+        elif isinstance(gql_type, GrapheneInterfaceType):
+            object_type = gql_type
             sub_types = find_types_implementing_interface(interface=object_type, root_schema=root_schema)
             for sub_type in sub_types:
                 response.add(sub_type.name)
                 response.update(await extract_schema_models(fields=value, schema=sub_type, root_schema=root_schema))
         else:
             continue
+
+        # Ensure that Attribute types are not reported by this function
+        if isinstance(object_type, GrapheneObjectType) and object_type.interfaces:
+            inherit_from = [intf.name for intf in object_type.interfaces]
+            if "AttributeInterface" in inherit_from:
+                continue
+
+        if isinstance(object_type, GraphQLNonNull):
+            raise ValueError("object_type shouldn't be a of type GraphQLNonNull")
 
         response.add(object_type.name)
 
@@ -255,6 +272,9 @@ async def extract_schema_models(
             if isinstance(schema.fields[value].type, GrapheneObjectType):
                 response.add(schema.fields[value].type.name)
             elif isinstance(schema.fields[value].type, GraphQLList):
-                response.add(schema.fields[value].type.of_type.name)
+                if isinstance(schema.fields[value].type.of_type, GraphQLNonNull):
+                    response.add(schema.fields[value].type.of_type.of_type.name)
+                else:
+                    response.add(schema.fields[value].type.of_type.name)
 
     return response
