@@ -126,7 +126,7 @@ class SchemaDropdownRemove(Mutation):
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
         nodes_with_dropdown = await NodeManager.query(
-            db=context.db, schema=kind.kind, filters={f"{attribute}__value": dropdown}
+            db=context.db, schema=kind.kind, filters={f"{attribute}__value": dropdown}, branch=context.branch
         )
         if nodes_with_dropdown:
             raise ValidationError(f"There are still {kind.kind} objects using this dropdown")
@@ -208,14 +208,15 @@ class SchemaEnumRemove(Mutation):
         data: SchemaEnumInput,
     ) -> dict[str, bool]:
         context: GraphqlContext = info.context
-        db = context.db
-        branch = context.branch
-        kind = db.schema.get(name=str(data.kind), branch=branch.name)
+
+        kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
 
         attribute = str(data.attribute)
         enum = str(data.enum)
         validate_kind_enum(kind=kind, attribute=attribute)
-        nodes_with_enum = await NodeManager.query(db=db, schema=kind.kind, filters={f"{attribute}__value": enum})
+        nodes_with_enum = await NodeManager.query(
+            db=context.db, schema=kind.kind, filters={f"{attribute}__value": enum}, branch=context.branch
+        )
         if nodes_with_enum:
             raise ValidationError(f"There are still {kind.kind} objects using this enum")
 
@@ -231,8 +232,8 @@ class SchemaEnumRemove(Mutation):
 
         await update_registry(
             kind=kind,
-            branch=branch,
-            db=db,
+            branch=context.branch,
+            db=context.db,
             account_id=context.active_account_session.account_id,
             service=context.active_service,
         )
