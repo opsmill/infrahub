@@ -1,25 +1,28 @@
-import { useSchema } from "@/hooks/useSchema";
 import { getRelationships } from "@/screens/objects/relationships/domain/get-relationships/get-relationships";
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
 import { RelationshipHierarchicalComboboxList } from "@/screens/objects/relationships/ui/relationship-hierarchical-combobox-list";
+import { store } from "@/state";
+import { genericsState, schemaState } from "@/state/atoms/schema.atom";
+import { Provider } from "jotai";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "../../../../../tests/components/render";
 import { generateGenericSchema, generateNodeSchema } from "../../../../../tests/fake/schema";
 
-vi.mock("@/hooks/useSchema");
 vi.mock("@/screens/objects/relationships/domain/get-relationships/get-relationships");
 
-describe("RelationshipComboboxList", () => {
+describe("RelationshipHierarchicalComboboxList", () => {
   const hierarchyGenericSchema = generateGenericSchema({ hierarchical: true });
   const rootSchema = generateNodeSchema({
     kind: "Root",
     parent: null,
     hierarchy: hierarchyGenericSchema.kind,
+    children: "Parent",
   });
   const parentSchema = generateNodeSchema({
     kind: "Parent",
     parent: rootSchema.kind,
     hierarchy: hierarchyGenericSchema.kind,
+    children: "Child",
   });
   const childSchema = generateNodeSchema({
     kind: "Child",
@@ -27,19 +30,67 @@ describe("RelationshipComboboxList", () => {
     hierarchy: hierarchyGenericSchema.kind,
   });
 
+  const relationships: RelationshipNode[] = [
+    {
+      id: "test-id-1",
+      display_label: "Test Relationship 1",
+      __typename: rootSchema.kind,
+    },
+    {
+      id: "test-id-2",
+      display_label: "Test Relationship 2",
+      __typename: rootSchema.kind,
+    },
+  ];
+
+  const parentRelationships: RelationshipNode[] = [
+    {
+      id: "parent-1",
+      display_label: "Parent Relationship 1",
+      __typename: parentSchema.kind,
+    },
+    {
+      id: "parent-2",
+      display_label: "Parent Relationship 2",
+      __typename: parentSchema.kind,
+    },
+  ];
+
+  const childRelationships: RelationshipNode[] = [
+    {
+      id: "child-1",
+      display_label: "Child Relationship 1",
+      __typename: childSchema.kind,
+    },
+    {
+      id: "child-2",
+      display_label: "Child Relationship 2",
+      __typename: childSchema.kind,
+    },
+  ];
+
+  beforeEach(() => {
+    store.set(genericsState, [hierarchyGenericSchema]);
+    store.set(schemaState, [rootSchema, parentSchema, childSchema]);
+    vi.mocked(getRelationships).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("displays message when schema is not hierarchical", async () => {
     // GIVEN
     const notHierarchicalSchema = generateNodeSchema();
-    vi.mocked(useSchema).mockReturnValue({
-      schema: notHierarchicalSchema,
-      isNode: true,
-      isGeneric: false,
-      isProfile: false,
-    });
 
     // WHEN
     const component = render(
-      <RelationshipHierarchicalComboboxList peer={notHierarchicalSchema.kind} onSelect={() => {}} />
+      <Provider store={store}>
+        <RelationshipHierarchicalComboboxList
+          peer={notHierarchicalSchema.kind}
+          onSelect={vi.fn()}
+        />
+      </Provider>
     );
 
     // THEN
@@ -51,89 +102,103 @@ describe("RelationshipComboboxList", () => {
   it("displays message when no relationships are found", async () => {
     // GIVEN
     vi.mocked(getRelationships).mockResolvedValue([]);
-    vi.mocked(useSchema).mockReturnValue({
-      schema: childSchema,
-      isNode: true,
-      isGeneric: false,
-      isProfile: false,
-    });
+
+    // WHEN
     const component = render(
-      <RelationshipHierarchicalComboboxList peer={childSchema.kind} onSelect={() => {}} />
+      <Provider store={store}>
+        <RelationshipHierarchicalComboboxList peer={childSchema.kind} onSelect={vi.fn()} />
+      </Provider>
     );
 
     // THEN
     await expect.element(component.getByText("No results found")).toBeVisible();
   });
 
-  it("displays relationships when available", async () => {
+  it("displays relationships of root schema", async () => {
     // GIVEN
-    const relationships: Array<RelationshipNode> = [
-      {
-        id: "test-id-1",
-        display_label: "Test Relationship 1",
-        __typename: childSchema.kind,
-      },
-      {
-        id: "test-id-2",
-        display_label: "Test Relationship 2",
-        __typename: childSchema.kind,
-      },
-    ];
     vi.mocked(getRelationships).mockResolvedValue(relationships);
-    vi.mocked(useSchema).mockReturnValue({
-      schema: childSchema,
-      isNode: true,
-      isGeneric: false,
-      isProfile: false,
-    });
 
     // WHEN
     const component = render(
-      <RelationshipHierarchicalComboboxList peer={childSchema.kind} onSelect={() => {}} />
+      <Provider store={store}>
+        <RelationshipHierarchicalComboboxList peer={rootSchema.kind} onSelect={vi.fn()} />
+      </Provider>
     );
 
     // THEN
-    const firstOption = component.getByRole("option", { name: relationships[0]?.display_label });
+    const firstOption = component.getByRole("option", { name: relationships[0]!.display_label });
     await expect.element(firstOption).toBeVisible();
     await expect.element(firstOption).toHaveAttribute("aria-selected", "true");
 
-    const secondOption = component.getByRole("option", { name: relationships[1]?.display_label });
+    const secondOption = component.getByRole("option", { name: relationships[1]!.display_label });
     await expect.element(secondOption).toBeVisible();
     await expect.element(secondOption).toHaveAttribute("aria-selected", "false");
   });
 
   it("calls onSelect when a relationship is selected", async () => {
     // GIVEN
-    const relationships: Array<RelationshipNode> = [
-      {
-        id: "test-id-1",
-        display_label: "Test Relationship 1",
-        __typename: childSchema.kind,
-      },
-      {
-        id: "test-id-2",
-        display_label: "Test Relationship 2",
-        __typename: childSchema.kind,
-      },
-    ];
     vi.mocked(getRelationships).mockResolvedValue(relationships);
-    vi.mocked(useSchema).mockReturnValue({
-      schema: childSchema,
-      isNode: true,
-      isGeneric: false,
-      isProfile: false,
-    });
     const onSelect = vi.fn();
     const component = render(
-      <RelationshipHierarchicalComboboxList peer={childSchema.kind} onSelect={onSelect} />
+      <Provider store={store}>
+        <RelationshipHierarchicalComboboxList peer={rootSchema.kind} onSelect={onSelect} />
+      </Provider>
     );
-    const option = component.getByRole("option", { name: relationships[1]?.display_label });
 
     // WHEN
-    await option.click();
+    await component.getByRole("option", { name: relationships[1]!.display_label }).click();
 
     // THEN
     expect(onSelect).toHaveBeenCalledOnce();
     expect(onSelect).toHaveBeenCalledWith(relationships[1]);
+  });
+
+  it("navigates from parent to direct child relationships and selects child", async () => {
+    // GIVEN
+    vi.mocked(getRelationships)
+      .mockResolvedValueOnce(parentRelationships)
+      .mockResolvedValueOnce(childRelationships);
+    const onSelect = vi.fn();
+    const component = render(
+      <Provider store={store}>
+        <RelationshipHierarchicalComboboxList peer={childSchema.kind} onSelect={onSelect} />
+      </Provider>
+    );
+
+    // WHEN
+    await component.getByRole("option", { name: parentRelationships[0]!.display_label }).click();
+    expect(onSelect).not.toBeCalled();
+    await component.getByRole("option", { name: childRelationships[1]!.display_label }).click();
+
+    // THEN
+    expect(onSelect).toHaveBeenCalledOnce();
+    expect(onSelect).toHaveBeenCalledWith(childRelationships[1]);
+  });
+
+  it("navigates through multiple levels of nested relationships", async () => {
+    // GIVEN
+    vi.mocked(getRelationships)
+      .mockResolvedValueOnce(relationships)
+      .mockResolvedValueOnce(parentRelationships)
+      .mockResolvedValueOnce(childRelationships);
+    const onSelect = vi.fn();
+    const component = render(
+      <Provider store={store}>
+        <RelationshipHierarchicalComboboxList peer={childSchema.kind} onSelect={onSelect} />
+      </Provider>
+    );
+
+    // WHEN
+    await component.getByRole("option", { name: relationships[0]!.display_label }).click();
+    expect(onSelect).not.toBeCalled();
+
+    await component.getByRole("option", { name: parentRelationships[0]!.display_label }).click();
+    expect(onSelect).not.toBeCalled();
+
+    await component.getByRole("option", { name: childRelationships[1]!.display_label }).click();
+
+    // THEN
+    expect(onSelect).toHaveBeenCalledOnce();
+    expect(onSelect).toHaveBeenCalledWith(childRelationships[1]);
   });
 });
