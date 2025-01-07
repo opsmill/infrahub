@@ -6,11 +6,11 @@ from fastapi import APIRouter, Depends
 
 from infrahub.api.dependencies import get_branch_dep, get_db, get_permission_manager
 from infrahub.core import registry
-from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.protocols import CoreMenuItem
 from infrahub.log import get_logger
 from infrahub.menu.generator import generate_restricted_menu
-from infrahub.menu.models import Menu  # noqa: TCH001
+from infrahub.menu.models import Menu  # noqa: TC001
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase

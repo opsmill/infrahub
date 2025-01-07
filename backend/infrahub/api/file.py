@@ -8,7 +8,7 @@ from starlette.responses import PlainTextResponse
 from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import CommitNotFoundError, PropagatedFromWorkerError
 from infrahub.message_bus.messages import GitFileGet, GitFileGetResponse
 

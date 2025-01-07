@@ -8,10 +8,10 @@ from pydantic import BaseModel, ConfigDict
 
 from infrahub import config
 from infrahub.auth import AccountSession, authentication_token, validate_jwt_access_token, validate_jwt_refresh_token
-from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import AuthorizationError
 from infrahub.permissions import PermissionManager
 

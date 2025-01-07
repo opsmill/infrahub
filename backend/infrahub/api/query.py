@@ -10,7 +10,7 @@ from infrahub.api.dependencies import BranchParams, get_branch_params, get_curre
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.protocols import CoreGraphQLQuery
-from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.api.dependencies import build_graphql_query_permission_checker
 from infrahub.graphql.initialization import prepare_graphql_params

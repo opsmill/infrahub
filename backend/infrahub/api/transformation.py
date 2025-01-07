@@ -19,7 +19,7 @@ from infrahub.core.protocols import (
     CoreTransformJinja2,
     CoreTransformPython,
 )
-from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import TransformError
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.utils import extract_data

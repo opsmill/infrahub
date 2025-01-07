@@ -4,7 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from prefect.events.schemas.automations import Automation  # noqa: TCH002
+from prefect.events.schemas.automations import Automation  # noqa: TC002
 from pydantic import BaseModel, Field
 from typing_extensions import Self
 
