@@ -93,5 +93,9 @@ class Migration018(InternalSchemaMigration):
                 ]
                 error_str += ", ".join(attr_values)
                 error_strings.append(error_str)
-
-        return MigrationResult(errors=error_strings)
+        if error_strings:
+            error_str = "For the following nodes, you must update the uniqueness_constraints on the schema of the node"
+            error_str += " to remove the attribute(s) with NULL values or update the data on the nodes to be unique"
+            error_str += " now that NULL values are considered during uniqueness validation"
+            return MigrationResult(errors=error_strings)
+        return MigrationResult()
