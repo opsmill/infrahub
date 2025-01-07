@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Union
 
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
+from opentelemetry import trace
 from typing_extensions import Self
 
 from infrahub.computed_attribute.constants import VALID_KINDS as VALID_COMPUTED_ATTRIBUTE_KINDS
@@ -138,6 +139,7 @@ class SchemaBranch:
 
         return md5hash.hexdigest()
 
+    @trace.get_tracer(__name__).start_as_current_span("SchemaBranch.get_hash_full")
     def get_hash_full(self) -> SchemaBranchHash:
         return SchemaBranchHash(main=self.get_hash(), nodes=self.nodes, generics=self.generics)
 
@@ -445,6 +447,7 @@ class SchemaBranch:
 
         return fields or None
 
+    @trace.get_tracer(__name__).start_as_current_span("SchemaBranch.load_schema")
     def load_schema(self, schema: SchemaRoot) -> None:
         """Load a SchemaRoot object and store all NodeSchema or GenericSchema.
 
@@ -476,6 +479,7 @@ class SchemaBranch:
             new_item.update(node_extension)
             self.set(name=node_extension.kind, schema=new_item)
 
+    @trace.get_tracer(__name__).start_as_current_span("SchemaBranch.process")
     def process(self, validate_schema: bool = True) -> None:
         self.process_pre_validation()
         if validate_schema:

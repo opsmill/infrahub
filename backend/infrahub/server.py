@@ -63,15 +63,15 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
         # Initialize database Driver and load local registry
         database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
         database.manager.index.init(nodes=node_indexes, rels=rel_indexes)
-    
+
         build_component_registry()
-    
+
         workflow = config.OVERRIDE.workflow or (
             WorkflowWorkerExecution()
             if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
             else WorkflowLocalExecution()
         )
-    
+
         message_bus = config.OVERRIDE.message_bus or (
             NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
         )

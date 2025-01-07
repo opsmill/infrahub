@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
+from opentelemetry import trace
+
 from infrahub import lock
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import (
@@ -237,6 +239,7 @@ class SchemaManager(NodeManager):
             removed_generics=removed_generics,
         )
 
+    @trace.get_tracer(__name__).start_as_current_span("load_schema_to_db")
     async def load_schema_to_db(
         self,
         schema: SchemaBranch,
@@ -259,6 +262,7 @@ class SchemaManager(NodeManager):
                 node = await self.update_node_in_db(node=item, branch=branch, db=db)
                 schema.set(name=item_kind, schema=node)
 
+    @trace.get_tracer(__name__).start_as_current_span("SchemaManager.load_node_to_db")
     async def load_node_to_db(
         self,
         node: Union[NodeSchema, GenericSchema],
@@ -307,6 +311,7 @@ class SchemaManager(NodeManager):
         self.set(name=new_node.kind, schema=new_node, branch=branch.name)
         return new_node
 
+    @trace.get_tracer(__name__).start_as_current_span("SchemaManager.load_node_to_db")
     async def update_node_in_db(
         self,
         db: InfrahubDatabase,

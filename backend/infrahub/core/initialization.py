@@ -1,6 +1,8 @@
 import importlib
 from uuid import uuid4
 
+from opentelemetry import trace
+
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -32,7 +34,6 @@ from infrahub.menu.menu import default_menu
 from infrahub.menu.utils import create_menu_children
 from infrahub.permissions import PermissionBackend
 from infrahub.storage import InfrahubObjectStorage
-from opentelemetry import trace
 
 log = get_logger()
 
@@ -183,13 +184,13 @@ async def initialization(db: InfrahubDatabase) -> None:
     default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     with trace.get_tracer(__name__).start_as_current_span("GraphQLSchemaManager.get_manager_for_branch"):
-            gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
-            gqlm.get_graphql_schema(
-                include_query=True,
-                include_mutation=True,
-                include_subscription=True,
-                include_types=True,
-            )
+        gqlm = GraphQLSchemaManager.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+        gqlm.get_graphql_schema(
+            include_query=True,
+            include_mutation=True,
+            include_subscription=True,
+            include_types=True,
+        )
 
     # ---------------------------------------------------
     # Load Default Namespace
@@ -199,6 +200,7 @@ async def initialization(db: InfrahubDatabase) -> None:
         registry.default_ipnamespace = ip_namespace.id
 
 
+@trace.get_tracer(__name__).start_as_current_span("create_root_node")
 async def create_root_node(db: InfrahubDatabase) -> Root:
     root = Root(graph_version=GRAPH_VERSION, default_branch=config.SETTINGS.initial.default_branch)
     await root.save(db=db)
@@ -210,6 +212,7 @@ async def create_root_node(db: InfrahubDatabase) -> Root:
     return root
 
 
+@trace.get_tracer(__name__).start_as_current_span("create_default_branch")
 async def create_default_branch(db: InfrahubDatabase) -> Branch:
     branch = Branch(
         name=registry.default_branch,
@@ -227,6 +230,7 @@ async def create_default_branch(db: InfrahubDatabase) -> Branch:
     return branch
 
 
+@trace.get_tracer(__name__).start_as_current_span("create_global_branch")
 async def create_global_branch(db: InfrahubDatabase) -> Branch:
     branch = Branch(
         name=GLOBAL_BRANCH_NAME,
@@ -244,6 +248,7 @@ async def create_global_branch(db: InfrahubDatabase) -> Branch:
     return branch
 
 
+@trace.get_tracer(__name__).start_as_current_span("initialization.create_branch")
 async def create_branch(
     branch_name: str, db: InfrahubDatabase, description: str = "", isolated: bool = True, at: str | None = None
 ) -> Branch:
@@ -276,6 +281,7 @@ async def create_branch(
     return branch
 
 
+@trace.get_tracer(__name__).start_as_current_span("create_account")
 async def create_account(
     db: InfrahubDatabase,
     name: str = "admin",
@@ -296,6 +302,7 @@ async def create_account(
     return obj
 
 
+@trace.get_tracer(__name__).start_as_current_span("create_ipam_namespace")
 async def create_ipam_namespace(
     db: InfrahubDatabase,
     name: str = DEFAULT_IP_NAMESPACE,
@@ -309,6 +316,7 @@ async def create_ipam_namespace(
     return obj
 
 
+@trace.get_tracer(__name__).start_as_current_span("create_default_menu")
 async def create_default_menu(db: InfrahubDatabase) -> None:
     for item in default_menu:
         obj = await item.to_node(db=db)
@@ -317,6 +325,7 @@ async def create_default_menu(db: InfrahubDatabase) -> None:
             await create_menu_children(db=db, parent=obj, children=item.children)
 
 
+@trace.get_tracer(__name__).start_as_current_span("create_super_administrator_role")
 async def create_super_administrator_role(db: InfrahubDatabase) -> Node:
     permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await permission.new(
@@ -337,6 +346,7 @@ async def create_super_administrator_role(db: InfrahubDatabase) -> Node:
     return obj
 
 
+@trace.get_tracer(__name__).start_as_current_span("create_default_roles")
 async def create_default_roles(db: InfrahubDatabase) -> Node:
     repo_permission = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
     await repo_permission.new(
@@ -428,6 +438,7 @@ async def create_default_roles(db: InfrahubDatabase) -> Node:
     return role
 
 
+@trace.get_tracer(__name__).start_as_current_span("create_anonymous_role")
 async def create_anonymous_role(db: InfrahubDatabase) -> Node:
     deny_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
     await deny_permission.new(
@@ -451,6 +462,7 @@ async def create_anonymous_role(db: InfrahubDatabase) -> Node:
     return role
 
 
+@trace.get_tracer(__name__).start_as_current_span("create_super_administrators_group")
 async def create_super_administrators_group(
     db: InfrahubDatabase, role: Node, admin_accounts: list[CoreAccount]
 ) -> Node:
@@ -468,6 +480,7 @@ async def create_super_administrators_group(
     return group
 
 
+@trace.get_tracer(__name__).start_as_current_span("first_time_initialization")
 async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create the default Branch
