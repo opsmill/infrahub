@@ -16,15 +16,15 @@ if TYPE_CHECKING:
 
 
 async def test_create_with_jinja2_computed_attributes_on_related_node(
-    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None, branch: Branch
 ) -> None:
     schema = SchemaRoot(**internal_schema)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    default_branch.update_schema_hash()
-    await default_branch.save(db=db)
-    await load_schema(db, schema=SchemaRoot(nodes=[CHILD, THING]))
+    registry.schema.register_schema(schema=schema, branch=branch.name)
+    branch.update_schema_hash()
+    await branch.save(db=db)
+    await load_schema(db, branch_name=branch.name, schema=SchemaRoot(nodes=[CHILD, THING]))
 
-    fred = await Node.init(schema=TestKind.CHILD, db=db)
+    fred = await Node.init(schema=TestKind.CHILD, db=db, branch=branch)
     await fred.new(db=db, name="Fred", height=110)
     await fred.save(db=db)
 
@@ -45,7 +45,7 @@ async def test_create_with_jinja2_computed_attributes_on_related_node(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -61,19 +61,19 @@ async def test_create_with_jinja2_computed_attributes_on_related_node(
 
 
 async def test_create_with_jinja2_computed_attributes_on_hierarchial_node(
-    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None, branch: Branch
 ) -> None:
     schema = SchemaRoot(**internal_schema)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    default_branch.update_schema_hash()
-    await default_branch.save(db=db)
-    await load_schema(db, schema=LOCATION_SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=branch.name)
+    branch.update_schema_hash()
+    await branch.save(db=db)
+    await load_schema(db, branch_name=branch.name, schema=LOCATION_SCHEMA)
 
-    continent = await Node.init(schema=TestKind.CONTINENT, db=db)
+    continent = await Node.init(schema=TestKind.CONTINENT, db=db, branch=branch)
     await continent.new(db=db, name="Europe", shortname="eu")
     await continent.save(db=db)
 
-    country = await Node.init(schema=TestKind.COUNTRY, db=db)
+    country = await Node.init(schema=TestKind.COUNTRY, db=db, branch=branch)
     await country.new(db=db, name="Sweden", shortname="se", parent=continent)
     await country.save(db=db)
 
@@ -94,7 +94,7 @@ async def test_create_with_jinja2_computed_attributes_on_hierarchial_node(
         }
     }
     """
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
