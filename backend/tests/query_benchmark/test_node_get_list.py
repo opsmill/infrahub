@@ -57,7 +57,6 @@ async def test_node_get_list_ordering(
             ordering=ordering,
         )
         res = await query.execute(db=db_profiling_queries)
-        print(f"{len(res.get_node_ids())=}")
         return res
 
     nb_cars = 10_000

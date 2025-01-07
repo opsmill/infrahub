@@ -877,7 +877,6 @@ class NodeGetListQuery(Query):
         self.order_by = []
 
         self.return_labels = ["n.uuid", "rb.branch", f"{db.get_id_function_name()}(rb) as rb_id"]
-        where_clause_elements = []
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
@@ -911,34 +910,41 @@ class NodeGetListQuery(Query):
             """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
             self.add_to_query(topquery)
 
-        use_simple = False
         if self.has_filter_by_id and self.filters:
-            use_simple = True
-            where_clause_elements.append("n.uuid = $uuid")
             self.params["uuid"] = self.filters["id"]
-        elif not self.has_filters and not self.schema.order_by:
-            use_simple = True
-            if self.order is None or self.order.disable is not True:
-                self.order_by = ["n.uuid"]
-        if use_simple:
-            if where_clause_elements:
-                self.add_to_query(" AND " + " AND ".join(where_clause_elements))
+            self.add_to_query(" AND n.uuid = $uuid")
+            return
+
+        disable_order = not self.schema.order_by or (self.order is not None and self.order.disable)
+        if not self.has_filters and disable_order:
+            # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
+            self.order_by = ["n.uuid"]
             return
 
         if self.filters and "ids" in self.filters:
             self.add_to_query("AND n.uuid IN $node_ids")
             self.params["node_ids"] = self.filters["ids"]
 
-        field_attribute_requirements = self._get_field_requirements()
+        field_attribute_requirements = self._get_field_requirements(disable_order=disable_order)
         use_profiles = any(far for far in field_attribute_requirements if far.supports_profile)
         await self._add_node_filter_attributes(
             db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
         )
-        should_order = self.schema.order_by and (self.order is None or self.order.disable is not True)
-        if should_order:
+
+        if not disable_order:
             await self._add_node_order_attributes(
                 db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
             )
+            for far in field_attribute_requirements:
+                if not far.is_order:
+                    continue
+                if far.supports_profile:
+                    self.order_by.append(far.final_value_query_variable)
+                    continue
+                self.order_by.append(far.node_value_query_variable)
+
+        # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
+        self.order_by.append("n.uuid")
 
         if use_profiles:
             await self._add_profiles_per_node_query(db=db, branch_filter=branch_filter)
@@ -948,15 +954,6 @@ class NodeGetListQuery(Query):
             await self._add_profile_rollups(field_attribute_requirements=field_attribute_requirements)
 
         self._add_final_filter(field_attribute_requirements=field_attribute_requirements)
-        if should_order:
-            for far in field_attribute_requirements:
-                if not far.is_order:
-                    continue
-                if far.supports_profile:
-                    self.order_by.append(far.final_value_query_variable)
-                    continue
-                self.order_by.append(far.node_value_query_variable)
-            self.order_by.append("n.uuid")
 
     async def _add_node_filter_attributes(
         self,
@@ -1203,7 +1200,7 @@ class NodeGetListQuery(Query):
             where_str = "WHERE " + " AND ".join(where_parts)
         self.add_to_query(where_str)
 
-    def _get_field_requirements(self) -> list[FieldAttributeRequirement]:
+    def _get_field_requirements(self, disable_order: bool) -> list[FieldAttributeRequirement]:
         internal_filters = ["any", "attribute", "relationship"]
         field_requirements_map: dict[tuple[str, str], FieldAttributeRequirement] = {}
         index = 1
@@ -1226,8 +1223,7 @@ class NodeGetListQuery(Query):
                     )
                     index += 1
 
-        disable_order = self.order.disable if self.order is not None else False
-        if not self.schema.order_by or disable_order:
+        if disable_order:
             return list(field_requirements_map.values())
 
         for order_by_path in self.schema.order_by:
