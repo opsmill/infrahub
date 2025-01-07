@@ -399,7 +399,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     peer = await relationship_attribute.get_peer(db=db, raise_on_error=True)
 
                     related_node = await registry.manager.get_one_by_id_or_default_filter(
-                        db=db, id=peer.id, kind=attribute_path.active_relationship_schema.peer
+                        db=db, id=peer.id, kind=attribute_path.active_relationship_schema.peer, branch=self._branch.name
                     )
 
                     attribute: BaseAttribute = getattr(
