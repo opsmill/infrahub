@@ -5,6 +5,7 @@ from unittest.mock import call, patch
 
 import pytest
 
+from infrahub import config
 from infrahub.core.initialization import create_branch
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.workflows.catalogue import GRAPHQL_QUERY_GROUP_UPDATE
@@ -271,3 +272,16 @@ async def test_query_endpoint_missing_privs(
     error = response.json()
     assert error["errors"]
     assert "You do not have one of the following permissions" in error["errors"][0]["message"]
+
+
+@pytest.mark.parametrize("allow_anonymous_access", [False, True])
+async def test_query_endpoint_anonymous_account(
+    db: InfrahubDatabase, client: TestClient, default_branch, car_person_data, allow_anonymous_access: bool
+):
+    config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+
+    with client:
+        response = client.get("/api/query/query01")
+
+    # 403 when access is allowed is fine, due to missing permission
+    assert response.status_code == 403 if allow_anonymous_access else 401
