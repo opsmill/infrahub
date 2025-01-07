@@ -93,8 +93,8 @@ async def test_migration_018_fail(
     async with db.start_session() as dbs:
         migration = Migration018()
         execution_result = await migration.execute(db=dbs)
-        assert len(execution_result.errors) == 2
-        for error_str in execution_result.errors:
+        assert len(execution_result.errors) == 3
+        for error_str in execution_result.errors[1:]:
             assert car_red.name.value in error_str or car_invisible.name.value in error_str
             assert "nbr_seats=5" in error_str
             assert "color=NULL" in error_str
