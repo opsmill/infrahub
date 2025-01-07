@@ -1,11 +1,11 @@
-from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerDefinition
+from infrahub.trigger.models import BuiltinTriggerDefinition, EventTrigger, ExecuteWorkflow
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_REMOVE_PYTHON,
     COMPUTED_ATTRIBUTE_SETUP,
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
 )
 
-TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_BRANCH = TriggerDefinition(
+TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_BRANCH = BuiltinTriggerDefinition(
     name="computed-attribute-python-setup-on-branch-creation",
     previous_names={"Trigger-schema-update-event"},
     description="Trigger actions on branch create event",
@@ -21,7 +21,7 @@ TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_BRANCH = TriggerDefinition(
     ],
 )
 
-TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_COMMIT = TriggerDefinition(
+TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_COMMIT = BuiltinTriggerDefinition(
     name="computed-attribute-python-setup-on-commit",
     description="Trigger actions on branch create event",
     trigger=EventTrigger(events={"infrahub.repository.update_commit"}),
@@ -36,7 +36,7 @@ TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_COMMIT = TriggerDefinition(
     ],
 )
 
-TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_CLEAN_BRANCH = TriggerDefinition(
+TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_CLEAN_BRANCH = BuiltinTriggerDefinition(
     name="computed-attribute-python-cleanup-on-branch-deletion",
     description="Trigger actions on branch delete event",
     trigger=EventTrigger(events={"infrahub.branch.deleted"}),
@@ -50,7 +50,7 @@ TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_CLEAN_BRANCH = TriggerDefinition(
     ],
 )
 
-TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA = TriggerDefinition(
+TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA = BuiltinTriggerDefinition(
     name="computed-attribute-all-setup-on-schema-update",
     trigger=EventTrigger(events={"infrahub.schema.update"}),
     actions=[

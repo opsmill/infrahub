@@ -1,11 +1,14 @@
 from typing import TYPE_CHECKING
 
+from infrahub_sdk.utils import compare_lists
 from prefect import get_run_logger, task
 from prefect.automations import AutomationCore
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
 
 from .catalogue import triggers
+from .constants import DEPRECATED_STATIC_TRIGGER_NAMES
+from .models import TriggerType
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -28,12 +31,19 @@ async def setup_triggers(client: PrefectClient) -> None:
     deployments_mapping: dict[str, UUID] = {name: item.id for name, item in deployments.items()}
     existing_automations = {item.name: item for item in await client.read_automations()}
 
+    builtin_automations = [
+        item.name for item in await client.read_automations() if item.name.startswith(TriggerType.BUILTIN.value)
+    ]
+    trigger_names = [trigger.generate_name() for trigger in triggers]
+
+    _, to_delete, _ = compare_lists(list1=builtin_automations, list2=trigger_names)
+
     # -------------------------------------------------------------
-    # Create or Update all triggers
+    # Create or Update all builtin triggers
     # -------------------------------------------------------------
     for trigger in triggers:
         automation = AutomationCore(
-            name=trigger.name,
+            name=trigger.generate_name(),
             description=trigger.description,
             enabled=True,
             trigger=trigger.trigger.get_prefect(),
@@ -48,3 +58,27 @@ async def setup_triggers(client: PrefectClient) -> None:
         else:
             await client.create_automation(automation=automation)
             log.info(f"{trigger.name} Created")
+
+    # -------------------------------------------------------------
+    # Delete Builtin Triggers that shouldn't be there
+    # -------------------------------------------------------------
+    for item_to_delete in to_delete:
+        existing_automation = existing_automations.get(item_to_delete, None)
+
+        if not existing_automation:
+            continue
+
+        await client.delete_automation(automation_id=existing_automation.id)
+        log.info(f"{item_to_delete} Deleted")
+
+    # -------------------------------------------------------------
+    # Delete Deprecated triggers
+    # -------------------------------------------------------------
+    for trigger_name in DEPRECATED_STATIC_TRIGGER_NAMES:
+        existing_automation = existing_automations.get(trigger_name, None)
+
+        if not existing_automation:
+            continue
+
+        await client.delete_automation(automation_id=existing_automation.id)
+        log.info(f"{trigger_name} Deleted")
