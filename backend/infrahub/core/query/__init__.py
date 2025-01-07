@@ -10,6 +10,7 @@ import ujson
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Path as Neo4jPath
 from neo4j.graph import Relationship as Neo4jRelationship
+from opentelemetry import trace
 
 from infrahub import config
 from infrahub.core.constants import PermissionLevel
@@ -161,7 +162,7 @@ def cleanup_return_labels(labels: list[str]) -> list[str]:
 class QueryResult:
     def __init__(self, data: list[Union[Neo4jNode, Neo4jRelationship, list[Neo4jNode]]], labels: list[str]):
         self.data = data
-        self.labels = cleanup_return_labels(labels)
+        self.labels = labels
         self.branch_score: int = 0
         self.time_score: int = 0
         self.permission_score = PermissionLevel.DEFAULT
@@ -523,6 +524,7 @@ class Query(ABC):
 
         return ":params { " + ", ".join(params) + " }"
 
+    @trace.get_tracer(__name__).start_as_current_span("Query.execute")
     async def execute(self, db: InfrahubDatabase) -> Self:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
@@ -552,7 +554,8 @@ class Query(ABC):
         if not results and self.raise_error_if_empty:
             raise QueryError(query=query_str, params=self.params)
 
-        self.results = [QueryResult(data=result, labels=self.return_labels) for result in results]
+        clean_labels = cleanup_return_labels(self.return_labels)
+        self.results = [QueryResult(data=result, labels=clean_labels) for result in results]
         self.has_been_executed = True
 
         return self
