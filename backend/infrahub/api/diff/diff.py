@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Request
 
@@ -18,6 +18,8 @@ from infrahub.core.diff.model.diff import (
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 
 if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
+    from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
 
@@ -29,17 +31,22 @@ async def get_diff_files(
     request: Request,
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
-    time_from: Optional[str] = None,
-    time_to: Optional[str] = None,
+    time_from: str | None = None,
+    time_to: str | None = None,
     branch_only: bool = True,
-    _: str = Depends(get_current_user),
+    _: AccountSession = Depends(get_current_user),
 ) -> dict[str, dict[str, BranchDiffRepository]]:
     response: dict[str, dict[str, BranchDiffRepository]] = defaultdict(dict)
     service: InfrahubServices = request.app.state.service
 
     # Query the Diff for all files and repository from the database
     diff = await BranchDiffer.init(
-        db=db, branch=branch, diff_from=time_from, diff_to=time_to, branch_only=branch_only, service=service
+        db=db,
+        branch=branch,
+        diff_from=time_from,
+        diff_to=time_to,
+        branch_only=branch_only,
+        service=service,
     )
     diff_files = await diff.get_files()
 
@@ -56,7 +63,9 @@ async def get_diff_files(
                     branch=branch_name,
                 )
 
-            response[branch_name][repository_id].files.append(BranchDiffFile(**item.to_graphql()))
+            response[branch_name][repository_id].files.append(
+                BranchDiffFile(**item.to_graphql())
+            )
 
     return response
 
@@ -69,6 +78,8 @@ async def get_diff_artifacts(
 ) -> dict[str, BranchDiffArtifact]:
     artifact_diff_calculator = ArtifactDiffCalculator(db=db)
     target_branch = await registry.get_branch(db=db, branch=registry.default_branch)
-    artifact_diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=target_branch)
+    artifact_diffs = await artifact_diff_calculator.calculate(
+        source_branch=branch, target_branch=target_branch
+    )
     response = {art_diff.id: art_diff for art_diff in artifact_diffs}
     return response
