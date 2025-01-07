@@ -27,6 +27,7 @@ from infrahub.transformations.models import TransformJinjaTemplateData, Transfor
 from infrahub.workflows.catalogue import TRANSFORM_JINJA2_RENDER, TRANSFORM_PYTHON_RENDER
 
 if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
     from infrahub.services import InfrahubServices
 
 router = APIRouter()
@@ -38,7 +39,7 @@ async def transform_python(
     transform_id: str,
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
-    _: str = Depends(get_current_user),
+    _: AccountSession = Depends(get_current_user),
 ) -> JSONResponse:
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "at"]}
 
@@ -97,7 +98,7 @@ async def transform_jinja2(
     transform_id: str = Path(description="ID or Name of the Jinja2 Transform to render"),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
-    _: str = Depends(get_current_user),
+    _: AccountSession = Depends(get_current_user),
 ) -> PlainTextResponse:
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "at"]}
 
