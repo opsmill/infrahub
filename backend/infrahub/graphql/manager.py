@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Iterable, Optional, Union
 
 import graphene
+from opentelemetry import trace
 
 from infrahub import config
 from infrahub.core.attribute import String
@@ -182,6 +183,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             include_types=include_types,
         )
 
+    @trace.get_tracer(__name__).start_as_current_span("GraphQLSchemaManager.generate")
     def generate(
         self,
         include_query: bool = True,
@@ -200,26 +202,30 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             query = self.get_gql_query() if include_query else None
             mutation = self.get_gql_mutation() if include_mutation else None
             subscription = None
-            if include_subscription:
-                partial_graphene_schema = graphene.Schema(
+
+            with trace.get_tracer(__name__).start_as_current_span("create_graphene_schema"):
+                if include_subscription:
+                    partial_graphene_schema = graphene.Schema(
+                        query=query,
+                        mutation=mutation,
+                        types=types,
+                        auto_camelcase=False,
+                        directives=DIRECTIVES,
+                    )
+                    subscription = self.get_gql_subscription(
+                        partial_graphql_schema=partial_graphene_schema.graphql_schema
+                    )
+
+                graphene_schema = graphene.Schema(
                     query=query,
                     mutation=mutation,
+                    subscription=subscription,
                     types=types,
                     auto_camelcase=False,
                     directives=DIRECTIVES,
                 )
-                subscription = self.get_gql_subscription(partial_graphql_schema=partial_graphene_schema.graphql_schema)
 
-            graphene_schema = graphene.Schema(
-                query=query,
-                mutation=mutation,
-                subscription=subscription,
-                types=types,
-                auto_camelcase=False,
-                directives=DIRECTIVES,
-            )
-
-            return graphene_schema.graphql_schema
+                return graphene_schema.graphql_schema
 
     def get_gql_query(self) -> type[InfrahubBaseQuery]:
         QueryMixin = self.generate_query_mixin()
@@ -333,6 +339,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         return RelatedNodeInput
 
+    @trace.get_tracer(__name__).start_as_current_span("GraphQLSchemaManager.generate_object_types")
     def generate_object_types(self) -> None:  # pylint: disable=too-many-branches,too-many-statements
         """Generate all GraphQL objects for the schema and store them in the internal registry."""
 
@@ -480,6 +487,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         return type("QueryMixin", (object,), class_attrs)
 
+    @trace.get_tracer(__name__).start_as_current_span("GraphQLSchemaManager.generate_mutation_mixin")
     def generate_mutation_mixin(self) -> type[object]:
         class_attrs: dict[str, Any] = {}
 
