@@ -30,7 +30,6 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   });
 
   const taskData = data?.[TASK_OBJECT];
-  console.log("taskData: ", taskData);
 
   const handleSubmit = async () => {
     try {
