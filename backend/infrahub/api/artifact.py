@@ -10,7 +10,7 @@ from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
 from infrahub.core.protocols import CoreArtifactDefinition
-from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger

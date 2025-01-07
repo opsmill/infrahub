@@ -126,10 +126,13 @@ async def test_diff_get_files_repository(db: InfrahubDatabase, repos_in_main, ba
         return model
 
     service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
-    with patch(
-        "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
-        side_effect=execute_workflow_side_effect,
-    ), init_global_service(service):
+    with (
+        patch(
+            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
+            side_effect=execute_workflow_side_effect,
+        ),
+        init_global_service(service),
+    ):
         branch2 = await create_branch(branch_name="branch2", db=db)
 
         diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
@@ -166,10 +169,13 @@ async def test_diff_get_files_repositories_for_branch_case01(
         return model
 
     service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
-    with patch(
-        "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
-        side_effect=execute_workflow_side_effect,
-    ), init_global_service(service):
+    with (
+        patch(
+            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
+            side_effect=execute_workflow_side_effect,
+        ),
+        init_global_service(service),
+    ):
         branch2 = await create_branch(branch_name="branch2", db=db)
 
         repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)

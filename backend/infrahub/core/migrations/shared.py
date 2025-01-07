@@ -6,8 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Self
 
 from infrahub.core import registry
-from infrahub.core.path import SchemaPath  # noqa: TCH001
-from infrahub.core.query import Query  # noqa: TCH001
+from infrahub.core.path import SchemaPath  # noqa: TC001
+from infrahub.core.query import Query  # noqa: TC001
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -17,7 +17,7 @@ from infrahub.core.schema import (
     internal_schema,
 )
 
-from .query import MigrationQuery  # noqa: TCH001
+from .query import MigrationQuery  # noqa: TC001
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
