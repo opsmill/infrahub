@@ -1,8 +1,6 @@
 async def test_get_invalid(client, db):
     with client:
-        response = client.get(
-            "/api/so-such-route",
-        )
+        response = client.get("/api/so-such-route")
 
     assert response.status_code == 404
     assert response.json()
