@@ -319,27 +319,6 @@ REQUEST_PROPOSED_CHANGE_USER_TESTS = WorkflowDefinition(
     function="run_proposed_change_user_tests",
 )
 
-AUTOMATION_BRANCH_ACTIONS = WorkflowDefinition(
-    name="branch-actions-setup",
-    type=WorkflowType.CORE,
-    module="infrahub.core.branch.tasks",
-    function="branch_actions_setup",
-)
-
-AUTOMATION_SCHEMA_UPDATED = WorkflowDefinition(
-    name="schema-updated-setup",
-    type=WorkflowType.CORE,
-    module="infrahub.schema.tasks",
-    function="schema_updated_setup",
-)
-
-AUTOMATION_GIT_UPDATED = WorkflowDefinition(
-    name="git-commit-automation-setup",
-    type=WorkflowType.CORE,
-    module="infrahub.git.tasks",
-    function="setup_commit_automation",
-)
-
 GIT_REPOSITORIES_DIFF_NAMES_ONLY = WorkflowDefinition(
     name="git-repository-diff-names-only",
     type=WorkflowType.INTERNAL,
@@ -384,22 +363,10 @@ WEBHOOK_TRIGGER = WorkflowDefinition(
     function="trigger_webhooks",
 )
 
-AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER = WorkflowDefinition(
-    name="webhook-setup-configuration-trigger",
-    type=WorkflowType.USER,
-    module="infrahub.webhook.tasks",
-    function="trigger_webhook_configuration",
-)
-
-
 worker_pools = [INFRAHUB_WORKER_POOL]
 
 workflows = [
     ANONYMOUS_TELEMETRY_SEND,
-    AUTOMATION_BRANCH_ACTIONS,
-    AUTOMATION_GIT_UPDATED,
-    AUTOMATION_SCHEMA_UPDATED,
-    AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER,
     BRANCH_CANCEL_PROPOSED_CHANGES,
     BRANCH_CREATE,
     BRANCH_DELETE,
@@ -447,11 +414,4 @@ workflows = [
     WEBHOOK_CONFIGURE,
     WEBHOOK_SEND,
     WEBHOOK_TRIGGER,
-]
-
-automation_setup_workflows = [
-    AUTOMATION_BRANCH_ACTIONS,
-    AUTOMATION_GIT_UPDATED,
-    AUTOMATION_SCHEMA_UPDATED,
-    AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER,
 ]

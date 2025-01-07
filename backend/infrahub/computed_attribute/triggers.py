@@ -1,0 +1,70 @@
+from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerDefinition
+from infrahub.workflows.catalogue import (
+    COMPUTED_ATTRIBUTE_REMOVE_PYTHON,
+    COMPUTED_ATTRIBUTE_SETUP,
+    COMPUTED_ATTRIBUTE_SETUP_PYTHON,
+)
+
+TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_BRANCH = TriggerDefinition(
+    name="computed-attribute-python-setup-on-branch-creation",
+    previous_names={"Trigger-schema-update-event"},
+    description="Trigger actions on branch create event",
+    trigger=EventTrigger(events={"infrahub.branch.created"}),
+    actions=[
+        ExecuteWorkflow(
+            name=COMPUTED_ATTRIBUTE_SETUP_PYTHON.name,
+            parameters={
+                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                "trigger_updates": False,
+            },
+        )
+    ],
+)
+
+TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_COMMIT = TriggerDefinition(
+    name="computed-attribute-python-setup-on-commit",
+    description="Trigger actions on branch create event",
+    trigger=EventTrigger(events={"infrahub.repository.update_commit"}),
+    actions=[
+        ExecuteWorkflow(
+            name=COMPUTED_ATTRIBUTE_SETUP_PYTHON.name,
+            parameters={
+                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                "commit": "{{ event.payload['commit'] }}",
+            },
+        )
+    ],
+)
+
+TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_CLEAN_BRANCH = TriggerDefinition(
+    name="computed-attribute-python-cleanup-on-branch-deletion",
+    description="Trigger actions on branch delete event",
+    trigger=EventTrigger(events={"infrahub.branch.deleted"}),
+    actions=[
+        ExecuteWorkflow(
+            name=COMPUTED_ATTRIBUTE_REMOVE_PYTHON.name,
+            parameters={
+                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+            },
+        )
+    ],
+)
+
+TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA = TriggerDefinition(
+    name="computed-attribute-all-setup-on-schema-update",
+    trigger=EventTrigger(events={"infrahub.schema.update"}),
+    actions=[
+        ExecuteWorkflow(
+            name=COMPUTED_ATTRIBUTE_SETUP.name,
+            parameters={
+                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+            },
+        ),
+        ExecuteWorkflow(
+            name=COMPUTED_ATTRIBUTE_SETUP_PYTHON.name,
+            parameters={
+                "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+            },
+        ),
+    ],
+)

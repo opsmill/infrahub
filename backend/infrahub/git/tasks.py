@@ -1,14 +1,7 @@
-from datetime import timedelta
-
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import CoreRepository
 from prefect import flow, task
-from prefect.automations import AutomationCore
 from prefect.cache_policies import NONE
-from prefect.client.orchestration import get_client
-from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
-from prefect.events.actions import RunDeployment
-from prefect.events.schemas.automations import EventTrigger, Posture
 from prefect.logging import get_run_logger
 
 from infrahub import lock
@@ -18,13 +11,11 @@ from infrahub.exceptions import RepositoryError
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
-from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_SETUP_PYTHON
 
 from ..log import get_log_data
 from ..tasks.artifact import define_artifact
 from ..workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, REQUEST_ARTIFACT_GENERATE
 from ..workflows.utils import add_branch_tag, add_tags
-from .constants import AUTOMATION_NAME
 from .models import (
     GitDiffNamesOnly,
     GitDiffNamesOnlyResponse,
@@ -448,57 +439,6 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
                     infrahub_branch_id=model.destination_branch_id,
                 )
                 await service.send(message=message)
-
-
-@flow(name="git-commit-automation-setup", flow_run_name="Setup git commit updated event in task-manager")
-async def setup_commit_automation() -> None:
-    log = get_run_logger()
-
-    async with get_client(sync_client=False) as client:
-        deployments = {
-            item.name: item
-            for item in await client.read_deployments(
-                deployment_filter=DeploymentFilter(
-                    name=DeploymentFilterName(any_=[COMPUTED_ATTRIBUTE_SETUP_PYTHON.name])
-                )
-            )
-        }
-        if COMPUTED_ATTRIBUTE_SETUP_PYTHON.name not in deployments:
-            raise ValueError("Unable to find the deployment for COMPUTED_ATTRIBUTE_SETUP_PYTHON")
-
-        deployment_id_computed_attribute_setup_python = deployments[COMPUTED_ATTRIBUTE_SETUP_PYTHON.name].id
-
-        schema_update_automation = await client.find_automation(id_or_name=AUTOMATION_NAME)
-
-        automation = AutomationCore(
-            name=AUTOMATION_NAME,
-            description="Trigger actions on schema update event",
-            enabled=True,
-            trigger=EventTrigger(
-                posture=Posture.Reactive,
-                expect={"infrahub.repository.update_commit"},
-                within=timedelta(0),
-                threshold=1,
-            ),
-            actions=[
-                RunDeployment(
-                    source="selected",
-                    deployment_id=deployment_id_computed_attribute_setup_python,
-                    parameters={
-                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
-                        "commit": "{{ event.payload['commit'] }}",
-                    },
-                    job_variables={},
-                ),
-            ],
-        )
-
-        if schema_update_automation:
-            await client.update_automation(automation_id=schema_update_automation.id, automation=automation)
-            log.info(f"{AUTOMATION_NAME} Updated")
-        else:
-            await client.create_automation(automation=automation)
-            log.info(f"{AUTOMATION_NAME} Created")
 
 
 @flow(name="git-repository-import-object", flow_run_name="Import objects from git repository")

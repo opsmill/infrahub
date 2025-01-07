@@ -12,12 +12,12 @@ from prefect.events.schemas.automations import EventTrigger, Posture
 from prefect.events.schemas.events import ResourceSpecification
 from prefect.logging import get_run_logger
 
-from infrahub.core.constants import InfrahubKind, MutationAction
+from infrahub.core.constants import MutationAction
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.services import services
-from infrahub.workflows.catalogue import WEBHOOK_CONFIGURE, WEBHOOK_SEND, WEBHOOK_TRIGGER
+from infrahub.workflows.catalogue import WEBHOOK_SEND, WEBHOOK_TRIGGER
 
-from .constants import AUTOMATION_NAME, AUTOMATION_NAME_RUN
+from .constants import AUTOMATION_NAME_RUN
 from .models import CustomWebhook, SendWebhookData, StandardWebhook, TransformWebhook, Webhook
 
 
@@ -176,60 +176,3 @@ async def configure_webhooks() -> None:
         else:
             await client.create_automation(automation=automation)
             log.info(f"{AUTOMATION_NAME_RUN} Created")
-
-
-@flow(name="webhook-setup-configuration-trigger", flow_run_name="Setup automations for webhooks")
-async def trigger_webhook_configuration() -> None:
-    log = get_run_logger()
-
-    async with get_client(sync_client=False) as client:
-        deployments = {
-            item.name: item
-            for item in await client.read_deployments(
-                deployment_filter=DeploymentFilter(
-                    name=DeploymentFilterName(
-                        any_=[
-                            WEBHOOK_CONFIGURE.name,
-                        ]
-                    )
-                )
-            )
-        }
-        if WEBHOOK_CONFIGURE.name not in deployments:
-            raise ValueError("Unable to find the deployment for WEBHOOK_CONFIGURE")
-
-        deployment_id_webhook_setup = deployments[WEBHOOK_CONFIGURE.name].id
-
-        webhook_configure_automation = await client.find_automation(id_or_name=AUTOMATION_NAME)
-
-        automation = AutomationCore(
-            name=AUTOMATION_NAME,
-            description="Trigger actions on schema update event",
-            enabled=True,
-            trigger=EventTrigger(
-                posture=Posture.Reactive,
-                expect={"infrahub.node.*"},
-                within=timedelta(0),
-                match=ResourceSpecification(
-                    {
-                        "infrahub.node.kind": [InfrahubKind.WEBHOOK, InfrahubKind.STANDARDWEBHOOK],
-                    }
-                ),
-                threshold=1,
-            ),
-            actions=[
-                RunDeployment(
-                    source="selected",
-                    deployment_id=deployment_id_webhook_setup,
-                    parameters={},
-                    job_variables={},
-                ),
-            ],
-        )
-
-        if webhook_configure_automation:
-            await client.update_automation(automation_id=webhook_configure_automation.id, automation=automation)
-            log.info(f"{AUTOMATION_NAME} Updated")
-        else:
-            await client.create_automation(automation=automation)
-            log.info(f"{AUTOMATION_NAME} Created")
