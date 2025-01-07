@@ -174,12 +174,12 @@ async def test_query_result_getters(neo4j_factory):
 
     qr = QueryResult(
         data=[n1, r1, r2, n2],
-        labels=[
+        labels=cleanup_return_labels([
             "n1",
             "r1",
             "r2",
             "n2",
-        ],
+        ]),
     )
     assert list(qr.get_rels()) == [r1, r2]
     assert list(qr.get_nodes()) == [n1, n2]
@@ -228,9 +228,9 @@ async def test_sort_results_by_time(neo4j_factory):
         },
     )
 
-    qr1 = QueryResult(data=[n1, n2, r1], labels=["n1", "n2", "r"])
-    qr2 = QueryResult(data=[n1, n2, r2], labels=["n1", "n2", "r"])
-    qr3 = QueryResult(data=[n1, n2, r3], labels=["n1", "n2", "r"])
+    qr1 = QueryResult(data=[n1, n2, r1], labels=cleanup_return_labels(["n1", "n2", "r"]))
+    qr2 = QueryResult(data=[n1, n2, r2], labels=cleanup_return_labels(["n1", "n2", "r"]))
+    qr3 = QueryResult(data=[n1, n2, r3], labels=cleanup_return_labels(["n1", "n2", "r"]))
 
     results = sort_results_by_time(results=[qr1, qr2, qr3], rel_label="r")
     assert list(results) == [qr3, qr1, qr2]
