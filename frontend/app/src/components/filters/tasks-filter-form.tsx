@@ -38,8 +38,6 @@ export const TasksFilterForm = forwardRef<FormRef, FilterFormProps>(
         defaultValues={{
           branch: currentFilters?.branch,
           state: currentFilters?.state,
-          namespace: currentFilters?.namespace,
-          name: currentFilters?.name,
         }}
         {...props}
       >
