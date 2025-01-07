@@ -8,7 +8,6 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { BRANCH_DELETE } from "@/graphql/mutations/branches/deleteBranch";
-import { BRANCH_VALIDATE } from "@/graphql/mutations/branches/validateBranch";
 import { getBranchDetailsQuery } from "@/graphql/queries/branches/getBranchDetails";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
@@ -19,7 +18,6 @@ import { branchesState } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames } from "@/utils/common";
 import { constructPath, getCurrentQsp } from "@/utils/fetch";
-import { ShieldCheckIcon } from "@heroicons/react/20/solid";
 import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
@@ -31,6 +29,7 @@ import {
   BRANCH_REBASE_WORKFLOW,
   BRANCH_VALIDATE_WORKFLOW,
 } from "../tasks/constants";
+import { BranchValidateButton } from "./branch-actions/branch-VALIDATE-button";
 import { BranchMergeButton } from "./branch-actions/branch-merge-button";
 import { BranchRebaseButton } from "./branch-actions/branch-rebase-button";
 import { TaskDisplay } from "./task-display";
@@ -145,20 +144,7 @@ export const BranchDetails = () => {
 
                 <BranchRebaseButton branch={branch} />
 
-                <Button
-                  disabled={branch.is_default}
-                  onClick={() =>
-                    branchAction({
-                      successMessage: "Branch validation requested!",
-                      errorMessage: "An error occurred while validating the branch",
-                      mutation: BRANCH_VALIDATE,
-                    })
-                  }
-                  variant={"warning"}
-                >
-                  Validate
-                  <ShieldCheckIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                </Button>
+                <BranchValidateButton branch={branch} />
 
                 <Button
                   disabled={!isAuthenticated || branch.is_default}
