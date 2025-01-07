@@ -32,7 +32,7 @@ import {
   BRANCH_REBASE_WORKFLOW,
   BRANCH_VALIDATE_WORKFLOW,
 } from "../tasks/constants";
-import { BranchMergeButton } from "./branch-merge/branch-merge-button";
+import { BranchMergeButton } from "./branch-actions/branch-merge-button";
 import { TaskDisplay } from "./task-display";
 
 export const BranchDetails = () => {
