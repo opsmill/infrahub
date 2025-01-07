@@ -29,9 +29,9 @@ import {
   BRANCH_REBASE_WORKFLOW,
   BRANCH_VALIDATE_WORKFLOW,
 } from "../tasks/constants";
-import { BranchValidateButton } from "./branch-actions/branch-VALIDATE-button";
 import { BranchMergeButton } from "./branch-actions/branch-merge-button";
 import { BranchRebaseButton } from "./branch-actions/branch-rebase-button";
+import { BranchValidateButton } from "./branch-actions/branch-validate-button";
 import { TaskDisplay } from "./task-display";
 
 export const BranchDetails = () => {
