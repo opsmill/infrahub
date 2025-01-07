@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 from opentelemetry import trace
 
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import (
     HashableModelDiff,
@@ -612,6 +612,7 @@ class SchemaManager(NodeManager):
         self.set_schema_branch(name=branch.name, schema=branch_schema)
         return branch_schema
 
+    @trace.get_tracer(__name__).start_as_current_span("load_schema_from_db")
     async def load_schema_from_db(
         self,
         db: InfrahubDatabase,
@@ -666,6 +667,9 @@ class SchemaManager(NodeManager):
                 if removed_node in schema.node_names:
                     schema.delete(name=removed_node)
 
+        old_query_size_limit = config.SETTINGS.database.query_size_limit
+        config.SETTINGS.database.query_size_limit = 100000  # we grab 15% performance due to pagination in SchemaNodes when doing _enrich_node_dicts_with_relationships
+
         if not has_filters or filters["generics"]:
             generic_schema = self.get(name="SchemaGeneric", branch=branch)
             for schema_node in await self.query(
@@ -692,6 +696,8 @@ class SchemaManager(NodeManager):
                     name=kind,
                     schema=await self.convert_node_schema_to_schema(schema_node=schema_node, db=db),
                 )
+
+        config.SETTINGS.database.query_size_limit = old_query_size_limit
 
         schema.process(validate_schema=validate_schema)
 
