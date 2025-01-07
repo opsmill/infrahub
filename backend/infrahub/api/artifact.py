@@ -18,6 +18,7 @@ from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 
 if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
     from infrahub.permissions import PermissionManager
 
 log = get_logger()
@@ -37,7 +38,7 @@ async def get_artifact(
     artifact_id: str,
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
-    _: str = Depends(get_current_user),
+    _: AccountSession = Depends(get_current_user),
 ) -> Response:
     artifact = await registry.manager.get_one(db=db, id=artifact_id, branch=branch_params.branch, at=branch_params.at)
     if not artifact:
