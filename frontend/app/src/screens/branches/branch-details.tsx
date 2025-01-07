@@ -8,7 +8,6 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { BRANCH_DELETE } from "@/graphql/mutations/branches/deleteBranch";
-import { BRANCH_REBASE } from "@/graphql/mutations/branches/rebaseBranch";
 import { BRANCH_VALIDATE } from "@/graphql/mutations/branches/validateBranch";
 import { getBranchDetailsQuery } from "@/graphql/queries/branches/getBranchDetails";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,7 +20,7 @@ import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames } from "@/utils/common";
 import { constructPath, getCurrentQsp } from "@/utils/fetch";
 import { ShieldCheckIcon } from "@heroicons/react/20/solid";
-import { ArrowPathIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
@@ -33,6 +32,7 @@ import {
   BRANCH_VALIDATE_WORKFLOW,
 } from "../tasks/constants";
 import { BranchMergeButton } from "./branch-actions/branch-merge-button";
+import { BranchRebaseButton } from "./branch-actions/branch-rebase-button";
 import { TaskDisplay } from "./task-display";
 
 export const BranchDetails = () => {
@@ -143,20 +143,7 @@ export const BranchDetails = () => {
                   <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </LinkButton>
 
-                <Button
-                  disabled={!isAuthenticated || branch.is_default}
-                  onClick={() =>
-                    branchAction({
-                      successMessage: "Branch rebase requested!",
-                      errorMessage: "An error occurred while rebasing the branch",
-                      mutation: BRANCH_REBASE,
-                    })
-                  }
-                  variant={"dark"}
-                >
-                  Rebase
-                  <ArrowPathIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                </Button>
+                <BranchRebaseButton branch={branch} />
 
                 <Button
                   disabled={branch.is_default}

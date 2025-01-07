@@ -3,9 +3,9 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { TASK_OBJECT } from "@/config/constants";
 import { Branch } from "@/generated/graphql";
 import graphqlClient from "@/graphql/graphqlClientApollo";
-import { BRANCH_MERGE } from "@/graphql/mutations/branches/mergeBranch";
+import { BRANCH_REBASE } from "@/graphql/mutations/branches/rebaseBranch";
 import { useAuth } from "@/hooks/useAuth";
-import { BRANCH_MERGE_WORKFLOW } from "@/screens/tasks/constants";
+import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/screens/tasks/constants";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
@@ -13,18 +13,19 @@ import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 import { GET_BRANCH_ACTION_STATE } from "./graphql/getBranchActionState";
 
-type BranchMergeButtonProps = {
+type BranchRebaseButtonProps = {
   branch: Branch;
 };
 
-export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
+export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
   const { isAuthenticated } = useAuth();
   const date = useAtomValue(datetimeAtom);
 
   const { loading, data } = useQuery(GET_BRANCH_ACTION_STATE, {
     variables: {
       branch: branch.name,
-      workflow: [BRANCH_MERGE_WORKFLOW],
+      workflow: [BRANCH_REBASE_WORKFLOW],
+      state: TASK_ONGOING_STATES,
     },
     pollInterval: 5_000,
   });
@@ -34,7 +35,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   const handleSubmit = async () => {
     try {
       await graphqlClient.mutate({
-        mutation: BRANCH_MERGE,
+        mutation: BRANCH_REBASE,
         variables: {
           name: branch.name,
         },
@@ -59,11 +60,11 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
     <Button
       disabled={!isAuthenticated || loading || branch.is_default || taskData?.count > 0}
       onClick={handleSubmit}
-      variant={"active"}
+      variant={"outline"}
       className="flex items-center gap-2"
     >
-      Merge
-      <Icon icon={"mdi:check"} />
+      Rebase
+      <Icon icon={"mdi:counterclockwise-arrows"} />
     </Button>
   );
 };
