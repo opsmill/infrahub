@@ -194,14 +194,16 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         include_types: bool = True,
     ) -> GraphQLSchema:
         with SCHEMA_GENERATE_GRAPHQL_METRICS.labels(self.schema.name).time():
+            query = self.get_gql_query() if include_query else None
+
             if include_types:
-                self.generate_object_types()
+                if not include_query:
+                    self.generate_object_types()
                 types_dict = self.get_all()
                 types = list(types_dict.values())
             else:
                 types = []
 
-            query = self.get_gql_query() if include_query else None
             mutation = self.get_gql_mutation() if include_mutation else None
             subscription = None
             if include_subscription:
