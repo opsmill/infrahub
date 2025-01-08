@@ -1,6 +1,5 @@
 import sys
 from pathlib import Path
-from typing import Tuple
 
 from invoke import Context, UnexpectedExit
 
@@ -51,7 +50,7 @@ def project_ver() -> str:
         return toml.load(file)["tool"]["poetry"].get("version", "latest")
 
 
-def git_info(context: Context) -> Tuple[str, str]:
+def git_info(context: Context) -> tuple[str, str]:
     """Return the name of the current branch and hash of the current commit."""
     branch_name = context.run("git rev-parse --abbrev-ref HEAD", hide=True, pty=False)
     hash_value = context.run("git rev-parse --short HEAD", hide=True, pty=False)

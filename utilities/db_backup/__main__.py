@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Generator, Optional
 
 import docker
 from docker.models.containers import Container
@@ -102,7 +102,7 @@ class MissingCredentialsError(Exception): ...
 @dataclass
 class ContainerDetails:
     container: Container
-    networks: List[Network]
+    networks: list[Network]
 
     @property
     def name(self) -> str:
@@ -149,8 +149,8 @@ class Neo4jBackupRestoreBase:
     def _execute_docker_container_command(
         self,
         container: Container,
-        command: List[str],
-        environment: Optional[Dict[str, str]] = None,
+        command: list[str],
+        environment: Optional[dict[str, str]] = None,
         failure_message: Optional[str] = None,
         display_error: bool = True,
         continue_on_error: bool = False,
@@ -189,8 +189,8 @@ class Neo4jBackupRestoreBase:
     def _create_helper_container(
         self,
         local_backup_directory: Path,
-        local_docker_networks: Optional[List[Network]],
-        volumes_from_container_names: Optional[List[str]] = None,
+        local_docker_networks: Optional[list[Network]],
+        volumes_from_container_names: Optional[list[str]] = None,
     ) -> Container:
         try:
             existing_exporter_container = self.docker_client.containers.get(self.backup_helper_container_name)
@@ -354,7 +354,7 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
                 continue_on_error=True,
             )
 
-    def _map_backups_to_database_name(self, local_backup_directory: Path) -> Dict[str, Path]:
+    def _map_backups_to_database_name(self, local_backup_directory: Path) -> dict[str, Path]:
         # expects name format of <database_name>-2024-02-07T22-12-16.backup
         backup_map = {}
         for backup_path in local_backup_directory.iterdir():
@@ -414,7 +414,7 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         self,
         database_container: Container,
         helper_container: Container,
-        backup_path_map: Dict[str, Path],
+        backup_path_map: dict[str, Path],
     ) -> None:
         for database_name, local_path in backup_path_map.items():
             if database_name == "system":

@@ -1,7 +1,7 @@
 import random
 import string
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 import docker
 from infrahub_sdk import InfrahubClientSync
@@ -49,7 +49,7 @@ def get_container_resource_usage(container_id: str) -> ContainerStats:
     return ContainerStats(cpu_usage, memory_usage)
 
 
-def get_cpu_usage(stats: Dict[str, Any]) -> float:
+def get_cpu_usage(stats: dict[str, Any]) -> float:
     # forked from
     # https://github.com/TomasTomecek/sen/blob/ec292b5a723cd59818e3a36a7ea5091625fb3258/sen/util.py#L162
     cpu_count = stats["cpu_stats"]["online_cpus"]
@@ -63,7 +63,7 @@ def get_cpu_usage(stats: Dict[str, Any]) -> float:
     return cpu_percent
 
 
-def get_memory_usage(stats: Dict[str, Any]) -> int:
+def get_memory_usage(stats: dict[str, Any]) -> int:
     return stats["memory_stats"]["usage"]
 
 

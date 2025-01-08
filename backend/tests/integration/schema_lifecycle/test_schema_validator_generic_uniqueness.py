@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -25,7 +25,7 @@ CAR_KIND = "TestingCar"
 
 class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
-    def schema_car_base(self) -> Dict[str, Any]:
+    def schema_car_base(self) -> dict[str, Any]:
         return {
             "name": "Car",
             "namespace": "Testing",
@@ -49,7 +49,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_humanoid_base(self) -> Dict[str, Any]:
+    def schema_humanoid_base(self) -> dict[str, Any]:
         return {
             "name": "Humanoid",
             "namespace": "Testing",
@@ -67,7 +67,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_person_base(self) -> Dict[str, Any]:
+    def schema_person_base(self) -> dict[str, Any]:
         return {
             "name": "Person",
             "namespace": "Testing",
@@ -80,7 +80,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_cylon_base(self) -> Dict[str, Any]:
+    def schema_cylon_base(self) -> dict[str, Any]:
         return {
             "name": "Cylon",
             "namespace": "Testing",
@@ -161,7 +161,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_01(
         self, schema_humanoid_base, schema_car_base, schema_person_base, schema_cylon_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_humanoid_base],
@@ -169,7 +169,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_01_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> Dict[str, Any]:
+    def schema_01_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> dict[str, Any]:
         """Add uniqueness constraint to TestHumanoid that does not fit existing data"""
         schema_humanoid_base["uniqueness_constraints"] = [["height__value", "name__value"]]
         return schema_humanoid_base
@@ -177,7 +177,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_01_generic_uniqueness_failure(
         self, schema_01_humanoid_uniqueness_constraint_failure, schema_car_base, schema_cylon_base, schema_person_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_01_humanoid_uniqueness_constraint_failure],
@@ -185,14 +185,14 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_02_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> Dict[str, Any]:
+    def schema_02_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> dict[str, Any]:
         schema_humanoid_base["uniqueness_constraints"] = [["name__value", "favorite_color__value"]]
         return schema_humanoid_base
 
     @pytest.fixture(scope="class")
     def schema_02_generic_uniqueness_failure(
         self, schema_02_humanoid_uniqueness_constraint_failure, schema_car_base, schema_cylon_base, schema_person_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_02_humanoid_uniqueness_constraint_failure],
@@ -200,17 +200,17 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_03_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> Dict[str, Any]:
+    def schema_03_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> dict[str, Any]:
         schema_humanoid_base["uniqueness_constraints"] = [["height__value", "name__value"]]
         return schema_humanoid_base
 
     @pytest.fixture(scope="class")
-    def schema_03_person_constraint_failure(self, schema_person_base) -> Dict[str, Any]:
+    def schema_03_person_constraint_failure(self, schema_person_base) -> dict[str, Any]:
         schema_person_base["uniqueness_constraints"] = [["height__value", "homeworld__value"]]
         return schema_person_base
 
     @pytest.fixture(scope="class")
-    def schema_03_cylon_constraint_failure(self, schema_cylon_base) -> Dict[str, Any]:
+    def schema_03_cylon_constraint_failure(self, schema_cylon_base) -> dict[str, Any]:
         schema_cylon_base["uniqueness_constraints"] = [["model_number__value", "favorite_color__value"]]
         return schema_cylon_base
 
@@ -221,7 +221,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         schema_car_base,
         schema_03_cylon_constraint_failure,
         schema_03_person_constraint_failure,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_03_humanoid_uniqueness_constraint_failure],
@@ -229,17 +229,17 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_04_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> Dict[str, Any]:
+    def schema_04_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base) -> dict[str, Any]:
         schema_humanoid_base["uniqueness_constraints"] = [["name__value", "favorite_color__value"]]
         return schema_humanoid_base
 
     @pytest.fixture(scope="class")
-    def schema_04_person_constraint_failure(self, schema_person_base) -> Dict[str, Any]:
+    def schema_04_person_constraint_failure(self, schema_person_base) -> dict[str, Any]:
         schema_person_base["uniqueness_constraints"] = [["homeworld__value", "favorite_color__value"]]
         return schema_person_base
 
     @pytest.fixture(scope="class")
-    def schema_04_cylon_constraint_failure(self, schema_cylon_base) -> Dict[str, Any]:
+    def schema_04_cylon_constraint_failure(self, schema_cylon_base) -> dict[str, Any]:
         schema_cylon_base["uniqueness_constraints"] = [["model_number__value", "favorite_color__value"]]
         return schema_cylon_base
 
@@ -250,7 +250,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         schema_car_base,
         schema_04_cylon_constraint_failure,
         schema_04_person_constraint_failure,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_04_humanoid_uniqueness_constraint_failure],
