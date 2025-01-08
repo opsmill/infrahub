@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from infrahub import config
 from infrahub.api.dependencies import get_current_user
-from infrahub.config import (  # noqa: TCH001
+from infrahub.config import (  # noqa: TC001
     AnalyticsSettings,
     ExperimentalFeaturesSettings,
     LoggingSettings,

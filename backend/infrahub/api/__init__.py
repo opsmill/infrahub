@@ -7,7 +7,7 @@ from fastapi.openapi.docs import (
     get_redoc_html,
     get_swagger_ui_html,
 )
-from starlette.responses import HTMLResponse  # noqa: TCH002
+from starlette.responses import HTMLResponse  # noqa: TC002
 
 from infrahub.api import (
     artifact,
@@ -46,7 +46,9 @@ router.include_router(transformation.router)
 
 
 @router.get("/docs", include_in_schema=False)
-async def custom_swagger_ui_html(_: AccountSession = Depends(get_current_user)) -> HTMLResponse:
+async def custom_swagger_ui_html(
+    _: AccountSession = Depends(get_current_user),
+) -> HTMLResponse:
     return get_swagger_ui_html(
         openapi_url="/api/openapi.json",
         title="Infrahub - Swagger UI",

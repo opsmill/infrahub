@@ -63,9 +63,7 @@ async def get_diff_files(
                     branch=branch_name,
                 )
 
-            response[branch_name][repository_id].files.append(
-                BranchDiffFile(**item.to_graphql())
-            )
+            response[branch_name][repository_id].files.append(BranchDiffFile(**item.to_graphql()))
 
     return response
 
@@ -78,8 +76,6 @@ async def get_diff_artifacts(
 ) -> dict[str, BranchDiffArtifact]:
     artifact_diff_calculator = ArtifactDiffCalculator(db=db)
     target_branch = await registry.get_branch(db=db, branch=registry.default_branch)
-    artifact_diffs = await artifact_diff_calculator.calculate(
-        source_branch=branch, target_branch=target_branch
-    )
+    artifact_diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=target_branch)
     response = {art_diff.id: art_diff for art_diff in artifact_diffs}
     return response
