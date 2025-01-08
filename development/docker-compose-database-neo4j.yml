@@ -29,8 +29,6 @@ services:
       com.github.job: "${JOB_NAME:-unknown}"
     ports:
       - "${INFRAHUB_DB_BACKUP_PORT:-6362}:6362"
-      - "7687:7687"
-      - "7474:7474"
 
 
 volumes:
