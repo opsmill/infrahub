@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, Request
 
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
-from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
 from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.diff.model.diff import (
@@ -15,10 +14,10 @@ from infrahub.core.diff.model.diff import (
     BranchDiffFile,
     BranchDiffRepository,
 )
-from infrahub.database import InfrahubDatabase  # noqa: TC001
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
+    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
