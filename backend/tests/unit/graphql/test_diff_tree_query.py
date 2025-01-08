@@ -432,7 +432,9 @@ async def test_diff_tree_one_relationship_change(
     enriched_diff = await diff_coordinator.update_branch_diff_and_return(
         base_branch=default_branch, diff_branch=diff_branch
     )
-    params = await prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
     result = await graphql(
         schema=params.schema,
         source=DIFF_TREE_QUERY,
@@ -827,7 +829,9 @@ async def test_diff_summary_filters(
     enriched_diff = await diff_coordinator.update_branch_diff_and_return(
         base_branch=default_branch, diff_branch=diff_branch
     )
-    params = await prepare_graphql_params(db=db, include_mutation=False, include_subscription=False, branch=default_branch)
+    params = await prepare_graphql_params(
+        db=db, include_mutation=False, include_subscription=False, branch=default_branch
+    )
 
     result = await graphql(
         schema=params.schema,
