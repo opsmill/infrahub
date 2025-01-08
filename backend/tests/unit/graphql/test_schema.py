@@ -5,7 +5,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 
 
 async def test_schema_is_nonnull(db: InfrahubDatabase, default_branch, car_person_schema):
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     for name, field in gql_params.schema.query_type.fields.items():
         # ------------------------------------------------------------
