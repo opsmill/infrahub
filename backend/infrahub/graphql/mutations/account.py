@@ -15,6 +15,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
 
+from ..models import OrderModel
 from ..types import InfrahubObjectType
 
 if TYPE_CHECKING:
@@ -112,7 +113,10 @@ class AccountMixin:
         token_id = str(data.get("id"))
 
         results = await NodeManager.query(
-            schema=InternalAccountToken, filters={"account_ids": [account.id], "ids": [token_id]}, db=db
+            schema=InternalAccountToken,
+            filters={"account_ids": [account.id], "ids": [token_id]},
+            db=db,
+            order=OrderModel(disable=True),
         )
 
         if not results:

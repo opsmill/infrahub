@@ -26,6 +26,7 @@ from infrahub.core.relationship import Relationship, RelationshipManager
 from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
+from infrahub.graphql.models import OrderModel
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -141,6 +142,7 @@ class NodeManager:
         account=...,
         partial_match: bool = ...,
         branch_agnostic: bool = ...,
+        order: OrderModel | None = ...,
     ) -> list[Any]: ...
 
     @overload
@@ -161,6 +163,7 @@ class NodeManager:
         account=...,
         partial_match: bool = ...,
         branch_agnostic: bool = ...,
+        order: OrderModel | None = ...,
     ) -> list[SchemaProtocol]: ...
 
     @classmethod
@@ -180,6 +183,7 @@ class NodeManager:
         account=None,
         partial_match: bool = False,
         branch_agnostic: bool = False,
+        order: OrderModel | None = None,
     ) -> list[Any]:
         """Query one or multiple nodes of a given type based on filter arguments.
 
@@ -227,6 +231,7 @@ class NodeManager:
             at=at,
             partial_match=partial_match,
             branch_agnostic=branch_agnostic,
+            order=order,
         )
         await query.execute(db=db)
         node_ids = query.get_node_ids()
@@ -295,6 +300,7 @@ class NodeManager:
             at=at,
             partial_match=partial_match,
             branch_agnostic=branch_agnostic,
+            order=OrderModel(disable=True),
         )
         return await query.count(db=db)
 
@@ -657,6 +663,7 @@ class NodeManager:
             prefetch_relationships=prefetch_relationships,
             account=account,
             branch_agnostic=branch_agnostic,
+            order=OrderModel(disable=True),
         )
 
         if len(items) > 1:
@@ -820,6 +827,7 @@ class NodeManager:
             prefetch_relationships=prefetch_relationships,
             account=account,
             branch_agnostic=branch_agnostic,
+            order=OrderModel(disable=True),
         )
 
         if len(items) < 1:
