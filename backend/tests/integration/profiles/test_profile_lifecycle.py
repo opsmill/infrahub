@@ -86,7 +86,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"person_id": person_1.id, "profile_id": person_profile_1.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -134,7 +134,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"profile_id": person_profile_1.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -184,7 +184,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             "person_id": person_1.id,
         }
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -229,7 +229,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"person_id": person_1.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -291,7 +291,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"person_id": person_2.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -325,7 +325,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"profile_id": person_profile_2.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -389,7 +389,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"person_id": person_1.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,
@@ -429,7 +429,7 @@ class TestProfileLifecycle(TestInfrahubApp):
             }
         """ % {"profile_id": person_profile_1.id}
 
-        gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+        gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
         result = await graphql(
             schema=gql_params.schema,
             source=mutation,

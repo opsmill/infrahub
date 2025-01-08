@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
-from infrahub.core.schema import AttributeSchema  # noqa: TCH001
+from infrahub.core.schema import AttributeSchema  # noqa: TC001
 
 if TYPE_CHECKING:
     from infrahub.core.schema import NodeSchema, SchemaAttributePath

@@ -26,7 +26,7 @@ from infrahub.proposed_change.models import (
     RequestProposedChangeSchemaIntegrity,
     RequestProposedChangeUserTests,
 )
-from infrahub.services import InfrahubServices  # noqa: TCH001
+from infrahub.services import InfrahubServices  # noqa: TC001
 from infrahub.workflows.catalogue import (
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,

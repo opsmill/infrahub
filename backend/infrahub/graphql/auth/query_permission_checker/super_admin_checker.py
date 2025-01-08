@@ -1,6 +1,5 @@
 from infrahub import config
 from infrahub.auth import AccountSession
-from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
@@ -29,10 +28,8 @@ class SuperAdminPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         query_parameters: GraphqlParams,
         branch: Branch,
     ) -> CheckerResolution:
-        for permission_backend in registry.permission_backends:
-            if await permission_backend.has_permission(
-                db=db, account_session=account_session, permission=self.permission_required, branch=branch
-            ):
-                return CheckerResolution.TERMINATE
-
-        return CheckerResolution.NEXT_CHECKER
+        return (
+            CheckerResolution.TERMINATE
+            if query_parameters.context.active_permissions.has_permission(permission=self.permission_required)
+            else CheckerResolution.NEXT_CHECKER
+        )

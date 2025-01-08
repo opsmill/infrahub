@@ -13,8 +13,8 @@ from infrahub.core.registry import registry
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
 from infrahub.graphql.auth.query_permission_checker.super_admin_checker import SuperAdminPermissionChecker
-from infrahub.graphql.initialization import GraphqlParams
-from infrahub.permissions.local_backend import LocalPermissionBackend
+from infrahub.graphql.initialization import GraphqlContext, GraphqlParams
+from infrahub.permissions import LocalPermissionBackend, PermissionManager
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -76,11 +76,19 @@ class TestSuperAdminPermission:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
+        permission_manager = PermissionManager(account_session=session)
+        await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
+
+        graphql_context = MagicMock(spec=GraphqlContext)
+        graphql_context.permissions = permission_manager
+        query_parameters = MagicMock(spec=GraphqlParams)
+        query_parameters.context = graphql_context
+
         resolution = await checker.check(
             db=db,
             account_session=session,
             analyzed_query=MagicMock(spec=InfrahubGraphQLQueryAnalyzer),
-            query_parameters=MagicMock(spec=GraphqlParams),
+            query_parameters=query_parameters,
             branch=permissions_helper.default_branch,
         )
         assert resolution == CheckerResolution.TERMINATE
@@ -90,11 +98,24 @@ class TestSuperAdminPermission:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
+        permission_manager = PermissionManager(account_session=session)
+        await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
+
+        graphql_context = GraphqlContext(
+            db=MagicMock(),
+            branch=MagicMock(),
+            types=MagicMock(),
+            single_relationship_resolver=MagicMock(),
+            account_session=session,
+            permissions=permission_manager,
+        )
+        query_parameters = GraphqlParams(schema=MagicMock(), context=graphql_context)
+
         resolution = await checker.check(
             db=db,
             account_session=session,
             analyzed_query=MagicMock(spec=InfrahubGraphQLQueryAnalyzer),
-            query_parameters=MagicMock(spec=GraphqlParams),
+            query_parameters=query_parameters,
             branch=permissions_helper.default_branch,
         )
         assert resolution == CheckerResolution.NEXT_CHECKER

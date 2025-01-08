@@ -8,8 +8,8 @@ from pydantic import Field
 
 from infrahub.core.constants import AllowOverrideType, HashableModelState
 from infrahub.core.models import HashableModel
-from infrahub.core.schema.computed_attribute import ComputedAttribute  # noqa: TCH001
-from infrahub.core.schema.dropdown import DropdownChoice  # noqa: TCH001
+from infrahub.core.schema.computed_attribute import ComputedAttribute  # noqa: TC001
+from infrahub.core.schema.dropdown import DropdownChoice  # noqa: TC001
 
 if TYPE_CHECKING:
     from infrahub.core.constants import BranchSupportType

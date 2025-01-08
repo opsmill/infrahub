@@ -72,7 +72,7 @@ async def graphql_mutation(
     branch = branch or await Branch.get_by_name(name="main", db=db)
     service = service or services.service
     variables = variables or {}
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db,
         include_subscription=False,
         include_mutation=True,
@@ -99,7 +99,7 @@ async def graphql_query(
     service = service or services.service
 
     variables = variables or {}
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_subscription=False, include_mutation=False, branch=branch, service=service
     )
     return await graphql(

@@ -14,8 +14,8 @@ from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
 from infrahub.graphql.auth.query_permission_checker.merge_operation_checker import MergeBranchPermissionChecker
-from infrahub.graphql.initialization import GraphqlParams
-from infrahub.permissions.local_backend import LocalPermissionBackend
+from infrahub.graphql.initialization import GraphqlContext, GraphqlParams
+from infrahub.permissions import LocalPermissionBackend, PermissionManager
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -84,19 +84,27 @@ class TestMergeBranchPermission:
         permissions_helper: PermissionsHelper,
     ):
         checker = MergeBranchPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+        permission_manager = PermissionManager(account_session=session)
+        await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
+
         graphql_query = AsyncMock(spec=InfrahubGraphQLQueryAnalyzer)
         graphql_query.operation_name = "Foo"
         graphql_query.operations = [MagicMock()]
         graphql_query.operations[0].name = operation_name
 
-        session = AccountSession(
-            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
-        )
+        graphql_context = MagicMock(spec=GraphqlContext)
+        graphql_context.permissions = permission_manager
+        query_parameters = MagicMock(spec=GraphqlParams)
+        query_parameters.context = graphql_context
+
         resolution = await checker.check(
             db=db,
             account_session=session,
             analyzed_query=graphql_query,
-            query_parameters=MagicMock(spec=GraphqlParams),
+            query_parameters=query_parameters,
             branch=permissions_helper.default_branch,
         )
         assert resolution == checker_resolution
@@ -113,14 +121,26 @@ class TestMergeBranchPermission:
         permissions_helper: PermissionsHelper,
     ):
         checker = MergeBranchPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+        permission_manager = PermissionManager(account_session=session)
+        await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
+
         graphql_query = AsyncMock(spec=InfrahubGraphQLQueryAnalyzer)
         graphql_query.operation_name = "Foo"
         graphql_query.operations = [MagicMock()]
         graphql_query.operations[0].name = operation_name
 
-        session = AccountSession(
-            authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        graphql_context = GraphqlContext(
+            db=MagicMock(),
+            branch=MagicMock(),
+            types=MagicMock(),
+            single_relationship_resolver=MagicMock(),
+            account_session=session,
+            permissions=permission_manager,
         )
+        query_parameters = GraphqlParams(schema=MagicMock(), context=graphql_context)
 
         if checker_resolution is None:
             with pytest.raises(PermissionDeniedError, match=r"You are not allowed to merge a branch"):
@@ -128,7 +148,7 @@ class TestMergeBranchPermission:
                     db=db,
                     account_session=session,
                     analyzed_query=graphql_query,
-                    query_parameters=MagicMock(spec=GraphqlParams),
+                    query_parameters=query_parameters,
                     branch=permissions_helper.default_branch,
                 )
         else:
@@ -136,7 +156,7 @@ class TestMergeBranchPermission:
                 db=db,
                 account_session=session,
                 analyzed_query=graphql_query,
-                query_parameters=MagicMock(spec=GraphqlParams),
+                query_parameters=query_parameters,
                 branch=permissions_helper.default_branch,
             )
             assert resolution == checker_resolution

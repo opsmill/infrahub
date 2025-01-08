@@ -264,19 +264,19 @@ class TestObjectPermissions:
         permissions_helper._first = first_account
 
     async def test_first_account_tags(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper) -> None:
-        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permissions_helper.default_branch)
+        checker = ObjectPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=QUERY_TAGS, schema=gql_params.schema, branch=permissions_helper.default_branch
         )
-        perms = ObjectPermissionChecker()
-        session = AccountSession(
-            authenticated=True,
-            account_id=permissions_helper.first.id,
-            session_id=str(uuid4()),
-            auth_type=AuthType.JWT,
-        )
 
-        await perms.check(
+        await checker.check(
             db=db,
             account_session=session,
             analyzed_query=analyzed_query,
@@ -285,20 +285,20 @@ class TestObjectPermissions:
         )
 
     async def test_first_account_repos(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper) -> None:
-        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permissions_helper.default_branch)
+        checker = ObjectPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=QUERY_REPOS, schema=gql_params.schema, branch=permissions_helper.default_branch
         )
-        perms = ObjectPermissionChecker()
-        session = AccountSession(
-            authenticated=True,
-            account_id=permissions_helper.first.id,
-            session_id=str(uuid4()),
-            auth_type=AuthType.JWT,
-        )
 
         with pytest.raises(PermissionDeniedError, match=r":Repository:view:"):
-            await perms.check(
+            await checker.check(
                 db=db,
                 account_session=session,
                 analyzed_query=analyzed_query,
@@ -308,19 +308,19 @@ class TestObjectPermissions:
 
     async def test_first_account_graphql(self, db: InfrahubDatabase, permissions_helper: PermissionsHelper) -> None:
         """The user should have permissions to list GraphQLQueries."""
-        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permissions_helper.default_branch)
+        checker = ObjectPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=QUERY_GRAPHQL, schema=gql_params.schema, branch=permissions_helper.default_branch
         )
-        perms = ObjectPermissionChecker()
-        session = AccountSession(
-            authenticated=True,
-            account_id=permissions_helper.first.id,
-            session_id=str(uuid4()),
-            auth_type=AuthType.JWT,
-        )
 
-        await perms.check(
+        await checker.check(
             db=db,
             account_session=session,
             analyzed_query=analyzed_query,
@@ -332,20 +332,20 @@ class TestObjectPermissions:
         self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ) -> None:
         """The user should have permissions to list GraphQLQueries but not repositories linked to them"""
-        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permissions_helper.default_branch)
+        checker = ObjectPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=QUERY_GRAPHQL_AND_REPO, schema=gql_params.schema, branch=permissions_helper.default_branch
         )
-        perms = ObjectPermissionChecker()
-        session = AccountSession(
-            authenticated=True,
-            account_id=permissions_helper.first.id,
-            session_id=str(uuid4()),
-            auth_type=AuthType.JWT,
-        )
 
         with pytest.raises(PermissionDeniedError, match=r"Repository:view:"):
-            await perms.check(
+            await checker.check(
                 db=db,
                 account_session=session,
                 analyzed_query=analyzed_query,
@@ -411,7 +411,9 @@ class TestAccountManagerPermissions:
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
 
-        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permissions_helper.default_branch)
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=operation, schema=gql_params.schema, branch=permissions_helper.default_branch
         )
@@ -443,7 +445,9 @@ class TestAccountManagerPermissions:
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
 
-        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permissions_helper.default_branch)
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=operation, schema=gql_params.schema, branch=permissions_helper.default_branch
         )
@@ -459,7 +463,7 @@ class TestAccountManagerPermissions:
             assert resolution == CheckerResolution.NEXT_CHECKER
         else:
             with pytest.raises(
-                PermissionDeniedError, match=r"You do not have the permission to manage user accounts, groups or roles"
+                PermissionDeniedError, match=r"You are not allowed to manage user accounts, groups or roles"
             ):
                 await checker.check(
                     db=db,
@@ -529,7 +533,9 @@ class TestPermissionManagerPermissions:
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
 
-        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permissions_helper.default_branch)
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=operation, schema=gql_params.schema, branch=permissions_helper.default_branch
         )
@@ -560,7 +566,9 @@ class TestPermissionManagerPermissions:
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
 
-        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permissions_helper.default_branch)
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=operation, schema=gql_params.schema, branch=permissions_helper.default_branch
         )
@@ -575,7 +583,7 @@ class TestPermissionManagerPermissions:
             )
             assert resolution == CheckerResolution.NEXT_CHECKER
         else:
-            with pytest.raises(PermissionDeniedError, match=r"You do not have the permission to manage permissions"):
+            with pytest.raises(PermissionDeniedError, match=r"You are not allowed to manage permissions"):
                 await checker.check(
                     db=db,
                     account_session=session,
@@ -644,7 +652,9 @@ class TestRepositoryManagerPermissions:
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
 
-        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permissions_helper.default_branch)
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=operation, schema=gql_params.schema, branch=permissions_helper.default_branch
         )
@@ -675,7 +685,9 @@ class TestRepositoryManagerPermissions:
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
 
-        gql_params = prepare_graphql_params(db=db, include_mutation=True, branch=permissions_helper.default_branch)
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=operation, schema=gql_params.schema, branch=permissions_helper.default_branch
         )
@@ -690,7 +702,7 @@ class TestRepositoryManagerPermissions:
             )
             assert resolution == CheckerResolution.NEXT_CHECKER
         else:
-            with pytest.raises(PermissionDeniedError, match=r"You do not have the permission to manage repositories"):
+            with pytest.raises(PermissionDeniedError, match=r"You are not allowed to manage repositories"):
                 await checker.check(
                     db=db,
                     account_session=session,

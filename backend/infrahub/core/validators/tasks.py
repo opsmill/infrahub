@@ -5,9 +5,9 @@ from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
-from infrahub.core.branch import Branch  # noqa: TCH001
-from infrahub.core.path import SchemaPath  # noqa: TCH001
-from infrahub.core.schema import GenericSchema, NodeSchema  # noqa: TCH001
+from infrahub.core.branch import Branch  # noqa: TC001
+from infrahub.core.path import SchemaPath  # noqa: TC001
+from infrahub.core.schema import GenericSchema, NodeSchema  # noqa: TC001
 from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
 from infrahub.core.validators.model import (
     SchemaConstraintValidatorRequest,

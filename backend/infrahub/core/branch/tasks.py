@@ -8,7 +8,7 @@ from prefect import flow, get_run_logger
 from prefect.automations import AutomationCore
 from prefect.client.orchestration import get_client
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
-from prefect.client.schemas.objects import State  # noqa: TCH002
+from prefect.client.schemas.objects import State  # noqa: TC002
 from prefect.events.actions import RunDeployment
 from prefect.events.schemas.automations import EventTrigger, Posture
 from prefect.states import Completed, Failed
@@ -30,7 +30,7 @@ from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.branch_action import BranchCreateEvent, BranchDeleteEvent, BranchRebaseEvent
 from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
-from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TCH001
+from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.log import get_log_data
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services

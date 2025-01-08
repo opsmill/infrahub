@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 import ujson
-from infrahub_sdk.protocols import CoreNode  # noqa: TCH002
+from infrahub_sdk.protocols import CoreNode  # noqa: TC002
 from prefect import flow
 from prefect.automations import AutomationCore
 from prefect.client.orchestration import get_client

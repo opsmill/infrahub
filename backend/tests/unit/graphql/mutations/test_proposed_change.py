@@ -83,7 +83,7 @@ async def test_create_invalid_branch_combinations(db: InfrahubDatabase, default_
     source_branch = Branch(name=branch_name)
     await source_branch.save(db=db)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     no_source = await graphql(
         schema=gql_params.schema,
         source=CREATE_PROPOSED_CHANGE,
@@ -248,7 +248,7 @@ async def test_merge_proposed_change_permission_failure(
         )
 
         assert update_status.errors
-        assert update_status.errors[0].message == "You do not have the permission to merge proposed changes"
+        assert update_status.errors[0].message == "You are not allowed to merge proposed changes"
 
         update_status = await graphql_mutation(
             query=UPDATE_PROPOSED_CHANGE,

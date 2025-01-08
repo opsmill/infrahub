@@ -69,15 +69,16 @@ class PrefectTask:
             ]
             if not related_node_ids:
                 continue
-            related_nodes.id[flow.id] = related_node_ids[0]
+            related_nodes.add_nodes(flow_id=flow.id, node_ids=related_node_ids)
 
         if unique_related_node_ids := related_nodes.get_unique_related_node_ids():
             query = await NodeGetKindQuery.init(db=db, ids=unique_related_node_ids)
             await query.execute(db=db)
             unique_related_node_ids_kind = await query.get_node_kind_map()
 
-            for flow_id, node_id in related_nodes.id.items():
-                related_nodes.kind[flow_id] = unique_related_node_ids_kind.get(node_id, None)
+            for node_id, node_kind in unique_related_node_ids_kind.items():
+                if node_id in related_nodes.nodes:
+                    related_nodes.nodes[node_id].kind = node_kind
 
         return related_nodes
 
@@ -238,6 +239,8 @@ class PrefectTask:
                     if log_fields:
                         logs = logs_flow.to_graphql(flow_id=flow.id)
 
+                    related_node = related_nodes_info.get_first_related_node(flow_id=flow.id)
+
                     nodes.append(
                         {
                             "node": {
@@ -251,8 +254,9 @@ class PrefectTask:
                                 "branch": await cls._extract_branch_name(flow=flow),
                                 "tags": flow.tags,
                                 "workflow": workflow_names.get(flow.flow_id, None),
-                                "related_node": related_nodes_info.id.get(flow.id, None),
-                                "related_node_kind": related_nodes_info.kind.get(flow.id, None),
+                                "related_node": related_node.id if related_node else None,
+                                "related_node_kind": related_node.kind if related_node else None,
+                                "related_nodes": related_nodes_info.get_related_nodes_as_dict(flow_id=flow.id),
                                 "created_at": flow.created.to_iso8601_string(),  # type: ignore
                                 "updated_at": flow.updated.to_iso8601_string(),  # type: ignore
                                 "start_time": flow.start_time.to_iso8601_string() if flow.start_time else None,

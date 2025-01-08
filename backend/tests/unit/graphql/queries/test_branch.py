@@ -24,7 +24,7 @@ class TestBranchuQuery(TestInfrahubApp):
         }
         """
 
-        gql_params = prepare_graphql_params(
+        gql_params = await prepare_graphql_params(
             db=db,
             include_subscription=False,
             branch=default_branch,
@@ -56,7 +56,7 @@ class TestBranchuQuery(TestInfrahubApp):
             }
         }
         """
-        gql_params = prepare_graphql_params(
+        gql_params = await prepare_graphql_params(
             db=db, include_subscription=False, branch=default_branch, service=services.service
         )
         all_branches = await graphql(
@@ -103,7 +103,7 @@ class TestBranchuQuery(TestInfrahubApp):
             }
         }
         """ % branch3["name"]
-        gql_params = prepare_graphql_params(
+        gql_params = await prepare_graphql_params(
             db=db, include_subscription=False, branch=default_branch, service=services.service
         )
         name_response = await graphql(
@@ -129,7 +129,7 @@ class TestBranchuQuery(TestInfrahubApp):
         """ % [branch3["id"]]
         id_query = id_query.replace("'", '"')
 
-        gql_params = prepare_graphql_params(
+        gql_params = await prepare_graphql_params(
             db=db, include_subscription=False, branch=default_branch, service=services.service
         )
         id_response = await graphql(

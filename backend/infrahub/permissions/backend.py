@@ -5,28 +5,13 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
-    from infrahub.core.account import GlobalPermission, ObjectPermission
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-    from infrahub.permissions.constants import AssignedPermissions, PermissionDecisionFlag
+    from infrahub.permissions.types import AssignedPermissions
 
 
 class PermissionBackend(ABC):
     @abstractmethod
     async def load_permissions(
-        self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch
+        self, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
     ) -> AssignedPermissions: ...
-
-    @abstractmethod
-    def report_object_permission(
-        self, permissions: list[ObjectPermission], namespace: str, name: str, action: str
-    ) -> PermissionDecisionFlag: ...
-
-    @abstractmethod
-    async def has_permission(
-        self,
-        db: InfrahubDatabase,
-        account_session: AccountSession,
-        permission: GlobalPermission | ObjectPermission,
-        branch: Branch,
-    ) -> bool: ...

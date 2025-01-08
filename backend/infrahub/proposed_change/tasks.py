@@ -11,7 +11,7 @@ from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreProposedChange
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.client.schemas.objects import (
-    State,  # noqa: TCH002
+    State,  # noqa: TC002
 )
 from prefect.logging import get_run_logger
 from prefect.states import Completed, Failed

@@ -8,11 +8,12 @@ from pydantic import BaseModel, ConfigDict
 
 from infrahub import config
 from infrahub.auth import AccountSession, authentication_token, validate_jwt_access_token, validate_jwt_refresh_token
-from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import AuthorizationError
+from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -120,3 +121,15 @@ async def get_current_user(
         return account_session
 
     raise AuthorizationError("Authentication is required")
+
+
+async def get_permission_manager(
+    db: InfrahubDatabase = Depends(get_db),
+    branch_params: BranchParams = Depends(get_branch_params),
+    account_session: AccountSession = Depends(get_current_user),
+) -> PermissionManager:
+    """Return a `PermissionManager` for an account session based on a branch."""
+    permission_manager = PermissionManager(account_session=account_session)
+    await permission_manager.load_permissions(db=db, branch=branch_params.branch)
+
+    return permission_manager
