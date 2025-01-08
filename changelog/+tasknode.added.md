@@ -1,0 +1,1 @@
+The query InfrahubTask in GraphQL, introduced a new `related_nodes` field to retrieve multiple related nodes per task.
