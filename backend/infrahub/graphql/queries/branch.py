@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import ID, Field, List, String
+from graphene import ID, Field, List, NonNull, String
 from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.graphql.types import BranchType
@@ -21,8 +21,10 @@ async def branch_resolver(
 
 
 BranchQueryList = Field(
-    List(BranchType),
+    List(of_type=NonNull(BranchType)),
     ids=List(ID),
     name=String(),
+    description="Retrieve information about active branches.",
     resolver=branch_resolver,
+    required=True,
 )

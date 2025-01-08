@@ -108,6 +108,7 @@ InfrahubIPAddressGetNextAvailable = Field(
     prefix_id=String(required=True),
     prefix_length=Int(required=False),
     resolver=IPAddressGetNextAvailable.resolve,
+    required=True,
 )
 
 
@@ -116,4 +117,5 @@ InfrahubIPPrefixGetNextAvailable = Field(
     prefix_id=String(required=True),
     prefix_length=Int(required=False),
     resolver=IPPrefixGetNextAvailable.resolve,
+    required=True,
 )

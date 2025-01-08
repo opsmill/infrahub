@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any
 
 from graphql import GraphQLResolveInfo
+from graphql.type.definition import GraphQLNonNull
 from infrahub_sdk.utils import deep_merge_dict, extract_fields
 
 from infrahub.core.branch.models import Branch
@@ -31,7 +32,12 @@ class SingleRelationshipResolver:
         """
         # Extract the InfraHub schema by inspecting the GQL Schema
 
-        node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema  # type: ignore[attr-defined]
+        # :
+        node_schema: NodeSchema = (
+            info.parent_type.of_type.graphene_type._meta.schema
+            if isinstance(info.parent_type, GraphQLNonNull)
+            else info.parent_type.graphene_type._meta.schema  # type: ignore[attr-defined]
+        )
 
         context: GraphqlContext = info.context
 

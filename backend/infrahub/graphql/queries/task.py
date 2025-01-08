@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Field, Int, List, ObjectType, String
+from graphene import Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 from prefect.client.schemas.objects import StateType
 
@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 
 
 class Tasks(ObjectType):
-    edges = List(TaskNodes)
-    count = Int()
+    edges = List(NonNull(TaskNodes), required=True)
+    count = Int(required=True)
 
     @staticmethod
     async def resolve(
@@ -97,7 +97,6 @@ class Tasks(ObjectType):
 
 Task = Field(
     Tasks,
-    resolver=Tasks.resolve,
     limit=Int(required=False),
     offset=Int(required=False),
     related_node__ids=List(String),
@@ -106,11 +105,14 @@ Task = Field(
     workflow=List(String),
     ids=List(String),
     q=String(required=False),
+    resolver=Tasks.resolve,
+    required=True,
 )
 
 TaskBranchStatus = Field(
     Tasks,
-    resolver=Tasks.resolve_branch_status,
     branch=String(required=False),
     description="Return the list of all pending or running tasks that can modify the data, for a given branch",
+    resolver=Tasks.resolve_branch_status,
+    required=True,
 )
