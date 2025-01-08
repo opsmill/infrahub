@@ -7,9 +7,9 @@ from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
-from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.migrations import MIGRATION_MAP
-from infrahub.core.path import SchemaPath  # noqa: TCH001
+from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.services import services
 from infrahub.workflows.utils import add_branch_tag
 

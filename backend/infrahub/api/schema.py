@@ -17,21 +17,21 @@ from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db, 
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
-from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions, PermissionDecision
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
-from infrahub.core.models import (  # noqa: TCH001
+from infrahub.core.models import (  # noqa: TC001
     SchemaBranchHash,
     SchemaDiff,
     SchemaUpdateValidationResult,
 )
 from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, SchemaRoot
-from infrahub.core.schema.constants import SchemaNamespace  # noqa: TCH001
+from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
 from infrahub.core.validators.models.validate_migration import (
     SchemaValidateMigrationData,
     SchemaValidatorPathResponseData,
 )
-from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.exceptions import MigrationError
