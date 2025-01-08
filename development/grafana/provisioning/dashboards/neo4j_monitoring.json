@@ -1193,7 +1193,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource_prometheus}"
+        "uid": "localprometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -1206,7 +1206,7 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "barAlignment": 0,
+            "barAlignment": -1,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
@@ -1217,9 +1217,12 @@
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "linear",
+            "lineInterpolation": "stepAfter",
+            "lineStyle": {
+              "fill": "solid"
+            },
             "lineWidth": 1,
-            "pointSize": 5,
+            "pointSize": 8,
             "scaleDistribution": {
               "type": "linear"
             },
@@ -1233,6 +1236,7 @@
               "mode": "off"
             }
           },
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -1251,7 +1255,7 @@
               }
             ]
           },
-          "unit": "s"
+          "unit": "none"
         },
         "overrides": []
       },
@@ -1269,7 +1273,7 @@
             "max"
           ],
           "displayMode": "table",
-          "placement": "bottom",
+          "placement": "right",
           "showLegend": true
         },
         "tooltip": {
@@ -1281,13 +1285,13 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (query, type) (rate(infrahub_db_query_execution_seconds_sum[$interval]) > 0.5)",
-          "legendFormat": "{{query}} - {{type}}",
+          "expr": "increase(infrahub_db_query_execution_seconds_count[5m]) - ignoring(le) increase(infrahub_db_query_execution_seconds_bucket{le=\"0.5\"}[5m]) > 0",
+          "legendFormat": "{{query}} {{type}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Slow Queries (>0.5s)",
+      "title": "Number Slow Queries (>0.5s)",
       "type": "timeseries"
     },
     {
