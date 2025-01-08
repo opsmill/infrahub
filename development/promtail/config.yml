@@ -20,13 +20,69 @@ scrape_configs:
       pipeline_stages:
           - docker:
           - decolorize:
-          # Parsing Database (memgraph) logs
-          - regex:
-                expression: '(?P<time>\S+?) (?P<level>TRACE|DEBUG|INFO|WARNING|ERROR|CRITICAL) (?P<msg>.*)$'
-          # Parsing Infrahub logs when INFRAHUB_PRODUCTION=false
-          - regex:
-                expression: '(?P<time>\S+?) \[(?P<level>[a-z]+)\s+\]
-                 (?P<event>.+)\s+\[(?P<logger>.+)\]\s*(?P<tmp_msg>.*)$'
+          - match:
+              selector: '{container=~".*database.*"}'
+              stages:
+                - regex:
+                    expression: '(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+[+-]\d{4})\s+(?P<level>\w+)\s+(?P<message>.*)'
+                - labels:
+                    level:
+                    timestamp:
+                    component: "database"
+          - match:
+              selector: '{container=~".*cache.*"}'
+              stages:
+                - regex:
+                    expression: '(?P<timestamp>\d{2}\s+\w{3}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\.\d+)\s+(?P<level>[.#*-])\s+(?P<message>.*)'
+                - template:
+                    source: level
+                    template: '{{ if eq .Value "." }}DEBUG{{ else if eq .Value "-" }}VERBOSE{{ else if eq .Value "*" }}NOTICE{{ else if eq .Value "#" }}WARNING{{ end }}'
+                - labels:
+                    level:
+                    timestamp:
+                    message:
+                    component: "cache"
+          - match:
+              selector: '{container=~".*server.*", json_mode!="true"}'
+              stages:
+                - regex:
+                    expression: '(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+\[(?P<level>\w+)\s*\]\s+(?P<message>.*?)\s+\[(?P<logger>[^\]]+)\](?P<additional_info>.*)'
+                - template:
+                    source: message
+                    template: '{{ .message }} {{ .additional_info }}'
+                - labels:
+                    level:
+                    timestamp:
+                    logger:
+                    component: "server"
+          - match:
+              selector: '{container=~".*task-worker.*"}'
+              stages:
+                - regex:
+                    expression: '(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+\[(?P<level>\w+)\s*\]\s+(?P<message>.*?)\s+\[(?P<logger>[^\]]+)\]'
+                - labels:
+                    level:
+                    timestamp:
+                    logger:
+                    component: "task-worker"
+          - match:
+              selector: '{container=~".*task-manager-db.*"}'
+              stages:
+                - regex:
+                    expression: '(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+) UTC \[(?P<pid>\d+)\] (?P<level>\w+):\s+(?P<message>.*)'
+                - labels:
+                    level:
+                    timestamp:
+                    component: "task-manager-db"
+          - match:
+              selector: '{container=~".*message-queue.*"}'
+              stages:
+                - regex:
+                    expression: '(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2})\s+\[(?P<level>\w+)\]\s+(?P<process>[^>]+>)\s+(?P<message>.*)'
+                - labels:
+                    level:
+                    timestamp:
+                    component: "message-queue"
           - logfmt:
                 mapping:
                     app:
@@ -35,43 +91,49 @@ scrape_configs:
                     trace_id:
                 source: tmp_msg
           # Parsing Infrahub logs when INFRAHUB_PRODUCTION=true
-          - json:
-                expressions:
-                    level: level
-                    msg: msg
-                    time: time
-                    timestamp: timestamp
-                    domain: domain
-                    event: event
-                    stream: stream
-                    request_id: request_id
-                    trace_id: trace_id
-                    app: app
-                    logger: logger
-                    branch: branch
-                    schema_request: schema_request
-                    output: log
+          - match:
+              selector: '{container=~".*server.*", json_mode="true"}'
+              stages:
+                - json:
+                    expressions:
+                        level: level
+                        msg: msg
+                        time: time
+                        timestamp: timestamp
+                        domain: domain
+                        event: event
+                        stream: stream
+                        request_id: request_id
+                        trace_id: trace_id
+                        app: app
+                        logger: logger
+                        branch: branch
+                        schema_request: schema_request
+                        output: log
+                - template:
+                      source: message
+                      template: "\
+                      {{ if .msg }}{{ .msg }}{{ else if .event }}{{ .event }}\
+                      {{ if .request_id }}RequestID={{ .request_id }} {{ end }}\
+                      {{ if .trace_id }}TraceID={{ .trace_id }} {{ end }}\
+                      {{ if .branch }}branch ({{ .branch }}){{ end }}{{ end }}"
+                - template:
+                      source: timestamp
+                      template: "\
+                      {{ if .time }}{{ .time }}\
+                      {{ else if .timestamp }}{{ .Value }}{{ end }}"
           - template:
                 source: level
                 template: '{{ ToLower .Value }}'
+          - template:
+                source: output
+                template: '{{.timestamp}} {{.component}} [{{.level}}] {{.message}}'
           - template:
                 source: logger
                 template: "\
                 {{ if .domain }}{{ .domain }}{{ else if .app }}{{ .app }}\
                 {{ else if .logger }}{{ .Value }}\
                 {{ else }}none{{ end }}"
-          - template:
-                source: message
-                template: "\
-                {{ if .msg }}{{ .msg }}{{ else if .event }}{{ .event }}\
-                {{ if .request_id }}RequestID={{ .request_id }} {{ end }}\
-                {{ if .trace_id }}TraceID={{ .trace_id }} {{ end }}\
-                {{ if .branch }}branch ({{ .branch }}){{ end }}{{ end }}"
-          - template:
-                source: timestamp
-                template: "\
-                {{ if .time }}{{ .time }}\
-                {{ else if .timestamp }}{{ .Value }}{{ end }}"
           # Creating Loki Labels
           - labels:
                 level: ''
@@ -92,3 +154,5 @@ scrape_configs:
             target_label: 'namespace'
           - source_labels: ['__meta_docker_container_label_pod']
             target_label: 'pod'
+          - source_labels: ['__meta_docker_container_env_INFRAHUB_PRODUCTION']
+            target_label: 'json_mode'
