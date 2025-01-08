@@ -37,7 +37,9 @@ async def execute_query(
     if not graphql_query:
         raise ValueError(f"Unable to find the {InfrahubKind.GRAPHQLQUERY} {name}")
 
-    gql_params = prepare_graphql_params(branch=branch, db=db, at=at, include_mutation=False, include_subscription=False)
+    gql_params = await prepare_graphql_params(
+        branch=branch, db=db, at=at, include_mutation=False, include_subscription=False
+    )
 
     result = await graphql(
         schema=gql_params.schema,

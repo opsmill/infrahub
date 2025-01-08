@@ -18,33 +18,6 @@ from infrahub.tasks.dummy import dummy_flow, dummy_flow_broken
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 from tests.helpers.graphql import graphql
 
-CREATE_TASK = """
-mutation CreateTask(
-    $conclusion: TaskConclusion!,
-    $title: String!,
-    $task_id: UUID,
-    $created_by: String,
-    $related_node: String!,
-    $logs: [RelatedTaskLogCreateInput]
-    ) {
-    InfrahubTaskCreate(
-        data: {
-            id: $task_id,
-            created_by: $created_by,
-            title: $title,
-            conclusion: $conclusion,
-            related_node: $related_node,
-            logs: $logs
-        }
-    ) {
-        ok
-        object {
-            id
-        }
-    }
-}
-"""
-
 QUERY_TASK = """
 query TaskQuery(
     $related_nodes: [String]
@@ -64,6 +37,10 @@ query TaskQuery(
         parameters
         related_node
         related_node_kind
+        related_nodes {
+            id
+            kind
+        }
         title
         updated_at
         start_time
@@ -86,6 +63,10 @@ query TaskQuery(
         id
         related_node
         related_node_kind
+        related_nodes {
+            id
+            kind
+        }
         title
         updated_at
         logs {
@@ -157,7 +138,7 @@ async def delete_flow_runs(prefect_client: PrefectClient):
 
 
 @pytest.fixture
-async def flow_runs_data(prefect_client: PrefectClient, tag_blue, account_bob):
+async def flow_runs_data(prefect_client: PrefectClient, tag_blue, tag_red, account_bob):
     branch1_tag = WorkflowTag.BRANCH.render(identifier="branch1")
     db_tag = WorkflowTag.DATABASE_CHANGE.render()
     items = [
@@ -200,7 +181,13 @@ async def flow_runs_data(prefect_client: PrefectClient, tag_blue, account_bob):
             flow=dummy_flow_broken,
             name="dummy-completed-account-br1-db",
             parameters={"firstname": "xxxx", "lastname": "zzzzz"},
-            tags=[TAG_NAMESPACE, WorkflowTag.RELATED_NODE.render(identifier=account_bob.get_id()), branch1_tag, db_tag],
+            tags=[
+                TAG_NAMESPACE,
+                WorkflowTag.RELATED_NODE.render(identifier=account_bob.get_id()),
+                WorkflowTag.RELATED_NODE.render(identifier=tag_red.get_id()),
+                branch1_tag,
+                db_tag,
+            ],
             state=State(type="COMPLETED"),
         ),
         await prefect_client.create_flow_run(
@@ -230,7 +217,7 @@ async def flow_runs_data(prefect_client: PrefectClient, tag_blue, account_bob):
 
 
 async def run_query(db: InfrahubDatabase, branch: Branch, query: str, variables: Dict[str, Any]) -> ExecutionResult:
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     return await graphql(
         schema=gql_params.schema,
         source=query,
@@ -489,6 +476,7 @@ async def test_task_query_filter_node(
     default_branch: Branch,
     register_core_models_schema: None,
     tag_blue,
+    tag_red,
     account_bob,
     account_bill,
     flow_runs_data,
@@ -515,6 +503,12 @@ async def test_task_query_filter_node(
             "parameters": {"firstname": "xxxx", "lastname": "yyy"},
             "related_node": tag_blue.get_id(),
             "related_node_kind": "BuiltinTag",
+            "related_nodes": [
+                {
+                    "id": tag_blue.get_id(),
+                    "kind": "BuiltinTag",
+                },
+            ],
             "title": flow.name,
             "updated_at": flow.updated.to_iso8601_string(),
             "start_time": None,
@@ -544,12 +538,23 @@ async def test_task_query_filter_node(
             "tags": [
                 "infrahub.app",
                 f"infrahub.app/node/{account_bob.get_id()}",
+                f"infrahub.app/node/{tag_red.get_id()}",
                 "infrahub.app/branch/branch1",
                 "infrahub.app/database-change",
             ],
             "parameters": {"firstname": "xxxx", "lastname": "zzzzz"},
             "related_node": account_bob.get_id(),
             "related_node_kind": "CoreAccount",
+            "related_nodes": [
+                {
+                    "id": account_bob.get_id(),
+                    "kind": "CoreAccount",
+                },
+                {
+                    "id": tag_red.get_id(),
+                    "kind": "BuiltinTag",
+                },
+            ],
             "title": flow.name,
             "updated_at": flow.updated.to_iso8601_string(),
             "start_time": None,
@@ -688,6 +693,12 @@ async def test_task_query_progress(
             "parameters": {"firstname": "xxxx", "lastname": "yyy"},
             "related_node": tag_red.get_id(),
             "related_node_kind": "BuiltinTag",
+            "related_nodes": [
+                {
+                    "id": tag_red.get_id(),
+                    "kind": "BuiltinTag",
+                },
+            ],
             "title": flow.name,
             "updated_at": flow.updated.to_iso8601_string(),
             "start_time": flow.start_time.to_iso8601_string(),

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 import jinja2
 import ujson
 import yaml
-from infrahub_sdk import InfrahubClient  # noqa: TCH002
+from infrahub_sdk import InfrahubClient  # noqa: TC002
 from infrahub_sdk.exceptions import ValidationError
 from infrahub_sdk.protocols import (
     CoreArtifact,

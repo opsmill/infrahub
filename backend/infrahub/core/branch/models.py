@@ -8,7 +8,7 @@ from pydantic import Field, field_validator
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
 )
-from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
+from infrahub.core.models import SchemaBranchHash  # noqa: TC001
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.query import QueryType
 from infrahub.core.query.branch import (

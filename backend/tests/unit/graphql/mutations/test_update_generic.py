@@ -35,7 +35,7 @@ async def test_display_label_generic(db: InfrahubDatabase, animal_person_schema,
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,

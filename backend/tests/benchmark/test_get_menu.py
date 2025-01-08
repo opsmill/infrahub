@@ -11,4 +11,4 @@ async def init_menu(db: InfrahubDatabase, default_branch, register_core_models_s
 
 
 def test_get_menu(aio_benchmark, db: InfrahubDatabase, default_branch, register_core_models_schema, init_menu):
-    aio_benchmark(get_menu, db=db, branch=default_branch, account_session=None)
+    aio_benchmark(get_menu, db=db, branch=default_branch, permission_manager=None)

@@ -4,13 +4,13 @@ import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn, Optional, Union
-from uuid import UUID  # noqa: TCH003
+from uuid import UUID  # noqa: TC003
 
 import git
 from git import Blob, Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
-from infrahub_sdk import InfrahubClient  # noqa: TCH002
+from infrahub_sdk import InfrahubClient  # noqa: TC002
 from prefect import Flow, Task
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
@@ -29,7 +29,7 @@ from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NA
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
 from infrahub.git.worktree import Worktree
 from infrahub.log import get_logger
-from infrahub.services import InfrahubServices  # noqa: TCH001
+from infrahub.services import InfrahubServices  # noqa: TC001
 
 if TYPE_CHECKING:
     from infrahub_sdk.branch import BranchData

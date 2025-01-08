@@ -8,8 +8,8 @@ from pydantic import Field
 
 from infrahub.core.constants import BranchSupportType, HashableModelState
 from infrahub.core.models import HashableModel
-from infrahub.core.schema.attribute_schema import AttributeSchema  # noqa: TCH001
-from infrahub.core.schema.relationship_schema import RelationshipSchema  # noqa: TCH001
+from infrahub.core.schema.attribute_schema import AttributeSchema  # noqa: TC001
+from infrahub.core.schema.relationship_schema import RelationshipSchema  # noqa: TC001
 
 
 class GeneratedBaseNodeSchema(HashableModel):

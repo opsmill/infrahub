@@ -72,7 +72,7 @@ async def test_create_profile_in_schema(db: InfrahubDatabase, default_branch: Br
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -113,7 +113,7 @@ async def test_upsert_profile_in_schema(db: InfrahubDatabase, default_branch: Br
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -173,7 +173,7 @@ async def test_profile_apply(db: InfrahubDatabase, default_branch: Branch, criti
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -246,7 +246,7 @@ async def test_profile_apply_generic(db: InfrahubDatabase, default_branch: Branc
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -314,7 +314,9 @@ async def test_setting_illegal_profiles_raises_error(db: InfrahubDatabase, defau
         }
     }
     """
-    gql_params = prepare_graphql_params(db=db, include_mutation=True, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_mutation=True, include_subscription=False, branch=default_branch
+    )
 
     crit_schema.generate_profile = False
     result = await graphql(
@@ -405,7 +407,7 @@ async def test_is_from_profile_set_correctly(db: InfrahubDatabase, default_branc
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(
@@ -507,7 +509,7 @@ async def test_is_profile_source_set_correctly(db: InfrahubDatabase, default_bra
         }
     }
     """
-    gql_params = prepare_graphql_params(
+    gql_params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
     )
     result = await graphql(

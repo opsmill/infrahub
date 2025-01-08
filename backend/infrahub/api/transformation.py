@@ -19,7 +19,7 @@ from infrahub.core.protocols import (
     CoreTransformJinja2,
     CoreTransformPython,
 )
-from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import TransformError
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.utils import extract_data
@@ -61,7 +61,7 @@ async def transform_python(
             message="Repository doesn't have a commit",
         )
 
-    gql_params = prepare_graphql_params(db=request.app.state.db, branch=branch_params.branch, at=branch_params.at)
+    gql_params = await prepare_graphql_params(db=request.app.state.db, branch=branch_params.branch, at=branch_params.at)
 
     result = await graphql(
         schema=gql_params.schema,
@@ -120,7 +120,7 @@ async def transform_jinja2(
             message="Repository doesn't have a commit",
         )
 
-    gql_params = prepare_graphql_params(db=request.app.state.db, branch=branch_params.branch, at=branch_params.at)
+    gql_params = await prepare_graphql_params(db=request.app.state.db, branch=branch_params.branch, at=branch_params.at)
 
     result = await graphql(
         schema=gql_params.schema,

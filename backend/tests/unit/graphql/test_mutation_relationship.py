@@ -34,7 +34,7 @@ async def test_relationship_add(
         tag_black_main.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -74,7 +74,7 @@ async def test_relationship_add(
         tag_red_main.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -121,7 +121,7 @@ async def test_relationship_remove(
         tag_black_main.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -159,7 +159,7 @@ async def test_relationship_remove(
         tag_red_main.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -199,7 +199,7 @@ async def test_relationship_wrong_name(
         tag_blue_main.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -227,7 +227,7 @@ async def test_relationship_wrong_name(
         tag_blue_main.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -265,7 +265,7 @@ async def test_relationship_wrong_node(
         bad_uuid,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -293,7 +293,7 @@ async def test_relationship_wrong_node(
         person_jack_main.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -335,7 +335,7 @@ async def test_relationship_groups_add(db: InfrahubDatabase, default_branch: Bra
         c2.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -366,7 +366,7 @@ async def test_relationship_groups_add(db: InfrahubDatabase, default_branch: Bra
         g2.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -413,7 +413,7 @@ async def test_relationship_groups_remove(db: InfrahubDatabase, default_branch: 
         c1.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -444,7 +444,7 @@ async def test_relationship_groups_remove(db: InfrahubDatabase, default_branch: 
         g2.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -493,7 +493,7 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
         g2.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -528,7 +528,7 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
         g2.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -567,7 +567,7 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
         g2.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -602,7 +602,7 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
         g2.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -643,7 +643,7 @@ async def test_relationship_add_busy(db: InfrahubDatabase, default_branch: Branc
         c1.id,
     )
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -682,7 +682,7 @@ async def test_relationship_add_from_pool(
     }
     """ % (hugh.id, "ip_prefixes", prefix_pool_01["prefix_pool"].id)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
         schema=gql_params.schema, source=query, context_value=gql_params.context, root_value=None, variable_values={}
     )
@@ -735,7 +735,7 @@ async def test_add_generic_related_node_with_hfid(
     }
     """ % (person.id)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
     result = await graphql(
         schema=gql_params.schema,

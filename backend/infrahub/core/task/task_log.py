@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import ConfigDict, Field
 
-from infrahub.core.constants import Severity  # noqa: TCH001
+from infrahub.core.constants import Severity  # noqa: TC001
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.query.task_log import TaskLogNodeCreateQuery
 from infrahub.core.timestamp import current_timestamp

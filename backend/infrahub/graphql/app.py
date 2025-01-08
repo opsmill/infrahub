@@ -205,7 +205,7 @@ class InfrahubGraphQLApp:
         operation_name = operation.get("operationName")
 
         at = request.query_params.get("at", None)
-        graphql_params = prepare_graphql_params(
+        graphql_params = await prepare_graphql_params(
             db=db, branch=branch, at=at, account_session=account_session, request=request
         )
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
@@ -377,7 +377,7 @@ class InfrahubGraphQLApp:
         variable_values = data.get("variables")
         operation_name = data.get("operationName")
 
-        graphql_params = prepare_graphql_params(db=db, branch=branch)
+        graphql_params = await prepare_graphql_params(db=db, branch=branch)
 
         errors: list[GraphQLError] = []
         operation: Optional[OperationDefinitionNode] = None
