@@ -1,8 +1,10 @@
 import { Button } from "@/components/buttons/button-primitive";
+import { InlineDisplay } from "@/components/display/inline-display";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { Table, tRowValue } from "@/components/table/table";
+import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { ACCOUNT_GROUP_OBJECT } from "@/config/constants";
@@ -20,7 +22,6 @@ import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
 import { GroupMembers } from "./group-member";
-import { RelationshipDisplay } from "./relationship-display";
 
 function Groups() {
   const [search, setSearch] = useState("");
@@ -94,8 +95,9 @@ function Groups() {
         roles: {
           value: { edges: edge?.node?.roles?.edges },
           display: (
-            <RelationshipDisplay
+            <InlineDisplay
               items={edge?.node?.roles?.edges?.map((edge) => edge?.node?.display_label)}
+              render={(item) => <Badge>{item}</Badge>}
             />
           ),
         },

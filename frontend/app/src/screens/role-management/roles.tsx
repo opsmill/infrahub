@@ -10,8 +10,10 @@ import ErrorScreen from "../errors/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 
 import { Button } from "@/components/buttons/button-primitive";
+import { InlineDisplay } from "@/components/display/inline-display";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
+import { Badge } from "@/components/ui/badge";
 import { SearchInput } from "@/components/ui/search-input";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -20,7 +22,6 @@ import { useSchema } from "@/hooks/useSchema";
 import { NetworkStatus } from "@apollo/client";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 import { getPermission } from "../permission/utils";
-import { RelationshipDisplay } from "./relationship-display";
 
 function Roles() {
   const [search, setSearch] = useState("");
@@ -76,16 +77,18 @@ function Roles() {
         groups: {
           value: { edges: edge?.node?.groups?.edges },
           display: (
-            <RelationshipDisplay
+            <InlineDisplay
               items={edge?.node?.groups?.edges?.map((edge) => edge?.node?.display_label)}
+              render={(item) => <Badge>{item}</Badge>}
             />
           ),
         },
         permissions: {
           value: { edges: edge?.node?.permissions?.edges },
           display: (
-            <RelationshipDisplay
+            <InlineDisplay
               items={edge?.node?.permissions?.edges?.map((edge) => edge?.node?.identifier?.value)}
+              render={(item) => <Badge>{item}</Badge>}
             />
           ),
         },
