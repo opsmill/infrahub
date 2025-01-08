@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import List
 
 from infrahub.core.path import GroupedDataPaths
 
@@ -15,4 +14,4 @@ class ConstraintCheckerInterface(ABC):
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool: ...
 
     @abstractmethod
-    async def check(self, request: SchemaConstraintValidatorRequest) -> List[GroupedDataPaths]: ...
+    async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]: ...

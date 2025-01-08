@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -23,7 +23,7 @@ CAR_KIND = "TestingCar"
 
 class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
-    def schema_car_base(self) -> Dict[str, Any]:
+    def schema_car_base(self) -> dict[str, Any]:
         return {
             "name": "Car",
             "namespace": "Testing",
@@ -47,7 +47,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_humanoid_base(self) -> Dict[str, Any]:
+    def schema_humanoid_base(self) -> dict[str, Any]:
         return {
             "name": "Humanoid",
             "namespace": "Testing",
@@ -65,7 +65,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_person_base(self) -> Dict[str, Any]:
+    def schema_person_base(self) -> dict[str, Any]:
         return {
             "name": "Person",
             "namespace": "Testing",
@@ -78,7 +78,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_cylon_base(self) -> Dict[str, Any]:
+    def schema_cylon_base(self) -> dict[str, Any]:
         return {
             "name": "Cylon",
             "namespace": "Testing",
@@ -91,7 +91,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_robot_base(self) -> Dict[str, Any]:
+    def schema_robot_base(self) -> dict[str, Any]:
         return {
             "name": "Robot",
             "namespace": "Testing",
@@ -138,12 +138,12 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         return objs
 
     @pytest.fixture(scope="class")
-    def schema_01_cylon_robot(self, schema_cylon_base) -> Dict[str, Any]:
+    def schema_01_cylon_robot(self, schema_cylon_base) -> dict[str, Any]:
         schema_cylon_base["inherit_from"] = ["TestingHumanoid", "TestingRobot"]
         return schema_cylon_base
 
     @pytest.fixture(scope="class")
-    def schema_03_cylon_robot(self, schema_cylon_base) -> Dict[str, Any]:
+    def schema_03_cylon_robot(self, schema_cylon_base) -> dict[str, Any]:
         schema_cylon_base["inherit_from"] = []
         return schema_cylon_base
 
@@ -154,7 +154,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         schema_car_base,
         schema_person_base,
         schema_cylon_base,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_humanoid_base],
@@ -164,7 +164,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_02_add_generic(
         self, schema_humanoid_base, schema_car_base, schema_person_base, schema_01_cylon_robot, schema_robot_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_humanoid_base, schema_robot_base],
@@ -174,7 +174,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_step_03_remove_generic(
         self, schema_humanoid_base, schema_car_base, schema_person_base, schema_03_cylon_robot, schema_robot_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_humanoid_base, schema_robot_base],

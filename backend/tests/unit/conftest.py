@@ -1,7 +1,7 @@
 import shutil
 from itertools import islice
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pendulum
 import pytest
@@ -1346,7 +1346,7 @@ async def car_person_schema_generics(
 
 
 @pytest.fixture
-async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_generics) -> Dict[str, Node]:
+async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_generics) -> dict[str, Node]:
     ecar = registry.schema.get(name="TestElectricCar")
     gcar = registry.schema.get(name="TestGazCar")
     person = registry.schema.get(name="TestPerson")
@@ -1381,7 +1381,7 @@ async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_gener
 
 @pytest.fixture
 async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
-    SCHEMA: Dict[str, Any] = {
+    SCHEMA: dict[str, Any] = {
         "nodes": [
             {
                 "name": "Tag",
@@ -2130,7 +2130,7 @@ async def hierarchical_location_data(
     return await _build_hierarchical_location_data(db=db)
 
 
-async def _build_hierarchical_location_data(db: InfrahubDatabase) -> Dict[str, Node]:
+async def _build_hierarchical_location_data(db: InfrahubDatabase) -> dict[str, Node]:
     REGIONS = (
         ("north-america",),
         ("europe",),
@@ -2174,8 +2174,8 @@ async def _build_hierarchical_location_data(db: InfrahubDatabase) -> Dict[str, N
 
 @pytest.fixture
 async def hierarchical_location_data_thing(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
-) -> Dict[str, Node]:
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+) -> dict[str, Node]:
     nodes = {}
     for item_name, item in hierarchical_location_data.items():
         obj = await Node.init(db=db, schema="TestThing")
@@ -2191,7 +2191,7 @@ async def hierarchical_location_data_thing(
 @pytest.fixture
 async def hierarchical_groups_data(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
-) -> Dict[str, Node]:
+) -> dict[str, Node]:
     def batched(iterable, n):
         """
         Local implementation of the new batched function that was added to itertools in 3.12
