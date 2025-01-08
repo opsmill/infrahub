@@ -29,7 +29,7 @@ async def test_config_endpoint_anonymous_account(
     with client:
         response = client.get("/api/config")
 
-    assert response.status_code == 200 if allow_anonymous_access else 401
+    assert response.status_code == 200
 
 
 async def test_info_endpoint(

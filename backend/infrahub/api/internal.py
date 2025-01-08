@@ -39,7 +39,7 @@ class InfoAPI(BaseModel):
 
 
 @router.get("/config")
-async def get_config(_: AccountSession = Depends(get_current_user)) -> ConfigAPI:
+async def get_config() -> ConfigAPI:
     return ConfigAPI(
         main=config.SETTINGS.main,
         logging=config.SETTINGS.logging,
