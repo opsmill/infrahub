@@ -1,0 +1,69 @@
+import { Button } from "@/components/buttons/button-primitive";
+import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { TASK_OBJECT } from "@/config/constants";
+import { Branch } from "@/generated/graphql";
+import graphqlClient from "@/graphql/graphqlClientApollo";
+import { BRANCH_MERGE } from "@/graphql/mutations/branches/mergeBranch";
+import { useAuth } from "@/hooks/useAuth";
+import { BRANCH_MERGE_WORKFLOW } from "@/screens/tasks/constants";
+import { datetimeAtom } from "@/state/atoms/time.atom";
+import { useQuery } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { toast } from "react-toastify";
+import { GET_BRANCH_ACTION_STATE } from "./graphql/getBranchActionState";
+
+type BranchMergeButtonProps = {
+  branch: Branch;
+};
+
+export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
+  const { isAuthenticated } = useAuth();
+  const date = useAtomValue(datetimeAtom);
+
+  const { loading, data } = useQuery(GET_BRANCH_ACTION_STATE, {
+    variables: {
+      branch: branch.name,
+      workflow: [BRANCH_MERGE_WORKFLOW],
+    },
+    pollInterval: 5_000,
+  });
+
+  const taskData = data?.[TASK_OBJECT];
+
+  const handleSubmit = async () => {
+    try {
+      await graphqlClient.mutate({
+        mutation: BRANCH_MERGE,
+        variables: {
+          name: branch.name,
+        },
+        context: {
+          branch: branch.name,
+          date,
+        },
+      });
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merge requested!"} />, {
+        toastId: "alert-success",
+      });
+    } catch (error) {
+      console.error(error);
+      toast(
+        <Alert type={ALERT_TYPES.ERROR} message={"An error occurred while merging the branch"} />
+      );
+    }
+  };
+
+  return (
+    <Button
+      disabled={!isAuthenticated || loading || branch.is_default || taskData?.count > 0}
+      onClick={handleSubmit}
+      variant={"active"}
+      className="flex items-center gap-2"
+    >
+      Merge
+      <Icon icon={"mdi:check"} />
+    </Button>
+  );
+};

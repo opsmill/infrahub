@@ -8,9 +8,6 @@ import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { QSP } from "@/config/qsp";
 import graphqlClient from "@/graphql/graphqlClientApollo";
 import { BRANCH_DELETE } from "@/graphql/mutations/branches/deleteBranch";
-import { BRANCH_MERGE } from "@/graphql/mutations/branches/mergeBranch";
-import { BRANCH_REBASE } from "@/graphql/mutations/branches/rebaseBranch";
-import { BRANCH_VALIDATE } from "@/graphql/mutations/branches/validateBranch";
 import { getBranchDetailsQuery } from "@/graphql/queries/branches/getBranchDetails";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
@@ -21,8 +18,7 @@ import { branchesState } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { classNames } from "@/utils/common";
 import { constructPath, getCurrentQsp } from "@/utils/fetch";
-import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
-import { ArrowPathIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
@@ -33,6 +29,9 @@ import {
   BRANCH_REBASE_WORKFLOW,
   BRANCH_VALIDATE_WORKFLOW,
 } from "../tasks/constants";
+import { BranchMergeButton } from "./branch-actions/branch-merge-button";
+import { BranchRebaseButton } from "./branch-actions/branch-rebase-button";
+import { BranchValidateButton } from "./branch-actions/branch-validate-button";
 import { TaskDisplay } from "./task-display";
 
 export const BranchDetails = () => {
@@ -123,22 +122,8 @@ export const BranchDetails = () => {
         <div>
           {branch?.name && (
             <>
-              <div className="flex flex-1 flex-col md:flex-row">
-                <Button
-                  disabled={!isAuthenticated || branch.is_default}
-                  className="mr-0 md:mr-3"
-                  onClick={() =>
-                    branchAction({
-                      successMessage: "Branch merge requested!",
-                      errorMessage: "An error occurred while merging the branch",
-                      mutation: BRANCH_MERGE,
-                    })
-                  }
-                  variant={"active"}
-                >
-                  Merge
-                  <CheckIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                </Button>
+              <div className="flex flex-1 flex-col md:flex-row gap-4">
+                <BranchMergeButton branch={branch} />
 
                 <LinkButton
                   onClick={(event) => {
@@ -147,7 +132,6 @@ export const BranchDetails = () => {
                     }
                   }}
                   className={classNames(
-                    "mr-0 md:mr-3",
                     (!isAuthenticated || branch.is_default) && "opacity-50 cursor-not-allowed"
                   )}
                   to={constructPath("/proposed-changes/new", [
@@ -158,41 +142,12 @@ export const BranchDetails = () => {
                   <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
                 </LinkButton>
 
-                <Button
-                  disabled={!isAuthenticated || branch.is_default}
-                  className="mr-0 md:mr-3"
-                  onClick={() =>
-                    branchAction({
-                      successMessage: "Branch rebase requested!",
-                      errorMessage: "An error occurred while rebasing the branch",
-                      mutation: BRANCH_REBASE,
-                    })
-                  }
-                  variant={"dark"}
-                >
-                  Rebase
-                  <ArrowPathIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                </Button>
+                <BranchRebaseButton branch={branch} />
 
-                <Button
-                  disabled={branch.is_default}
-                  className="mr-0 md:mr-3"
-                  onClick={() =>
-                    branchAction({
-                      successMessage: "Branch validation requested!",
-                      errorMessage: "An error occurred while validating the branch",
-                      mutation: BRANCH_VALIDATE,
-                    })
-                  }
-                  variant={"warning"}
-                >
-                  Validate
-                  <ShieldCheckIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-                </Button>
+                <BranchValidateButton branch={branch} />
 
                 <Button
                   disabled={!isAuthenticated || branch.is_default}
-                  className="mr-0 md:mr-3"
                   onClick={() => setDisplayModal(true)}
                   variant={"danger"}
                 >

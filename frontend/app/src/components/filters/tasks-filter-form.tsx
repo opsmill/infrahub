@@ -35,6 +35,10 @@ export const TasksFilterForm = forwardRef<FormRef, FilterFormProps>(
         ref={ref}
         onSubmit={onSubmit}
         className={classNames("bg-custom-white flex flex-col flex-1 overflow-auto p-4", className)}
+        defaultValues={{
+          branch: currentFilters?.branch,
+          state: currentFilters?.state,
+        }}
         {...props}
       >
         <DropdownField
