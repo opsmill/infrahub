@@ -46,6 +46,14 @@ class EnrichedDiffRequest:
     tracking_id: TrackingId | None = field(default=None)
     node_field_specifiers: set[NodeFieldSpecifier] = field(default_factory=set)
 
+    def __repr__(self) -> str:
+        return (
+            f"EnrichedDiffRequest(base_branch_name={self.base_branch.name}, diff_branch_name={self.diff_branch.name},"
+            f" from_time={self.from_time.to_string()}, to_time={self.to_time.to_string()},"
+            f" tracking_id={self.tracking_id.serialize() if self.tracking_id else None}),"
+            f" num_node_field_specifiers={len(self.node_field_specifiers)}"
+        )
+
 
 class DiffCoordinator:
     lock_namespace = "diff-update"
@@ -431,11 +439,13 @@ class DiffCoordinator:
                 else:
                     end_time = diff_request.to_time
                 # if there are no changes on either branch in this time range, then there cannot be a diff
+                log.info(f"Checking number of changes on branches for {diff_request!r}")
                 num_changes_by_branch = await self.diff_repo.get_num_changes_in_time_range_by_branch(
                     branch_names=[diff_request.base_branch.name, diff_request.diff_branch.name],
                     from_time=current_time,
                     to_time=end_time,
                 )
+                log.info(f"Number of changes: {num_changes_by_branch}")
                 might_have_changes_in_time_range = any(num_changes_by_branch.values())
                 if not might_have_changes_in_time_range:
                     incremental_diffs_and_requests.append(None)
@@ -490,9 +500,11 @@ class DiffCoordinator:
         for diff_or_request in diff_or_request_list:
             if isinstance(diff_or_request, EnrichedDiffRequest):
                 if previous_diff_pair:
+                    log.info(f"Getting node field specifiers diff uuid={previous_diff_pair.diff_branch_diff.uuid}")
                     node_field_specifiers = await self.diff_repo.get_node_field_specifiers(
                         diff_id=previous_diff_pair.diff_branch_diff.uuid,
                     )
+                    log.info(f"Number node field specifiers: {len(node_field_specifiers)}")
                     diff_or_request.node_field_specifiers = node_field_specifiers
                 is_incremental_diff = diff_or_request.from_time != full_diff_request.from_time
                 single_enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata = await self._calculate_enriched_diff(
@@ -539,6 +551,7 @@ class DiffCoordinator:
     async def _calculate_enriched_diff(
         self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool
     ) -> EnrichedDiffs:
+        log.info(f"Calculating diff for {diff_request!r}, include_unchanged={is_incremental_diff}")
         calculated_diff_pair = await self.diff_calculator.calculate_diff(
             base_branch=diff_request.base_branch,
             diff_branch=diff_request.diff_branch,
@@ -547,5 +560,7 @@ class DiffCoordinator:
             include_unchanged=is_incremental_diff,
             previous_node_specifiers=diff_request.node_field_specifiers,
         )
+        log.info("Calculation complete. Enriching diff...")
         enriched_diff_pair = await self.diff_enricher.enrich(calculated_diffs=calculated_diff_pair)
+        log.info("Enrichment complete")
         return enriched_diff_pair

@@ -7,6 +7,7 @@ from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import ResourceNotFoundError
+from infrahub.log import get_logger
 
 from ..model.path import (
     ConflictSelection,
@@ -34,6 +35,8 @@ from ..query.save import EnrichedDiffRootsCreateQuery, EnrichedNodeBatchCreateQu
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
 from .deserializer import EnrichedDiffDeserializer
+
+log = get_logger()
 
 
 class DiffRepository:
@@ -182,6 +185,7 @@ class DiffRepository:
 
     @retry_db_transaction(name="enriched_diff_save")
     async def save(self, enriched_diffs: EnrichedDiffs) -> None:
+        log.info("Saving diff...")
         root_query = await EnrichedDiffRootsCreateQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await root_query.execute(db=self.db)
         for node_create_batch in self._get_node_create_request_batch(enriched_diffs=enriched_diffs):
@@ -189,6 +193,7 @@ class DiffRepository:
             await node_query.execute(db=self.db)
         link_query = await EnrichedNodesLinkQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await link_query.execute(db=self.db)
+        log.info("Diff saved.")
 
     async def summary(
         self,
@@ -334,14 +339,22 @@ class DiffRepository:
         return query.get_num_changes_by_branch()
 
     async def get_node_field_specifiers(self, diff_id: str) -> set[NodeFieldSpecifier]:
-        query = await EnrichedDiffFieldSpecifiersQuery.init(db=self.db, diff_id=diff_id)
-        await query.execute(db=self.db)
+        limit = 5000
+        offset = 0
         specifiers: set[NodeFieldSpecifier] = set()
-        specifiers.update(
-            NodeFieldSpecifier(
-                node_uuid=field_specifier_tuple[0],
-                field_name=field_specifier_tuple[1],
-            )
-            for field_specifier_tuple in query.get_node_field_specifier_tuples()
-        )
+        while True:
+            query = await EnrichedDiffFieldSpecifiersQuery.init(db=self.db, diff_id=diff_id, offset=offset, limit=limit)
+            await query.execute(db=self.db)
+
+            new_specifiers = {
+                NodeFieldSpecifier(
+                    node_uuid=field_specifier_tuple[0],
+                    field_name=field_specifier_tuple[1],
+                )
+                for field_specifier_tuple in query.get_node_field_specifier_tuples()
+            }
+            if not new_specifiers:
+                break
+            specifiers |= new_specifiers
+            offset += limit
         return specifiers

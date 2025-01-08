@@ -185,6 +185,7 @@ async def merge_branch(branch: str) -> None:
             try:
                 await merger.merge()
             except Exception as exc:
+                log.exception("Merge failed, beginning rollback")
                 await merger.rollback()
                 raise MergeFailedError(branch_name=branch) from exc
             await merger.update_schema()
