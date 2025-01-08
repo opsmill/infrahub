@@ -3,14 +3,13 @@ import { Pagination } from "@/components/ui/pagination";
 import { SEARCH_ANY_FILTER, SEARCH_FILTERS, TASK_OBJECT, TASK_TAB } from "@/config/constants";
 import useQuery from "@/hooks/useQuery";
 import Content from "@/screens/layout/content";
-import { gql } from "@apollo/client";
 
 import { DateDisplay } from "@/components/display/date-display";
 import { Filters } from "@/components/filters/filters";
 import { Id } from "@/components/ui/id";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { QSP } from "@/config/qsp";
-import { getTasksItems } from "@/graphql/queries/tasks/getTasksItems";
+import { GET_TASKS } from "@/graphql/queries/tasks/getTasksItems";
 import useFilters, { Filter } from "@/hooks/useFilters";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
@@ -18,6 +17,7 @@ import { debounce } from "@/utils/common";
 import { constructPath } from "@/utils/fetch";
 import { forwardRef, useImperativeHandle } from "react";
 import { useLocation, useParams } from "react-router-dom";
+import { RelationshipDisplay } from "../role-management/relationship-display";
 import { getStateBadge } from "./task-item-details";
 
 interface TaskItemsProps {
@@ -35,21 +35,12 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
 
   const { pathname } = location;
 
-  const queryString = getTasksItems({
-    kind: TASK_OBJECT,
-    relatedNode: objectid || proposedChangeId,
-  });
-
-  const query = gql`
-    ${queryString}
-  `;
-
   const {
     loading,
     error,
     data = {},
     refetch,
-  } = useQuery(query, {
+  } = useQuery(GET_TASKS, {
     variables: {
       search,
       branch,
@@ -106,8 +97,8 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
       label: "State",
     },
     !hideRelatedNode && {
-      name: "related_node",
-      label: "Related node",
+      name: "related_nodes",
+      label: "Related nodes",
     },
     {
       name: "progress",
@@ -136,34 +127,40 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
     return url;
   };
 
-  const rows = edges?.map((edge: any) => ({
-    link: getUrl(edge.node.id),
-    values: {
-      title: {
-        display: edge.node.title,
+  const rows = edges?.map((edge: any) => {
+    return {
+      link: getUrl(edge.node.id),
+      values: {
+        title: {
+          display: edge.node.title,
+        },
+        branch: {
+          display: edge.node.branch,
+        },
+        state: {
+          display: getStateBadge[edge.node.state],
+        },
+        related_nodes: {
+          display: (
+            <RelationshipDisplay
+              items={edge.node.related_nodes.map(({ id, kind }) => (
+                <Id key={id} id={id} kind={kind} preventCopy />
+              ))}
+            />
+          ),
+        },
+        progress: {
+          display: edge.node.progress,
+        },
+        workflow: {
+          display: edge.node.workflow,
+        },
+        updated_at: {
+          display: <DateDisplay date={edge.node.updated_at} />,
+        },
       },
-      branch: {
-        display: edge.node.branch,
-      },
-      state: {
-        display: getStateBadge[edge.node.state],
-      },
-      related_node: {
-        display: edge.node.related_node_kind && (
-          <Id id={edge.node.related_node} kind={edge.node.related_node_kind} preventCopy />
-        ),
-      },
-      progress: {
-        display: edge.node.progress,
-      },
-      workflow: {
-        display: edge.node.workflow,
-      },
-      updated_at: {
-        display: <DateDisplay date={edge.node.updated_at} />,
-      },
-    },
-  }));
+    };
+  });
 
   return (
     <Content.Card>
