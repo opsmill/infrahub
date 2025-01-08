@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Iterable, Optional
 
 from infrahub.core import registry
+from infrahub.core.constants import NULL_VALUE
 from infrahub.core.schema import (
     MainSchemaTypes,
     SchemaAttributePath,
@@ -61,10 +62,12 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                         include_in_query = True
                     attribute_name = attribute_path.attribute_schema.name
                     attribute = getattr(updated_node, attribute_name)
-                    if attribute.is_enum:
+                    if attribute.is_enum and attribute.value:
                         attribute_value = attribute.value.value
                     else:
                         attribute_value = attribute.value
+                    if attribute_value is None:
+                        attribute_value = NULL_VALUE
                     query_attribute_paths.add(
                         QueryAttributePath(
                             attribute_name=attribute_name,
@@ -96,10 +99,14 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                 attribute_name = schema_attribute_path.attribute_schema.name
                 attribute_field = getattr(updated_node, attribute_name)
                 attribute_value = getattr(attribute_field, schema_attribute_path.attribute_property_name or "value")
+                if attribute_field.is_enum and attribute_value:
+                    attribute_value = attribute_value.value
+                elif attribute_value is None:
+                    attribute_value = NULL_VALUE
                 node_value_combination.append(
                     SchemaAttributePathValue.from_schema_attribute_path(
                         schema_attribute_path,
-                        value=attribute_value.value if attribute_field.is_enum else attribute_value,
+                        value=attribute_value,
                     )
                 )
         return node_value_combination
