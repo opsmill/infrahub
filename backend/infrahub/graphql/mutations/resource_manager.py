@@ -10,6 +10,7 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.schema import NodeSchema
+from infrahub.database import retry_db_transaction
 from infrahub.exceptions import QueryValidationError, SchemaNotFoundError, ValidationError
 
 from ..queries.resource_manager import PoolAllocatedNode
@@ -167,6 +168,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     @classmethod
+    @retry_db_transaction(name="resource_manager_create")
     async def mutate_create(
         cls,
         info: GraphQLResolveInfo,
@@ -196,6 +198,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         return await super().mutate_create(info=info, data=data, branch=branch)
 
     @classmethod
+    @retry_db_transaction(name="resource_manager_update")
     async def mutate_update(
         cls,
         info: GraphQLResolveInfo,
