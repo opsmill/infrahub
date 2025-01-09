@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Iterable, Literal, Sequence, overload
+from uuid import uuid4
 
 from infrahub import lock
-from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 
 from .model.path import (
     BranchTrackingId,
     EnrichedDiffRoot,
+    EnrichedDiffRootMetadata,
     EnrichedDiffs,
+    EnrichedDiffsMetadata,
     NameTrackingId,
     NodeFieldSpecifier,
     TrackingId,
@@ -41,7 +43,16 @@ class EnrichedDiffRequest:
     diff_branch: Branch
     from_time: Timestamp
     to_time: Timestamp
+    tracking_id: TrackingId | None = field(default=None)
     node_field_specifiers: set[NodeFieldSpecifier] = field(default_factory=set)
+
+    def __repr__(self) -> str:
+        return (
+            f"EnrichedDiffRequest(base_branch_name={self.base_branch.name}, diff_branch_name={self.diff_branch.name},"
+            f" from_time={self.from_time.to_string()}, to_time={self.to_time.to_string()},"
+            f" tracking_id={self.tracking_id.serialize() if self.tracking_id else None}),"
+            f" num_node_field_specifiers={len(self.node_field_specifiers)}"
+        )
 
 
 class DiffCoordinator:
@@ -77,10 +88,11 @@ class DiffCoordinator:
         from_time: str | None = None,
         to_time: str | None = None,
         name: str | None = None,
-    ) -> EnrichedDiffRoot:
+    ) -> None:
         # we are updating a diff that tracks the full lifetime of a branch
         if not name and not from_time and not to_time:
-            return await self.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)
+            await self.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)
+            return
 
         if from_time:
             from_timestamp = Timestamp(from_time)
@@ -90,7 +102,7 @@ class DiffCoordinator:
             to_timestamp = Timestamp(to_time)
         else:
             to_timestamp = Timestamp()
-        return await self.create_or_update_arbitrary_timeframe_diff(
+        await self.create_or_update_arbitrary_timeframe_diff(
             base_branch=base_branch,
             diff_branch=diff_branch,
             from_time=from_timestamp,
@@ -104,8 +116,28 @@ class DiffCoordinator:
             lock_name += "__incremental"
         return lock_name
 
-    async def update_branch_diff(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRoot:
-        log.debug(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
+    async def update_branch_diff_and_return(self, base_branch: Branch, diff_branch: Branch) -> EnrichedDiffRoot:
+        enriched_diff = await self.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)
+        if isinstance(enriched_diff, EnrichedDiffRoot):
+            return enriched_diff
+        return await self._finalize_diff_root_metadata(diff_root_metadata=enriched_diff)
+
+    async def _finalize_diff_root_metadata(self, diff_root_metadata: EnrichedDiffRootMetadata) -> EnrichedDiffRoot:
+        # if this is EnrichedDiffMetadata, we need to retrieve the full diff and set its metadata to match
+        full_enriched_diff = await self.diff_repo.get_one(
+            diff_branch_name=diff_root_metadata.diff_branch_name, diff_id=diff_root_metadata.uuid
+        )
+        full_enriched_diff.update_metadata(
+            from_time=diff_root_metadata.from_time,
+            to_time=diff_root_metadata.to_time,
+            tracking_id=diff_root_metadata.tracking_id,
+        )
+        return full_enriched_diff
+
+    async def update_branch_diff(
+        self, base_branch: Branch, diff_branch: Branch
+    ) -> EnrichedDiffRoot | EnrichedDiffRootMetadata:
+        log.info(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
         incremental_lock_name = self._get_lock_name(
             base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=True
         )
@@ -113,9 +145,9 @@ class DiffCoordinator:
             name=incremental_lock_name, namespace=self.lock_namespace
         )
         if existing_incremental_lock and await existing_incremental_lock.locked():
-            log.debug(f"Branch diff update for {base_branch.name} - {diff_branch.name} already in progress")
+            log.info(f"Branch diff update for {base_branch.name} - {diff_branch.name} already in progress")
             async with self.lock_registry.get(name=incremental_lock_name, namespace=self.lock_namespace):
-                log.debug(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
+                log.info(f"Existing branch diff update for {base_branch.name} - {diff_branch.name} complete")
                 return await self.diff_repo.get_one(
                     tracking_id=BranchTrackingId(name=diff_branch.name), diff_branch_name=diff_branch.name
                 )
@@ -129,19 +161,24 @@ class DiffCoordinator:
             self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace),
             self.lock_registry.get(name=incremental_lock_name, namespace=self.lock_namespace),
         ):
-            log.debug(f"Acquired lock to run branch diff update for {base_branch.name} - {diff_branch.name}")
+            log.info(f"Acquired lock to run branch diff update for {base_branch.name} - {diff_branch.name}")
             enriched_diffs = await self._update_diffs(
                 base_branch=base_branch,
                 diff_branch=diff_branch,
                 from_time=from_time,
                 to_time=to_time,
                 tracking_id=tracking_id,
+                force_branch_refresh=False,
             )
+            if not isinstance(enriched_diffs, EnrichedDiffs):
+                await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
+                return enriched_diffs.diff_branch_diff
+
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.base_branch_diff)
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff)
             await self.diff_repo.save(enriched_diffs=enriched_diffs)
             await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
-            log.debug(f"Branch diff update complete for {base_branch.name} - {diff_branch.name}")
+            log.info(f"Branch diff update complete for {base_branch.name} - {diff_branch.name}")
         return enriched_diffs.diff_branch_diff
 
     async def create_or_update_arbitrary_timeframe_diff(
@@ -159,19 +196,25 @@ class DiffCoordinator:
             base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=False
         )
         async with self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace):
-            log.debug(f"Acquired lock to run arbitrary diff update for {base_branch.name} - {diff_branch.name}")
+            log.info(f"Acquired lock to run arbitrary diff update for {base_branch.name} - {diff_branch.name}")
             enriched_diffs = await self._update_diffs(
                 base_branch=base_branch,
                 diff_branch=diff_branch,
                 from_time=from_time,
                 to_time=to_time,
                 tracking_id=tracking_id,
+                force_branch_refresh=False,
             )
+            # metadata-only diff, so no nodes to enrich
+            if not isinstance(enriched_diffs, EnrichedDiffs):
+                await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
+                return await self._finalize_diff_root_metadata(diff_root_metadata=enriched_diffs.diff_branch_diff)
+
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.base_branch_diff)
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff)
             await self.diff_repo.save(enriched_diffs=enriched_diffs)
             await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
-            log.debug(f"Arbitrary diff update complete for {base_branch.name} - {diff_branch.name}")
+            log.info(f"Arbitrary diff update complete for {base_branch.name} - {diff_branch.name}")
         return enriched_diffs.diff_branch_diff
 
     async def recalculate(
@@ -184,7 +227,7 @@ class DiffCoordinator:
             base_branch_name=base_branch.name, diff_branch_name=diff_branch.name, is_incremental=False
         )
         async with self.lock_registry.get(name=general_lock_name, namespace=self.lock_namespace):
-            log.debug(f"Acquired lock to recalculate diff for {base_branch.name} - {diff_branch.name}")
+            log.info(f"Acquired lock to recalculate diff for {base_branch.name} - {diff_branch.name}")
             current_branch_diff = await self.diff_repo.get_one(diff_branch_name=diff_branch.name, diff_id=diff_id)
             current_base_diff = await self.diff_repo.get_one(
                 diff_branch_name=base_branch.name, diff_id=current_branch_diff.partner_uuid
@@ -205,7 +248,6 @@ class DiffCoordinator:
                 tracking_id=current_branch_diff.tracking_id,
                 force_branch_refresh=True,
             )
-
             if current_branch_diff:
                 await self.conflict_transferer.transfer(
                     earlier=current_branch_diff, later=enriched_diffs.diff_branch_diff
@@ -215,16 +257,16 @@ class DiffCoordinator:
             await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff)
             await self.diff_repo.save(enriched_diffs=enriched_diffs)
             await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
-            log.debug(f"Diff recalculation complete for {base_branch.name} - {diff_branch.name}")
+            log.info(f"Diff recalculation complete for {base_branch.name} - {diff_branch.name}")
         return enriched_diffs.diff_branch_diff
 
     def _get_ordered_diff_pairs(
-        self, diff_pairs: Iterable[EnrichedDiffs], allow_overlap: bool = False
-    ) -> list[EnrichedDiffs]:
+        self, diff_pairs: Iterable[EnrichedDiffsMetadata], allow_overlap: bool = False
+    ) -> list[EnrichedDiffsMetadata]:
         ordered_diffs = sorted(diff_pairs, key=lambda d: d.diff_branch_diff.from_time)
         if allow_overlap:
             return ordered_diffs
-        ordered_diffs_no_overlaps: list[EnrichedDiffs] = []
+        ordered_diffs_no_overlaps: list[EnrichedDiffsMetadata] = []
         for candidate_diff_pair in ordered_diffs:
             if not ordered_diffs_no_overlaps:
                 ordered_diffs_no_overlaps.append(candidate_diff_pair)
@@ -242,6 +284,54 @@ class DiffCoordinator:
                 ordered_diffs_no_overlaps[-1] = candidate_diff_pair
         return ordered_diffs_no_overlaps
 
+    def _build_enriched_diffs_with_no_nodes(self, diff_request: EnrichedDiffRequest) -> EnrichedDiffs:
+        base_uuid = str(uuid4())
+        branch_uuid = str(uuid4())
+        return EnrichedDiffs(
+            base_branch_name=diff_request.base_branch.name,
+            diff_branch_name=diff_request.diff_branch.name,
+            base_branch_diff=EnrichedDiffRoot(
+                base_branch_name=diff_request.base_branch.name,
+                diff_branch_name=diff_request.base_branch.name,
+                from_time=diff_request.from_time,
+                to_time=diff_request.to_time,
+                tracking_id=diff_request.tracking_id,
+                uuid=base_uuid,
+                partner_uuid=branch_uuid,
+            ),
+            diff_branch_diff=EnrichedDiffRoot(
+                base_branch_name=diff_request.base_branch.name,
+                diff_branch_name=diff_request.diff_branch.name,
+                from_time=diff_request.from_time,
+                to_time=diff_request.to_time,
+                tracking_id=diff_request.tracking_id,
+                uuid=branch_uuid,
+                partner_uuid=base_uuid,
+            ),
+        )
+
+    @overload
+    async def _update_diffs(
+        self,
+        base_branch: Branch,
+        diff_branch: Branch,
+        from_time: Timestamp,
+        to_time: Timestamp,
+        tracking_id: TrackingId | None = None,
+        force_branch_refresh: Literal[True] = ...,
+    ) -> EnrichedDiffs: ...
+
+    @overload
+    async def _update_diffs(
+        self,
+        base_branch: Branch,
+        diff_branch: Branch,
+        from_time: Timestamp,
+        to_time: Timestamp,
+        tracking_id: TrackingId | None = None,
+        force_branch_refresh: Literal[False] = ...,
+    ) -> EnrichedDiffs | EnrichedDiffsMetadata: ...
+
     async def _update_diffs(
         self,
         base_branch: Branch,
@@ -250,29 +340,45 @@ class DiffCoordinator:
         to_time: Timestamp,
         tracking_id: TrackingId | None = None,
         force_branch_refresh: bool = False,
-    ) -> EnrichedDiffs:
-        diff_uuids_to_delete = []
-        retrieved_enriched_diffs = await self.diff_repo.get_pairs(
-            base_branch_name=base_branch.name,
-            diff_branch_name=diff_branch.name,
+    ) -> EnrichedDiffs | EnrichedDiffsMetadata:
+        # start with empty diffs b/c we only care about their metadata for now, hydrate them with data as needed
+        diff_pairs_metadata = await self.diff_repo.get_diff_pairs_metadata(
+            base_branch_names=[base_branch.name],
+            diff_branch_names=[diff_branch.name],
             from_time=from_time,
             to_time=to_time,
         )
-        for enriched_diffs in retrieved_enriched_diffs:
-            if tracking_id:
-                if enriched_diffs.base_branch_diff.tracking_id:
-                    diff_uuids_to_delete.append(enriched_diffs.base_branch_diff.uuid)
-                if enriched_diffs.diff_branch_diff.tracking_id:
-                    diff_uuids_to_delete.append(enriched_diffs.diff_branch_diff.uuid)
-        aggregated_enriched_diffs = await self._get_aggregated_enriched_diffs(
+        aggregated_enriched_diffs = await self._aggregate_enriched_diffs(
             diff_request=EnrichedDiffRequest(
                 base_branch=base_branch,
                 diff_branch=diff_branch,
                 from_time=from_time,
                 to_time=to_time,
+                tracking_id=tracking_id,
             ),
-            partial_enriched_diffs=retrieved_enriched_diffs if not force_branch_refresh else [],
+            partial_enriched_diffs=diff_pairs_metadata if not force_branch_refresh else None,
         )
+        if tracking_id:
+            diff_uuids_to_delete: list[str] = []
+            for diff_pair in diff_pairs_metadata:
+                if (
+                    diff_pair.base_branch_diff.tracking_id == tracking_id
+                    and diff_pair.base_branch_diff.uuid != aggregated_enriched_diffs.base_branch_diff.uuid
+                ):
+                    diff_uuids_to_delete.append(diff_pair.base_branch_diff.uuid)
+                if (
+                    diff_pair.diff_branch_diff.tracking_id == tracking_id
+                    and diff_pair.diff_branch_diff.uuid != aggregated_enriched_diffs.diff_branch_diff.uuid
+                ):
+                    diff_uuids_to_delete.append(diff_pair.diff_branch_diff.uuid)
+
+            if diff_uuids_to_delete:
+                await self.diff_repo.delete_diff_roots(diff_root_uuids=diff_uuids_to_delete)
+
+        # this is an EnrichedDiffsMetadata, so there are no nodes to enrich
+        if not isinstance(aggregated_enriched_diffs, EnrichedDiffs):
+            aggregated_enriched_diffs.update_metadata(from_time=from_time, to_time=to_time, tracking_id=tracking_id)
+            return aggregated_enriched_diffs
 
         await self.conflicts_enricher.add_conflicts_to_branch_diff(
             base_diff_root=aggregated_enriched_diffs.base_branch_diff,
@@ -282,64 +388,170 @@ class DiffCoordinator:
             enriched_diff_root=aggregated_enriched_diffs.diff_branch_diff, conflicts_only=True
         )
 
-        if tracking_id:
-            aggregated_enriched_diffs.base_branch_diff.tracking_id = tracking_id
-            aggregated_enriched_diffs.diff_branch_diff.tracking_id = tracking_id
-        if diff_uuids_to_delete:
-            await self.diff_repo.delete_diff_roots(diff_root_uuids=diff_uuids_to_delete)
         return aggregated_enriched_diffs
 
-    async def _get_aggregated_enriched_diffs(
-        self, diff_request: EnrichedDiffRequest, partial_enriched_diffs: list[EnrichedDiffs]
-    ) -> EnrichedDiffs:
-        if not partial_enriched_diffs:
-            return await self._get_enriched_diff(diff_request=diff_request, is_incremental_diff=False)
+    @overload
+    async def _aggregate_enriched_diffs(
+        self,
+        diff_request: EnrichedDiffRequest,
+        partial_enriched_diffs: list[EnrichedDiffsMetadata],
+    ) -> EnrichedDiffs | EnrichedDiffsMetadata: ...
 
-        ordered_diffs = self._get_ordered_diff_pairs(diff_pairs=partial_enriched_diffs, allow_overlap=False)
-        ordered_diff_reprs = [repr(d) for d in ordered_diffs]
-        log.debug(f"Ordered diffs for aggregation: {ordered_diff_reprs}")
-        current_time = diff_request.from_time
-        previous_diffs: EnrichedDiffs | None = None
-        while current_time < diff_request.to_time:
-            if ordered_diffs and ordered_diffs[0].diff_branch_diff.from_time == current_time:
-                current_diffs = ordered_diffs.pop(0)
-            else:
+    @overload
+    async def _aggregate_enriched_diffs(
+        self,
+        diff_request: EnrichedDiffRequest,
+        partial_enriched_diffs: None,
+    ) -> EnrichedDiffs: ...
+
+    async def _aggregate_enriched_diffs(
+        self,
+        diff_request: EnrichedDiffRequest,
+        partial_enriched_diffs: list[EnrichedDiffsMetadata] | None,
+    ) -> EnrichedDiffs | EnrichedDiffsMetadata:
+        """
+        If return is an EnrichedDiffsMetadata, it acts as a pointer to a diff in the database that has all the
+            necessary data for this diff_request. Might have a different time range and/or tracking_id
+        """
+        aggregated_enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata | None = None
+        if not partial_enriched_diffs:
+            # no existing diffs to use in calculating this diff, so calculate the whole thing and return it
+            aggregated_enriched_diffs = await self._calculate_enriched_diff(
+                diff_request=diff_request, is_incremental_diff=False
+            )
+
+        if partial_enriched_diffs is not None and not aggregated_enriched_diffs:
+            ordered_diffs = self._get_ordered_diff_pairs(diff_pairs=partial_enriched_diffs, allow_overlap=False)
+            ordered_diff_reprs = [repr(d) for d in ordered_diffs]
+            log.info(f"Ordered diffs for aggregation: {ordered_diff_reprs}")
+            incremental_diffs_and_requests: list[EnrichedDiffsMetadata | EnrichedDiffRequest | None] = []
+            current_time = diff_request.from_time
+            while current_time < diff_request.to_time:
+                # the next diff to include has already been calculated
+                if ordered_diffs and ordered_diffs[0].diff_branch_diff.from_time == current_time:
+                    current_diff = ordered_diffs.pop(0)
+                    incremental_diffs_and_requests.append(current_diff)
+                    current_time = current_diff.diff_branch_diff.to_time
+                    continue
+                # set the end time to the start of the next calculated diff or the end of the time range
                 if ordered_diffs:
                     end_time = ordered_diffs[0].diff_branch_diff.from_time
                 else:
                     end_time = diff_request.to_time
-                if previous_diffs is None:
-                    node_field_specifiers = set()
-                else:
-                    node_field_specifiers = self._get_node_field_specifiers(
-                        enriched_diff=previous_diffs.diff_branch_diff
-                    )
-                inner_diff_request = EnrichedDiffRequest(
-                    base_branch=diff_request.base_branch,
-                    diff_branch=diff_request.diff_branch,
+                # if there are no changes on either branch in this time range, then there cannot be a diff
+                log.info(f"Checking number of changes on branches for {diff_request!r}")
+                num_changes_by_branch = await self.diff_repo.get_num_changes_in_time_range_by_branch(
+                    branch_names=[diff_request.base_branch.name, diff_request.diff_branch.name],
                     from_time=current_time,
                     to_time=end_time,
-                    node_field_specifiers=node_field_specifiers,
                 )
-                is_incremental_diff = current_time != diff_request.from_time
-                current_diffs = await self._get_enriched_diff(
-                    diff_request=inner_diff_request, is_incremental_diff=is_incremental_diff
+                log.info(f"Number of changes: {num_changes_by_branch}")
+                might_have_changes_in_time_range = any(num_changes_by_branch.values())
+                if not might_have_changes_in_time_range:
+                    incremental_diffs_and_requests.append(None)
+                    current_time = end_time
+                    continue
+
+                incremental_diffs_and_requests.append(
+                    EnrichedDiffRequest(
+                        base_branch=diff_request.base_branch,
+                        diff_branch=diff_request.diff_branch,
+                        from_time=current_time,
+                        to_time=end_time,
+                    )
+                )
+                current_time = end_time
+
+            aggregated_enriched_diffs = await self._concatenate_diffs_and_requests(
+                diff_or_request_list=incremental_diffs_and_requests, full_diff_request=diff_request
+            )
+
+        # no changes during this time period, so generate an EnrichedDiffs with no nodes
+        if not aggregated_enriched_diffs:
+            return self._build_enriched_diffs_with_no_nodes(diff_request=diff_request)
+
+        # metadata-only diff, means that a diff exists in the database that covers at least
+        # part of this time period, but it might need to have its start or end time extended
+        # to cover time ranges with no changes
+        if not isinstance(aggregated_enriched_diffs, EnrichedDiffs):
+            return aggregated_enriched_diffs
+
+        # a new diff (with nodes) covering the time period
+        aggregated_enriched_diffs.update_metadata(
+            from_time=diff_request.from_time, to_time=diff_request.to_time, tracking_id=diff_request.tracking_id
+        )
+        aggregated_enriched_diffs.set_fresh_uuids()
+        return aggregated_enriched_diffs
+
+    async def _concatenate_diffs_and_requests(
+        self,
+        diff_or_request_list: Sequence[EnrichedDiffsMetadata | EnrichedDiffRequest | None],
+        full_diff_request: EnrichedDiffRequest,
+    ) -> EnrichedDiffs | EnrichedDiffsMetadata | None:
+        """
+        Returns None if diff_or_request_list is empty or all Nones
+            meaning there are no changes for the diff during this time period
+        Returns EnrichedDiffsMetadata if diff_or_request_list includes one EnrichedDiffsMetadata and no EnrichedDiffRequests
+            meaning no diffs needed to be hydrated and combined
+        Otherwise, returns EnrichedDiffs
+            meaning multiple diffs (some that may have been freshly calculated) were combined
+        """
+        previous_diff_pair: EnrichedDiffs | EnrichedDiffsMetadata | None = None
+        for diff_or_request in diff_or_request_list:
+            if isinstance(diff_or_request, EnrichedDiffRequest):
+                if previous_diff_pair:
+                    log.info(f"Getting node field specifiers diff uuid={previous_diff_pair.diff_branch_diff.uuid}")
+                    node_field_specifiers = await self.diff_repo.get_node_field_specifiers(
+                        diff_id=previous_diff_pair.diff_branch_diff.uuid,
+                    )
+                    log.info(f"Number node field specifiers: {len(node_field_specifiers)}")
+                    diff_or_request.node_field_specifiers = node_field_specifiers
+                is_incremental_diff = diff_or_request.from_time != full_diff_request.from_time
+                single_enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata = await self._calculate_enriched_diff(
+                    diff_request=diff_or_request, is_incremental_diff=is_incremental_diff
                 )
 
-            if previous_diffs:
-                current_diffs = await self.diff_combiner.combine(
-                    earlier_diffs=previous_diffs, later_diffs=current_diffs
-                )
+            elif isinstance(diff_or_request, EnrichedDiffsMetadata):
+                single_enriched_diffs = diff_or_request
+            else:
+                continue
 
-            previous_diffs = current_diffs
-            current_time = current_diffs.diff_branch_diff.to_time
+            if previous_diff_pair is None:
+                previous_diff_pair = single_enriched_diffs
+                continue
 
-        return current_diffs
+            previous_diff_pair = await self._combine_diffs(earlier=previous_diff_pair, later=single_enriched_diffs)
 
-    async def _update_core_data_checks(self, enriched_diff: EnrichedDiffRoot) -> list[Node]:
+        return previous_diff_pair
+
+    async def _combine_diffs(
+        self, earlier: EnrichedDiffs | EnrichedDiffsMetadata, later: EnrichedDiffs | EnrichedDiffsMetadata
+    ) -> EnrichedDiffs | EnrichedDiffsMetadata:
+        # if one of the diffs is hydrated and has no data, we can combine them without hydrating the other
+        if isinstance(earlier, EnrichedDiffs) and earlier.is_empty:
+            later.base_branch_diff.from_time = earlier.base_branch_diff.from_time
+            later.diff_branch_diff.from_time = earlier.diff_branch_diff.from_time
+            return later
+        if isinstance(later, EnrichedDiffs) and later.is_empty:
+            earlier.base_branch_diff.to_time = later.base_branch_diff.to_time
+            earlier.diff_branch_diff.to_time = later.diff_branch_diff.to_time
+            return earlier
+
+        # hydrate the diffs to combine, if necessary
+        if not isinstance(earlier, EnrichedDiffs):
+            earlier = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=earlier)
+        if not isinstance(later, EnrichedDiffs):
+            later = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=later)
+
+        return await self.diff_combiner.combine(earlier_diffs=earlier, later_diffs=later)
+
+    async def _update_core_data_checks(self, enriched_diff: EnrichedDiffRoot | EnrichedDiffRootMetadata) -> list[Node]:
         return await self.data_check_synchronizer.synchronize(enriched_diff=enriched_diff)
 
-    async def _get_enriched_diff(self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool) -> EnrichedDiffs:
+    async def _calculate_enriched_diff(
+        self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool
+    ) -> EnrichedDiffs:
+        log.info(f"Calculating diff for {diff_request!r}, include_unchanged={is_incremental_diff}")
         calculated_diff_pair = await self.diff_calculator.calculate_diff(
             base_branch=diff_request.base_branch,
             diff_branch=diff_request.diff_branch,
@@ -348,20 +560,7 @@ class DiffCoordinator:
             include_unchanged=is_incremental_diff,
             previous_node_specifiers=diff_request.node_field_specifiers,
         )
+        log.info("Calculation complete. Enriching diff...")
         enriched_diff_pair = await self.diff_enricher.enrich(calculated_diffs=calculated_diff_pair)
+        log.info("Enrichment complete")
         return enriched_diff_pair
-
-    def _get_node_field_specifiers(self, enriched_diff: EnrichedDiffRoot) -> set[NodeFieldSpecifier]:
-        specifiers: set[NodeFieldSpecifier] = set()
-        schema_branch = registry.schema.get_schema_branch(name=enriched_diff.diff_branch_name)
-        for node in enriched_diff.nodes:
-            specifiers.update(
-                NodeFieldSpecifier(node_uuid=node.uuid, field_name=attribute.name) for attribute in node.attributes
-            )
-            if not node.relationships:
-                continue
-            node_schema = schema_branch.get_node(name=node.kind, duplicate=False)
-            for relationship in node.relationships:
-                relationship_schema = node_schema.get_relationship(name=relationship.name)
-                specifiers.add(NodeFieldSpecifier(node_uuid=node.uuid, field_name=relationship_schema.get_identifier()))
-        return specifiers

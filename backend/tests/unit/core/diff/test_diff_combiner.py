@@ -450,6 +450,7 @@ class TestDiffCombiner:
         expected_relationship = EnrichedDiffRelationship(
             name=relationship_name,
             label=later_relationship.label,
+            identifier=later_relationship.identifier,
             cardinality=RelationshipCardinality.ONE,
             changed_at=later_relationship.changed_at,
             action=DiffAction.ADDED,
@@ -618,6 +619,7 @@ class TestDiffCombiner:
         expected_relationship = EnrichedDiffRelationship(
             name=relationship_name,
             label=relationship_group_2.label,
+            identifier=relationship_group_2.identifier,
             cardinality=RelationshipCardinality.MANY,
             changed_at=relationship_group_2.changed_at,
             action=DiffAction.UPDATED,
@@ -682,6 +684,7 @@ class TestDiffCombiner:
         expected_relationship = EnrichedDiffRelationship(
             name=relationship_name,
             label=later_relationship.label,
+            identifier=later_relationship.identifier,
             cardinality=RelationshipCardinality.MANY,
             changed_at=later_relationship.changed_at,
             action=DiffAction.ADDED,
@@ -851,6 +854,7 @@ class TestDiffCombiner:
         expected_relationship = EnrichedDiffRelationship(
             name=relationship_name,
             label=parent_rel_2.label,
+            identifier=parent_rel_2.identifier,
             changed_at=parent_rel_2.changed_at,
             cardinality=RelationshipCardinality.ONE,
             path_identifier=parent_rel_2.path_identifier,
@@ -923,6 +927,7 @@ class TestDiffCombiner:
         expected_child_rel = EnrichedDiffRelationship(
             name=relationship_name,
             label=child_rel_2.label,
+            identifier=child_rel_2.identifier,
             changed_at=child_rel_2.changed_at,
             cardinality=RelationshipCardinality.ONE,
             path_identifier=child_rel_2.path_identifier,
@@ -1083,6 +1088,7 @@ class TestDiffCombiner:
         expected_relationship = EnrichedDiffRelationship(
             name=relationship_name,
             label=later_relationship.label,
+            identifier=later_relationship.identifier,
             cardinality=RelationshipCardinality.ONE,
             changed_at=later_relationship.changed_at,
             action=DiffAction.UPDATED,

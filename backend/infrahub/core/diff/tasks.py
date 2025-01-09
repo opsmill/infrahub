@@ -57,7 +57,7 @@ async def refresh_diff_all(branch_name: str) -> None:
         component_registry = get_component_registry()
         default_branch = registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
-        diff_roots_to_refresh = await diff_repository.get_empty_roots(diff_branch_names=[branch_name])
+        diff_roots_to_refresh = await diff_repository.get_roots_metadata(diff_branch_names=[branch_name])
 
         for diff_root in diff_roots_to_refresh:
             if diff_root.base_branch_name != diff_root.diff_branch_name:
