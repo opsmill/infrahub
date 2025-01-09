@@ -1,5 +1,5 @@
 import re
-from typing import Any, List
+from typing import Any
 
 import graphene
 
@@ -13,7 +13,7 @@ def get_enum_attribute_type_name(node_schema: MainSchemaTypes, attr_schema: Attr
     return f"{node_schema.kind}{attr_schema.name.title()}"
 
 
-def generate_graphql_enum(name: str, options: List[Any]) -> graphene.Enum:
+def generate_graphql_enum(name: str, options: list[Any]) -> graphene.Enum:
     def description_func(value: Any) -> str:
         if value:
             return value.value

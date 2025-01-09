@@ -34,6 +34,21 @@ class TestNodeGroupedUniquenessConstraint:
         with pytest.raises(ValidationError, match="Violates uniqueness constraint 'name'"):
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
 
+    async def test_uniqueness_constraint_conflict_attribute_with_null(
+        self, db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+    ):
+        # this change is allowed
+        car_camry_main.color.value = None
+        await self.__call_system_under_test(db=db, branch=default_branch, node=car_camry_main)
+
+        await car_camry_main.save(db=db)
+        # this change is blocked
+        car_accord_main.color.value = None
+        car_accord_main.get_schema().uniqueness_constraints = [["color__value"]]
+
+        with pytest.raises(ValidationError, match="Violates uniqueness constraint 'color'"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=car_accord_main)
+
     async def test_uniqueness_constraint_filters(
         self, db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
     ):

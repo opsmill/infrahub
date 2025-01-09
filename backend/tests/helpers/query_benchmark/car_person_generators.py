@@ -1,6 +1,6 @@
 import random
 import uuid
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -188,7 +188,7 @@ class PersonGenerator(DataGenerator):
 
 
 class CarGeneratorWithOwnerHavingUniqueCar(CarGenerator):
-    persons: list[Tuple[str, Node]]  # mapping of existing cars names -> node
+    persons: list[tuple[str, Node]]  # mapping of existing cars names -> node
     nb_persons: int
     nb_cars_loaded: int
 

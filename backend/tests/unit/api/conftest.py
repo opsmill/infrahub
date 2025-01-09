@@ -1,5 +1,3 @@
-from typing import Dict
-
 import pendulum
 import pytest
 from fastapi.testclient import TestClient
@@ -70,7 +68,7 @@ async def workflow_local():
 @pytest.fixture
 async def car_person_data(
     db: InfrahubDatabase, register_core_models_schema, car_person_schema, first_account
-) -> Dict[str, Node]:
+) -> dict[str, Node]:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)

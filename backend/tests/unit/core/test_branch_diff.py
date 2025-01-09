@@ -1,4 +1,3 @@
-from typing import Dict
 from unittest.mock import patch
 
 import pendulum
@@ -1081,7 +1080,7 @@ async def test_base_diff_element():
 
     class CL1(BaseDiffElement):
         name: str
-        attrs: Dict[str, CL2]
+        attrs: dict[str, CL2]
         attr: CL3
         hideme: str = Field(exclude=True)
         action: DiffAction

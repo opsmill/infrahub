@@ -1,5 +1,3 @@
-from typing import List
-
 from prefect import flow
 
 from infrahub.core import registry
@@ -24,7 +22,7 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
     async with service.database.start_session() as db:
         log.info("Branch merged", source_branch=message.source_branch, target_branch=message.target_branch)
 
-        events: List[InfrahubMessage] = [
+        events: list[InfrahubMessage] = [
             messages.RefreshRegistryBranches(),
         ]
         component_registry = get_component_registry()

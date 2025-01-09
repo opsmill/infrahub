@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -716,7 +716,7 @@ async def test_query_RelationshipDataDeleteQuery(
         rel=Relationship(schema=rel_schema, branch=branch, node=person_jack_tags_main),
     )
     await query1.execute(db=db)
-    peers_database: Dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query1.get_peers()}
+    peers_database: dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query1.get_peers()}
 
     # Delete the relationship
     query2 = await RelationshipDataDeleteQuery.init(

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
@@ -15,6 +15,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
 
+from ..models import OrderModel
 from ..types import InfrahubObjectType
 
 if TYPE_CHECKING:
@@ -53,7 +54,7 @@ class AccountMixin:
         cls,
         root: dict,
         info: GraphQLResolveInfo,
-        data: Dict[str, Any],
+        data: dict[str, Any],
     ) -> Self:
         context: GraphqlContext = info.context
 
@@ -86,7 +87,7 @@ class AccountMixin:
     @classmethod
     @retry_db_transaction(name="account_token_create")
     async def create_token(
-        cls, db: InfrahubDatabase, account: CoreNode, data: Dict[str, Any], info: GraphQLResolveInfo
+        cls, db: InfrahubDatabase, account: CoreNode, data: dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
         obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
         token = str(UUIDT())
@@ -107,12 +108,15 @@ class AccountMixin:
     @classmethod
     @retry_db_transaction(name="account_token_delete")
     async def delete_token(
-        cls, db: InfrahubDatabase, account: CoreNode, data: Dict[str, Any], info: GraphQLResolveInfo
+        cls, db: InfrahubDatabase, account: CoreNode, data: dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
         token_id = str(data.get("id"))
 
         results = await NodeManager.query(
-            schema=InternalAccountToken, filters={"account_ids": [account.id], "ids": [token_id]}, db=db
+            schema=InternalAccountToken,
+            filters={"account_ids": [account.id], "ids": [token_id]},
+            db=db,
+            order=OrderModel(disable=True),
         )
 
         if not results:
@@ -126,7 +130,7 @@ class AccountMixin:
     @classmethod
     @retry_db_transaction(name="account_update_self")
     async def update_self(
-        cls, db: InfrahubDatabase, account: CoreNode, data: Dict[str, Any], info: GraphQLResolveInfo
+        cls, db: InfrahubDatabase, account: CoreNode, data: dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
         for field in ("password", "description"):
             if value := data.get(field):

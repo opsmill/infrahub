@@ -1,5 +1,4 @@
 from collections import defaultdict
-from typing import DefaultDict
 from uuid import UUID
 
 from prefect.client.schemas.objects import Log as PrefectLog
@@ -47,7 +46,7 @@ class RelatedNodesInfo(BaseModel):
 
 
 class FlowLogs(BaseModel):
-    logs: DefaultDict[UUID, list[PrefectLog]] = Field(default_factory=lambda: defaultdict(list))
+    logs: defaultdict[UUID, list[PrefectLog]] = Field(default_factory=lambda: defaultdict(list))
 
     def to_graphql(self, flow_id: UUID) -> list[dict]:
         return [
