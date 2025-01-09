@@ -126,7 +126,7 @@ async def start(
         NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
     )
 
-    service = InfrahubServices(
+    service = await InfrahubServices.init_and_initialize(
         cache=cache,
         client=client,
         database=database,
@@ -134,7 +134,6 @@ async def start(
         message_bus=message_bus,
         component_type=ComponentType.GIT_AGENT,
     )
-    await service.initialize()
 
     # Initialize the lock
     initialize_lock(service=service)

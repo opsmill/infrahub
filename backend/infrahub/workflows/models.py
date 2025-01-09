@@ -1,5 +1,4 @@
-import importlib
-from typing import Any, Awaitable, Callable, TypeVar
+from typing import Any, TypeVar
 from uuid import UUID
 
 from prefect.client.orchestration import PrefectClient
@@ -71,10 +70,3 @@ class WorkflowDefinition(BaseModel):
         data = self.to_deployment()
         data["work_pool_name"] = work_pool.name
         return await client.create_deployment(flow_id=flow_id, **data)
-
-    def get_function(self) -> Callable[..., Awaitable[Any]]:
-        module = importlib.import_module(self.module)
-        return getattr(module, self.function)
-
-    def validate_workflow(self) -> None:
-        self.get_function()

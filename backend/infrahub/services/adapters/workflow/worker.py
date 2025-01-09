@@ -42,6 +42,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         tags: list[str] | None = ...,
     ) -> Any: ...
 
+    # TODO Make expected_return mandatory and remove above overloads.
     async def execute_workflow(
         self,
         workflow: WorkflowDefinition,

@@ -77,14 +77,13 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     cache = config.OVERRIDE.cache or (
         NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
     )
-    service = InfrahubServices(
+    service = await InfrahubServices.init_and_initialize(
         cache=cache,
         database=database,
         message_bus=message_bus,
         workflow=workflow,
         component_type=ComponentType.API_SERVER,
     )
-    await service.initialize()
     initialize_lock(service=service)
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
     async with application.state.db.start_session() as db:

@@ -1,4 +1,4 @@
-import importlib
+import inspect
 import logging
 import os
 from typing import Any, Optional
@@ -23,7 +23,7 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
 from infrahub.lock import initialize_lock
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.cache.nats import NATSCache
 from infrahub.services.adapters.cache.redis import RedisCache
@@ -33,6 +33,7 @@ from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
+from infrahub.workers.utils import inject_service_parameter, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
 WORKER_QUERY_SECONDS = "2"
@@ -65,6 +66,7 @@ class InfrahubWorkerAsync(BaseWorker):
     _documentation_url = "https://example.com/docs"
     _logo_url = "https://example.com/logo"
     _description = "Infrahub worker designed to run the flow in the main async loop."
+    service: InfrahubServices  # keep a reference to `service` so we can inject it within flows parameters.
 
     async def setup(
         self,
@@ -107,20 +109,19 @@ class InfrahubWorkerAsync(BaseWorker):
             )
         )
 
-        client = await self._init_infrahub_client(client=client)
-        service = await self._init_services(client=client)
+        await self._init_services(client=client)
 
         if not registry.schema_has_been_initialized():
-            initialize_lock(service=service)
+            initialize_lock(service=self.service)
 
-            async with service.database.start_session() as db:
+            async with self.service.database.start_session() as db:
                 await initialization(db=db)
 
-            await service.component.refresh_schema_hash()
+            await self.service.component.refresh_schema_hash()
 
         initialize_repositories_directory()
         build_component_registry()
-        await service.scheduler.start_schedule()
+        await self.service.scheduler.start_schedule()
         self._logger.info("Worker initialization completed .. ")
 
     async def run(
@@ -136,8 +137,10 @@ class InfrahubWorkerAsync(BaseWorker):
         file_path, flow_name = entrypoint.split(":")
         file_path.replace("/", ".")
         module_path = file_path.replace("backend/", "").replace(".py", "").replace("/", ".")
-        module = importlib.import_module(module_path)
-        flow_func = getattr(module, flow_name)
+        flow_func = load_flow_function(module_path=module_path, flow_name=flow_name)
+        sig = inspect.signature(flow_func)
+        if "service" in sig.parameters:
+            inject_service_parameter(service=self.service, parameters=flow_run.parameters)
 
         flow_run_logger.debug("Validating parameters")
         params = flow_func.validate_parameters(parameters=flow_run.parameters)
@@ -196,13 +199,14 @@ class InfrahubWorkerAsync(BaseWorker):
             NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
         )
 
-    async def _init_services(self, client: InfrahubClient) -> InfrahubServices:
+    async def _init_services(self, client: InfrahubClient) -> None:
+        client = await self._init_infrahub_client(client=client)
         database = await self._init_database()
         workflow = await self._init_workflow()
         message_bus = await self._init_message_bus()
         cache = await self._init_cache()
 
-        service = InfrahubServices(
+        service = await InfrahubServices.init_and_initialize(
             cache=cache,
             client=client,
             database=database,
@@ -211,7 +215,4 @@ class InfrahubWorkerAsync(BaseWorker):
             component_type=ComponentType.GIT_AGENT,
         )
 
-        services.service = service
-        await service.initialize()
-
-        return service
+        self.service = service

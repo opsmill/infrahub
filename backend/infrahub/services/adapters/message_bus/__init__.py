@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional, TypeVar
 
 ResponseClass = TypeVar("ResponseClass")
@@ -10,7 +11,7 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
 
-class InfrahubMessageBus:
+class InfrahubMessageBus(ABC):
     DELIVER_TIMEOUT: int = 30 * 60  # 30 minutes
     worker_bindings: list[str] = [
         "check.*.*",
@@ -27,19 +28,24 @@ class InfrahubMessageBus:
     event_bindings: list[str] = ["refresh.registry.*"]
     broadcasted_event_bindings: list[str] = ["refresh.git.*"]
 
+    @abstractmethod
     async def initialize(self, service: InfrahubServices) -> None:
-        """Initialize the Message bus"""
+        pass
 
+    @abstractmethod
     async def shutdown(self) -> None:
-        """Shutdown the Message bus"""
+        pass
 
+    @abstractmethod
     async def publish(
         self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
     ) -> None:
         raise NotImplementedError()
 
+    @abstractmethod
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         raise NotImplementedError()
 
+    @abstractmethod
     async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
         raise NotImplementedError()

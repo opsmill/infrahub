@@ -43,7 +43,7 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
-from infrahub.services import services
+from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
@@ -909,6 +909,15 @@ class BusRPCMock(InfrahubMessageBus):
         response = self.response.pop()
         data = ujson.loads(response.body)
         return response_class(**data)
+
+    async def initialize(self, service: InfrahubServices) -> None:
+        pass
+
+    async def shutdown(self) -> None:
+        pass
+
+    async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
+        raise ValueError("BusRPCMock.reply should not be called")
 
 
 class TestHelper:

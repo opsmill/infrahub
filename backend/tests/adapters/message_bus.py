@@ -35,6 +35,18 @@ class BusRecorder(InfrahubMessageBus):
     def seen_routing_keys(self) -> list[str]:
         return list(self.messages_per_routing_key.keys())
 
+    async def initialize(self, service: InfrahubServices) -> None:
+        pass
+
+    async def shutdown(self) -> None:
+        pass
+
+    async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
+        raise ValueError("BusRecorder.reply should not be called")
+
+    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
+        raise ValueError("BusRecorder.rpc should not be called")
+
 
 class BusSimulator(InfrahubMessageBus):
     def __init__(self, database: InfrahubDatabase | None = None, workflow: InfrahubWorkflow | None = None) -> None:
@@ -77,3 +89,6 @@ class BusSimulator(InfrahubMessageBus):
 
     async def initialize(self, service: InfrahubServices) -> None:
         self.service = service
+
+    async def shutdown(self) -> None:
+        pass

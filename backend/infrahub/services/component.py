@@ -40,7 +40,6 @@ class InfrahubComponent:
         return names
 
     async def initialize(self, service: InfrahubServices) -> None:
-        """Initialize the Message bus"""
         self._service = service
 
         await self.refresh_heartbeat()

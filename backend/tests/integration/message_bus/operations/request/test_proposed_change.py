@@ -108,6 +108,7 @@ async def prepare_proposed_change(
     )
     await service.event.initialize(service)
     await service.component.initialize(service)
+    await service.workflow.initialize(service)
     services.prepare(service=service)
 
     repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
@@ -156,7 +157,7 @@ async def test_run_pipeline_validate_requested_jobs(
         await obj.save(db=db)
 
         bus_post_data_changes = BusSimulator(database=services.service.database)
-        services.service.message_bus = bus_post_data_changes
+        services.service._message_bus = bus_post_data_changes
 
         await pipeline(message=message, service=services.service)
 
@@ -196,8 +197,7 @@ async def test_run_generators_validate_requested_jobs(
         log=FakeLogger(),
         workflow=WorkflowLocalExecution(),
     )
-    with init_global_service(service):
-        await run_generators(model=model)
+    await run_generators(model=model, service=service)
 
     assert sorted(bus.seen_routing_keys) == [
         "request.proposed_change.refresh_artifacts",

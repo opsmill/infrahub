@@ -45,7 +45,7 @@ from infrahub.proposed_change.models import (
     RequestProposedChangeUserTests,
 )
 from infrahub.pytest_plugin import InfrahubBackendPlugin
-from infrahub.services import services
+from infrahub.services import InfrahubServices, services
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_SETUP_PYTHON, REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS
 from infrahub.workflows.utils import add_tags
 
@@ -202,8 +202,7 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
     name="proposed-changed-run-generator",
     flow_run_name="Run generators",
 )
-async def run_generators(model: RequestProposedChangeRunGenerators) -> None:
-    service = services.service
+async def run_generators(model: RequestProposedChangeRunGenerators, service: InfrahubServices) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
     generators = await service.client.filters(
@@ -388,8 +387,7 @@ async def _get_proposed_change_schema_integrity_constraints(
     name="proposed-changed-repository-checks",
     flow_run_name="Process user defined checks",
 )
-async def repository_checks(model: RequestProposedChangeRepositoryChecks) -> None:
-    service = services.service
+async def repository_checks(model: RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
     events: list[InfrahubMessage] = []

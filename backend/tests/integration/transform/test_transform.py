@@ -11,7 +11,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
 from infrahub.git import InfrahubRepository
-from infrahub.server import app, app_initialization
+from infrahub.server import app, lifespan
 from infrahub.services import InfrahubServices, services
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -19,6 +19,8 @@ from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.test_client import InfrahubTestClient
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from infrahub.database import InfrahubDatabase
     from tests.helpers.file_repo import FileRepo
 
@@ -85,15 +87,14 @@ class TestTransforms(TestInfrahubApp):
         base_dataset,
         redis: dict[int, int] | None,
         nats: dict[int, int] | None,
-    ) -> InfrahubTestClient:
-        await app_initialization(app)
-        return InfrahubTestClient(app=app)
+    ) -> AsyncGenerator[InfrahubTestClient]:
+        async with lifespan(app):
+            yield InfrahubTestClient(app=app)
 
     @pytest.fixture(scope="class")
     async def client(self, test_client: InfrahubTestClient, integration_helper):  # type: ignore[override]
         admin_token = await integration_helper.create_token()
         config = Config(api_token=admin_token, requester=test_client.async_request)
-
         return InfrahubClient(config=config)
 
     @pytest.fixture(scope="class")

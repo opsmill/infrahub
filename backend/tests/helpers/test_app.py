@@ -22,7 +22,7 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
-from infrahub.server import app, app_initialization
+from infrahub.server import app, lifespan
 from infrahub.services import services
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.initialization import setup_task_manager
@@ -96,12 +96,14 @@ class TestInfrahubApp(TestInfrahub):
     @pytest.fixture(scope="class")
     async def test_client(
         self, initialize_registry: None, redis: dict[int, int] | None, nats: dict[int, int] | None
-    ) -> InfrahubTestClient:
-        # This call emits an ERROR because it calls registry-webhook-config-refresh flow within a local worker
+    ) -> AsyncGenerator[InfrahubTestClient]:
+        # NOTE 1: lifespan call emits an ERROR because it calls registry-webhook-config-refresh flow within a local worker
         # while services.service.client is not set. There might be a design issue here: a client is needed while
         # the app is being initialized.
-        await app_initialization(app, enable_scheduler=False)
-        return InfrahubTestClient(app=app, base_url="http://testserver")
+        # NOTE 2: FastAPI does not have an asynchronous TestClient, thus we rely on httpx.AsyncClient which does not trigger
+        # lifespan events (see https://fastapi.tiangolo.com/advanced/async-tests/#in-detail).
+        async with lifespan(app):
+            yield InfrahubTestClient(app=app, base_url="http://testserver")
 
     @pytest.fixture(scope="class")
     async def client(
@@ -116,7 +118,8 @@ class TestInfrahubApp(TestInfrahub):
 
         sdk_client = InfrahubClient(config=config)
 
-        bus_simulator.service._client = sdk_client
+        assert app.state.service is bus_simulator.service
+        app.state.service._client = sdk_client
 
         # Some tests rely on infrahub worker which runs locally during testing. Thus, code supposed to run
         # on worker rely on server's `services.service`, which is not initialized with a client,

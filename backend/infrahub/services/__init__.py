@@ -1,24 +1,29 @@
-from typing import Awaitable, Callable, Optional
+from __future__ import annotations
 
-from infrahub_sdk import InfrahubClient
+from typing import TYPE_CHECKING, Awaitable, Callable, Optional
 
 from infrahub.components import ComponentType
-from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import InitializationError
 from infrahub.log import get_logger
-from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
-from infrahub.message_bus.types import MessageTTL
 
-from .adapters.cache import InfrahubCache
 from .adapters.event import InfrahubEventService
-from .adapters.http import InfrahubHTTP
 from .adapters.http.httpx import HttpxAdapter
-from .adapters.message_bus import InfrahubMessageBus
-from .adapters.workflow import InfrahubWorkflow
+from .adapters.workflow.local import WorkflowLocalExecution
 from .component import InfrahubComponent
-from .protocols import InfrahubLogger
 from .scheduler import InfrahubScheduler
+
+if TYPE_CHECKING:
+    from infrahub_sdk import InfrahubClient
+
+    from infrahub.database import InfrahubDatabase
+    from infrahub.message_bus import InfrahubMessage, InfrahubResponse
+    from infrahub.message_bus.types import MessageTTL
+
+    from .adapters.cache import InfrahubCache
+    from .adapters.message_bus import InfrahubMessageBus
+    from .adapters.workflow import InfrahubWorkflow
+    from .protocols import InfrahubLogger
 
 
 class InfrahubServices:
@@ -28,23 +33,77 @@ class InfrahubServices:
         client: Optional[InfrahubClient] = None,
         database: Optional[InfrahubDatabase] = None,
         message_bus: Optional[InfrahubMessageBus] = None,
-        http: InfrahubHTTP | None = None,
         workflow: Optional[InfrahubWorkflow] = None,
         event: InfrahubEventService | None = None,
         log: Optional[InfrahubLogger] = None,
         component_type: Optional[ComponentType] = None,
     ) -> None:
-        self.cache = cache or InfrahubCache()
+        self._cache = cache
         self._client = client
         self._database = database
-        self.message_bus = message_bus or InfrahubMessageBus()
-        self.workflow = workflow or InfrahubWorkflow()
+        self._message_bus = message_bus
         self.event = event or InfrahubEventService()
         self.log = log or get_logger()
         self.component_type = component_type or ComponentType.NONE
-        self.http = http or HttpxAdapter()
+        self.http = HttpxAdapter()
         self.scheduler = InfrahubScheduler()
         self.component = InfrahubComponent()
+        self._workflow = workflow
+
+        # Hack for testing purposes. WorkflowLocalExecution needs a reference to services within execute_workflow
+        # and we don't want to call workflow.initialize within each of our tests.
+        if isinstance(self._workflow, WorkflowLocalExecution):
+            self._workflow.service = self
+
+    @classmethod
+    async def init_and_initialize(
+        cls,
+        cache: Optional[InfrahubCache] = None,
+        client: Optional[InfrahubClient] = None,
+        database: Optional[InfrahubDatabase] = None,
+        message_bus: Optional[InfrahubMessageBus] = None,
+        workflow: Optional[InfrahubWorkflow] = None,
+        event: InfrahubEventService | None = None,
+        log: Optional[InfrahubLogger] = None,
+        component_type: Optional[ComponentType] = None,
+    ) -> InfrahubServices:
+        """
+        Wrapper around `__init__` + `initialize`. We can't `initialize` within `__init__` because `__init__` can't be async.
+        """
+
+        service = cls(
+            cache=cache,
+            client=client,
+            database=database,
+            message_bus=message_bus,
+            workflow=workflow,
+            event=event,
+            log=log,
+            component_type=component_type,
+        )
+        await service.initialize()
+        return service
+
+    @property
+    def message_bus(self) -> InfrahubMessageBus:
+        if not self._message_bus:
+            raise InitializationError("Service is not initialized with a message bus")
+
+        return self._message_bus
+
+    @property
+    def workflow(self) -> InfrahubWorkflow:
+        if not self._workflow:
+            raise InitializationError("Service is not initialized with a workflow")
+
+        return self._workflow
+
+    @property
+    def cache(self) -> InfrahubCache:
+        if not self._cache:
+            raise InitializationError("Service is not initialized with a cache")
+
+        return self._cache
 
     @property
     def client(self) -> InfrahubClient:
@@ -64,17 +123,26 @@ class InfrahubServices:
         return self._database
 
     async def initialize(self) -> None:
-        """Initialize the Services"""
-        await self.message_bus.initialize(service=self)
-        await self.cache.initialize(service=self)
+        # Each service has an extra reference to this InfrahubServices object for convenience.
+        # Note that it could simplify code that each service has a reference to only what it needs. It would
+        # at least avoid circular dependencies.
+
+        if self._message_bus is not None:
+            await self._message_bus.initialize(service=self)
+
+        if self._cache is not None:
+            await self._cache.initialize(service=self)
+
         await self.http.initialize(service=self)
         await self.component.initialize(service=self)
         await self.scheduler.initialize(service=self)
-        await self.workflow.initialize(service=self)
+
+        if self._workflow is not None:
+            await self._workflow.initialize(service=self)
+
         await self.event.initialize(service=self)
 
     async def shutdown(self) -> None:
-        """Initialize the Services"""
         await self.scheduler.shutdown()
         await self.message_bus.shutdown()
 
