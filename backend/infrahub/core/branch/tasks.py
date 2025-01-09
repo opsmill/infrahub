@@ -70,7 +70,7 @@ async def rebase_branch(branch: str) -> None:
             service=service,
         )
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(base_branch=base_branch, diff_branch=obj)
         if enriched_diff.get_all_conflicts():
             raise ValidationError(
                 f"Branch {obj.name} contains conflicts with the default branch that must be addressed."
@@ -185,6 +185,7 @@ async def merge_branch(branch: str) -> None:
             try:
                 await merger.merge()
             except Exception as exc:
+                log.exception("Merge failed, beginning rollback")
                 await merger.rollback()
                 raise MergeFailedError(branch_name=branch) from exc
             await merger.update_schema()

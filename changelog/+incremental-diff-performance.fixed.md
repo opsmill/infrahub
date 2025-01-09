@@ -1,0 +1,1 @@
+Update how we calculate an incremental diff to skip potentially expensive operations if at all possible

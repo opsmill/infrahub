@@ -84,5 +84,3 @@ class TestProposeChangeRepository(TestInfrahubDockerClient, SchemaCarPerson):
             kind=CoreProposedChange, name="pc1", source_branch=branch.name, destination_branch=default_branch
         )
         await pc.save()
-
-        # breakpoint()

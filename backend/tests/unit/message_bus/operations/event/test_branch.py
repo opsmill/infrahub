@@ -71,7 +71,7 @@ async def test_merged(default_branch: Branch, init_service: InfrahubServices, pr
         for _ in range(2)
     ]
     diff_repo = AsyncMock(spec=DiffRepository)
-    diff_repo.get_empty_roots.return_value = untracked_diff_roots + tracked_diff_roots
+    diff_repo.get_roots_metadata.return_value = untracked_diff_roots + tracked_diff_roots
     mock_component_registry = Mock(spec=ComponentDependencyRegistry)
     mock_get_component_registry = MagicMock(return_value=mock_component_registry)
     mock_component_registry.get_component.return_value = diff_repo
@@ -104,7 +104,7 @@ async def test_merged(default_branch: Branch, init_service: InfrahubServices, pr
 
     # Use `db=ANY` as a new InfrahubDatabase object is created as we use a new session
     mock_component_registry.get_component.assert_awaited_once_with(DiffRepository, db=ANY, branch=default_branch)
-    diff_repo.get_empty_roots.assert_awaited_once_with(base_branch_names=[target_branch_name])
+    diff_repo.get_roots_metadata.assert_awaited_once_with(base_branch_names=[target_branch_name])
 
     assert len(service.message_bus.messages) == 1
     assert service.message_bus.messages[0] == messages.RefreshRegistryBranches()

@@ -191,7 +191,7 @@ async def ip_dataset_01(
 ):
     yield ip_dataset_01_load
 
-    all_diff_roots = await diff_repository.get_empty_roots()
+    all_diff_roots = await diff_repository.get_roots_metadata()
     root_uuids_to_delete = []
     for diff_root in all_diff_roots:
         if start_time <= diff_root.from_time:

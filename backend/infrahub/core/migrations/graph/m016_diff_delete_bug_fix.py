@@ -31,6 +31,6 @@ class Migration016(ArbitraryMigration):
         component_registry = get_component_registry()
         diff_repo = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
-        diff_roots = await diff_repo.get_empty_roots()
+        diff_roots = await diff_repo.get_roots_metadata()
         await diff_repo.delete_diff_roots(diff_root_uuids=[d.uuid for d in diff_roots])
         return MigrationResult()

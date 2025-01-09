@@ -132,7 +132,9 @@ class TestDiffAndMerge:
 
         at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=branch2
+        )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 1
         conflict = next(iter(conflicts_map.values()))
@@ -174,7 +176,9 @@ class TestDiffAndMerge:
 
         at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=branch2
+        )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 1
         conflict = next(iter(conflicts_map.values()))
@@ -220,7 +224,9 @@ class TestDiffAndMerge:
 
         at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=branch2
+        )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 1
         conflict = next(iter(conflicts_map.values()))
@@ -268,7 +274,9 @@ class TestDiffAndMerge:
 
         at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=branch2
+        )
         conflicts_map = enriched_diff.get_all_conflicts()
         # conflict on both sides of the relationship
         assert len(conflicts_map) == 2
@@ -302,7 +310,9 @@ class TestDiffAndMerge:
         await person_branch.save(db=db)
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=branch2
+        )
         node = enriched_diff.get_node(node_uuid=person_jane_main.id)
         assert node.action is DiffAction.UPDATED
 
@@ -329,7 +339,9 @@ class TestDiffAndMerge:
         await dog_branch.save(db=db)
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=branch2
+        )
         dog_node = enriched_diff.get_node(node_uuid=dog_main.id)
         assert dog_node.action is DiffAction.UPDATED
         friend_node = enriched_diff.get_node(node_uuid=friend_main.id)
@@ -357,7 +369,9 @@ class TestDiffAndMerge:
         await car.save(db=db)
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=branch2
+        )
         diff_person = enriched_diff.get_node(node_uuid=person.id)
         assert diff_person.action is DiffAction.ADDED
         # validate car is not in the diff
@@ -422,7 +436,9 @@ class TestDiffAndMerge:
         await car.save(db=db)
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=branch2
+        )
         diff_person = enriched_diff.get_node(node_uuid=person.id)
         assert diff_person.action is DiffAction.UPDATED
         diff_car = enriched_diff.get_node(node_uuid=car.id)
@@ -560,7 +576,9 @@ class TestDiffAndMerge:
         await car_main.save(db=db)
 
         # check that the conflict is removed
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=branch2
+        )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 0
 
