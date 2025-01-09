@@ -27,6 +27,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 - Fix schema dropdown option removal in branches other than the default one ([#5242](https://github.com/opsmill/infrahub/issues/5242))
 - Fix an issue that would prevent creating a node on a branch with a computed attribute that referenced another node on that branch ([#5385](https://github.com/opsmill/infrahub/issues/5385))
+- Update how we calculate an incremental diff to skip potentially expensive operations if at all possible
 - Update uniqueness checks/constraints logic to consider NULL values instead of ignoring.
   This might cause data integrity issues if you have nodes with NULL values for attributes that are part of their
   the uniqueness constraints of their schema. This change includes a database migration that validates data integrity
