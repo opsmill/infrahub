@@ -3,9 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
+import ujson
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
+from opentelemetry import trace
 from pydantic import BaseModel, HttpUrl
 
 from infrahub import config, models
@@ -20,6 +22,8 @@ if TYPE_CHECKING:
 
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+
+# pylint: disable=R0801
 
 log = get_logger()
 router = APIRouter(prefix="/oidc")
@@ -68,11 +72,16 @@ async def authorize(request: Request, provider_name: str, final_url: str | None 
     _validate_response(response=response)
     oidc_config = OIDCDiscoveryConfig(**response.json())
 
-    client = AsyncOAuth2Client(
-        client_id=provider.client_id,
-        client_secret=provider.client_secret,
-        scope=provider.scopes,
-    )
+    with trace.get_tracer(__name__).start_as_current_span("sso_oauth2_client_configuration") as span:
+        span.set_attribute("provider_name", provider_name)
+        span.set_attribute("scopes", provider.scopes)
+        span.set_attribute("discovery_url", provider.discovery_url)
+
+        client = AsyncOAuth2Client(
+            client_id=provider.client_id,
+            client_secret=provider.client_secret,
+            scope=provider.scopes,
+        )
 
     redirect_uri = _get_redirect_url(request=request, provider_name=provider_name)
     final_url = final_url or config.SETTINGS.main.public_url or str(request.base_url)
@@ -126,7 +135,10 @@ async def token(
 
     token_response = await service.http.post(str(oidc_config.token_endpoint), data=token_data)
     _validate_response(response=token_response)
-    payload = token_response.json()
+
+    with trace.get_tracer(__name__).start_as_current_span("sso_token_request") as span:
+        span.set_attribute("token_request_data", ujson.dumps(token_response.json()))
+        payload = token_response.json()
 
     headers = {"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"}
 
@@ -138,10 +150,14 @@ async def token(
     _validate_response(response=userinfo_response)
     user_info = userinfo_response.json()
     sso_groups = user_info.get("groups", [])
+
     if not sso_groups and config.SETTINGS.security.sso_user_default_group:
         sso_groups = [config.SETTINGS.security.sso_user_default_group]
 
-    user_token = await signin_sso_account(db=db, account_name=user_info["name"], sso_groups=sso_groups)
+    with trace.get_tracer(__name__).start_as_current_span("signin_sso_account") as span:
+        span.set_attribute("account_name", ujson.dumps(userinfo_response.json()))
+        span.set_attribute("sso_groups", sso_groups)
+        user_token = await signin_sso_account(db=db, account_name=user_info["name"], sso_groups=sso_groups)
 
     response.set_cookie(
         "access_token", user_token.access_token, httponly=True, max_age=config.SETTINGS.security.access_token_lifetime
