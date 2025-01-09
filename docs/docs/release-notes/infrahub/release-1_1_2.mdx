@@ -1,0 +1,108 @@
+---
+title: Release 1.1.2
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.1.2</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>January 9th, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Lyon, Patch #2</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.1.2](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.1.2)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 1.1.2
+
+This release is a bug-fix release to resolve issues found in Infrahub v1.1.1 and prior.
+
+## Main changes
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Null values in uniqueness constraints
+
+Previous to v1.1.2, NULL values were incorrectly ignored in uniqueness constraints;
+as of this release, NULL values will be treated properly by the uniqueness logic.
+
+Because the previous logic could have resulted in unintended behavior, upgrading v1.1.2 will perform a database migration for data integrity purposes.
+
+### Added
+
+- Added a configuration option for INFRAHUB_PUBLIC_URL, which could be required for SSO depending on how Infrahub is published and accessed within your organization. ([#5306](https://github.com/opsmill/infrahub/issues/5306))
+- Add `PermissionManager` that takes care of validating permissions when executing a GraphQL query or a requesting a REST endpoint by fetching permissions from backends only once per query. ([#5350](https://github.com/opsmill/infrahub/issues/5350))
+- The query InfrahubTask in GraphQL, introduced a new `related_nodes` field to retrieve multiple related nodes per task.
+
+### Changed
+
+- The fields `related_node` and `related_node_kind` on the GraphQL query `InfrahubTask` have been deprecated, please use `related_nodes` instead.
+
+### Fixed
+
+- Fix schema dropdown option removal in branches other than the default one ([#5242](https://github.com/opsmill/infrahub/issues/5242))
+- Fix an issue that would prevent creating a node on a branch with a computed attribute that referenced another node on that branch ([#5385](https://github.com/opsmill/infrahub/issues/5385))
+- Update how we calculate an incremental diff to skip potentially expensive operations if at all possible
+- Update uniqueness checks/constraints logic to consider NULL values instead of ignoring.
+  This might cause data integrity issues if you have nodes with NULL values for attributes that are part of their
+  the uniqueness constraints of their schema. This change includes a database migration that validates data integrity
+  using the new uniqueness check/constraint logic and will fail if any uniqueness issues exist.
+
+## Migration guide
+
+The process to migrate your instance of Infrahub to the latest version may vary depending on your deployment of Infrahub.
+However, at a high-level, it will involve getting the latest version of the Infrahub code, and then performing any needed Database Migrations and Schema updates.
+
+Please ensure you have a **backup of your Infrahub environment** prior to attempting any migration or upgrade activities.
+
+### Migration of an Infrahub instance
+
+**First**, update the Infrahub version running in your environment.
+
+Below are some example ways to get the latest version of Infrahub in your environment.
+
+- For deployments via Docker Compose, update your container version by updating the `VERSION` environment variable and relaunch:
+  - `export VERSION="1.1.2"; docker compose pull && docker compose up -d`
+- For deployments via Kubernetes, utilize the latest version of the Helm chart supplied with this release
+
+**Second**, once you have gotten the desired version of Infrahub in your environment, please run the following commands.
+
+> Note: If you are running Infrahub in Docker/K8s, these commands need to run from a container where Infrahub is installed.
+
+```shell
+infrahub db migrate
+infrahub db update-core-schema
+```
+
+**Finally**, restart all instances of Infrahub.
+
+### Migration of a dev or demo instance
+
+If you are using the `dev` or `demo` environments, we have provided `invoke` commands to aid in the migration to the latest version.
+The below examples provide the `demo` version of the commands, however similar commands can be used for `dev` as well.
+
+```shell
+invoke demo.stop
+invoke demo.build
+invoke demo.migrate
+invoke demo.start
+```
+
+If you don't want to keep your data, you can start a clean instance with the following command.
+
+> **Warning: All data will be lost, please make sure to backup everything you need before running this command.**
+
+```shell
+invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
+```
+
+The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.
