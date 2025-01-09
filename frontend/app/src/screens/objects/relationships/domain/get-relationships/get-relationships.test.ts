@@ -1,6 +1,6 @@
 import { getCurrentBranchName } from "@/screens/branches/get-current-branch";
 import { getRelationshipsFromApi } from "@/screens/objects/relationships/api/queries";
-import { getRelationships } from "@/screens/objects/relationships/domain/get-relationships";
+import { getRelationships } from "@/screens/objects/relationships/domain/get-relationships/get-relationships";
 import { store } from "@/state";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
