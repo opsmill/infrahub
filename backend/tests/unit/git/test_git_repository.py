@@ -30,6 +30,7 @@ from infrahub.git.integrator import (
 from infrahub.git.worktree import Worktree
 from infrahub.utils import find_first_file_in_directory
 from tests.conftest import TestHelper
+from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -295,6 +296,19 @@ async def test_create_branch_in_git_not_in_remote(git_repo_01: InfrahubRepositor
 
     assert repo.get_commit_value(branch_name=branch99.name) == "0b341c0c64122bb2a7b208f7a9452146685bc7dd"
     assert len(worktrees) == 3
+
+
+@pytest.mark.xfail(reason="Failing at reproducing conflicts without remote branches to trigger the function to test")
+async def test_has_conflicting_changes(git_repos_source_dir_module_scope: Path):
+    test_repo = MultipleStagesFileRepo(name="conflicting-branches", sources_directory=git_repos_source_dir_module_scope)
+    repository = await InfrahubRepository.new(
+        id=UUIDT.new(),
+        name=test_repo.name,
+        location=test_repo.path,
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+
+    assert repository.has_conflicting_changes(target_branch="main", source_branch="change1")
 
 
 async def test_pull_branch(git_repo_04: InfrahubRepository):
