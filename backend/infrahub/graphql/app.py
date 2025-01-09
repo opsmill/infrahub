@@ -276,8 +276,8 @@ class InfrahubGraphQLApp:
             len(await analyzed_query.get_models_in_use(types=graphql_params.context.types))
         )
 
-        valid, errors = analyzed_query.is_valid
-        if not valid:
+        _, errors = analyzed_query.is_valid
+        if errors:
             GRAPHQL_QUERY_ERRORS_METRICS.labels(**labels).observe(len(errors))
 
         return json_response
