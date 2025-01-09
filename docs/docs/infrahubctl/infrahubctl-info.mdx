@@ -1,15 +1,17 @@
-# `infrahubctl version`
+# `infrahubctl info`
 
-Display the version of Python and the version of the Python SDK in use.
+Display the status of the Python SDK.
 
 **Usage**:
 
 ```console
-$ infrahubctl version [OPTIONS]
+$ infrahubctl info [OPTIONS]
 ```
 
 **Options**:
 
+* `--detail / --no-detail`: Display detailed information.  [default: no-detail]
+* `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--install-completion`: Install completion for the current shell.
 * `--show-completion`: Show completion for the current shell, to copy it or customize the installation.
 * `--help`: Show this message and exit.
