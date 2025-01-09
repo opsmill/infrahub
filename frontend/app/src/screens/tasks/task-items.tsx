@@ -5,6 +5,7 @@ import useQuery from "@/hooks/useQuery";
 import Content from "@/screens/layout/content";
 
 import { DateDisplay } from "@/components/display/date-display";
+import { InlineDisplay } from "@/components/display/inline-display";
 import { Filters } from "@/components/filters/filters";
 import { Id } from "@/components/ui/id";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
@@ -17,7 +18,6 @@ import { debounce } from "@/utils/common";
 import { constructPath } from "@/utils/fetch";
 import { forwardRef, useImperativeHandle } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { RelationshipDisplay } from "../role-management/relationship-display";
 import { getStateBadge } from "./task-item-details";
 
 interface TaskItemsProps {
@@ -142,10 +142,15 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
         },
         related_nodes: {
           display: (
-            <RelationshipDisplay
-              items={edge.node.related_nodes.map(({ id, kind }) => (
-                <Id key={id} id={id} kind={kind} preventCopy />
-              ))}
+            <InlineDisplay
+              items={edge.node.related_nodes}
+              render={(item) => {
+                if (typeof item === "string") return null;
+
+                if (!item.id) return null;
+
+                return <Id id={item.id} kind={item.kind} preventCopy />;
+              }}
             />
           ),
         },
