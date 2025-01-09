@@ -16,7 +16,7 @@ RUN mkdir /prom_shared /remote
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install --no-install-recommends -y curl git pkg-config build-essential ca-certificates && \
-    curl -sSL https://install.python-poetry.org | python3 - && \
+    curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.5 python3 - && \
     apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/* && \

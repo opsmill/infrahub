@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from graphene import Enum, Field, Float, List, NonNull, ObjectType, String
+from graphene import Enum, Field, Float, List, ObjectType, String
 from graphene.types.generic import GenericScalar
 from prefect.client.schemas.objects import StateType
 
@@ -42,7 +42,7 @@ class TaskNode(Task):
         required=False,
         deprecation_reason="This field is deprecated and it will be removed in a future release, use related_nodes instead",
     )
-    related_nodes = List(of_type=NonNull(TaskRelatedNode))
+    related_nodes = List(TaskRelatedNode)
     logs = Field(TaskLogEdge)
 
 

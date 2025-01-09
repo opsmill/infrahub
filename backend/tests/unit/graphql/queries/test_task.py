@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -216,7 +216,7 @@ async def flow_runs_data(prefect_client: PrefectClient, tag_blue, tag_red, accou
     return {item.name: item for item in items}
 
 
-async def run_query(db: InfrahubDatabase, branch: Branch, query: str, variables: Dict[str, Any]) -> ExecutionResult:
+async def run_query(db: InfrahubDatabase, branch: Branch, query: str, variables: dict[str, Any]) -> ExecutionResult:
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     return await graphql(
         schema=gql_params.schema,

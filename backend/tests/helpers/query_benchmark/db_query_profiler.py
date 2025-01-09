@@ -2,7 +2,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
-from typing import Any, List, Optional, Self, Type
+from typing import Any, Optional, Self
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -47,7 +47,7 @@ class GraphProfileGenerator:
 
         return pd.DataFrame(data)
 
-    def create_graphs(self, measurements: List[QueryMeasurement], output_location: Path, label: str) -> None:
+    def create_graphs(self, measurements: list[QueryMeasurement], output_location: Path, label: str) -> None:
         df = self.build_df_from_measuremenst(measurements)
         query_names = set(df["query_name"].tolist())
 
@@ -84,14 +84,14 @@ class GraphProfileGenerator:
 class InfrahubDatabaseProfiler(InfrahubDatabase):
     profiling_enabled: bool
     profile_memory: bool
-    measurements: List[QueryMeasurement]
+    measurements: list[QueryMeasurement]
     nb_elements_loaded: int
 
     def __init__(
         self,
         profiling_enabled: bool = False,
         profile_memory: bool = False,
-        measurements: Optional[List[QueryMeasurement]] = None,
+        measurements: Optional[list[QueryMeasurement]] = None,
         nb_elements_loaded: int = 0,
         **kwargs: Any,
     ) -> None:  # todo args in constructor only because of __class__ pattern
@@ -168,7 +168,7 @@ class InfrahubDatabaseProfiler(InfrahubDatabase):
         self.profile_memory = self.profile_memory
 
     def __exit__(
-        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
+        self, exc_type: Optional[type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> None:
         self.profiling_enabled = False
         self.profile_memory = False

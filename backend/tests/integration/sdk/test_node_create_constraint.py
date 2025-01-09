@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -22,7 +22,7 @@ MANUFACTURER_KIND = "TestingManufacturer"
 
 class TestSDKNodeCreateConstraints(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    def schema_person_base(self) -> Dict[str, Any]:
+    def schema_person_base(self) -> dict[str, Any]:
         return {
             "name": "Person",
             "namespace": "Testing",
@@ -39,7 +39,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_manufacturer_base(self) -> Dict[str, Any]:
+    def schema_manufacturer_base(self) -> dict[str, Any]:
         return {
             "name": "Manufacturer",
             "namespace": "Testing",
@@ -67,7 +67,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_car_base(self) -> Dict[str, Any]:
+    def schema_car_base(self) -> dict[str, Any]:
         return {
             "name": "Car",
             "namespace": "Testing",
@@ -100,7 +100,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_step01(self, schema_car_base, schema_person_base, schema_manufacturer_base) -> Dict[str, Any]:
+    def schema_step01(self, schema_car_base, schema_person_base, schema_manufacturer_base) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_base, schema_car_base, schema_manufacturer_base],
@@ -171,28 +171,28 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         return objs
 
     @pytest.fixture(scope="class")
-    def schema_02_car_uniqueness_constraint(self, schema_car_base) -> Dict[str, Any]:
+    def schema_02_car_uniqueness_constraint(self, schema_car_base) -> dict[str, Any]:
         schema_car_base["uniqueness_constraints"] = [["owner", "color__value"]]
         return schema_car_base
 
     @pytest.fixture(scope="class")
     def schema_02_uniqueness_constraint(
         self, schema_person_base, schema_02_car_uniqueness_constraint, schema_manufacturer_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_base, schema_02_car_uniqueness_constraint, schema_manufacturer_base],
         }
 
     @pytest.fixture(scope="class")
-    def schema_03_car_uniqueness_constraint(self, schema_car_base) -> Dict[str, Any]:
+    def schema_03_car_uniqueness_constraint(self, schema_car_base) -> dict[str, Any]:
         schema_car_base["uniqueness_constraints"] = [["owner", "nbr_seats__value"]]
         return schema_car_base
 
     @pytest.fixture(scope="class")
     def schema_03_uniqueness_constraint(
         self, schema_person_base, schema_03_car_uniqueness_constraint, schema_manufacturer_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_base, schema_03_car_uniqueness_constraint, schema_manufacturer_base],

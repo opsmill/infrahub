@@ -117,7 +117,9 @@ class TestDiffMerge(TestInfrahubApp):
         delorean_id = initial_dataset["delorean"].get_id()
         marty_id = initial_dataset["marty"].get_id()
 
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=diff_branch
+        )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 1
         owner_conflict = list(conflicts_map.values())[0]
@@ -169,7 +171,9 @@ class TestDiffMerge(TestInfrahubApp):
         await new_car.save(db=db)
 
         # check that the expected node-level conflict exists
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=diff_branch
+        )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert set(conflicts_map.keys()) == {f"data/{person_updated.id}"}
         conflict = conflicts_map[f"data/{person_updated.id}"]
@@ -190,7 +194,9 @@ class TestDiffMerge(TestInfrahubApp):
         await car_branch.save(db=db)
 
         # check that the conflict is gone
-        enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=diff_branch
+        )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 0
 

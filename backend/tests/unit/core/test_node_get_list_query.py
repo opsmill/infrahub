@@ -16,6 +16,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.models import OrderModel
 from tests.helpers.schema import WIDGET
 
 
@@ -389,6 +390,22 @@ async def test_query_NodeGetListQuery_order_by(
     )
     await query.execute(db=db)
     assert query.get_node_ids() == [car_camry_main.id, car_yaris_main.id, car_accord_main.id, car_volt_main.id]
+
+
+async def test_query_NodeGetListQuery_order_by_disabled(
+    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+):
+    schema = registry.schema.get(name="TestCar", branch=branch)
+    schema.order_by = ["owner__name__value", "name__value"]
+
+    query = await NodeGetListQuery.init(
+        db=db,
+        branch=branch,
+        schema=schema,
+        order=OrderModel(disable=True),
+    )
+    await query.execute(db=db)
+    assert set(query.get_node_ids()) == {car_camry_main.id, car_yaris_main.id, car_accord_main.id, car_volt_main.id}
 
 
 async def test_query_NodeGetListQuery_order_by_optional_relationship_nulls(

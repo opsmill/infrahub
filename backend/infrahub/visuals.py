@@ -1,5 +1,3 @@
-from typing import List
-
 COLOR_SELECTION = [
     "#ed6a5a",
     "#f4f1bb",
@@ -24,7 +22,7 @@ COLOR_SELECTION = [
 ]
 
 
-def select_color(existing: List[str]) -> str:
+def select_color(existing: list[str]) -> str:
     """Select a color from a predefined list without including anything from a list of existing colors."""
     for color in COLOR_SELECTION:
         if color not in existing:

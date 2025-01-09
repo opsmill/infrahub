@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -88,7 +88,7 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         return await create_branch(db=db, branch_name="branch_2")
 
     @pytest.fixture(scope="class")
-    def schema_01_person_name_regex(self, schema_person_base) -> Dict[str, Any]:
+    def schema_01_person_name_regex(self, schema_person_base) -> dict[str, Any]:
         """Add regex to TestPerson.name that does not fit existing data"""
         new_schema = {**schema_person_base}
         new_schema["attributes"][0]["regex"] = "^[A-Z][a-z]+$"
@@ -97,14 +97,14 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_01_attr_regex(
         self, schema_car_base, schema_01_person_name_regex, schema_manufacturer_base, schema_tag_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_01_person_name_regex, schema_car_base, schema_manufacturer_base, schema_tag_base],
         }
 
     @pytest.fixture(scope="class")
-    def schema_02_car_unique(self, schema_car_base) -> Dict[str, Any]:
+    def schema_02_car_unique(self, schema_car_base) -> dict[str, Any]:
         new_schema = {**schema_car_base}
         new_schema["uniqueness_constraints"] = [["owner", "manufacturer"]]
         return new_schema
@@ -112,7 +112,7 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_02_node_unique(
         self, schema_car_base, schema_person_base, schema_02_car_unique, schema_tag_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_person_base, schema_car_base, schema_02_car_unique, schema_tag_base],

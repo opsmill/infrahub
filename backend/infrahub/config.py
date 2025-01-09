@@ -153,6 +153,10 @@ class MainSettings(BaseSettings):
         default=["infrahub.permissions.LocalPermissionBackend"],
         description="List of modules to handle permissions, they will be run in the given order",
     )
+    public_url: Optional[str] = Field(
+        default=None,
+        description="Define the public URL of the Infrahub, might be required for OAuth2 and OIDC depending on your infrastructure.",
+    )
 
     @field_validator("docs_index_path", mode="before")
     @classmethod
@@ -256,10 +260,6 @@ class DevelopmentSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_DEV_")
 
-    frontend_url: Optional[str] = Field(
-        default=None,
-        description="Define the URL of the frontend, useful for OAuth2 development when the frontend and backend use different ports.",
-    )
     frontend_redirect_sso: bool = Field(
         default=False,
         description="Indicates of the frontend should be responsible for the SSO redirection",

@@ -1,4 +1,3 @@
-from typing import Dict
 from unittest.mock import call, patch
 
 import pytest
@@ -18,7 +17,7 @@ from tests.helpers.graphql import graphql
 
 
 @pytest.fixture
-async def group1(db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: Dict[str, Node]) -> Node:
+async def group1(db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: dict[str, Node]) -> Node:
     g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
     await g1.save(db=db)
@@ -27,7 +26,7 @@ async def group1(db: InfrahubDatabase, default_branch: Branch, car_person_data_g
 
 @pytest.fixture
 async def transformation1(
-    db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: dict[str, Node]
 ) -> Node:
     t1 = await Node.init(db=db, schema="CoreTransformPython")
     await t1.new(
@@ -46,7 +45,7 @@ async def transformation1(
 async def definition1(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_data_generic: Dict[str, Node],
+    car_person_data_generic: dict[str, Node],
     group1: Node,
     transformation1: Node,
 ) -> Node:

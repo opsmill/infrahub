@@ -1,5 +1,3 @@
-from typing import List
-
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
 from prefect.logging import get_run_logger
@@ -18,7 +16,7 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
     await add_tags(branches=[message.source_branch], nodes=[message.proposed_change])
     log = get_run_logger()
 
-    events: List[InfrahubMessage] = []
+    events: list[InfrahubMessage] = []
 
     repository = await service.client.get(
         kind=InfrahubKind.GENERICREPOSITORY, id=message.repository, branch=message.source_branch
@@ -26,7 +24,7 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
     proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
 
     validator_execution_id = str(UUIDT())
-    check_execution_ids: List[str] = []
+    check_execution_ids: list[str] = []
     await proposed_change.validations.fetch()
     await repository.checks.fetch()
 
@@ -106,7 +104,7 @@ async def user_checks(message: messages.RequestRepositoryUserChecks, service: In
     await add_tags(branches=[message.source_branch], nodes=[message.proposed_change])
     log = get_run_logger()
 
-    events: List[InfrahubMessage] = []
+    events: list[InfrahubMessage] = []
 
     repository = await service.client.get(
         kind=InfrahubKind.GENERICREPOSITORY, id=message.repository_id, branch=message.source_branch, fragment=True

@@ -1,5 +1,3 @@
-from typing import Dict
-
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     InfrahubKind,
@@ -429,7 +427,7 @@ async def test_query_NodeGetHierarchyQuery_ancestors(
 async def test_query_NodeGetHierarchyQuery_filters(
     db: InfrahubDatabase,
     default_branch: Branch,
-    hierarchical_location_data: Dict[str, Node],
+    hierarchical_location_data: dict[str, Node],
 ):
     node_schema = registry.schema.get(name="LocationRack", branch=default_branch)
 

@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import Field
 
@@ -12,4 +12,4 @@ class EventNodeMutated(InfrahubMessage):
     kind: str = Field(..., description="The type of object modified")
     node_id: str = Field(..., description="The ID of the mutated node")
     action: str = Field(..., description="The action taken on the node")
-    data: Dict[str, Any] = Field(..., description="Data on modified object")
+    data: dict[str, Any] = Field(..., description="Data on modified object")

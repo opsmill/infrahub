@@ -16,6 +16,7 @@ from ..model.path import (
     EnrichedDiffProperty,
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
+    EnrichedDiffRootMetadata,
     EnrichedDiffSingleRelationship,
     deserialize_tracking_id,
 )
@@ -135,6 +136,7 @@ class EnrichedDiffDeserializer:
                 parent_kind=parent.get("kind"),
                 parent_label=parent.get("label"),
                 parent_rel_name=rel.get("name"),
+                parent_rel_identifier=rel.get("identifier"),
                 parent_rel_cardinality=RelationshipCardinality(rel.get("cardinality")),
                 parent_rel_label=rel.get("label"),
             )
@@ -149,19 +151,20 @@ class EnrichedDiffDeserializer:
         root_uuid = str(root_node.get("uuid"))
         if root_uuid in self._diff_root_map:
             return self._diff_root_map[root_uuid]
-        enriched_root = self.build_diff_root(root_node=root_node)
+        root_empty = self.build_diff_root_metadata(root_node=root_node)
+        enriched_root = EnrichedDiffRoot.from_root_metadata(empty_root=root_empty)
         self._diff_root_map[root_uuid] = enriched_root
         return enriched_root
 
     @classmethod
-    def build_diff_root(cls, root_node: Neo4jNode) -> EnrichedDiffRoot:
+    def build_diff_root_metadata(cls, root_node: Neo4jNode) -> EnrichedDiffRootMetadata:
         from_time = Timestamp(str(root_node.get("from_time")))
         to_time = Timestamp(str(root_node.get("to_time")))
         tracking_id_str = cls._get_str_or_none_property_value(node=root_node, property_name="tracking_id")
         tracking_id = None
         if tracking_id_str:
             tracking_id = deserialize_tracking_id(tracking_id_str=tracking_id_str)
-        return EnrichedDiffRoot(
+        return EnrichedDiffRootMetadata(
             base_branch_name=str(root_node.get("base_branch")),
             diff_branch_name=str(root_node.get("diff_branch")),
             from_time=from_time,
@@ -234,6 +237,7 @@ class EnrichedDiffDeserializer:
         timestamp_str = relationship_group_node.get("changed_at")
         enriched_relationship = EnrichedDiffRelationship(
             name=relationship_group_node.get("name"),
+            identifier=relationship_group_node.get("identifier"),
             label=relationship_group_node.get("label"),
             cardinality=RelationshipCardinality(relationship_group_node.get("cardinality")),
             changed_at=Timestamp(timestamp_str) if timestamp_str else None,
