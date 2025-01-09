@@ -374,6 +374,7 @@ class DiffRelationshipIntermediate:
                 action = actions.pop()
         return DiffRelationship(
             name=self.name,
+            identifier=self.identifier,
             changed_at=last_changed_at,
             action=action,
             relationships=single_relationships,

@@ -79,6 +79,10 @@ GraphQLTypes = Union[
 ]
 
 
+class OrderInput(graphene.InputObjectType):
+    disable = graphene.Boolean(required=False)
+
+
 @dataclass
 class GraphqlMutations:
     create: type[InfrahubMutation]
@@ -190,14 +194,16 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         include_types: bool = True,
     ) -> GraphQLSchema:
         with SCHEMA_GENERATE_GRAPHQL_METRICS.labels(self.schema.name).time():
+            query = self.get_gql_query() if include_query else None
+
             if include_types:
-                self.generate_object_types()
+                if not include_query:
+                    self.generate_object_types()
                 types_dict = self.get_all()
                 types = list(types_dict.values())
             else:
                 types = []
 
-            query = self.get_gql_query() if include_query else None
             mutation = self.get_gql_mutation() if include_mutation else None
             subscription = None
             if include_subscription:
@@ -871,7 +877,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             dict: A Dictionary containing all the filters with their name as the key and their Type as value
         """
 
-        filters: dict[str, Any] = {"offset": graphene.Int(), "limit": graphene.Int()}
+        filters: dict[str, Any] = {"offset": graphene.Int(), "limit": graphene.Int(), "order": OrderInput()}
         default_filters: list[str] = list(filters.keys())
 
         filters["ids"] = graphene.List(graphene.ID)

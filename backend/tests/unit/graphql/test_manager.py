@@ -181,6 +181,7 @@ async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, da
     expected_filters = [
         "offset",
         "limit",
+        "order",
         "partial_match",
         "ids",
         "any__is_protected",

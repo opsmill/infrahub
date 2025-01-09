@@ -1,11 +1,11 @@
 [project]
 name = "infrahub-testcontainers"
-version = "1.1.1"
+version = "1.1.2"
 requires-python = ">=3.9"
 
 [tool.poetry]
 name = "infrahub-testcontainers"
-version = "1.1.0"
+version = "1.1.2"
 description = "Testcontainers instance for Infrahub to easily build integration tests"
 authors = ["OpsMill <info@opsmill.com>"]
 readme = "README.md"
@@ -23,13 +23,9 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 
-include = [
-    "infrahub_testcontainers/docker-compose.test.yml"
-]
+include = ["infrahub_testcontainers/docker-compose.test.yml"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
 testcontainers = "~4.8"
 pytest = "*"
-
-

@@ -1,5 +1,3 @@
-from typing import Dict
-
 import pytest
 
 from infrahub.core import registry
@@ -16,7 +14,7 @@ from infrahub.database import InfrahubDatabase
 @pytest.fixture
 async def hierarchical_location_data_simple_and_small(
     db: InfrahubDatabase, hierarchical_location_schema_simple
-) -> Dict[str, Node]:
+) -> dict[str, Node]:
     nodes = {}
 
     r1 = await Node.init(db=db, schema="LocationRegion")

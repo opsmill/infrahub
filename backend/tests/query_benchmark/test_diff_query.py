@@ -20,8 +20,6 @@ from tests.query_benchmark.utils import start_db_and_create_default_branch
 
 log = get_logger()
 
-# pytestmark = pytest.mark.skip("Not relevant to test this currently.")
-
 
 @pytest.mark.timeout(36000)  # 10 hours
 @pytest.mark.parametrize(

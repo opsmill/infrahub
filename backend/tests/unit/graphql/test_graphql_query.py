@@ -1,4 +1,4 @@
-from typing import Dict, Literal
+from typing import Literal
 
 import pytest
 from deepdiff import DeepDiff
@@ -1443,7 +1443,7 @@ async def test_query_filter_relationships(
 
 
 async def test_query_filter_relationships_with_generic(
-    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
 ):
     query = """
     query {
@@ -1487,7 +1487,7 @@ async def test_query_filter_relationships_with_generic(
 
 
 async def test_query_filter_relationships_with_generic_filter(
-    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
 ):
     query = """
     query {
@@ -2771,7 +2771,7 @@ async def test_model_rel_interface_reverse(db: InfrahubDatabase, default_branch:
 
 
 async def test_generic_root_with_pagination(
-    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
 ):
     query = """
     query {
@@ -2812,7 +2812,7 @@ async def test_generic_root_with_pagination(
 
 
 async def test_generic_root_with_filters(
-    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
 ):
     query = """
     query {
@@ -2852,7 +2852,7 @@ async def test_generic_root_with_filters(
 
 
 async def test_member_of_groups(
-    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
 ):
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
@@ -2941,7 +2941,7 @@ async def test_member_of_groups(
 
 
 async def test_hierarchical_location_parent_filter(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
 ):
     query = """
     query GetRack {
@@ -2976,7 +2976,7 @@ async def test_hierarchical_location_parent_filter(
 
 
 async def test_hierarchical_location_ancestors(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
 ):
     query = """
     query {
@@ -3032,7 +3032,7 @@ async def test_hierarchical_location_ancestors(
 
 
 async def test_hierarchical_location_descendants(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
 ):
     query = """
     query {
@@ -3095,7 +3095,7 @@ async def test_hierarchical_location_descendants(
 
 
 async def test_hierarchical_location_descendants_filters_attr(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
 ):
     query = """
     query {
@@ -3144,7 +3144,7 @@ async def test_hierarchical_location_descendants_filters_attr(
 
 
 async def test_hierarchical_location_descendants_filters_ids(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
 ):
     query = """
     query {
@@ -3198,7 +3198,7 @@ async def test_hierarchical_location_descendants_filters_ids(
 
 
 async def test_hierarchical_location_include_descendants(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_thing: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_thing: dict[str, Node]
 ):
     query = """
     query {
@@ -3253,7 +3253,7 @@ async def test_hierarchical_location_include_descendants(
 
 
 async def test_hierarchical_groups_descendants(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_groups_data: Dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_groups_data: dict[str, Node]
 ):
     query = """
     query {

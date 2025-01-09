@@ -3,8 +3,6 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Iterable, Optional
 
-from infrahub.core.constants import NULL_VALUE
-
 if TYPE_CHECKING:
     from infrahub.core.query import QueryResult
     from infrahub.core.schema import SchemaAttributePath, SchemaAttributePathValue
@@ -49,13 +47,13 @@ class UniquenessQueryResultsIndex:
             if relationship_identifier:
                 if relationship_identifier not in self._relationship_index:
                     self._relationship_index[relationship_identifier] = defaultdict(set)
-                if attr_value and attr_value != NULL_VALUE and node_id:
+                if attr_value and node_id:
                     self._relationship_index[relationship_identifier][attr_value].add(node_id)
                     self._node_index[node_id][relationship_identifier] = attr_value
             elif attr_name:
                 if attr_name not in self._attribute_index:
                     self._attribute_index[attr_name] = defaultdict(set)
-                if attr_value and attr_value != NULL_VALUE and node_id:
+                if attr_value and node_id:
                     self._attribute_index[attr_name][attr_value].add(node_id)
                     self._node_index[node_id][attr_name] = attr_value
 

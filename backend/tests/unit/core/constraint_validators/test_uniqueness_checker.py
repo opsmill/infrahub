@@ -143,6 +143,85 @@ class TestUniquenessChecker:
         assert len(grouped_data_paths) == 1
         assert not grouped_data_paths[0].get_all_data_paths()
 
+    async def test_combined_uniqueness_constraint_attribute_violations(
+        self,
+        db: InfrahubDatabase,
+        car_accord_main,
+        car_prius_main,
+        car_volt_main,
+        car_yaris_main,
+        person_john_main,
+        default_branch: Branch,
+        branch: Branch,
+    ):
+        cars_to_update = await NodeManager.get_many(
+            db=db, ids=[car_accord_main.id, car_prius_main.id, car_volt_main.id], branch=branch
+        )
+        accord_branch = cars_to_update[car_accord_main.id]
+        accord_branch.color.value = "#123456"
+        await accord_branch.save(db=db)
+        prius_branch = cars_to_update[car_prius_main.id]
+        prius_branch.color.value = None
+        await prius_branch.save(db=db)
+        volt_branch = cars_to_update[car_volt_main.id]
+        volt_branch.color.value = None
+        await volt_branch.save(db=db)
+        schema = registry.schema.get("TestCar", branch=branch)
+        schema.uniqueness_constraints = [["color__value", "owner"]]
+        grouped_data_paths = await self.__call_system_under_test(db, branch, schema)
+
+        assert len(grouped_data_paths) == 1
+        all_data_paths = grouped_data_paths[0].get_all_data_paths()
+        assert len(all_data_paths) == 4
+        assert (
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_prius_main.id,
+                kind="TestCar",
+                field_name="color",
+                property_name="value",
+                value="NULL",
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=branch.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=car_volt_main.id,
+                kind="TestCar",
+                field_name="color",
+                property_name="value",
+                value="NULL",
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=default_branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_prius_main.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="id",
+                value=person_john_main.id,
+            )
+            in all_data_paths
+        )
+        assert (
+            DataPath(
+                branch=default_branch.name,
+                path_type=PathType.RELATIONSHIP_ONE,
+                node_id=car_volt_main.id,
+                kind="TestCar",
+                field_name="owner",
+                property_name="id",
+                value=person_john_main.id,
+            )
+            in all_data_paths
+        )
+
     @pytest.mark.skip("We technically don't support unqiueness constraints on properties of relationships")
     async def test_combined_uniqueness_constraints_with_violations(
         self,

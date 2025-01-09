@@ -25,8 +25,8 @@ router = APIRouter(prefix="/oauth2")
 
 
 def _get_redirect_url(request: Request, provider_name: str) -> str:
-    """This function is mostly to support local development when the frontend runs on different ports compared to the API."""
-    base_url = config.SETTINGS.dev.frontend_url or str(request.base_url)
+    """Return public redirect URL."""
+    base_url = config.SETTINGS.main.public_url or str(request.base_url)
     return urljoin(base_url, f"auth/oauth2/{provider_name}/callback")
 
 
@@ -40,7 +40,7 @@ async def authorize(request: Request, provider_name: str, final_url: str | None 
     )
 
     redirect_uri = _get_redirect_url(request=request, provider_name=provider_name)
-    final_url = final_url or config.SETTINGS.dev.frontend_url or str(request.base_url)
+    final_url = final_url or config.SETTINGS.main.public_url or str(request.base_url)
 
     authorization_uri, state = client.create_authorization_url(
         url=provider.authorization_url, redirect_uri=redirect_uri, scope=provider.scopes, final_url=final_url

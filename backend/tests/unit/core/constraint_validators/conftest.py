@@ -1,5 +1,3 @@
-from typing import Dict
-
 import pytest
 
 from infrahub.core import registry
@@ -87,7 +85,7 @@ async def car_person_schema_generics_simple(db: InfrahubDatabase, default_branch
 
 
 @pytest.fixture
-async def car_person_generics_data_simple(db: InfrahubDatabase, car_person_schema_generics_simple) -> Dict[str, Node]:
+async def car_person_generics_data_simple(db: InfrahubDatabase, car_person_schema_generics_simple) -> dict[str, Node]:
     ecar = registry.schema.get(name="TestElectricCar")
     gcar = registry.schema.get(name="TestGazCar")
     person = registry.schema.get(name="TestPerson")

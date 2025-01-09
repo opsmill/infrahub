@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 from infrahub_sdk import InfrahubClient
@@ -86,7 +86,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         return objs
 
     @pytest.fixture(scope="class")
-    def schema_01_person_name_regex_failure(self, schema_person_base) -> Dict[str, Any]:
+    def schema_01_person_name_regex_failure(self, schema_person_base) -> dict[str, Any]:
         """Add regex to TestPerson.name that does not fit existing data"""
         schema = copy.deepcopy(schema_person_base)
         schema["attributes"][0]["regex"] = "^Q[0-9]+$"
@@ -95,14 +95,14 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_01_attr_regex_failure(
         self, schema_car_base, schema_01_person_name_regex_failure, schema_manufacturer_base, schema_tag_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_01_person_name_regex_failure, schema_car_base, schema_manufacturer_base, schema_tag_base],
         }
 
     @pytest.fixture(scope="class")
-    def schema_02_person_name_regex_success(self, schema_person_base) -> Dict[str, Any]:
+    def schema_02_person_name_regex_success(self, schema_person_base) -> dict[str, Any]:
         """Add regex to TestPerson.name that fits existing data"""
         schema = copy.deepcopy(schema_person_base)
         schema["attributes"][0]["regex"] = "^J[a-z]+$"
@@ -111,14 +111,14 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_02_attr_regex(
         self, schema_car_base, schema_02_person_name_regex_success, schema_manufacturer_base, schema_tag_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [schema_02_person_name_regex_success, schema_car_base, schema_manufacturer_base, schema_tag_base],
         }
 
     @pytest.fixture(scope="class")
-    def schema_03_tag_car_cardinality_failure(self, schema_tag_base) -> Dict[str, Any]:
+    def schema_03_tag_car_cardinality_failure(self, schema_tag_base) -> dict[str, Any]:
         """Update TestingTag.cars.cardinality to one, invalid"""
         schema = copy.deepcopy(schema_tag_base)
         schema["relationships"][0]["cardinality"] = "one"
@@ -127,7 +127,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_03_relationship_cardinality_failure(
         self, schema_car_base, schema_person_base, schema_manufacturer_base, schema_03_tag_car_cardinality_failure
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [
@@ -139,7 +139,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_04_tag_person_cardinality_success(self, schema_tag_base) -> Dict[str, Any]:
+    def schema_04_tag_person_cardinality_success(self, schema_tag_base) -> dict[str, Any]:
         """Update TestingTag.persons.cardinality to one, fits existing data"""
         schema = copy.deepcopy(schema_tag_base)
         schema["relationships"][0]["cardinality"] = "many"
@@ -149,7 +149,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_04_relationship_cardinality(
         self, schema_car_base, schema_person_base, schema_manufacturer_base, schema_04_tag_person_cardinality_success
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [
@@ -161,7 +161,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_05_car_color_unique(self, schema_car_base) -> Dict[str, Any]:
+    def schema_05_car_color_unique(self, schema_car_base) -> dict[str, Any]:
         """Update TestingCar.color to unique, invalid"""
         schema = copy.deepcopy(schema_car_base)
         schema["attributes"][2]["unique"] = "true"
@@ -170,7 +170,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_05_attribute_unique(
         self, schema_05_car_color_unique, schema_person_base, schema_manufacturer_base, schema_tag_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [
@@ -182,7 +182,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_07_car_generate_profile_false(self, schema_car_base) -> Dict[str, Any]:
+    def schema_07_car_generate_profile_false(self, schema_car_base) -> dict[str, Any]:
         """Update TestingCar.generate_profile to false"""
         schema = copy.deepcopy(schema_car_base)
         schema["generate_profile"] = "false"
@@ -191,7 +191,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_07_generate_profile_false(
         self, schema_07_car_generate_profile_false, schema_person_base, schema_manufacturer_base, schema_tag_base
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "nodes": [
@@ -203,7 +203,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_velocipede_generic(self) -> Dict[str, Any]:
+    def schema_velocipede_generic(self) -> dict[str, Any]:
         return {
             "name": "Velocipede",
             "namespace": "Testing",
@@ -230,7 +230,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         schema_manufacturer_base,
         schema_tag_base,
         schema_velocipede_generic,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [schema_velocipede_generic],

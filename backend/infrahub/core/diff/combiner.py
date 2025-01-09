@@ -320,6 +320,7 @@ class DiffCombiner:
                 combined_relationship = EnrichedDiffRelationship(
                     name=later_relationship.name,
                     label=later_relationship.label,
+                    identifier=later_relationship.identifier,
                     cardinality=later_relationship.cardinality,
                     changed_at=later_relationship.changed_at or earlier_relationship.changed_at,
                     action=combined_action,
