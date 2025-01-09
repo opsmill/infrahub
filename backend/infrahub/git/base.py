@@ -499,9 +499,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             merge_tree_output = repo.git.merge_tree(merge_base.hexsha, target.commit.hexsha, source.commit.hexsha)
 
         log.debug(
-            f"Merging {source_branch} into will bring changes",
+            f"Merging {source_branch} into {target_branch} will bring changes",
             repository=self.name,
-            branch=source_branch,
+            source=source_branch,
+            target=target_branch,
             merge_structure=merge_tree_output,
         )
 
@@ -726,7 +727,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             return False
 
         # Make sure the branch won't conflict on merge
-        if self.has_conflicting_changes(target_branch=self.default_branch_name, source_branch=branch_name):
+        if self.has_conflicting_changes(target_branch=self.default_branch, source_branch=branch_name):
             log.warning(
                 f"Remote branch {branch_name} will cause conflicts, they need to be resolved before importing into Infrahub",
                 repository=self.name,
