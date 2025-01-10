@@ -1,6 +1,6 @@
 import type { DiffNode as DiffNodeType, PropertyType } from "@/entities/diff/node-diff/types";
 import { DiffBadge } from "@/entities/diff/node-diff/utils";
-import { schemaKindNameState } from "@/entities/schema/schemaKindName.atom";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import Accordion from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card } from "@/shared/components/ui/card";

@@ -1,4 +1,4 @@
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { currentBranchAtom } from "@/entities/branches/stores";
 import { GET_IP_NAMESPACES } from "@/entities/ipam/api/ip-namespaces";
 import { IpamNamespace } from "@/shared/api/graphql/generated/graphql";
 import useQuery from "@/shared/api/graphql/useQuery";

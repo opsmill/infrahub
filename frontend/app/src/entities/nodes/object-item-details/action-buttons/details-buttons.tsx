@@ -1,9 +1,9 @@
 import { ARTIFACT_DEFINITION_OBJECT, GENERIC_REPOSITORY_KIND } from "@/config/constants";
 import { Generate } from "@/entities/artifacts/ui/generate";
-import { GroupsManagerTriggerButton } from "@/entities/groups/groups-manager-trigger-button";
+import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-trigger-button";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
-import RepositoryActionMenu from "@/entities/repository/repository-action-menu";
-import { IModelSchema } from "@/entities/schema/schema.atom";
+import RepositoryActionMenu from "@/entities/repository/ui/repository-action-menu";
+import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { isGenericSchema } from "@/entities/schema/utils";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";

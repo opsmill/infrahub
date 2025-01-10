@@ -1,7 +1,7 @@
 import { relationshipsInfiniteQueryOptions } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { iNodeSchema, schemaState } from "@/entities/schema/schema.atom";
-import { useSchema } from "@/entities/schema/useSchema";
+import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
 import { getRootSchemaOfHierarchicalSchema, isHierarchicalSchema } from "@/entities/schema/utils";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";

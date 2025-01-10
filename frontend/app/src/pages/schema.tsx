@@ -1,6 +1,6 @@
-import { SchemaSelector } from "@/entities/schema/schema-selector";
-import { SchemaViewerStack } from "@/entities/schema/schema-viewer";
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
+import { SchemaSelector } from "@/entities/schema/ui/schema-selector";
+import { SchemaViewerStack } from "@/entities/schema/ui/schema-viewer";
 import Content from "@/shared/components/layout/content";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { useTitle } from "@/shared/hooks/useTitle";

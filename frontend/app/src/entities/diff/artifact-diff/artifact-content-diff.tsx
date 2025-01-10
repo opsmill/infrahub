@@ -4,12 +4,12 @@ import {
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/config/constants";
-import { useAuth } from "@/entities/authentication/useAuth";
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { currentBranchAtom } from "@/entities/branches/stores";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { deleteObject } from "@/entities/nodes/api/deleteObject";
 import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
-import { schemaState } from "@/entities/schema/schema.atom";
+import { schemaState } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { fetchStream } from "@/shared/api/rest/fetch";

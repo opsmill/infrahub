@@ -4,7 +4,7 @@ import createClient, { Middleware } from "openapi-fetch";
 import { INFRAHUB_API_SERVER_URL } from "@/config/config";
 
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-import { getNewToken } from "@/entities/authentication/useAuth";
+import { getNewToken } from "@/entities/authentication/ui/useAuth";
 import type { paths } from "@/shared/api/rest/types.generated";
 
 export const queryClient = new QueryClient({

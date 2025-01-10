@@ -4,7 +4,7 @@ import {
   iGenericSchema,
   iNodeSchema,
   schemaState,
-} from "@/entities/schema/schema.atom";
+} from "@/entities/schema/stores/schema.atom";
 import { store } from "@/shared/stores";
 
 export const isOfKind = (kind: string, schema: IModelSchema) => {

@@ -2,11 +2,11 @@
 
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
-import { schemaState } from "../../../src/entities/schema/schema.atom";
+import { schemaState } from "../../../src/entities/schema/stores/schema.atom";
 
 import { gql } from "@apollo/client";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
-import { AuthProvider } from "../../../src/entities/authentication/useAuth";
+import { AuthProvider } from "../../../src/entities/authentication/ui/useAuth";
 import { encodeJwt } from "../../../src/shared/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {

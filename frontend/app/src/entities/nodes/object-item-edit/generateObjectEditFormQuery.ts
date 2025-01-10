@@ -1,4 +1,4 @@
-import { IProfileSchema, iNodeSchema } from "@/entities/schema/schema.atom";
+import { IProfileSchema, iNodeSchema } from "@/entities/schema/stores/schema.atom";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";

@@ -1,8 +1,8 @@
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { currentBranchAtom } from "@/entities/branches/stores";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { DynamicFieldData } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
 import { generateObjectEditFormQuery } from "@/entities/nodes/object-item-edit/generateObjectEditFormQuery";
-import { useSchema } from "@/entities/schema/useSchema";
+import { useSchema } from "@/entities/schema/hooks/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";

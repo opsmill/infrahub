@@ -1,6 +1,6 @@
 import { HierarchicalTree } from "@/entities/nodes/hierarchical-tree";
 import ObjectHeader from "@/entities/nodes/object-header";
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import LoadingScreen from "@/shared/components/loading-screen";

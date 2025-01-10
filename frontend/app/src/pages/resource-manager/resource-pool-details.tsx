@@ -1,18 +1,18 @@
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getObjectDetailsUrl } from "@/entities/nodes/objects";
-import { useObjectDetails } from "@/entities/nodes/useObjectDetails";
-import ResourcePoolUtilization from "@/entities/resource-manager/common/ResourcePoolUtilization";
+import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import {
+  GET_KIND_FOR_RESOURCE_POOL,
+  GET_RESOURCE_POOL_UTILIZATION,
+} from "@/entities/resource-manager/api/resource-pool";
 import {
   RESOURCE_GENERIC_KIND,
   RESOURCE_POOL_UTILIZATION_KIND,
 } from "@/entities/resource-manager/constants";
-import {
-  GET_KIND_FOR_RESOURCE_POOL,
-  GET_RESOURCE_POOL_UTILIZATION,
-} from "@/entities/resource-manager/graphql/resource-pool";
-import ResourceSelector, { ResourceProps } from "@/entities/resource-manager/resource-selector";
-import { iNodeSchema, schemaState } from "@/entities/schema/schema.atom";
+import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";
+import ResourceSelector, { ResourceProps } from "@/entities/resource-manager/ui/resource-selector";
+import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";

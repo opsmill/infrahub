@@ -1,6 +1,6 @@
 import { ARTIFACT_OBJECT } from "@/config/constants";
 import { Permission } from "@/entities/permission/types";
-import { IModelSchema } from "@/entities/schema/schema.atom";
+import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";

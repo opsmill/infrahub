@@ -1,11 +1,11 @@
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
-import { useAuth } from "@/entities/authentication/useAuth";
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { currentBranchAtom } from "@/entities/branches/stores";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { GET_FORM_REQUIREMENTS } from "@/entities/nodes/api/getFormRequirements";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
-import { IProfileSchema, iNodeSchema } from "@/entities/schema/schema.atom";
+import { IProfileSchema, iNodeSchema } from "@/entities/schema/stores/schema.atom";
 import { CREATE_ACCOUNT_TOKEN } from "@/entities/user-profile/api/createAccountToken";
 import { CoreNumberPool } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";

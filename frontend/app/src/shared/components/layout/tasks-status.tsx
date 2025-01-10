@@ -1,7 +1,7 @@
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { TASKS_STATUS_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { currentBranchAtom } from "@/entities/branches/stores";
 import { TASKS_STATUS } from "@/entities/tasks/api/getTasksStatus";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";

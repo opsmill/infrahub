@@ -1,4 +1,4 @@
-import { branchesState } from "@/entities/branches/branches.atom";
+import { branchesState } from "@/entities/branches/stores";
 import { TASK_STATES } from "@/entities/tasks/constants";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Form, FormProps, FormRef, FormSubmit } from "@/shared/components/ui/form";

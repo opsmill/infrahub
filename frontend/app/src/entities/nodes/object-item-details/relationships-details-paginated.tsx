@@ -2,7 +2,7 @@ import { QSP } from "@/config/qsp";
 import { getObjectRelationshipsDetailsPaginated } from "@/entities/nodes/api/getObjectRelationshipDetails";
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { REMOVE_RELATIONSHIP } from "@/entities/nodes/relationships/api/removeRelationship";
-import { genericsState, iNodeSchema, schemaState } from "@/entities/schema/schema.atom";
+import { genericsState, iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
 import useQuery, { useMutation } from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";

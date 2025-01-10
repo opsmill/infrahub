@@ -1,4 +1,4 @@
-import { iGenericSchema, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
+import { iGenericSchema, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";

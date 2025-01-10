@@ -2,10 +2,9 @@ import { CONFIG } from "@/config/config";
 import { ARTIFACT_OBJECT, MENU_EXCLUDELIST } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { Generate } from "@/entities/artifacts/ui/generate";
-import { GroupsManagerTriggerButton } from "@/entities/groups/groups-manager-trigger-button";
+import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-trigger-button";
 import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
 import { getObjectItemDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
-import { showMetaEditState } from "@/entities/nodes/metaEditFieldDetails.atom";
 import RelationshipDetails from "@/entities/nodes/object-item-details/relationship-details-paginated";
 import { RelationshipsDetails } from "@/entities/nodes/object-item-details/relationships-details-paginated";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
@@ -15,10 +14,11 @@ import {
   getSchemaObjectColumns,
   getTabs,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { metaEditFieldDetailsState } from "@/entities/nodes/showMetaEdit.atom";
+import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
+import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import { getPermission } from "@/entities/permission/utils";
-import { genericsState, schemaState } from "@/entities/schema/schema.atom";
-import { schemaKindNameState } from "@/entities/schema/schemaKindName.atom";
+import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";

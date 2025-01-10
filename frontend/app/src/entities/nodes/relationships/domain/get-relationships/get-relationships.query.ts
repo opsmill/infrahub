@@ -1,4 +1,4 @@
-import { getCurrentBranchName } from "@/entities/branches/get-current-branch";
+import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
 import {
   GetRelationshipsParams,
   RELATIONSHIPS_PER_PAGE,

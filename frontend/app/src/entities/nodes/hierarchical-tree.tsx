@@ -1,5 +1,5 @@
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
-import { HIDE_AUTO_GENERATED_FILTER } from "@/entities/groups/groups-auto-generated-filter-button";
+import { currentBranchAtom } from "@/entities/branches/stores";
+import { HIDE_AUTO_GENERATED_FILTER } from "@/entities/groups/ui/groups-auto-generated-filter-button";
 import { TREE_ROOT_ID } from "@/entities/ipam/constants";
 import { EMPTY_TREE, PrefixNode, updateTreeData } from "@/entities/ipam/ipam-tree/utils";
 import {
@@ -7,8 +7,8 @@ import {
   objectChildrenQuery,
   objectTopLevelTreeQuery,
 } from "@/entities/nodes/api/objectTreeQuery";
-import { getObjectDetailsUrl } from "@/entities/nodes/objects";
-import { IModelSchema, genericsState, schemaState } from "@/entities/schema/schema.atom";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { IModelSchema, genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";

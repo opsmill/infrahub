@@ -1,6 +1,6 @@
 import { getRelationshipParent } from "@/entities/nodes/api/getRelationshipParent";
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import {

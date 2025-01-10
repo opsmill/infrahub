@@ -7,7 +7,7 @@ import Content from "@/shared/components/layout/content";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { gql } from "@apollo/client";
 import { Outlet } from "react-router-dom";
-import { RoleManagementNavigation } from "../../entities/role-manager";
+import { RoleManagementNavigation } from "../../entities/role-manager/ui";
 
 function RoleManagement() {
   const { loading, error } = useQuery(gql(getObjectPermissionsQuery(GLOBAL_PERMISSION_OBJECT)));

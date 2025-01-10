@@ -1,6 +1,6 @@
 import { Root } from "@/app/root";
 import { NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { RequireAuth } from "@/entities/authentication/useAuth";
+import { RequireAuth } from "@/entities/authentication/ui/useAuth";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
@@ -375,7 +375,7 @@ export const router = createBrowserRouter([
                 children: [
                   {
                     index: true,
-                    lazy: () => import("@/entities/role-manager/accounts"),
+                    lazy: () => import("@/entities/role-manager/ui/accounts"),
                     handle: {
                       breadcrumb: () => {
                         return {
@@ -388,7 +388,7 @@ export const router = createBrowserRouter([
                   },
                   {
                     path: "groups",
-                    lazy: () => import("@/entities/role-manager/groups"),
+                    lazy: () => import("@/entities/role-manager/ui/groups"),
                     handle: {
                       breadcrumb: () => {
                         return {
@@ -401,7 +401,7 @@ export const router = createBrowserRouter([
                   },
                   {
                     path: "roles",
-                    lazy: () => import("@/entities/role-manager/roles"),
+                    lazy: () => import("@/entities/role-manager/ui/roles"),
                     handle: {
                       breadcrumb: () => {
                         return {
@@ -414,7 +414,7 @@ export const router = createBrowserRouter([
                   },
                   {
                     path: "global-permissions",
-                    lazy: () => import("@/entities/role-manager/global-permissions"),
+                    lazy: () => import("@/entities/role-manager/ui/global-permissions"),
                     handle: {
                       breadcrumb: () => {
                         return {
@@ -427,7 +427,7 @@ export const router = createBrowserRouter([
                   },
                   {
                     path: "object-permissions",
-                    lazy: () => import("@/entities/role-manager/object-permissions"),
+                    lazy: () => import("@/entities/role-manager/ui/object-permissions"),
                     handle: {
                       breadcrumb: () => {
                         return {

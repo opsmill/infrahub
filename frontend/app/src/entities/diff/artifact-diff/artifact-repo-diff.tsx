@@ -1,5 +1,5 @@
 import { getArtifactDetails } from "@/entities/artifacts/api/getArtifacts";
-import { schemaState } from "@/entities/schema/schema.atom";
+import { schemaState } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import Accordion from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/display/badge";

@@ -1,14 +1,14 @@
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { useAuth } from "@/entities/authentication/useAuth";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { BRANCH_REBASE } from "@/entities/branches/api/rebaseBranch";
 import { DIFF_UPDATE } from "@/entities/diff/api/diff-update";
 import DiffTree from "@/entities/diff/diff-tree";
 import { DIFF_STATUS, DiffNode as DiffNodeType } from "@/entities/diff/node-diff/types";
 import { DiffBadge } from "@/entities/diff/node-diff/utils";
 import { getProposedChangesDiffTree } from "@/entities/proposed-changes/api/getProposedChangesDiffTree";
-import { proposedChangedState } from "@/entities/proposed-changes/proposedChanges.atom";
-import { schemaState } from "@/entities/schema/schema.atom";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { schemaState } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
@@ -27,7 +27,7 @@ import { useAtomValue } from "jotai";
 import { createContext, useState } from "react";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { DiffFilter, ProposedChangeDiffFilter } from "../../proposed-changes/diff-filter";
+import { DiffFilter, ProposedChangeDiffFilter } from "../../proposed-changes/ui/diff-filter";
 import { DiffNode } from "./node";
 
 export const DiffContext = createContext({});

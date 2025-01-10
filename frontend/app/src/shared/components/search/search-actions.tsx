@@ -1,4 +1,4 @@
-import { IModelSchema, genericsState, schemaState } from "@/entities/schema/schema.atom";
+import { IModelSchema, genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { menuQueryOptions } from "@/shared/components/layout/menu-navigation/get-menu";
 import { MenuItem } from "@/shared/components/layout/menu-navigation/types";

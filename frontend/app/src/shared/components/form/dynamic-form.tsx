@@ -1,5 +1,5 @@
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { getSchema } from "@/entities/schema/get-schema";
+import { getSchema } from "@/entities/schema/domain/get-schema";
 import { isHierarchicalSchema } from "@/entities/schema/utils";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";

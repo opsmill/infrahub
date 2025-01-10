@@ -1,6 +1,6 @@
 import { getProfiles } from "@/entities/nodes/api/getProfiles";
 import { getObjectAttributes } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { genericsState, iNodeSchema, profilesAtom } from "@/entities/schema/schema.atom";
+import { genericsState, iNodeSchema, profilesAtom } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";

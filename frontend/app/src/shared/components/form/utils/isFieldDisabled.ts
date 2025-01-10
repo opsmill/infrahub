@@ -1,5 +1,5 @@
-import { AuthContextType } from "@/entities/authentication/useAuth";
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { AuthContextType } from "@/entities/authentication/ui/useAuth";
+import { currentBranchAtom } from "@/entities/branches/stores";
 import { PermissionDecisionData } from "@/entities/permission/types";
 import { LineageOwner } from "@/shared/api/graphql/generated/graphql";
 import { store } from "@/shared/stores";

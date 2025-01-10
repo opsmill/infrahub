@@ -1,4 +1,4 @@
-import { namespacesState, schemaState } from "@/entities/schema/schema.atom";
+import { namespacesState, schemaState } from "@/entities/schema/stores/schema.atom";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { useFormContext } from "react-hook-form";

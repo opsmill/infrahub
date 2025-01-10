@@ -1,13 +1,13 @@
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { currentBranchAtom } from "@/entities/branches/stores";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { showMetaEditState } from "@/entities/nodes/metaEditFieldDetails.atom";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { ObjectItemsCell, TextCell } from "@/entities/nodes/object-items/object-items-cell";
-import { getObjectDetailsUrl } from "@/entities/nodes/objects";
-import { metaEditFieldDetailsState } from "@/entities/nodes/showMetaEdit.atom";
+import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
+import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { getPermission } from "@/entities/permission/utils";
-import { schemaState } from "@/entities/schema/schema.atom";
+import { schemaState } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";

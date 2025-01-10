@@ -3,7 +3,7 @@ import { getDropdownOptions } from "@/entities/nodes/api/dropdownOptions";
 import { generateRelationshipListQuery } from "@/entities/nodes/api/generateRelationshipListQuery";
 import { Node, RelationshipManyType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
-import { useSchema } from "@/entities/schema/useSchema";
+import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { PoolValue } from "@/shared/components/form/pool-selector";

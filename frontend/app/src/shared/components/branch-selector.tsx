@@ -1,6 +1,6 @@
 import { QSP } from "@/config/qsp";
-import { branchesToSelectOptions } from "@/entities/branches/branches";
-import { branchesState, currentBranchAtom } from "@/entities/branches/branches.atom";
+import { branchesToSelectOptions } from "@/entities/branches/utils";
+import { branchesState, currentBranchAtom } from "@/entities/branches/stores";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Icon } from "@iconify-icon/react";
@@ -8,7 +8,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
-import { useAuth } from "@/entities/authentication/useAuth";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ComboboxItem } from "@/shared/components/ui/combobox";

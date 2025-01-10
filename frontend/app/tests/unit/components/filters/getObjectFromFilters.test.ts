@@ -1,4 +1,4 @@
-import { IModelSchema } from "@/entities/schema/schema.atom";
+import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import { Filter } from "@/shared/hooks/useFilters";
 import { describe, expect } from "vitest";

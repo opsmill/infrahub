@@ -2,8 +2,8 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
-import BranchesItems from "../../../src/entities/branches/branches-items";
-import { branchesState } from "../../../src/entities/branches/branches.atom";
+import BranchesItems from "../../../src/entities/branches/ui/branches-items";
+import { branchesState } from "../../../src/entities/branches/stores";
 import { branchesMocks, branchesQuery } from "../../mocks/data/branches";
 import { TestProvider } from "../../mocks/jotai/atom";
 

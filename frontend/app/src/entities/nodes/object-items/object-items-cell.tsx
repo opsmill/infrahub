@@ -3,7 +3,7 @@ import {
   RelationshipOneType,
   getDisplayValue,
 } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/objects";
+import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";

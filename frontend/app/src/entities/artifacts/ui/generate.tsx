@@ -1,6 +1,6 @@
 import { CONFIG } from "@/config/config";
 import { QSP } from "@/config/qsp";
-import { useAuth } from "@/entities/authentication/useAuth";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { fetchUrl, getUrlWithQsp } from "@/shared/api/rest/fetch";
 import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";

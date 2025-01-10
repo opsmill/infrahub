@@ -1,4 +1,4 @@
-import { schemaState } from "@/entities/schema/schema.atom";
+import { schemaState } from "@/entities/schema/stores/schema.atom";
 import { store } from "@/shared/stores";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {

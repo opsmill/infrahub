@@ -5,8 +5,8 @@ import {
   INFRAHUB_SWAGGER_DOC_URL,
 } from "@/config/config";
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-import { useAuth } from "@/entities/authentication/useAuth";
-import { IModelSchema, genericsState } from "@/entities/schema/schema.atom";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { IModelSchema, genericsState } from "@/entities/schema/stores/schema.atom";
 import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";

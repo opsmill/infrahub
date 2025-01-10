@@ -1,5 +1,5 @@
 import { GET_CHECKS } from "@/entities/diff/api/getCheckDetails";
-import { schemaKindLabelState } from "@/entities/schema/schemaKindLabel.atom";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { MoreButton } from "@/shared/components/buttons/more-button";
 import Accordion from "@/shared/components/display/accordion";

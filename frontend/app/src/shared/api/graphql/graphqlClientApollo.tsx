@@ -1,6 +1,6 @@
 import { CONFIG } from "@/config/config";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-import { getNewToken } from "@/entities/authentication/useAuth";
+import { getNewToken } from "@/entities/authentication/ui/useAuth";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import {
   ApolloClient,

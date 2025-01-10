@@ -1,7 +1,7 @@
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { getPermission } from "@/entities/permission/utils";
-import { ProposedChangeCreateForm } from "@/entities/proposed-changes/create-form";
+import { ProposedChangeCreateForm } from "@/entities/proposed-changes/ui/create-form";
 import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";

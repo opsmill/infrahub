@@ -1,6 +1,6 @@
 import { QSP } from "@/config/qsp";
 import { BRANCH_CREATE } from "@/entities/branches/api/createBranch";
-import { branchesState } from "@/entities/branches/branches.atom";
+import { branchesState } from "@/entities/branches/stores";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";

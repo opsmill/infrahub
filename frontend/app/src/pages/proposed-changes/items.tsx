@@ -1,4 +1,4 @@
-import { ProposedChangesPage } from "@/entities/proposed-changes/items";
+import { ProposedChangesPage } from "@/entities/proposed-changes/ui/items";
 
 export function Component() {
   return <ProposedChangesPage />;

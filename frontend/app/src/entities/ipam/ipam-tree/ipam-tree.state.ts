@@ -1,4 +1,4 @@
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { currentBranchAtom } from "@/entities/branches/stores";
 import {
   GET_PREFIXES_ONLY,
   GET_PREFIX_ANCESTORS,

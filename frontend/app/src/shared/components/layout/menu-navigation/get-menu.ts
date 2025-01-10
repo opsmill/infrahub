@@ -1,5 +1,5 @@
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { currentBranchAtom } from "@/entities/branches/stores";
 import { apiClient } from "@/shared/api/rest/client";
 import { MenuData } from "@/shared/components/layout/menu-navigation/types";
 import { store } from "@/shared/stores";

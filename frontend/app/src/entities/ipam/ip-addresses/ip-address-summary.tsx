@@ -6,7 +6,7 @@ import { IpamSummarySkeleton } from "@/entities/ipam/prefixes/ipam-summary-skele
 import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { getPermission } from "@/entities/permission/utils";
-import { genericsState, schemaState } from "@/entities/schema/schema.atom";
+import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";

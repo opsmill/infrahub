@@ -1,4 +1,4 @@
-import { IModelSchema } from "@/entities/schema/schema.atom";
+import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { isGenericSchema } from "@/entities/schema/utils";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { FilterKindSelector } from "@/shared/components/filters/filter-kind-selector";

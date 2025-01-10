@@ -3,7 +3,7 @@
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
-import { genericsState, schemaState } from "../../../src/entities/schema/schema.atom";
+import { genericsState, schemaState } from "../../../src/entities/schema/stores/schema.atom";
 import { ObjectItemsPage } from "../../../src/pages/objects/object-items";
 import {
   graphqlQueriesMocksData,

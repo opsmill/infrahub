@@ -1,4 +1,4 @@
-import { getObjectDetailsUrl2 } from "@/entities/nodes/objects";
+import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
 import { QuestionMark } from "@/shared/components/display/question-mark";
 import {
   AttributeValueFromProfile,

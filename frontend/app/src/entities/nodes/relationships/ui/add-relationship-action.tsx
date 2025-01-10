@@ -1,5 +1,5 @@
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useSchema } from "@/entities/schema/useSchema";
+import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";

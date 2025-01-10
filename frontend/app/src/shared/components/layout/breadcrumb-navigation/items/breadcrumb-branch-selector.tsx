@@ -1,4 +1,4 @@
-import { branchesState } from "@/entities/branches/branches.atom";
+import { branchesState } from "@/entities/branches/stores";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { breadcrumbItemStyle } from "@/shared/components/layout/breadcrumb-navigation/style";

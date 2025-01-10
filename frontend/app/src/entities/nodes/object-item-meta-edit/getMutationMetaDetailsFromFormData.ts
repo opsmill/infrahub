@@ -1,4 +1,4 @@
-import { iNodeSchema } from "@/entities/schema/schema.atom";
+import { iNodeSchema } from "@/entities/schema/stores/schema.atom";
 
 const metadataFields = ["source", "owner", "is_visible", "is_protected"];
 

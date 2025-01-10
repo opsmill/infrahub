@@ -1,7 +1,7 @@
-import { useObjectDetails } from "@/entities/nodes/useObjectDetails";
-import { useObjectItems } from "@/entities/nodes/useObjectItems";
+import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
+import { useObjectItems } from "@/entities/nodes/hooks/useObjectItems";
 import { getPermission } from "@/entities/permission/utils";
-import { IModelSchema } from "@/entities/schema/schema.atom";
+import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import Content from "@/shared/components/layout/content";
 import { ObjectDetailsButton } from "@/shared/components/menu/object-details-button";

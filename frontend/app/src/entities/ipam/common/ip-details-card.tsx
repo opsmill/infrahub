@@ -1,8 +1,8 @@
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
 import { AttributeType, ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
-import { getObjectDetailsUrl } from "@/entities/nodes/objects";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
-import { IModelSchema } from "@/entities/schema/schema.atom";
+import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
 import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";

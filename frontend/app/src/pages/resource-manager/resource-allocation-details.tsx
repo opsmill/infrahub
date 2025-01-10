@@ -1,7 +1,7 @@
 import { QSP } from "@/config/qsp";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/objects";
+import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { GET_RESOURCE_POOL_ALLOCATED } from "@/entities/resource-manager/api/resource-pool";
 import { RESOURCE_POOL_ALLOCATED_KIND } from "@/entities/resource-manager/constants";
-import { GET_RESOURCE_POOL_ALLOCATED } from "@/entities/resource-manager/graphql/resource-pool";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";

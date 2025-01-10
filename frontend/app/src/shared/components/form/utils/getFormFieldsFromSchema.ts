@@ -1,8 +1,8 @@
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { AuthContextType } from "@/entities/authentication/useAuth";
+import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { SchemaAttributeType } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { IModelSchema } from "@/entities/schema/schema.atom";
+import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
   DynamicDropdownFieldProps,

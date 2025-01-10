@@ -1,4 +1,4 @@
-import { getCurrentBranchName } from "@/entities/branches/get-current-branch";
+import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
 import { getRelationshipsFromApi } from "@/entities/nodes/relationships/api/queries";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { store } from "@/shared/stores";

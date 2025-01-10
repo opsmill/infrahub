@@ -1,12 +1,12 @@
 import { GRAPHQL_QUERY_OBJECT } from "@/config/constants";
-import GraphqlQueryDetailsCard from "@/entities/graphql/details/graphql-query-details-card";
-import GraphQLQueryDetailsPageSkeleton from "@/entities/graphql/details/graphql-query-details-page-skeleton";
-import GraphqlQueryViewerCard from "@/entities/graphql/details/graphql-query-viewer-card";
+import GraphqlQueryDetailsCard from "@/entities/graphql/ui/graphql-query-details-card";
+import GraphQLQueryDetailsPageSkeleton from "@/entities/graphql/ui/graphql-query-details-page-skeleton";
+import GraphqlQueryViewerCard from "@/entities/graphql/ui/graphql-query-viewer-card";
 import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { Permission } from "@/entities/permission/types";
 import { getPermission } from "@/entities/permission/utils";
-import { iNodeSchema, schemaState } from "@/entities/schema/schema.atom";
+import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
 import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
 import useQuery from "@/shared/api/graphql/useQuery";
 import NoDataFound from "@/shared/components/errors/no-data-found";

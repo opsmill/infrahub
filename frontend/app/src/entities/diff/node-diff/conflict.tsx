@@ -1,7 +1,7 @@
-import { useAuth } from "@/entities/authentication/useAuth";
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { currentBranchAtom } from "@/entities/branches/stores";
 import { resolveConflict } from "@/entities/diff/api/resolveConflict";
-import { proposedChangedState } from "@/entities/proposed-changes/proposedChanges.atom";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import LoadingScreen from "@/shared/components/loading-screen";

@@ -1,8 +1,7 @@
 import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST, TASK_TAB, TASK_TARGET } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { currentBranchAtom } from "@/entities/branches/stores";
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
-import { showMetaEditState } from "@/entities/nodes/metaEditFieldDetails.atom";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import {
   getObjectAttributes,
@@ -10,11 +9,12 @@ import {
   getObjectTabs,
   getTabs,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { metaEditFieldDetailsState } from "@/entities/nodes/showMetaEdit.atom";
+import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
+import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import { Permission } from "@/entities/permission/types";
-import { IModelSchema, genericsState, schemaState } from "@/entities/schema/schema.atom";
-import { TaskItemDetails } from "@/entities/tasks/task-item-details";
-import { TaskItems } from "@/entities/tasks/task-items";
+import { IModelSchema, genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
+import { TaskItems } from "@/entities/tasks/ui/task-items";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";

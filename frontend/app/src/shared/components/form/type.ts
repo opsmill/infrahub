@@ -1,6 +1,6 @@
 import { SchemaAttributeType } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { IModelSchema } from "@/entities/schema/schema.atom";
+import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { SelectOption } from "@/shared/components/inputs/select";

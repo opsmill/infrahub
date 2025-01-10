@@ -1,9 +1,9 @@
 import { ARTIFACT_OBJECT, GRAPHQL_QUERY_OBJECT, TASK_OBJECT } from "@/config/constants";
 import ArtifactsDetails from "@/entities/artifacts/ui/artifact-details";
+import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
 import ObjectItems from "@/entities/nodes/object-items/object-items-paginated";
-import { useObjectDetails } from "@/entities/nodes/useObjectDetails";
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";

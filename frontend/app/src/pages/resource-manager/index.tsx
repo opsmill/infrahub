@@ -1,7 +1,7 @@
 import ObjectHeader from "@/entities/nodes/object-header";
 import ObjectItems from "@/entities/nodes/object-items/object-items-paginated";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { genericsState } from "@/entities/schema/schema.atom";
+import { genericsState } from "@/entities/schema/stores/schema.atom";
 import Content from "@/shared/components/layout/content";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { useAtomValue } from "jotai/index";

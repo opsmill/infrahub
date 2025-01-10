@@ -2,8 +2,8 @@
 
 import { MockedProvider } from "@apollo/client/testing";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
-import { AuthProvider } from "../../../src/entities/authentication/useAuth";
-import { genericsState } from "../../../src/entities/schema/schema.atom";
+import { AuthProvider } from "../../../src/entities/authentication/ui/useAuth";
+import { genericsState } from "../../../src/entities/schema/stores/schema.atom";
 import { AccountMenu } from "../../../src/shared/components/account-menu";
 import { encodeJwt } from "../../../src/shared/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";

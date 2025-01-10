@@ -1,6 +1,6 @@
 import { PROFILE_KIND } from "@/config/constants";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/objects";
-import { useSchema } from "@/entities/schema/useSchema";
+import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { BreadcrumbLink } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-link";
 import BreadcrumbLoading from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-loading";
 import { breadcrumbActiveStyle } from "@/shared/components/layout/breadcrumb-navigation/style";

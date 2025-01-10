@@ -1,5 +1,5 @@
 import { SEARCH_FILTERS, TASK_OBJECT } from "@/config/constants";
-import { IModelSchema } from "@/entities/schema/schema.atom";
+import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { FilterForm } from "@/shared/components/filters/filter-form";

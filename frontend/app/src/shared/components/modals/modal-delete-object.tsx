@@ -1,5 +1,5 @@
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { currentBranchAtom } from "@/entities/branches/stores";
 import { deleteObject } from "@/entities/nodes/api/deleteObject";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { datetimeAtom } from "@/shared/stores/time.atom";

@@ -1,4 +1,4 @@
-import { iGenericSchema } from "@/entities/schema/schema.atom";
+import { iGenericSchema } from "@/entities/schema/stores/schema.atom";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { GenericSelector } from "@/shared/components/form/generic-selector";
 import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";

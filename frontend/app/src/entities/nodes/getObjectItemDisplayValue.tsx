@@ -1,6 +1,6 @@
 import { MAX_VALUE_LENGTH_DISPLAY, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { SchemaAttributeType } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
-import { iSchemaKindNameMap } from "@/entities/schema/schemaKindName.atom";
+import { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import {
   AnyAttribute,

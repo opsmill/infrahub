@@ -3,7 +3,7 @@ import {
   RelationshipOneType,
 } from "@/entities/nodes/getObjectItemDisplayValue";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { iNodeSchema, schemaState } from "@/entities/schema/schema.atom";
+import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { store } from "@/shared/stores";
 import { describe, expect } from "vitest";

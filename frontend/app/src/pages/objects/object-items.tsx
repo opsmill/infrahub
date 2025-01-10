@@ -1,5 +1,5 @@
 import ObjectItems from "@/entities/nodes/object-items/object-items-paginated";
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
+import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";

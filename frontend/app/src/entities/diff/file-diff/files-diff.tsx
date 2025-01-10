@@ -1,6 +1,6 @@
 import { CONFIG } from "@/config/config";
 import { QSP } from "@/config/qsp";
-import { proposedChangedState } from "@/entities/proposed-changes/proposedChanges.atom";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { fetchUrl, getUrlWithQsp } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";

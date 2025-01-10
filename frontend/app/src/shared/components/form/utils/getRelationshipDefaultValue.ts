@@ -1,6 +1,6 @@
 import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { schemaState } from "@/entities/schema/schema.atom";
+import { schemaState } from "@/entities/schema/stores/schema.atom";
 import { FormRelationshipValue } from "@/shared/components/form/type";
 import { store } from "@/shared/stores";
 

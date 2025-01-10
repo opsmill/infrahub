@@ -1,10 +1,10 @@
 import { SCHEMA_ATTRIBUTE_KIND, SEARCH_QUERY_NAME } from "@/config/constants";
 import { POOLS_PEER } from "@/entities/ipam/constants";
 import { SEARCH } from "@/entities/nodes/api/search";
+import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { getObjectDetailsUrl } from "@/entities/nodes/objects";
-import { useObjectDetails } from "@/entities/nodes/useObjectDetails";
-import { useSchema } from "@/entities/schema/useSchema";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { useSchema } from "@/entities/schema/hooks/useSchema";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";

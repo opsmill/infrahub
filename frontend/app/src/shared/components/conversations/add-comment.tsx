@@ -1,4 +1,4 @@
-import { useAuth } from "@/entities/authentication/useAuth";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import TextareaField from "@/shared/components/form/fields/textarea.field";

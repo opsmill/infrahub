@@ -1,7 +1,7 @@
 import { QSP } from "@/config/qsp";
 import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/addRelationship";
 import { Permission } from "@/entities/permission/types";
-import { genericsState, schemaState } from "@/entities/schema/schema.atom";
+import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";

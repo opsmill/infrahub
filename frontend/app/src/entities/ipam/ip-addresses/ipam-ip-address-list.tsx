@@ -1,5 +1,5 @@
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { currentBranchAtom } from "@/entities/branches/stores";
 import { GET_IP_ADDRESSES } from "@/entities/ipam/api/ip-address";
 import { GET_PREFIX_KIND } from "@/entities/ipam/api/prefixes";
 import { defaultIpNamespaceAtom } from "@/entities/ipam/common/namespace.state";

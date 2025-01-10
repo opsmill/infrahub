@@ -5,7 +5,7 @@ import {
   relationshipsForListView,
   relationshipsForTabs,
 } from "@/config/constants";
-import { iGenericSchema, iNodeSchema, profilesAtom } from "@/entities/schema/schema.atom";
+import { iGenericSchema, iNodeSchema, profilesAtom } from "@/entities/schema/stores/schema.atom";
 import { isGenericSchema } from "@/entities/schema/utils";
 import { store } from "@/shared/stores";
 import { sortByOrderWeight } from "@/shared/utils/common";
