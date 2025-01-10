@@ -1,7 +1,7 @@
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { resolveConflict } from "@/entities/diff/api/resolveConflict";
 import { proposedChangedState } from "@/entities/proposed-changes/proposedChanges.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { resolveConflict } from "@/shared/api/graphql/mutations/diff/resolveConflict";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";

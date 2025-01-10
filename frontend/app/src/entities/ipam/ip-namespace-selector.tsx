@@ -1,6 +1,6 @@
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { GET_IP_NAMESPACES } from "@/entities/ipam/api/ip-namespaces";
 import { IpamNamespace } from "@/shared/api/graphql/generated/graphql";
-import { GET_IP_NAMESPACES } from "@/shared/api/graphql/queries/ipam/ip-namespaces";
 import { Skeleton } from "@/shared/components/skeleton";
 import {
   Combobox,

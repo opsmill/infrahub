@@ -1,7 +1,7 @@
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { genericsState } from "@/entities/schema/schema.atom";
-import { getProfileDetails } from "@/shared/api/graphql/queries/accounts/getProfileDetails";
+import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
 import { Avatar } from "@/shared/components/display/avatar";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";

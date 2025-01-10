@@ -1,8 +1,8 @@
 import { TASK_OBJECT } from "@/config/constants";
+import { BRANCH_VALIDATE } from "@/entities/branches/api/validateBranch";
 import { BRANCH_VALIDATE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { BRANCH_VALIDATE } from "@/shared/api/graphql/mutations/branches/validateBranch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useAuth } from "@/shared/hooks/useAuth";

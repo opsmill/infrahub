@@ -1,8 +1,8 @@
 import { QSP } from "@/config/qsp";
+import { ADD_RELATIONSHIP } from "@/entities/objects/relationships/api/addRelationship";
 import { Permission } from "@/entities/permission/types";
 import { genericsState, schemaState } from "@/entities/schema/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ADD_RELATIONSHIP } from "@/shared/api/graphql/mutations/relationships/addRelationship";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";

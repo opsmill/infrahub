@@ -1,7 +1,7 @@
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { getThreadLabel, getThreadTitle } from "@/entities/diff/diff";
+import { getProposedChangesObjectThreads } from "@/entities/proposed-changes/api/getProposedChangesObjectThreads";
 import { schemaState } from "@/entities/schema/schema.atom";
-import { getProposedChangesObjectThreads } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesObjectThreads";
 import { SidePanelTitle } from "@/shared/components/display/sidepanel-title";
 import SlideOver from "@/shared/components/display/slide-over";
 import { Tooltip } from "@/shared/components/ui/tooltip";

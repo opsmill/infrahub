@@ -5,10 +5,10 @@ import {
   PROPOSED_CHANGES_THREAD_OBJECT,
 } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { createObject } from "@/entities/objects/api/createObject";
+import { deleteObject } from "@/entities/objects/api/deleteObject";
+import { getProposedChangesThreads } from "@/entities/proposed-changes/api/getProposedChangesThreads";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
-import { deleteObject } from "@/shared/api/graphql/mutations/objects/deleteObject";
-import { getProposedChangesThreads } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesThreads";
 import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Thread } from "@/shared/components/conversations/thread";
 import ErrorScreen from "@/shared/components/errors/error-screen";

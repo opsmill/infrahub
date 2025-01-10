@@ -1,6 +1,6 @@
 import { TASK_OBJECT } from "@/config/constants";
+import { getTaskItemDetailsTitle } from "@/entities/tasks/api/getTasksItemDetailsTitle";
 import { TaskItemDetails } from "@/entities/tasks/task-item-details";
-import { getTaskItemDetailsTitle } from "@/shared/api/graphql/queries/tasks/getTasksItemDetailsTitle";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";

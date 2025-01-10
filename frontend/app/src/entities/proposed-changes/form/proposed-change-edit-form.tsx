@@ -1,9 +1,9 @@
 import { ACCOUNT_GENERIC_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { branchesState, currentBranchAtom } from "@/entities/branches/branches.atom";
+import { updateObjectWithId } from "@/entities/objects/api/updateObjectWithId";
 import { AttributeType } from "@/entities/objects/getObjectItemDisplayValue";
 import { schemaState } from "@/entities/schema/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";

@@ -1,8 +1,8 @@
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { updateObjectWithId } from "@/entities/objects/api/updateObjectWithId";
 import { DynamicFieldData } from "@/entities/objects/edit-form-hook/dynamic-control-types";
 import { generateObjectEditFormQuery } from "@/entities/objects/object-item-edit/generateObjectEditFormQuery";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";

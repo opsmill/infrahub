@@ -5,7 +5,7 @@ import {
   GLOBAL_PERMISSION_OBJECT,
   OBJECT_PERMISSION_OBJECT,
 } from "@/config/constants";
-import { GET_ROLE_MANAGEMENT_COUNTS } from "@/shared/api/graphql/queries/role-management/getCounts";
+import { GET_ROLE_MANAGEMENT_COUNTS } from "@/entities/role-manager/api/getCounts";
 import { Tabs } from "@/shared/components/tabs-routes";
 import useQuery from "@/shared/hooks/useQuery";
 

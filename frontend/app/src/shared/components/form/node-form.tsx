@@ -1,13 +1,13 @@
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { createObject } from "@/entities/objects/api/createObject";
+import { GET_FORM_REQUIREMENTS } from "@/entities/objects/api/getFormRequirements";
 import { AttributeType, RelationshipType } from "@/entities/objects/getObjectItemDisplayValue";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
 import { IProfileSchema, iNodeSchema } from "@/entities/schema/schema.atom";
+import { CREATE_ACCOUNT_TOKEN } from "@/entities/user-profile/api/createAccountToken";
 import { CoreNumberPool } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { CREATE_ACCOUNT_TOKEN } from "@/shared/api/graphql/mutations/accounts/createAccountToken";
-import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
-import { GET_FORM_REQUIREMENTS } from "@/shared/api/graphql/queries/forms/getFormRequirements";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { ProfileData } from "@/shared/components/form/object-form";
 import { DynamicFieldProps, FormFieldValue, NumberPoolData } from "@/shared/components/form/type";

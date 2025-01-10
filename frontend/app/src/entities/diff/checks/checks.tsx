@@ -1,4 +1,4 @@
-import { GET_VALIDATORS } from "@/shared/api/graphql/queries/diff/getValidators";
+import { GET_VALIDATORS } from "@/entities/diff/api/getValidators";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import useQuery from "@/shared/hooks/useQuery";
 import { forwardRef, useImperativeHandle } from "react";

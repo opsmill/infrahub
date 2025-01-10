@@ -1,4 +1,4 @@
-import { UPDATE_ACCOUNT_PASSWORD } from "@/shared/api/graphql/mutations/accounts/updateAccountPassword";
+import { UPDATE_ACCOUNT_PASSWORD } from "@/entities/user-profile/api/updateAccountPassword";
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import Content from "@/shared/components/layout/content";

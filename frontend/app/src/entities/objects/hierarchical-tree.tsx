@@ -2,13 +2,13 @@ import { currentBranchAtom } from "@/entities/branches/branches.atom";
 import { HIDE_AUTO_GENERATED_FILTER } from "@/entities/groups/groups-auto-generated-filter-button";
 import { TREE_ROOT_ID } from "@/entities/ipam/constants";
 import { EMPTY_TREE, PrefixNode, updateTreeData } from "@/entities/ipam/ipam-tree/utils";
-import { getObjectDetailsUrl } from "@/entities/objects/objects";
-import { IModelSchema, genericsState, schemaState } from "@/entities/schema/schema.atom";
 import {
   objectAncestorsQuery,
   objectChildrenQuery,
   objectTopLevelTreeQuery,
-} from "@/shared/api/graphql/queries/objects/objectTreeQuery";
+} from "@/entities/objects/api/objectTreeQuery";
+import { getObjectDetailsUrl } from "@/entities/objects/objects";
+import { IModelSchema, genericsState, schemaState } from "@/entities/schema/schema.atom";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
 import useFilters from "@/shared/hooks/useFilters";

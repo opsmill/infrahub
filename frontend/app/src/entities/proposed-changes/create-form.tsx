@@ -3,7 +3,7 @@ import { QSP } from "@/config/qsp";
 import { branchesToSelectOptions } from "@/entities/branches/branches";
 import { branchesState } from "@/entities/branches/branches.atom";
 import { Node } from "@/entities/objects/getObjectItemDisplayValue";
-import { CREATE_PROPOSED_CHANGE } from "@/shared/api/graphql/mutations/proposed-changes/createProposedChange";
+import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { MarkdownEditor } from "@/shared/components/editor";

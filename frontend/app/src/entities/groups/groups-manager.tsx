@@ -1,9 +1,9 @@
 import AddGroupTriggerButton from "@/entities/groups/add-group-trigger-button";
+import { getGroupsQuery } from "@/entities/groups/api/getGroups";
 import ObjectGroupsList from "@/entities/groups/object-groups-list";
 import { GroupDataFromAPI } from "@/entities/groups/types";
 import { getPermission } from "@/entities/permission/utils";
 import { IModelSchema } from "@/entities/schema/schema.atom";
-import { getGroupsQuery } from "@/shared/api/graphql/queries/groups/getGroups";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";

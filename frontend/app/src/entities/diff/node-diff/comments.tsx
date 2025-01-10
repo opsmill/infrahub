@@ -4,11 +4,11 @@ import {
 } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
 import { getThreadLabel } from "@/entities/diff/diff";
+import { createObject } from "@/entities/objects/api/createObject";
+import { deleteObject } from "@/entities/objects/api/deleteObject";
+import { getProposedChangesObjectThreadComments } from "@/entities/proposed-changes/api/getProposedChangesObjectThreadComments";
 import { schemaState } from "@/entities/schema/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
-import { deleteObject } from "@/shared/api/graphql/mutations/objects/deleteObject";
-import { getProposedChangesObjectThreadComments } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesObjectThreadComments";
 import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Thread } from "@/shared/components/conversations/thread";
 import { useAuth } from "@/shared/hooks/useAuth";

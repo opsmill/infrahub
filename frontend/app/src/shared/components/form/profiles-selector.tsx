@@ -1,6 +1,6 @@
+import { getProfiles } from "@/entities/objects/api/getProfiles";
 import { getObjectAttributes } from "@/entities/objects/object-items/getSchemaObjectColumns";
 import { genericsState, iNodeSchema, profilesAtom } from "@/entities/schema/schema.atom";
-import { getProfiles } from "@/shared/api/graphql/queries/objects/getProfiles";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { MultiCombobox } from "@/shared/components/ui/combobox-legacy";

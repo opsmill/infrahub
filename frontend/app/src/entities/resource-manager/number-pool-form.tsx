@@ -1,5 +1,7 @@
 import { NUMBER_POOL_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { createObject } from "@/entities/objects/api/createObject";
+import { updateObjectWithId } from "@/entities/objects/api/updateObjectWithId";
 import { AttributeType, RelationshipType } from "@/entities/objects/getObjectItemDisplayValue";
 import {
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
@@ -8,8 +10,6 @@ import {
 import { iNodeSchema, schemaState } from "@/entities/schema/schema.atom";
 import { AttributeSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
-import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";

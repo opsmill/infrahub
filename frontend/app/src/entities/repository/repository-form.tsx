@@ -1,6 +1,6 @@
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { createObject } from "@/entities/objects/api/createObject";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
 import RelationshipField from "@/shared/components/form/fields/relationship.field";

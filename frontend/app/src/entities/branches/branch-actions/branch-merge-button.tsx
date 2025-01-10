@@ -1,8 +1,8 @@
 import { TASK_OBJECT } from "@/config/constants";
+import { BRANCH_MERGE } from "@/entities/branches/api/mergeBranch";
 import { BRANCH_MERGE_WORKFLOW } from "@/entities/tasks/constants";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { BRANCH_MERGE } from "@/shared/api/graphql/mutations/branches/mergeBranch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useAuth } from "@/shared/hooks/useAuth";

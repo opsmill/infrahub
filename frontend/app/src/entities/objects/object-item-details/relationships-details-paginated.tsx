@@ -1,8 +1,8 @@
 import { QSP } from "@/config/qsp";
+import { getObjectRelationshipsDetailsPaginated } from "@/entities/objects/api/getObjectRelationshipDetails";
 import { getSchemaObjectColumns } from "@/entities/objects/object-items/getSchemaObjectColumns";
+import { REMOVE_RELATIONSHIP } from "@/entities/objects/relationships/api/removeRelationship";
 import { genericsState, iNodeSchema, schemaState } from "@/entities/schema/schema.atom";
-import { REMOVE_RELATIONSHIP } from "@/shared/api/graphql/mutations/relationships/removeRelationship";
-import { getObjectRelationshipsDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectRelationshipDetails";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";

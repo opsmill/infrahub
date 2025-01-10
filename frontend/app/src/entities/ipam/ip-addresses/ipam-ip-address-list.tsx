@@ -1,5 +1,7 @@
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { GET_IP_ADDRESSES } from "@/entities/ipam/api/ip-address";
+import { GET_PREFIX_KIND } from "@/entities/ipam/api/prefixes";
 import { defaultIpNamespaceAtom } from "@/entities/ipam/common/namespace.state";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import {
@@ -9,12 +11,10 @@ import {
   IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/constants";
+import { deleteObject } from "@/entities/objects/api/deleteObject";
 import ObjectItemEditComponent from "@/entities/objects/object-item-edit/object-item-edit-paginated";
 import { getPermission } from "@/entities/permission/utils";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { deleteObject } from "@/shared/api/graphql/mutations/objects/deleteObject";
-import { GET_IP_ADDRESSES } from "@/shared/api/graphql/queries/ipam/ip-address";
-import { GET_PREFIX_KIND } from "@/shared/api/graphql/queries/ipam/prefixes";
 import SlideOver from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";

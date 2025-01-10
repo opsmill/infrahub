@@ -1,6 +1,6 @@
 import { ACCOUNT_ROLE_OBJECT } from "@/config/constants";
+import { GET_ROLE_MANAGEMENT_ROLES } from "@/entities/role-manager/api/getRoles";
 import { schemaKindNameState } from "@/entities/schema/schemaKindName.atom";
-import { GET_ROLE_MANAGEMENT_ROLES } from "@/shared/api/graphql/queries/role-management/getRoles";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 import { Table, tRowValue } from "@/shared/components/table/table";

@@ -1,5 +1,5 @@
 import { TASK_OBJECT } from "@/config/constants";
-import { TASK_DETAILS } from "@/shared/api/graphql/queries/tasks/getTasksItemDetails";
+import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";

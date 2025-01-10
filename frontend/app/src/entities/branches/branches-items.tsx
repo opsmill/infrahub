@@ -1,5 +1,5 @@
+import GET_BRANCHES from "@/entities/branches/api/getBranches";
 import { branchesState } from "@/entities/branches/branches.atom";
-import GET_BRANCHES from "@/shared/api/graphql/queries/branches/getBranches";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import Content from "@/shared/components/layout/content";

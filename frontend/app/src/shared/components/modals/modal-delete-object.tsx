@@ -1,7 +1,7 @@
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { deleteObject } from "@/entities/objects/api/deleteObject";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { deleteObject } from "@/shared/api/graphql/mutations/objects/deleteObject";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";

@@ -9,14 +9,14 @@ import { Icon } from "@iconify-icon/react";
 
 import { ARTIFACT_OBJECT, PROPOSED_CHANGES_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
+import { DELETE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/deleteProposedChange";
+import { GET_PROPOSED_CHANGES } from "@/entities/proposed-changes/api/getProposedChanges";
+import { getProposedChangesArtifacts } from "@/entities/proposed-changes/api/getProposedChangesArtifacts";
+import { getProposedChangesTasks } from "@/entities/proposed-changes/api/getProposedChangesTasks";
 import { ProposedChangesCounter } from "@/entities/proposed-changes/counter";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/diff-summary";
 import { ProposedChangesInfo } from "@/entities/proposed-changes/item-info";
 import { ProposedChangesReviewers } from "@/entities/proposed-changes/reviewers";
-import { DELETE_PROPOSED_CHANGE } from "@/shared/api/graphql/mutations/proposed-changes/deleteProposedChange";
-import { GET_PROPOSED_CHANGES } from "@/shared/api/graphql/queries/proposed-changes/getProposedChanges";
-import { getProposedChangesArtifacts } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesArtifacts";
-import { getProposedChangesTasks } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesTasks";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { TabsButtons } from "@/shared/components/buttons/tabs-buttons";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";

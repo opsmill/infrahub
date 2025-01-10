@@ -1,5 +1,5 @@
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { getProposedChangesChecks } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesChecks";
+import { getProposedChangesChecks } from "@/entities/proposed-changes/api/getProposedChangesChecks";
 import { Pill } from "@/shared/components/display/pill";
 import useQuery from "@/shared/hooks/useQuery";
 import { gql } from "@apollo/client";

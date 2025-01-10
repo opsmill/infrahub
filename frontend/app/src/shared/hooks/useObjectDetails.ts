@@ -1,4 +1,5 @@
 import { PROFILE_KIND, TASK_OBJECT } from "@/config/constants";
+import { getObjectDetailsPaginated } from "@/entities/objects/api/getObjectDetails";
 import {
   getSchemaObjectColumns,
   getTabs,
@@ -6,7 +7,6 @@ import {
 import { getPermission } from "@/entities/permission/utils";
 import { IModelSchema, genericsState } from "@/entities/schema/schema.atom";
 import { isGenericSchema } from "@/entities/schema/utils";
-import { getObjectDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/shared/hooks/useQuery";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";

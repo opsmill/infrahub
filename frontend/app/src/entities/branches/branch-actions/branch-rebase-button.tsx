@@ -1,8 +1,8 @@
 import { TASK_OBJECT } from "@/config/constants";
+import { BRANCH_REBASE } from "@/entities/branches/api/rebaseBranch";
 import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { BRANCH_REBASE } from "@/shared/api/graphql/mutations/branches/rebaseBranch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useAuth } from "@/shared/hooks/useAuth";

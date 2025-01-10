@@ -1,4 +1,5 @@
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
+import { getObjectItemsPaginated } from "@/entities/objects/api/getObjectItems";
 import {
   getObjectAttributes,
   getObjectRelationships,
@@ -10,8 +11,7 @@ import {
   profilesAtom,
   schemaState,
 } from "@/entities/schema/schema.atom";
-import { getTokens } from "@/shared/api/graphql/queries/accounts/getTokens";
-import { getObjectItemsPaginated } from "@/shared/api/graphql/queries/objects/getObjectItems";
+import { getTokens } from "@/entities/user-profile/api/getTokens";
 import { Filter } from "@/shared/hooks/useFilters";
 import useQuery from "@/shared/hooks/useQuery";
 import { gql } from "@apollo/client";

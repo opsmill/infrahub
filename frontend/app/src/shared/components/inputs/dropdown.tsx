@@ -1,9 +1,6 @@
+import { DROPDOWN_ADD_MUTATION, DROPDOWN_REMOVE_MUTATION } from "@/entities/schema/api/dropdown";
 import { IModelSchema } from "@/entities/schema/schema.atom";
 import { AttributeSchema } from "@/entities/schema/types";
-import {
-  DROPDOWN_ADD_MUTATION,
-  DROPDOWN_REMOVE_MUTATION,
-} from "@/shared/api/graphql/mutations/schema/dropdown";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";

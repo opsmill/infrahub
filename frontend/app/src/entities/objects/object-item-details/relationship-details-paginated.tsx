@@ -1,4 +1,5 @@
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { updateObjectWithId } from "@/entities/objects/api/updateObjectWithId";
 import { showMetaEditState } from "@/entities/objects/metaEditFieldDetails.atom";
 import ObjectItemEditComponent from "@/entities/objects/object-item-edit/object-item-edit-paginated";
 import { getSchemaObjectColumns } from "@/entities/objects/object-items/getSchemaObjectColumns";
@@ -8,7 +9,6 @@ import { metaEditFieldDetailsState } from "@/entities/objects/showMetaEdit.atom"
 import { getPermission } from "@/entities/permission/utils";
 import { schemaState } from "@/entities/schema/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";

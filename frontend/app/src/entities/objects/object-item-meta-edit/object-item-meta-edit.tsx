@@ -1,8 +1,8 @@
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { updateObjectWithId } from "@/entities/objects/api/updateObjectWithId";
 import getMutationMetaDetailsFromFormData from "@/entities/objects/object-item-meta-edit/getMutationMetaDetailsFromFormData";
 import { iNodeSchema } from "@/entities/schema/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";

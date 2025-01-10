@@ -1,7 +1,7 @@
 import { ACCOUNT_GROUP_OBJECT } from "@/config/constants";
+import { GET_ROLE_MANAGEMENT_GROUPS } from "@/entities/role-manager/api/getGroups";
 import { schemaKindNameState } from "@/entities/schema/schemaKindName.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { GET_ROLE_MANAGEMENT_GROUPS } from "@/shared/api/graphql/queries/role-management/getGroups";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";

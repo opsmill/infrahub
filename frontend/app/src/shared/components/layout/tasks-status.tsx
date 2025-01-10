@@ -2,7 +2,7 @@ import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { TASKS_STATUS_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
-import { TASKS_STATUS } from "@/shared/api/graphql/queries/tasks/getTasksStatus";
+import { TASKS_STATUS } from "@/entities/tasks/api/getTasksStatus";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Pulse } from "@/shared/components/ui/pulse";

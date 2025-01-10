@@ -6,7 +6,7 @@ import { Conversations } from "@/entities/proposed-changes/conversations";
 import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/proposed-change-edit-trigger";
 import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/proposed-changes";
 import { proposedChangedState } from "@/entities/proposed-changes/proposedChanges.atom";
-import { TASK_DETAILS_CHECK } from "@/shared/api/graphql/queries/tasks/checkTasksItemDetails";
+import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
 import { constructPath } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
 import { Avatar } from "@/shared/components/display/avatar";

@@ -3,7 +3,7 @@ import { QSP } from "@/config/qsp";
 import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
 import { Checks } from "@/entities/diff/checks/checks";
 import { NodeDiff } from "@/entities/diff/node-diff";
-import { GET_PROPOSED_CHANGE_DETAILS } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesDetails";
+import { GET_PROPOSED_CHANGE_DETAILS } from "@/entities/proposed-changes/api/getProposedChangesDetails";
 import { Tabs } from "@/shared/components/tabs";
 import useQuery from "@/shared/hooks/useQuery";
 import { useTitle } from "@/shared/hooks/useTitle";

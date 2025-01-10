@@ -1,7 +1,7 @@
 import { GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
+import { GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS } from "@/entities/role-manager/api/getGlobalPermissions";
 import { schemaKindNameState } from "@/entities/schema/schemaKindName.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS } from "@/shared/api/graphql/queries/role-management/getGlobalPermissions";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";

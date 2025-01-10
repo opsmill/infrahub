@@ -1,6 +1,6 @@
+import { generateRelationshipListQuery } from "@/entities/objects/api/generateRelationshipListQuery";
 import { Node, RelationshipManyType } from "@/entities/objects/getObjectItemDisplayValue";
 import { AddRelationshipAction } from "@/entities/objects/relationships/ui/add-relationship-action";
-import { generateRelationshipListQuery } from "@/shared/api/graphql/queries/objects/generateRelationshipListQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import {

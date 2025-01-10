@@ -1,5 +1,5 @@
+import { updateGroupsQuery } from "@/entities/groups/api/updateGroupsQuery";
 import { iNodeSchema } from "@/entities/schema/schema.atom";
-import { updateGroupsQuery } from "@/shared/api/graphql/mutations/groups/updateGroupsQuery";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import DynamicForm, { DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import {

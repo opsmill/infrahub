@@ -1,8 +1,8 @@
 import { QSP } from "@/config/qsp";
+import { BRANCH_DELETE } from "@/entities/branches/api/deleteBranch";
+import { getBranchDetailsQuery } from "@/entities/branches/api/getBranchDetails";
 import { branchesState } from "@/entities/branches/branches.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { BRANCH_DELETE } from "@/shared/api/graphql/mutations/branches/deleteBranch";
-import { getBranchDetailsQuery } from "@/shared/api/graphql/queries/branches/getBranchDetails";
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import Accordion from "@/shared/components/display/accordion";

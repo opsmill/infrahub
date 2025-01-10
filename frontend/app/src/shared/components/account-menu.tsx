@@ -6,7 +6,7 @@ import {
 } from "@/config/config";
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { IModelSchema, genericsState } from "@/entities/schema/schema.atom";
-import { getProfileDetails } from "@/shared/api/graphql/queries/accounts/getProfileDetails";
+import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Avatar } from "@/shared/components/display/avatar";

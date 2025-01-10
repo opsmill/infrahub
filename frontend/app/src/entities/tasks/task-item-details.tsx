@@ -2,7 +2,7 @@ import { TASK_OBJECT } from "@/config/constants";
 import useQuery from "@/shared/hooks/useQuery";
 
 import { QSP } from "@/config/qsp";
-import { TASK_DETAILS } from "@/shared/api/graphql/queries/tasks/getTasksItemDetails";
+import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";

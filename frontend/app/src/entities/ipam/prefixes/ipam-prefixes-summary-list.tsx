@@ -1,14 +1,14 @@
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { GET_PREFIXES } from "@/entities/ipam/api/prefixes";
 import { defaultIpNamespaceAtom } from "@/entities/ipam/common/namespace.state";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { reloadIpamTreeAtom } from "@/entities/ipam/ipam-tree/ipam-tree.state";
+import { deleteObject } from "@/entities/objects/api/deleteObject";
 import ObjectItemEditComponent from "@/entities/objects/object-item-edit/object-item-edit-paginated";
 import { getPermission } from "@/entities/permission/utils";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { deleteObject } from "@/shared/api/graphql/mutations/objects/deleteObject";
-import { GET_PREFIXES } from "@/shared/api/graphql/queries/ipam/prefixes";
 import SlideOver from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";

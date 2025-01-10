@@ -1,8 +1,8 @@
 import { POOLS_DICTIONNARY, POOLS_PEER } from "@/entities/ipam/constants";
+import { getDropdownOptions } from "@/entities/objects/api/dropdownOptions";
+import { generateRelationshipListQuery } from "@/entities/objects/api/generateRelationshipListQuery";
 import { Node, RelationshipManyType } from "@/entities/objects/getObjectItemDisplayValue";
 import { AddRelationshipAction } from "@/entities/objects/relationships/ui/add-relationship-action";
-import { getDropdownOptions } from "@/shared/api/graphql/queries/objects/dropdownOptions";
-import { generateRelationshipListQuery } from "@/shared/api/graphql/queries/objects/generateRelationshipListQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { PoolValue } from "@/shared/components/form/pool-selector";
 import {

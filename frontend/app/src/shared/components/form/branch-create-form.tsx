@@ -1,7 +1,7 @@
 import { QSP } from "@/config/qsp";
+import { BRANCH_CREATE } from "@/entities/branches/api/createBranch";
 import { branchesState } from "@/entities/branches/branches.atom";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
-import { BRANCH_CREATE } from "@/shared/api/graphql/mutations/branches/createBranch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import InputField from "@/shared/components/form/fields/input.field";

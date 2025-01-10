@@ -1,4 +1,4 @@
-import { getValidatorDetails } from "@/shared/api/graphql/queries/diff/getValidatorDetails";
+import { getValidatorDetails } from "@/entities/diff/api/getValidatorDetails";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import LoadingScreen from "@/shared/components/loading-screen";

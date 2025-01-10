@@ -1,9 +1,9 @@
 import { ACCOUNT_GROUP_OBJECT, ACCOUNT_OBJECT, OBJECT_PERMISSION_OBJECT } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { createObject } from "@/entities/objects/api/createObject";
+import { updateObjectWithId } from "@/entities/objects/api/updateObjectWithId";
 import { AttributeType, RelationshipType } from "@/entities/objects/getObjectItemDisplayValue";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
-import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import InputField from "@/shared/components/form/fields/input.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationship-many.field";

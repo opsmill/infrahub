@@ -1,11 +1,11 @@
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
-import { IP_PREFIX_GENERIC, TREE_ROOT_ID } from "@/entities/ipam/constants";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
   GET_PREFIXES_ONLY,
   GET_PREFIX_ANCESTORS,
   GET_TOP_LEVEL_PREFIXES,
-} from "@/shared/api/graphql/queries/ipam/prefixes";
+} from "@/entities/ipam/api/prefixes";
+import { IP_PREFIX_GENERIC, TREE_ROOT_ID } from "@/entities/ipam/constants";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { TreeProps } from "@/shared/components/ui/tree";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { atom } from "jotai";

@@ -1,11 +1,11 @@
+import { GET_PREFIX_KIND } from "@/entities/ipam/api/prefixes";
 import { IpDetailsCard } from "@/entities/ipam/common/ip-details-card";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { getObjectDetailsPaginated } from "@/entities/objects/api/getObjectDetails";
 import { getSchemaObjectColumns } from "@/entities/objects/object-items/getSchemaObjectColumns";
 import { getPermission } from "@/entities/permission/utils";
 import { genericsState, schemaState } from "@/entities/schema/schema.atom";
-import { GET_PREFIX_KIND } from "@/shared/api/graphql/queries/ipam/prefixes";
-import { getObjectDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectDetails";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";

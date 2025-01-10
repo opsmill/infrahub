@@ -1,12 +1,12 @@
+import { GET_IP_ADDRESS_KIND } from "@/entities/ipam/api/ip-address";
 import { IpDetailsCard } from "@/entities/ipam/common/ip-details-card";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
 import { IpamSummarySkeleton } from "@/entities/ipam/prefixes/ipam-summary-skeleton";
+import { getObjectDetailsPaginated } from "@/entities/objects/api/getObjectDetails";
 import { getSchemaObjectColumns } from "@/entities/objects/object-items/getSchemaObjectColumns";
 import { getPermission } from "@/entities/permission/utils";
 import { genericsState, schemaState } from "@/entities/schema/schema.atom";
-import { GET_IP_ADDRESS_KIND } from "@/shared/api/graphql/queries/ipam/ip-address";
-import { getObjectDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectDetails";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import LoadingScreen from "@/shared/components/loading-screen";

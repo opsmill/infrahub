@@ -1,9 +1,9 @@
 import { QSP } from "@/config/qsp";
+import GET_BRANCHES from "@/entities/branches/api/getBranches";
 import { findSelectedBranch } from "@/entities/branches/branches";
 import { branchesState, currentBranchAtom } from "@/entities/branches/branches.atom";
 import { SchemaContext, withSchemaContext } from "@/entities/schema/withSchemaContext";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
-import GET_BRANCHES from "@/shared/api/graphql/queries/branches/getBranches";
 import Sidebar from "@/shared/components/layout/sidebar";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";

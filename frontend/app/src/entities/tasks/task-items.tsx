@@ -5,7 +5,7 @@ import { Pagination } from "@/shared/components/ui/pagination";
 import useQuery from "@/shared/hooks/useQuery";
 
 import { QSP } from "@/config/qsp";
-import { GET_TASKS } from "@/shared/api/graphql/queries/tasks/getTasksItems";
+import { GET_TASKS } from "@/entities/tasks/api/getTasksItems";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";

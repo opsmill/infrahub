@@ -1,9 +1,9 @@
 import { QSP } from "@/config/qsp";
 import { GroupDataFromAPI } from "@/entities/groups/types";
 import { getObjectDetailsUrl2 } from "@/entities/objects/objects";
+import { REMOVE_RELATIONSHIP } from "@/entities/objects/relationships/api/removeRelationship";
 import { schemaState } from "@/entities/schema/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { REMOVE_RELATIONSHIP } from "@/shared/api/graphql/mutations/relationships/removeRelationship";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ItemGroup from "@/shared/components/layouts/item-group";
 import ModalDelete from "@/shared/components/modals/modal-delete";

@@ -1,7 +1,7 @@
 import { OBJECT_PERMISSION_OBJECT } from "@/config/constants";
+import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/entities/role-manager/api/getObjectPermissions";
 import { schemaKindNameState } from "@/entities/schema/schemaKindName.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/shared/api/graphql/queries/role-management/getObjectPermissions";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import { Pill } from "@/shared/components/display/pill";

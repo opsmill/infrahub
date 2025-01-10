@@ -3,11 +3,11 @@ import {
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
   VALIDATIONS_ENUM_MAP,
 } from "@/config/constants";
+import { runCheck } from "@/entities/diff/api/runCheck";
 import { getValidatorsStats } from "@/entities/proposed-changes/checks";
 import { genericsState } from "@/entities/schema/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/schemaKindLabel.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { runCheck } from "@/shared/api/graphql/mutations/diff/runCheck";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Retry } from "@/shared/components/buttons/retry";
 import { PieChart } from "@/shared/components/display/pie-chart";

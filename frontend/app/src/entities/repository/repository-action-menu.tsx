@@ -3,7 +3,7 @@ import { Icon } from "@iconify-icon/react";
 import {
   CHECK_REPOSITORY_CONNECTIVITY,
   REIMPORT_LAST_COMMIT,
-} from "@/shared/api/graphql/mutations/repository/actions";
+} from "@/entities/repository/api/actions";
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import {

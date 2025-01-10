@@ -3,6 +3,7 @@ import { ARTIFACT_OBJECT, MENU_EXCLUDELIST } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { Generate } from "@/entities/artifacts/generate";
 import { GroupsManagerTriggerButton } from "@/entities/groups/groups-manager-trigger-button";
+import { getObjectDetailsPaginated } from "@/entities/objects/api/getObjectDetails";
 import { getObjectItemDisplayValue } from "@/entities/objects/getObjectItemDisplayValue";
 import { showMetaEditState } from "@/entities/objects/metaEditFieldDetails.atom";
 import RelationshipDetails from "@/entities/objects/object-item-details/relationship-details-paginated";
@@ -18,7 +19,6 @@ import { metaEditFieldDetailsState } from "@/entities/objects/showMetaEdit.atom"
 import { getPermission } from "@/entities/permission/utils";
 import { genericsState, schemaState } from "@/entities/schema/schema.atom";
 import { schemaKindNameState } from "@/entities/schema/schemaKindName.atom";
-import { getObjectDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectDetails";
 import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";

@@ -6,11 +6,11 @@ import { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import { GET_PREFIXES_ONLY } from "@/entities/ipam/api/prefixes";
 import { defaultIpNamespaceAtom } from "@/entities/ipam/common/namespace.state";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_QSP, IPAM_ROUTE, TREE_ROOT_ID } from "@/entities/ipam/constants";
 import { genericsState, schemaState } from "@/entities/schema/schema.atom";
-import { GET_PREFIXES_ONLY } from "@/shared/api/graphql/queries/ipam/prefixes";
 import { Badge } from "@/shared/components/ui/badge";
 import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
 import { debounce } from "@/shared/utils/common";

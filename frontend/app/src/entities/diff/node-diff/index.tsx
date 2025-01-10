@@ -1,14 +1,14 @@
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
+import { BRANCH_REBASE } from "@/entities/branches/api/rebaseBranch";
+import { DIFF_UPDATE } from "@/entities/diff/api/diff-update";
 import DiffTree from "@/entities/diff/diff-tree";
 import { DIFF_STATUS, DiffNode as DiffNodeType } from "@/entities/diff/node-diff/types";
 import { DiffBadge } from "@/entities/diff/node-diff/utils";
+import { getProposedChangesDiffTree } from "@/entities/proposed-changes/api/getProposedChangesDiffTree";
 import { proposedChangedState } from "@/entities/proposed-changes/proposedChanges.atom";
 import { schemaState } from "@/entities/schema/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { BRANCH_REBASE } from "@/shared/api/graphql/mutations/branches/rebaseBranch";
-import { DIFF_UPDATE } from "@/shared/api/graphql/mutations/proposed-changes/diff/diff-update";
-import { getProposedChangesDiffTree } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesDiffTree";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
