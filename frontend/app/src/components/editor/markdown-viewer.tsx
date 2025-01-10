@@ -1,4 +1,4 @@
-import "@/styles/markdown.css";
+import "@/app/styles/markdown.css";
 import { classNames } from "@/utils/common";
 import { FC } from "react";
 import Markdown from "react-markdown";

@@ -1,4 +1,4 @@
-import { Root } from "@/Root";
+import { Root } from "@/app/root";
 import { NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { RequireAuth } from "@/hooks/useAuth";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";

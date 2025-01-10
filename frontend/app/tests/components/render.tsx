@@ -6,7 +6,7 @@ import { render as renderFromVitest } from "vitest-browser-react";
 import { queryClient } from "../../src/api/client";
 import { store } from "../../src/state";
 
-import "../../src/styles/index.css";
+import "/src/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
 
 export const render = (component: React.ReactElement, options = {}) =>
