@@ -1,7 +1,7 @@
 import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
 import { AuthContextType } from "@/hooks/useAuth";
-import { components } from "@/infraops";
 import { RelationshipSchema } from "@/screens/schema/types";
+import { components } from "@/shared/api/rest/types.generated";
 import { store } from "@/state";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { IModelSchema } from "@/state/atoms/schema.atom";

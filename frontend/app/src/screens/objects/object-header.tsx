@@ -1,7 +1,7 @@
 import { ObjectDetailsButton } from "@/components/menu/object-details-button";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { Skeleton } from "@/components/skeleton";
-import graphqlClient from "@/graphql/graphqlClientApollo";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useFilters from "@/hooks/useFilters";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import { useObjectItems } from "@/hooks/useObjectItems";

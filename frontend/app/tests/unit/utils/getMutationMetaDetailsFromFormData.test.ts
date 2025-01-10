@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { updateObjectWithId } from "../../../src/graphql/mutations/objects/updateObjectWithId";
+import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import getMutationMetaDetailsFromFormData from "../../../src/utils/getMutationMetaDetailsFromFormData";
 import { stringifyWithoutQuotes } from "../../../src/utils/string";
 import {

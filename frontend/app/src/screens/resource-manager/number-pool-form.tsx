@@ -20,9 +20,9 @@ import {
 } from "@/components/ui/combobox";
 import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/components/ui/form";
 import { NUMBER_POOL_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { createObject } from "@/graphql/mutations/objects/createObject";
-import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
+import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import {
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
   NUMBER_POOL_NODE_FIELD,

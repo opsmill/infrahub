@@ -1,5 +1,5 @@
 import { PROFILE_KIND, TASK_OBJECT } from "@/config/constants";
-import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
+import { getObjectDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import { getPermission } from "@/screens/permission/utils";
 import { isGenericSchema } from "@/screens/schema/utils";

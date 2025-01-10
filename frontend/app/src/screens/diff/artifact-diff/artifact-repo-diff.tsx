@@ -1,6 +1,6 @@
 import Accordion from "@/components/display/accordion";
 import { Badge } from "@/components/display/badge";
-import { getArtifactDetails } from "@/graphql/queries/getArtifacts";
+import { getArtifactDetails } from "@/shared/api/graphql/queries/getArtifacts";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";

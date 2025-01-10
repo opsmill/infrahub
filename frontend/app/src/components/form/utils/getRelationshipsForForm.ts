@@ -1,6 +1,6 @@
 import { relationshipKindForForm } from "@/config/constants";
-import { components } from "@/infraops";
 import { RelationshipKind } from "@/screens/objects/types";
+import { components } from "@/shared/api/rest/types.generated";
 
 export const getRelationshipsForForm = (
   relationships: components["schemas"]["RelationshipSchema-Output"][],

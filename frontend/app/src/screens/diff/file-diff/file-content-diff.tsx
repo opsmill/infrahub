@@ -9,10 +9,10 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { createObject } from "@/graphql/mutations/objects/createObject";
-import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
-import { getProposedChangesFilesThreads } from "@/graphql/queries/proposed-changes/getProposedChangesFilesThreads";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
+import { deleteObject } from "@/shared/api/graphql/mutations/objects/deleteObject";
+import { getProposedChangesFilesThreads } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesFilesThreads";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";

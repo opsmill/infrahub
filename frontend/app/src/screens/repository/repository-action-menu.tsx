@@ -11,7 +11,7 @@ import {
 import {
   CHECK_REPOSITORY_CONNECTIVITY,
   REIMPORT_LAST_COMMIT,
-} from "@/graphql/mutations/repository/actions";
+} from "@/shared/api/graphql/mutations/repository/actions";
 import { useMutation } from "@/hooks/useQuery";
 import { Dialog } from "@headlessui/react";
 import { useState } from "react";

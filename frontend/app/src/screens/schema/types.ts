@@ -1,4 +1,4 @@
-import { components } from "@/infraops";
+import { components } from "@/shared/api/rest/types.generated";
 
 export type RelationshipSchema = components["schemas"]["RelationshipSchema"];
 

@@ -10,9 +10,9 @@ import {
   ACCOUNT_PERMISSION_OBJECT,
   ACCOUNT_ROLE_OBJECT,
 } from "@/config/constants";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { createObject } from "@/graphql/mutations/objects/createObject";
-import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
+import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";

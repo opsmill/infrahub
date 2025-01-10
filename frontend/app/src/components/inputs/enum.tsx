@@ -11,7 +11,7 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/components/ui/combobox";
-import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/graphql/mutations/schema/enum";
+import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/shared/api/graphql/mutations/schema/enum";
 import { useMutation } from "@/hooks/useQuery";
 import { AttributeSchema } from "@/screens/schema/types";
 import { IModelSchema } from "@/state/atoms/schema.atom";

@@ -1,7 +1,7 @@
 import { Clipboard } from "@/components/buttons/clipboard";
 import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/components/display/badge-circle";
 import { NODE_OBJECT } from "@/config/constants";
-import { getObjectDisplayLabel } from "@/graphql/queries/objects/getObjectDisplayLabel";
+import { getObjectDisplayLabel } from "@/shared/api/graphql/queries/objects/getObjectDisplayLabel";
 import useQuery from "@/hooks/useQuery";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { gql } from "@apollo/client";

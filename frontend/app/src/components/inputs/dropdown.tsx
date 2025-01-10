@@ -16,7 +16,7 @@ import { CommandItem } from "@/components/ui/command";
 import {
   DROPDOWN_ADD_MUTATION,
   DROPDOWN_REMOVE_MUTATION,
-} from "@/graphql/mutations/schema/dropdown";
+} from "@/shared/api/graphql/mutations/schema/dropdown";
 import { useMutation } from "@/hooks/useQuery";
 import { AttributeSchema } from "@/screens/schema/types";
 import { IModelSchema } from "@/state/atoms/schema.atom";

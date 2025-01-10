@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardWithBorder } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT, TASK_OBJECT } from "@/config/constants";
-import { TASK_DETAILS_CHECK } from "@/graphql/queries/tasks/checkTasksItemDetails";
+import { TASK_DETAILS_CHECK } from "@/shared/api/graphql/queries/tasks/checkTasksItemDetails";
 import useQuery from "@/hooks/useQuery";
 import { PcApproveButton } from "@/screens/proposed-changes/action-button/pc-approve-button";
 import { PcCloseButton } from "@/screens/proposed-changes/action-button/pc-close-button";

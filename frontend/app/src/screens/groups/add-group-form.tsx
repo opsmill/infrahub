@@ -1,7 +1,7 @@
 import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
 import { FormRelationshipValue, RelationshipManyValueFromUser } from "@/components/form/type";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { updateGroupsQuery } from "@/graphql/mutations/groups/updateGroupsQuery";
+import { updateGroupsQuery } from "@/shared/api/graphql/mutations/groups/updateGroupsQuery";
 import { useMutation } from "@/hooks/useQuery";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { iNodeSchema } from "@/state/atoms/schema.atom";

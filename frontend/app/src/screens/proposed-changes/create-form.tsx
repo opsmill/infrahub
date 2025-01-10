@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { CREATE_PROPOSED_CHANGE } from "@/graphql/mutations/proposed-changes/createProposedChange";
+import { CREATE_PROPOSED_CHANGE } from "@/shared/api/graphql/mutations/proposed-changes/createProposedChange";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation } from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";

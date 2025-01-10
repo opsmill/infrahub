@@ -6,8 +6,8 @@ import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFr
 import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
 import { Card, CardProps } from "@/components/ui/card";
 import { Form, FormSubmit } from "@/components/ui/form";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { createObject } from "@/graphql/mutations/objects/createObject";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
 import { useAuth } from "@/hooks/useAuth";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";

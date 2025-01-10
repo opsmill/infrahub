@@ -12,7 +12,7 @@ import {
   ComboboxTrigger,
 } from "@/components/ui/combobox";
 import { FormField, FormInput, FormMessage } from "@/components/ui/form";
-import { getRelationshipParent } from "@/graphql/queries/objects/getRelationshipParent";
+import { getRelationshipParent } from "@/shared/api/graphql/queries/objects/getRelationshipParent";
 import useQuery from "@/hooks/useQuery";
 import { store } from "@/state";
 import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";

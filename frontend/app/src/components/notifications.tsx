@@ -1,4 +1,4 @@
-import { subscription } from "@/graphql/queries/notifications/subscription";
+import { subscription } from "@/shared/api/graphql/queries/notifications/subscription";
 import { useSubscription } from "@/hooks/useQuery";
 import { gql } from "@apollo/client";
 

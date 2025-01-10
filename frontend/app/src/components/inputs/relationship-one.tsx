@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/combobox";
 import { PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { getDropdownOptions } from "@/graphql/queries/objects/dropdownOptions";
-import { generateRelationshipListQuery } from "@/graphql/queries/objects/generateRelationshipListQuery";
+import { getDropdownOptions } from "@/shared/api/graphql/queries/objects/dropdownOptions";
+import { generateRelationshipListQuery } from "@/shared/api/graphql/queries/objects/generateRelationshipListQuery";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";

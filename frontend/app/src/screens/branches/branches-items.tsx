@@ -1,6 +1,6 @@
 import { DateDisplay } from "@/components/display/date-display";
 import { Tooltip } from "@/components/ui/tooltip";
-import GET_BRANCHES from "@/graphql/queries/branches/getBranches";
+import GET_BRANCHES from "@/shared/api/graphql/queries/branches/getBranches";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import Content from "@/screens/layout/content";

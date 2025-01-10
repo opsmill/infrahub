@@ -1,5 +1,5 @@
 import Accordion from "@/components/display/accordion";
-import { components } from "@/infraops";
+import { components } from "@/shared/api/rest/types.generated";
 import { AccordionStyled, NullDisplay, PropertyRow } from "./styled";
 
 export const AttributeDisplay = ({

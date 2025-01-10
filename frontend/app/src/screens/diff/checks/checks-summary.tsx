@@ -7,8 +7,8 @@ import {
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
   VALIDATIONS_ENUM_MAP,
 } from "@/config/constants";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { runCheck } from "@/graphql/mutations/diff/runCheck";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { runCheck } from "@/shared/api/graphql/mutations/diff/runCheck";
 import { useAuth } from "@/hooks/useAuth";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { genericsState } from "@/state/atoms/schema.atom";

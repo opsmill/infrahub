@@ -1,6 +1,6 @@
 import { SelectOption } from "@/components/inputs/select";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { components } from "@/infraops";
+import { components } from "@/shared/api/rest/types.generated";
 import { RegisterOptions } from "react-hook-form";
 import { FormFieldError } from "./form";
 

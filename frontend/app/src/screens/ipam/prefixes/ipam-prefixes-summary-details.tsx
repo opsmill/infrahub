@@ -1,7 +1,7 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Link } from "@/components/ui/link";
-import { GET_PREFIX_KIND } from "@/graphql/queries/ipam/prefixes";
-import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
+import { GET_PREFIX_KIND } from "@/shared/api/graphql/queries/ipam/prefixes";
+import { getObjectDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { IpDetailsCard } from "@/screens/ipam/common/ip-details-card";

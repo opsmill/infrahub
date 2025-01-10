@@ -89,40 +89,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/diff/data": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Diff Data */
-        get: operations["get_diff_data_api_diff_data_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/diff/schema": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Diff Schema */
-        get: operations["get_diff_schema_api_diff_schema_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/diff/files": {
         parameters: {
             query?: never;
@@ -910,6 +876,8 @@ export interface components {
              * @description Define a list of valid values for the attribute.
              */
             enum?: unknown[] | null;
+            /** @description Defines how the value of this attribute will be populated. */
+            computed_attribute?: components["schemas"]["ComputedAttribute-Input"] | null;
             /**
              * Choices
              * @description Define a list of valid choices for a dropdown attribute.
@@ -981,6 +949,11 @@ export interface components {
              * @default any
              */
             allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
         };
         /** AttributeSchema */
         "AttributeSchema-Output": {
@@ -1009,6 +982,8 @@ export interface components {
              * @description Define a list of valid values for the attribute.
              */
             enum?: unknown[] | null;
+            /** @description Defines how the value of this attribute will be populated. */
+            computed_attribute?: components["schemas"]["ComputedAttribute-Output"] | null;
             /**
              * Choices
              * @description Define a list of valid choices for a dropdown attribute.
@@ -1080,6 +1055,11 @@ export interface components {
              * @default any
              */
             allow_override: components["schemas"]["AllowOverrideType"];
+            /**
+             * Deprecation
+             * @description Mark attribute as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
         };
         /** Body_upload_file_api_storage_upload_file_post */
         Body_upload_file_api_storage_upload_file_post: {
@@ -1088,11 +1068,6 @@ export interface components {
              * Format: binary
              */
             file: string;
-        };
-        /** BranchDiff */
-        BranchDiff: {
-            /** Diffs */
-            diffs?: components["schemas"]["BranchDiffEntry"][];
         };
         /** BranchDiffArtifact */
         BranchDiffArtifact: {
@@ -1114,122 +1089,6 @@ export interface components {
             /** Checksum */
             checksum: string;
         };
-        /** BranchDiffElement */
-        BranchDiffElement: {
-            type: components["schemas"]["DiffElementType"];
-            /** Name */
-            name: string;
-            /** Path */
-            path: string;
-            /** Change */
-            change: components["schemas"]["BranchDiffElementAttribute"] | components["schemas"]["BranchDiffElementRelationshipOne"] | components["schemas"]["BranchDiffElementRelationshipMany"];
-        };
-        /** BranchDiffElementAttribute */
-        BranchDiffElementAttribute: {
-            /** @default Attribute */
-            type: components["schemas"]["DiffElementType"];
-            /** Branches */
-            branches?: string[];
-            /**
-             * Id
-             * @default
-             */
-            id: string;
-            summary?: components["schemas"]["DiffSummary"];
-            /** @default unchanged */
-            action: components["schemas"]["DiffAction"];
-            value?: components["schemas"]["BranchDiffPropertyCollection"] | null;
-            /** Properties */
-            properties?: {
-                [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
-            };
-        };
-        /** BranchDiffElementRelationshipMany */
-        BranchDiffElementRelationshipMany: {
-            /** @default RelationshipMany */
-            type: components["schemas"]["DiffElementType"];
-            /**
-             * Identifier
-             * @default
-             */
-            identifier: string;
-            /** Branches */
-            branches?: string[];
-            summary?: components["schemas"]["DiffSummary"];
-            /** Peers */
-            peers?: {
-                [key: string]: components["schemas"]["BranchDiffElementRelationshipManyPeer"];
-            };
-        };
-        /** BranchDiffElementRelationshipManyPeer */
-        BranchDiffElementRelationshipManyPeer: {
-            /** Branches */
-            branches?: string[];
-            peer: components["schemas"]["BranchDiffRelationshipPeerNode"];
-            /** Path */
-            path: string;
-            /** Properties */
-            properties?: {
-                [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
-            };
-            /** Changed At */
-            changed_at?: string | null;
-            /** Action */
-            action?: {
-                [key: string]: components["schemas"]["DiffAction"];
-            };
-        };
-        /** BranchDiffElementRelationshipOne */
-        BranchDiffElementRelationshipOne: {
-            /** @default RelationshipOne */
-            type: components["schemas"]["DiffElementType"];
-            /**
-             * Id
-             * @default
-             */
-            id: string;
-            /**
-             * Identifier
-             * @default
-             */
-            identifier: string;
-            /** Branches */
-            branches?: string[];
-            summary?: components["schemas"]["DiffSummary"];
-            peer?: components["schemas"]["BranchDiffRelationshipOnePeerCollection"] | null;
-            /** Properties */
-            properties?: {
-                [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
-            };
-            /** Changed At */
-            changed_at?: string | null;
-            /** Action */
-            action?: {
-                [key: string]: components["schemas"]["DiffAction"];
-            };
-        };
-        /** BranchDiffEntry */
-        BranchDiffEntry: {
-            /** Kind */
-            kind: string;
-            /** Id */
-            id: string;
-            /** Path */
-            path: string;
-            /** Elements */
-            elements?: {
-                [key: string]: components["schemas"]["BranchDiffElement"];
-            };
-            summary?: components["schemas"]["DiffSummary"];
-            /** Action */
-            action?: {
-                [key: string]: components["schemas"]["DiffAction"];
-            };
-            /** Display Label */
-            display_label?: {
-                [key: string]: string;
-            };
-        };
         /** BranchDiffFile */
         BranchDiffFile: {
             /** Branch */
@@ -1237,54 +1096,6 @@ export interface components {
             /** Location */
             location: string;
             action: components["schemas"]["DiffAction"];
-        };
-        /** BranchDiffProperty */
-        BranchDiffProperty: {
-            /** Branch */
-            branch: string;
-            /** Type */
-            type: string;
-            /** Changed At */
-            changed_at?: string | null;
-            action: components["schemas"]["DiffAction"];
-            value: components["schemas"]["BranchDiffPropertyValue"];
-        };
-        /** BranchDiffPropertyCollection */
-        BranchDiffPropertyCollection: {
-            /** Path */
-            path: string;
-            /** Changes */
-            changes?: components["schemas"]["BranchDiffProperty"][];
-        };
-        /** BranchDiffPropertyValue */
-        BranchDiffPropertyValue: {
-            /** New */
-            new?: unknown;
-            /** Previous */
-            previous?: unknown;
-        };
-        /** BranchDiffRelationshipOnePeer */
-        BranchDiffRelationshipOnePeer: {
-            /** Branch */
-            branch: string;
-            new?: components["schemas"]["BranchDiffRelationshipPeerNode"] | null;
-            previous?: components["schemas"]["BranchDiffRelationshipPeerNode"] | null;
-        };
-        /** BranchDiffRelationshipOnePeerCollection */
-        BranchDiffRelationshipOnePeerCollection: {
-            /** Path */
-            path: string;
-            /** Changes */
-            changes?: components["schemas"]["BranchDiffRelationshipOnePeer"][];
-        };
-        /** BranchDiffRelationshipPeerNode */
-        BranchDiffRelationshipPeerNode: {
-            /** Id */
-            id: string;
-            /** Kind */
-            kind: string;
-            /** Display Label */
-            display_label?: string | null;
         };
         /** BranchDiffRepository */
         BranchDiffRepository: {
@@ -1306,6 +1117,31 @@ export interface components {
          * @enum {string}
          */
         BranchSupportType: "aware" | "agnostic" | "local";
+        /** ComputedAttribute */
+        "ComputedAttribute-Input": {
+            /** Id */
+            id?: string | null;
+            /** @default present */
+            state: components["schemas"]["HashableModelState"];
+            kind: components["schemas"]["ComputedAttributeKind"];
+            /**
+             * Jinja2 Template
+             * @description The Jinja2 template in string format, required when assignment_type=jinja2
+             */
+            jinja2_template?: string | null;
+            /**
+             * Transform
+             * @description The Python Transform name or ID, required when assignment_type=transform
+             */
+            transform?: string | null;
+        } & (unknown & unknown);
+        /** ComputedAttribute */
+        "ComputedAttribute-Output": Record<string, never>;
+        /**
+         * ComputedAttributeKind
+         * @enum {string}
+         */
+        ComputedAttributeKind: "User" | "Jinja2" | "TransformPython";
         /** ConfigAPI */
         ConfigAPI: {
             main: components["schemas"]["MainSettings"];
@@ -1319,29 +1155,6 @@ export interface components {
          * @enum {string}
          */
         DiffAction: "added" | "removed" | "updated" | "unchanged";
-        /**
-         * DiffElementType
-         * @enum {string}
-         */
-        DiffElementType: "Attribute" | "RelationshipOne" | "RelationshipMany";
-        /** DiffSummary */
-        DiffSummary: {
-            /**
-             * Added
-             * @default 0
-             */
-            added: number;
-            /**
-             * Removed
-             * @default 0
-             */
-            removed: number;
-            /**
-             * Updated
-             * @default 0
-             */
-            updated: number;
-        };
         /** DropdownChoice */
         DropdownChoice: {
             /** Id */
@@ -1569,6 +1382,7 @@ export interface components {
         MainSettings: {
             /**
              * Docs Index Path
+             * Format: path
              * @description Full path of saved json containing pre-indexed documentation
              * @default /opt/infrahub/docs/build/search-index.json
              */
@@ -1937,6 +1751,11 @@ export interface components {
              * @default false
              */
             read_only: boolean;
+            /**
+             * Deprecation
+             * @description Mark relationship as deprecated and provide a user-friendly message to display
+             */
+            deprecation?: string | null;
         };
         /** RemoteLoggingSettings */
         RemoteLoggingSettings: {
@@ -2287,76 +2106,6 @@ export interface operations {
             };
         };
     };
-    get_diff_data_api_diff_data_get: {
-        parameters: {
-            query?: {
-                time_from?: string | null;
-                time_to?: string | null;
-                branch_only?: boolean;
-                /** @description Name of the branch to use for the query */
-                branch?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BranchDiff"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_diff_schema_api_diff_schema_get: {
-        parameters: {
-            query?: {
-                time_from?: string | null;
-                time_to?: string | null;
-                branch_only?: boolean;
-                /** @description Name of the branch to use for the query */
-                branch?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BranchDiff"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_diff_files_api_diff_files_get: {
         parameters: {
             query?: {
@@ -2399,9 +2148,6 @@ export interface operations {
     get_diff_artifacts_api_diff_artifacts_get: {
         parameters: {
             query?: {
-                time_from?: string | null;
-                time_to?: string | null;
-                branch_only?: boolean;
                 /** @description Name of the branch to use for the query */
                 branch?: string | null;
             };
@@ -2516,6 +2262,8 @@ export interface operations {
             query?: {
                 /** @description Name of the branch to use for the query */
                 branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
             };
             header?: never;
             path?: never;
@@ -2901,6 +2649,8 @@ export interface operations {
             query?: {
                 /** @description Name of the branch to use for the query */
                 branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
             };
             header?: never;
             path?: never;

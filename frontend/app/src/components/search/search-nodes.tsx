@@ -3,7 +3,7 @@ import { SearchAnywhereItem } from "@/components/search/search-anywhere-item";
 import { Skeleton } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { SCHEMA_ATTRIBUTE_KIND, SEARCH_QUERY_NAME } from "@/config/constants";
-import { SEARCH } from "@/graphql/queries/objects/search";
+import { SEARCH } from "@/shared/api/graphql/queries/objects/search";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import useQuery from "@/hooks/useQuery";

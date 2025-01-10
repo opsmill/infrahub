@@ -1,6 +1,6 @@
 import { Combobox, ComboboxContent, ComboboxList, ComboboxTrigger } from "@/components/ui/combobox";
 import { CommandEmpty, CommandItem } from "@/components/ui/command";
-import graphqlClient from "@/graphql/graphqlClientApollo";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { breadcrumbItemStyle } from "@/screens/layout/breadcrumb-navigation/style";
 import { branchesState } from "@/state/atoms/branches.atom";
 import { classNames } from "@/utils/common";

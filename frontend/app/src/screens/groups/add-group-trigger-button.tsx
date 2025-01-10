@@ -1,6 +1,6 @@
 import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
-import graphqlClient from "@/graphql/graphqlClientApollo";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { useObjectDetails } from "@/hooks/useObjectDetails";
 import AddGroupForm from "@/screens/groups/add-group-form";
 import { GroupDataFromAPI } from "@/screens/groups/types";

@@ -1,8 +1,8 @@
 import { Checkbox } from "@/components/inputs/checkbox";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { resolveConflict } from "@/graphql/mutations/diff/resolveConflict";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { resolveConflict } from "@/shared/api/graphql/mutations/diff/resolveConflict";
 import { useAuth } from "@/hooks/useAuth";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";

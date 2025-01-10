@@ -1,6 +1,4 @@
 import { GRAPHQL_QUERY_OBJECT } from "@/config/constants";
-import { CoreGraphQlQuery } from "@/generated/graphql";
-import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import NoDataFound from "@/screens/errors/no-data-found";
@@ -10,6 +8,8 @@ import GraphQLQueryDetailsPageSkeleton from "@/screens/graphql/details/graphql-q
 import GraphqlQueryViewerCard from "@/screens/graphql/details/graphql-query-viewer-card";
 import { Permission } from "@/screens/permission/types";
 import { getPermission } from "@/screens/permission/utils";
+import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
+import { getObjectDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectDetails";
 import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
 import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
 import { gql } from "@apollo/client";

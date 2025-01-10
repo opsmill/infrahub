@@ -1,6 +1,6 @@
 import { MultiCombobox } from "@/components/ui/combobox-legacy";
 import Label from "@/components/ui/label";
-import { getProfiles } from "@/graphql/queries/objects/getProfiles";
+import { getProfiles } from "@/shared/api/graphql/queries/objects/getProfiles";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";

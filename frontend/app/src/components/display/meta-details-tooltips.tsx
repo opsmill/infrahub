@@ -3,7 +3,7 @@ import { PropertyList } from "@/components/table/property-list";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AnyAttribute } from "@/generated/graphql";
+import { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/utils/date";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";

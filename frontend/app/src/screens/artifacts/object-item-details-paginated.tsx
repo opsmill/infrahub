@@ -6,7 +6,7 @@ import { Tabs } from "@/components/tabs";
 import { CONFIG } from "@/config/config";
 import { ARTIFACT_OBJECT, MENU_EXCLUDELIST } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
+import { getObjectDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import { Generate } from "@/screens/artifacts/generate";

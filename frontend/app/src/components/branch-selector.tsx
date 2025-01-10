@@ -1,6 +1,6 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { QSP } from "@/config/qsp";
-import { Branch } from "@/generated/graphql";
+import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { branchesToSelectOptions } from "@/utils/branches";
 import { Icon } from "@iconify-icon/react";
@@ -16,8 +16,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import graphqlClient from "@/graphql/graphqlClientApollo";
 import { useAuth } from "@/hooks/useAuth";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { constructPath } from "@/utils/fetch";
 import { useCommandState } from "cmdk";
 import { Button, ButtonWithTooltip, LinkButton } from "./buttons/button-primitive";

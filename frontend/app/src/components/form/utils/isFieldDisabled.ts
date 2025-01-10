@@ -1,6 +1,6 @@
-import { LineageOwner } from "@/generated/graphql";
 import { AuthContextType } from "@/hooks/useAuth";
 import { PermissionDecisionData } from "@/screens/permission/types";
+import { LineageOwner } from "@/shared/api/graphql/generated/graphql";
 import { store } from "@/state";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 

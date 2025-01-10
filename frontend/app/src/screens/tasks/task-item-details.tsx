@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Id } from "@/components/ui/id";
 import { SearchInput } from "@/components/ui/search-input";
 import { QSP } from "@/config/qsp";
-import { TASK_DETAILS } from "@/graphql/queries/tasks/getTasksItemDetails";
+import { TASK_DETAILS } from "@/shared/api/graphql/queries/tasks/getTasksItemDetails";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { forwardRef, useImperativeHandle, useState } from "react";

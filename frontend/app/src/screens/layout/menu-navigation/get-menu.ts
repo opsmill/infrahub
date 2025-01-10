@@ -1,6 +1,6 @@
-import { apiClient } from "@/api/client";
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { MenuData } from "@/screens/layout/menu-navigation/types";
+import { apiClient } from "@/shared/api/rest/client";
 import { store } from "@/state";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { queryOptions } from "@tanstack/react-query";

@@ -2,7 +2,7 @@ import { Avatar } from "@/components/display/avatar";
 import { Tabs } from "@/components/tabs";
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
+import { getProfileDetails } from "@/shared/api/graphql/queries/accounts/getProfileDetails";
 import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";

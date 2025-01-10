@@ -4,7 +4,7 @@ import { RouterProvider } from "react-router-dom";
 import { Slide, ToastContainer } from "react-toastify";
 
 import { router } from "@/app/router";
-import graphqlClient from "@/graphql/graphqlClientApollo";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { AuthProvider } from "@/hooks/useAuth";
 import ErrorFallback from "@/screens/errors/error-fallback";
 import { store } from "@/state";
@@ -15,8 +15,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 
 import "@/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
-import { queryClient } from "@/api/client";
 import { TanStackQueryDevtools } from "@/app/devtools";
+import { queryClient } from "@/shared/api/rest/client";
 
 addCollection(mdiIcons);
 

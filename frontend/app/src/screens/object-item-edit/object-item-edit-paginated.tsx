@@ -1,8 +1,8 @@
 import ObjectForm, { ObjectFormProps } from "@/components/form/object-form";
 import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { DynamicFieldData } from "@/screens/edit-form-hook/dynamic-control-types";

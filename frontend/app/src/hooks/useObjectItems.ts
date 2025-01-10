@@ -1,6 +1,6 @@
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
-import { getTokens } from "@/graphql/queries/accounts/getTokens";
-import { getObjectItemsPaginated } from "@/graphql/queries/objects/getObjectItems";
+import { getTokens } from "@/shared/api/graphql/queries/accounts/getTokens";
+import { getObjectItemsPaginated } from "@/shared/api/graphql/queries/objects/getObjectItems";
 import { Filter } from "@/hooks/useFilters";
 import useQuery from "@/hooks/useQuery";
 import { getPermission } from "@/screens/permission/utils";

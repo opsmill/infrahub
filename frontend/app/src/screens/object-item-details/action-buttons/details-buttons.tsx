@@ -2,7 +2,7 @@ import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { ARTIFACT_DEFINITION_OBJECT, GENERIC_REPOSITORY_KIND } from "@/config/constants";
-import graphqlClient from "@/graphql/graphqlClientApollo";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Generate } from "@/screens/artifacts/generate";
 import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trigger-button";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";

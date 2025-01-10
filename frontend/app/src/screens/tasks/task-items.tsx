@@ -10,7 +10,7 @@ import { Filters } from "@/components/filters/filters";
 import { Id } from "@/components/ui/id";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { QSP } from "@/config/qsp";
-import { GET_TASKS } from "@/graphql/queries/tasks/getTasksItems";
+import { GET_TASKS } from "@/shared/api/graphql/queries/tasks/getTasksItems";
 import useFilters, { Filter } from "@/hooks/useFilters";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";

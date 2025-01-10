@@ -1,4 +1,4 @@
-import { getProposedChangesDiffSummary } from "@/graphql/queries/proposed-changes/getProposedChangesDiffSummary";
+import { getProposedChangesDiffSummary } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesDiffSummary";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "../errors/error-screen";
 

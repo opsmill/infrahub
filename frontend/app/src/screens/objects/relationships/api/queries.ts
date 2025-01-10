@@ -1,5 +1,5 @@
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { generateRelationshipListQuery } from "@/graphql/queries/objects/generateRelationshipListQuery";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { generateRelationshipListQuery } from "@/shared/api/graphql/queries/objects/generateRelationshipListQuery";
 import { gql } from "@apollo/client";
 
 export type getRelationshipsFromApiParams = {

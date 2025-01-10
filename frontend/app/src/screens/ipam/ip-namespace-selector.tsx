@@ -6,9 +6,9 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/components/ui/combobox";
-import { IpamNamespace } from "@/generated/graphql";
-import { GET_IP_NAMESPACES } from "@/graphql/queries/ipam/ip-namespaces";
 import useQuery from "@/hooks/useQuery";
+import { IpamNamespace } from "@/shared/api/graphql/generated/graphql";
+import { GET_IP_NAMESPACES } from "@/shared/api/graphql/queries/ipam/ip-namespaces";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue, useSetAtom } from "jotai";

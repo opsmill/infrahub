@@ -16,7 +16,7 @@ import {
   INFRAHUB_SWAGGER_DOC_URL,
 } from "@/config/config";
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-import { getProfileDetails } from "@/graphql/queries/accounts/getProfileDetails";
+import { getProfileDetails } from "@/shared/api/graphql/queries/accounts/getProfileDetails";
 import { useAuth } from "@/hooks/useAuth";
 import { AppVersion } from "@/screens/layout/app-version";
 import { IModelSchema, genericsState } from "@/state/atoms/schema.atom";

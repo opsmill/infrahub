@@ -1,6 +1,6 @@
 import { Button } from "@/components/buttons/button-primitive";
 import { SearchInput } from "@/components/ui/search-input";
-import { getGroupsQuery } from "@/graphql/queries/groups/getGroups";
+import { getGroupsQuery } from "@/shared/api/graphql/queries/groups/getGroups";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";

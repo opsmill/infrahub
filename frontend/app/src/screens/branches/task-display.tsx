@@ -2,7 +2,7 @@ import Accordion from "@/components/display/accordion";
 import { DateDisplay } from "@/components/display/date-display";
 import { Badge } from "@/components/ui/badge";
 import { TASK_OBJECT } from "@/config/constants";
-import { TASK_DETAILS } from "@/graphql/queries/tasks/getTasksItemDetails";
+import { TASK_DETAILS } from "@/shared/api/graphql/queries/tasks/getTasksItemDetails";
 import useQuery from "@/hooks/useQuery";
 import { classNames } from "@/utils/common";
 import ErrorScreen from "../errors/error-screen";

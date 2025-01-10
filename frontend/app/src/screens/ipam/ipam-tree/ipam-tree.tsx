@@ -8,7 +8,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
-import { GET_PREFIXES_ONLY } from "@/graphql/queries/ipam/prefixes";
+import { GET_PREFIXES_ONLY } from "@/shared/api/graphql/queries/ipam/prefixes";
 import { defaultIpNamespaceAtom } from "@/screens/ipam/common/namespace.state";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
 import { IPAM_QSP, IPAM_ROUTE, TREE_ROOT_ID } from "@/screens/ipam/constants";

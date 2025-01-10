@@ -7,6 +7,8 @@ import { CodeEditor } from "@/components/editor/code-editor";
 import { MarkdownViewer } from "@/components/editor/markdown-viewer";
 import { Link } from "@/components/ui/link";
 import { MAX_VALUE_LENGTH_DISPLAY, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
+import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
 import {
   AnyAttribute,
   CheckboxAttribute,
@@ -19,9 +21,7 @@ import {
   NumberAttribute,
   RelationshipProperty,
   TextAttribute,
-} from "@/generated/graphql";
-import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
-import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
+} from "@/shared/api/graphql/generated/graphql";
 import { iSchemaKindNameMap } from "@/state/atoms/schemaKindName.atom";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 

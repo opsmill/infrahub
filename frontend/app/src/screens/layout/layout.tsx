@@ -1,10 +1,10 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { QSP } from "@/config/qsp";
 import { SchemaContext, withSchemaContext } from "@/decorators/withSchemaContext";
-import { Branch } from "@/generated/graphql";
-import GET_BRANCHES from "@/graphql/queries/branches/getBranches";
 import Sidebar from "@/screens/layout/sidebar";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { Branch } from "@/shared/api/graphql/generated/graphql";
+import GET_BRANCHES from "@/shared/api/graphql/queries/branches/getBranches";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import { findSelectedBranch } from "@/utils/branches";
 import { NetworkStatus, useQuery } from "@apollo/client";

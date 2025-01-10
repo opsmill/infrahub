@@ -3,7 +3,7 @@ import { isRequired } from "@/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Form, FormSubmit } from "@/components/ui/form";
-import { UPDATE_ACCOUNT_PASSWORD } from "@/graphql/mutations/accounts/updateAccountPassword";
+import { UPDATE_ACCOUNT_PASSWORD } from "@/shared/api/graphql/mutations/accounts/updateAccountPassword";
 import { useMutation } from "@/hooks/useQuery";
 import Content from "@/screens/layout/content";
 import { toast } from "react-toastify";

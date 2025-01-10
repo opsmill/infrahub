@@ -6,7 +6,7 @@ import { CodeEditor } from "@/components/editor/code-editor";
 import { Skeleton } from "@/components/skeleton";
 import { List } from "@/components/table/list";
 import { Tooltip } from "@/components/ui/tooltip";
-import { GET_CHECKS } from "@/graphql/queries/diff/getCheckDetails";
+import { GET_CHECKS } from "@/shared/api/graphql/queries/diff/getCheckDetails";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import { schemaKindLabelState } from "@/state/atoms/schemaKindLabel.atom";

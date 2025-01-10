@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
 import { TASK_OBJECT } from "@/config/constants";
-import { getTaskItemDetailsTitle } from "@/graphql/queries/tasks/getTasksItemDetailsTitle";
+import { getTaskItemDetailsTitle } from "@/shared/api/graphql/queries/tasks/getTasksItemDetailsTitle";
 import useQuery from "@/hooks/useQuery";
 import { useTitle } from "@/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";

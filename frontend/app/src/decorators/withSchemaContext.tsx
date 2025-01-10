@@ -1,8 +1,8 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { CONFIG } from "@/config/config";
 import { QSP } from "@/config/qsp";
-import { Branch } from "@/generated/graphql";
 import { tokenSchema } from "@/screens/user-profile/token-schema";
+import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { branchesState, currentBranchAtom } from "@/state/atoms/branches.atom";
 import {
   IProfileSchema,

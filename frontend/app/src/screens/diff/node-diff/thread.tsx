@@ -2,7 +2,7 @@ import { SidePanelTitle } from "@/components/display/sidepanel-title";
 import SlideOver from "@/components/display/slide-over";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
-import { getProposedChangesObjectThreads } from "@/graphql/queries/proposed-changes/getProposedChangesObjectThreads";
+import { getProposedChangesObjectThreads } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesObjectThreads";
 import useQuery from "@/hooks/useQuery";
 import { schemaState } from "@/state/atoms/schema.atom";
 import { getThreadLabel, getThreadTitle } from "@/utils/diff";

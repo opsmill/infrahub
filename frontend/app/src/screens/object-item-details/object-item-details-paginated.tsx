@@ -5,7 +5,7 @@ import { Tabs } from "@/components/tabs";
 import { Link } from "@/components/ui/link";
 import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST, TASK_TAB, TASK_TARGET } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import graphqlClient from "@/graphql/graphqlClientApollo";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { useTitle } from "@/hooks/useTitle";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
 import { Permission } from "@/screens/permission/types";

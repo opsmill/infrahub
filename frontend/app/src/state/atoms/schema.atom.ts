@@ -1,4 +1,4 @@
-import { components } from "@/infraops";
+import { components } from "@/shared/api/rest/types.generated";
 import { atom } from "jotai";
 
 export type iNodeSchema = components["schemas"]["APINodeSchema"];

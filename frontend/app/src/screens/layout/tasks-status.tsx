@@ -4,7 +4,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { TASKS_STATUS_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { TASKS_STATUS } from "@/graphql/queries/tasks/getTasksStatus";
+import { TASKS_STATUS } from "@/shared/api/graphql/queries/tasks/getTasksStatus";
 import useQuery from "@/hooks/useQuery";
 import TasksStatusIcon from "@/images/icons/tasks-status.svg?react";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";

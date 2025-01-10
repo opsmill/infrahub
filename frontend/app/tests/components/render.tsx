@@ -3,7 +3,7 @@ import { Provider } from "jotai";
 import React from "react";
 import { Slide, ToastContainer } from "react-toastify";
 import { render as renderFromVitest } from "vitest-browser-react";
-import { queryClient } from "../../src/api/client";
+import { queryClient } from "../../src/shared/api/rest/client";
 import { store } from "../../src/state";
 
 import "/src/app/styles/index.css";

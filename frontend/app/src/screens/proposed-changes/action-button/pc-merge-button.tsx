@@ -1,8 +1,8 @@
 import { Button, ButtonProps } from "@/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { stringifyWithoutQuotes } from "@/utils/string";

@@ -5,7 +5,7 @@ const config: CodegenConfig = {
   documents: ["src/**/*.tsx", "src/**/*.ts"],
   ignoreNoDocuments: true, // for better experience with the watcher
   generates: {
-    "src/generated/": {
+    "src/shared/api/graphql/generated/": {
       config: {
         withHooks: true,
       },

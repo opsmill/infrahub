@@ -6,9 +6,9 @@ import { getCreateMutationFromFormDataOnly } from "@/components/form/utils/mutat
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Form, FormSubmit } from "@/components/ui/form";
 import { ACCOUNT_ROLE_OBJECT, OBJECT_PERMISSION_OBJECT } from "@/config/constants";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { createObject } from "@/graphql/mutations/objects/createObject";
-import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
+import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";

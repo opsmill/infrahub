@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
-import { GET_IP_ADDRESS_KIND } from "@/graphql/queries/ipam/ip-address";
-import { getObjectDetailsPaginated } from "@/graphql/queries/objects/getObjectDetails";
+import { GET_IP_ADDRESS_KIND } from "@/shared/api/graphql/queries/ipam/ip-address";
+import { getObjectDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";

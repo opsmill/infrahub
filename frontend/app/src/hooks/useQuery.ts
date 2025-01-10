@@ -1,5 +1,5 @@
 import { CONFIG } from "@/config/config";
-import { WSClient } from "@/graphql/websocket";
+import { WSClient } from "@/shared/api/graphql/websocket";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";
 import {

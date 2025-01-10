@@ -3,7 +3,7 @@ import {
   objectAncestorsQuery,
   objectChildrenQuery,
   objectTopLevelTreeQuery,
-} from "@/graphql/queries/objects/objectTreeQuery";
+} from "@/shared/api/graphql/queries/objects/objectTreeQuery";
 import useFilters from "@/hooks/useFilters";
 import { useLazyQuery } from "@/hooks/useQuery";
 import { HIDE_AUTO_GENERATED_FILTER } from "@/screens/groups/groups-auto-generated-filter-button";

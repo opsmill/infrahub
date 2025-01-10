@@ -1,8 +1,8 @@
 import DynamicForm from "@/components/form/dynamic-form";
 import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { updateObjectWithId } from "@/graphql/mutations/objects/updateObjectWithId";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { iNodeSchema } from "@/state/atoms/schema.atom";
 import { datetimeAtom } from "@/state/atoms/time.atom";

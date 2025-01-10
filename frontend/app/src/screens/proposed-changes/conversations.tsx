@@ -8,10 +8,10 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
   PROPOSED_CHANGES_THREAD_OBJECT,
 } from "@/config/constants";
-import graphqlClient from "@/graphql/graphqlClientApollo";
-import { createObject } from "@/graphql/mutations/objects/createObject";
-import { deleteObject } from "@/graphql/mutations/objects/deleteObject";
-import { getProposedChangesThreads } from "@/graphql/queries/proposed-changes/getProposedChangesThreads";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
+import { deleteObject } from "@/shared/api/graphql/mutations/objects/deleteObject";
+import { getProposedChangesThreads } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesThreads";
 import { useAuth } from "@/hooks/useAuth";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";

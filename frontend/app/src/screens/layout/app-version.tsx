@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/skeleton";
 import { CONFIG } from "@/config/config";
-import { components } from "@/infraops";
+import { components } from "@/shared/api/rest/types.generated";
 import { fetchUrl } from "@/utils/fetch";
 import { useEffect, useState } from "react";
 

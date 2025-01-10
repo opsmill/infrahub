@@ -6,7 +6,7 @@ import {
   GLOBAL_PERMISSION_OBJECT,
   OBJECT_PERMISSION_OBJECT,
 } from "@/config/constants";
-import { GET_ROLE_MANAGEMENT_COUNTS } from "@/graphql/queries/role-management/getCounts";
+import { GET_ROLE_MANAGEMENT_COUNTS } from "@/shared/api/graphql/queries/role-management/getCounts";
 import useQuery from "@/hooks/useQuery";
 
 import { constructPath } from "@/utils/fetch";

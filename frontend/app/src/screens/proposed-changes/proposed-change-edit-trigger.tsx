@@ -2,7 +2,7 @@ import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
 import SlideOver from "@/components/display/slide-over";
 import { ObjectHelpButton } from "@/components/menu/object-help-button";
 import { PROPOSED_CHANGES_EDITABLE_STATE, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import graphqlClient from "@/graphql/graphqlClientApollo";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/hooks/useQuery";
 import { useSchema } from "@/hooks/useSchema";
 import { ProposedChangeEditForm } from "@/screens/proposed-changes/form/proposed-change-edit-form";

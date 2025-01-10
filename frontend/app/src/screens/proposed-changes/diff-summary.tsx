@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { QSP } from "@/config/qsp";
-import { getProposedChangesDiffSummary } from "@/graphql/queries/proposed-changes/getProposedChangesDiffSummary";
+import { getProposedChangesDiffSummary } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesDiffSummary";
 import useQuery from "@/hooks/useQuery";
 import { DiffBadge } from "@/screens/diff/node-diff/utils";
 import ErrorScreen from "@/screens/errors/error-screen";

@@ -5,7 +5,7 @@ import {
   AttributeValueFromUser,
   FormAttributeValue,
 } from "@/components/form/type";
-import { LineageSource } from "@/generated/graphql";
+import { LineageSource } from "@/shared/api/graphql/generated/graphql";
 import { AttributeType, FieldSchema } from "@/utils/getObjectItemDisplayValue";
 import * as R from "ramda";
 

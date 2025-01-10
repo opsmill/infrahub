@@ -1,8 +1,8 @@
 import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import { Pagination } from "@/components/ui/pagination";
 import { QSP } from "@/config/qsp";
-import { REMOVE_RELATIONSHIP } from "@/graphql/mutations/relationships/removeRelationship";
-import { getObjectRelationshipsDetailsPaginated } from "@/graphql/queries/objects/getObjectRelationshipDetails";
+import { REMOVE_RELATIONSHIP } from "@/shared/api/graphql/mutations/relationships/removeRelationship";
+import { getObjectRelationshipsDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectRelationshipDetails";
 import useQuery, { useMutation } from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";

@@ -1,5 +1,5 @@
 import { getRelationshipsForForm } from "@/components/form/utils/getRelationshipsForForm";
-import { addAttributesToRequest, addRelationshipsToRequest } from "@/graphql/utils";
+import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import { IProfileSchema, iNodeSchema } from "@/state/atoms/schema.atom";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 

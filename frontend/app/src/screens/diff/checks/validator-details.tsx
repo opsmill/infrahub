@@ -1,5 +1,5 @@
 import { Pagination } from "@/components/ui/pagination";
-import { getValidatorDetails } from "@/graphql/queries/diff/getValidatorDetails";
+import { getValidatorDetails } from "@/shared/api/graphql/queries/diff/getValidatorDetails";
 import usePagination from "@/hooks/usePagination";
 import useQuery from "@/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
