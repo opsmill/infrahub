@@ -32,12 +32,13 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
   const search = filters.find((filter) => filter.name === SEARCH_ANY_FILTER)?.value;
   const branch = filters.find((filter) => filter.name === "branch__value")?.value;
   const state = filters.find((filter) => filter.name === "state__value")?.value;
+  const node = filters.find((filter) => filter.name === "node__value")?.value;
 
   const { pathname } = location;
 
   const queryString = getTasksItems({
     kind: TASK_OBJECT,
-    relatedNode: objectid || proposedChangeId,
+    relatedNode: node || objectid || proposedChangeId,
   });
 
   const query = gql`
@@ -136,34 +137,36 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
     return url;
   };
 
-  const rows = edges?.map((edge: any) => ({
-    link: getUrl(edge.node.id),
-    values: {
-      title: {
-        display: edge.node.title,
+  const rows = edges?.map((edge: any) => {
+    return {
+      link: getUrl(edge.node.id),
+      values: {
+        title: {
+          display: edge.node.title,
+        },
+        branch: {
+          display: edge.node.branch,
+        },
+        state: {
+          display: getStateBadge[edge.node.state],
+        },
+        related_node: {
+          display: edge.node.related_node_kind && (
+            <Id id={edge.node.related_node} kind={edge.node.related_node_kind} preventCopy />
+          ),
+        },
+        progress: {
+          display: edge.node.progress,
+        },
+        workflow: {
+          display: edge.node.workflow,
+        },
+        updated_at: {
+          display: <DateDisplay date={edge.node.updated_at} />,
+        },
       },
-      branch: {
-        display: edge.node.branch,
-      },
-      state: {
-        display: getStateBadge[edge.node.state],
-      },
-      related_node: {
-        display: edge.node.related_node_kind && (
-          <Id id={edge.node.related_node} kind={edge.node.related_node_kind} preventCopy />
-        ),
-      },
-      progress: {
-        display: edge.node.progress,
-      },
-      workflow: {
-        display: edge.node.workflow,
-      },
-      updated_at: {
-        display: <DateDisplay date={edge.node.updated_at} />,
-      },
-    },
-  }));
+    };
+  });
 
   return (
     <Content.Card>
