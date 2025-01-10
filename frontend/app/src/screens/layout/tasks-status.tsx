@@ -6,7 +6,7 @@ import { TASKS_STATUS_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { TASKS_STATUS } from "@/graphql/queries/tasks/getTasksStatus";
 import useQuery from "@/hooks/useQuery";
-import { ReactComponent as TasksStatusIcon } from "@/images/icons/tasks-status.svg";
+import TasksStatusIcon from "@/images/icons/tasks-status.svg?react";
 import { currentBranchAtom } from "@/state/atoms/branches.atom";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
