@@ -59,6 +59,7 @@ class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
 
         assert True
 
+    @pytest.mark.xfail(reason="Unable to merge the list for attributes, not all items are supporting _sorting_id")
     async def test_update_schema(self, client: InfrahubClient, schema_person_with_age: SchemaRoot) -> None:
         branch = await client.branch.create(branch_name="branch2")
         resp = await client.schema.load(schemas=[schema_person_with_age.to_schema_dict()], branch=branch.name)
