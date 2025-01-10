@@ -252,7 +252,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     async def get_peer(self, db: InfrahubDatabase, peer_type: type[PeerType]) -> PeerType: ...
 
     @overload
-    async def get_peer(self, db: InfrahubDatabase, peer_type: Literal[None] = ...) -> Node: ...
+    async def get_peer(self, db: InfrahubDatabase, peer_type: None = ...) -> Node: ...
 
     async def get_peer(self, db: InfrahubDatabase, peer_type: type[PeerType] | None = None) -> Any:  # pylint: disable=unused-argument
         """Return the peer of the relationship."""
@@ -811,7 +811,7 @@ class RelationshipManager:
     async def get_peer(
         self,
         db: InfrahubDatabase,
-        peer_type: Literal[None] = ...,
+        peer_type: None = ...,
         raise_on_error: Literal[False] = ...,
     ) -> Node | None: ...
 
@@ -819,7 +819,7 @@ class RelationshipManager:
     async def get_peer(
         self,
         db: InfrahubDatabase,
-        peer_type: Literal[None] = ...,
+        peer_type: None = ...,
         raise_on_error: Literal[True] = ...,
     ) -> Node: ...
 
@@ -827,7 +827,7 @@ class RelationshipManager:
     async def get_peer(
         self,
         db: InfrahubDatabase,
-        peer_type: Literal[None] = ...,
+        peer_type: None = ...,
         raise_on_error: bool = ...,
     ) -> Node: ...
 
@@ -861,7 +861,7 @@ class RelationshipManager:
     async def get_peers(
         self,
         db: InfrahubDatabase,
-        peer_type: Literal[None] = None,
+        peer_type: None = None,
         branch_agnostic: bool = ...,
     ) -> Mapping[str, Node]: ...
 

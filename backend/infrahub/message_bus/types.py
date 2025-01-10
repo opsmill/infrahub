@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import NodeNotFoundError
 
-SCHEMA_CHANGE = re.compile("^Schema[A-Z]")
+SCHEMA_CHANGE = re.compile(r"^Schema[A-Z]")
 
 
 class MessageTTL(int, Enum):

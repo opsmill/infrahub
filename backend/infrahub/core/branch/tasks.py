@@ -290,8 +290,7 @@ async def create_branch(model: BranchCreateModel) -> None:
             pass
 
         data_dict: dict[str, Any] = dict(model)
-        if "is_isolated" in data_dict:
-            del data_dict["is_isolated"]
+        data_dict.pop("is_isolated", None)
 
         try:
             obj = Branch(**data_dict)

@@ -502,7 +502,6 @@ ignore = [
     "PLR6301", # Method could be a function, class method, or static method
     "PLW0603", # Using the global statement to update `SETTINGS` is discouraged
     "PLW1508", # Invalid type for environment variable default; expected `str` or `None`
-    "PYI061",  # [*] `Literal[None]` can be replaced with `None`
     "RET503",  # Missing explicit `return` at the end of function able to return non-`None` value
     "RET504",  # Unnecessary assignment before `return` statement
     "RUF005",  # Consider `[*list(peers.values()), rfc5735]` instead of concatenation
@@ -513,11 +512,8 @@ ignore = [
     "RUF021",  # Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear
     "RUF029",  # Function is declared `async`, but doesn't `await` or use `async` features.
     "RUF036",  # `None` not at the end of the type annotation.
-    "RUF039",  # [*] First argument to `re.compile()` is not raw string
     "RUF043",  # Pattern passed to `match=` contains metacharacters but is neither escaped nor raw
-    "RUF051",  # [*] Use `pop` instead of `key in dict` followed by `del dict[key]`
     "RUF052",  # Local dummy variable `_meta` is accessed
-    "RUF056",  # [*] Avoid providing a falsy fallback to `dict.get()` in boolean test positions. The default fallback `None` is already falsy.
     "RUF100",  # [*] Unused `noqa` directive (non-enabled: `INP001`)
     "S101",    # Use of `assert` detected
     "S105",    # Possible hardcoded password assigned to: "REGEX_PASSWORD"

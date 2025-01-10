@@ -1007,7 +1007,7 @@ class NodeManager:
         cls,
         id: str,
         db: InfrahubDatabase,
-        kind: Literal[None] = ...,
+        kind: None = ...,
         raise_on_error: bool = ...,
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
