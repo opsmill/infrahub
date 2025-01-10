@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/screens/branches/get-current-branch");
 vi.mock("@/screens/objects/relationships/api/queries");
-vi.mock("@/state");
+vi.mock("@/shared/stores");
 
 describe("getRelationships", () => {
   beforeEach(() => {
