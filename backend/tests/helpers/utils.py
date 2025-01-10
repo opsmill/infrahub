@@ -42,9 +42,9 @@ def init_global_service(service: InfrahubServices) -> Generator:
     helps for restoring original `service` values so tests do no have side effects.
     """
 
-    original = services.service
-    services.service = service
+    original = services._service
+    services._service = service
     try:
         yield service
     finally:
-        services.service = original
+        services._service = original

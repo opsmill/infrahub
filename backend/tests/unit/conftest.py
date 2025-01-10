@@ -113,6 +113,7 @@ async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> Infrah
         name="test_basename",
         location=str(git_sources_dir / "test_base"),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     await repo.create_branch_in_git(branch_name="main", branch_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba")
@@ -2944,11 +2945,11 @@ def workflow_local():
 
 
 @pytest.fixture
-def init_service(db: InfrahubDatabase):
-    original = services.service
-    services.service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
-    yield services.service
-    services.service = original
+async def init_service(db: InfrahubDatabase):
+    original = services._service
+    services._service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
+    yield services._service
+    services._service = original
 
 
 @pytest.fixture

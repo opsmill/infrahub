@@ -119,20 +119,23 @@ async def start(
         else WorkflowLocalExecution()
     )
 
+    component_type = ComponentType.GIT_AGENT
     message_bus = config.OVERRIDE.message_bus or (
-        NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
+        await NATSMessageBus.new(component_type=component_type)
+        if config.SETTINGS.broker.driver == config.BrokerDriver.NATS
+        else await RabbitMQMessageBus.new(component_type=component_type)
     )
     cache = config.OVERRIDE.cache or (
-        NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
+        await NATSCache.new() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
     )
 
-    service = await InfrahubServices.init_and_initialize(
+    service = await InfrahubServices.new(
         cache=cache,
         client=client,
         database=database,
         workflow=workflow,
         message_bus=message_bus,
-        component_type=ComponentType.GIT_AGENT,
+        component_type=component_type,
     )
 
     # Initialize the lock

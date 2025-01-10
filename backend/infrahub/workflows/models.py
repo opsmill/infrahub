@@ -1,6 +1,8 @@
-from typing import Any, TypeVar
+import importlib
+from typing import Any, Awaitable, TypeVar
 from uuid import UUID
 
+from prefect import Flow
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.actions import DeploymentScheduleCreate
 from prefect.client.schemas.objects import FlowRun
@@ -70,3 +72,7 @@ class WorkflowDefinition(BaseModel):
         data = self.to_deployment()
         data["work_pool_name"] = work_pool.name
         return await client.create_deployment(flow_id=flow_id, **data)
+
+    def load_function(self) -> Flow[Any, Awaitable]:
+        module = importlib.import_module(self.module)
+        return getattr(module, self.function)

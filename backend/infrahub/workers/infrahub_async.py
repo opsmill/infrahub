@@ -1,4 +1,3 @@
-import inspect
 import logging
 import os
 from typing import Any, Optional
@@ -23,7 +22,7 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
 from infrahub.lock import initialize_lock
-from infrahub.services import InfrahubServices
+from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.cache.nats import NATSCache
 from infrahub.services.adapters.cache.redis import RedisCache
@@ -33,7 +32,7 @@ from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
-from infrahub.workers.utils import inject_service_parameter, load_flow_function
+from infrahub.workers.utils import load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
 WORKER_QUERY_SECONDS = "2"
@@ -138,9 +137,6 @@ class InfrahubWorkerAsync(BaseWorker):
         file_path.replace("/", ".")
         module_path = file_path.replace("backend/", "").replace(".py", "").replace("/", ".")
         flow_func = load_flow_function(module_path=module_path, flow_name=flow_name)
-        sig = inspect.signature(flow_func)
-        if "service" in sig.parameters:
-            inject_service_parameter(service=self.service, parameters=flow_run.parameters)
 
         flow_run_logger.debug("Validating parameters")
         params = flow_func.validate_parameters(parameters=flow_run.parameters)
@@ -189,30 +185,36 @@ class InfrahubWorkerAsync(BaseWorker):
             else WorkflowLocalExecution()
         )
 
-    async def _init_message_bus(self) -> InfrahubMessageBus:
+    async def _init_message_bus(self, component_type: ComponentType) -> InfrahubMessageBus:
         return config.OVERRIDE.message_bus or (
-            NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
+            await NATSMessageBus.new(component_type=component_type)
+            if config.SETTINGS.broker.driver == config.BrokerDriver.NATS
+            else await RabbitMQMessageBus.new(component_type=component_type)
         )
 
     async def _init_cache(self) -> InfrahubCache:
         return config.OVERRIDE.cache or (
-            NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
+            await NATSCache.new() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
         )
 
     async def _init_services(self, client: InfrahubClient) -> None:
+        component_type = ComponentType.GIT_AGENT
         client = await self._init_infrahub_client(client=client)
         database = await self._init_database()
         workflow = await self._init_workflow()
-        message_bus = await self._init_message_bus()
+        message_bus = await self._init_message_bus(component_type=component_type)
         cache = await self._init_cache()
 
-        service = await InfrahubServices.init_and_initialize(
+        service = await InfrahubServices.new(
             cache=cache,
             client=client,
             database=database,
             message_bus=message_bus,
             workflow=workflow,
-            component_type=ComponentType.GIT_AGENT,
+            component_type=component_type,
         )
 
         self.service = service
+
+        # TODO This will be removed when all flows support `service` injection
+        services.service = service

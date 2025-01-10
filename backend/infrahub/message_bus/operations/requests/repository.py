@@ -91,7 +91,7 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
 
     for event in events:
         event.assign_meta(parent=message)
-        await service.send(message=event)
+        await service.message_bus.send(message=event)
 
 
 @flow(
@@ -130,4 +130,4 @@ async def user_checks(message: messages.RequestRepositoryUserChecks, service: In
 
     for event in events:
         event.assign_meta(parent=message)
-        await service.send(message=event)
+        await service.message_bus.send(message=event)

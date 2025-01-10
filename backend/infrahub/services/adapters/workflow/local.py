@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import inspect
 import uuid
 from typing import Any, Optional
 
 from typing_extensions import TYPE_CHECKING
 
-from infrahub.workers.utils import inject_service_parameter, load_flow_function
 from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 from . import InfrahubWorkflow, Return
@@ -16,10 +14,7 @@ if TYPE_CHECKING:
 
 
 class WorkflowLocalExecution(InfrahubWorkflow):
-    service: Optional[InfrahubServices] = None
-
-    async def initialize(self, service: InfrahubServices) -> None:
-        self.service = service
+    service: Optional[InfrahubServices] = None  # needed for local injections
 
     async def execute_workflow(
         self,
@@ -30,17 +25,8 @@ class WorkflowLocalExecution(InfrahubWorkflow):
     ) -> Any:
         assert self.service is not None, "service not initialized"
 
-        flow_func = load_flow_function(module_path=workflow.module, flow_name=workflow.function)
-        if parameters is not None:
-            params = dict(parameters)  # avoid mutating input parameters
-            sig = inspect.signature(flow_func)
-            if "service" in sig.parameters:
-                inject_service_parameter(service=self.service, parameters=params)
-            params = flow_func.validate_parameters(parameters=params)
-        else:
-            params = {}
-
-        return await flow_func(**params)
+        fn = workflow.load_function()
+        return await fn(**parameters or {})
 
     async def submit_workflow(
         self,

@@ -45,7 +45,7 @@ from infrahub.proposed_change.models import (
     RequestProposedChangeUserTests,
 )
 from infrahub.pytest_plugin import InfrahubBackendPlugin
-from infrahub.services import InfrahubServices, services
+from infrahub.services import services
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_SETUP_PYTHON, REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS
 from infrahub.workflows.utils import add_tags
 
@@ -202,7 +202,8 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
     name="proposed-changed-run-generator",
     flow_run_name="Run generators",
 )
-async def run_generators(model: RequestProposedChangeRunGenerators, service: InfrahubServices) -> None:
+async def run_generators(model: RequestProposedChangeRunGenerators) -> None:
+    service = services.service
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
     generators = await service.client.filters(
@@ -258,7 +259,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, service: Inf
                 destination_branch=model.destination_branch,
             )
             msg.assign_meta(parent=model)
-            await service.send(message=msg)
+            await service.message_bus.send(message=msg)
 
     next_messages: list[InfrahubMessage] = []
     if model.refresh_artifacts:
@@ -286,7 +287,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, service: Inf
 
     for next_msg in next_messages:
         next_msg.assign_meta(parent=model)
-        await service.send(message=next_msg)
+        await service.message_bus.send(message=next_msg)
 
 
 @flow(
@@ -387,7 +388,8 @@ async def _get_proposed_change_schema_integrity_constraints(
     name="proposed-changed-repository-checks",
     flow_run_name="Process user defined checks",
 )
-async def repository_checks(model: RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
+async def repository_checks(model: RequestProposedChangeRepositoryChecks) -> None:
+    service = services.service
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
     events: list[InfrahubMessage] = []
@@ -419,7 +421,7 @@ async def repository_checks(model: RequestProposedChangeRepositoryChecks, servic
         )
     for event in events:
         event.assign_meta(parent=model)
-        await service.send(message=event)
+        await service.message_bus.send(message=event)
 
 
 @flow(

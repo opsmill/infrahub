@@ -65,12 +65,14 @@ async def _add_request_id(message: InfrahubMessage) -> None:
 
 
 class RabbitMQMessageBus(InfrahubMessageBus):
-    def __init__(self, settings: Optional[BrokerSettings] = None) -> None:
+    def __init__(
+        self, component_type: ComponentType = ComponentType.NONE, settings: Optional[BrokerSettings] = None
+    ) -> None:
         self.settings = settings or config.SETTINGS.broker
         self.channel: AbstractChannel
         self.exchange: AbstractExchange
         self.delayed_exchange: AbstractExchange
-        self.service: InfrahubServices
+        self.service: InfrahubServices  # Needed because we inject `service` while sending messages.
         self.connection: AbstractRobustConnection
         self.callback_queue: AbstractQueue
         self.events_queue: AbstractQueue
@@ -80,10 +82,17 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.loop = asyncio.get_running_loop()
         self.futures: MutableMapping[str, asyncio.Future] = {}
 
-    async def initialize(self, service: InfrahubServices) -> None:
+        self.component_type: ComponentType = component_type
+
+    @classmethod
+    async def new(cls, component_type: ComponentType, settings: Optional[BrokerSettings] = None) -> RabbitMQMessageBus:
+        message_bus = cls(component_type=component_type, settings=settings)
+        await message_bus._initialize()
+        return message_bus
+
+    async def _initialize(self) -> None:
         patch_spanbuilder_set_channel()
 
-        self.service = service
         self.connection = await aio_pika.connect_robust(
             host=self.settings.address,
             login=self.settings.username,
@@ -103,9 +112,9 @@ class RabbitMQMessageBus(InfrahubMessageBus):
     async def _initialize_connection(self) -> None:
         self.channel = await self.connection.channel()
 
-        if self.service.component_type == ComponentType.API_SERVER:
+        if self.component_type == ComponentType.API_SERVER:
             await self._initialize_api_server()
-        elif self.service.component_type == ComponentType.GIT_AGENT:
+        elif self.component_type == ComponentType.GIT_AGENT:
             await self._initialize_git_worker()
 
     async def shutdown(self) -> None:
@@ -233,7 +242,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         request_id = log_data.get("request_id", "")
         message.meta = Meta(request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_queue.name)
 
-        await self.service.send(message=message)
+        await self.service.message_bus.send(message=message)
 
         response: AbstractIncomingMessage = await future
         data = ujson.loads(response.body)

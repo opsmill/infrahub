@@ -137,7 +137,7 @@ async def test_trigger_proposed_change(db: InfrahubDatabase, register_core_model
     await proposed_change.new(db=db, name="change123", destination_branch="main", source_branch=branch_name)
     await proposed_change.save(db=db)
     all_recorder = BusRecorder()
-    service = InfrahubServices(database=db, message_bus=all_recorder)
+    service = await InfrahubServices.new(database=db, message_bus=all_recorder)
     all_result = await graphql_mutation(
         query=RUN_CHECK, db=db, variables={"proposed_change": proposed_change.id}, service=service
     )
@@ -145,7 +145,7 @@ async def test_trigger_proposed_change(db: InfrahubDatabase, register_core_model
     assert not all_result.errors
 
     artifact_recorder = BusRecorder()
-    service = InfrahubServices(database=db, message_bus=artifact_recorder)
+    service = await InfrahubServices.new(database=db, message_bus=artifact_recorder)
     artifact_result = await graphql_mutation(
         query=RUN_CHECK,
         db=db,
@@ -158,7 +158,7 @@ async def test_trigger_proposed_change(db: InfrahubDatabase, register_core_model
     )
 
     cancelled_recorder = BusRecorder()
-    service = InfrahubServices(database=db, message_bus=cancelled_recorder)
+    service = await InfrahubServices.new(database=db, message_bus=cancelled_recorder)
     canceled_result = await graphql_mutation(
         query=RUN_CHECK,
         db=db,
@@ -209,10 +209,9 @@ async def test_merge_proposed_change_permission_failure(
     session_first_account: AccountSession,
     session_admin: AccountSession,
 ):
-    service = InfrahubServices(
+    service = await InfrahubServices.new(
         database=db, message_bus=BusRecorder(), workflow=WorkflowLocalExecution(), cache=MemoryCache()
     )
-    await service.component.initialize(service=service)
     async with get_client(sync_client=False) as client:
         await setup_worker_pools(client=client)
         await setup_deployments(client)

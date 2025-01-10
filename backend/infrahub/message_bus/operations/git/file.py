@@ -27,8 +27,8 @@ async def get(message: messages.GitFileGet, service: InfrahubServices) -> None:
     except (FileOutOfRepositoryError, RepositoryFileNotFoundError) as e:
         if message.reply_requested:
             response = GitFileGetResponse(data=GitFileGetResponseData(error_message=e.message, http_code=e.HTTP_CODE))
-            await service.reply(message=response, initiator=message)
+            await service.message_bus.reply_if_initiator_meta(message=response, initiator=message)
     else:
         if message.reply_requested:
             response = GitFileGetResponse(data=GitFileGetResponseData(content=content))
-            await service.reply(message=response, initiator=message)
+            await service.message_bus.reply_if_initiator_meta(message=response, initiator=message)

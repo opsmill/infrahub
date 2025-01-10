@@ -22,15 +22,15 @@ from tests.adapters.message_bus import BusRecorder
 
 
 @pytest.fixture
-def init_service():
-    original = services.service
+async def init_service():
+    original = services._service
     recorder = BusRecorder()
     database = MagicMock()
     workflow = WorkflowLocalExecution()
-    service = InfrahubServices(message_bus=recorder, database=database, workflow=workflow)
-    services.service = service
+    service = await InfrahubServices.new(message_bus=recorder, database=database, workflow=workflow)
+    services._service = service
     yield service
-    services.service = original
+    services._service = original
 
 
 async def test_merged(default_branch: Branch, init_service: InfrahubServices, prefect_test_fixture):
@@ -82,7 +82,7 @@ async def test_merged(default_branch: Branch, init_service: InfrahubServices, pr
             "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
         ) as mock_submit_workflow,
     ):
-        await merge(message=message, service=service)
+        await merge.fn(message=message, service=service)
 
         expected_calls = [
             call(workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE, parameters={"branch": message.target_branch}),

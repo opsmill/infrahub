@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, ParamSpec, TypeVar, overload
 
 if TYPE_CHECKING:
-    from infrahub.services import InfrahubServices
     from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 Return = TypeVar("Return")
@@ -14,10 +13,6 @@ FuncType = Callable[Params, Return]
 
 
 class InfrahubWorkflow(ABC):
-    @abstractmethod
-    async def initialize(self, service: InfrahubServices) -> None:
-        raise NotImplementedError()
-
     @overload
     async def execute_workflow(
         self,

@@ -394,9 +394,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         return [Worktree.init(response) for response in responses]
 
     def get_client(self) -> InfrahubClient:
-        if self.client:
-            return self.client
-        return self.service.client
+        return self.sdk
 
     def get_location(self) -> str:
         if self.location:

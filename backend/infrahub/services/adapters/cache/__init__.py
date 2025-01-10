@@ -5,15 +5,10 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from infrahub.message_bus.types import KVTTL
-    from infrahub.services import InfrahubServices
 
 
 class InfrahubCache(ABC):
     """Base class for caching services"""
-
-    @abstractmethod
-    async def initialize(self, service: InfrahubServices) -> None:
-        raise NotImplementedError()
 
     @abstractmethod
     async def delete(self, key: str) -> None:

@@ -43,7 +43,7 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
@@ -910,9 +910,6 @@ class BusRPCMock(InfrahubMessageBus):
         data = ujson.loads(response.body)
         return response_class(**data)
 
-    async def initialize(self, service: InfrahubServices) -> None:
-        pass
-
     async def shutdown(self) -> None:
         pass
 
@@ -949,8 +946,11 @@ class TestHelper:
         return BusRecorder()
 
     @staticmethod
-    def get_message_bus_simulator(db: Optional[InfrahubDatabase] = None) -> BusSimulator:
-        return BusSimulator(database=db)
+    async def get_message_bus_simulator(db: Optional[InfrahubDatabase] = None) -> BusSimulator:
+        service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
+        message_bus = service.message_bus
+        assert isinstance(message_bus, BusSimulator)
+        return message_bus
 
     @staticmethod
     def get_message_bus_rpc() -> BusRPCMock:
@@ -965,14 +965,3 @@ def fake_log() -> FakeLogger:
 @pytest.fixture()
 def helper() -> TestHelper:
     return TestHelper()
-
-
-@pytest.fixture
-def patch_services(helper):
-    original = services.service.message_bus
-    bus = helper.get_message_bus_rpc()
-    services.service.message_bus = bus
-    services.prepare(service=services.service)
-    yield bus
-    services.service.message_bus = original
-    services.prepare(service=services.service)

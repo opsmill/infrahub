@@ -10,21 +10,18 @@ from infrahub.dependencies.registry import build_component_registry
 from infrahub.message_bus import InfrahubMessage, Meta
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub.message_bus.operations import execute_message
-from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
 if TYPE_CHECKING:
-    from infrahub.database import InfrahubDatabase
     from infrahub.message_bus.types import MessageTTL
 
 ResponseClass = TypeVar("ResponseClass")
 
 
 class BusSimulator(InfrahubMessageBus):
-    def __init__(self, database: Optional[InfrahubDatabase] = None) -> None:
+    def __init__(self) -> None:
         self.messages: list[InfrahubMessage] = []
         self.messages_per_routing_key: dict[str, list[InfrahubMessage]] = {}
-        self.service: InfrahubServices = InfrahubServices(database=database, message_bus=self)
         self.replies: dict[str, list[InfrahubMessage]] = defaultdict(list)
         build_component_registry()
 
@@ -35,6 +32,7 @@ class BusSimulator(InfrahubMessageBus):
         if routing_key not in self.messages_per_routing_key:
             self.messages_per_routing_key[routing_key] = []
         self.messages_per_routing_key[routing_key].append(message)
+        assert self.service is not None
         await execute_message(routing_key=routing_key, message_body=message.body, service=self.service)
 
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
@@ -57,9 +55,6 @@ class BusSimulator(InfrahubMessageBus):
     @property
     def seen_routing_keys(self) -> list[str]:
         return list(self.messages_per_routing_key.keys())
-
-    async def initialize(self, service: InfrahubServices) -> None:
-        pass
 
     async def shutdown(self) -> None:
         pass

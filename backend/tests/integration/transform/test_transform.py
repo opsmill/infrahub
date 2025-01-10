@@ -26,9 +26,9 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def init_service():
-    original = services.service
-    service = InfrahubServices(client=InfrahubClient())
+async def init_service():
+    original = services._service
+    service = await InfrahubServices.new(client=InfrahubClient())
     services.service = service
     yield service
     services.service = original
@@ -87,7 +87,7 @@ class TestTransforms(TestInfrahubApp):
         base_dataset,
         redis: dict[int, int] | None,
         nats: dict[int, int] | None,
-    ) -> AsyncGenerator[InfrahubTestClient]:
+    ) -> AsyncGenerator[InfrahubTestClient, None]:
         async with lifespan(app):
             yield InfrahubTestClient(app=app)
 
@@ -115,6 +115,7 @@ class TestTransforms(TestInfrahubApp):
             name=git_repo_car_dealership.name,
             location=git_repo_car_dealership.path,
             client=client,
+            service=await InfrahubServices.new(database=db),
         )
 
         return repo

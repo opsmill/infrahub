@@ -1,25 +1,24 @@
 from collections import defaultdict
-from typing import Optional, TypeVar
+from typing import TYPE_CHECKING, Optional, TypeVar
 
 import ujson
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub.components import ComponentType
-from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.message_bus import InfrahubMessage, Meta
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
-from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
-from infrahub.services.adapters.workflow import InfrahubWorkflow
 
 ResponseClass = TypeVar("ResponseClass")
 
+if TYPE_CHECKING:
+    from infrahub.services import InfrahubServices
+
 
 class BusRecorder(InfrahubMessageBus):
-    def __init__(self, component_type: Optional[ComponentType] = None) -> None:
+    def __init__(self) -> None:
         self.messages: list[InfrahubMessage] = []
         self.messages_per_routing_key: dict[str, list[InfrahubMessage]] = {}
 
@@ -35,9 +34,6 @@ class BusRecorder(InfrahubMessageBus):
     def seen_routing_keys(self) -> list[str]:
         return list(self.messages_per_routing_key.keys())
 
-    async def initialize(self, service: InfrahubServices) -> None:
-        pass
-
     async def shutdown(self) -> None:
         pass
 
@@ -49,13 +45,14 @@ class BusRecorder(InfrahubMessageBus):
 
 
 class BusSimulator(InfrahubMessageBus):
-    def __init__(self, database: InfrahubDatabase | None = None, workflow: InfrahubWorkflow | None = None) -> None:
+    def __init__(self) -> None:
         self.messages: list[InfrahubMessage] = []
         self.messages_per_routing_key: dict[str, list[InfrahubMessage]] = {}
 
-        self.service: InfrahubServices = InfrahubServices(database=database, message_bus=self, workflow=workflow)
         self.replies: dict[str, list[InfrahubMessage]] = defaultdict(list)
         build_component_registry()
+
+        self.service: InfrahubServices
 
     async def publish(
         self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
@@ -86,9 +83,6 @@ class BusSimulator(InfrahubMessageBus):
     @property
     def seen_routing_keys(self) -> list[str]:
         return list(self.messages_per_routing_key.keys())
-
-    async def initialize(self, service: InfrahubServices) -> None:
-        self.service = service
 
     async def shutdown(self) -> None:
         pass

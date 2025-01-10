@@ -22,11 +22,11 @@ from tests.helpers.utils import init_global_service
 
 
 @pytest.fixture
-def service_all(db: InfrahubDatabase, helper: TestHelper) -> InfrahubServices:
+async def service_all(db: InfrahubDatabase, helper: TestHelper) -> InfrahubServices:
     config = Config(address="http://mock", insert_tracker=True)
     client = InfrahubClient(config=config)
-    bus_simulator = helper.get_message_bus_simulator()
-    service = InfrahubServices(message_bus=bus_simulator, client=client, database=db)
+    bus_simulator = await helper.get_message_bus_simulator()
+    service = await InfrahubServices.new(message_bus=bus_simulator, client=client, database=db)
     bus_simulator.service = service
 
     return service

@@ -8,7 +8,6 @@ from prefect.logging import get_run_logger
 
 from infrahub import config
 
-from ..workers.utils import load_flow_function
 from .catalogue import automation_setup_workflows, worker_pools, workflows
 from .models import TASK_RESULT_STORAGE_NAME
 
@@ -40,12 +39,8 @@ async def setup_deployments(client: PrefectClient) -> None:
         log.info(f"Flow {workflow.name}, created successfully ... ")
 
     for automation_setup_workflow in automation_setup_workflows:
-        # TODO we defined workflows for automations but we only use them to load functions here.
-        #  It seems like we should we delete corresponding workflows and call functions directly here.
-        automation_setup = load_flow_function(
-            module_path=automation_setup_workflow.module, flow_name=automation_setup_workflow.function
-        )
-        await automation_setup()  # type: ignore
+        automation_setup = automation_setup_workflow.load_function()
+        await automation_setup()
 
 
 @task(name="task-manager-setup-blocks", task_run_name="Setup Blocks", cache_policy=NONE)

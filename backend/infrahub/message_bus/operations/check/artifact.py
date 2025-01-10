@@ -24,11 +24,17 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
 
     if InfrahubKind.READONLYREPOSITORY:
         repo = await InfrahubReadOnlyRepository.init(
-            id=message.repository_id, name=message.repository_name, client=service.client
+            id=message.repository_id,
+            name=message.repository_name,
+            client=service.client,
+            service=service,
         )
     else:
         repo = await InfrahubRepository.init(
-            id=message.repository_id, name=message.repository_name, client=service.client
+            id=message.repository_id,
+            name=message.repository_name,
+            client=service.client,
+            service=service,
         )
 
     artifact = await define_artifact(message=message, service=service)

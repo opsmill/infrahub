@@ -70,25 +70,27 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
         if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
         else WorkflowLocalExecution()
     )
-
+    component_type = ComponentType.API_SERVER
     message_bus = config.OVERRIDE.message_bus or (
-        NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
+        await NATSMessageBus.new(component_type=component_type)
+        if config.SETTINGS.broker.driver == config.BrokerDriver.NATS
+        else await RabbitMQMessageBus.new(component_type=component_type)
     )
     cache = config.OVERRIDE.cache or (
-        NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
+        await NATSCache.new() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
     )
-    service = await InfrahubServices.init_and_initialize(
+    service = await InfrahubServices.new(
         cache=cache,
         database=database,
         message_bus=message_bus,
         workflow=workflow,
-        component_type=ComponentType.API_SERVER,
+        component_type=component_type,
     )
     initialize_lock(service=service)
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
     async with application.state.db.start_session() as db:
         await initialization(db=db)
-    services.prepare(service=service)
+    services.service = service
     application.state.service = service
     application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
     if enable_scheduler:

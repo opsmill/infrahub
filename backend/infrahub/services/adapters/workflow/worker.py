@@ -13,15 +13,13 @@ from . import InfrahubWorkflow, Return
 if TYPE_CHECKING:
     from prefect.client.schemas.objects import FlowRun
 
-    from infrahub.services import InfrahubServices
     from infrahub.workflows.models import WorkflowDefinition
 
 
 class WorkflowWorkerExecution(InfrahubWorkflow):
-    async def initialize(self, service: InfrahubServices) -> None:
-        """Initialize the Workflow engine"""
-
-        if await service.component.is_primary_api():
+    @staticmethod
+    async def initialize(component_is_primary_server: bool) -> None:
+        if component_is_primary_server:
             await setup_task_manager()
 
     @overload

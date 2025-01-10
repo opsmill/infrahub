@@ -32,7 +32,6 @@ async def test_query_endpoint_group_no_params(
     create_test_admin,
     default_branch,
     car_person_data,
-    patch_services,
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with (

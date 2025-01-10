@@ -71,7 +71,6 @@ async def test_create_artifact_definition(
     group1: Node,
     transformation1: Node,
     branch: Branch,
-    patch_services,
 ):
     query = """
     mutation {
@@ -94,7 +93,7 @@ async def test_create_artifact_definition(
         transformation1.id,
     )
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder, workflow=WorkflowLocalExecution())
+    service = await InfrahubServices.new(message_bus=recorder, workflow=WorkflowLocalExecution())
 
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch, service=service)
 
@@ -151,7 +150,7 @@ async def test_update_artifact_definition(
     """ % (definition1.id)
 
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder, workflow=WorkflowLocalExecution())
+    service = await InfrahubServices.new(message_bus=recorder, workflow=WorkflowLocalExecution())
 
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch, service=service)
     with patch(

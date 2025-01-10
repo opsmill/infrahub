@@ -28,6 +28,7 @@ from infrahub.git.integrator import (
     CheckDefinitionInformation,
 )
 from infrahub.git.worktree import Worktree
+from infrahub.services import InfrahubServices
 from infrahub.utils import find_first_file_in_directory
 from tests.conftest import TestHelper
 from tests.helpers.test_client import dummy_async_request
@@ -45,6 +46,7 @@ async def test_directories_props(git_upstream_repo_01: dict[str, str | Path], gi
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     assert repo.directory_root == git_repos_dir / str(repo.id)
@@ -59,6 +61,7 @@ async def test_new_empty_dir(git_upstream_repo_01: dict[str, str | Path], git_re
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     # Check if all the directories are present
@@ -78,6 +81,7 @@ async def test_new_existing_directory(git_upstream_repo_01: dict[str, str | Path
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     # Check if all the directories are present
@@ -96,6 +100,7 @@ async def test_new_existing_file(git_upstream_repo_01: dict[str, str | Path], gi
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     # Check if all the directories are present
@@ -107,7 +112,12 @@ async def test_new_existing_file(git_upstream_repo_01: dict[str, str | Path], gi
 
 async def test_new_wrong_location(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path, tmp_path: Path):
     with pytest.raises(RepositoryError) as exc:
-        await InfrahubRepository.new(id=UUIDT.new(), name=git_upstream_repo_01["name"], location=str(tmp_path))
+        await InfrahubRepository.new(
+            id=UUIDT.new(),
+            name=git_upstream_repo_01["name"],
+            location=str(tmp_path),
+            service=await InfrahubServices.new(),
+        )
 
     assert f"fatal: repository '{tmp_path}' does not exist" in str(exc.value)
 
@@ -119,13 +129,14 @@ async def test_new_wrong_branch(git_upstream_repo_01: dict[str, str | Path], git
             name=git_upstream_repo_01["name"],
             location=str(git_upstream_repo_01["path"]),
             default_branch_name="notvalid",
+            service=await InfrahubServices.new(),
         )
 
     assert "isn't a valid branch" in str(exc.value)
 
 
 async def test_init_existing_repository(git_repo_01: InfrahubRepository):
-    repo = await InfrahubRepository.init(id=git_repo_01.id, name=git_repo_01.name)
+    repo = await InfrahubRepository.init(id=git_repo_01.id, name=git_repo_01.name, service=await InfrahubServices.new())
 
     # Check if all the directories are present
     assert repo.has_origin is True
