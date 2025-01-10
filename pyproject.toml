@@ -356,10 +356,6 @@ module = "infrahub.graphql.types.standard_node"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.utils"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.lock"
 ignore_errors = true
 
