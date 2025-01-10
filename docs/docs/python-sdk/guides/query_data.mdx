@@ -555,7 +555,7 @@ If you want to query a node(s) in a different branch than the default branch wit
   <TabItem value="Async" default>
 
   ```python
-  device = client.get(kind="TestDevice", name__value="atl1-edge1", branch="refresh-site-atl1")
+  device = await client.get(kind="TestDevice", name__value="atl1-edge1", branch="refresh-site-atl1")
   ```
 
   </TabItem>
