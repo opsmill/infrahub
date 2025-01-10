@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { QSP } from "@/config/qsp";
-import { ReactComponent as TasksStatusIcon } from "@/images/icons/tasks-status.svg";
+import TasksStatusIcon from "@/images/icons/tasks-status.svg?react";
 import { constructPath } from "@/utils/fetch";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
