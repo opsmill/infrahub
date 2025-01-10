@@ -1,1 +1,1 @@
-Update the UI to display a list of related nodes for the tasks
+Display multiple related nodes in the tasks list and details views
