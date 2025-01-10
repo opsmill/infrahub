@@ -95,7 +95,7 @@ export const TaskItemDetails = forwardRef((_, ref) => {
 
             if (!item.id) return null;
 
-            return <Id id={item.id} kind={item.kind} preventCopy />;
+            return <Id key={item.id} id={item.id} kind={item.kind} preventCopy />;
           }}
         />
       ),
