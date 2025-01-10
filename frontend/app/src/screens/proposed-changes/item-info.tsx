@@ -1,8 +1,8 @@
 import { DateDisplay } from "@/components/display/date-display";
 import { Badge } from "@/components/ui/badge";
-import { ReactComponent as PcCheckFailure } from "@/images/icons/proposed-change-checks-failure.svg";
-import { ReactComponent as PcCheckSuccess } from "@/images/icons/proposed-change-checks-success.svg";
-import { ReactComponent as PcCheckUnknown } from "@/images/icons/proposed-change-checks-unknown.svg";
+import PcCheckFailure from "@/images/icons/proposed-change-checks-failure.svg?react";
+import PcCheckSuccess from "@/images/icons/proposed-change-checks-success.svg?react";
+import PcCheckUnknown from "@/images/icons/proposed-change-checks-unknown.svg?react";
 import { Icon } from "@iconify-icon/react";
 
 type ProposedChangesInfoProps = {
