@@ -1261,12 +1261,14 @@ class NodeGetHierarchyQuery(Query):
         direction: RelationshipHierarchyDirection,
         node_schema: Union[NodeSchema, GenericSchema],
         filters: Optional[dict] = None,
+        hierarchical_ordering: bool = False,
         **kwargs: Any,
     ) -> None:
         self.filters = filters or {}
         self.direction = direction
         self.node_id = node_id
         self.node_schema = node_schema
+        self.hierarchical_ordering = hierarchical_ordering
 
         super().__init__(**kwargs)
 
@@ -1369,6 +1371,8 @@ class NodeGetHierarchyQuery(Query):
         # ----------------------------------------------------------------------------
         # ORDER Results
         # ----------------------------------------------------------------------------
+        if self.hierarchical_ordering:
+            return
         if hasattr(hierarchy_schema, "order_by") and hierarchy_schema.order_by:
             order_cnt = 1
 

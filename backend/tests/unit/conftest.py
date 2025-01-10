@@ -2010,7 +2010,7 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
 
 
 @pytest.fixture
-async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
+async def hierarchical_location_schema_simple_unregistered() -> SchemaRoot:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -2018,6 +2018,7 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
                 "namespace": "Location",
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
+                "order_by": ["name__value"],
                 "hierarchical": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -2069,9 +2070,15 @@ async def hierarchical_location_schema_simple(db: InfrahubDatabase, default_bran
         ],
     }
 
-    schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    return schema
+    return SchemaRoot(**SCHEMA)
+
+
+@pytest.fixture
+async def hierarchical_location_schema_simple(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple_unregistered: SchemaRoot
+) -> SchemaRoot:
+    registry.schema.register_schema(schema=hierarchical_location_schema_simple_unregistered, branch=default_branch.name)
+    return hierarchical_location_schema_simple_unregistered
 
 
 @pytest.fixture
