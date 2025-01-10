@@ -478,6 +478,9 @@ jobs:
       - name: "Install frontend"
         working-directory: ./frontend/app
         run: npm install
+      - name: Install Playwright Browsers
+        working-directory: ./frontend/app
+        run: npx playwright install chromium
       - name: "Run unit tests"
         working-directory: ./frontend/app
         run: "npm run test:coverage"

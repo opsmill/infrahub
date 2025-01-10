@@ -522,6 +522,31 @@ Values of type `str` will be parsed using the [Pendulum](https://pendulum.eustac
   </TabItem>
 </Tabs>
 
+### Properties of attributes and relationships
+
+By default, the [meta data or properties](/topics/metadata) of attributes and relationships are not included. We can include these properties using the `property` argument of the SDK client's `all`, `filters` or `get` method.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  device = await client.get(kind="TestDevice", name__value="atl1-edge1", property=True)
+  print(device.name.is_protected)
+  print(device.name.source.display_label)
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  device = client.get(kind="TestDevice", name__value="atl1-edge1", property=True)
+  print(device.name.protected)
+  print(device.name.source.display_label)
+  ```
+
+  </TabItem>
+</Tabs>
+
 ## Query a node(s) in a different branch
 
 If you want to query a node(s) in a different branch than the default branch with which the SDK client was initiated, then you can use the `branch` argument of the query methods.

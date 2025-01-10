@@ -15,15 +15,13 @@ export default defineConfig({
   },
   plugins: [react(), svgr(), tsconfigPaths()],
   test: {
-    exclude: [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/e2e/**",
-      "**/playwright-report/**",
-      "**.test.tsx",
-    ],
+    browser: {
+      enabled: true,
+      provider: "playwright",
+      name: "chromium",
+    },
+    exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/playwright-report/**"],
     globals: true,
-    environment: "jsdom",
     coverage: {
       reporter: ["text", "lcovonly"],
       exclude: [

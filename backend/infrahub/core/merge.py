@@ -174,7 +174,7 @@ class BranchMerger:
         if self.source_branch.name == registry.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
 
-        enriched_diff = await self.diff_coordinator.update_branch_diff(
+        enriched_diff = await self.diff_coordinator.update_branch_diff_and_return(
             base_branch=self.destination_branch, diff_branch=self.source_branch
         )
         conflict_map = enriched_diff.get_all_conflicts()

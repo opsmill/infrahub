@@ -94,13 +94,18 @@ class ObjectConflictValidatorRecorder:
         await self.finalize_validator(validator, is_success)
         return current_checks
 
-    async def get_or_create_validator(self, proposed_change: CoreProposedChange) -> Node:
+    async def get_validator(self, proposed_change: CoreProposedChange) -> Node | None:
         validations = await proposed_change.validations.get_peers(db=self.db, branch_agnostic=True)
 
         for validation in validations.values():
             if validation.get_kind() == self.validator_kind:
                 return validation
+        return None
 
+    async def get_or_create_validator(self, proposed_change: CoreProposedChange) -> Node:
+        validator_obj = await self.get_validator(proposed_change=proposed_change)
+        if validator_obj:
+            return validator_obj
         validator_obj = await Node.init(db=self.db, schema=self.validator_kind)
         await validator_obj.new(
             db=self.db,

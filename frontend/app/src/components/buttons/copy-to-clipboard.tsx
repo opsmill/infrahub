@@ -10,6 +10,7 @@ export const CopyToClipboard = ({
   text,
   size = "icon",
   variant = "ghost",
+  children,
   ...props
 }: CopyToClipboardProps) => {
   const [copied, setCopied] = useState(false);
@@ -34,6 +35,8 @@ export const CopyToClipboard = ({
         }
         className={"text-base"}
       />
+
+      {children}
     </Button>
   );
 };

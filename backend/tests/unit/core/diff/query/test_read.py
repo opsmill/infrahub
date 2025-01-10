@@ -163,7 +163,7 @@ class TestDiffReadQuery(TestInfrahub):
         diff_coordinator.data_check_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
         diff_coordinator.data_check_synchronizer.synchronize.return_value = []
 
-        enriched_diff = await diff_coordinator.update_branch_diff(
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
             base_branch=default_branch,
             diff_branch=diff_branch,
         )

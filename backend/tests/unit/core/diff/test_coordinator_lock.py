@@ -1,4 +1,5 @@
 import asyncio
+from datetime import timedelta
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -78,16 +79,16 @@ class TestDiffCoordinatorLocks:
         )
         assert len(results) == 2
         assert results[0].to_time != results[1].to_time
-        assert results[0].uuid != results[1].uuid
-        assert results[0].partner_uuid != results[1].partner_uuid
+        assert results[0].uuid == results[1].uuid
+        assert results[0].partner_uuid == results[1].partner_uuid
         results[0].to_time = results[1].to_time
-        results[0].uuid = results[1].uuid
-        results[0].partner_uuid = results[1].partner_uuid
         assert results[0] == results[1]
-        # called once to calculate diff on main and once to calculate diff on the branch
-        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 2
-        # not called because diffs are calculated both times
-        diff_coordinator.diff_repo.get_one.assert_not_awaited()
+        # second diff uses first diff for its data and is not calculated
+        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 1
+        # confirm that we retrieve the first diff to use when calculating the second, overlapping diff
+        diff_coordinator.diff_repo.get_one.assert_called_once_with(
+            diff_branch_name=diff_branch.name, diff_id=results[0].uuid
+        )
 
     async def test_arbitrary_diff_blocks_incremental_diff(
         self, db: InfrahubDatabase, default_branch: Branch, branch_with_data: Branch
@@ -102,22 +103,22 @@ class TestDiffCoordinatorLocks:
                 from_time=Timestamp(branch_with_data.branched_from),
                 to_time=Timestamp(),
             ),
-            diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
+            diff_coordinator.update_branch_diff_and_return(base_branch=default_branch, diff_branch=diff_branch),
         )
         assert len(results) == 2
         assert results[0].to_time != results[1].to_time
-        assert results[0].uuid != results[1].uuid
-        assert results[0].partner_uuid != results[1].partner_uuid
+        assert results[0].uuid == results[1].uuid
+        assert results[0].partner_uuid == results[1].partner_uuid
         assert results[0].tracking_id != results[1].tracking_id
         results[0].to_time = results[1].to_time
-        results[0].uuid = results[1].uuid
-        results[0].partner_uuid = results[1].partner_uuid
         results[0].tracking_id = results[1].tracking_id
         assert results[0] == results[1]
-        # called once to calculate diff on main and once to calculate diff on the branch
-        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 2
-        # not called because diffs are calculated both times
-        diff_coordinator.diff_repo.get_one.assert_not_awaited()
+        # second diff uses first diff for its data and is not calculated
+        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 1
+        # confirm that we retrieve the first diff to use when calculating the second, overlapping diff
+        diff_coordinator.diff_repo.get_one.assert_called_once_with(
+            diff_branch_name=diff_branch.name, diff_id=results[0].uuid
+        )
 
     async def test_incremental_diff_blocks_arbitrary_diff(
         self, db: InfrahubDatabase, default_branch: Branch, branch_with_data: Branch
@@ -125,26 +126,28 @@ class TestDiffCoordinatorLocks:
         diff_branch = branch_with_data
         diff_coordinator = await self.get_diff_coordinator(db=db, diff_branch=diff_branch)
 
+        arbitrary_to_time = Timestamp()
+        arbitrary_to_time.obj += timedelta(seconds=5)
         results = await asyncio.gather(
-            diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
+            diff_coordinator.update_branch_diff_and_return(base_branch=default_branch, diff_branch=diff_branch),
             diff_coordinator.create_or_update_arbitrary_timeframe_diff(
                 base_branch=default_branch,
                 diff_branch=diff_branch,
                 from_time=Timestamp(branch_with_data.branched_from),
-                to_time=Timestamp(),
+                to_time=arbitrary_to_time,
             ),
         )
         assert len(results) == 2
         assert results[0].to_time != results[1].to_time
-        assert results[0].uuid != results[1].uuid
-        assert results[0].partner_uuid != results[1].partner_uuid
+        assert results[0].uuid == results[1].uuid
+        assert results[0].partner_uuid == results[1].partner_uuid
         assert results[0].tracking_id != results[1].tracking_id
         results[0].to_time = results[1].to_time
-        results[0].uuid = results[1].uuid
-        results[0].partner_uuid = results[1].partner_uuid
         results[0].tracking_id = results[1].tracking_id
         assert results[0] == results[1]
-        # called once to calculate diff on main and once to calculate diff on the branch
-        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 2
-        # not called because diffs are calculated both times
-        diff_coordinator.diff_repo.get_one.assert_not_awaited()
+        # second diff uses first diff for its data and is not calculated
+        assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 1
+        # confirm that we retrieve the first diff to use when calculating the second, overlapping diff
+        diff_coordinator.diff_repo.get_one.assert_called_once_with(
+            diff_branch_name=diff_branch.name, diff_id=results[0].uuid
+        )

@@ -3,9 +3,14 @@ import { getRelationshipsFromApi } from "@/screens/objects/relationships/api/que
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
 import { store } from "@/state";
 import { datetimeAtom } from "@/state/atoms/time.atom";
-import { infiniteQueryOptions } from "@tanstack/react-query";
 
-type GetRelationshipsParams = {
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const RELATIONSHIPS_PER_PAGE = 20;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export type GetRelationshipsParams = {
   peer: string;
   search?: string;
   parentId?: string;
@@ -14,8 +19,6 @@ type GetRelationshipsParams = {
 export type GetRelationships = (
   params: GetRelationshipsParams & { limit?: number; offset?: number }
 ) => Promise<Array<RelationshipNode>>;
-
-const RELATIONSHIPS_PER_PAGE = 20;
 
 export const getRelationships: GetRelationships = async ({ peer, offset, search, parentId }) => {
   const currentBranchName = getCurrentBranchName();
@@ -39,24 +42,3 @@ export const getRelationships: GetRelationships = async ({ peer, offset, search,
     __typename: node.__typename,
   }));
 };
-
-export function relationshipsInfiniteQueryOptions({
-  peer,
-  search,
-  parentId,
-}: GetRelationshipsParams) {
-  const currentBranchName = getCurrentBranchName();
-  const timeMachineDate = store.get(datetimeAtom);
-
-  return infiniteQueryOptions({
-    queryKey: [currentBranchName, timeMachineDate, "relationships", peer, search, parentId],
-    queryFn: ({ pageParam }) => getRelationships({ peer, offset: pageParam, search, parentId }),
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, _, lastPageParam) => {
-      if (lastPage.length < RELATIONSHIPS_PER_PAGE) {
-        return undefined;
-      }
-      return lastPageParam + RELATIONSHIPS_PER_PAGE;
-    },
-  });
-}

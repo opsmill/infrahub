@@ -29,7 +29,7 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
         default_branch = registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
         # send diff update requests for every branch-tracking diff
-        branch_diff_roots = await diff_repository.get_empty_roots(base_branch_names=[message.target_branch])
+        branch_diff_roots = await diff_repository.get_roots_metadata(base_branch_names=[message.target_branch])
 
         await service.workflow.submit_workflow(
             workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,

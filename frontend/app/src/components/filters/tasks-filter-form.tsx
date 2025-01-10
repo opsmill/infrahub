@@ -35,21 +35,15 @@ export const TasksFilterForm = forwardRef<FormRef, FilterFormProps>(
         ref={ref}
         onSubmit={onSubmit}
         className={classNames("bg-custom-white flex flex-col flex-1 overflow-auto p-4", className)}
+        defaultValues={{
+          branch: currentFilters?.branch,
+          state: currentFilters?.state,
+        }}
         {...props}
       >
-        <DropdownField
-          name="branch"
-          label="Branch"
-          items={branchesOptions}
-          defaultValue={currentFilters?.branch}
-        />
+        <DropdownField name="branch" label="Branch" items={branchesOptions} />
 
-        <DropdownField
-          name="state"
-          label="State"
-          items={statesOptions}
-          defaultValue={currentFilters?.state}
-        />
+        <DropdownField name="state" label="State" items={statesOptions} />
 
         <div className="text-right">
           {onCancel && (

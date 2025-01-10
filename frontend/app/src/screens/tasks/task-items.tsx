@@ -32,6 +32,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
   const search = filters.find((filter) => filter.name === SEARCH_ANY_FILTER)?.value;
   const branch = filters.find((filter) => filter.name === "branch__value")?.value;
   const state = filters.find((filter) => filter.name === "state__value")?.value;
+  const node = filters.find((filter) => filter.name === "node__value")?.value;
 
   const { pathname } = location;
 
@@ -45,6 +46,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
       search,
       branch,
       state,
+      relatedNode: [node || objectid || proposedChangeId],
     },
   });
 

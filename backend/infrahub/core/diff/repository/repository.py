@@ -3,17 +3,22 @@ from typing import Generator
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.diff.query.field_summary import EnrichedDiffNodeFieldSummaryQuery
+from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.exceptions import ResourceNotFoundError
+from infrahub.log import get_logger
 
 from ..model.path import (
     ConflictSelection,
     EnrichedDiffConflict,
     EnrichedDiffRoot,
+    EnrichedDiffRootMetadata,
     EnrichedDiffs,
+    EnrichedDiffsMetadata,
     EnrichedNodeCreateRequest,
     NodeDiffFieldSummary,
+    NodeFieldSpecifier,
     TimeRange,
     TrackingId,
 )
@@ -21,14 +26,17 @@ from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
 from ..query.drop_tracking_id import EnrichedDiffDropTrackingIdQuery
-from ..query.empty_roots import EnrichedDiffEmptyRootsQuery
+from ..query.field_specifiers import EnrichedDiffFieldSpecifiersQuery
 from ..query.filters import EnrichedDiffQueryFilters
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
 from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
+from ..query.roots_metadata import EnrichedDiffRootsMetadataQuery
 from ..query.save import EnrichedDiffRootsCreateQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
 from .deserializer import EnrichedDiffDeserializer
+
+log = get_logger()
 
 
 class DiffRepository:
@@ -118,6 +126,22 @@ class DiffRepository:
             for dbr in diff_branch_roots
         ]
 
+    async def hydrate_diff_pair(self, enriched_diffs_metadata: EnrichedDiffsMetadata) -> EnrichedDiffs:
+        hydrated_base_diff = await self.get_one(
+            diff_branch_name=enriched_diffs_metadata.base_branch_name,
+            diff_id=enriched_diffs_metadata.base_branch_diff.uuid,
+        )
+        hydrated_branch_diff = await self.get_one(
+            diff_branch_name=enriched_diffs_metadata.diff_branch_name,
+            diff_id=enriched_diffs_metadata.diff_branch_diff.uuid,
+        )
+        return EnrichedDiffs(
+            base_branch_name=enriched_diffs_metadata.base_branch_name,
+            diff_branch_name=enriched_diffs_metadata.diff_branch_name,
+            base_branch_diff=hydrated_base_diff,
+            diff_branch_diff=hydrated_branch_diff,
+        )
+
     async def get_one(
         self,
         diff_branch_name: str,
@@ -161,6 +185,7 @@ class DiffRepository:
 
     @retry_db_transaction(name="enriched_diff_save")
     async def save(self, enriched_diffs: EnrichedDiffs) -> None:
+        log.info("Saving diff...")
         root_query = await EnrichedDiffRootsCreateQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await root_query.execute(db=self.db)
         for node_create_batch in self._get_node_create_request_batch(enriched_diffs=enriched_diffs):
@@ -168,6 +193,7 @@ class DiffRepository:
             await node_query.execute(db=self.db)
         link_query = await EnrichedNodesLinkQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await link_query.execute(db=self.db)
+        log.info("Diff saved.")
 
     async def summary(
         self,
@@ -211,18 +237,55 @@ class DiffRepository:
         await query.execute(db=self.db)
         return await query.get_time_ranges()
 
-    async def get_empty_roots(
+    async def get_diff_pairs_metadata(
         self,
         diff_branch_names: list[str] | None = None,
         base_branch_names: list[str] | None = None,
-    ) -> list[EnrichedDiffRoot]:
-        query = await EnrichedDiffEmptyRootsQuery.init(
-            db=self.db, diff_branch_names=diff_branch_names, base_branch_names=base_branch_names
+        from_time: Timestamp | None = None,
+        to_time: Timestamp | None = None,
+    ) -> list[EnrichedDiffsMetadata]:
+        if diff_branch_names and base_branch_names:
+            diff_branch_names += base_branch_names
+        empty_roots = await self.get_roots_metadata(
+            diff_branch_names=diff_branch_names,
+            base_branch_names=base_branch_names,
+            from_time=from_time,
+            to_time=to_time,
+        )
+        roots_by_id = {root.uuid: root for root in empty_roots}
+        pairs: list[EnrichedDiffsMetadata] = []
+        for branch_root in empty_roots:
+            if branch_root.base_branch_name == branch_root.diff_branch_name:
+                continue
+            base_root = roots_by_id[branch_root.partner_uuid]
+            pairs.append(
+                EnrichedDiffsMetadata(
+                    base_branch_name=branch_root.base_branch_name,
+                    diff_branch_name=branch_root.diff_branch_name,
+                    base_branch_diff=base_root,
+                    diff_branch_diff=branch_root,
+                )
+            )
+        return pairs
+
+    async def get_roots_metadata(
+        self,
+        diff_branch_names: list[str] | None = None,
+        base_branch_names: list[str] | None = None,
+        from_time: Timestamp | None = None,
+        to_time: Timestamp | None = None,
+    ) -> list[EnrichedDiffRootMetadata]:
+        query = await EnrichedDiffRootsMetadataQuery.init(
+            db=self.db,
+            diff_branch_names=diff_branch_names,
+            base_branch_names=base_branch_names,
+            from_time=from_time,
+            to_time=to_time,
         )
         await query.execute(db=self.db)
         diff_roots = []
-        for neo4j_node in query.get_empty_root_nodes():
-            diff_roots.append(self.deserializer.build_diff_root(root_node=neo4j_node))
+        for neo4j_node in query.get_root_nodes_metadata():
+            diff_roots.append(self.deserializer.build_diff_root_metadata(root_node=neo4j_node))
         return diff_roots
 
     async def diff_has_conflicts(
@@ -267,3 +330,31 @@ class DiffRepository:
     async def drop_tracking_ids(self, tracking_ids: list[TrackingId]) -> None:
         query = await EnrichedDiffDropTrackingIdQuery.init(db=self.db, tracking_ids=tracking_ids)
         await query.execute(db=self.db)
+
+    async def get_num_changes_in_time_range_by_branch(
+        self, branch_names: list[str], from_time: Timestamp, to_time: Timestamp
+    ) -> dict[str, int]:
+        query = await DiffCountChanges.init(db=self.db, branch_names=branch_names, diff_from=from_time, diff_to=to_time)
+        await query.execute(db=self.db)
+        return query.get_num_changes_by_branch()
+
+    async def get_node_field_specifiers(self, diff_id: str) -> set[NodeFieldSpecifier]:
+        limit = 5000
+        offset = 0
+        specifiers: set[NodeFieldSpecifier] = set()
+        while True:
+            query = await EnrichedDiffFieldSpecifiersQuery.init(db=self.db, diff_id=diff_id, offset=offset, limit=limit)
+            await query.execute(db=self.db)
+
+            new_specifiers = {
+                NodeFieldSpecifier(
+                    node_uuid=field_specifier_tuple[0],
+                    field_name=field_specifier_tuple[1],
+                )
+                for field_specifier_tuple in query.get_node_field_specifier_tuples()
+            }
+            if not new_specifiers:
+                break
+            specifiers |= new_specifiers
+            offset += limit
+        return specifiers

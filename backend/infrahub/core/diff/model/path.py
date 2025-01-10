@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, replace
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional
+from uuid import uuid4
 
 from infrahub.core.constants import (
     BranchSupportType,
@@ -239,6 +240,7 @@ class EnrichedDiffSingleRelationship(BaseSummary):
 @dataclass
 class EnrichedDiffRelationship(BaseSummary):
     name: str
+    identifier: str
     label: str
     cardinality: RelationshipCardinality
     path_identifier: str = field(default="", kw_only=True)
@@ -270,6 +272,7 @@ class EnrichedDiffRelationship(BaseSummary):
     def from_calculated_relationship(cls, calculated_relationship: DiffRelationship) -> EnrichedDiffRelationship:
         return EnrichedDiffRelationship(
             name=calculated_relationship.name,
+            identifier=calculated_relationship.identifier,
             label="",
             cardinality=calculated_relationship.cardinality,
             changed_at=calculated_relationship.changed_at,
@@ -403,7 +406,7 @@ class EnrichedDiffNode(BaseSummary):
 
 
 @dataclass
-class EnrichedDiffRoot(BaseSummary):
+class EnrichedDiffRootMetadata(BaseSummary):
     base_branch_name: str
     diff_branch_name: str
     from_time: Timestamp
@@ -411,6 +414,35 @@ class EnrichedDiffRoot(BaseSummary):
     uuid: str
     partner_uuid: str
     tracking_id: TrackingId | None = field(default=None, kw_only=True)
+
+    def __hash__(self) -> int:
+        return hash(self.uuid)
+
+    @property
+    def time_range(self) -> Interval:
+        return self.to_time.obj - self.from_time.obj
+
+    def update_metadata(
+        self,
+        from_time: Timestamp | None = None,
+        to_time: Timestamp | None = None,
+        tracking_id: TrackingId | None = None,
+    ) -> bool:
+        is_changed = False
+        if from_time and self.from_time != from_time:
+            self.from_time = from_time
+            is_changed = True
+        if to_time and self.to_time != to_time:
+            self.to_time = to_time
+            is_changed = True
+        if self.tracking_id != tracking_id:
+            self.tracking_id = tracking_id
+            is_changed = True
+        return is_changed
+
+
+@dataclass
+class EnrichedDiffRoot(EnrichedDiffRootMetadata):
     nodes: set[EnrichedDiffNode] = field(default_factory=set)
 
     def __hash__(self) -> int:
@@ -447,6 +479,10 @@ class EnrichedDiffRoot(BaseSummary):
         return all_conflicts
 
     @classmethod
+    def from_root_metadata(cls, empty_root: EnrichedDiffRootMetadata) -> EnrichedDiffRoot:
+        return EnrichedDiffRoot(**asdict(empty_root))
+
+    @classmethod
     def from_calculated_diff(
         cls, calculated_diff: DiffRoot, base_branch_name: str, partner_uuid: str
     ) -> EnrichedDiffRoot:
@@ -467,6 +503,7 @@ class EnrichedDiffRoot(BaseSummary):
         parent_kind: str,
         parent_label: str,
         parent_rel_name: str,
+        parent_rel_identifier: str,
         parent_rel_cardinality: RelationshipCardinality,
         parent_rel_label: str = "",
     ) -> EnrichedDiffNode:
@@ -491,6 +528,7 @@ class EnrichedDiffRoot(BaseSummary):
             node.relationships.add(
                 EnrichedDiffRelationship(
                     name=parent_rel_name,
+                    identifier=parent_rel_identifier,
                     label=parent_rel_label,
                     cardinality=parent_rel_cardinality,
                     changed_at=None,
@@ -503,9 +541,48 @@ class EnrichedDiffRoot(BaseSummary):
 
 
 @dataclass
-class EnrichedDiffs:
+class EnrichedDiffsMetadata:
     base_branch_name: str
     diff_branch_name: str
+    base_branch_diff: EnrichedDiffRootMetadata
+    diff_branch_diff: EnrichedDiffRootMetadata
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}("
+            f"branch_uuid={self.diff_branch_diff.uuid},"
+            f"base_uuid={self.base_branch_diff.uuid},"
+            f"branch_name={self.diff_branch_name},"
+            f"base_name={self.base_branch_name},"
+            f"from_time={self.diff_branch_diff.from_time},"
+            f"to_time={self.diff_branch_diff.to_time})"
+        )
+
+    def update_metadata(
+        self,
+        from_time: Timestamp | None = None,
+        to_time: Timestamp | None = None,
+        tracking_id: TrackingId | None = None,
+    ) -> bool:
+        is_changed = self.base_branch_diff.update_metadata(
+            from_time=from_time, to_time=to_time, tracking_id=tracking_id
+        )
+        is_changed |= self.diff_branch_diff.update_metadata(
+            from_time=from_time, to_time=to_time, tracking_id=tracking_id
+        )
+        return is_changed
+
+    def set_fresh_uuids(self) -> None:
+        base_uuid = str(uuid4())
+        branch_uuid = str(uuid4())
+        self.base_branch_diff.uuid = base_uuid
+        self.base_branch_diff.partner_uuid = branch_uuid
+        self.diff_branch_diff.uuid = branch_uuid
+        self.diff_branch_diff.partner_uuid = base_uuid
+
+
+@dataclass
+class EnrichedDiffs(EnrichedDiffsMetadata):
     base_branch_diff: EnrichedDiffRoot
     diff_branch_diff: EnrichedDiffRoot
 
@@ -538,6 +615,10 @@ class EnrichedDiffs:
             base_branch_diff=base_branch_diff,
             diff_branch_diff=diff_branch_diff,
         )
+
+    @property
+    def is_empty(self) -> bool:
+        return len(self.base_branch_diff.nodes) == 0 and len(self.diff_branch_diff.nodes) == 0
 
 
 @dataclass
@@ -577,6 +658,7 @@ class DiffSingleRelationship:
 @dataclass
 class DiffRelationship:
     name: str
+    identifier: str
     cardinality: RelationshipCardinality
     changed_at: Timestamp
     action: DiffAction
