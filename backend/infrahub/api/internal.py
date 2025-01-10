@@ -1,15 +1,26 @@
+from __future__ import annotations
+
 import re
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import ujson
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from lunr.index import Index
 from pydantic import BaseModel
 
 from infrahub import config
-from infrahub.config import AnalyticsSettings, ExperimentalFeaturesSettings, LoggingSettings, MainSettings
+from infrahub.api.dependencies import get_current_user
+from infrahub.config import (  # noqa: TC001
+    AnalyticsSettings,
+    ExperimentalFeaturesSettings,
+    LoggingSettings,
+    MainSettings,
+)
 from infrahub.core import registry
 from infrahub.exceptions import NodeNotFoundError
+
+if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
 
 router = APIRouter()
 
@@ -39,7 +50,7 @@ async def get_config() -> ConfigAPI:
 
 
 @router.get("/info")
-async def get_info(request: Request) -> InfoAPI:
+async def get_info(request: Request, _: AccountSession = Depends(get_current_user)) -> InfoAPI:
     return InfoAPI(deployment_id=str(registry.id), version=request.app.version)
 
 
@@ -47,7 +58,7 @@ class SearchDocs:
     def __init__(self) -> None:
         self._title_documents: list[dict] = []
         self._heading_documents: list[dict] = []
-        self._heading_index: Optional[Index] = None
+        self._heading_index: Index | None = None
 
     def _load_json(self) -> None:
         """
@@ -142,7 +153,9 @@ class SearchResultAPI(BaseModel):
 
 
 @router.get("/search/docs", include_in_schema=False)
-async def search_docs(query: str, limit: Optional[int] = None) -> list[SearchResultAPI]:
+async def search_docs(
+    query: str, limit: int | None = None, _: AccountSession = Depends(get_current_user)
+) -> list[SearchResultAPI]:
     smart_query = smart_queries(query)
     search_results = search_docs_loader.heading_index.search(smart_query)
     heading_results = [

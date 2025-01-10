@@ -15,10 +15,7 @@ async def test_get_menu_not_admin(
     await create_default_menu(db=db)
 
     with client:
-        response = client.get(
-            "/api/menu",
-            headers=client_headers,
-        )
+        response = client.get("/api/menu", headers=client_headers)
 
     assert response.status_code == 200
     assert response.json() is not None
@@ -39,10 +36,7 @@ async def test_get_menu_admin(
     await create_default_menu(db=db)
 
     with client:
-        response = client.get(
-            "/api/menu",
-            headers=admin_headers,
-        )
+        response = client.get("/api/menu", headers=admin_headers)
 
     assert response.status_code == 200
     assert response.json() is not None

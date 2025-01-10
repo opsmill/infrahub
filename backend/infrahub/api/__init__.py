@@ -1,11 +1,13 @@
-from typing import NoReturn
+from __future__ import annotations
 
-from fastapi import APIRouter
+from typing import TYPE_CHECKING, NoReturn
+
+from fastapi import APIRouter, Depends
 from fastapi.openapi.docs import (
     get_redoc_html,
     get_swagger_ui_html,
 )
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse  # noqa: TC002
 
 from infrahub.api import (
     artifact,
@@ -21,7 +23,11 @@ from infrahub.api import (
     storage,
     transformation,
 )
+from infrahub.api.dependencies import get_current_user
 from infrahub.exceptions import ResourceNotFoundError
+
+if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
 
 router = APIRouter(prefix="/api")
 
@@ -40,7 +46,9 @@ router.include_router(transformation.router)
 
 
 @router.get("/docs", include_in_schema=False)
-async def custom_swagger_ui_html() -> HTMLResponse:
+async def custom_swagger_ui_html(
+    _: AccountSession = Depends(get_current_user),
+) -> HTMLResponse:
     return get_swagger_ui_html(
         openapi_url="/api/openapi.json",
         title="Infrahub - Swagger UI",
@@ -50,7 +58,7 @@ async def custom_swagger_ui_html() -> HTMLResponse:
 
 
 @router.get("/redoc", include_in_schema=False)
-async def redoc_html() -> HTMLResponse:
+async def redoc_html(_: AccountSession = Depends(get_current_user)) -> HTMLResponse:
     return get_redoc_html(
         openapi_url="/api/openapi.json",
         title="Infrahub - ReDoc",

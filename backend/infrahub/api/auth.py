@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Depends, Response
 
 from infrahub import config, models
@@ -8,7 +12,9 @@ from infrahub.auth import (
     create_fresh_access_token,
     invalidate_refresh_token,
 )
-from infrahub.database import InfrahubDatabase
+
+if TYPE_CHECKING:
+    from infrahub.database import InfrahubDatabase
 
 router = APIRouter(prefix="/auth")
 

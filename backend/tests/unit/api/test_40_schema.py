@@ -1,5 +1,7 @@
+import pytest
 from fastapi.testclient import TestClient
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -383,3 +385,34 @@ async def test_schema_load_endpoint_constraints_not_valid(
         "errors": [{"extensions": {"code": 422}, "message": error_message}],
     }
     assert response.status_code == 422
+
+
+@pytest.mark.parametrize("allow_anonymous_access", [False, True])
+async def test_schema_read_endpoints_anonymous_account(
+    db: InfrahubDatabase,
+    client: TestClient,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    allow_anonymous_access: bool,
+):
+    config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+
+    with client:
+        response = client.get("/api/schema")
+
+    assert response.status_code == 200 if allow_anonymous_access else 401
+
+    with client:
+        response = client.get("/api/schema/TestCar")
+
+    assert response.status_code == 200 if allow_anonymous_access else 401
+
+    with client:
+        response = client.get("/api/schema/summary")
+
+    assert response.status_code == 200 if allow_anonymous_access else 401
+
+    with client:
+        response = client.get("/api/schema/json_schema/TestCar")
+
+    assert response.status_code == 200 if allow_anonymous_access else 401
