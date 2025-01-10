@@ -555,7 +555,7 @@ If you want to query a node(s) in a different branch than the default branch wit
   <TabItem value="Async" default>
 
   ```python
-  device = client.get(kind="TestDevice", name__value="atl1-edge1", branch="refresh-site-atl1")
+  device = await client.get(kind="TestDevice", name__value="atl1-edge1", branch="refresh-site-atl1")
   ```
 
   </TabItem>
@@ -563,6 +563,31 @@ If you want to query a node(s) in a different branch than the default branch wit
 
   ```python
   device = client.get(kind="TestDevice", name__value="atl1-edge1", branch="refresh-site-atl1")
+  ```
+
+  </TabItem>
+</Tabs>
+
+## Query for a large amount of nodes
+
+When you have a query that matches a large amount of nodes, it could have an implication on the performance of the query. The SDK tries to optimize this process by using pagination, which happens transparently. However, even when using pagination, such queries could take a long time to complete.
+
+Using the `parallel` argument, we can enable concurrent retrieval of pages of data for large queries, which can significantly improve the resolution time of the query.
+
+The `parallel` argument is available for the SDK client's `filters` and `all` method.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+
+  ```python
+  device = await client.all(kind="TestDevice", parallel=True)
+  ```
+
+  </TabItem>
+  <TabItem value="Sync" default>
+
+  ```python
+  device = client.get(kind="TestDevice", parallel=True)
   ```
 
   </TabItem>
