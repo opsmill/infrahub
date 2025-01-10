@@ -148,7 +148,6 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
           display: (
             <InlineDisplay
               items={edge.node.related_nodes}
-              maxDisplay={2}
               render={(item) => {
                 if (typeof item === "string") return null;
 
