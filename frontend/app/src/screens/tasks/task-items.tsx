@@ -3,14 +3,14 @@ import { Pagination } from "@/components/ui/pagination";
 import { SEARCH_ANY_FILTER, SEARCH_FILTERS, TASK_OBJECT, TASK_TAB } from "@/config/constants";
 import useQuery from "@/hooks/useQuery";
 import Content from "@/screens/layout/content";
-import { gql } from "@apollo/client";
 
 import { DateDisplay } from "@/components/display/date-display";
+import { InlineDisplay } from "@/components/display/inline-display";
 import { Filters } from "@/components/filters/filters";
 import { Id } from "@/components/ui/id";
 import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
 import { QSP } from "@/config/qsp";
-import { getTasksItems } from "@/graphql/queries/tasks/getTasksItems";
+import { GET_TASKS } from "@/graphql/queries/tasks/getTasksItems";
 import useFilters, { Filter } from "@/hooks/useFilters";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
@@ -36,25 +36,19 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
 
   const { pathname } = location;
 
-  const queryString = getTasksItems({
-    kind: TASK_OBJECT,
-    relatedNode: node || objectid || proposedChangeId,
-  });
-
-  const query = gql`
-    ${queryString}
-  `;
+  const relatedNode = node || objectid || proposedChangeId;
 
   const {
     loading,
     error,
     data = {},
     refetch,
-  } = useQuery(query, {
+  } = useQuery(GET_TASKS, {
     variables: {
       search,
       branch,
       state,
+      relatedNodes: relatedNode ? [relatedNode] : [],
     },
   });
 
@@ -107,8 +101,8 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
       label: "State",
     },
     !hideRelatedNode && {
-      name: "related_node",
-      label: "Related node",
+      name: "related_nodes",
+      label: "Related nodes",
     },
     {
       name: "progress",
@@ -150,9 +144,18 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
         state: {
           display: getStateBadge[edge.node.state],
         },
-        related_node: {
-          display: edge.node.related_node_kind && (
-            <Id id={edge.node.related_node} kind={edge.node.related_node_kind} preventCopy />
+        related_nodes: {
+          display: (
+            <InlineDisplay
+              items={edge.node.related_nodes}
+              render={(item) => {
+                if (typeof item === "string") return null;
+
+                if (!item.id) return null;
+
+                return <Id key={item.id} id={item.id} kind={item.kind} preventCopy />;
+              }}
+            />
           ),
         },
         progress: {

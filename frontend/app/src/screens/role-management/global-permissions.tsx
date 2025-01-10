@@ -1,8 +1,10 @@
 import { Button } from "@/components/buttons/button-primitive";
+import { InlineDisplay } from "@/components/display/inline-display";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { Table, tRowValue } from "@/components/table/table";
+import { Badge } from "@/components/ui/badge";
 import { BadgeCopy } from "@/components/ui/badge-copy";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
@@ -21,7 +23,6 @@ import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
 import { globalDecisionOptions } from "./constants";
-import { RelationshipDisplay } from "./relationship-display";
 
 function GlobalPermissions() {
   const schemaKindName = useAtomValue(schemaKindNameState);
@@ -87,8 +88,9 @@ function GlobalPermissions() {
           },
           roles: {
             display: (
-              <RelationshipDisplay
+              <InlineDisplay
                 items={edge?.node?.roles?.edges?.map((edge) => edge?.node?.display_label)}
+                render={(item) => <Badge>{item}</Badge>}
               />
             ),
             value: { edges: edge?.node?.roles?.edges },

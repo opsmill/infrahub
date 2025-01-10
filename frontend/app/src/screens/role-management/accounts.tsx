@@ -1,9 +1,11 @@
 import { Button } from "@/components/buttons/button-primitive";
 import { ColorDisplay } from "@/components/display/color-display";
+import { InlineDisplay } from "@/components/display/inline-display";
 import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
 import ObjectForm from "@/components/form/object-form";
 import ModalDeleteObject from "@/components/modals/modal-delete-object";
 import { Table, tRowValue } from "@/components/table/table";
+import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/config/constants";
@@ -20,7 +22,6 @@ import ErrorScreen from "../errors/error-screen";
 import UnauthorizedScreen from "../errors/unauthorized-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getPermission } from "../permission/utils";
-import { RelationshipDisplay } from "./relationship-display";
 
 function Accounts() {
   const [search, setSearch] = useState("");
@@ -97,8 +98,9 @@ function Accounts() {
         member_of_groups: {
           value: { edges: edge?.node?.member_of_groups?.edges },
           display: (
-            <RelationshipDisplay
+            <InlineDisplay
               items={edge?.node?.member_of_groups?.edges?.map((edge) => edge?.node?.display_label)}
+              render={(item) => <Badge>{item}</Badge>}
             />
           ),
         },

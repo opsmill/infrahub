@@ -2,6 +2,7 @@ import { TASK_OBJECT } from "@/config/constants";
 import useQuery from "@/hooks/useQuery";
 
 import { DateDisplay } from "@/components/display/date-display";
+import { InlineDisplay } from "@/components/display/inline-display";
 import { List } from "@/components/table/list";
 import { Badge } from "@/components/ui/badge";
 import { Id } from "@/components/ui/id";
@@ -66,8 +67,8 @@ export const TaskItemDetails = forwardRef((_, ref) => {
       label: "State",
     },
     {
-      name: "related_node",
-      label: "Related node",
+      name: "related_nodes",
+      label: "Related nodes",
     },
     {
       name: "progress",
@@ -86,8 +87,17 @@ export const TaskItemDetails = forwardRef((_, ref) => {
       id: object.id,
       title: object.title,
       state: getStateBadge[object.state],
-      related_node: object.related_node_kind && (
-        <Id id={object.related_node} kind={object.related_node_kind} preventCopy />
+      related_nodes: (
+        <InlineDisplay
+          items={object.related_nodes}
+          render={(item) => {
+            if (typeof item === "string") return null;
+
+            if (!item.id) return null;
+
+            return <Id key={item.id} id={item.id} kind={item.kind} preventCopy />;
+          }}
+        />
       ),
       progress: object.progress,
       updated_at: <DateDisplay date={object.updated_at} />,

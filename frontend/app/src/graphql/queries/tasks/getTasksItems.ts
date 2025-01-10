@@ -1,14 +1,14 @@
-import Handlebars from "handlebars";
+import { gql } from "@apollo/client";
 
-export const getTasksItems = Handlebars.compile(`
-query GET_TASKS($offset: Int, $limit: Int, $search: String, $branch: String, $state: [StateType]) {
-  {{kind}}(
+export const GET_TASKS = gql`
+query GET_TASKS($offset: Int, $limit: Int, $search: String, $branch: String, $state: [StateType], $relatedNodes: [String]) {
+  InfrahubTask(
     offset: $offset
     limit: $limit
     q: $search
     branch: $branch
     state: $state
-    {{#if relatedNode}}related_node__ids: ["{{relatedNode}}"]{{/if}}
+    related_node__ids: $relatedNodes
   ) {
     count
     edges {
@@ -17,7 +17,10 @@ query GET_TASKS($offset: Int, $limit: Int, $search: String, $branch: String, $st
         id
         branch
         related_node
-        related_node_kind
+        related_nodes {
+          id
+          kind
+        }
         title
         updated_at
         state
@@ -27,4 +30,4 @@ query GET_TASKS($offset: Int, $limit: Int, $search: String, $branch: String, $st
     }
   }
 }
-`);
+`;
