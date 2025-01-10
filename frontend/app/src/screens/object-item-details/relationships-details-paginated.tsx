@@ -1,13 +1,13 @@
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { Pagination } from "@/components/ui/pagination";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Pagination } from "@/shared/components/ui/pagination";
 import { QSP } from "@/config/qsp";
 import { REMOVE_RELATIONSHIP } from "@/shared/api/graphql/mutations/relationships/removeRelationship";
 import { getObjectRelationshipsDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectRelationshipDetails";
-import useQuery, { useMutation } from "@/hooks/useQuery";
+import useQuery, { useMutation } from "@/shared/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { genericsState, iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
-import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
+import { genericsState, iNodeSchema, schemaState } from "@/screens/schema/schema.atom";
+import { getSchemaObjectColumns } from "@/screens/object-items/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { forwardRef, useEffect, useImperativeHandle } from "react";

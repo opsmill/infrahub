@@ -1,18 +1,18 @@
 import { Icon } from "@iconify-icon/react";
 
-import { Button, ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/shared/components/ui/dropdown-menu";
 import {
   CHECK_REPOSITORY_CONNECTIVITY,
   REIMPORT_LAST_COMMIT,
 } from "@/shared/api/graphql/mutations/repository/actions";
-import { useMutation } from "@/hooks/useQuery";
+import { useMutation } from "@/shared/hooks/useQuery";
 import { Dialog } from "@headlessui/react";
 import { useState } from "react";
 import { toast } from "react-toastify";

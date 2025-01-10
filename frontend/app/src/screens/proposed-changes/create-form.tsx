@@ -1,9 +1,14 @@
-import { LinkButton } from "@/components/buttons/button-primitive";
-import { MarkdownEditor } from "@/components/editor";
-import { RelationshipManyInput } from "@/components/inputs/relationship-many";
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { Card } from "@/components/ui/card";
-import { Combobox } from "@/components/ui/combobox-legacy";
+import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { QSP } from "@/config/qsp";
+import { branchesToSelectOptions } from "@/screens/branches/branches";
+import { branchesState } from "@/screens/branches/branches.atom";
+import { CREATE_PROPOSED_CHANGE } from "@/shared/api/graphql/mutations/proposed-changes/createProposedChange";
+import { LinkButton } from "@/shared/components/buttons/button-primitive";
+import { MarkdownEditor } from "@/shared/components/editor";
+import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Card } from "@/shared/components/ui/card";
+import { Combobox } from "@/shared/components/ui/combobox-legacy";
 import {
   Form,
   FormField,
@@ -11,19 +16,14 @@ import {
   FormLabel,
   FormMessage,
   FormSubmit,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
-import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-import { CREATE_PROPOSED_CHANGE } from "@/shared/api/graphql/mutations/proposed-changes/createProposedChange";
-import { useAuth } from "@/hooks/useAuth";
-import { useMutation } from "@/hooks/useQuery";
-import { useSchema } from "@/hooks/useSchema";
-import { branchesState } from "@/state/atoms/branches.atom";
-import { branchesToSelectOptions } from "@/utils/branches";
-import { constructPath } from "@/utils/fetch";
-import { Node } from "@/utils/getObjectItemDisplayValue";
+} from "@/shared/components/ui/form";
+import { Input } from "@/shared/components/ui/input";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { useAuth } from "@/shared/hooks/useAuth";
+import { useMutation } from "@/shared/hooks/useQuery";
+import { useSchema } from "@/shared/hooks/useSchema";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { Node } from "@/screens/objects/getObjectItemDisplayValue";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useNavigate } from "react-router-dom";

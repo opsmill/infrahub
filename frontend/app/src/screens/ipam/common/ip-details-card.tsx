@@ -1,15 +1,15 @@
-import ObjectEditSlideOverTrigger from "@/components/form/object-edit-slide-over-trigger";
-import ProgressBarChart from "@/components/stats/progress-bar-chart";
-import { Property, PropertyList } from "@/components/table/property-list";
-import { Badge } from "@/components/ui/badge";
-import { CardWithBorder } from "@/components/ui/card";
-import { Link } from "@/components/ui/link";
+import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
+import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
+import { Property, PropertyList } from "@/shared/components/table/property-list";
+import { Badge } from "@/shared/components/ui/badge";
+import { CardWithBorder } from "@/shared/components/ui/card";
+import { Link } from "@/shared/components/ui/link";
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/screens/ipam/constants";
 import { Permission } from "@/screens/permission/types";
-import { IModelSchema } from "@/state/atoms/schema.atom";
-import { constructPath } from "@/utils/fetch";
-import { AttributeType, ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
-import { getObjectDetailsUrl } from "@/utils/objects";
+import { IModelSchema } from "@/screens/schema/schema.atom";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { AttributeType, ObjectAttributeValue } from "@/screens/objects/getObjectItemDisplayValue";
+import { getObjectDetailsUrl } from "@/screens/objects/objects";
 
 type tIpDetailsCard = {
   schema: IModelSchema;

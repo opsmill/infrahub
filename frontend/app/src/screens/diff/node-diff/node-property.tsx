@@ -1,8 +1,8 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/shared/components/ui/badge";
 import { BadgeConflict } from "@/screens/diff/diff-badge";
 import { DiffProperty, DiffStatus } from "@/screens/diff/node-diff/types";
 import { DiffRow, formatPropertyName, formatValue } from "@/screens/diff/node-diff/utils";
-import { classNames } from "@/utils/common";
+import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
 import { Conflict } from "./conflict";

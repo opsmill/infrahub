@@ -1,8 +1,8 @@
-import { Button } from "@/components/buttons/button";
-import { AddComment } from "@/components/conversations/add-comment";
-import { Thread } from "@/components/conversations/thread";
-import Accordion from "@/components/display/accordion";
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Button } from "@/shared/components/buttons/button";
+import { AddComment } from "@/shared/components/conversations/add-comment";
+import { Thread } from "@/shared/components/conversations/thread";
+import Accordion from "@/shared/components/display/accordion";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/config/config";
 import {
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
@@ -13,15 +13,15 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
 import { deleteObject } from "@/shared/api/graphql/mutations/objects/deleteObject";
 import { getProposedChangesFilesThreads } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesFilesThreads";
-import { useAuth } from "@/hooks/useAuth";
-import useQuery from "@/hooks/useQuery";
+import { useAuth } from "@/shared/hooks/useAuth";
+import useQuery from "@/shared/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { schemaState } from "@/state/atoms/schema.atom";
-import { datetimeAtom } from "@/state/atoms/time.atom";
-import { fetchStream } from "@/utils/fetch";
-import { stringifyWithoutQuotes } from "@/utils/string";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { schemaState } from "@/screens/schema/schema.atom";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { fetchStream } from "@/shared/api/rest/fetch";
+import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { formatISO } from "date-fns";

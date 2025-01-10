@@ -1,5 +1,5 @@
-import { useAuth } from "@/hooks/useAuth";
-import InfrahubLogo from "@/images/Infrahub-SVG-hori.svg?react";
+import { useAuth } from "@/shared/hooks/useAuth";
+import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
 import { Login } from "@/screens/authentification/login";
 import { Navigate, useLocation } from "react-router-dom";
 

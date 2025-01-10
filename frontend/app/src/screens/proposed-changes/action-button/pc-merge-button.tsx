@@ -1,11 +1,11 @@
-import { Button, ButtonProps } from "@/components/buttons/button-primitive";
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { datetimeAtom } from "@/state/atoms/time.atom";
-import { stringifyWithoutQuotes } from "@/utils/string";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";

@@ -1,14 +1,14 @@
-import { Button } from "@/components/buttons/button-primitive";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/shared/components/ui/dropdown-menu";
 import { INFRAHUB_DOC_LOCAL } from "@/config/config";
 import { MENU_EXCLUDELIST } from "@/config/constants";
-import { IModelSchema } from "@/state/atoms/schema.atom";
-import { getObjectDetailsUrl2 } from "@/utils/objects";
+import { IModelSchema } from "@/screens/schema/schema.atom";
+import { getObjectDetailsUrl2 } from "@/screens/objects/objects";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
 

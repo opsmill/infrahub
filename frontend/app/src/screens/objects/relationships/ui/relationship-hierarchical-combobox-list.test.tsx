@@ -1,8 +1,8 @@
 import { getRelationships } from "@/screens/objects/relationships/domain/get-relationships/get-relationships";
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
 import { RelationshipHierarchicalComboboxList } from "@/screens/objects/relationships/ui/relationship-hierarchical-combobox-list";
-import { store } from "@/state";
-import { genericsState, schemaState } from "@/state/atoms/schema.atom";
+import { store } from "@/shared/stores";
+import { genericsState, schemaState } from "@/screens/schema/schema.atom";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "../../../../../tests/components/render";
 import { generateGenericSchema, generateNodeSchema } from "../../../../../tests/fake/schema";

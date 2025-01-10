@@ -1,7 +1,7 @@
-import { Skeleton } from "@/components/skeleton";
+import { Skeleton } from "@/shared/components/skeleton";
 import { CONFIG } from "@/config/config";
 import { components } from "@/shared/api/rest/types.generated";
-import { fetchUrl } from "@/utils/fetch";
+import { fetchUrl } from "@/shared/api/rest/fetch";
 import { useEffect, useState } from "react";
 
 export const AppVersion = () => {

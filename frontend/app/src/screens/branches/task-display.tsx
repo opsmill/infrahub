@@ -1,10 +1,10 @@
-import Accordion from "@/components/display/accordion";
-import { DateDisplay } from "@/components/display/date-display";
-import { Badge } from "@/components/ui/badge";
+import Accordion from "@/shared/components/display/accordion";
+import { DateDisplay } from "@/shared/components/display/date-display";
+import { Badge } from "@/shared/components/ui/badge";
 import { TASK_OBJECT } from "@/config/constants";
 import { TASK_DETAILS } from "@/shared/api/graphql/queries/tasks/getTasksItemDetails";
-import useQuery from "@/hooks/useQuery";
-import { classNames } from "@/utils/common";
+import useQuery from "@/shared/hooks/useQuery";
+import { classNames } from "@/shared/utils/common";
 import ErrorScreen from "../errors/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { getSeverityBadge, tLog } from "../tasks/logs";

@@ -1,9 +1,9 @@
-import { Button } from "@/components/buttons/button-primitive";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { Badge } from "@/shared/components/ui/badge";
 import { QSP } from "@/config/qsp";
 import { isGenericSchema, isNodeSchema, isProfileSchema } from "@/screens/schema/utils";
-import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { classNames } from "@/utils/common";
+import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
+import { classNames } from "@/shared/utils/common";
 import { Tab } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";

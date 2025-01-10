@@ -1,4 +1,4 @@
-import { IProfileSchema, iNodeSchema } from "@/state/atoms/schema.atom";
+import { IProfileSchema, iNodeSchema } from "@/screens/schema/schema.atom";
 import { gql } from "@apollo/client";
 import { VariableType, jsonToGraphQLQuery } from "json-to-graphql-query";
 

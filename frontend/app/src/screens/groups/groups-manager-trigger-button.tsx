@@ -1,6 +1,6 @@
-import { ButtonProps, ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
-import { useObjectDetails } from "@/hooks/useObjectDetails";
+import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { useObjectDetails } from "@/shared/hooks/useObjectDetails";
 import { GroupsManager, GroupsManagerProps } from "@/screens/groups/groups-manager";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";

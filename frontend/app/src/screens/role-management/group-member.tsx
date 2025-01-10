@@ -1,7 +1,7 @@
-import { Button } from "@/components/buttons/button-primitive";
-import { Avatar } from "@/components/display/avatar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tooltip } from "@/components/ui/tooltip";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { Avatar } from "@/shared/components/display/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 
 interface GroupMembersProps {
   members: Array<string>;

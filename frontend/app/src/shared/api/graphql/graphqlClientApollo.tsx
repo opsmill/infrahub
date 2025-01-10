@@ -1,7 +1,7 @@
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/config/config";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-import { getNewToken } from "@/hooks/useAuth";
+import { getNewToken } from "@/shared/hooks/useAuth";
 import {
   ApolloClient,
   DefaultOptions,

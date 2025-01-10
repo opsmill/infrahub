@@ -3,8 +3,8 @@ import {
   FormAttributeValue,
   FormRelationshipValue,
   RelationshipValueFromPool,
-} from "@/components/form/type";
-import { getUpdateMutationFromFormData } from "@/components/form/utils/mutations/getUpdateMutationFromFormData";
+} from "@/shared/components/form/type";
+import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { describe, expect } from "vitest";
 import { buildField } from "./getCreateMutationFromFormData.test";
 

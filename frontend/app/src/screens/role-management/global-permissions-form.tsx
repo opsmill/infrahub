@@ -1,28 +1,28 @@
-import { Button } from "@/components/buttons/button-primitive";
-import { NodeFormProps } from "@/components/form/node-form";
-import { FormFieldValue } from "@/components/form/type";
-import { getCurrentFieldValue } from "@/components/form/utils/getFieldDefaultValue";
-import { getCreateMutationFromFormDataOnly } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { Form, FormSubmit } from "@/components/ui/form";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { NodeFormProps } from "@/shared/components/form/node-form";
+import { FormFieldValue } from "@/shared/components/form/type";
+import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
+import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { ACCOUNT_ROLE_OBJECT, GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { datetimeAtom } from "@/state/atoms/time.atom";
-import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
-import { stringifyWithoutQuotes } from "@/utils/string";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { AttributeType, RelationshipType } from "@/screens/objects/getObjectItemDisplayValue";
+import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import DropdownField from "@/components/form/fields/dropdown.field";
-import RelationshipManyField from "@/components/form/fields/relationship-many.field";
-import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
-import { isRequired } from "@/components/form/utils/validation";
-import { useSchema } from "@/hooks/useSchema";
+import DropdownField from "@/shared/components/form/fields/dropdown.field";
+import RelationshipManyField from "@/shared/components/form/fields/relationship-many.field";
+import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
+import { isRequired } from "@/shared/components/form/utils/validation";
+import { useSchema } from "@/shared/hooks/useSchema";
 import { globalDecisionOptions } from "./constants";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {

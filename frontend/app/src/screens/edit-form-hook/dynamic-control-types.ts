@@ -1,4 +1,4 @@
-import { SelectOption } from "@/components/inputs/select";
+import { SelectOption } from "@/shared/components/inputs/select";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { components } from "@/shared/api/rest/types.generated";
 import { RegisterOptions } from "react-hook-form";

@@ -1,20 +1,20 @@
-import { AddComment } from "@/components/conversations/add-comment";
-import { Thread } from "@/components/conversations/thread";
 import {
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/config/constants";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { getThreadLabel } from "@/screens/diff/diff";
+import { schemaState } from "@/screens/schema/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
 import { deleteObject } from "@/shared/api/graphql/mutations/objects/deleteObject";
 import { getProposedChangesObjectThreadComments } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesObjectThreadComments";
-import { useAuth } from "@/hooks/useAuth";
-import useQuery from "@/hooks/useQuery";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { schemaState } from "@/state/atoms/schema.atom";
-import { datetimeAtom } from "@/state/atoms/time.atom";
-import { getThreadLabel } from "@/utils/diff";
-import { stringifyWithoutQuotes } from "@/utils/string";
+import { AddComment } from "@/shared/components/conversations/add-comment";
+import { Thread } from "@/shared/components/conversations/thread";
+import { useAuth } from "@/shared/hooks/useAuth";
+import useQuery from "@/shared/hooks/useQuery";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";

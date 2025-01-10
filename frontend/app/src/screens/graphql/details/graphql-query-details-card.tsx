@@ -1,18 +1,18 @@
-import { CopyToClipboard } from "@/components/buttons/copy-to-clipboard";
-import PropertiesPopover from "@/components/display/properties-popover";
-import ObjectEditSlideOverTrigger from "@/components/form/object-edit-slide-over-trigger";
-import { Property, PropertyList } from "@/components/table/property-list";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardWithBorder } from "@/components/ui/card";
-import { Link } from "@/components/ui/link";
-import { Tooltip } from "@/components/ui/tooltip";
+import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
+import PropertiesPopover from "@/shared/components/display/properties-popover";
+import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
+import { Property, PropertyList } from "@/shared/components/table/property-list";
+import { Badge } from "@/shared/components/ui/badge";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { Link } from "@/shared/components/ui/link";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
 import { Permission } from "@/screens/permission/types";
 import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
-import { iNodeSchema } from "@/state/atoms/schema.atom";
-import { constructPath } from "@/utils/fetch";
-import { AttributeType, ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
-import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "@/utils/objects";
+import { iNodeSchema } from "@/screens/schema/schema.atom";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { AttributeType, ObjectAttributeValue } from "@/screens/objects/getObjectItemDisplayValue";
+import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "@/screens/objects/objects";
 import { Icon } from "@iconify-icon/react";
 
 type GraphqlQueryDetailsCardProps = {

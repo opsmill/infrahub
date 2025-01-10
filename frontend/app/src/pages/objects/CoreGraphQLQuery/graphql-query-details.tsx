@@ -1,6 +1,6 @@
 import { GRAPHQL_QUERY_OBJECT } from "@/config/constants";
-import useQuery from "@/hooks/useQuery";
-import { useTitle } from "@/hooks/useTitle";
+import useQuery from "@/shared/hooks/useQuery";
+import { useTitle } from "@/shared/hooks/useTitle";
 import NoDataFound from "@/screens/errors/no-data-found";
 import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";
 import GraphqlQueryDetailsCard from "@/screens/graphql/details/graphql-query-details-card";
@@ -10,8 +10,8 @@ import { Permission } from "@/screens/permission/types";
 import { getPermission } from "@/screens/permission/utils";
 import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
 import { getObjectDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectDetails";
-import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
-import { getSchemaObjectColumns } from "@/utils/getSchemaObjectColumns";
+import { iNodeSchema, schemaState } from "@/screens/schema/schema.atom";
+import { getSchemaObjectColumns } from "@/screens/object-items/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 

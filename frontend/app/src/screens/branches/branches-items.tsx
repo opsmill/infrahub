@@ -1,11 +1,11 @@
-import { DateDisplay } from "@/components/display/date-display";
-import { Tooltip } from "@/components/ui/tooltip";
+import { DateDisplay } from "@/shared/components/display/date-display";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 import GET_BRANCHES from "@/shared/api/graphql/queries/branches/getBranches";
-import { useLazyQuery } from "@/hooks/useQuery";
-import { useTitle } from "@/hooks/useTitle";
+import { useLazyQuery } from "@/shared/hooks/useQuery";
+import { useTitle } from "@/shared/hooks/useTitle";
 import Content from "@/screens/layout/content";
-import { branchesState } from "@/state/atoms/branches.atom";
-import { constructPath } from "@/utils/fetch";
+import { branchesState } from "@/screens/branches/branches.atom";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import * as R from "ramda";

@@ -4,7 +4,7 @@ import React from "react";
 import { Slide, ToastContainer } from "react-toastify";
 import { render as renderFromVitest } from "vitest-browser-react";
 import { queryClient } from "../../src/shared/api/rest/client";
-import { store } from "../../src/state";
+import { store } from "@/shared/stores";
 
 import "/src/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";

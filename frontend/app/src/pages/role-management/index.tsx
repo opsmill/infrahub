@@ -1,5 +1,5 @@
 import { GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
-import useQuery from "@/hooks/useQuery";
+import useQuery from "@/shared/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";
 import Content from "@/screens/layout/content";

@@ -1,6 +1,6 @@
-import DatetimeField from "@/components/form/fields/datetime.field";
-import { Tabs } from "@/components/tabs";
-import { Form, FormSubmit } from "@/components/ui/form";
+import DatetimeField from "@/shared/components/form/fields/datetime.field";
+import { Tabs } from "@/shared/components/tabs";
+import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { DIFF_TABS } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { DateTimeParam, StringParam, useQueryParam } from "use-query-params";

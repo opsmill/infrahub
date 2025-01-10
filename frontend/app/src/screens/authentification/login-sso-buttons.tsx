@@ -1,6 +1,6 @@
 import { INFRAHUB_API_SERVER_URL } from "@/config/config";
-import { Provider } from "@/state/atoms/config.atom";
-import { classNames } from "@/utils/common";
+import { Provider } from "@/config/config.atom";
+import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useLocation } from "react-router-dom";
 

@@ -1,5 +1,5 @@
 import { breadcrumbItemStyle } from "@/screens/layout/breadcrumb-navigation/style";
-import { classNames } from "@/utils/common";
+import { classNames } from "@/shared/utils/common";
 import { Slot } from "@radix-ui/react-slot";
 import React from "react";
 import { Link, LinkProps } from "react-router-dom";

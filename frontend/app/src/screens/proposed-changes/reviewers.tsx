@@ -1,5 +1,5 @@
-import { Avatar } from "@/components/display/avatar";
-import { Tooltip } from "@/components/ui/tooltip";
+import { Avatar } from "@/shared/components/display/avatar";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 
 type ProposedChangesReviewersProps = {

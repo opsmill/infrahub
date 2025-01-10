@@ -1,14 +1,6 @@
-import { BUTTON_TYPES, Button } from "@/components/buttons/button";
-import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
-import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
-import { File } from "@/components/file";
-import { Tabs } from "@/components/tabs";
 import { CONFIG } from "@/config/config";
 import { ARTIFACT_OBJECT, MENU_EXCLUDELIST } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { getObjectDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectDetails";
-import useQuery from "@/hooks/useQuery";
-import { useTitle } from "@/hooks/useTitle";
 import { Generate } from "@/screens/artifacts/generate";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
@@ -17,19 +9,27 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import RelationshipDetails from "@/screens/object-item-details/relationship-details-paginated";
 import { RelationshipsDetails } from "@/screens/object-item-details/relationships-details-paginated";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import { showMetaEditState } from "@/screens/objects/metaEditFieldDetails.atom";
+import { metaEditFieldDetailsState } from "@/screens/objects/showMetaEdit.atom";
 import { getPermission } from "@/screens/permission/utils";
-import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
-import { genericsState, schemaState } from "@/state/atoms/schema.atom";
-import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
-import { classNames } from "@/utils/common";
-import { getObjectItemDisplayValue } from "@/utils/getObjectItemDisplayValue";
+import { genericsState, schemaState } from "@/screens/schema/schema.atom";
+import { schemaKindNameState } from "@/screens/schema/schemaKindName.atom";
+import { getObjectDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectDetails";
+import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
+import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { File } from "@/shared/components/file";
+import { Tabs } from "@/shared/components/tabs";
+import useQuery from "@/shared/hooks/useQuery";
+import { useTitle } from "@/shared/hooks/useTitle";
+import { classNames } from "@/shared/utils/common";
+import { getObjectItemDisplayValue } from "@/screens/objects/getObjectItemDisplayValue";
 import {
   getObjectAttributes,
   getObjectRelationships,
   getSchemaObjectColumns,
   getTabs,
-} from "@/utils/getSchemaObjectColumns";
+} from "@/screens/object-items/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { LockClosedIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";

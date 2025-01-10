@@ -1,6 +1,6 @@
-import { DateDisplay } from "@/components/display/date-display";
-import { Table } from "@/components/table/table";
-import { Badge } from "@/components/ui/badge";
+import { DateDisplay } from "@/shared/components/display/date-display";
+import { Table } from "@/shared/components/table/table";
+import { Badge } from "@/shared/components/ui/badge";
 
 export type tLog = {
   id: string;

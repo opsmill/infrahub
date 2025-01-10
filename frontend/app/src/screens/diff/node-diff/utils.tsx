@@ -1,7 +1,7 @@
-import Accordion from "@/components/display/accordion";
+import Accordion from "@/shared/components/display/accordion";
 import { DiffProperty, DiffStatus } from "@/screens/diff/node-diff/types";
-import { classNames, warnUnexpectedType } from "@/utils/common";
-import { capitalizeFirstLetter } from "@/utils/string";
+import { classNames, warnUnexpectedType } from "@/shared/utils/common";
+import { capitalizeFirstLetter } from "@/shared/utils/string";
 import { ReactNode } from "react";
 import {
   BadgeAdded,

@@ -1,6 +1,6 @@
-import { Button, ButtonProps } from "@/components/buttons/button-primitive";
-import useFilters, { Filter } from "@/hooks/useFilters";
-import { classNames } from "@/utils/common";
+import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import useFilters, { Filter } from "@/shared/hooks/useFilters";
+import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useEffect, useRef } from "react";
 

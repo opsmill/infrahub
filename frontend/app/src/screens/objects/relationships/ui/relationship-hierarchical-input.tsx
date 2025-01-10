@@ -1,27 +1,27 @@
-import { Button } from "@/components/buttons/button-primitive";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
   ComboboxContent,
   ComboboxTrigger,
   ComboboxTriggerProps,
-} from "@/components/ui/combobox";
+} from "@/shared/components/ui/combobox";
 import {
   PopoverTabs,
   PopoverTabsContent,
   PopoverTabsList,
   PopoverTabsTrigger,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { inputStyle } from "@/components/ui/style";
+} from "@/shared/components/ui/popover";
+import { inputStyle } from "@/shared/components/ui/style";
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
 import {
   RelationshipComboboxList,
   RelationshipComboboxListProps,
 } from "@/screens/objects/relationships/ui/relationship-combobox-list";
 import { RelationshipHierarchicalComboboxList } from "@/screens/objects/relationships/ui/relationship-hierarchical-combobox-list";
-import { classNames } from "@/utils/common";
-import { Node } from "@/utils/getObjectItemDisplayValue";
+import { classNames } from "@/shared/utils/common";
+import { Node } from "@/screens/objects/getObjectItemDisplayValue";
 import { Icon } from "@iconify-icon/react";
 import { forwardRef, useState } from "react";
 

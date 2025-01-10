@@ -1,4 +1,4 @@
-import { getRelationshipsForForm } from "@/components/form/utils/getRelationshipsForForm";
+import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { describe, expect, it } from "vitest";
 import { buildRelationshipSchema } from "./getFormFieldsFromSchema.test";
 

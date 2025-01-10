@@ -1,10 +1,10 @@
 import { Root } from "@/app/root";
 import { NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { RequireAuth } from "@/hooks/useAuth";
+import { RequireAuth } from "@/shared/hooks/useAuth";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/screens/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
-import { constructPath } from "@/utils/fetch";
+import { constructPath } from "@/shared/api/rest/fetch";
 import queryString from "query-string";
 import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router-dom";
 import { QueryParamProvider } from "use-query-params";

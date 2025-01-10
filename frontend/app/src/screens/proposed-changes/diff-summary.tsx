@@ -2,13 +2,13 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/config/qsp";
 import { getProposedChangesDiffSummary } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesDiffSummary";
-import useQuery from "@/hooks/useQuery";
+import useQuery from "@/shared/hooks/useQuery";
 import { DiffBadge } from "@/screens/diff/node-diff/utils";
 import ErrorScreen from "@/screens/errors/error-screen";
-import { constructPath } from "@/utils/fetch";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { DIFF_STATUS, DiffStatus } from "../diff/node-diff/types";
 
 interface DiffTreeSummary {

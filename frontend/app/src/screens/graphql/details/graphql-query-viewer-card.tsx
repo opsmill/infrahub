@@ -1,8 +1,8 @@
-import { Button } from "@/components/buttons/button-primitive";
-import { CopyToClipboard } from "@/components/buttons/copy-to-clipboard";
-import { GraphqlViewer } from "@/components/editor/graphql/graphql-viewer";
-import { Card, CardWithBorder } from "@/components/ui/card";
-import { constructPath } from "@/utils/fetch";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
+import { GraphqlViewer } from "@/shared/components/editor/graphql/graphql-viewer";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
 

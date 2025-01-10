@@ -3,8 +3,8 @@ import {
   DynamicFieldProps,
   FormAttributeValue,
   FormRelationshipValue,
-} from "@/components/form/type";
-import { getCreateMutationFromFormData } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
+} from "@/shared/components/form/type";
+import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { describe, expect } from "vitest";
 
 export const buildField = (override?: Partial<DynamicFieldProps>): DynamicFieldProps => {

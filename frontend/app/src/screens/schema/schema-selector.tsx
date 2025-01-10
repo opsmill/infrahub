@@ -1,10 +1,10 @@
-import Accordion from "@/components/display/accordion";
-import { Badge } from "@/components/ui/badge";
-import { SearchInput } from "@/components/ui/search-input";
+import Accordion from "@/shared/components/display/accordion";
+import { Badge } from "@/shared/components/ui/badge";
+import { SearchInput } from "@/shared/components/ui/search-input";
 import { QSP } from "@/config/qsp";
 import { isGenericSchema } from "@/screens/schema/utils";
-import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { classNames } from "@/utils/common";
+import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
+import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import * as R from "ramda";

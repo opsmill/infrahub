@@ -1,5 +1,5 @@
 import { GET_VALIDATORS } from "@/shared/api/graphql/queries/diff/getValidators";
-import useQuery from "@/hooks/useQuery";
+import useQuery from "@/shared/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import { forwardRef, useImperativeHandle } from "react";
 import { useParams } from "react-router-dom";

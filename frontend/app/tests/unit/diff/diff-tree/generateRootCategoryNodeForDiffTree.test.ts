@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TreeProps } from "../../../../src/components/ui/tree";
+import { TreeProps } from "../../../../src/shared/components/ui/tree";
 import { generateRootCategoryNodeForDiffTree } from "../../../../src/screens/diff/diff-tree";
 import { TREE_ROOT_ID } from "../../../../src/screens/ipam/constants";
 

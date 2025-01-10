@@ -4,10 +4,10 @@ import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
-import { AuthProvider } from "../../../src/hooks/useAuth";
+import { AuthProvider } from "../../../src/shared/hooks/useAuth";
 import { ObjectItemsPage } from "../../../src/pages/objects/object-items";
-import { configState } from "../../../src/state/atoms/config.atom";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { configState } from "../../../src/config/config.atom";
+import { schemaState } from "../../../src/screens/schema/schema.atom";
 import { mockedToken } from "../../fixtures/auth";
 import { configMocks } from "../../mocks/data/config";
 import {

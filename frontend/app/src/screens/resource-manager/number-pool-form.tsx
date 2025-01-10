@@ -1,24 +1,24 @@
-import { Button } from "@/components/buttons/button-primitive";
-import { DEFAULT_FORM_FIELD_VALUE } from "@/components/form/constants";
-import { LabelFormField } from "@/components/form/fields/common";
-import InputField from "@/components/form/fields/input.field";
-import NumberField from "@/components/form/fields/number.field";
-import { NodeFormProps } from "@/components/form/node-form";
-import { FormAttributeValue, FormFieldValue } from "@/components/form/type";
-import { getCurrentFieldValue } from "@/components/form/utils/getFieldDefaultValue";
-import { getCreateMutationFromFormDataOnly } from "@/components/form/utils/mutations/getCreateMutationFromFormData";
-import { updateFormFieldValue } from "@/components/form/utils/updateFormFieldValue";
-import { isRequired } from "@/components/form/utils/validation";
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { LabelFormField } from "@/shared/components/form/fields/common";
+import InputField from "@/shared/components/form/fields/input.field";
+import NumberField from "@/shared/components/form/fields/number.field";
+import { NodeFormProps } from "@/shared/components/form/node-form";
+import { FormAttributeValue, FormFieldValue } from "@/shared/components/form/type";
+import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
+import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
+import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
+import { isRequired } from "@/shared/components/form/utils/validation";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
   ComboboxContent,
   ComboboxItem,
   ComboboxList,
   ComboboxTrigger,
-} from "@/components/ui/combobox";
-import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/components/ui/form";
+} from "@/shared/components/ui/combobox";
+import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
 import { NUMBER_POOL_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
@@ -28,11 +28,11 @@ import {
   NUMBER_POOL_NODE_FIELD,
 } from "@/screens/resource-manager/constants";
 import { AttributeSchema } from "@/screens/schema/types";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
-import { datetimeAtom } from "@/state/atoms/time.atom";
-import { AttributeType, RelationshipType } from "@/utils/getObjectItemDisplayValue";
-import { stringifyWithoutQuotes } from "@/utils/string";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { iNodeSchema, schemaState } from "@/screens/schema/schema.atom";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { AttributeType, RelationshipType } from "@/screens/objects/getObjectItemDisplayValue";
+import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";

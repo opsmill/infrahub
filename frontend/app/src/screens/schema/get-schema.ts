@@ -1,4 +1,4 @@
-import { store } from "@/state";
+import { store } from "@/shared/stores";
 import {
   IProfileSchema,
   genericsState,
@@ -6,7 +6,7 @@ import {
   iNodeSchema,
   profilesAtom,
   schemaState,
-} from "@/state/atoms/schema.atom";
+} from "@/screens/schema/schema.atom";
 
 type GetSchema = (kind?: string | null) =>
   | {

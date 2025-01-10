@@ -1,11 +1,11 @@
-import { BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { BreadcrumbSeparator } from "@/shared/components/ui/breadcrumb";
 import { PROFILE_KIND } from "@/config/constants";
-import { useSchema } from "@/hooks/useSchema";
+import { useSchema } from "@/shared/hooks/useSchema";
 import { BreadcrumbLink } from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-link";
 import BreadcrumbLoading from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-loading";
 import { breadcrumbActiveStyle } from "@/screens/layout/breadcrumb-navigation/style";
-import { classNames } from "@/utils/common";
-import { getObjectDetailsUrl2 } from "@/utils/objects";
+import { classNames } from "@/shared/utils/common";
+import { getObjectDetailsUrl2 } from "@/screens/objects/objects";
 
 interface BreadcrumbSchemaSelectorProps {
   kind: string;

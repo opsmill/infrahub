@@ -1,7 +1,7 @@
-import { Retry } from "@/components/buttons/retry";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardProps } from "@/components/ui/card";
-import { classNames } from "@/utils/common";
+import { Retry } from "@/shared/components/buttons/retry";
+import { Badge } from "@/shared/components/ui/badge";
+import { Card, CardProps } from "@/shared/components/ui/card";
+import { classNames } from "@/shared/utils/common";
 import { HTMLAttributes, ReactNode } from "react";
 
 const ContentRoot = ({ className, ...props }: HTMLAttributes<HTMLElement>) => {

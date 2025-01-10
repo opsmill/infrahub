@@ -5,9 +5,9 @@ import { Slide, ToastContainer } from "react-toastify";
 
 import { router } from "@/app/router";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider } from "@/shared/hooks/useAuth";
 import ErrorFallback from "@/screens/errors/error-fallback";
-import { store } from "@/state";
+import { store } from "@/shared/stores";
 import { ApolloProvider } from "@apollo/client";
 import { addCollection } from "@iconify-icon/react";
 import mdiIcons from "@iconify-json/mdi/icons.json";

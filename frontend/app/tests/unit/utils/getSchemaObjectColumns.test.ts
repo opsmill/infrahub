@@ -3,7 +3,7 @@ import {
   getObjectAttributes,
   getObjectRelationships,
   getSchemaObjectColumns,
-} from "../../../src/utils/getSchemaObjectColumns";
+} from "@/screens/object-items/getSchemaObjectColumns";
 import {
   C_deviceAttributeColumns,
   C_deviceObjectColumns,

@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/shared/components/ui/badge";
 import { DiffThread } from "@/screens/diff/node-diff/thread";
 import { DiffRelationship, DiffStatus } from "@/screens/diff/node-diff/types";
 import { DiffRow } from "@/screens/diff/node-diff/utils";

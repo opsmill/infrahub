@@ -1,6 +1,6 @@
-import { Tooltip } from "@/components/ui/tooltip";
-import { Tree, TreeItemProps, TreeProps } from "@/components/ui/tree";
-import { useSchema } from "@/hooks/useSchema";
+import { Tooltip } from "@/shared/components/ui/tooltip";
+import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
+import { useSchema } from "@/shared/hooks/useSchema";
 import { DiffNode } from "@/screens/diff/node-diff/types";
 import { DiffBadge } from "@/screens/diff/node-diff/utils";
 import { TREE_ROOT_ID } from "@/screens/ipam/constants";

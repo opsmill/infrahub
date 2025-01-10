@@ -1,11 +1,11 @@
-import { store } from "@/state";
+import { store } from "@/shared/stores";
 import {
   IModelSchema,
   IProfileSchema,
   iGenericSchema,
   iNodeSchema,
   schemaState,
-} from "@/state/atoms/schema.atom";
+} from "@/screens/schema/schema.atom";
 
 export const isOfKind = (kind: string, schema: IModelSchema) => {
   if (schema.kind === kind) return true;

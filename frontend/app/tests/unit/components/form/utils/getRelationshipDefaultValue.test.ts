@@ -1,8 +1,8 @@
-import { getRelationshipDefaultValue } from "@/components/form/utils/getRelationshipDefaultValue";
+import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
-import { store } from "@/state";
-import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
-import { RelationshipManyType, RelationshipOneType } from "@/utils/getObjectItemDisplayValue";
+import { store } from "@/shared/stores";
+import { iNodeSchema, schemaState } from "@/screens/schema/schema.atom";
+import { RelationshipManyType, RelationshipOneType } from "@/screens/objects/getObjectItemDisplayValue";
 import { describe, expect } from "vitest";
 
 const buildRelationshipOneData = (override: Partial<RelationshipOneType>): RelationshipOneType => ({

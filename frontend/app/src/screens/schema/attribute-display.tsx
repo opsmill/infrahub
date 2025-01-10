@@ -1,4 +1,4 @@
-import Accordion from "@/components/display/accordion";
+import Accordion from "@/shared/components/display/accordion";
 import { components } from "@/shared/api/rest/types.generated";
 import { AccordionStyled, NullDisplay, PropertyRow } from "./styled";
 

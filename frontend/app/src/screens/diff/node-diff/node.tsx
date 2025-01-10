@@ -1,10 +1,10 @@
-import Accordion from "@/components/display/accordion";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import type { DiffNode as DiffNodeType, PropertyType } from "@/screens/diff/node-diff/types";
 import { DiffBadge } from "@/screens/diff/node-diff/utils";
-import { schemaKindNameState } from "@/state/atoms/schemaKindName.atom";
-import { classNames } from "@/utils/common";
+import { schemaKindNameState } from "@/screens/schema/schemaKindName.atom";
+import Accordion from "@/shared/components/display/accordion";
+import { Badge } from "@/shared/components/ui/badge";
+import { Card } from "@/shared/components/ui/card";
+import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";

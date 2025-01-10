@@ -1,5 +1,5 @@
-import { Skeleton } from "@/components/skeleton";
-import { CardWithBorder } from "@/components/ui/card";
+import { Skeleton } from "@/shared/components/skeleton";
+import { CardWithBorder } from "@/shared/components/ui/card";
 
 export const IpamSummarySkeleton = () => {
   return (

@@ -1,4 +1,4 @@
-import { classNames } from "@/utils/common";
+import { classNames } from "@/shared/utils/common";
 
 const STYLES = [
   "bg-green-50 text-green-600",

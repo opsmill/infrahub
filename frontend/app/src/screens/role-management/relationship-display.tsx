@@ -1,6 +1,6 @@
-import { Button } from "@/components/buttons/button-primitive";
-import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { Badge } from "@/shared/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 
 interface RelationshipDisplayProps {
   items: Array<string>;

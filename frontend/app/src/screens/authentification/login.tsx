@@ -1,12 +1,12 @@
-import { Button } from "@/components/buttons/button-primitive";
-import InputField from "@/components/form/fields/input.field";
-import PasswordInputField from "@/components/form/fields/password-input.field";
-import { isRequired } from "@/components/form/utils/validation";
-import { Form, FormSubmit } from "@/components/ui/form";
-import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import InputField from "@/shared/components/form/fields/input.field";
+import PasswordInputField from "@/shared/components/form/fields/password-input.field";
+import { isRequired } from "@/shared/components/form/utils/validation";
+import { Form, FormSubmit } from "@/shared/components/ui/form";
+import { useAuth } from "@/shared/hooks/useAuth";
 import { LoginWithSSOButtons } from "@/screens/authentification/login-sso-buttons";
-import { configState } from "@/state/atoms/config.atom";
-import { classNames } from "@/utils/common";
+import { configState } from "@/config/config.atom";
+import { classNames } from "@/shared/utils/common";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 

@@ -1,6 +1,6 @@
-import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import SlideOver, { SlideOverTitle } from "@/components/display/slide-over";
-import ModalDeleteObject from "@/components/modals/modal-delete-object";
+import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 import { ARTIFACT_DEFINITION_OBJECT, GENERIC_REPOSITORY_KIND } from "@/config/constants";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Generate } from "@/screens/artifacts/generate";
@@ -8,7 +8,7 @@ import { GroupsManagerTriggerButton } from "@/screens/groups/groups-manager-trig
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import RepositoryActionMenu from "@/screens/repository/repository-action-menu";
 import { isGenericSchema } from "@/screens/schema/utils";
-import { IModelSchema } from "@/state/atoms/schema.atom";
+import { IModelSchema } from "@/screens/schema/schema.atom";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";

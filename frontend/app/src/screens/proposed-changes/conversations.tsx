@@ -1,7 +1,7 @@
-import { AddComment } from "@/components/conversations/add-comment";
-import { Thread } from "@/components/conversations/thread";
-import { Card } from "@/components/ui/card";
-import { FormRef } from "@/components/ui/form";
+import { AddComment } from "@/shared/components/conversations/add-comment";
+import { Thread } from "@/shared/components/conversations/thread";
+import { Card } from "@/shared/components/ui/card";
+import { FormRef } from "@/shared/components/ui/form";
 import {
   ACCOUNT_GENERIC_OBJECT,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
@@ -12,14 +12,14 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
 import { deleteObject } from "@/shared/api/graphql/mutations/objects/deleteObject";
 import { getProposedChangesThreads } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesThreads";
-import { useAuth } from "@/hooks/useAuth";
-import useQuery from "@/hooks/useQuery";
+import { useAuth } from "@/shared/hooks/useAuth";
+import useQuery from "@/shared/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { datetimeAtom } from "@/state/atoms/time.atom";
-import { classNames } from "@/utils/common";
-import { stringifyWithoutQuotes } from "@/utils/string";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { classNames } from "@/shared/utils/common";
+import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { NetworkStatus, gql } from "@apollo/client";
 import { formatISO } from "date-fns";
 import { useAtomValue } from "jotai/index";

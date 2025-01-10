@@ -1,5 +1,5 @@
-import { Badge } from "@/components/ui/badge";
-import useQuery from "@/hooks/useQuery";
+import { Badge } from "@/shared/components/ui/badge";
+import useQuery from "@/shared/hooks/useQuery";
 import { gql } from "@apollo/client";
 import LoadingScreen from "../loading-screen/loading-screen";
 

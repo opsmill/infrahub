@@ -1,8 +1,8 @@
-import { PropertyList } from "@/components/table/property-list";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardWithBorder } from "@/components/ui/card";
-import { constructPath } from "@/utils/fetch";
-import { getObjectDetailsUrl2 } from "@/utils/objects";
+import { PropertyList } from "@/shared/components/table/property-list";
+import { Badge } from "@/shared/components/ui/badge";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { getObjectDetailsUrl2 } from "@/screens/objects/objects";
 import { Icon } from "@iconify-icon/react";
 import { HTMLAttributes } from "react";
 import { Link } from "react-router-dom";

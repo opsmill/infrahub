@@ -1,9 +1,9 @@
 import { getProposedChangesDiffSummary } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesDiffSummary";
-import useQuery from "@/hooks/useQuery";
+import useQuery from "@/shared/hooks/useQuery";
 import ErrorScreen from "../errors/error-screen";
 
-import { Button, ButtonProps } from "@/components/buttons/button-primitive";
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/config/qsp";
 import {
   CloseBadgeAdded,
@@ -13,7 +13,7 @@ import {
 } from "@/screens/diff/diff-badge";
 import { DIFF_STATUS } from "@/screens/diff/node-diff/types";
 import { DiffBadge } from "@/screens/diff/node-diff/utils";
-import { classNames } from "@/utils/common";
+import { classNames } from "@/shared/utils/common";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 

@@ -1,19 +1,19 @@
-import { Tree, TreeItemProps, TreeProps } from "@/components/ui/tree";
+import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
 import {
   objectAncestorsQuery,
   objectChildrenQuery,
   objectTopLevelTreeQuery,
 } from "@/shared/api/graphql/queries/objects/objectTreeQuery";
-import useFilters from "@/hooks/useFilters";
-import { useLazyQuery } from "@/hooks/useQuery";
+import useFilters from "@/shared/hooks/useFilters";
+import { useLazyQuery } from "@/shared/hooks/useQuery";
 import { HIDE_AUTO_GENERATED_FILTER } from "@/screens/groups/groups-auto-generated-filter-button";
 import { TREE_ROOT_ID } from "@/screens/ipam/constants";
 import { EMPTY_TREE, PrefixNode, updateTreeData } from "@/screens/ipam/ipam-tree/utils";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { IModelSchema, genericsState, schemaState } from "@/state/atoms/schema.atom";
-import { datetimeAtom } from "@/state/atoms/time.atom";
-import { constructPath } from "@/utils/fetch";
-import { getObjectDetailsUrl } from "@/utils/objects";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { IModelSchema, genericsState, schemaState } from "@/screens/schema/schema.atom";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { getObjectDetailsUrl } from "@/screens/objects/objects";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";

@@ -6,12 +6,12 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/shared/components/ui/dropdown-menu";
 import { CollapsedButton } from "@/screens/layout/menu-navigation/components/collapsed-button";
 import { menuNavigationItemStyle } from "@/screens/layout/menu-navigation/styles";
 import type { MenuItem } from "@/screens/layout/menu-navigation/types";
-import { classNames } from "@/utils/common";
-import { constructPath } from "@/utils/fetch";
+import { classNames } from "@/shared/utils/common";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 import { Link } from "react-router-dom";

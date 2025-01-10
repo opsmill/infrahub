@@ -3,7 +3,7 @@
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import BranchesItems from "../../../src/screens/branches/branches-items";
-import { branchesState } from "../../../src/state/atoms/branches.atom";
+import { branchesState } from "../../../src/screens/branches/branches.atom";
 import { branchesMocks, branchesQuery } from "../../mocks/data/branches";
 import { TestProvider } from "../../mocks/jotai/atom";
 

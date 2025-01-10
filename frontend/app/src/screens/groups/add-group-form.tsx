@@ -1,11 +1,11 @@
-import DynamicForm, { DynamicFormProps } from "@/components/form/dynamic-form";
-import { FormRelationshipValue, RelationshipManyValueFromUser } from "@/components/form/type";
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
+import DynamicForm, { DynamicFormProps } from "@/shared/components/form/dynamic-form";
+import { FormRelationshipValue, RelationshipManyValueFromUser } from "@/shared/components/form/type";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { updateGroupsQuery } from "@/shared/api/graphql/mutations/groups/updateGroupsQuery";
-import { useMutation } from "@/hooks/useQuery";
+import { useMutation } from "@/shared/hooks/useQuery";
 import NoDataFound from "@/screens/errors/no-data-found";
-import { iNodeSchema } from "@/state/atoms/schema.atom";
-import { pluralize } from "@/utils/string";
+import { iNodeSchema } from "@/screens/schema/schema.atom";
+import { pluralize } from "@/shared/utils/string";
 import { toast } from "react-toastify";
 
 interface AddGroupFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {

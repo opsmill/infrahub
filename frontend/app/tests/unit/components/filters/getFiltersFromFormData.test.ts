@@ -1,5 +1,5 @@
-import { getFiltersFromFormData } from "@/components/filters/utils/getFiltersFromFormData";
-import { FormFieldValue } from "@/components/form/type";
+import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
+import { FormFieldValue } from "@/shared/components/form/type";
 import { describe, expect } from "vitest";
 
 describe("getFiltersFromFormData - test", () => {

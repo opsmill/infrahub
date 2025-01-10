@@ -1,4 +1,4 @@
-import { classNames } from "@/utils/common";
+import { classNames } from "@/shared/utils/common";
 import ReactLoading, { LoadingType } from "react-loading";
 
 interface Props {

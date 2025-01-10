@@ -1,8 +1,8 @@
 import { getCurrentBranchName } from "@/screens/branches/get-current-branch";
 import { getRelationshipsFromApi } from "@/screens/objects/relationships/api/queries";
 import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
-import { store } from "@/state";
-import { datetimeAtom } from "@/state/atoms/time.atom";
+import { store } from "@/shared/stores";
+import { datetimeAtom } from "@/shared/stores/time.atom";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

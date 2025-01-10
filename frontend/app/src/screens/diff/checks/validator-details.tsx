@@ -1,7 +1,7 @@
-import { Pagination } from "@/components/ui/pagination";
+import { Pagination } from "@/shared/components/ui/pagination";
 import { getValidatorDetails } from "@/shared/api/graphql/queries/diff/getValidatorDetails";
-import usePagination from "@/hooks/usePagination";
-import useQuery from "@/hooks/useQuery";
+import usePagination from "@/shared/hooks/usePagination";
+import useQuery from "@/shared/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";

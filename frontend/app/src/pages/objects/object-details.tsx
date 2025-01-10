@@ -1,5 +1,5 @@
 import { ARTIFACT_OBJECT, GRAPHQL_QUERY_OBJECT, TASK_OBJECT } from "@/config/constants";
-import { useObjectDetails } from "@/hooks/useObjectDetails";
+import { useObjectDetails } from "@/shared/hooks/useObjectDetails";
 import ArtifactsDetails from "@/screens/artifacts/object-item-details-paginated";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
@@ -7,8 +7,8 @@ import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItemDetails from "@/screens/object-item-details/object-item-details-paginated";
 import ObjectItems from "@/screens/object-items/object-items-paginated";
-import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { constructPath } from "@/utils/fetch";
+import { genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { Navigate, useParams } from "react-router-dom";

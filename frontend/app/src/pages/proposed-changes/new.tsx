@@ -1,6 +1,6 @@
-import { Card } from "@/components/ui/card";
+import { Card } from "@/shared/components/ui/card";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import useQuery from "@/hooks/useQuery";
+import useQuery from "@/shared/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";
 import Content from "@/screens/layout/content";

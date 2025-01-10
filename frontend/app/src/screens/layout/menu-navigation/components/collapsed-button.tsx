@@ -1,5 +1,5 @@
-import { ButtonProps, ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import { classNames } from "@/utils/common";
+import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { forwardRef } from "react";
 

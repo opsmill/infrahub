@@ -1,12 +1,12 @@
 import { TASK_OBJECT } from "@/config/constants";
-import useQuery from "@/hooks/useQuery";
+import useQuery from "@/shared/hooks/useQuery";
 
-import { DateDisplay } from "@/components/display/date-display";
-import { InlineDisplay } from "@/components/display/inline-display";
-import { List } from "@/components/table/list";
-import { Badge } from "@/components/ui/badge";
-import { Id } from "@/components/ui/id";
-import { SearchInput } from "@/components/ui/search-input";
+import { DateDisplay } from "@/shared/components/display/date-display";
+import { InlineDisplay } from "@/shared/components/display/inline-display";
+import { List } from "@/shared/components/table/list";
+import { Badge } from "@/shared/components/ui/badge";
+import { Id } from "@/shared/components/ui/id";
+import { SearchInput } from "@/shared/components/ui/search-input";
 import { QSP } from "@/config/qsp";
 import { TASK_DETAILS } from "@/shared/api/graphql/queries/tasks/getTasksItemDetails";
 import ErrorScreen from "@/screens/errors/error-screen";

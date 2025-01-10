@@ -4,8 +4,8 @@ import {
   RELATIONSHIPS_PER_PAGE,
   getRelationships,
 } from "@/screens/objects/relationships/domain/get-relationships/get-relationships";
-import { store } from "@/state";
-import { datetimeAtom } from "@/state/atoms/time.atom";
+import { store } from "@/shared/stores";
+import { datetimeAtom } from "@/shared/stores/time.atom";
 import { infiniteQueryOptions } from "@tanstack/react-query";
 
 export function relationshipsInfiniteQueryOptions({

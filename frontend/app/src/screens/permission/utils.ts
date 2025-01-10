@@ -5,9 +5,9 @@ import {
   PermissionDecision,
   PermissionDecisionData,
 } from "@/screens/permission/types";
-import { store } from "@/state";
-import { configState } from "@/state/atoms/config.atom";
-import { warnUnexpectedType } from "@/utils/common";
+import { store } from "@/shared/stores";
+import { configState } from "@/config/config.atom";
+import { warnUnexpectedType } from "@/shared/utils/common";
 
 const getMessage = (action: string, decision?: PermissionDecisionData): string => {
   if (!decision)

@@ -1,10 +1,10 @@
-import ObjectEditSlideOverTrigger from "@/components/form/object-edit-slide-over-trigger";
-import { ObjectHelpButton } from "@/components/menu/object-help-button";
-import { Property, PropertyList } from "@/components/table/property-list";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardWithBorder } from "@/components/ui/card";
-import { Link } from "@/components/ui/link";
-import { useObjectDetails } from "@/hooks/useObjectDetails";
+import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
+import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
+import { Property, PropertyList } from "@/shared/components/table/property-list";
+import { Badge } from "@/shared/components/ui/badge";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { Link } from "@/shared/components/ui/link";
+import { useObjectDetails } from "@/shared/hooks/useObjectDetails";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/screens/ipam/constants";
@@ -20,10 +20,10 @@ import {
   GET_RESOURCE_POOL_UTILIZATION,
 } from "@/screens/resource-manager/graphql/resource-pool";
 import ResourceSelector, { ResourceProps } from "@/screens/resource-manager/resource-selector";
-import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
-import { constructPath } from "@/utils/fetch";
-import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
-import { getObjectDetailsUrl } from "@/utils/objects";
+import { iNodeSchema, schemaState } from "@/screens/schema/schema.atom";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { ObjectAttributeValue } from "@/screens/objects/getObjectItemDisplayValue";
+import { getObjectDetailsUrl } from "@/screens/objects/objects";
 import { useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { Outlet, useParams } from "react-router-dom";

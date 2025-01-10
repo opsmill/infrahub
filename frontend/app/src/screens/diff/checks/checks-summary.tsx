@@ -1,20 +1,20 @@
-import { Button } from "@/components/buttons/button-primitive";
-import { Retry } from "@/components/buttons/retry";
-import { PieChart } from "@/components/display/pie-chart";
-import { ALERT_TYPES, Alert } from "@/components/ui/alert";
 import {
   CHECKS_LABEL,
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
   VALIDATIONS_ENUM_MAP,
 } from "@/config/constants";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { getValidatorsStats } from "@/screens/proposed-changes/checks";
+import { genericsState } from "@/screens/schema/schema.atom";
+import { schemaKindLabelState } from "@/screens/schema/schemaKindLabel.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { runCheck } from "@/shared/api/graphql/mutations/diff/runCheck";
-import { useAuth } from "@/hooks/useAuth";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { genericsState } from "@/state/atoms/schema.atom";
-import { schemaKindLabelState } from "@/state/atoms/schemaKindLabel.atom";
-import { getValidatorsStats } from "@/utils/checks";
-import { classNames } from "@/utils/common";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { Retry } from "@/shared/components/buttons/retry";
+import { PieChart } from "@/shared/components/display/pie-chart";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { useAuth } from "@/shared/hooks/useAuth";
+import { classNames } from "@/shared/utils/common";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";

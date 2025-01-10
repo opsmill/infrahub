@@ -1,7 +1,7 @@
-import { Button } from "@/components/buttons/button-primitive";
-import Accordion from "@/components/display/accordion";
-import { Card } from "@/components/ui/card";
-import Kbd from "@/components/ui/kbd";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import Accordion from "@/shared/components/display/accordion";
+import { Card } from "@/shared/components/ui/card";
+import Kbd from "@/shared/components/ui/kbd";
 import { Icon } from "@iconify-icon/react";
 import { useEffect, useState } from "react";
 import { useErrorBoundary } from "react-error-boundary";

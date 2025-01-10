@@ -1,19 +1,19 @@
-import { Tree, TreeItemProps } from "@/components/ui/tree";
-import { useLazyQuery } from "@/hooks/useQuery";
+import { Tree, TreeItemProps } from "@/shared/components/ui/tree";
+import { useLazyQuery } from "@/shared/hooks/useQuery";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { Badge } from "@/components/ui/badge";
-import { SearchInput, SearchInputProps } from "@/components/ui/search-input";
+import { Badge } from "@/shared/components/ui/badge";
+import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
 import { GET_PREFIXES_ONLY } from "@/shared/api/graphql/queries/ipam/prefixes";
 import { defaultIpNamespaceAtom } from "@/screens/ipam/common/namespace.state";
 import { constructPathForIpam } from "@/screens/ipam/common/utils";
 import { IPAM_QSP, IPAM_ROUTE, TREE_ROOT_ID } from "@/screens/ipam/constants";
-import { genericsState, schemaState } from "@/state/atoms/schema.atom";
-import { debounce } from "@/utils/common";
+import { genericsState, schemaState } from "@/screens/schema/schema.atom";
+import { debounce } from "@/shared/utils/common";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ipamTreeAtom, reloadIpamTreeAtom } from "./ipam-tree.state";
 import {

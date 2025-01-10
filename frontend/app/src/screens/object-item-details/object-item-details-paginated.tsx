@@ -1,28 +1,28 @@
-import { ButtonWithTooltip } from "@/components/buttons/button-primitive";
-import MetaDetailsTooltip from "@/components/display/meta-details-tooltips";
-import SlideOver from "@/components/display/slide-over";
-import { Tabs } from "@/components/tabs";
-import { Link } from "@/components/ui/link";
 import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST, TASK_TAB, TASK_TARGET } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { useTitle } from "@/hooks/useTitle";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import { showMetaEditState } from "@/screens/objects/metaEditFieldDetails.atom";
+import { metaEditFieldDetailsState } from "@/screens/objects/showMetaEdit.atom";
 import { Permission } from "@/screens/permission/types";
+import { IModelSchema, genericsState, schemaState } from "@/screens/schema/schema.atom";
 import { TaskItemDetails } from "@/screens/tasks/task-item-details";
 import { TaskItems } from "@/screens/tasks/task-items";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { showMetaEditState } from "@/state/atoms/metaEditFieldDetails.atom";
-import { IModelSchema, genericsState, schemaState } from "@/state/atoms/schema.atom";
-import { metaEditFieldDetailsState } from "@/state/atoms/showMetaEdit.atom copy";
-import { constructPath } from "@/utils/fetch";
-import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
+import SlideOver from "@/shared/components/display/slide-over";
+import { Tabs } from "@/shared/components/tabs";
+import { Link } from "@/shared/components/ui/link";
+import { useTitle } from "@/shared/hooks/useTitle";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { ObjectAttributeValue } from "@/screens/objects/getObjectItemDisplayValue";
 import {
   getObjectAttributes,
   getObjectRelationships,
   getObjectTabs,
   getTabs,
-} from "@/utils/getSchemaObjectColumns";
+} from "@/screens/object-items/getSchemaObjectColumns";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";

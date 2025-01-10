@@ -1,11 +1,11 @@
-import Accordion from "@/components/display/accordion";
-import { Badge } from "@/components/display/badge";
+import Accordion from "@/shared/components/display/accordion";
+import { Badge } from "@/shared/components/display/badge";
 import { getArtifactDetails } from "@/shared/api/graphql/queries/getArtifacts";
-import useQuery from "@/hooks/useQuery";
+import useQuery from "@/shared/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { schemaState } from "@/state/atoms/schema.atom";
+import { schemaState } from "@/screens/schema/schema.atom";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import "react-diff-view/style/index.css";

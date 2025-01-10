@@ -1,6 +1,6 @@
 import { getCurrentBranchName } from "@/screens/branches/get-current-branch";
-import { store } from "@/state";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
+import { store } from "@/shared/stores";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generateBranch } from "../../../tests/fake/branch";
 

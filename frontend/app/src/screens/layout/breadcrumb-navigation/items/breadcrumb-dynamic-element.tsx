@@ -3,7 +3,7 @@ import { BreadcrumbLink } from "@/screens/layout/breadcrumb-navigation/items/bre
 import BreadcrumbObjectSelector from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-object-selector";
 import BreadcrumbSchemaSelector from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-schema-selector";
 import { BreadcrumbItem } from "@/screens/layout/breadcrumb-navigation/type";
-import { warnUnexpectedType } from "@/utils/common";
+import { warnUnexpectedType } from "@/shared/utils/common";
 
 export type BreadcrumbDynamicElementProps = BreadcrumbItem & {
   isLast?: boolean;

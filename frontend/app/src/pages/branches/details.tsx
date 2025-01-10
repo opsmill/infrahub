@@ -1,17 +1,17 @@
-import { Tabs } from "@/components/tabs";
+import { Tabs } from "@/shared/components/tabs";
 import { DIFF_TABS } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { ArtifactsDiff } from "@/screens/diff/artifact-diff/artifacts-diff";
 import { NodeDiff } from "@/screens/diff/node-diff";
 
-import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
-import { useTitle } from "@/hooks/useTitle";
+import { Badge } from "@/shared/components/ui/badge";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { useTitle } from "@/shared/hooks/useTitle";
 import { BranchDetails } from "@/screens/branches/branch-details";
 import { FilesDiff } from "@/screens/diff/file-diff/files-diff";
 import Content from "@/screens/layout/content";
-import { branchesState } from "@/state/atoms/branches.atom";
-import { constructPath } from "@/utils/fetch";
+import { branchesState } from "@/screens/branches/branches.atom";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { useAtomValue } from "jotai";
 import { Navigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";

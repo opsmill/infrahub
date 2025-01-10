@@ -4,12 +4,12 @@ import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
-import { withSchemaContext } from "../../../src/decorators/withSchemaContext";
-import { AuthProvider } from "../../../src/hooks/useAuth";
+import { withSchemaContext } from "../../../src/screens/schema/withSchemaContext";
+import { AuthProvider } from "../../../src/shared/hooks/useAuth";
 import { ArtifactsDiff } from "../../../src/screens/diff/artifact-diff/artifacts-diff";
-import { proposedChangedState } from "../../../src/state/atoms/proposedChanges.atom";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
-import { encodeJwt } from "../../../src/utils/common";
+import { proposedChangedState } from "../../../src/screens/proposed-changes/proposedChanges.atom";
+import { schemaState } from "../../../src/screens/schema/schema.atom";
+import { encodeJwt } from "../../../src/shared/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
   artifactPermissionsData,

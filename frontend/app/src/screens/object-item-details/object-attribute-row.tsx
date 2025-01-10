@@ -1,4 +1,4 @@
-import { CopyToClipboard } from "@/components/buttons/copy-to-clipboard";
+import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { ReactElement } from "react";
 
 type ObjectAttributeRowProps = {

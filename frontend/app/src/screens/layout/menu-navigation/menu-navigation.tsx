@@ -1,6 +1,6 @@
-import { Divider } from "@/components/ui/divider";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Spinner } from "@/components/ui/spinner";
+import { Divider } from "@/shared/components/ui/divider";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
+import { Spinner } from "@/shared/components/ui/spinner";
 import ErrorScreen from "@/screens/errors/error-screen";
 import { MenuSectionInternal } from "@/screens/layout/menu-navigation/components/menu-section-internal";
 import { MenuSectionObject } from "@/screens/layout/menu-navigation/components/menu-section-object";

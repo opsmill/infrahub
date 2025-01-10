@@ -3,7 +3,7 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import ObjectItems from "@/screens/object-items/object-items-paginated";
 import ObjectHeader from "@/screens/objects/object-header";
 import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
-import { genericsState } from "@/state/atoms/schema.atom";
+import { genericsState } from "@/screens/schema/schema.atom";
 import { useAtomValue } from "jotai/index";
 
 const ResourceManagerPage = () => {

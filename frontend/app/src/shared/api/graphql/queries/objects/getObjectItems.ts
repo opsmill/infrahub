@@ -1,4 +1,4 @@
-import "@/utils/handlebars"; // Import handlebars utils
+import "@/shared/utils/handlebars"; // Import handlebars utils
 import Handlebars from "handlebars";
 
 export const getObjectItemsPaginated = Handlebars.compile(`

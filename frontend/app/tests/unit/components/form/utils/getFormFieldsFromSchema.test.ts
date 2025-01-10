@@ -1,11 +1,11 @@
-import { getFormFieldsFromSchema } from "@/components/form/utils/getFormFieldsFromSchema";
-import { AuthContextType } from "@/hooks/useAuth";
+import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
+import { AuthContextType } from "@/shared/hooks/useAuth";
 import { RelationshipSchema } from "@/screens/schema/types";
 import { components } from "@/shared/api/rest/types.generated";
-import { store } from "@/state";
-import { currentBranchAtom } from "@/state/atoms/branches.atom";
-import { IModelSchema } from "@/state/atoms/schema.atom";
-import { AttributeType } from "@/utils/getObjectItemDisplayValue";
+import { store } from "@/shared/stores";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { IModelSchema } from "@/screens/schema/schema.atom";
+import { AttributeType } from "@/screens/objects/getObjectItemDisplayValue";
 import { describe, expect, it } from "vitest";
 
 export const buildAttributeSchema = (

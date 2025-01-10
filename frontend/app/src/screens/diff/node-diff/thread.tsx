@@ -1,18 +1,18 @@
-import { SidePanelTitle } from "@/components/display/sidepanel-title";
-import SlideOver from "@/components/display/slide-over";
-import { Tooltip } from "@/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
+import { getThreadLabel, getThreadTitle } from "@/screens/diff/diff";
+import { schemaState } from "@/screens/schema/schema.atom";
 import { getProposedChangesObjectThreads } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesObjectThreads";
-import useQuery from "@/hooks/useQuery";
-import { schemaState } from "@/state/atoms/schema.atom";
-import { getThreadLabel, getThreadTitle } from "@/utils/diff";
+import { SidePanelTitle } from "@/shared/components/display/sidepanel-title";
+import SlideOver from "@/shared/components/display/slide-over";
+import { Tooltip } from "@/shared/components/ui/tooltip";
+import useQuery from "@/shared/hooks/useQuery";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { Button } from "@/components/buttons/button-primitive";
 import { getPermission } from "@/screens/permission/utils";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
 import { DiffContext } from ".";
 import { DiffComments } from "./comments";
