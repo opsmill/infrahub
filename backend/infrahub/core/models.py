@@ -331,7 +331,7 @@ class SchemaUpdateValidationResult(BaseModel):
 
     def add_validator_for_migration(self, validator_map: dict[str, Any]) -> None:
         for migration in self.migrations:
-            if validator_map.get(migration.migration_name, None):
+            if validator_map.get(migration.migration_name):
                 self.constraints.append(
                     SchemaUpdateConstraintInfo(
                         path=migration.path,
