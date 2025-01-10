@@ -1,5 +1,6 @@
 import pytest
 
+from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
@@ -207,3 +208,17 @@ async def test_download_schema(db: InfrahubDatabase, client, client_headers):
 
         response = client.get("/schema.graphql?branch=notvalid", headers=client_headers)
         assert response.status_code == 400
+
+
+@pytest.mark.parametrize("allow_anonymous_access", [False, True])
+async def test_download_schema_anonymous_account(
+    db: InfrahubDatabase, client, client_headers, allow_anonymous_access: bool
+):
+    await create_branch(branch_name="branch2", db=db)
+
+    config.SETTINGS.main.allow_anonymous_access = allow_anonymous_access
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.get("/schema.graphql")
+        assert response.status_code == 200 if allow_anonymous_access else 401
