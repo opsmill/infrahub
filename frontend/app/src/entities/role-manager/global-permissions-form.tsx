@@ -1,8 +1,8 @@
 import { ACCOUNT_ROLE_OBJECT, GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
-import { createObject } from "@/entities/objects/api/createObject";
-import { updateObjectWithId } from "@/entities/objects/api/updateObjectWithId";
-import { AttributeType, RelationshipType } from "@/entities/objects/getObjectItemDisplayValue";
+import { createObject } from "@/entities/nodes/api/createObject";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { NodeFormProps } from "@/shared/components/form/node-form";
@@ -18,11 +18,11 @@ import { useAtomValue } from "jotai";
 import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
+import { useSchema } from "@/entities/schema/useSchema";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationship-many.field";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { isRequired } from "@/shared/components/form/utils/validation";
-import { useSchema } from "@/shared/hooks/useSchema";
 import { globalDecisionOptions } from "./constants";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {

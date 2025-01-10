@@ -1,10 +1,10 @@
 import { Root } from "@/app/root";
 import { NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { RequireAuth } from "@/entities/authentication/useAuth";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { RequireAuth } from "@/shared/hooks/useAuth";
 import queryString from "query-string";
 import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router-dom";
 import { QueryParamProvider } from "use-query-params";
@@ -74,7 +74,7 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                path: "/objects",
+                path: "/nodes",
                 lazy: () => import("@/pages/objects/layout"),
                 children: [
                   {

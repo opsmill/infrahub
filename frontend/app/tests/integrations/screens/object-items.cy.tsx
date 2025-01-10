@@ -3,8 +3,8 @@
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
-import { ObjectItemsPage } from "../../../src/pages/objects/object-items";
 import { genericsState, schemaState } from "../../../src/entities/schema/schema.atom";
+import { ObjectItemsPage } from "../../../src/pages/objects/object-items";
 import {
   graphqlQueriesMocksData,
   graphqlQueriesMocksQuery,
@@ -14,10 +14,10 @@ import { schemaMocks } from "../../mocks/data/schema";
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
-const mockedUrl = "/objects/CoreGraphQLQuery";
+const mockedUrl = "/nodes/CoreGraphQLQuery";
 
 // Path that will match the route to display the component
-const mockedPath = "/objects/:objectKind";
+const mockedPath = "/nodes/:objectKind";
 
 // Mock the apollo query and data
 const mocks: any[] = [

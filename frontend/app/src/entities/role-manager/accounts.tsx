@@ -1,7 +1,9 @@
 import { ACCOUNT_GENERIC_OBJECT, ACCOUNT_OBJECT } from "@/config/constants";
 import { GET_ROLE_MANAGEMENT_ACCOUNTS } from "@/entities/role-manager/api/getAccounts";
 import { schemaKindNameState } from "@/entities/schema/schemaKindName.atom";
+import { useSchema } from "@/entities/schema/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ColorDisplay } from "@/shared/components/display/color-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
@@ -15,8 +17,6 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import useQuery from "@/shared/hooks/useQuery";
-import { useSchema } from "@/shared/hooks/useSchema";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";

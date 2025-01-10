@@ -1,15 +1,15 @@
 import { QSP } from "@/config/qsp";
 import { GroupDataFromAPI } from "@/entities/groups/types";
-import { getObjectDetailsUrl2 } from "@/entities/objects/objects";
-import { REMOVE_RELATIONSHIP } from "@/entities/objects/relationships/api/removeRelationship";
+import { getObjectDetailsUrl2 } from "@/entities/nodes/objects";
+import { REMOVE_RELATIONSHIP } from "@/entities/nodes/relationships/api/removeRelationship";
 import { schemaState } from "@/entities/schema/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { useMutation } from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ItemGroup from "@/shared/components/layouts/item-group";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { useMutation } from "@/shared/hooks/useQuery";
 import { pluralize } from "@/shared/utils/string";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";

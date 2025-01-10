@@ -2,7 +2,7 @@ import {
   getObjectAttributes,
   getObjectRelationships,
   getSchemaObjectColumns,
-} from "@/entities/objects/object-items/getSchemaObjectColumns";
+} from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { describe, expect, it } from "vitest";
 import {
   C_deviceAttributeColumns,

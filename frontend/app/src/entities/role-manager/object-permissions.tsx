@@ -1,7 +1,9 @@
 import { OBJECT_PERMISSION_OBJECT } from "@/config/constants";
 import { GET_ROLE_MANAGEMENT_OBJECT_PERMISSIONS } from "@/entities/role-manager/api/getObjectPermissions";
 import { schemaKindNameState } from "@/entities/schema/schemaKindName.atom";
+import { useSchema } from "@/entities/schema/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import { Pill } from "@/shared/components/display/pill";
@@ -16,8 +18,6 @@ import { BadgeCopy } from "@/shared/components/ui/badge-copy";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import useQuery from "@/shared/hooks/useQuery";
-import { useSchema } from "@/shared/hooks/useSchema";
 import { NetworkStatus } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";

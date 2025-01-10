@@ -1,11 +1,11 @@
 import { TASK_OBJECT } from "@/config/constants";
+import { useAuth } from "@/entities/authentication/useAuth";
 import { BRANCH_REBASE } from "@/entities/branches/api/rebaseBranch";
 import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { useAuth } from "@/shared/hooks/useAuth";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";

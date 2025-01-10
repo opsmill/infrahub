@@ -1,10 +1,10 @@
 import GET_BRANCHES from "@/entities/branches/api/getBranches";
 import { branchesState } from "@/entities/branches/branches.atom";
+import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import Content from "@/shared/components/layout/content";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { useLazyQuery } from "@/shared/hooks/useQuery";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";

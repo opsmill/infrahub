@@ -1,8 +1,8 @@
 import { NUMBER_POOL_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
-import { createObject } from "@/entities/objects/api/createObject";
-import { updateObjectWithId } from "@/entities/objects/api/updateObjectWithId";
-import { AttributeType, RelationshipType } from "@/entities/objects/getObjectItemDisplayValue";
+import { createObject } from "@/entities/nodes/api/createObject";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import {
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
   NUMBER_POOL_NODE_FIELD,

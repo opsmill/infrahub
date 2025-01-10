@@ -1,4 +1,4 @@
-import { RelationshipType } from "@/entities/objects/getObjectItemDisplayValue";
+import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 
 export const getRelationshipParent = (relationshipData: RelationshipType | undefined) => {
   if (!relationshipData) return undefined;

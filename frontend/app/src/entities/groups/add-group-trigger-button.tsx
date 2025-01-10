@@ -1,10 +1,10 @@
 import AddGroupForm from "@/entities/groups/add-group-form";
 import { GroupDataFromAPI } from "@/entities/groups/types";
+import { useObjectDetails } from "@/entities/nodes/useObjectDetails";
 import { iNodeSchema } from "@/entities/schema/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import { useObjectDetails } from "@/shared/hooks/useObjectDetails";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { Permission } from "../permission/types";

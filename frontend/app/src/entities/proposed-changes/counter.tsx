@@ -1,5 +1,5 @@
+import useQuery from "@/shared/api/graphql/useQuery";
 import { Badge } from "@/shared/components/ui/badge";
-import useQuery from "@/shared/hooks/useQuery";
 import { gql } from "@apollo/client";
 import LoadingScreen from "../../shared/components/loading-screen";
 

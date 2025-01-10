@@ -1,10 +1,10 @@
 import { TASK_OBJECT } from "@/config/constants";
 import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
+import useQuery from "@/shared/api/graphql/useQuery";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";
-import useQuery from "@/shared/hooks/useQuery";
 import { classNames } from "@/shared/utils/common";
 import LoadingScreen from "../../shared/components/loading-screen";
 import { getSeverityBadge, tLog } from "../tasks/logs";

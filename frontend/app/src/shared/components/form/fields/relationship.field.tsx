@@ -1,6 +1,7 @@
-import { getRelationshipParent } from "@/entities/objects/api/getRelationshipParent";
-import { Node } from "@/entities/objects/getObjectItemDisplayValue";
+import { getRelationshipParent } from "@/entities/nodes/api/getRelationshipParent";
+import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { genericsState, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
+import useQuery from "@/shared/api/graphql/useQuery";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import {
   DynamicRelationshipFieldProps,
@@ -18,7 +19,6 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
-import useQuery from "@/shared/hooks/useQuery";
 import { store } from "@/shared/stores";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";

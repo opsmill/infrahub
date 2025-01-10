@@ -4,12 +4,14 @@ import {
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/config/constants";
+import { useAuth } from "@/entities/authentication/useAuth";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
-import { createObject } from "@/entities/objects/api/createObject";
-import { deleteObject } from "@/entities/objects/api/deleteObject";
+import { createObject } from "@/entities/nodes/api/createObject";
+import { deleteObject } from "@/entities/nodes/api/deleteObject";
 import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
 import { schemaState } from "@/entities/schema/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import useQuery from "@/shared/api/graphql/useQuery";
 import { fetchStream } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button";
 import { AddComment } from "@/shared/components/conversations/add-comment";
@@ -17,8 +19,6 @@ import { Thread } from "@/shared/components/conversations/thread";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { useAuth } from "@/shared/hooks/useAuth";
-import useQuery from "@/shared/hooks/useQuery";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";

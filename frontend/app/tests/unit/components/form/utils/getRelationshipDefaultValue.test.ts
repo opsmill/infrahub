@@ -1,7 +1,7 @@
 import {
   RelationshipManyType,
   RelationshipOneType,
-} from "@/entities/objects/getObjectItemDisplayValue";
+} from "@/entities/nodes/getObjectItemDisplayValue";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { iNodeSchema, schemaState } from "@/entities/schema/schema.atom";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";

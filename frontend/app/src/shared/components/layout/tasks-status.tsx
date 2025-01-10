@@ -3,12 +3,12 @@ import { TASKS_STATUS_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
 import { TASKS_STATUS } from "@/entities/tasks/api/getTasksStatus";
+import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Pulse } from "@/shared/components/ui/pulse";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import useQuery from "@/shared/hooks/useQuery";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 

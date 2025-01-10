@@ -5,9 +5,10 @@ import {
   OBJECT_PERMISSION_OBJECT,
 } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
-import { createObject } from "@/entities/objects/api/createObject";
-import { updateObjectWithId } from "@/entities/objects/api/updateObjectWithId";
-import { AttributeType, RelationshipType } from "@/entities/objects/getObjectItemDisplayValue";
+import { createObject } from "@/entities/nodes/api/createObject";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useSchema } from "@/entities/schema/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
@@ -22,7 +23,6 @@ import { isRequired } from "@/shared/components/form/utils/validation";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { useSchema } from "@/shared/hooks/useSchema";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";

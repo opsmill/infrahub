@@ -1,8 +1,8 @@
 import { SEARCH_ANY_FILTER, SEARCH_FILTERS, TASK_OBJECT, TASK_TAB } from "@/config/constants";
+import useQuery from "@/shared/api/graphql/useQuery";
 import Content from "@/shared/components/layout/content";
 import { Table, tColumn } from "@/shared/components/table/table";
 import { Pagination } from "@/shared/components/ui/pagination";
-import useQuery from "@/shared/hooks/useQuery";
 
 import { QSP } from "@/config/qsp";
 import { GET_TASKS } from "@/entities/tasks/api/getTasksItems";

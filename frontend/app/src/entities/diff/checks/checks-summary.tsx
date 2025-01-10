@@ -3,6 +3,7 @@ import {
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
   VALIDATIONS_ENUM_MAP,
 } from "@/config/constants";
+import { useAuth } from "@/entities/authentication/useAuth";
 import { runCheck } from "@/entities/diff/api/runCheck";
 import { getValidatorsStats } from "@/entities/proposed-changes/checks";
 import { genericsState } from "@/entities/schema/schema.atom";
@@ -13,7 +14,6 @@ import { Retry } from "@/shared/components/buttons/retry";
 import { PieChart } from "@/shared/components/display/pie-chart";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { useAuth } from "@/shared/hooks/useAuth";
 import { classNames } from "@/shared/utils/common";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";

@@ -1,3 +1,4 @@
+import { useAuth } from "@/entities/authentication/useAuth";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
 import { resolveConflict } from "@/entities/diff/api/resolveConflict";
 import { proposedChangedState } from "@/entities/proposed-changes/proposedChanges.atom";
@@ -6,7 +7,6 @@ import { Checkbox } from "@/shared/components/inputs/checkbox";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
-import { useAuth } from "@/shared/hooks/useAuth";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";

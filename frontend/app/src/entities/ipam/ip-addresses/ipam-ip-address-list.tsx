@@ -11,10 +11,11 @@ import {
   IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/constants";
-import { deleteObject } from "@/entities/objects/api/deleteObject";
-import ObjectItemEditComponent from "@/entities/objects/object-item-edit/object-item-edit-paginated";
+import { deleteObject } from "@/entities/nodes/api/deleteObject";
+import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getPermission } from "@/entities/permission/utils";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import useQuery from "@/shared/api/graphql/useQuery";
 import SlideOver from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";
@@ -23,7 +24,6 @@ import { Table } from "@/shared/components/table/table";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
 import { Pagination } from "@/shared/components/ui/pagination";
-import useQuery from "@/shared/hooks/useQuery";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";

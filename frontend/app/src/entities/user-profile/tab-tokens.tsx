@@ -1,5 +1,5 @@
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
-import ObjectItems from "@/entities/objects/object-items/object-items-paginated";
+import ObjectItems from "@/entities/nodes/object-items/object-items-paginated";
 import { schemaState } from "@/entities/schema/schema.atom";
 import { useAtomValue } from "jotai";
 import { useState } from "react";

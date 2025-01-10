@@ -7,6 +7,7 @@ import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/proposed-
 import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/proposed-changes";
 import { proposedChangedState } from "@/entities/proposed-changes/proposedChanges.atom";
 import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
+import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
 import { Avatar } from "@/shared/components/display/avatar";
@@ -16,7 +17,6 @@ import { Property, PropertyList } from "@/shared/components/table/property-list"
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import useQuery from "@/shared/hooks/useQuery";
 import { classNames } from "@/shared/utils/common";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";

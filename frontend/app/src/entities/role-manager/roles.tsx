@@ -9,7 +9,9 @@ import { useAtomValue } from "jotai";
 import { useState } from "react";
 import LoadingScreen from "../../shared/components/loading-screen";
 
+import { useSchema } from "@/entities/schema/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -18,8 +20,6 @@ import ObjectForm from "@/shared/components/form/object-form";
 import { Badge } from "@/shared/components/ui/badge";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import useQuery from "@/shared/hooks/useQuery";
-import { useSchema } from "@/shared/hooks/useSchema";
 import { NetworkStatus } from "@apollo/client";
 import { getPermission } from "../permission/utils";
 

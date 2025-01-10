@@ -4,6 +4,7 @@ import {
   CHECK_REPOSITORY_CONNECTIVITY,
   REIMPORT_LAST_COMMIT,
 } from "@/entities/repository/api/actions";
+import { useMutation } from "@/shared/api/graphql/useQuery";
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import {
@@ -12,7 +13,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { useMutation } from "@/shared/hooks/useQuery";
 import { Dialog } from "@headlessui/react";
 import { useState } from "react";
 import { toast } from "react-toastify";

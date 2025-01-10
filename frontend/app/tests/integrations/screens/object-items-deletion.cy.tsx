@@ -5,9 +5,9 @@ import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
 import { configState } from "../../../src/config/config.atom";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
-import { ObjectItemsPage } from "../../../src/pages/objects/object-items";
+import { AuthProvider } from "../../../src/entities/authentication/useAuth";
 import { schemaState } from "../../../src/entities/schema/schema.atom";
-import { AuthProvider } from "../../../src/shared/hooks/useAuth";
+import { ObjectItemsPage } from "../../../src/pages/objects/object-items";
 import { mockedToken } from "../../fixtures/auth";
 import { configMocks } from "../../mocks/data/config";
 import {
@@ -20,10 +20,10 @@ import { schemaMocks } from "../../mocks/data/schema";
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
-const mockedUrl = "/objects/CoreGraphQLQuery";
+const mockedUrl = "/nodes/CoreGraphQLQuery";
 
 // Path that will match the route to display the component
-const mockedPath = "/objects/:objectKind";
+const mockedPath = "/nodes/:objectKind";
 
 // Mock the apollo query and data
 const mocks: any[] = [

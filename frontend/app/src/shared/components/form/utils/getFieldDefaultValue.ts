@@ -1,4 +1,4 @@
-import { AttributeType, FieldSchema } from "@/entities/objects/getObjectItemDisplayValue";
+import { AttributeType, FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
 import { LineageSource } from "@/shared/api/graphql/generated/graphql";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {

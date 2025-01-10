@@ -1,6 +1,7 @@
 import { DROPDOWN_ADD_MUTATION, DROPDOWN_REMOVE_MUTATION } from "@/entities/schema/api/dropdown";
 import { IModelSchema } from "@/entities/schema/schema.atom";
 import { AttributeSchema } from "@/entities/schema/types";
+import { useMutation } from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
@@ -16,7 +17,6 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import { CommandItem } from "@/shared/components/ui/command";
-import { useMutation } from "@/shared/hooks/useQuery";
 import { classNames, getTextColor } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import React, { forwardRef, HTMLAttributes, useState } from "react";

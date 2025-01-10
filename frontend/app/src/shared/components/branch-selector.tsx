@@ -8,6 +8,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
+import { useAuth } from "@/entities/authentication/useAuth";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
@@ -18,7 +19,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/shared/components/ui/command";
-import { useAuth } from "@/shared/hooks/useAuth";
 import { useCommandState } from "cmdk";
 import { Button, ButtonWithTooltip, LinkButton } from "./buttons/button-primitive";
 import BranchCreateForm from "./form/branch-create-form";

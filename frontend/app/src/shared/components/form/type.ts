@@ -1,5 +1,5 @@
-import { SchemaAttributeType } from "@/entities/objects/edit-form-hook/dynamic-control-types";
-import { Node } from "@/entities/objects/getObjectItemDisplayValue";
+import { SchemaAttributeType } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
+import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { IModelSchema } from "@/entities/schema/schema.atom";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";

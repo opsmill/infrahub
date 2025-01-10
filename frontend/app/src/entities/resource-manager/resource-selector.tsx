@@ -1,4 +1,4 @@
-import { getObjectDetailsUrl2 } from "@/entities/objects/objects";
+import { getObjectDetailsUrl2 } from "@/entities/nodes/objects";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";

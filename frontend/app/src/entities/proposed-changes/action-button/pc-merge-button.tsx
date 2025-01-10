@@ -1,6 +1,6 @@
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
-import { updateObjectWithId } from "@/entities/objects/api/updateObjectWithId";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";

@@ -1,8 +1,8 @@
 import { INFRAHUB_API_SERVER_URL } from "@/config/config";
 import { configState } from "@/config/config.atom";
+import { useAuth } from "@/entities/authentication/useAuth";
 import { fetchUrl } from "@/shared/api/rest/fetch";
 import LoadingScreen from "@/shared/components/loading-screen";
-import { useAuth } from "@/shared/hooks/useAuth";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { Navigate, useParams, useSearchParams } from "react-router-dom";

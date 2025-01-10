@@ -1,4 +1,4 @@
-import ObjectItems from "@/entities/objects/object-items/object-items-paginated";
+import ObjectItems from "@/entities/nodes/object-items/object-items-paginated";
 import { genericsState, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { useAtomValue } from "jotai";

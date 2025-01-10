@@ -1,5 +1,5 @@
-import ObjectItemMetaEdit from "@/entities/objects/object-item-meta-edit/object-item-meta-edit";
-import { metaEditFieldDetailsState } from "@/entities/objects/showMetaEdit.atom";
+import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
+import { metaEditFieldDetailsState } from "@/entities/nodes/showMetaEdit.atom";
 import { Permission } from "@/entities/permission/types";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";

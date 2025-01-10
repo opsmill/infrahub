@@ -1,4 +1,4 @@
-import { AttributeType } from "@/entities/objects/getObjectItemDisplayValue";
+import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
   GetFieldDefaultValue,

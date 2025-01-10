@@ -1,13 +1,15 @@
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
+import { useAuth } from "@/entities/authentication/useAuth";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
-import { createObject } from "@/entities/objects/api/createObject";
-import { GET_FORM_REQUIREMENTS } from "@/entities/objects/api/getFormRequirements";
-import { AttributeType, RelationshipType } from "@/entities/objects/getObjectItemDisplayValue";
+import { createObject } from "@/entities/nodes/api/createObject";
+import { GET_FORM_REQUIREMENTS } from "@/entities/nodes/api/getFormRequirements";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
 import { IProfileSchema, iNodeSchema } from "@/entities/schema/schema.atom";
 import { CREATE_ACCOUNT_TOKEN } from "@/entities/user-profile/api/createAccountToken";
 import { CoreNumberPool } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import useQuery from "@/shared/api/graphql/useQuery";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { ProfileData } from "@/shared/components/form/object-form";
 import { DynamicFieldProps, FormFieldValue, NumberPoolData } from "@/shared/components/form/type";
@@ -15,9 +17,7 @@ import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormF
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { useAuth } from "@/shared/hooks/useAuth";
 import useFilters from "@/shared/hooks/useFilters";
-import useQuery from "@/shared/hooks/useQuery";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";

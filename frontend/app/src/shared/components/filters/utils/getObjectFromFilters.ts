@@ -4,7 +4,7 @@ import {
   RelationshipManyType,
   RelationshipOneType,
   RelationshipType,
-} from "@/entities/objects/getObjectItemDisplayValue";
+} from "@/entities/nodes/getObjectItemDisplayValue";
 import { IModelSchema } from "@/entities/schema/schema.atom";
 import { Filter } from "@/shared/hooks/useFilters";
 

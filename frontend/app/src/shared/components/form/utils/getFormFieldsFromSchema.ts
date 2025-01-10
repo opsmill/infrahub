@@ -1,6 +1,7 @@
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { SchemaAttributeType } from "@/entities/objects/edit-form-hook/dynamic-control-types";
-import { AttributeType, RelationshipType } from "@/entities/objects/getObjectItemDisplayValue";
+import { AuthContextType } from "@/entities/authentication/useAuth";
+import { SchemaAttributeType } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { IModelSchema } from "@/entities/schema/schema.atom";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
@@ -19,7 +20,6 @@ import { getRelationshipParent } from "@/shared/components/form/utils/getRelatio
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isRequired } from "@/shared/components/form/utils/validation";
-import { AuthContextType } from "@/shared/hooks/useAuth";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 type GetFormFieldsFromSchema = {

@@ -1,6 +1,6 @@
 import { INFRAHUB_DOC_LOCAL } from "@/config/config";
 import { MENU_EXCLUDELIST } from "@/config/constants";
-import { getObjectDetailsUrl2 } from "@/entities/objects/objects";
+import { getObjectDetailsUrl2 } from "@/entities/nodes/objects";
 import { IModelSchema } from "@/entities/schema/schema.atom";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import {

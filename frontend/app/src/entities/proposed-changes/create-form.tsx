@@ -1,9 +1,12 @@
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
+import { useAuth } from "@/entities/authentication/useAuth";
 import { branchesToSelectOptions } from "@/entities/branches/branches";
 import { branchesState } from "@/entities/branches/branches.atom";
-import { Node } from "@/entities/objects/getObjectItemDisplayValue";
+import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
+import { useSchema } from "@/entities/schema/useSchema";
+import { useMutation } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { MarkdownEditor } from "@/shared/components/editor";
@@ -21,9 +24,6 @@ import {
 } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 import { Spinner } from "@/shared/components/ui/spinner";
-import { useAuth } from "@/shared/hooks/useAuth";
-import { useMutation } from "@/shared/hooks/useQuery";
-import { useSchema } from "@/shared/hooks/useSchema";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useNavigate } from "react-router-dom";

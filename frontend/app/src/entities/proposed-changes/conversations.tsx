@@ -4,19 +4,19 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
   PROPOSED_CHANGES_THREAD_OBJECT,
 } from "@/config/constants";
+import { useAuth } from "@/entities/authentication/useAuth";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
-import { createObject } from "@/entities/objects/api/createObject";
-import { deleteObject } from "@/entities/objects/api/deleteObject";
+import { createObject } from "@/entities/nodes/api/createObject";
+import { deleteObject } from "@/entities/nodes/api/deleteObject";
 import { getProposedChangesThreads } from "@/entities/proposed-changes/api/getProposedChangesThreads";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import useQuery from "@/shared/api/graphql/useQuery";
 import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Thread } from "@/shared/components/conversations/thread";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { Card } from "@/shared/components/ui/card";
 import { FormRef } from "@/shared/components/ui/form";
-import { useAuth } from "@/shared/hooks/useAuth";
-import useQuery from "@/shared/hooks/useQuery";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";

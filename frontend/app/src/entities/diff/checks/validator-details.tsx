@@ -1,10 +1,10 @@
 import { getValidatorDetails } from "@/entities/diff/api/getValidatorDetails";
+import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { Pagination } from "@/shared/components/ui/pagination";
 import usePagination from "@/shared/hooks/usePagination";
-import useQuery from "@/shared/hooks/useQuery";
 import { gql } from "@apollo/client";
 import { Check } from "./check";
 

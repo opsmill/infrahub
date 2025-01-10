@@ -4,7 +4,7 @@ import { ACCOUNT_STATE_PATH } from "../../../constants";
 const PROFILE_NAME = "Interface L2 profile test";
 const GENERIC_PROFILE_NAME = "Generic Interface profile test";
 
-test.describe("/objects/CoreProfile - Profiles page", () => {
+test.describe("/nodes/CoreProfile - Profiles page", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
@@ -55,7 +55,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
         .getByTestId("breadcrumb-navigation")
         .getByRole("link", { name: "Profile", exact: true })
         .click();
-      expect(page.url()).toContain("/objects/CoreProfile");
+      expect(page.url()).toContain("/nodes/CoreProfile");
     });
   });
 
@@ -105,7 +105,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
     await test.step("Verify profile link", async () => {
       await page.getByRole("link", { name: "profile test tag" }).click();
-      expect(page.url()).toContain("/objects/ProfileBuiltinTag/");
+      expect(page.url()).toContain("/nodes/ProfileBuiltinTag/");
     });
   });
 
@@ -179,7 +179,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
   });
 });
 
-test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verification", () => {
+test.describe("/nodes/CoreProfile - Profile for Interface L2 and fields verification", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 

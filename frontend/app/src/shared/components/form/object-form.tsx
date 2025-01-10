@@ -8,20 +8,20 @@ import {
   READONLY_REPOSITORY_KIND,
   REPOSITORY_KIND,
 } from "@/config/constants";
-import { AttributeType, RelationshipType } from "@/entities/objects/getObjectItemDisplayValue";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NumberPoolForm } from "@/entities/resource-manager/number-pool-form";
 import { AccountForm } from "@/entities/role-manager/account-form";
 import { AccountGroupForm } from "@/entities/role-manager/account-group-form";
 import { AccountRoleForm } from "@/entities/role-manager/account-role-form";
 import { GlobalPermissionForm } from "@/entities/role-manager/global-permissions-form";
 import { ObjectPermissionForm } from "@/entities/role-manager/object-permissions-form";
+import { useSchema } from "@/entities/schema/useSchema";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
 import { NodeForm, NodeFormSubmitParams } from "@/shared/components/form/node-form";
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
 import LoadingScreen from "@/shared/components/loading-screen";
-import { useSchema } from "@/shared/hooks/useSchema";
 import { Suspense, lazy } from "react";
 
 export type ProfileData = {

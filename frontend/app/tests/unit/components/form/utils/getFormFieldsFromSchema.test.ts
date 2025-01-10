@@ -1,10 +1,10 @@
+import { AuthContextType } from "@/entities/authentication/useAuth";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
-import { AttributeType } from "@/entities/objects/getObjectItemDisplayValue";
+import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { IModelSchema } from "@/entities/schema/schema.atom";
 import { RelationshipSchema } from "@/entities/schema/types";
 import { components } from "@/shared/api/rest/types.generated";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
-import { AuthContextType } from "@/shared/hooks/useAuth";
 import { store } from "@/shared/stores";
 import { describe, expect, it } from "vitest";
 

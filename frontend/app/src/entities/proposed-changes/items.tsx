@@ -1,9 +1,9 @@
+import useQuery, { useMutation } from "@/shared/api/graphql/useQuery";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { Table, tRow } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
-import useQuery, { useMutation } from "@/shared/hooks/useQuery";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { Icon } from "@iconify-icon/react";
 
@@ -17,6 +17,7 @@ import { ProposedChangesCounter } from "@/entities/proposed-changes/counter";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/diff-summary";
 import { ProposedChangesInfo } from "@/entities/proposed-changes/item-info";
 import { ProposedChangesReviewers } from "@/entities/proposed-changes/reviewers";
+import { useSchema } from "@/entities/schema/useSchema";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { TabsButtons } from "@/shared/components/buttons/tabs-buttons";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
@@ -25,7 +26,6 @@ import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
-import { useSchema } from "@/shared/hooks/useSchema";
 import { classNames, debounce } from "@/shared/utils/common";
 import { NetworkStatus } from "@apollo/client";
 import { useState } from "react";

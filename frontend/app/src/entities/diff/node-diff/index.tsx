@@ -1,5 +1,6 @@
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
+import { useAuth } from "@/entities/authentication/useAuth";
 import { BRANCH_REBASE } from "@/entities/branches/api/rebaseBranch";
 import { DIFF_UPDATE } from "@/entities/diff/api/diff-update";
 import DiffTree from "@/entities/diff/diff-tree";
@@ -9,6 +10,7 @@ import { getProposedChangesDiffTree } from "@/entities/proposed-changes/api/getP
 import { proposedChangedState } from "@/entities/proposed-changes/proposedChanges.atom";
 import { schemaState } from "@/entities/schema/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import useQuery from "@/shared/api/graphql/useQuery";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -16,8 +18,6 @@ import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { useAuth } from "@/shared/hooks/useAuth";
-import useQuery from "@/shared/hooks/useQuery";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";

@@ -1,6 +1,6 @@
 import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
-import { AttributeType, ObjectAttributeValue } from "@/entities/objects/getObjectItemDisplayValue";
-import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "@/entities/objects/objects";
+import { AttributeType, ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getObjectDetailsUrl, getObjectDetailsUrl2 } from "@/entities/nodes/objects";
 import { Permission } from "@/entities/permission/types";
 import { iNodeSchema } from "@/entities/schema/schema.atom";
 import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";

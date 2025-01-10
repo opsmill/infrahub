@@ -1,6 +1,6 @@
 import { getProposedChangesDiffSummary } from "@/entities/proposed-changes/api/getProposedChangesDiffSummary";
+import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import useQuery from "@/shared/hooks/useQuery";
 
 import { QSP } from "@/config/qsp";
 import {

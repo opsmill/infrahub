@@ -1,7 +1,7 @@
 import { GroupsManager, GroupsManagerProps } from "@/entities/groups/groups-manager";
+import { useObjectDetails } from "@/entities/nodes/useObjectDetails";
 import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import { useObjectDetails } from "@/shared/hooks/useObjectDetails";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 

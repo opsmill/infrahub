@@ -1,8 +1,10 @@
 import { POOLS_DICTIONNARY, POOLS_PEER } from "@/entities/ipam/constants";
-import { getDropdownOptions } from "@/entities/objects/api/dropdownOptions";
-import { generateRelationshipListQuery } from "@/entities/objects/api/generateRelationshipListQuery";
-import { Node, RelationshipManyType } from "@/entities/objects/getObjectItemDisplayValue";
-import { AddRelationshipAction } from "@/entities/objects/relationships/ui/add-relationship-action";
+import { getDropdownOptions } from "@/entities/nodes/api/dropdownOptions";
+import { generateRelationshipListQuery } from "@/entities/nodes/api/generateRelationshipListQuery";
+import { Node, RelationshipManyType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
+import { useSchema } from "@/entities/schema/useSchema";
+import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { PoolValue } from "@/shared/components/form/pool-selector";
 import {
@@ -16,8 +18,6 @@ import {
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { useDebounce } from "@/shared/hooks/useDebounce";
-import { useLazyQuery } from "@/shared/hooks/useQuery";
-import { useSchema } from "@/shared/hooks/useSchema";
 import { classNames } from "@/shared/utils/common";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";

@@ -1,5 +1,5 @@
-import { updateObjectWithId } from "@/entities/objects/api/updateObjectWithId";
-import getMutationMetaDetailsFromFormData from "@/entities/objects/object-item-meta-edit/getMutationMetaDetailsFromFormData";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import getMutationMetaDetailsFromFormData from "@/entities/nodes/object-item-meta-edit/getMutationMetaDetailsFromFormData";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { describe, expect, it } from "vitest";
 import {

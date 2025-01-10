@@ -1,6 +1,6 @@
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
-import { AttributeType, ObjectAttributeValue } from "@/entities/objects/getObjectItemDisplayValue";
-import { getObjectDetailsUrl } from "@/entities/objects/objects";
+import { AttributeType, ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getObjectDetailsUrl } from "@/entities/nodes/objects";
 import { Permission } from "@/entities/permission/types";
 import { IModelSchema } from "@/entities/schema/schema.atom";
 import { constructPath } from "@/shared/api/rest/fetch";

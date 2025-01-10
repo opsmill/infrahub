@@ -5,6 +5,7 @@ import {
   INFRAHUB_SWAGGER_DOC_URL,
 } from "@/config/config";
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
+import { useAuth } from "@/entities/authentication/useAuth";
 import { IModelSchema, genericsState } from "@/entities/schema/schema.atom";
 import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -20,7 +21,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { useAuth } from "@/shared/hooks/useAuth";
 import { gql, useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";

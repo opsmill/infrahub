@@ -1,5 +1,5 @@
+import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import { Tree, TreeItemProps } from "@/shared/components/ui/tree";
-import { useLazyQuery } from "@/shared/hooks/useQuery";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";

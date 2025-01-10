@@ -6,7 +6,7 @@ import { schemaState } from "../../../src/entities/schema/schema.atom";
 
 import { gql } from "@apollo/client";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
-import { AuthProvider } from "../../../src/shared/hooks/useAuth";
+import { AuthProvider } from "../../../src/entities/authentication/useAuth";
 import { encodeJwt } from "../../../src/shared/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
@@ -63,10 +63,10 @@ import {
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
-const mockedUrl = "/objects/TestTask";
+const mockedUrl = "/nodes/TestTask";
 
 // Path that will match the route to display the component
-const mockedPath = "/objects/:objectKind";
+const mockedPath = "/nodes/:objectKind";
 
 // Mock the apollo query and data
 const mocks: any[] = [

@@ -1,5 +1,5 @@
 import { TASK_OBJECT } from "@/config/constants";
-import useQuery from "@/shared/hooks/useQuery";
+import useQuery from "@/shared/api/graphql/useQuery";
 
 import { QSP } from "@/config/qsp";
 import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";

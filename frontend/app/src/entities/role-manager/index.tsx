@@ -6,8 +6,8 @@ import {
   OBJECT_PERMISSION_OBJECT,
 } from "@/config/constants";
 import { GET_ROLE_MANAGEMENT_COUNTS } from "@/entities/role-manager/api/getCounts";
+import useQuery from "@/shared/api/graphql/useQuery";
 import { Tabs } from "@/shared/components/tabs-routes";
-import useQuery from "@/shared/hooks/useQuery";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@iconify-icon/react";

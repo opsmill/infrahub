@@ -1,6 +1,7 @@
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
-import { ObjectAttributeValue } from "@/entities/objects/getObjectItemDisplayValue";
-import { getObjectDetailsUrl } from "@/entities/objects/objects";
+import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getObjectDetailsUrl } from "@/entities/nodes/objects";
+import { useObjectDetails } from "@/entities/nodes/useObjectDetails";
 import ResourcePoolUtilization from "@/entities/resource-manager/common/ResourcePoolUtilization";
 import {
   RESOURCE_GENERIC_KIND,
@@ -23,7 +24,6 @@ import { Property, PropertyList } from "@/shared/components/table/property-list"
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
-import { useObjectDetails } from "@/shared/hooks/useObjectDetails";
 import { useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { Outlet, useParams } from "react-router-dom";

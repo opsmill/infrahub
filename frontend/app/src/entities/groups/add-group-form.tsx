@@ -1,5 +1,6 @@
 import { updateGroupsQuery } from "@/entities/groups/api/updateGroupsQuery";
 import { iNodeSchema } from "@/entities/schema/schema.atom";
+import { useMutation } from "@/shared/api/graphql/useQuery";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import DynamicForm, { DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import {
@@ -7,7 +8,6 @@ import {
   RelationshipManyValueFromUser,
 } from "@/shared/components/form/type";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { useMutation } from "@/shared/hooks/useQuery";
 import { pluralize } from "@/shared/utils/string";
 import { toast } from "react-toastify";
 

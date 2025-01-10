@@ -3,6 +3,8 @@ import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObje
 import { PermissionData } from "@/entities/permission/types";
 import { getPermission } from "@/entities/permission/utils";
 import { genericsState, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
+import { useSchema } from "@/entities/schema/useSchema";
+import useQuery from "@/shared/api/graphql/useQuery";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -14,8 +16,6 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import Label from "@/shared/components/ui/label";
-import useQuery from "@/shared/hooks/useQuery";
-import { useSchema } from "@/shared/hooks/useSchema";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useId, useState } from "react";

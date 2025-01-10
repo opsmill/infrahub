@@ -1,5 +1,6 @@
+import { useAuth } from "@/entities/authentication/useAuth";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
-import { createObject } from "@/entities/objects/api/createObject";
+import { createObject } from "@/entities/nodes/api/createObject";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DynamicInput } from "@/shared/components/form/dynamic-form";
@@ -9,7 +10,6 @@ import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormF
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { Card, CardProps } from "@/shared/components/ui/card";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { useAuth } from "@/shared/hooks/useAuth";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";

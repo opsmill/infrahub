@@ -1,5 +1,6 @@
 import { GET_CHECKS } from "@/entities/diff/api/getCheckDetails";
 import { schemaKindLabelState } from "@/entities/schema/schemaKindLabel.atom";
+import useQuery from "@/shared/api/graphql/useQuery";
 import { MoreButton } from "@/shared/components/buttons/more-button";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -9,7 +10,6 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Skeleton } from "@/shared/components/skeleton";
 import { List } from "@/shared/components/table/list";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import useQuery from "@/shared/hooks/useQuery";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";

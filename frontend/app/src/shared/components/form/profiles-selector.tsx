@@ -1,11 +1,11 @@
-import { getProfiles } from "@/entities/objects/api/getProfiles";
-import { getObjectAttributes } from "@/entities/objects/object-items/getSchemaObjectColumns";
+import { getProfiles } from "@/entities/nodes/api/getProfiles";
+import { getObjectAttributes } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { genericsState, iNodeSchema, profilesAtom } from "@/entities/schema/schema.atom";
+import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { MultiCombobox } from "@/shared/components/ui/combobox-legacy";
 import Label from "@/shared/components/ui/label";
-import useQuery from "@/shared/hooks/useQuery";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useId } from "react";

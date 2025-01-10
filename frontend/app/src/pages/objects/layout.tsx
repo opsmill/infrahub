@@ -1,5 +1,5 @@
-import { HierarchicalTree } from "@/entities/objects/hierarchical-tree";
-import ObjectHeader from "@/entities/objects/object-header";
+import { HierarchicalTree } from "@/entities/nodes/hierarchical-tree";
+import ObjectHeader from "@/entities/nodes/object-header";
 import { genericsState, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";

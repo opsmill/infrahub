@@ -4,9 +4,9 @@ import {
   ACCOUNT_ROLE_OBJECT,
 } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/branches.atom";
-import { createObject } from "@/entities/objects/api/createObject";
-import { updateObjectWithId } from "@/entities/objects/api/updateObjectWithId";
-import { AttributeType, RelationshipType } from "@/entities/objects/getObjectItemDisplayValue";
+import { createObject } from "@/entities/nodes/api/createObject";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { NodeFormProps } from "@/shared/components/form/node-form";

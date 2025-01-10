@@ -1,11 +1,11 @@
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-import ObjectItemDetails from "@/entities/objects/object-item-details/object-item-details-paginated";
+import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
+import { useObjectDetails } from "@/entities/nodes/useObjectDetails";
 import { genericsState } from "@/entities/schema/schema.atom";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import LoadingScreen from "@/shared/components/loading-screen";
-import { useObjectDetails } from "@/shared/hooks/useObjectDetails";
 import { parseJwt } from "@/shared/utils/common";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
