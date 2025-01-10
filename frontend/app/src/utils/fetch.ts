@@ -1,10 +1,14 @@
+import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import { QSP } from "@/config/qsp";
 
 export const fetchUrl = async (url: string, payload?: RequestInit) => {
+  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+
   const newPayload = {
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      ...(localToken ? { authorization: `Bearer ${localToken}` } : {}),
       ...payload?.headers,
     },
     method: payload?.method ?? "GET",
