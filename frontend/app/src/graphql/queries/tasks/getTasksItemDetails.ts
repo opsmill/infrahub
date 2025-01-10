@@ -8,8 +8,11 @@ query TASK_DETAILS($ids: [String], $branch: String, $workflow: [String], $relate
       node {
         id
         title
-        related_node_kind
         related_node
+        related_nodes {
+          id
+          kind
+        }
         state
         progress
         created_at

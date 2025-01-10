@@ -36,6 +36,8 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
 
   const { pathname } = location;
 
+  const relatedNode = node || objectid || proposedChangeId;
+
   const {
     loading,
     error,
@@ -46,7 +48,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
       search,
       branch,
       state,
-      relatedNode: [node || objectid || proposedChangeId],
+      relatedNode: relatedNode ? [relatedNode] : [],
     },
   });
 
