@@ -1,13 +1,13 @@
-import { Link } from "@/shared/components/ui/link";
 import { TASK_OBJECT } from "@/config/constants";
-import { getTaskItemDetailsTitle } from "@/shared/api/graphql/queries/tasks/getTasksItemDetailsTitle";
-import useQuery from "@/shared/hooks/useQuery";
-import { useTitle } from "@/shared/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { TaskItemDetails } from "@/screens/tasks/task-item-details";
+import { getTaskItemDetailsTitle } from "@/shared/api/graphql/queries/tasks/getTasksItemDetailsTitle";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Link } from "@/shared/components/ui/link";
+import useQuery from "@/shared/hooks/useQuery";
+import { useTitle } from "@/shared/hooks/useTitle";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";

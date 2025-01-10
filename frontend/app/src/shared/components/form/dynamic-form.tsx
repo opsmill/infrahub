@@ -1,3 +1,6 @@
+import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { getSchema } from "@/screens/schema/get-schema";
+import { isHierarchicalSchema } from "@/screens/schema/utils";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import ColorField from "@/shared/components/form/fields/color.field";
@@ -15,9 +18,6 @@ import RelationshipField from "@/shared/components/form/fields/relationship.fiel
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { Form, FormProps, FormRef, FormSubmit } from "@/shared/components/ui/form";
-import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { getSchema } from "@/screens/schema/get-schema";
-import { isHierarchicalSchema } from "@/screens/schema/utils";
 import { warnUnexpectedType } from "@/shared/utils/common";
 import { forwardRef } from "react";
 

@@ -1,8 +1,8 @@
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { IModelSchema } from "@/screens/schema/schema.atom";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Badge } from "@/shared/components/ui/badge";
 import usePrevious from "@/shared/hooks/usePrevious";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
-import { IModelSchema } from "@/screens/schema/schema.atom";
 import { Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";

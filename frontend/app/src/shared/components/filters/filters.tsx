@@ -1,12 +1,12 @@
+import { SEARCH_FILTERS, TASK_OBJECT } from "@/config/constants";
+import { IModelSchema } from "@/screens/schema/schema.atom";
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { FilterForm } from "@/shared/components/filters/filter-form";
 import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
 import { FormFieldValue } from "@/shared/components/form/type";
-import { SEARCH_FILTERS, TASK_OBJECT } from "@/config/constants";
 import useFilters from "@/shared/hooks/useFilters";
 import usePagination from "@/shared/hooks/usePagination";
-import { IModelSchema } from "@/screens/schema/schema.atom";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { TasksFilterForm } from "./tasks-filter-form";

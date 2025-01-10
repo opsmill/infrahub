@@ -1,12 +1,12 @@
-import { Badge } from "@/shared/components/ui/badge";
-import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
-import { classNames } from "@/shared/utils/common";
 import {
   RelationshipManyType,
   RelationshipOneType,
   getDisplayValue,
 } from "@/screens/objects/getObjectItemDisplayValue";
 import { getObjectDetailsUrl2 } from "@/screens/objects/objects";
+import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
+import { Badge } from "@/shared/components/ui/badge";
+import { classNames } from "@/shared/utils/common";
 import { HTMLAttributes } from "react";
 import { Link, LinkProps } from "react-router-dom";
 

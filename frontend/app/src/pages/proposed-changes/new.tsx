@@ -1,6 +1,4 @@
-import { Card } from "@/shared/components/ui/card";
 import { PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import useQuery from "@/shared/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";
 import Content from "@/screens/layout/content";
@@ -8,6 +6,8 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { getObjectPermissionsQuery } from "@/screens/permission/queries/getObjectPermissions";
 import { getPermission } from "@/screens/permission/utils";
 import { ProposedChangeCreateForm } from "@/screens/proposed-changes/create-form";
+import { Card } from "@/shared/components/ui/card";
+import useQuery from "@/shared/hooks/useQuery";
 import { gql } from "@apollo/client";
 
 function ProposedChangeCreatePage() {

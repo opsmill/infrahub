@@ -1,3 +1,7 @@
+import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
+import { AttributeType, RelationshipType } from "@/screens/objects/getObjectItemDisplayValue";
+import { IModelSchema } from "@/screens/schema/schema.atom";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
   DynamicDropdownFieldProps,
@@ -15,12 +19,8 @@ import { getRelationshipParent } from "@/shared/components/form/utils/getRelatio
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isRequired } from "@/shared/components/form/utils/validation";
-import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { AuthContextType } from "@/shared/hooks/useAuth";
-import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
-import { IModelSchema } from "@/screens/schema/schema.atom";
 import { sortByOrderWeight } from "@/shared/utils/common";
-import { AttributeType, RelationshipType } from "@/screens/objects/getObjectItemDisplayValue";
 
 type GetFormFieldsFromSchema = {
   schema: IModelSchema;

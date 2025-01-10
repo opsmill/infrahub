@@ -1,5 +1,5 @@
-import { QSP } from "@/config/qsp";
 import { configState } from "@/config/config.atom";
+import { QSP } from "@/config/qsp";
 import { useAtom } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
 

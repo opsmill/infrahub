@@ -1,21 +1,21 @@
+import { SEARCH_ANY_FILTER, SEARCH_FILTERS, TASK_OBJECT, TASK_TAB } from "@/config/constants";
+import Content from "@/screens/layout/content";
 import { Table, tColumn } from "@/shared/components/table/table";
 import { Pagination } from "@/shared/components/ui/pagination";
-import { SEARCH_ANY_FILTER, SEARCH_FILTERS, TASK_OBJECT, TASK_TAB } from "@/config/constants";
 import useQuery from "@/shared/hooks/useQuery";
-import Content from "@/screens/layout/content";
 
+import { QSP } from "@/config/qsp";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { GET_TASKS } from "@/shared/api/graphql/queries/tasks/getTasksItems";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import { Filters } from "@/shared/components/filters/filters";
 import { Id } from "@/shared/components/ui/id";
 import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
-import { QSP } from "@/config/qsp";
-import { GET_TASKS } from "@/shared/api/graphql/queries/tasks/getTasksItems";
 import useFilters, { Filter } from "@/shared/hooks/useFilters";
-import ErrorScreen from "@/screens/errors/error-screen";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { debounce } from "@/shared/utils/common";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { forwardRef, useImperativeHandle } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { getStateBadge } from "./task-item-details";

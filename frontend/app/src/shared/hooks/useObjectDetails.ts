@@ -1,10 +1,10 @@
 import { PROFILE_KIND, TASK_OBJECT } from "@/config/constants";
+import { getSchemaObjectColumns, getTabs } from "@/screens/object-items/getSchemaObjectColumns";
+import { getPermission } from "@/screens/permission/utils";
+import { IModelSchema, genericsState } from "@/screens/schema/schema.atom";
+import { isGenericSchema } from "@/screens/schema/utils";
 import { getObjectDetailsPaginated } from "@/shared/api/graphql/queries/objects/getObjectDetails";
 import useQuery from "@/shared/hooks/useQuery";
-import { getPermission } from "@/screens/permission/utils";
-import { isGenericSchema } from "@/screens/schema/utils";
-import { IModelSchema, genericsState } from "@/screens/schema/schema.atom";
-import { getSchemaObjectColumns, getTabs } from "@/screens/object-items/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 

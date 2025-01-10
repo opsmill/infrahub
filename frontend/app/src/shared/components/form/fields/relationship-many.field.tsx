@@ -1,12 +1,15 @@
 import { LabelFormField } from "@/shared/components/form/fields/common";
-import { DynamicRelationshipFieldProps, FormRelationshipValue } from "@/shared/components/form/type";
+import {
+  DynamicRelationshipFieldProps,
+  FormRelationshipValue,
+} from "@/shared/components/form/type";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
+import { Node } from "@/screens/objects/getObjectItemDisplayValue";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { classNames } from "@/shared/utils/common";
-import { Node } from "@/screens/objects/getObjectItemDisplayValue";
 
 export interface RelationshipManyInputProps extends Omit<DynamicRelationshipFieldProps, "type"> {}
 

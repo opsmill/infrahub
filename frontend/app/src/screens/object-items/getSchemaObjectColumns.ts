@@ -5,11 +5,11 @@ import {
   relationshipsForListView,
   relationshipsForTabs,
 } from "@/config/constants";
+import { iGenericSchema, iNodeSchema, profilesAtom } from "@/screens/schema/schema.atom";
 import { isGenericSchema } from "@/screens/schema/utils";
 import { store } from "@/shared/stores";
-import { iGenericSchema, iNodeSchema, profilesAtom } from "@/screens/schema/schema.atom";
-import * as R from "ramda";
 import { sortByOrderWeight } from "@/shared/utils/common";
+import * as R from "ramda";
 
 type tgetObjectAttributes = {
   schema: iNodeSchema | iGenericSchema | undefined;

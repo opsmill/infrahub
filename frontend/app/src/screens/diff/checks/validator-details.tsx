@@ -1,10 +1,10 @@
-import { Pagination } from "@/shared/components/ui/pagination";
-import { getValidatorDetails } from "@/shared/api/graphql/queries/diff/getValidatorDetails";
-import usePagination from "@/shared/hooks/usePagination";
-import useQuery from "@/shared/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { getValidatorDetails } from "@/shared/api/graphql/queries/diff/getValidatorDetails";
+import { Pagination } from "@/shared/components/ui/pagination";
+import usePagination from "@/shared/hooks/usePagination";
+import useQuery from "@/shared/hooks/useQuery";
 import { gql } from "@apollo/client";
 import { Check } from "./check";
 

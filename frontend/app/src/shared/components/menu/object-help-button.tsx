@@ -1,3 +1,5 @@
+import { INFRAHUB_DOC_LOCAL } from "@/config/config";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import {
   DropdownMenu,
@@ -5,8 +7,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { INFRAHUB_DOC_LOCAL } from "@/config/config";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
 

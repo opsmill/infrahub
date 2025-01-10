@@ -1,9 +1,9 @@
-import { useObjectDetails } from "@/shared/hooks/useObjectDetails";
-import { useSchema } from "@/shared/hooks/useSchema";
 import { BreadcrumbLink } from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-link";
 import BreadcrumbLoading from "@/screens/layout/breadcrumb-navigation/items/breadcrumb-loading";
-import { IModelSchema } from "@/screens/schema/schema.atom";
 import { getObjectDetailsUrl2 } from "@/screens/objects/objects";
+import { IModelSchema } from "@/screens/schema/schema.atom";
+import { useObjectDetails } from "@/shared/hooks/useObjectDetails";
+import { useSchema } from "@/shared/hooks/useSchema";
 import { NetworkStatus } from "@apollo/client";
 
 export default function BreadcrumbObjectSelector({

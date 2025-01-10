@@ -1,13 +1,13 @@
+import { DEFAULT_BRANCH_NAME } from "@/config/constants";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { getPermission } from "@/screens/permission/utils";
+import { genericsState, schemaState } from "@/screens/schema/schema.atom";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-with-tooltip";
 import SlideOver from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
 import { Tabs } from "@/shared/components/tabs";
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import useQuery from "@/shared/hooks/useQuery";
-import { getPermission } from "@/screens/permission/utils";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
-import { genericsState, schemaState } from "@/screens/schema/schema.atom";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue, useSetAtom } from "jotai";

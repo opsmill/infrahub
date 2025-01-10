@@ -1,10 +1,10 @@
-import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";
-import { SearchAnywhereItem } from "@/shared/components/search/search-anywhere-item";
-import { Badge } from "@/shared/components/ui/badge";
 import { menuQueryOptions } from "@/screens/layout/menu-navigation/get-menu";
 import { MenuItem } from "@/screens/layout/menu-navigation/types";
 import { IModelSchema, genericsState, schemaState } from "@/screens/schema/schema.atom";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";
+import { SearchAnywhereItem } from "@/shared/components/search/search-anywhere-item";
+import { Badge } from "@/shared/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { useQuery } from "@tanstack/react-query";
 import { useCommandState } from "cmdk";

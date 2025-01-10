@@ -1,10 +1,10 @@
+import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
+import { Node } from "@/screens/objects/getObjectItemDisplayValue";
+import { IModelSchema } from "@/screens/schema/schema.atom";
+import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { SelectOption } from "@/shared/components/inputs/select";
 import { FormField } from "@/shared/components/ui/form";
-import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
-import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
-import { IModelSchema } from "@/screens/schema/schema.atom";
-import { Node } from "@/screens/objects/getObjectItemDisplayValue";
 import { ComponentProps } from "react";
 
 type SourceType = "schema" | "user";

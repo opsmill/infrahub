@@ -1,3 +1,14 @@
+import {
+  INFRAHUB_DISCORD_URL,
+  INFRAHUB_DOC_LOCAL,
+  INFRAHUB_GITHUB_URL,
+  INFRAHUB_SWAGGER_DOC_URL,
+} from "@/config/config";
+import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
+import { AppVersion } from "@/screens/layout/app-version";
+import { IModelSchema, genericsState } from "@/screens/schema/schema.atom";
+import { getProfileDetails } from "@/shared/api/graphql/queries/accounts/getProfileDetails";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Avatar } from "@/shared/components/display/avatar";
 import { Skeleton } from "@/shared/components/skeleton";
@@ -9,18 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import {
-  INFRAHUB_DISCORD_URL,
-  INFRAHUB_DOC_LOCAL,
-  INFRAHUB_GITHUB_URL,
-  INFRAHUB_SWAGGER_DOC_URL,
-} from "@/config/config";
-import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-import { getProfileDetails } from "@/shared/api/graphql/queries/accounts/getProfileDetails";
 import { useAuth } from "@/shared/hooks/useAuth";
-import { AppVersion } from "@/screens/layout/app-version";
-import { IModelSchema, genericsState } from "@/screens/schema/schema.atom";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { gql, useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";

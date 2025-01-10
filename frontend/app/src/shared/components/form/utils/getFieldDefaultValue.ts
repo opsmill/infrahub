@@ -1,3 +1,5 @@
+import { AttributeType, FieldSchema } from "@/screens/objects/getObjectItemDisplayValue";
+import { LineageSource } from "@/shared/api/graphql/generated/graphql";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
   AttributeValueFromPool,
@@ -5,8 +7,6 @@ import {
   AttributeValueFromUser,
   FormAttributeValue,
 } from "@/shared/components/form/type";
-import { LineageSource } from "@/shared/api/graphql/generated/graphql";
-import { AttributeType, FieldSchema } from "@/screens/objects/getObjectItemDisplayValue";
 import * as R from "ramda";
 
 export type GetFieldDefaultValue = {

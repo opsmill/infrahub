@@ -1,8 +1,8 @@
-import BranchSelector from "@/shared/components/branch-selector";
-import { TimeFrameSelector } from "@/shared/components/time-selector";
 import InfrahubLogo from "@/assets/infrahub-logo.svg";
 import BreadcrumbNavigation from "@/screens/layout/breadcrumb-navigation/breadcrumb-navigation";
 import { constructPath } from "@/shared/api/rest/fetch";
+import BranchSelector from "@/shared/components/branch-selector";
+import { TimeFrameSelector } from "@/shared/components/time-selector";
 import { Link } from "react-router-dom";
 import { TaskStatus } from "./tasks-status";
 

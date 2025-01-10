@@ -1,3 +1,6 @@
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { IpamNamespace } from "@/shared/api/graphql/generated/graphql";
+import { GET_IP_NAMESPACES } from "@/shared/api/graphql/queries/ipam/ip-namespaces";
 import { Skeleton } from "@/shared/components/skeleton";
 import {
   Combobox,
@@ -7,9 +10,6 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import useQuery from "@/shared/hooks/useQuery";
-import { IpamNamespace } from "@/shared/api/graphql/generated/graphql";
-import { GET_IP_NAMESPACES } from "@/shared/api/graphql/queries/ipam/ip-namespaces";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useId } from "react";

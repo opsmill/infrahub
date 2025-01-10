@@ -1,3 +1,7 @@
+import { CollapsedButton } from "@/screens/layout/menu-navigation/components/collapsed-button";
+import { menuNavigationItemStyle } from "@/screens/layout/menu-navigation/styles";
+import type { MenuItem } from "@/screens/layout/menu-navigation/types";
+import { constructPath } from "@/shared/api/rest/fetch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,11 +11,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { CollapsedButton } from "@/screens/layout/menu-navigation/components/collapsed-button";
-import { menuNavigationItemStyle } from "@/screens/layout/menu-navigation/styles";
-import type { MenuItem } from "@/screens/layout/menu-navigation/types";
 import { classNames } from "@/shared/utils/common";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 import { Link } from "react-router-dom";

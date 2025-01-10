@@ -1,6 +1,6 @@
+import { CollapsedButton } from "@/screens/layout/menu-navigation/components/collapsed-button";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import Kbd from "@/shared/components/ui/kbd";
-import { CollapsedButton } from "@/screens/layout/menu-navigation/components/collapsed-button";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 

@@ -1,11 +1,11 @@
+import { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
 import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 

@@ -1,11 +1,11 @@
+import { PROPOSED_CHANGES_EDITABLE_STATE, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { ProposedChangeEditForm } from "@/screens/proposed-changes/form/proposed-change-edit-form";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver from "@/shared/components/display/slide-over";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
-import { PROPOSED_CHANGES_EDITABLE_STATE, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/hooks/useQuery";
 import { useSchema } from "@/shared/hooks/useSchema";
-import { ProposedChangeEditForm } from "@/screens/proposed-changes/form/proposed-change-edit-form";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";

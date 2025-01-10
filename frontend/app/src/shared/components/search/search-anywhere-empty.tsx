@@ -1,6 +1,6 @@
+import { INFRAHUB_API_SERVER_URL } from "@/config/config";
 import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";
 import { SearchAnywhereItem } from "@/shared/components/search/search-anywhere-item";
-import { INFRAHUB_API_SERVER_URL } from "@/config/config";
 import { Icon } from "@iconify-icon/react";
 import { useCommandState } from "cmdk";
 

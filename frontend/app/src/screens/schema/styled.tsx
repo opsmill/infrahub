@@ -1,6 +1,6 @@
+import { QSP } from "@/config/qsp";
 import Accordion, { AccordionProps } from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/ui/badge";
-import { QSP } from "@/config/qsp";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 import { Tab } from "@headlessui/react";
 import { ReactElement } from "react";

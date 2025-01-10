@@ -1,4 +1,3 @@
-import { Tabs } from "@/shared/components/tabs-routes";
 import {
   ACCOUNT_GENERIC_OBJECT,
   ACCOUNT_GROUP_OBJECT,
@@ -7,6 +6,7 @@ import {
   OBJECT_PERMISSION_OBJECT,
 } from "@/config/constants";
 import { GET_ROLE_MANAGEMENT_COUNTS } from "@/shared/api/graphql/queries/role-management/getCounts";
+import { Tabs } from "@/shared/components/tabs-routes";
 import useQuery from "@/shared/hooks/useQuery";
 
 import { constructPath } from "@/shared/api/rest/fetch";

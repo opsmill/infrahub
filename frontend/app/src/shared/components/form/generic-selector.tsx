@@ -1,3 +1,9 @@
+import { PROFILE_KIND } from "@/config/constants";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { getObjectPermissionsQuery } from "@/screens/permission/queries/getObjectPermissions";
+import { PermissionData } from "@/screens/permission/types";
+import { getPermission } from "@/screens/permission/utils";
+import { genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
 import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
@@ -8,14 +14,8 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import Label from "@/shared/components/ui/label";
-import { PROFILE_KIND } from "@/config/constants";
 import useQuery from "@/shared/hooks/useQuery";
 import { useSchema } from "@/shared/hooks/useSchema";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { getObjectPermissionsQuery } from "@/screens/permission/queries/getObjectPermissions";
-import { PermissionData } from "@/screens/permission/types";
-import { getPermission } from "@/screens/permission/utils";
-import { genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useId, useState } from "react";

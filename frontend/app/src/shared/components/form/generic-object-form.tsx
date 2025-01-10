@@ -1,7 +1,7 @@
-import { GenericSelector } from "@/shared/components/form/generic-selector";
-import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
 import NoDataFound from "@/screens/errors/no-data-found";
 import { iGenericSchema } from "@/screens/schema/schema.atom";
+import { GenericSelector } from "@/shared/components/form/generic-selector";
+import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
 import { useState } from "react";
 
 interface GenericObjectFormProps extends Omit<ObjectFormProps, "kind"> {

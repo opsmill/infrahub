@@ -4,9 +4,9 @@ import { RouterProvider } from "react-router-dom";
 import { Slide, ToastContainer } from "react-toastify";
 
 import { router } from "@/app/router";
+import ErrorFallback from "@/screens/errors/error-fallback";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { AuthProvider } from "@/shared/hooks/useAuth";
-import ErrorFallback from "@/screens/errors/error-fallback";
 import { store } from "@/shared/stores";
 import { ApolloProvider } from "@apollo/client";
 import { addCollection } from "@iconify-icon/react";

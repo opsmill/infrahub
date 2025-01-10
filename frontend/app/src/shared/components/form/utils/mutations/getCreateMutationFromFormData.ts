@@ -1,9 +1,9 @@
+import { AttributeType } from "@/screens/objects/getObjectItemDisplayValue";
 import {
   DynamicFieldProps,
   FormFieldValue,
   isFormFieldValueFromPool,
 } from "@/shared/components/form/type";
-import { AttributeType } from "@/screens/objects/getObjectItemDisplayValue";
 
 export const getCreateMutationFromFormData = (
   fields: Array<DynamicFieldProps>,

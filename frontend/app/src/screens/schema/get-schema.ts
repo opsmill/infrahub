@@ -1,4 +1,3 @@
-import { store } from "@/shared/stores";
 import {
   IProfileSchema,
   genericsState,
@@ -7,6 +6,7 @@ import {
   profilesAtom,
   schemaState,
 } from "@/screens/schema/schema.atom";
+import { store } from "@/shared/stores";
 
 type GetSchema = (kind?: string | null) =>
   | {

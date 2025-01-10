@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
 import {
   getObjectAttributes,
   getObjectRelationships,
   getSchemaObjectColumns,
 } from "@/screens/object-items/getSchemaObjectColumns";
+import { describe, expect, it } from "vitest";
 import {
   C_deviceAttributeColumns,
   C_deviceObjectColumns,

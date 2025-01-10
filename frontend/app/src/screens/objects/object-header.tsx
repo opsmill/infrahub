@@ -1,13 +1,13 @@
-import { ObjectDetailsButton } from "@/shared/components/menu/object-details-button";
-import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
-import { Skeleton } from "@/shared/components/skeleton";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import useFilters from "@/shared/hooks/useFilters";
-import { useObjectDetails } from "@/shared/hooks/useObjectDetails";
-import { useObjectItems } from "@/shared/hooks/useObjectItems";
 import Content from "@/screens/layout/content";
 import { getPermission } from "@/screens/permission/utils";
 import { IModelSchema } from "@/screens/schema/schema.atom";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { ObjectDetailsButton } from "@/shared/components/menu/object-details-button";
+import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
+import { Skeleton } from "@/shared/components/skeleton";
+import useFilters from "@/shared/hooks/useFilters";
+import { useObjectDetails } from "@/shared/hooks/useObjectDetails";
+import { useObjectItems } from "@/shared/hooks/useObjectItems";
 
 type ObjectHeaderProps = {
   schema: IModelSchema;

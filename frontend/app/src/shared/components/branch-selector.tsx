@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
 import {
   Command,
@@ -18,7 +19,6 @@ import {
   CommandList,
 } from "@/shared/components/ui/command";
 import { useAuth } from "@/shared/hooks/useAuth";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { useCommandState } from "cmdk";
 import { Button, ButtonWithTooltip, LinkButton } from "./buttons/button-primitive";
 import BranchCreateForm from "./form/branch-create-form";

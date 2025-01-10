@@ -1,6 +1,6 @@
-import { SelectOption } from "@/shared/components/inputs/select";
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { components } from "@/shared/api/rest/types.generated";
+import { SelectOption } from "@/shared/components/inputs/select";
 import { RegisterOptions } from "react-hook-form";
 import { FormFieldError } from "./form";
 

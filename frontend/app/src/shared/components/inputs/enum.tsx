@@ -1,3 +1,9 @@
+import { IModelSchema } from "@/screens/schema/schema.atom";
+import { AttributeSchema } from "@/screens/schema/types";
+import {
+  ENUM_ADD_MUTATION,
+  ENUM_REMOVE_MUTATION,
+} from "@/shared/api/graphql/mutations/schema/enum";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
@@ -11,10 +17,7 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
-import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/shared/api/graphql/mutations/schema/enum";
 import { useMutation } from "@/shared/hooks/useQuery";
-import { AttributeSchema } from "@/screens/schema/types";
-import { IModelSchema } from "@/screens/schema/schema.atom";
 import { Icon } from "@iconify-icon/react";
 import React, { forwardRef, useState } from "react";
 

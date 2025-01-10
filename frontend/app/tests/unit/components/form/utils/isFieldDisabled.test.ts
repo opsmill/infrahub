@@ -1,4 +1,7 @@
-import { IsFieldDisabledParams, isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
+import {
+  IsFieldDisabledParams,
+  isFieldDisabled,
+} from "@/shared/components/form/utils/isFieldDisabled";
 import { describe, expect, it } from "vitest";
 
 describe("isFieldDisabled", () => {

@@ -1,11 +1,11 @@
+import Content from "@/screens/layout/content";
+import { UPDATE_ACCOUNT_PASSWORD } from "@/shared/api/graphql/mutations/accounts/updateAccountPassword";
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Card } from "@/shared/components/ui/card";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { UPDATE_ACCOUNT_PASSWORD } from "@/shared/api/graphql/mutations/accounts/updateAccountPassword";
 import { useMutation } from "@/shared/hooks/useQuery";
-import Content from "@/screens/layout/content";
 import { toast } from "react-toastify";
 
 type UpdatePasswordFormData = {

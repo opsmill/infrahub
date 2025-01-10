@@ -1,3 +1,10 @@
+import { Node } from "@/screens/objects/getObjectItemDisplayValue";
+import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
+import {
+  RelationshipComboboxList,
+  RelationshipComboboxListProps,
+} from "@/screens/objects/relationships/ui/relationship-combobox-list";
+import { RelationshipHierarchicalComboboxList } from "@/screens/objects/relationships/ui/relationship-hierarchical-combobox-list";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -14,14 +21,7 @@ import {
   PopoverTrigger,
 } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
-import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
-import {
-  RelationshipComboboxList,
-  RelationshipComboboxListProps,
-} from "@/screens/objects/relationships/ui/relationship-combobox-list";
-import { RelationshipHierarchicalComboboxList } from "@/screens/objects/relationships/ui/relationship-hierarchical-combobox-list";
 import { classNames } from "@/shared/utils/common";
-import { Node } from "@/screens/objects/getObjectItemDisplayValue";
 import { Icon } from "@iconify-icon/react";
 import { forwardRef, useState } from "react";
 

@@ -1,13 +1,13 @@
+import { QSP } from "@/config/qsp";
+import { branchesState } from "@/screens/branches/branches.atom";
+import { Branch } from "@/shared/api/graphql/generated/graphql";
+import { BRANCH_CREATE } from "@/shared/api/graphql/mutations/branches/createBranch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import InputField from "@/shared/components/form/fields/input.field";
 import { isMinLength, isRequired } from "@/shared/components/form/utils/validation";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { QSP } from "@/config/qsp";
 import { useMutation } from "@/shared/hooks/useQuery";
-import { Branch } from "@/shared/api/graphql/generated/graphql";
-import { BRANCH_CREATE } from "@/shared/api/graphql/mutations/branches/createBranch";
-import { branchesState } from "@/screens/branches/branches.atom";
 import { useAtom } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
 

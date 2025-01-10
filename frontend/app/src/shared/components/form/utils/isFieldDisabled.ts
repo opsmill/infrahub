@@ -1,8 +1,8 @@
-import { AuthContextType } from "@/shared/hooks/useAuth";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
 import { PermissionDecisionData } from "@/screens/permission/types";
 import { LineageOwner } from "@/shared/api/graphql/generated/graphql";
+import { AuthContextType } from "@/shared/hooks/useAuth";
 import { store } from "@/shared/stores";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
 
 export type IsFieldDisabledParams = {
   owner?: LineageOwner | null;

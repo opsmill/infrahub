@@ -1,9 +1,14 @@
+import { QSP } from "@/config/qsp";
+import {
+  IModelSchema,
+  genericsState,
+  profilesAtom,
+  schemaState,
+} from "@/screens/schema/schema.atom";
+import { isGenericSchema } from "@/screens/schema/utils";
 import Accordion from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/ui/badge";
 import { SearchInput } from "@/shared/components/ui/search-input";
-import { QSP } from "@/config/qsp";
-import { isGenericSchema } from "@/screens/schema/utils";
-import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";

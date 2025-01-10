@@ -1,9 +1,9 @@
+import { NODE_OBJECT } from "@/config/constants";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { getObjectDisplayLabel } from "@/shared/api/graphql/queries/objects/getObjectDisplayLabel";
 import { Clipboard } from "@/shared/components/buttons/clipboard";
 import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/shared/components/display/badge-circle";
-import { NODE_OBJECT } from "@/config/constants";
-import { getObjectDisplayLabel } from "@/shared/api/graphql/queries/objects/getObjectDisplayLabel";
 import useQuery from "@/shared/hooks/useQuery";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { gql } from "@apollo/client";
 
 type tId = {

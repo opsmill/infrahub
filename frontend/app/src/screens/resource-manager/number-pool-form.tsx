@@ -1,3 +1,15 @@
+import { NUMBER_POOL_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { AttributeType, RelationshipType } from "@/screens/objects/getObjectItemDisplayValue";
+import {
+  NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
+  NUMBER_POOL_NODE_FIELD,
+} from "@/screens/resource-manager/constants";
+import { iNodeSchema, schemaState } from "@/screens/schema/schema.atom";
+import { AttributeSchema } from "@/screens/schema/types";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
+import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
@@ -19,19 +31,7 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
-import { NUMBER_POOL_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
-import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
-import {
-  NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
-  NUMBER_POOL_NODE_FIELD,
-} from "@/screens/resource-manager/constants";
-import { AttributeSchema } from "@/screens/schema/types";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
-import { iNodeSchema, schemaState } from "@/screens/schema/schema.atom";
 import { datetimeAtom } from "@/shared/stores/time.atom";
-import { AttributeType, RelationshipType } from "@/screens/objects/getObjectItemDisplayValue";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";

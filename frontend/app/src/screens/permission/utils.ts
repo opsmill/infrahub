@@ -1,3 +1,4 @@
+import { configState } from "@/config/config.atom";
 import {
   Permission,
   PermissionAction,
@@ -6,7 +7,6 @@ import {
   PermissionDecisionData,
 } from "@/screens/permission/types";
 import { store } from "@/shared/stores";
-import { configState } from "@/config/config.atom";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
 const getMessage = (action: string, decision?: PermissionDecisionData): string => {

@@ -1,12 +1,12 @@
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/config/config";
+import { configState } from "@/config/config.atom";
 import { REFRESH_TOKEN_KEY } from "@/config/constants";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { components } from "@/shared/api/rest/types.generated";
-import { configState } from "@/config/config.atom";
-import { parseJwt } from "@/shared/utils/common";
 import { fetchUrl } from "@/shared/api/rest/fetch";
+import { components } from "@/shared/api/rest/types.generated";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { parseJwt } from "@/shared/utils/common";
 import { ObservableQuery } from "@apollo/client";
 import { useAtom } from "jotai/index";
 import { ReactElement, ReactNode, createContext, useContext, useState } from "react";

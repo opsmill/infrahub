@@ -1,8 +1,8 @@
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/config/config";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { Config, configState } from "@/config/config.atom";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { fetchUrl } from "@/shared/api/rest/fetch";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useSetAtom } from "jotai";
 import { ReactNode, useEffect, useState } from "react";
 import { toast } from "react-toastify";

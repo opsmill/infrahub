@@ -1,12 +1,12 @@
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import getMutationMetaDetailsFromFormData from "@/screens/object-item-meta-edit/getMutationMetaDetailsFromFormData";
+import { iNodeSchema } from "@/screens/schema/schema.atom";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
-import { iNodeSchema } from "@/screens/schema/schema.atom";
 import { datetimeAtom } from "@/shared/stores/time.atom";
-import getMutationMetaDetailsFromFormData from "@/screens/object-item-meta-edit/getMutationMetaDetailsFromFormData";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";

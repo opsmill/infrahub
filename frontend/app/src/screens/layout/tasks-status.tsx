@@ -1,14 +1,14 @@
+import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
+import { TASKS_STATUS_OBJECT } from "@/config/constants";
+import { QSP } from "@/config/qsp";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { TASKS_STATUS } from "@/shared/api/graphql/queries/tasks/getTasksStatus";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Pulse } from "@/shared/components/ui/pulse";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { TASKS_STATUS_OBJECT } from "@/config/constants";
-import { QSP } from "@/config/qsp";
-import { TASKS_STATUS } from "@/shared/api/graphql/queries/tasks/getTasksStatus";
 import useQuery from "@/shared/hooks/useQuery";
-import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 

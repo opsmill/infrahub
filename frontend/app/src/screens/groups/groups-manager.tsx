@@ -1,7 +1,3 @@
-import { Button } from "@/shared/components/buttons/button-primitive";
-import { SearchInput } from "@/shared/components/ui/search-input";
-import { getGroupsQuery } from "@/shared/api/graphql/queries/groups/getGroups";
-import useQuery from "@/shared/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
 import AddGroupTriggerButton from "@/screens/groups/add-group-trigger-button";
@@ -10,6 +6,10 @@ import { GroupDataFromAPI } from "@/screens/groups/types";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { getPermission } from "@/screens/permission/utils";
 import { IModelSchema } from "@/screens/schema/schema.atom";
+import { getGroupsQuery } from "@/shared/api/graphql/queries/groups/getGroups";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { SearchInput } from "@/shared/components/ui/search-input";
+import useQuery from "@/shared/hooks/useQuery";
 import { classNames } from "@/shared/utils/common";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";

@@ -1,8 +1,13 @@
+import { QSP } from "@/config/qsp";
+import {
+  IModelSchema,
+  genericsState,
+  profilesAtom,
+  schemaState,
+} from "@/screens/schema/schema.atom";
+import { isGenericSchema, isNodeSchema, isProfileSchema } from "@/screens/schema/utils";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
-import { QSP } from "@/config/qsp";
-import { isGenericSchema, isNodeSchema, isProfileSchema } from "@/screens/schema/utils";
-import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
 import { classNames } from "@/shared/utils/common";
 import { Tab } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";

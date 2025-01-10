@@ -1,4 +1,3 @@
-import { store } from "@/shared/stores";
 import {
   IModelSchema,
   IProfileSchema,
@@ -6,6 +5,7 @@ import {
   iNodeSchema,
   schemaState,
 } from "@/screens/schema/schema.atom";
+import { store } from "@/shared/stores";
 
 export const isOfKind = (kind: string, schema: IModelSchema) => {
   if (schema.kind === kind) return true;

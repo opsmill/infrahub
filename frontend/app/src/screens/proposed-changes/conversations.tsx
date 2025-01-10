@@ -1,22 +1,22 @@
-import { AddComment } from "@/shared/components/conversations/add-comment";
-import { Thread } from "@/shared/components/conversations/thread";
-import { Card } from "@/shared/components/ui/card";
-import { FormRef } from "@/shared/components/ui/form";
 import {
   ACCOUNT_GENERIC_OBJECT,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
   PROPOSED_CHANGES_THREAD_OBJECT,
 } from "@/config/constants";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
 import { deleteObject } from "@/shared/api/graphql/mutations/objects/deleteObject";
 import { getProposedChangesThreads } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesThreads";
+import { AddComment } from "@/shared/components/conversations/add-comment";
+import { Thread } from "@/shared/components/conversations/thread";
+import { Card } from "@/shared/components/ui/card";
+import { FormRef } from "@/shared/components/ui/form";
 import { useAuth } from "@/shared/hooks/useAuth";
 import useQuery from "@/shared/hooks/useQuery";
-import ErrorScreen from "@/screens/errors/error-screen";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";

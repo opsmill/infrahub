@@ -1,5 +1,5 @@
-import Accordion from "@/shared/components/display/accordion";
 import { DiffProperty, DiffStatus } from "@/screens/diff/node-diff/types";
+import Accordion from "@/shared/components/display/accordion";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 import { capitalizeFirstLetter } from "@/shared/utils/string";
 import { ReactNode } from "react";

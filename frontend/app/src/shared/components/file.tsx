@@ -1,7 +1,7 @@
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import NoDataFound from "@/screens/errors/no-data-found";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { fetchStream } from "@/shared/api/rest/fetch";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { CodeEditor } from "./editor/code-editor";

@@ -1,19 +1,19 @@
-import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { HIDE_AUTO_GENERATED_FILTER } from "@/screens/groups/groups-auto-generated-filter-button";
+import { TREE_ROOT_ID } from "@/screens/ipam/constants";
+import { EMPTY_TREE, PrefixNode, updateTreeData } from "@/screens/ipam/ipam-tree/utils";
+import { getObjectDetailsUrl } from "@/screens/objects/objects";
+import { IModelSchema, genericsState, schemaState } from "@/screens/schema/schema.atom";
 import {
   objectAncestorsQuery,
   objectChildrenQuery,
   objectTopLevelTreeQuery,
 } from "@/shared/api/graphql/queries/objects/objectTreeQuery";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
 import useFilters from "@/shared/hooks/useFilters";
 import { useLazyQuery } from "@/shared/hooks/useQuery";
-import { HIDE_AUTO_GENERATED_FILTER } from "@/screens/groups/groups-auto-generated-filter-button";
-import { TREE_ROOT_ID } from "@/screens/ipam/constants";
-import { EMPTY_TREE, PrefixNode, updateTreeData } from "@/screens/ipam/ipam-tree/utils";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
-import { IModelSchema, genericsState, schemaState } from "@/screens/schema/schema.atom";
 import { datetimeAtom } from "@/shared/stores/time.atom";
-import { constructPath } from "@/shared/api/rest/fetch";
-import { getObjectDetailsUrl } from "@/screens/objects/objects";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";

@@ -1,5 +1,3 @@
-import { Filter } from "@/shared/hooks/useFilters";
-import { IModelSchema } from "@/screens/schema/schema.atom";
 import {
   AttributeType,
   Node,
@@ -7,6 +5,8 @@ import {
   RelationshipOneType,
   RelationshipType,
 } from "@/screens/objects/getObjectItemDisplayValue";
+import { IModelSchema } from "@/screens/schema/schema.atom";
+import { Filter } from "@/shared/hooks/useFilters";
 
 export const getObjectFromFilters = (
   schema: IModelSchema | null,

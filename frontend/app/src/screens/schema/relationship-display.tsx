@@ -1,5 +1,5 @@
-import { Badge } from "@/shared/components/ui/badge";
 import { components } from "@/shared/api/rest/types.generated";
+import { Badge } from "@/shared/components/ui/badge";
 import { warnUnexpectedType } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { AccordionStyled, ModelDisplay, PropertyRow } from "./styled";

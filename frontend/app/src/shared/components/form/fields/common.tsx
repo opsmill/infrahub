@@ -1,3 +1,4 @@
+import { getObjectDetailsUrl2 } from "@/screens/objects/objects";
 import { QuestionMark } from "@/shared/components/display/question-mark";
 import {
   AttributeValueFromProfile,
@@ -9,7 +10,6 @@ import { FormLabel } from "@/shared/components/ui/form";
 import { LabelProps } from "@/shared/components/ui/label";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
-import { getObjectDetailsUrl2 } from "@/screens/objects/objects";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
 

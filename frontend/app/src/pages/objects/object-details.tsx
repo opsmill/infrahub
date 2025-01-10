@@ -1,5 +1,4 @@
 import { ARTIFACT_OBJECT, GRAPHQL_QUERY_OBJECT, TASK_OBJECT } from "@/config/constants";
-import { useObjectDetails } from "@/shared/hooks/useObjectDetails";
 import ArtifactsDetails from "@/screens/artifacts/object-item-details-paginated";
 import ErrorScreen from "@/screens/errors/error-screen";
 import NoDataFound from "@/screens/errors/no-data-found";
@@ -9,6 +8,7 @@ import ObjectItemDetails from "@/screens/object-item-details/object-item-details
 import ObjectItems from "@/screens/object-items/object-items-paginated";
 import { genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { useObjectDetails } from "@/shared/hooks/useObjectDetails";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { Navigate, useParams } from "react-router-dom";

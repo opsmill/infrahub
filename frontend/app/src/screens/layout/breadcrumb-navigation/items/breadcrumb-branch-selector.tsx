@@ -1,10 +1,15 @@
-import { Combobox, ComboboxContent, ComboboxList, ComboboxTrigger } from "@/shared/components/ui/combobox";
-import { CommandEmpty, CommandItem } from "@/shared/components/ui/command";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { breadcrumbItemStyle } from "@/screens/layout/breadcrumb-navigation/style";
 import { branchesState } from "@/screens/branches/branches.atom";
-import { classNames } from "@/shared/utils/common";
+import { breadcrumbItemStyle } from "@/screens/layout/breadcrumb-navigation/style";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { constructPath } from "@/shared/api/rest/fetch";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxList,
+  ComboboxTrigger,
+} from "@/shared/components/ui/combobox";
+import { CommandEmpty, CommandItem } from "@/shared/components/ui/command";
+import { classNames } from "@/shared/utils/common";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";

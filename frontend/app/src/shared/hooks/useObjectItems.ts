@@ -1,11 +1,19 @@
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
+import {
+  getObjectAttributes,
+  getObjectRelationships,
+} from "@/screens/object-items/getSchemaObjectColumns";
+import { getPermission } from "@/screens/permission/utils";
+import {
+  IModelSchema,
+  genericsState,
+  profilesAtom,
+  schemaState,
+} from "@/screens/schema/schema.atom";
 import { getTokens } from "@/shared/api/graphql/queries/accounts/getTokens";
 import { getObjectItemsPaginated } from "@/shared/api/graphql/queries/objects/getObjectItems";
 import { Filter } from "@/shared/hooks/useFilters";
 import useQuery from "@/shared/hooks/useQuery";
-import { getPermission } from "@/screens/permission/utils";
-import { IModelSchema, genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
-import { getObjectAttributes, getObjectRelationships } from "@/screens/object-items/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 

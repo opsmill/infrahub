@@ -1,12 +1,12 @@
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { proposedChangedState } from "@/screens/proposed-changes/proposedChanges.atom";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { resolveConflict } from "@/shared/api/graphql/mutations/diff/resolveConflict";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { resolveConflict } from "@/shared/api/graphql/mutations/diff/resolveConflict";
 import { useAuth } from "@/shared/hooks/useAuth";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
-import { proposedChangedState } from "@/screens/proposed-changes/proposedChanges.atom";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";

@@ -9,6 +9,13 @@ import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import RelationshipDetails from "@/screens/object-item-details/relationship-details-paginated";
 import { RelationshipsDetails } from "@/screens/object-item-details/relationships-details-paginated";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import {
+  getObjectAttributes,
+  getObjectRelationships,
+  getSchemaObjectColumns,
+  getTabs,
+} from "@/screens/object-items/getSchemaObjectColumns";
+import { getObjectItemDisplayValue } from "@/screens/objects/getObjectItemDisplayValue";
 import { showMetaEditState } from "@/screens/objects/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/screens/objects/showMetaEdit.atom";
 import { getPermission } from "@/screens/permission/utils";
@@ -23,13 +30,6 @@ import { Tabs } from "@/shared/components/tabs";
 import useQuery from "@/shared/hooks/useQuery";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { classNames } from "@/shared/utils/common";
-import { getObjectItemDisplayValue } from "@/screens/objects/getObjectItemDisplayValue";
-import {
-  getObjectAttributes,
-  getObjectRelationships,
-  getSchemaObjectColumns,
-  getTabs,
-} from "@/screens/object-items/getSchemaObjectColumns";
 import { gql } from "@apollo/client";
 import { LockClosedIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";

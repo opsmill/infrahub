@@ -1,6 +1,6 @@
+import { IModelSchema } from "@/screens/schema/schema.atom";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import { Filter } from "@/shared/hooks/useFilters";
-import { IModelSchema } from "@/screens/schema/schema.atom";
 import { describe, expect } from "vitest";
 import { buildRelationshipSchema } from "../form/utils/getFormFieldsFromSchema.test";
 

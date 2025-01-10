@@ -1,11 +1,11 @@
 import { GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
-import useQuery from "@/shared/hooks/useQuery";
 import ErrorScreen from "@/screens/errors/error-screen";
 import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { getObjectPermissionsQuery } from "@/screens/permission/queries/getObjectPermissions";
 import { RoleManagementNavigation } from "@/screens/role-management";
+import useQuery from "@/shared/hooks/useQuery";
 import { gql } from "@apollo/client";
 import { Outlet } from "react-router-dom";
 

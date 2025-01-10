@@ -1,5 +1,5 @@
-import { store } from "@/shared/stores";
 import { schemaState } from "@/screens/schema/schema.atom";
+import { store } from "@/shared/stores";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   generateGenericSchema,

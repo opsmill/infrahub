@@ -6,9 +6,9 @@ import {
   IP_PREFIX_GENERIC,
 } from "@/screens/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
+import { genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
 import { isGenericSchema } from "@/screens/schema/utils";
 import { store } from "@/shared/stores";
-import { genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
 import { constructPath, overrideQueryParams } from "../../shared/api/rest/fetch";
 
 const regex = /^Related/; // starts with Related

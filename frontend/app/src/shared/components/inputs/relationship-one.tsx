@@ -1,3 +1,8 @@
+import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
+import { Node, RelationshipManyType } from "@/screens/objects/getObjectItemDisplayValue";
+import { AddRelationshipAction } from "@/screens/objects/relationships/ui/add-relationship-action";
+import { getDropdownOptions } from "@/shared/api/graphql/queries/objects/dropdownOptions";
+import { generateRelationshipListQuery } from "@/shared/api/graphql/queries/objects/generateRelationshipListQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { PoolValue } from "@/shared/components/form/pool-selector";
 import {
@@ -10,15 +15,10 @@ import {
 } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { Spinner } from "@/shared/components/ui/spinner";
-import { getDropdownOptions } from "@/shared/api/graphql/queries/objects/dropdownOptions";
-import { generateRelationshipListQuery } from "@/shared/api/graphql/queries/objects/generateRelationshipListQuery";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { useLazyQuery } from "@/shared/hooks/useQuery";
 import { useSchema } from "@/shared/hooks/useSchema";
-import { POOLS_DICTIONNARY, POOLS_PEER } from "@/screens/ipam/constants";
-import { AddRelationshipAction } from "@/screens/objects/relationships/ui/add-relationship-action";
 import { classNames } from "@/shared/utils/common";
-import { Node, RelationshipManyType } from "@/screens/objects/getObjectItemDisplayValue";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";

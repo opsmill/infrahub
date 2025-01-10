@@ -1,8 +1,8 @@
+import { DIFF_TABS } from "@/config/constants";
+import { QSP } from "@/config/qsp";
 import DatetimeField from "@/shared/components/form/fields/datetime.field";
 import { Tabs } from "@/shared/components/tabs";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { DIFF_TABS } from "@/config/constants";
-import { QSP } from "@/config/qsp";
 import { DateTimeParam, StringParam, useQueryParam } from "use-query-params";
 import { ArtifactsDiff } from "../diff/artifact-diff/artifacts-diff";
 import { FilesDiff } from "../diff/file-diff/files-diff";

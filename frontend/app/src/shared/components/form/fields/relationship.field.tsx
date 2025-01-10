@@ -1,5 +1,11 @@
+import { Node } from "@/screens/objects/getObjectItemDisplayValue";
+import { genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
+import { getRelationshipParent } from "@/shared/api/graphql/queries/objects/getRelationshipParent";
 import { LabelFormField } from "@/shared/components/form/fields/common";
-import { DynamicRelationshipFieldProps, FormRelationshipValue } from "@/shared/components/form/type";
+import {
+  DynamicRelationshipFieldProps,
+  FormRelationshipValue,
+} from "@/shared/components/form/type";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
 import { Badge } from "@/shared/components/ui/badge";
@@ -12,11 +18,8 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
-import { getRelationshipParent } from "@/shared/api/graphql/queries/objects/getRelationshipParent";
 import useQuery from "@/shared/hooks/useQuery";
 import { store } from "@/shared/stores";
-import { genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
-import { Node } from "@/screens/objects/getObjectItemDisplayValue";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";

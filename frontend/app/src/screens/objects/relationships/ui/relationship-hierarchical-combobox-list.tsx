@@ -1,13 +1,13 @@
+import ErrorScreen from "@/screens/errors/error-screen";
+import { relationshipsInfiniteQueryOptions } from "@/screens/objects/relationships/domain/get-relationships/get-relationships.query";
+import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
+import { iNodeSchema, schemaState } from "@/screens/schema/schema.atom";
+import { getRootSchemaOfHierarchicalSchema, isHierarchicalSchema } from "@/screens/schema/utils";
 import { Badge } from "@/shared/components/ui/badge";
 import { ComboboxEmpty, ComboboxItem } from "@/shared/components/ui/combobox";
 import { Command, CommandInput, CommandList } from "@/shared/components/ui/command";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { useSchema } from "@/shared/hooks/useSchema";
-import ErrorScreen from "@/screens/errors/error-screen";
-import { relationshipsInfiniteQueryOptions } from "@/screens/objects/relationships/domain/get-relationships/get-relationships.query";
-import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
-import { getRootSchemaOfHierarchicalSchema, isHierarchicalSchema } from "@/screens/schema/utils";
-import { iNodeSchema, schemaState } from "@/screens/schema/schema.atom";
 import { debounce } from "@/shared/utils/common";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";

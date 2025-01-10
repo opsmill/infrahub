@@ -1,13 +1,13 @@
-import { Avatar } from "@/shared/components/display/avatar";
-import { Tabs } from "@/shared/components/tabs";
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { getProfileDetails } from "@/shared/api/graphql/queries/accounts/getProfileDetails";
-import { useTitle } from "@/shared/hooks/useTitle";
 import ErrorScreen from "@/screens/errors/error-screen";
 import Content from "@/screens/layout/content";
 import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { genericsState } from "@/screens/schema/schema.atom";
+import { getProfileDetails } from "@/shared/api/graphql/queries/accounts/getProfileDetails";
+import { Avatar } from "@/shared/components/display/avatar";
+import { Tabs } from "@/shared/components/tabs";
+import { useTitle } from "@/shared/hooks/useTitle";
 import { gql, useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";

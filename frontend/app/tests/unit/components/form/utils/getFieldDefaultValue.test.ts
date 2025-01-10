@@ -1,9 +1,9 @@
+import { AttributeType } from "@/screens/objects/getObjectItemDisplayValue";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
   GetFieldDefaultValue,
   getFieldDefaultValue,
 } from "@/shared/components/form/utils/getFieldDefaultValue";
-import { AttributeType } from "@/screens/objects/getObjectItemDisplayValue";
 import { describe, expect, it } from "vitest";
 import { buildAttributeSchema, buildRelationshipSchema } from "./getFormFieldsFromSchema.test";
 

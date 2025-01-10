@@ -1,3 +1,4 @@
+import { iGenericSchema, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
@@ -11,7 +12,6 @@ import {
 } from "@/shared/components/ui/combobox";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import useFilters from "@/shared/hooks/useFilters";
-import { iGenericSchema, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 

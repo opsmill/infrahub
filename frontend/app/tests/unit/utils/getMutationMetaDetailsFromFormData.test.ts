@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import getMutationMetaDetailsFromFormData from "@/screens/object-item-meta-edit/getMutationMetaDetailsFromFormData";
+import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
+import { describe, expect, it } from "vitest";
 import {
   deviceDetailsMocksData,
   deviceDetailsMocksSchema,

@@ -1,3 +1,5 @@
+import { IModelSchema } from "@/screens/schema/schema.atom";
+import { isGenericSchema } from "@/screens/schema/utils";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { FilterKindSelector } from "@/shared/components/filters/filter-kind-selector";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
@@ -5,8 +7,6 @@ import { DynamicInput } from "@/shared/components/form/dynamic-form";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { Form, FormProps, FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { Filter } from "@/shared/hooks/useFilters";
-import { isGenericSchema } from "@/screens/schema/utils";
-import { IModelSchema } from "@/screens/schema/schema.atom";
 import { classNames } from "@/shared/utils/common";
 import { forwardRef } from "react";
 

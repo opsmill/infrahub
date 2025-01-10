@@ -1,3 +1,6 @@
+import { Node, RelationshipManyType } from "@/screens/objects/getObjectItemDisplayValue";
+import { AddRelationshipAction } from "@/screens/objects/relationships/ui/add-relationship-action";
+import { generateRelationshipListQuery } from "@/shared/api/graphql/queries/objects/generateRelationshipListQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -10,12 +13,9 @@ import {
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
-import { generateRelationshipListQuery } from "@/shared/api/graphql/queries/objects/generateRelationshipListQuery";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { useLazyQuery } from "@/shared/hooks/useQuery";
-import { AddRelationshipAction } from "@/screens/objects/relationships/ui/add-relationship-action";
 import { classNames } from "@/shared/utils/common";
-import { Node, RelationshipManyType } from "@/screens/objects/getObjectItemDisplayValue";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";

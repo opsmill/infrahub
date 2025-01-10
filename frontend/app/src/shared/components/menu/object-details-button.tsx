@@ -1,3 +1,6 @@
+import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
+import { QSP } from "@/config/qsp";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import {
   DropdownMenu,
@@ -5,9 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { QSP } from "@/config/qsp";
-import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
 import { CopyToClipboard } from "../buttons/copy-to-clipboard";

@@ -1,6 +1,6 @@
 import { CONFIG } from "@/config/config";
-import { WSClient } from "@/shared/api/graphql/websocket";
 import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { WSClient } from "@/shared/api/graphql/websocket";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import {
   OperationVariables,

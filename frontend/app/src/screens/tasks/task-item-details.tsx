@@ -1,16 +1,16 @@
 import { TASK_OBJECT } from "@/config/constants";
 import useQuery from "@/shared/hooks/useQuery";
 
+import { QSP } from "@/config/qsp";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { TASK_DETAILS } from "@/shared/api/graphql/queries/tasks/getTasksItemDetails";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import { List } from "@/shared/components/table/list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
 import { SearchInput } from "@/shared/components/ui/search-input";
-import { QSP } from "@/config/qsp";
-import { TASK_DETAILS } from "@/shared/api/graphql/queries/tasks/getTasksItemDetails";
-import ErrorScreen from "@/screens/errors/error-screen";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";

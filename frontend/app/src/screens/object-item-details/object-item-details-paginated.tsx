@@ -2,6 +2,13 @@ import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST, TASK_TAB, TASK_TARGET } from "@/
 import { QSP } from "@/config/qsp";
 import { currentBranchAtom } from "@/screens/branches/branches.atom";
 import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
+import {
+  getObjectAttributes,
+  getObjectRelationships,
+  getObjectTabs,
+  getTabs,
+} from "@/screens/object-items/getSchemaObjectColumns";
+import { ObjectAttributeValue } from "@/screens/objects/getObjectItemDisplayValue";
 import { showMetaEditState } from "@/screens/objects/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/screens/objects/showMetaEdit.atom";
 import { Permission } from "@/screens/permission/types";
@@ -9,20 +16,13 @@ import { IModelSchema, genericsState, schemaState } from "@/screens/schema/schem
 import { TaskItemDetails } from "@/screens/tasks/task-item-details";
 import { TaskItems } from "@/screens/tasks/task-items";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import SlideOver from "@/shared/components/display/slide-over";
 import { Tabs } from "@/shared/components/tabs";
 import { Link } from "@/shared/components/ui/link";
 import { useTitle } from "@/shared/hooks/useTitle";
-import { constructPath } from "@/shared/api/rest/fetch";
-import { ObjectAttributeValue } from "@/screens/objects/getObjectItemDisplayValue";
-import {
-  getObjectAttributes,
-  getObjectRelationships,
-  getObjectTabs,
-  getTabs,
-} from "@/screens/object-items/getSchemaObjectColumns";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";

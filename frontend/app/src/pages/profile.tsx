@@ -1,6 +1,6 @@
-import { useAuth } from "@/shared/hooks/useAuth";
 import { UserProfilePage } from "@/screens/user-profile/user-profile";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { useAuth } from "@/shared/hooks/useAuth";
 import { Navigate } from "react-router-dom";
 
 export function Component() {

@@ -1,7 +1,7 @@
-import { Badge } from "@/shared/components/ui/badge";
 import { DiffThread } from "@/screens/diff/node-diff/thread";
 import { DiffRelationship, DiffStatus } from "@/screens/diff/node-diff/types";
 import { DiffRow } from "@/screens/diff/node-diff/utils";
+import { Badge } from "@/shared/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router-dom";
 import { DiffNodeRelationshipElement } from "./node-relationship-element";

@@ -1,26 +1,26 @@
-import { Button } from "@/shared/components/buttons/button";
-import { AddComment } from "@/shared/components/conversations/add-comment";
-import { Thread } from "@/shared/components/conversations/thread";
-import Accordion from "@/shared/components/display/accordion";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/config/config";
 import {
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/config/constants";
 import { QSP } from "@/config/qsp";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import ErrorScreen from "@/screens/errors/error-screen";
+import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import { schemaState } from "@/screens/schema/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
 import { deleteObject } from "@/shared/api/graphql/mutations/objects/deleteObject";
 import { getProposedChangesFilesThreads } from "@/shared/api/graphql/queries/proposed-changes/getProposedChangesFilesThreads";
+import { fetchStream } from "@/shared/api/rest/fetch";
+import { Button } from "@/shared/components/buttons/button";
+import { AddComment } from "@/shared/components/conversations/add-comment";
+import { Thread } from "@/shared/components/conversations/thread";
+import Accordion from "@/shared/components/display/accordion";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useAuth } from "@/shared/hooks/useAuth";
 import useQuery from "@/shared/hooks/useQuery";
-import ErrorScreen from "@/screens/errors/error-screen";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
-import { schemaState } from "@/screens/schema/schema.atom";
 import { datetimeAtom } from "@/shared/stores/time.atom";
-import { fetchStream } from "@/shared/api/rest/fetch";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { PencilIcon } from "@heroicons/react/24/outline";

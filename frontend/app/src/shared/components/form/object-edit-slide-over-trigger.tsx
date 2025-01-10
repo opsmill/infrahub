@@ -1,8 +1,8 @@
-import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
-import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectItemEditComponent from "@/screens/object-item-edit/object-item-edit-paginated";
 import { Permission } from "@/screens/permission/types";
 import { IModelSchema } from "@/screens/schema/schema.atom";
+import { ButtonProps, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";

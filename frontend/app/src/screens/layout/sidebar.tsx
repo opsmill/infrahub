@@ -1,9 +1,9 @@
+import { SIDEBAR_COLLAPSED_KEY } from "@/config/localStorage";
+import MenuNavigation from "@/screens/layout/menu-navigation/menu-navigation";
 import { AccountMenu } from "@/shared/components/account-menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { SearchAnywhere } from "@/shared/components/search/search-anywhere";
-import { SIDEBAR_COLLAPSED_KEY } from "@/config/localStorage";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
-import MenuNavigation from "@/screens/layout/menu-navigation/menu-navigation";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 

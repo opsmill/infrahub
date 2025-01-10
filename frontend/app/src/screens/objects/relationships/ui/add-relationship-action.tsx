@@ -1,8 +1,8 @@
+import { Node } from "@/screens/objects/getObjectItemDisplayValue";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
 import { useSchema } from "@/shared/hooks/useSchema";
-import { Node } from "@/screens/objects/getObjectItemDisplayValue";
 import React, { useState } from "react";
 
 export interface AddRelationshipActionProps {

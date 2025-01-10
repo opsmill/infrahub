@@ -1,5 +1,5 @@
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import Content from "@/screens/layout/content";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Outlet } from "react-router-dom";
 import IpNamespaceSelector from "../../screens/ipam/ip-namespace-selector";
 import IpamTree from "../../screens/ipam/ipam-tree/ipam-tree";

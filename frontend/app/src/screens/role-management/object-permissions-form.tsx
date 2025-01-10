@@ -1,3 +1,9 @@
+import { ACCOUNT_ROLE_OBJECT, OBJECT_PERMISSION_OBJECT } from "@/config/constants";
+import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { AttributeType, RelationshipType } from "@/screens/objects/getObjectItemDisplayValue";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
+import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { NodeFormProps } from "@/shared/components/form/node-form";
 import { FormFieldValue } from "@/shared/components/form/type";
@@ -5,13 +11,7 @@ import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDef
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { ACCOUNT_ROLE_OBJECT, OBJECT_PERMISSION_OBJECT } from "@/config/constants";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
-import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
 import { datetimeAtom } from "@/shared/stores/time.atom";
-import { AttributeType, RelationshipType } from "@/screens/objects/getObjectItemDisplayValue";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
