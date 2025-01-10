@@ -6,7 +6,7 @@ import { Route, Routes } from "react-router-dom";
 import { configState } from "../../../src/config/config.atom";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
 import { ObjectItemsPage } from "../../../src/pages/objects/object-items";
-import { schemaState } from "../../../src/screens/schema/schema.atom";
+import { schemaState } from "../../../src/entities/schema/schema.atom";
 import { AuthProvider } from "../../../src/shared/hooks/useAuth";
 import { mockedToken } from "../../fixtures/auth";
 import { configMocks } from "../../mocks/data/config";

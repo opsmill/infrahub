@@ -1,8 +1,8 @@
 import { Root } from "@/app/root";
 import { NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
-import { constructPathForIpam } from "@/screens/ipam/common/utils";
-import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/screens/ipam/constants";
-import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
+import { constructPathForIpam } from "@/entities/ipam/common/utils";
+import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { RequireAuth } from "@/shared/hooks/useAuth";
 import queryString from "query-string";
@@ -37,7 +37,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "/",
-            lazy: () => import("@/screens/layout/layout"),
+            lazy: () => import("@/shared/components/layout/layout"),
             children: [
               {
                 index: true,
@@ -285,11 +285,11 @@ export const router = createBrowserRouter([
                 children: [
                   {
                     index: true,
-                    lazy: () => import("@/screens/ipam/ipam-router"),
+                    lazy: () => import("@/entities/ipam/ipam-router"),
                   },
                   {
                     path: IPAM_ROUTE.ADDRESSES,
-                    lazy: () => import("@/screens/ipam/ipam-router"),
+                    lazy: () => import("@/entities/ipam/ipam-router"),
                     handle: {
                       breadcrumb: () => {
                         return {
@@ -302,7 +302,7 @@ export const router = createBrowserRouter([
                     children: [
                       {
                         path: ":ip_address",
-                        lazy: () => import("@/screens/ipam/ipam-router"),
+                        lazy: () => import("@/entities/ipam/ipam-router"),
                         handle: {
                           breadcrumb: (match: UIMatch) => {
                             return {
@@ -317,7 +317,7 @@ export const router = createBrowserRouter([
                   },
                   {
                     path: IPAM_ROUTE.PREFIXES,
-                    lazy: () => import("@/screens/ipam/ipam-router"),
+                    lazy: () => import("@/entities/ipam/ipam-router"),
                     handle: {
                       breadcrumb: () => {
                         return {
@@ -330,7 +330,7 @@ export const router = createBrowserRouter([
                     children: [
                       {
                         path: ":prefix",
-                        lazy: () => import("@/screens/ipam/ipam-router"),
+                        lazy: () => import("@/entities/ipam/ipam-router"),
                         handle: {
                           breadcrumb: (match: UIMatch) => {
                             return {
@@ -343,7 +343,7 @@ export const router = createBrowserRouter([
                         children: [
                           {
                             path: ":ip_address",
-                            lazy: () => import("@/screens/ipam/ipam-router"),
+                            lazy: () => import("@/entities/ipam/ipam-router"),
                             handle: {
                               breadcrumb: (match: UIMatch) => {
                                 return {
@@ -361,79 +361,79 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                path: "role-management",
+                path: "role-manager",
                 lazy: () => import("@/pages/role-management"),
                 handle: {
                   breadcrumb: () => {
                     return {
                       type: "link",
                       label: "Users & Permissions",
-                      to: constructPath("/role-management"),
+                      to: constructPath("/role-manager"),
                     };
                   },
                 },
                 children: [
                   {
                     index: true,
-                    lazy: () => import("@/screens/role-management/accounts"),
+                    lazy: () => import("@/entities/role-manager/accounts"),
                     handle: {
                       breadcrumb: () => {
                         return {
                           type: "link",
                           label: "Accounts",
-                          to: constructPath("/role-management/accounts"),
+                          to: constructPath("/role-manager/accounts"),
                         };
                       },
                     },
                   },
                   {
                     path: "groups",
-                    lazy: () => import("@/screens/role-management/groups"),
+                    lazy: () => import("@/entities/role-manager/groups"),
                     handle: {
                       breadcrumb: () => {
                         return {
                           type: "link",
                           label: "Groups",
-                          to: constructPath("/role-management/groups"),
+                          to: constructPath("/role-manager/groups"),
                         };
                       },
                     },
                   },
                   {
                     path: "roles",
-                    lazy: () => import("@/screens/role-management/roles"),
+                    lazy: () => import("@/entities/role-manager/roles"),
                     handle: {
                       breadcrumb: () => {
                         return {
                           type: "link",
                           label: "Roles",
-                          to: constructPath("/role-management/roles"),
+                          to: constructPath("/role-manager/roles"),
                         };
                       },
                     },
                   },
                   {
                     path: "global-permissions",
-                    lazy: () => import("@/screens/role-management/global-permissions"),
+                    lazy: () => import("@/entities/role-manager/global-permissions"),
                     handle: {
                       breadcrumb: () => {
                         return {
                           type: "link",
                           label: "Global Permissions",
-                          to: constructPath("/role-management/global-permissions"),
+                          to: constructPath("/role-manager/global-permissions"),
                         };
                       },
                     },
                   },
                   {
                     path: "object-permissions",
-                    lazy: () => import("@/screens/role-management/object-permissions"),
+                    lazy: () => import("@/entities/role-manager/object-permissions"),
                     handle: {
                       breadcrumb: () => {
                         return {
                           type: "link",
                           label: "Object Permissions",
-                          to: constructPath("/role-management/object-permissions"),
+                          to: constructPath("/role-manager/object-permissions"),
                         };
                       },
                     },

@@ -1,5 +1,5 @@
-import { Node } from "@/screens/objects/getObjectItemDisplayValue";
-import { genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
+import { Node } from "@/entities/objects/getObjectItemDisplayValue";
+import { genericsState, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
 import { getRelationshipParent } from "@/shared/api/graphql/queries/objects/getRelationshipParent";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import {

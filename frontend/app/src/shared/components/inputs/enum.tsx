@@ -1,5 +1,5 @@
-import { IModelSchema } from "@/screens/schema/schema.atom";
-import { AttributeSchema } from "@/screens/schema/types";
+import { IModelSchema } from "@/entities/schema/schema.atom";
+import { AttributeSchema } from "@/entities/schema/types";
 import {
   ENUM_ADD_MUTATION,
   ENUM_REMOVE_MUTATION,

@@ -1,7 +1,7 @@
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
-import { AttributeType } from "@/screens/objects/getObjectItemDisplayValue";
-import { IModelSchema } from "@/screens/schema/schema.atom";
-import { RelationshipSchema } from "@/screens/schema/types";
+import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { AttributeType } from "@/entities/objects/getObjectItemDisplayValue";
+import { IModelSchema } from "@/entities/schema/schema.atom";
+import { RelationshipSchema } from "@/entities/schema/types";
 import { components } from "@/shared/api/rest/types.generated";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { AuthContextType } from "@/shared/hooks/useAuth";

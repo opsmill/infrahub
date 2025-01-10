@@ -1,5 +1,5 @@
 import { QSP } from "@/config/qsp";
-import { branchesState } from "@/screens/branches/branches.atom";
+import { branchesState } from "@/entities/branches/branches.atom";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { BRANCH_CREATE } from "@/shared/api/graphql/mutations/branches/createBranch";
 import { Button } from "@/shared/components/buttons/button-primitive";

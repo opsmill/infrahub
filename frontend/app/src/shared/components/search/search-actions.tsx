@@ -1,7 +1,7 @@
-import { menuQueryOptions } from "@/screens/layout/menu-navigation/get-menu";
-import { MenuItem } from "@/screens/layout/menu-navigation/types";
-import { IModelSchema, genericsState, schemaState } from "@/screens/schema/schema.atom";
+import { IModelSchema, genericsState, schemaState } from "@/entities/schema/schema.atom";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { menuQueryOptions } from "@/shared/components/layout/menu-navigation/get-menu";
+import { MenuItem } from "@/shared/components/layout/menu-navigation/types";
 import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";
 import { SearchAnywhereItem } from "@/shared/components/search/search-anywhere-item";
 import { Badge } from "@/shared/components/ui/badge";

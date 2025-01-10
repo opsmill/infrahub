@@ -1,4 +1,4 @@
-import { ProposedChangesPage } from "@/screens/proposed-changes/items";
+import { ProposedChangesPage } from "@/entities/proposed-changes/items";
 
 export function Component() {
   return <ProposedChangesPage />;

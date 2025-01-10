@@ -1,5 +1,5 @@
-import { IModelSchema } from "@/screens/schema/schema.atom";
-import { AttributeSchema } from "@/screens/schema/types";
+import { IModelSchema } from "@/entities/schema/schema.atom";
+import { AttributeSchema } from "@/entities/schema/types";
 import {
   DROPDOWN_ADD_MUTATION,
   DROPDOWN_REMOVE_MUTATION,

@@ -1,6 +1,6 @@
-import NoDataFound from "@/screens/errors/no-data-found";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { fetchStream } from "@/shared/api/rest/fetch";
+import NoDataFound from "@/shared/components/errors/no-data-found";
+import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";

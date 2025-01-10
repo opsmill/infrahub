@@ -1,6 +1,6 @@
-import ObjectItemMetaEdit from "@/screens/object-item-meta-edit/object-item-meta-edit";
-import { metaEditFieldDetailsState } from "@/screens/objects/showMetaEdit.atom";
-import { Permission } from "@/screens/permission/types";
+import ObjectItemMetaEdit from "@/entities/objects/object-item-meta-edit/object-item-meta-edit";
+import { metaEditFieldDetailsState } from "@/entities/objects/showMetaEdit.atom";
+import { Permission } from "@/entities/permission/types";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai/index";

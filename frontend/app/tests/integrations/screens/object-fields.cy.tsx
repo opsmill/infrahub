@@ -2,7 +2,7 @@
 
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
-import { schemaState } from "../../../src/screens/schema/schema.atom";
+import { schemaState } from "../../../src/entities/schema/schema.atom";
 
 import { gql } from "@apollo/client";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";

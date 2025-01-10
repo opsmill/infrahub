@@ -1,5 +1,5 @@
-import { IModelSchema } from "@/screens/schema/schema.atom";
-import { isGenericSchema } from "@/screens/schema/utils";
+import { IModelSchema } from "@/entities/schema/schema.atom";
+import { isGenericSchema } from "@/entities/schema/utils";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { FilterKindSelector } from "@/shared/components/filters/filter-kind-selector";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";

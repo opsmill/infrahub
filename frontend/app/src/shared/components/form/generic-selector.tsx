@@ -1,9 +1,9 @@
 import { PROFILE_KIND } from "@/config/constants";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { getObjectPermissionsQuery } from "@/screens/permission/queries/getObjectPermissions";
-import { PermissionData } from "@/screens/permission/types";
-import { getPermission } from "@/screens/permission/utils";
-import { genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
+import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
+import { PermissionData } from "@/entities/permission/types";
+import { getPermission } from "@/entities/permission/utils";
+import { genericsState, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
+import LoadingScreen from "@/shared/components/loading-screen";
 import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,

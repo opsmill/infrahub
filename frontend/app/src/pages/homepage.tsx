@@ -1,4 +1,4 @@
-import Content from "@/screens/layout/content";
+import Content from "@/shared/components/layout/content";
 import { Card } from "@/shared/components/ui/card";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";

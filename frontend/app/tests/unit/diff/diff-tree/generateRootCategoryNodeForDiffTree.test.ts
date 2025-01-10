@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { generateRootCategoryNodeForDiffTree } from "../../../../src/screens/diff/diff-tree";
-import { TREE_ROOT_ID } from "../../../../src/screens/ipam/constants";
+import { generateRootCategoryNodeForDiffTree } from "../../../../src/entities/diff/diff-tree";
+import { TREE_ROOT_ID } from "../../../../src/entities/ipam/constants";
 import { TreeProps } from "../../../../src/shared/components/ui/tree";
 
 describe("Generate root category nodes for DiffTree", () => {

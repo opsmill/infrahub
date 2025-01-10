@@ -1,8 +1,8 @@
-import { RelationshipNode } from "@/screens/objects/relationships/domain/types";
+import { RelationshipNode } from "@/entities/objects/relationships/domain/types";
 import {
   RelationshipHierarchicalInput,
   RelationshipHierarchicalManyInput,
-} from "@/screens/objects/relationships/ui/relationship-hierarchical-input";
+} from "@/entities/objects/relationships/ui/relationship-hierarchical-input";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import {

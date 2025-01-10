@@ -1,10 +1,10 @@
-import NoDataFound from "@/screens/errors/no-data-found";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
+import NoDataFound from "@/shared/components/errors/no-data-found";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router-dom";
 
-import { Permission } from "@/screens/permission/types";
+import { Permission } from "@/entities/permission/types";
 import { ReactNode, isValidElement } from "react";
 import {
   DropdownMenu,

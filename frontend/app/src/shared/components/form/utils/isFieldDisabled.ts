@@ -1,5 +1,5 @@
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
-import { PermissionDecisionData } from "@/screens/permission/types";
+import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { PermissionDecisionData } from "@/entities/permission/types";
 import { LineageOwner } from "@/shared/api/graphql/generated/graphql";
 import { AuthContextType } from "@/shared/hooks/useAuth";
 import { store } from "@/shared/stores";

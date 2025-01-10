@@ -5,12 +5,12 @@ import {
   INFRAHUB_SWAGGER_DOC_URL,
 } from "@/config/config";
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
-import { AppVersion } from "@/screens/layout/app-version";
-import { IModelSchema, genericsState } from "@/screens/schema/schema.atom";
+import { IModelSchema, genericsState } from "@/entities/schema/schema.atom";
 import { getProfileDetails } from "@/shared/api/graphql/queries/accounts/getProfileDetails";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Avatar } from "@/shared/components/display/avatar";
+import { AppVersion } from "@/shared/components/layout/app-version";
 import { Skeleton } from "@/shared/components/skeleton";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import {

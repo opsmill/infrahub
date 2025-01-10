@@ -5,7 +5,7 @@ import {
   iNodeSchema,
   profilesAtom,
   schemaState,
-} from "@/screens/schema/schema.atom";
+} from "@/entities/schema/schema.atom";
 import { useAtomValue } from "jotai/index";
 
 type UseSchema = (kind?: string | null) =>

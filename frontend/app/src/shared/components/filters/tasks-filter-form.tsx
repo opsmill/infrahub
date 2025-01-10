@@ -1,5 +1,5 @@
-import { branchesState } from "@/screens/branches/branches.atom";
-import { TASK_STATES } from "@/screens/tasks/constants";
+import { branchesState } from "@/entities/branches/branches.atom";
+import { TASK_STATES } from "@/entities/tasks/constants";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Form, FormProps, FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { Filter } from "@/shared/hooks/useFilters";

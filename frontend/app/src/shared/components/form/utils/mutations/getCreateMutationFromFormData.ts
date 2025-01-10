@@ -1,4 +1,4 @@
-import { AttributeType } from "@/screens/objects/getObjectItemDisplayValue";
+import { AttributeType } from "@/entities/objects/getObjectItemDisplayValue";
 import {
   DynamicFieldProps,
   FormFieldValue,

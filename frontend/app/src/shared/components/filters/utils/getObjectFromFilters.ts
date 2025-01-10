@@ -4,8 +4,8 @@ import {
   RelationshipManyType,
   RelationshipOneType,
   RelationshipType,
-} from "@/screens/objects/getObjectItemDisplayValue";
-import { IModelSchema } from "@/screens/schema/schema.atom";
+} from "@/entities/objects/getObjectItemDisplayValue";
+import { IModelSchema } from "@/entities/schema/schema.atom";
 import { Filter } from "@/shared/hooks/useFilters";
 
 export const getObjectFromFilters = (

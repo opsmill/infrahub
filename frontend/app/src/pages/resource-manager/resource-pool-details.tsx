@@ -1,23 +1,23 @@
-import ErrorScreen from "@/screens/errors/error-screen";
-import NoDataFound from "@/screens/errors/no-data-found";
-import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/screens/ipam/constants";
-import Content from "@/screens/layout/content";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { ObjectAttributeValue } from "@/screens/objects/getObjectItemDisplayValue";
-import { getObjectDetailsUrl } from "@/screens/objects/objects";
-import ResourcePoolUtilization from "@/screens/resource-manager/common/ResourcePoolUtilization";
+import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
+import { ObjectAttributeValue } from "@/entities/objects/getObjectItemDisplayValue";
+import { getObjectDetailsUrl } from "@/entities/objects/objects";
+import ResourcePoolUtilization from "@/entities/resource-manager/common/ResourcePoolUtilization";
 import {
   RESOURCE_GENERIC_KIND,
   RESOURCE_POOL_UTILIZATION_KIND,
-} from "@/screens/resource-manager/constants";
+} from "@/entities/resource-manager/constants";
 import {
   GET_KIND_FOR_RESOURCE_POOL,
   GET_RESOURCE_POOL_UTILIZATION,
-} from "@/screens/resource-manager/graphql/resource-pool";
-import ResourceSelector, { ResourceProps } from "@/screens/resource-manager/resource-selector";
-import { iNodeSchema, schemaState } from "@/screens/schema/schema.atom";
+} from "@/entities/resource-manager/graphql/resource-pool";
+import ResourceSelector, { ResourceProps } from "@/entities/resource-manager/resource-selector";
+import { iNodeSchema, schemaState } from "@/entities/schema/schema.atom";
 import { constructPath } from "@/shared/api/rest/fetch";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import NoDataFound from "@/shared/components/errors/no-data-found";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
+import Content from "@/shared/components/layout/content";
+import LoadingScreen from "@/shared/components/loading-screen";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";

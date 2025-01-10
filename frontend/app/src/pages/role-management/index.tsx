@@ -1,13 +1,13 @@
 import { GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
-import ErrorScreen from "@/screens/errors/error-screen";
-import UnauthorizedScreen from "@/screens/errors/unauthorized-screen";
-import Content from "@/screens/layout/content";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { getObjectPermissionsQuery } from "@/screens/permission/queries/getObjectPermissions";
-import { RoleManagementNavigation } from "@/screens/role-management";
+import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
+import Content from "@/shared/components/layout/content";
+import LoadingScreen from "@/shared/components/loading-screen";
 import useQuery from "@/shared/hooks/useQuery";
 import { gql } from "@apollo/client";
 import { Outlet } from "react-router-dom";
+import { RoleManagementNavigation } from "../../entities/role-manager";
 
 function RoleManagement() {
   const { loading, error } = useQuery(gql(getObjectPermissionsQuery(GLOBAL_PERMISSION_OBJECT)));

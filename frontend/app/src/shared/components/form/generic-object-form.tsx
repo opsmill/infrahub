@@ -1,5 +1,5 @@
-import NoDataFound from "@/screens/errors/no-data-found";
-import { iGenericSchema } from "@/screens/schema/schema.atom";
+import { iGenericSchema } from "@/entities/schema/schema.atom";
+import NoDataFound from "@/shared/components/errors/no-data-found";
 import { GenericSelector } from "@/shared/components/form/generic-selector";
 import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
 import { useState } from "react";

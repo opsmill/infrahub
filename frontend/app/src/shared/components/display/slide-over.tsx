@@ -1,5 +1,5 @@
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
-import { IModelSchema } from "@/screens/schema/schema.atom";
+import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { IModelSchema } from "@/entities/schema/schema.atom";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Badge } from "@/shared/components/ui/badge";
 import usePrevious from "@/shared/hooks/usePrevious";

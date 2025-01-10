@@ -1,7 +1,7 @@
-import Content from "@/screens/layout/content";
-import { SchemaSelector } from "@/screens/schema/schema-selector";
-import { SchemaViewerStack } from "@/screens/schema/schema-viewer";
-import { genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
+import { SchemaSelector } from "@/entities/schema/schema-selector";
+import { SchemaViewerStack } from "@/entities/schema/schema-viewer";
+import { genericsState, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
+import Content from "@/shared/components/layout/content";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { useAtomValue } from "jotai";

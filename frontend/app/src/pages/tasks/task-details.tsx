@@ -1,10 +1,10 @@
 import { TASK_OBJECT } from "@/config/constants";
-import ErrorScreen from "@/screens/errors/error-screen";
-import Content from "@/screens/layout/content";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { TaskItemDetails } from "@/screens/tasks/task-item-details";
+import { TaskItemDetails } from "@/entities/tasks/task-item-details";
 import { getTaskItemDetailsTitle } from "@/shared/api/graphql/queries/tasks/getTasksItemDetailsTitle";
 import { constructPath } from "@/shared/api/rest/fetch";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import Content from "@/shared/components/layout/content";
+import LoadingScreen from "@/shared/components/loading-screen";
 import { Link } from "@/shared/components/ui/link";
 import useQuery from "@/shared/hooks/useQuery";
 import { useTitle } from "@/shared/hooks/useTitle";

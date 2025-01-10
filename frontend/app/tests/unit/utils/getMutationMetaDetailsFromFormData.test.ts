@@ -1,4 +1,4 @@
-import getMutationMetaDetailsFromFormData from "@/screens/object-item-meta-edit/getMutationMetaDetailsFromFormData";
+import getMutationMetaDetailsFromFormData from "@/entities/objects/object-item-meta-edit/getMutationMetaDetailsFromFormData";
 import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { describe, expect, it } from "vitest";

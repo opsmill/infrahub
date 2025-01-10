@@ -1,4 +1,4 @@
-import { getObjectDetailsUrl2 } from "@/screens/objects/objects";
+import { getObjectDetailsUrl2 } from "@/entities/objects/objects";
 import { QuestionMark } from "@/shared/components/display/question-mark";
 import {
   AttributeValueFromProfile,

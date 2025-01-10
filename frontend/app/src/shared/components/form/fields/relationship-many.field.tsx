@@ -5,7 +5,7 @@ import {
 } from "@/shared/components/form/type";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
-import { Node } from "@/screens/objects/getObjectItemDisplayValue";
+import { Node } from "@/entities/objects/getObjectItemDisplayValue";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";

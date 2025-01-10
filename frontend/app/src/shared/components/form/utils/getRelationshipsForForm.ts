@@ -1,5 +1,5 @@
 import { relationshipKindForForm } from "@/config/constants";
-import { RelationshipKind } from "@/screens/objects/types";
+import { RelationshipKind } from "@/entities/objects/types";
 import { components } from "@/shared/api/rest/types.generated";
 
 export const getRelationshipsForForm = (

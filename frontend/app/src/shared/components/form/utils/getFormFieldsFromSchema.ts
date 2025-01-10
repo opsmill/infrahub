@@ -1,7 +1,7 @@
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { SchemaAttributeType } from "@/screens/edit-form-hook/dynamic-control-types";
-import { AttributeType, RelationshipType } from "@/screens/objects/getObjectItemDisplayValue";
-import { IModelSchema } from "@/screens/schema/schema.atom";
+import { SchemaAttributeType } from "@/entities/objects/edit-form-hook/dynamic-control-types";
+import { AttributeType, RelationshipType } from "@/entities/objects/getObjectItemDisplayValue";
+import { IModelSchema } from "@/entities/schema/schema.atom";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
   DynamicDropdownFieldProps,

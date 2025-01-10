@@ -8,19 +8,19 @@ import {
   READONLY_REPOSITORY_KIND,
   REPOSITORY_KIND,
 } from "@/config/constants";
-import NoDataFound from "@/screens/errors/no-data-found";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { AttributeType, RelationshipType } from "@/screens/objects/getObjectItemDisplayValue";
-import { NumberPoolForm } from "@/screens/resource-manager/number-pool-form";
-import { AccountForm } from "@/screens/role-management/account-form";
-import { AccountGroupForm } from "@/screens/role-management/account-group-form";
-import { AccountRoleForm } from "@/screens/role-management/account-role-form";
-import { GlobalPermissionForm } from "@/screens/role-management/global-permissions-form";
-import { ObjectPermissionForm } from "@/screens/role-management/object-permissions-form";
+import { AttributeType, RelationshipType } from "@/entities/objects/getObjectItemDisplayValue";
+import { NumberPoolForm } from "@/entities/resource-manager/number-pool-form";
+import { AccountForm } from "@/entities/role-manager/account-form";
+import { AccountGroupForm } from "@/entities/role-manager/account-group-form";
+import { AccountRoleForm } from "@/entities/role-manager/account-role-form";
+import { GlobalPermissionForm } from "@/entities/role-manager/global-permissions-form";
+import { ObjectPermissionForm } from "@/entities/role-manager/object-permissions-form";
+import NoDataFound from "@/shared/components/errors/no-data-found";
 import { DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
 import { NodeForm, NodeFormSubmitParams } from "@/shared/components/form/node-form";
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
+import LoadingScreen from "@/shared/components/loading-screen";
 import { useSchema } from "@/shared/hooks/useSchema";
 import { Suspense, lazy } from "react";
 
@@ -31,7 +31,7 @@ export type ProfileData = {
   __typename: string;
 };
 
-const RepositoryForm = lazy(() => import("@/screens/repository/repository-form"));
+const RepositoryForm = lazy(() => import("@/entities/repository/repository-form"));
 
 export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   kind: string;

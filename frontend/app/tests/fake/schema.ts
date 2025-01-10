@@ -1,4 +1,4 @@
-import { IProfileSchema, iGenericSchema, iNodeSchema } from "@/screens/schema/schema.atom";
+import { IProfileSchema, iGenericSchema, iNodeSchema } from "@/entities/schema/schema.atom";
 
 export const generateNodeSchema = (
   overrides?: Partial<iNodeSchema>

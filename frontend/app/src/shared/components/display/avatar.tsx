@@ -1,4 +1,4 @@
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
+import LoadingScreen from "@/shared/components/loading-screen";
 import { classNames } from "@/shared/utils/common";
 import { type VariantProps, cva } from "class-variance-authority";
 import { HTMLAttributes, forwardRef } from "react";

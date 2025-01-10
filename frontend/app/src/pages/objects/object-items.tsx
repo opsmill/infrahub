@@ -1,6 +1,6 @@
-import ErrorScreen from "@/screens/errors/error-screen";
-import ObjectItems from "@/screens/object-items/object-items-paginated";
-import { genericsState, profilesAtom, schemaState } from "@/screens/schema/schema.atom";
+import ObjectItems from "@/entities/objects/object-items/object-items-paginated";
+import { genericsState, profilesAtom, schemaState } from "@/entities/schema/schema.atom";
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router-dom";
 

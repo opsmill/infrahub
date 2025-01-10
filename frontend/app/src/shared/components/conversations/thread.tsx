@@ -1,8 +1,8 @@
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/config/constants";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
-import { getThreadTitle } from "@/screens/diff/diff";
-import { getObjectPermissionsQuery } from "@/screens/permission/queries/getObjectPermissions";
-import { getPermission } from "@/screens/permission/utils";
+import { currentBranchAtom } from "@/entities/branches/branches.atom";
+import { getThreadTitle } from "@/entities/diff/diff";
+import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
+import { getPermission } from "@/entities/permission/utils";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { createObject } from "@/shared/api/graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "@/shared/api/graphql/mutations/objects/updateObjectWithId";

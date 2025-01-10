@@ -5,7 +5,7 @@ import { useAtomValue } from "jotai";
 
 import { CONFIG } from "@/config/config";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
-import { currentBranchAtom } from "@/screens/branches/branches.atom";
+import { currentBranchAtom } from "@/entities/branches/branches.atom";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { QSP } from "@/config/qsp";

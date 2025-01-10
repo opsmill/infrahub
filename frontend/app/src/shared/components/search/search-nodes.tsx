@@ -1,7 +1,7 @@
 import { SCHEMA_ATTRIBUTE_KIND, SEARCH_QUERY_NAME } from "@/config/constants";
-import { POOLS_PEER } from "@/screens/ipam/constants";
-import { getSchemaObjectColumns } from "@/screens/object-items/getSchemaObjectColumns";
-import { getObjectDetailsUrl } from "@/screens/objects/objects";
+import { POOLS_PEER } from "@/entities/ipam/constants";
+import { getSchemaObjectColumns } from "@/entities/objects/object-items/getSchemaObjectColumns";
+import { getObjectDetailsUrl } from "@/entities/objects/objects";
 import { SEARCH } from "@/shared/api/graphql/queries/objects/search";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";

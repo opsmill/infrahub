@@ -1,5 +1,5 @@
 import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { AttributeSchema, RelationshipSchema } from "@/screens/schema/types";
+import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 type AddAttributesToRequestOptions = {
   withPermissions?: boolean;

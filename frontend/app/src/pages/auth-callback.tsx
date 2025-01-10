@@ -1,7 +1,7 @@
 import { INFRAHUB_API_SERVER_URL } from "@/config/config";
 import { configState } from "@/config/config.atom";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
 import { fetchUrl } from "@/shared/api/rest/fetch";
+import LoadingScreen from "@/shared/components/loading-screen";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";

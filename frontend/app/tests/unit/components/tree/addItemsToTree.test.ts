@@ -1,6 +1,6 @@
-import { TREE_ROOT_ID } from "@/screens/ipam/constants";
-import { addItemsToTree } from "@/screens/ipam/ipam-tree/utils";
-import { EMPTY_TREE } from "@/screens/ipam/ipam-tree/utils";
+import { TREE_ROOT_ID } from "@/entities/ipam/constants";
+import { addItemsToTree } from "@/entities/ipam/ipam-tree/utils";
+import { EMPTY_TREE } from "@/entities/ipam/ipam-tree/utils";
 import { TreeProps } from "@/shared/components/ui/tree";
 import { describe, expect, it } from "vitest";
 
