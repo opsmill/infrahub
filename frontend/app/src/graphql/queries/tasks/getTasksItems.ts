@@ -16,6 +16,7 @@ query GET_TASKS($offset: Int, $limit: Int, $search: String, $branch: String, $st
         created_at
         id
         branch
+        related_node
         related_nodes {
           id
           kind
