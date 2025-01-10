@@ -1,14 +1,14 @@
 import { gql } from "@apollo/client";
 
 export const GET_TASKS = gql`
-query GET_TASKS($offset: Int, $limit: Int, $search: String, $branch: String, $state: [StateType], $relatedNode: [String]) {
+query GET_TASKS($offset: Int, $limit: Int, $search: String, $branch: String, $state: [StateType], $relatedNodes: [String]) {
   InfrahubTask(
     offset: $offset
     limit: $limit
     q: $search
     branch: $branch
     state: $state
-    related_node__ids: $relatedNode
+    related_node__ids: $relatedNodes
   ) {
     count
     edges {

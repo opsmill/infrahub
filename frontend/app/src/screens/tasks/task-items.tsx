@@ -48,7 +48,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
       search,
       branch,
       state,
-      relatedNode: relatedNode ? [relatedNode] : [],
+      relatedNodes: relatedNode ? [relatedNode] : [],
     },
   });
 
