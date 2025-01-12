@@ -29,10 +29,10 @@ import {
   BRANCH_REBASE_WORKFLOW,
   BRANCH_VALIDATE_WORKFLOW,
 } from "../../tasks/constants";
+import { TaskDisplay } from "../../tasks/ui/task-display";
 import { BranchMergeButton } from "./branch-merge-button";
 import { BranchRebaseButton } from "./branch-rebase-button";
 import { BranchValidateButton } from "./branch-validate-button";
-import { TaskDisplay } from "../../tasks/ui/task-display";
 
 export const BranchDetails = () => {
   const { "*": branchName } = useParams();

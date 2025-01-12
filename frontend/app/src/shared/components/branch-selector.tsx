@@ -1,6 +1,6 @@
 import { QSP } from "@/config/qsp";
-import { branchesToSelectOptions } from "@/entities/branches/utils";
 import { branchesState, currentBranchAtom } from "@/entities/branches/stores";
+import { branchesToSelectOptions } from "@/entities/branches/utils";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Icon } from "@iconify-icon/react";

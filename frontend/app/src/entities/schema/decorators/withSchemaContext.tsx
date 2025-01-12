@@ -1,7 +1,7 @@
 import { CONFIG } from "@/config/config";
 import { QSP } from "@/config/qsp";
-import { findSelectedBranch } from "@/entities/branches/utils";
 import { branchesState, currentBranchAtom } from "@/entities/branches/stores";
+import { findSelectedBranch } from "@/entities/branches/utils";
 import {
   IProfileSchema,
   currentSchemaHashAtom,

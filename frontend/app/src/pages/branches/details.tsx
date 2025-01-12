@@ -4,8 +4,8 @@ import { ArtifactsDiff } from "@/entities/diff/artifact-diff/artifacts-diff";
 import { NodeDiff } from "@/entities/diff/node-diff";
 import { Tabs } from "@/shared/components/tabs";
 
-import { BranchDetails } from "@/entities/branches/ui/branch-details";
 import { branchesState } from "@/entities/branches/stores";
+import { BranchDetails } from "@/entities/branches/ui/branch-details";
 import { FilesDiff } from "@/entities/diff/file-diff/files-diff";
 import { constructPath } from "@/shared/api/rest/fetch";
 import Content from "@/shared/components/layout/content";
