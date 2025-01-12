@@ -224,7 +224,11 @@ class PrefectTask:
                 if "progress" in node_fields:
                     progress_flow = await cls._get_progress(client=client, flow_ids=[flow.id for flow in flows])
 
-                if "related_node" in node_fields or "related_node_kind" in node_fields:
+                if (
+                    "related_nodes" in node_fields
+                    or "related_node" in node_fields
+                    or "related_node_kind" in node_fields
+                ):
                     related_nodes_info = await cls._get_related_nodes(db=db, flows=flows)
 
                 if "workflow" in node_fields:
