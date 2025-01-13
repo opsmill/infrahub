@@ -85,7 +85,7 @@ class PoolAllocated(ObjectType):
 
         fields = await extract_fields_first_node(info=info)
 
-        allocated_kinds = [InfrahubKind.IPPREFIX, InfrahubKind.IPADDRESS]
+        allocated_kinds: list[str] = []
         pool = _validate_pool_type(pool_id=pool_id, pool=pool)
         match pool.get_kind():
             case InfrahubKind.NUMBERPOOL:
@@ -93,9 +93,9 @@ class PoolAllocated(ObjectType):
                     db=context.db, context=context, pool=pool, fields=fields, offset=offset, limit=limit
                 )
             case InfrahubKind.IPPREFIXPOOL:
-                allocated_kinds = [InfrahubKind.IPPREFIX]
+                allocated_kinds.append(InfrahubKind.IPPREFIX)
             case InfrahubKind.IPADDRESSPOOL:
-                allocated_kinds = [InfrahubKind.IPADDRESS]
+                allocated_kinds.append(InfrahubKind.IPADDRESS)
 
         resources = await pool.resources.get_peers(db=context.db)  # type: ignore[attr-defined,union-attr]
         if resource_id not in resources:
