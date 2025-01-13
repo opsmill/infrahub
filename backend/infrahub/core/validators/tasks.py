@@ -7,7 +7,7 @@ from prefect.logging import get_run_logger
 
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.path import SchemaPath  # noqa: TC001
-from infrahub.core.schema import GenericSchema, NodeSchema  # noqa: TC001
+from infrahub.core.schema import GenericSchema, NodeSchema, ProfileSchema  # noqa: TC001
 from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
 from infrahub.core.validators.model import (
     SchemaConstraintValidatorRequest,
@@ -32,11 +32,14 @@ async def schema_validate_migrations(message: SchemaValidateMigrationData) -> li
     log.info(f"{len(message.constraints)} constraint(s) to validate")
     # NOTE this task is a good candidate to add a progress bar
     for constraint in message.constraints:
+        schema = message.schema_branch.get(name=constraint.path.schema_kind)
+        if isinstance(schema, ProfileSchema):
+            continue
         batch.add(
             task=schema_path_validate,
             branch=message.branch,
             constraint_name=constraint.constraint_name,
-            node_schema=message.schema_branch.get(name=constraint.path.schema_kind),
+            node_schema=schema,
             schema_path=constraint.path,
         )
 
