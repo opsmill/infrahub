@@ -1,16 +1,8 @@
-<<<<<<<< HEAD:frontend/app/src/screens/objects/relationships/domain/get-relationships/get-relationships.test.ts
-import { getCurrentBranchName } from "@/screens/branches/get-current-branch";
-import { getRelationshipsFromApi } from "@/screens/objects/relationships/api/queries";
-import { getRelationships } from "@/screens/objects/relationships/domain/get-relationships/get-relationships";
-import { store } from "@/state";
-import { datetimeAtom } from "@/state/atoms/time.atom";
-========
 import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
 import { getRelationshipsFromApi } from "@/entities/nodes/relationships/api/queries";
 import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import { store } from "@/shared/stores";
 import { datetimeAtom } from "@/shared/stores/time.atom";
->>>>>>>> 2d2a015514c621b5ebb5e8a2b115c1a653f0c961:frontend/app/src/entities/nodes/relationships/domain/get-relationships/get-relationships.test.ts
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/entities/branches/domain/get-current-branch");
