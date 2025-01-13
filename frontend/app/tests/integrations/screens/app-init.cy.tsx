@@ -2,7 +2,7 @@
 
 import { MockedProvider } from "@apollo/client/testing";
 import { mount } from "cypress/react18";
-import { App } from "../../../src/App";
+import { App } from "../../../src/app/app";
 
 describe("Config fetch", () => {
   beforeEach(function () {

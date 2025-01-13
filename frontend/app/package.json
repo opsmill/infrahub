@@ -10,7 +10,7 @@
     "serve": "vite preview",
     "build-serve": "npm run build && npm run serve",
     "codegen": "graphql-codegen --config graphql.config.ts",
-    "codegen:openapi": "npx openapi-typescript http://localhost:8000/api/openapi.json --output src/infraops.d.ts",
+    "codegen:openapi": "npx openapi-typescript http://localhost:8000/api/openapi.json --output src/shared/api/rest/types.generated.ts",
     "ci:test:e2e": "CI=1 DEBUG=pw:browser npm run test:e2e 2>/dev/null",
     "test": "vitest run",
     "test:watch": "vitest watch",
@@ -53,7 +53,6 @@
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-tabs": "^1.1.2",
     "@radix-ui/react-tooltip": "^1.0.7",
-    "@svgr/rollup": "^8.1.0",
     "@tailwindcss/forms": "^0.5.7",
     "@tanstack/react-query": "^5.62.3",
     "@tanstack/react-query-devtools": "^5.62.3",
@@ -101,6 +100,7 @@
     "unidiff": "^1.0.4",
     "use-query-params": "^2.2.1",
     "vite": "^5.2.8",
+    "vite-plugin-svgr": "^4.3.0",
     "vite-tsconfig-paths": "^4.3.2"
   },
   "devDependencies": {
@@ -125,6 +125,7 @@
     "playwright": "^1.49.1",
     "postcss": "^8.4.23",
     "tailwindcss": "^3.4.3",
+    "ts-node": "^10.9.2",
     "typescript": "^5.5.3",
     "vitest": "^2.1.8",
     "vitest-browser-react": "^0.0.4"

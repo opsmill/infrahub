@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Request
 
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
-from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
 from infrahub.core.diff.branch_differ import BranchDiffer
 from infrahub.core.diff.model.diff import (
@@ -15,9 +14,11 @@ from infrahub.core.diff.model.diff import (
     BranchDiffFile,
     BranchDiffRepository,
 )
-from infrahub.database import InfrahubDatabase  # noqa: TC001
 
 if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
+    from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
 
@@ -29,17 +30,22 @@ async def get_diff_files(
     request: Request,
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
-    time_from: Optional[str] = None,
-    time_to: Optional[str] = None,
+    time_from: str | None = None,
+    time_to: str | None = None,
     branch_only: bool = True,
-    _: str = Depends(get_current_user),
+    _: AccountSession = Depends(get_current_user),
 ) -> dict[str, dict[str, BranchDiffRepository]]:
     response: dict[str, dict[str, BranchDiffRepository]] = defaultdict(dict)
     service: InfrahubServices = request.app.state.service
 
     # Query the Diff for all files and repository from the database
     diff = await BranchDiffer.init(
-        db=db, branch=branch, diff_from=time_from, diff_to=time_to, branch_only=branch_only, service=service
+        db=db,
+        branch=branch,
+        diff_from=time_from,
+        diff_to=time_to,
+        branch_only=branch_only,
+        service=service,
     )
     diff_files = await diff.get_files()
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import PlainTextResponse
@@ -27,13 +27,13 @@ async def get_file(
     file_path: str,
     branch_params: BranchParams = Depends(get_branch_params),
     db: InfrahubDatabase = Depends(get_db),
-    commit: Optional[str] = None,
+    commit: str | None = None,
     _: str = Depends(get_current_user),
 ) -> PlainTextResponse:
     """Retrieve a file from a git repository."""
     service: InfrahubServices = request.app.state.service
 
-    repo: Union[CoreRepository, CoreReadOnlyRepository] = await NodeManager.get_one_by_id_or_default_filter(
+    repo: CoreRepository | CoreReadOnlyRepository = await NodeManager.get_one_by_id_or_default_filter(
         db=db,
         id=repository_id,
         kind=InfrahubKind.GENERICREPOSITORY,

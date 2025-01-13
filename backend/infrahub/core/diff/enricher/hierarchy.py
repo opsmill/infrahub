@@ -73,6 +73,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                     node_id=node_id,
                     node_schema=hierarchy_schema,
                     branch=diff_branch,
+                    hierarchical_ordering=True,
                 )
                 await query.execute(db=self.db)
 
@@ -85,7 +86,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                 parent_rel = hierarchy_schema.get_relationship(name="parent")
 
                 current_node = node
-                for ancestor in reversed(ancestors):
+                for ancestor in ancestors:
                     parent = enriched_diff_root.add_parent(
                         node_id=current_node.uuid,
                         parent_id=str(ancestor.uuid),

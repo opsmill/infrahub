@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import (
@@ -72,17 +72,17 @@ class APISchemaMixin:
 
 
 class APINodeSchema(NodeSchema, APISchemaMixin):
-    api_kind: Optional[str] = Field(default=None, alias="kind", validate_default=True)
+    api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
     hash: str
 
 
 class APIGenericSchema(GenericSchema, APISchemaMixin):
-    api_kind: Optional[str] = Field(default=None, alias="kind", validate_default=True)
+    api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
     hash: str
 
 
 class APIProfileSchema(ProfileSchema, APISchemaMixin):
-    api_kind: Optional[str] = Field(default=None, alias="kind", validate_default=True)
+    api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
     hash: str
 
 
@@ -103,16 +103,16 @@ class SchemasLoadAPI(BaseModel):
 
 
 class JSONSchema(BaseModel):
-    title: Optional[str] = Field(None, description="Title of the schema")
-    description: Optional[str] = Field(None, description="Description of the schema")
+    title: str | None = Field(None, description="Title of the schema")
+    description: str | None = Field(None, description="Description of the schema")
     type: str = Field(..., description="Type of the schema element (e.g., 'object', 'array', 'string')")
-    properties: Optional[dict[str, Any]] = Field(None, description="Properties of the object if type is 'object'")
-    items: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = Field(
+    properties: dict[str, Any] | None = Field(None, description="Properties of the object if type is 'object'")
+    items: dict[str, Any] | list[dict[str, Any]] | None = Field(
         None, description="Items of the array if type is 'array'"
     )
-    required: Optional[list[str]] = Field(None, description="List of required properties if type is 'object'")
-    schema_spec: Optional[str] = Field(None, alias="$schema", description="Schema version identifier")
-    additional_properties: Optional[Union[bool, dict[str, Any]]] = Field(
+    required: list[str] | None = Field(None, description="List of required properties if type is 'object'")
+    schema_spec: str | None = Field(None, alias="$schema", description="Schema version identifier")
+    additional_properties: bool | dict[str, Any] | None = Field(
         None, description="Specifies whether additional properties are allowed", alias="additionalProperties"
     )
 
@@ -152,7 +152,9 @@ def evaluate_candidate_schemas(
 
 @router.get("")
 async def get_schema(
-    branch: Branch = Depends(get_branch_dep), namespaces: Union[list[str], None] = Query(default=None)
+    branch: Branch = Depends(get_branch_dep),
+    namespaces: list[str] | None = Query(default=None),
+    _: AccountSession = Depends(get_current_user),
 ) -> SchemaReadAPI:
     log.debug("schema_request", branch=branch.name)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
@@ -180,7 +182,9 @@ async def get_schema(
 
 
 @router.get("/summary")
-async def get_schema_summary(branch: Branch = Depends(get_branch_dep)) -> SchemaBranchHash:
+async def get_schema_summary(
+    branch: Branch = Depends(get_branch_dep), _: AccountSession = Depends(get_current_user)
+) -> SchemaBranchHash:
     log.debug("schema_summary_request", branch=branch.name)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
     return schema_branch.get_hash_full()
@@ -188,13 +192,13 @@ async def get_schema_summary(branch: Branch = Depends(get_branch_dep)) -> Schema
 
 @router.get("/{schema_kind}")
 async def get_schema_by_kind(
-    schema_kind: str, branch: Branch = Depends(get_branch_dep)
-) -> Union[APIProfileSchema, APINodeSchema, APIGenericSchema]:
+    schema_kind: str, branch: Branch = Depends(get_branch_dep), _: AccountSession = Depends(get_current_user)
+) -> APIProfileSchema | APINodeSchema | APIGenericSchema:
     log.debug("schema_kind_request", branch=branch.name)
 
     schema = registry.schema.get(name=schema_kind, branch=branch, duplicate=False)
 
-    api_schema: dict[str, type[Union[APIProfileSchema, APINodeSchema, APIGenericSchema]]] = {
+    api_schema: dict[str, type[APIProfileSchema | APINodeSchema | APIGenericSchema]] = {
         "profile": APIProfileSchema,
         "node": APINodeSchema,
         "generic": APIGenericSchema,
@@ -212,7 +216,9 @@ async def get_schema_by_kind(
 
 
 @router.get("/json_schema/{schema_kind}")
-async def get_json_schema_by_kind(schema_kind: str, branch: Branch = Depends(get_branch_dep)) -> JSONSchema:
+async def get_json_schema_by_kind(
+    schema_kind: str, branch: Branch = Depends(get_branch_dep), _: AccountSession = Depends(get_current_user)
+) -> JSONSchema:
     log.debug("json_schema_kind_request", branch=branch.name)
 
     fields: dict[str, Any] = {}
@@ -368,7 +374,7 @@ async def check_schema(
     request: Request,
     schemas: SchemasLoadAPI,
     branch: Branch = Depends(get_branch_dep),
-    _: Any = Depends(get_current_user),
+    _: AccountSession = Depends(get_current_user),
 ) -> JSONResponse:
     service: InfrahubServices = request.app.state.service
     log.info("schema_check_request", branch=branch.name)

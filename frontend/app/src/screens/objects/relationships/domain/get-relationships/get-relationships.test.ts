@@ -1,13 +1,13 @@
-import { getCurrentBranchName } from "@/screens/branches/get-current-branch";
-import { getRelationshipsFromApi } from "@/screens/objects/relationships/api/queries";
-import { getRelationships } from "@/screens/objects/relationships/domain/get-relationships/get-relationships";
-import { store } from "@/state";
-import { datetimeAtom } from "@/state/atoms/time.atom";
+import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
+import { getRelationshipsFromApi } from "@/entities/nodes/relationships/api/queries";
+import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
+import { store } from "@/shared/stores";
+import { datetimeAtom } from "@/shared/stores/time.atom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/screens/branches/get-current-branch");
-vi.mock("@/screens/objects/relationships/api/queries");
-vi.mock("@/state");
+vi.mock("@/entities/branches/domain/get-current-branch");
+vi.mock("@/entities/nodes/relationships/api/queries");
+vi.mock("@/shared/stores");
 
 describe("getRelationships", () => {
   beforeEach(() => {
