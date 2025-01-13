@@ -10,7 +10,7 @@
     "serve": "vite preview",
     "build-serve": "npm run build && npm run serve",
     "codegen": "graphql-codegen --config graphql.config.ts",
-    "codegen:openapi": "npx openapi-typescript http://localhost:8000/api/openapi.json --output src/infraops.d.ts",
+    "codegen:openapi": "npx openapi-typescript http://localhost:8000/api/openapi.json --output src/shared/api/rest/types.generated.ts",
     "ci:test:e2e": "CI=1 DEBUG=pw:browser npm run test:e2e 2>/dev/null",
     "test": "vitest run",
     "test:watch": "vitest watch",
@@ -125,6 +125,7 @@
     "playwright": "^1.49.1",
     "postcss": "^8.4.23",
     "tailwindcss": "^3.4.3",
+    "ts-node": "^10.9.2",
     "typescript": "^5.5.3",
     "vitest": "^2.1.8",
     "vitest-browser-react": "^0.0.4"

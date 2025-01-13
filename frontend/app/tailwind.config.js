@@ -1,6 +1,9 @@
 /* eslint-disable no-undef */
 /** @type {import('tailwindcss').Config} */
 
+import forms from "@tailwindcss/forms";
+import animate from "tailwindcss-animate";
+
 const toRgba = (hexCode, opacity = 50) => {
   let hex = hexCode.replace("#", "");
 
@@ -64,8 +67,8 @@ export default {
     },
   },
   plugins: [
-    require("@tailwindcss/forms"),
-    require("tailwindcss-animate"),
+    forms,
+    animate,
     function ({ addUtilities, theme }) {
       const utilities = {
         ".bg-stripes": {

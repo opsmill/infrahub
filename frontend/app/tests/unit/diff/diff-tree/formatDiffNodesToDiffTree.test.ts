@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { formatDiffNodesToDiffTree } from "../../../../src/screens/diff/diff-tree";
-import { DiffNode } from "../../../../src/screens/diff/node-diff/types";
-import { TREE_ROOT_ID } from "../../../../src/screens/ipam/constants";
+import { formatDiffNodesToDiffTree } from "../../../../src/entities/diff/diff-tree";
+import { DiffNode } from "../../../../src/entities/diff/node-diff/types";
+import { TREE_ROOT_ID } from "../../../../src/entities/ipam/constants";
 
 describe("Format diff nodes to diff tree", () => {
   it("should return an empty array when no nodes are provided", () => {

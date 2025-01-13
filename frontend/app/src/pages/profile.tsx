@@ -1,6 +1,6 @@
-import { useAuth } from "@/hooks/useAuth";
-import { UserProfilePage } from "@/screens/user-profile/user-profile";
-import { constructPath } from "@/utils/fetch";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { UserProfilePage } from "@/entities/user-profile/ui/user-profile";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { Navigate } from "react-router-dom";
 
 export function Component() {
