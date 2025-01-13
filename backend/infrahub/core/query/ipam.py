@@ -97,8 +97,7 @@ class IPPrefixSubnetFetch(Query):
             AND av.binary_address STARTS WITH $prefix_binary
             AND av.prefixlen > $maxprefixlen
             AND av.version = $ip_version
-            AND all(r IN relationships(path2) WHERE (%(branch_filter)s))
-        // TODO Need to check for delete nodes
+            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) and r.status = "active")
         WITH
             collect([pfx, av]) as all_prefixes_and_value,
             collect(pfx) as all_prefixes
@@ -189,7 +188,7 @@ class IPPrefixIPAddressFetch(Query):
             AND av.binary_address STARTS WITH $prefix_binary
             AND av.prefixlen >= $maxprefixlen
             AND av.version = $ip_version
-            AND all(r IN relationships(path2) WHERE (%(branch_filter)s))
+            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) and r.status = "active")
         """ % {
             "ns_label": InfrahubKind.IPNAMESPACE,
             "node_label": InfrahubKind.IPADDRESS,
