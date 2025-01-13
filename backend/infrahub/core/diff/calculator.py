@@ -44,13 +44,13 @@ class DiffCalculator:
             diff_from=from_time,
             diff_to=to_time,
         )
-        log.debug("Beginning diff calculation query for branch")
+        log.info("Beginning diff calculation query for branch")
         await branch_diff_query.execute(db=self.db)
-        log.debug("Diff calculation query for branch complete")
-        log.debug("Reading results of query for branch")
+        log.info("Diff calculation query for branch complete")
+        log.info("Reading results of query for branch")
         for query_result in branch_diff_query.get_results():
             diff_parser.read_result(query_result=query_result)
-        log.debug("Results of query for branch read")
+        log.info("Results of query for branch read")
 
         if base_branch.name != diff_branch.name:
             new_node_field_specifiers = diff_parser.get_new_node_field_specifiers()
@@ -69,16 +69,16 @@ class DiffCalculator:
                 new_node_field_specifiers=[(nfs.node_uuid, nfs.field_name) for nfs in new_node_field_specifiers],
             )
 
-            log.debug("Beginning diff calculation query for base")
+            log.info("Beginning diff calculation query for base")
             await base_diff_query.execute(db=self.db)
-            log.debug("Diff calculation query for base complete")
-            log.debug("Reading results of query for base")
+            log.info("Diff calculation query for base complete")
+            log.info("Reading results of query for base")
             for query_result in base_diff_query.get_results():
                 diff_parser.read_result(query_result=query_result)
-            log.debug("Results of query for branch read")
-        log.debug("Parsing calculated diff")
+            log.info("Results of query for branch read")
+        log.info("Parsing calculated diff")
         diff_parser.parse(include_unchanged=include_unchanged)
-        log.debug("Calculated diff parsed")
+        log.info("Calculated diff parsed")
         return CalculatedDiffs(
             base_branch_name=base_branch.name,
             diff_branch_name=diff_branch.name,

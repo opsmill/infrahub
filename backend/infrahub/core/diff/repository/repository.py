@@ -186,7 +186,7 @@ class DiffRepository:
     @retry_db_transaction(name="enriched_diff_save")
     async def save(self, enriched_diffs: EnrichedDiffs) -> None:
         num_nodes = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
-        log.debug(f"Saving diff (num_nodes={num_nodes})...")
+        log.info(f"Saving diff (num_nodes={num_nodes})...")
         root_query = await EnrichedDiffRootsCreateQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await root_query.execute(db=self.db)
         for node_create_batch in self._get_node_create_request_batch(enriched_diffs=enriched_diffs):
@@ -194,7 +194,7 @@ class DiffRepository:
             await node_query.execute(db=self.db)
         link_query = await EnrichedNodesLinkQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await link_query.execute(db=self.db)
-        log.debug("Diff saved.")
+        log.info("Diff saved.")
 
     async def summary(
         self,

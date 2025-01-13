@@ -44,14 +44,14 @@ class DiffMerger:
                 latest_diff = diff
         if latest_diff is None:
             raise RuntimeError(f"Missing diff for branch {self.source_branch.name}")
-        log.debug(f"Retrieving diff {latest_diff.uuid}")
+        log.info(f"Retrieving diff {latest_diff.uuid}")
         enriched_diff = await self.diff_repository.get_one(
             diff_branch_name=self.source_branch.name, diff_id=latest_diff.uuid
         )
-        log.debug(f"Diff {latest_diff.uuid} retrieved")
+        log.info(f"Diff {latest_diff.uuid} retrieved")
         batch_num = 0
         async for node_diff_dicts, property_diff_dicts in self.serializer.serialize_diff(diff=enriched_diff):
-            log.debug(f"Merging batch of nodes #{batch_num}")
+            log.info(f"Merging batch of nodes #{batch_num}")
             merge_query = await DiffMergeQuery.init(
                 db=self.db,
                 branch=self.source_branch,
@@ -60,7 +60,7 @@ class DiffMerger:
                 node_diff_dicts=node_diff_dicts,
             )
             await merge_query.execute(db=self.db)
-            log.debug(f"Merging batch of properties #{batch_num}")
+            log.info(f"Merging batch of properties #{batch_num}")
             merge_properties_query = await DiffMergePropertiesQuery.init(
                 db=self.db,
                 branch=self.source_branch,
@@ -69,7 +69,7 @@ class DiffMerger:
                 property_diff_dicts=property_diff_dicts,
             )
             await merge_properties_query.execute(db=self.db)
-            log.debug(f"Batch #{batch_num} merged")
+            log.info(f"Batch #{batch_num} merged")
             batch_num += 1
 
         self.source_branch.branched_from = at.to_string()
