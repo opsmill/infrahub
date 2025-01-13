@@ -60,9 +60,12 @@ async def execute_query(
     gql_params = await prepare_graphql_params(
         db=db, branch=branch_params.branch, at=branch_params.at, account_session=account_session
     )
+    schema_branch = db.schema.get_schema_branch(name=branch_params.branch.name)
+
     analyzed_query = InfrahubGraphQLQueryAnalyzer(
         query=gql_query.query.value,
         schema=gql_params.schema,
+        schema_branch=schema_branch,
         branch=branch_params.branch,
     )
     await permission_checker.check(

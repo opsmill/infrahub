@@ -34,14 +34,18 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
 
     @classmethod
     async def extract_query_info(
-        cls, info: GraphQLResolveInfo, data: InputObjectType, branch: Branch
+        cls, info: GraphQLResolveInfo, data: InputObjectType, branch: Branch, db: InfrahubDatabase
     ) -> dict[str, Any]:
         query_value = data.get("query", {}).get("value", None)
         if query_value is None:
             return {}
 
         query_info = {}
-        analyzer = InfrahubGraphQLQueryAnalyzer(query=query_value, schema=info.schema, branch=branch)
+        schema_branch = db.schema.get_schema_branch(name=branch.name)
+
+        analyzer = InfrahubGraphQLQueryAnalyzer(
+            query=query_value, schema=info.schema, branch=branch, schema_branch=schema_branch
+        )
 
         valid, errors = analyzer.is_valid
         if not valid:
@@ -67,7 +71,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
 
-        data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
+        data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch, db=context.db))
 
         obj, result = await super().mutate_create(info=info, data=data, branch=branch)
 
@@ -84,7 +88,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
 
-        data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
+        data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch, db=context.db))
 
         obj, result = await super().mutate_update(info=info, data=data, branch=branch)
 

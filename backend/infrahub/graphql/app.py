@@ -206,19 +206,14 @@ class InfrahubGraphQLApp:
         graphql_params = await prepare_graphql_params(
             db=db, branch=branch, at=at, account_session=account_session, request=request
         )
+        schema_branch = db.schema.get_schema_branch(name=branch.name)
+
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=query,
+            schema_branch=schema_branch,
             query_variables=variable_values,
             schema=graphql_params.schema,
             operation_name=operation_name,
-            branch=branch,
-        )
-        await self._evaluate_permissions(
-            db=db,
-            request=request,
-            query=analyzed_query,
-            query_parameters=graphql_params,
-            account_session=account_session,
             branch=branch,
         )
 
@@ -228,6 +223,23 @@ class InfrahubGraphQLApp:
         elif at and branch.schema_changed_at and Timestamp(branch.schema_changed_at) > Timestamp(at):
             schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=Timestamp(at))
             db.add_schema(name=branch.name, schema=schema_branch)
+            analyzed_query = InfrahubGraphQLQueryAnalyzer(
+                query=query,
+                schema_branch=schema_branch,
+                query_variables=variable_values,
+                schema=graphql_params.schema,
+                operation_name=operation_name,
+                branch=branch,
+            )
+
+        await self._evaluate_permissions(
+            db=db,
+            request=request,
+            query=analyzed_query,
+            query_parameters=graphql_params,
+            account_session=account_session,
+            branch=branch,
+        )
 
         if operation_name == "IntrospectionQuery":
             nbr_object_in_schema = len(graphql_params.schema.type_map)
