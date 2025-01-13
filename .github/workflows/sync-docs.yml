@@ -8,7 +8,7 @@ on:
       - stable
     paths:
       - 'docs/docs/**'
-      - 'docs/sidebar.ts'
+      - 'docs/sidebars.ts'
   pull_request:
     branches:
       - stable
