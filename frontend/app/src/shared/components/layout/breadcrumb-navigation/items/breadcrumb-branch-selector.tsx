@@ -36,8 +36,8 @@ export default function BreadcrumbBranchSelector({
         {value}
       </ComboboxTrigger>
 
-      <ComboboxContent align="start">
-        <ComboboxList fitTriggerWidth={false}>
+      <ComboboxContent align="start" fitTriggerWidth={false}>
+        <ComboboxList>
           <CommandEmpty>No branch found.</CommandEmpty>
           {branches.map((branch) => {
             const branchUrl = constructPath(`/branches/${branch.name}`);
