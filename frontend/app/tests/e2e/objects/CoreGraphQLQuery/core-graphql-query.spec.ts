@@ -90,7 +90,7 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
         .getByTestId("breadcrumb-navigation")
         .getByRole("link", { name: "GraphQL Query" })
         .click();
-      expect(page.url()).toContain("/nodes/CoreGraphQLQuery");
+      expect(page.url()).toContain("/objects/CoreGraphQLQuery");
     });
   });
 
