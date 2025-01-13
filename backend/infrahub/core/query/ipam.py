@@ -250,7 +250,15 @@ class IPPrefixUtilization(Query):
 
     def __init__(self, ip_prefixes: list[str], allocated_kinds: list[str], **kwargs):
         self.ip_prefixes = ip_prefixes
-        self.allocated_kinds = [f'"{kind}"' for kind in allocated_kinds]
+        self.allocated_kinds: list[str] = []
+        self.allocated_kinds_rel: list[str] = []
+
+        for kind in sorted(allocated_kinds):
+            self.allocated_kinds.append(f'"{kind}"')
+            self.allocated_kinds_rel.append(
+                {InfrahubKind.IPADDRESS: '"ip_prefix__ip_address"', InfrahubKind.IPPREFIX: '"parent__child"'}[kind]
+            )
+
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
@@ -266,7 +274,7 @@ class IPPrefixUtilization(Query):
         CALL {{
             WITH pfx
             MATCH (pfx)-[r_rel1:IS_RELATED]-(rl:Relationship)<-[r_rel2:IS_RELATED]-(child:Node)
-            WHERE rl.name IN ["parent__child", "ip_prefix__ip_address"]
+            WHERE rl.name IN [{", ".join(self.allocated_kinds_rel)}]
             AND any(l IN labels(child) WHERE l IN [{", ".join(self.allocated_kinds)}])
             AND ({rel_filter("r_rel1")})
             AND ({rel_filter("r_rel2")})
