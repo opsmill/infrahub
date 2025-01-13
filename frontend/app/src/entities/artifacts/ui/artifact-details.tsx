@@ -97,7 +97,7 @@ export default function ArtifactsDetails({ artifactId }: { artifactId: string })
 
   if (!data || (data && !data[schemaData.kind]?.edges?.length)) {
     // Redirect to the main list if there is no item for this is
-    // navigate(`/nodes/${objectname}`);
+    // navigate(`/objects/${objectname}`);
 
     return <NoDataFound message="No item found for that id." />;
   }
