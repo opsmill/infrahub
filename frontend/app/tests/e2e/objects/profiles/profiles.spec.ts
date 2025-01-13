@@ -179,7 +179,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
   });
 });
 
-test.describe("/nodes/CoreProfile - Profile for Interface L2 and fields verification", () => {
+test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verification", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 

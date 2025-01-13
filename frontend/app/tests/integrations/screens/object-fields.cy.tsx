@@ -63,10 +63,10 @@ import {
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
-const mockedUrl = "/nodes/TestTask";
+const mockedUrl = "/objects/TestTask";
 
 // Path that will match the route to display the component
-const mockedPath = "/nodes/:objectKind";
+const mockedPath = "/objects/:objectKind";
 
 // Mock the apollo query and data
 const mocks: any[] = [

@@ -1,7 +1,7 @@
 import useQuery from "@/shared/api/graphql/useQuery";
+import LoadingScreen from "@/shared/components/loading-screen";
 import { Badge } from "@/shared/components/ui/badge";
 import { gql } from "@apollo/client";
-import LoadingScreen from "../../../shared/components/loading-screen";
 
 type tProposedChangesCounter = {
   query: string;
