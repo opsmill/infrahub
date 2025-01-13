@@ -118,7 +118,6 @@ class PoolAllocated(ObjectType):
             response["count"] = await query.count(db=context.db)
 
         if edges := fields.get("edges"):
-            query.print(include_var=True)
             await query.execute(db=context.db)
 
             node_fields = edges.get("node", {})
