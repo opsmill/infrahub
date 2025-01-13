@@ -4,8 +4,7 @@ on:
   push:
     paths:
       - 'docs/docs/**'
-      - 'docs/media/**'
-      - 'docs/media/sidebar.ts'
+      - 'docs/sidebar.ts'
 
 jobs:
   sync:
@@ -26,11 +25,9 @@ jobs:
       - name: Sync folders
         run: |
           rm -rf target-repo/docs/docs/*
-          rm -rf target-repo/docs/media/*
           rm -rf target-repo/docs/sidebar.ts
           cp -r source-repo/docs/docs/* target-repo/docs/docs/
-          cp -r source-repo/docs/media/* target-repo/docs/media/
-          cp -r source-repo/docs/sidebar.ts target-repo/docs/sidebar.ts
+          cp source-repo/docs/sidebar.ts target-repo/docs/sidebar.ts
           cd target-repo
           git config user.name github-actions
           git config user.email github-actions@github.com
