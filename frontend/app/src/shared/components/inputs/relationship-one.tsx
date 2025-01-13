@@ -137,8 +137,12 @@ export const RelationshipInput = React.forwardRef<
               </PopoverTrigger>
             </Tooltip>
 
-            <ComboboxContent align="end" onOpenAutoFocus={() => loadPoolList()}>
-              <ComboboxList style={{ width: "auto" }}>
+            <ComboboxContent
+              align="end"
+              fitTriggerWidth={false}
+              onOpenAutoFocus={() => loadPoolList()}
+            >
+              <ComboboxList>
                 {!isPoolListLoading && <ComboboxEmpty>No pools found</ComboboxEmpty>}
 
                 {!isPoolListLoading &&
