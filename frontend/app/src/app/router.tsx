@@ -368,7 +368,7 @@ export const router = createBrowserRouter([
                     return {
                       type: "link",
                       label: "Users & Permissions",
-                      to: constructPath("/role-manager"),
+                      to: constructPath("/role-management"),
                     };
                   },
                 },
@@ -381,7 +381,7 @@ export const router = createBrowserRouter([
                         return {
                           type: "link",
                           label: "Accounts",
-                          to: constructPath("/role-manager/accounts"),
+                          to: constructPath("/role-management/accounts"),
                         };
                       },
                     },
@@ -394,7 +394,7 @@ export const router = createBrowserRouter([
                         return {
                           type: "link",
                           label: "Groups",
-                          to: constructPath("/role-manager/groups"),
+                          to: constructPath("/role-management/groups"),
                         };
                       },
                     },
@@ -407,7 +407,7 @@ export const router = createBrowserRouter([
                         return {
                           type: "link",
                           label: "Roles",
-                          to: constructPath("/role-manager/roles"),
+                          to: constructPath("/role-management/roles"),
                         };
                       },
                     },
@@ -420,7 +420,7 @@ export const router = createBrowserRouter([
                         return {
                           type: "link",
                           label: "Global Permissions",
-                          to: constructPath("/role-manager/global-permissions"),
+                          to: constructPath("/role-management/global-permissions"),
                         };
                       },
                     },
@@ -433,7 +433,7 @@ export const router = createBrowserRouter([
                         return {
                           type: "link",
                           label: "Object Permissions",
-                          to: constructPath("/role-manager/object-permissions"),
+                          to: constructPath("/role-management/object-permissions"),
                         };
                       },
                     },
