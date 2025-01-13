@@ -5,7 +5,7 @@ import { store } from "@/shared/stores";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/entities/branches/get-current-branch");
+vi.mock("@/entities/branches/domain/get-current-branch");
 vi.mock("@/entities/nodes/relationships/api/queries");
 vi.mock("@/shared/stores");
 
