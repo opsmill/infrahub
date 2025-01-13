@@ -180,7 +180,7 @@ We will use `allocate_next_ip_address` to allocated an IP address out of the `Co
 
 We provided a data argument to method. This data argument is used to pass attributes and relationships that we want to set on the allocated resource. In this case we are setting to the description of the allocated IP Address.
 
-You can allocate resources in an idempotent way by passing an identifier argument to the allocation method. This identifier links the resource pool with the allocated resource allowing us to create idempotent allocation behavior. This is crucial when you want to allocate resources in an idempotent way using [generators](/topics/generator).
+You can allocate resources in an idempotent way by passing an identifier argument to the allocation method. This identifier links the resource pool with the allocated resource allowing us to create idempotent allocation behavior. This is crucial when you want to allocate resources in an idempotent way using [generators](../../topics/generator).
 
 In this example we are executing the `allocate_next_ip_address` method 2 times, using the same identifier.
 

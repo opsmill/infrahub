@@ -55,7 +55,7 @@ Infrahub can natively render any Jinja templates dynamically. Internally it's re
 
 #### Create a Jinja rendered transform
 
-Please refer to the guide [Creating a Jinja Rendered Transform](/guides/jinja2-transform) for more information.
+Please refer to the guide [Creating a Jinja Rendered Transform](../guides/jinja2-transform) for more information.
 
 #### Render a Jinja2 transform
 
@@ -63,7 +63,7 @@ A Jinja2 Transform can be rendered with 3 different methods:
 
 - On demand via the REST API
 - As part of an [artifact](./artifact.mdx)
-- In CLI for development and troubleshooting [infrahubctl render](/infrahubctl/infrahubctl-render)
+- In CLI for development and troubleshooting [infrahubctl render](../infrahubctl/infrahubctl-render)
 
 ### TransformPython (Python plugin)
 
@@ -73,7 +73,7 @@ A `TransformPython` is a transformation plugin written in Python. It can generat
 
 A TransformPython must be written as a Python class that inherits from `InfrahubTransform` and it must implement one `transform` method. The transform method must accept a dict and return one.
 
-Please refer to the guide [Creating a Python transform](/guides/python-transform) for more information.
+Please refer to the guide [Creating a Python transform](../guides/python-transform) for more information.
 
 #### Render a TransformPython
 
@@ -81,7 +81,7 @@ A TransformPython can be rendered with 2 different methods:
 
 - On demand via the REST API
 - As part of an [Artifact](./artifact.mdx)
-- Via the CLI for development and troubleshooting: [infrahubctl transform](/infrahubctl/infrahubctl-transform)
+- Via the CLI for development and troubleshooting: [infrahubctl transform](../infrahubctl/infrahubctl-transform)
 
 ## Unit testing for transformation
 
@@ -89,4 +89,4 @@ Infrahub provide a framework to create unit tests for your transformations with 
 
 The tests can be executed locally for development purpose and they will also be executed as part of the CI Pipeline when the platform identify a change that could potentially impact your transformation.
 
-For more information, please check out the [Resource Testing Framework](/topics/resources-testing-framework) page.
+For more information, please check out the [Resource Testing Framework](../topics/resources-testing-framework) page.
