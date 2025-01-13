@@ -32,9 +32,9 @@ jobs:
       - name: Sync folders
         run: |
           rm -rf target-repo/docs/docs/*
-          rm -f target-repo/docs/sidebar.ts
+          rm -f target-repo/docs/sidebars.ts
           cp -r source-repo/docs/docs/* target-repo/docs/docs/
-          cp source-repo/docs/sidebar.ts target-repo/docs/sidebar.ts
+          cp source-repo/docs/sidebars.ts target-repo/docs/sidebars.ts
           cd target-repo
           git config user.name github-actions
           git config user.email github-actions@github.com
