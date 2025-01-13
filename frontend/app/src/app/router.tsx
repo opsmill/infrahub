@@ -74,7 +74,7 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                path: "/nodes",
+                path: "/objects",
                 lazy: () => import("@/pages/objects/layout"),
                 children: [
                   {
@@ -361,7 +361,7 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                path: "role-manager",
+                path: "role-management",
                 lazy: () => import("@/pages/role-management"),
                 handle: {
                   breadcrumb: () => {
