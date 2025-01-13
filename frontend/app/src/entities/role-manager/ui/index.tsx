@@ -17,7 +17,7 @@ export function RoleManagementNavigation() {
 
   const tabs = [
     {
-      to: constructPath("/role-manager"),
+      to: constructPath("/role-management"),
       label: (
         <div className="flex items-center gap-2">
           <Icon icon={"mdi:user-outline"} />
@@ -29,7 +29,7 @@ export function RoleManagementNavigation() {
       error: !!error,
     },
     {
-      to: constructPath("/role-manager/groups"),
+      to: constructPath("/role-management/groups"),
       label: (
         <div className="flex items-center gap-2">
           <Icon icon={"mdi:user-multiple-outline"} />
@@ -41,7 +41,7 @@ export function RoleManagementNavigation() {
       error: !!error,
     },
     {
-      to: constructPath("/role-manager/roles"),
+      to: constructPath("/role-management/roles"),
       label: (
         <div className="flex items-center gap-2">
           <Icon icon={"mdi:user-circle-outline"} />
@@ -53,7 +53,7 @@ export function RoleManagementNavigation() {
       error: !!error,
     },
     {
-      to: constructPath("/role-manager/global-permissions"),
+      to: constructPath("/role-management/global-permissions"),
       label: (
         <div className="flex items-center gap-2">
           <Icon icon={"mdi:ticket-confirmation-outline"} />
@@ -65,7 +65,7 @@ export function RoleManagementNavigation() {
       error: !!error,
     },
     {
-      to: constructPath("/role-manager/object-permissions"),
+      to: constructPath("/role-management/object-permissions"),
       label: (
         <div className="flex items-center gap-2">
           <Icon icon={"mdi:ticket-outline"} />
