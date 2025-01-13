@@ -3,9 +3,14 @@ name: Sync Folders
 
 on:
   push:
+    branches:
+      - stable
     paths:
       - 'docs/docs/**'
       - 'docs/sidebar.ts'
+  pull_request:
+    branches:
+      - stable
 
 jobs:
   sync:
