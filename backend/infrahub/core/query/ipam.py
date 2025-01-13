@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterable, Optional, Union
+from typing import TYPE_CHECKING, Iterable
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.constants import AllIPTypes, IPAddressType, IPNetworkType
@@ -38,7 +38,7 @@ class IPAddressData:
 
 
 def _get_namespace_id(
-    namespace: Optional[Union[Node, str]] = None,
+    namespace: Node | str | None = None,
 ) -> str:
     if namespace and isinstance(namespace, str):
         return namespace
@@ -54,7 +54,7 @@ class IPPrefixSubnetFetch(Query):
     def __init__(
         self,
         obj: IPNetworkType,
-        namespace: Optional[Union[Node, str]] = None,
+        namespace: Node | str | None = None,
         **kwargs,
     ):
         self.obj = obj
@@ -145,7 +145,7 @@ class IPPrefixIPAddressFetch(Query):
     def __init__(
         self,
         obj: IPNetworkType,
-        namespace: Optional[Union[Node, str]] = None,
+        namespace: Node | str | None = None,
         **kwargs,
     ):
         self.obj = obj
@@ -215,9 +215,9 @@ class IPPrefixIPAddressFetch(Query):
 async def get_subnets(
     db: InfrahubDatabase,
     ip_prefix: IPNetworkType,
-    namespace: Optional[Union[Node, str]] = None,
-    branch: Optional[Union[Branch, str]] = None,
-    at: Optional[Union[Timestamp, str]] = None,
+    namespace: Node | str | None = None,
+    branch: Branch | str | None = None,
+    at: Timestamp | str | None = None,
     branch_agnostic: bool = False,
 ) -> Iterable[IPPrefixData]:
     branch = await registry.get_branch(db=db, branch=branch)
@@ -231,9 +231,9 @@ async def get_subnets(
 async def get_ip_addresses(
     db: InfrahubDatabase,
     ip_prefix: IPNetworkType,
-    namespace: Optional[Union[Node, str]] = None,
-    branch: Optional[Union[Branch, str]] = None,
-    at=None,
+    namespace: Node | str | None = None,
+    branch: Branch | str | None = None,
+    at: Timestamp | str | None = None,
     branch_agnostic: bool = False,
 ) -> Iterable[IPAddressData]:
     branch = await registry.get_branch(db=db, branch=branch)
@@ -248,8 +248,17 @@ class IPPrefixUtilization(Query):
     name = "ipprefix_utilization_prefix"
     type = QueryType.READ
 
-    def __init__(self, ip_prefixes: list[str], **kwargs):
+    def __init__(self, ip_prefixes: list[str], allocated_kinds: list[str], **kwargs):
         self.ip_prefixes = ip_prefixes
+        self.allocated_kinds: list[str] = []
+        self.allocated_kinds_rel: list[str] = []
+
+        for kind in sorted(allocated_kinds):
+            self.allocated_kinds.append(f'"{kind}"')
+            self.allocated_kinds_rel.append(
+                {InfrahubKind.IPADDRESS: '"ip_prefix__ip_address"', InfrahubKind.IPPREFIX: '"parent__child"'}[kind]
+            )
+
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
@@ -265,8 +274,8 @@ class IPPrefixUtilization(Query):
         CALL {{
             WITH pfx
             MATCH (pfx)-[r_rel1:IS_RELATED]-(rl:Relationship)<-[r_rel2:IS_RELATED]-(child:Node)
-            WHERE rl.name IN ["parent__child", "ip_prefix__ip_address"]
-            AND any(l IN labels(child) WHERE l in ["{InfrahubKind.IPPREFIX}", "{InfrahubKind.IPADDRESS}"])
+            WHERE rl.name IN [{", ".join(self.allocated_kinds_rel)}]
+            AND any(l IN labels(child) WHERE l IN [{", ".join(self.allocated_kinds)}])
             AND ({rel_filter("r_rel1")})
             AND ({rel_filter("r_rel2")})
             RETURN r_rel1, rl, r_rel2, child
@@ -318,8 +327,8 @@ class IPPrefixReconcileQuery(Query):
     def __init__(
         self,
         ip_value: AllIPTypes,
-        namespace: Optional[Union[Node, str]] = None,
-        node_uuid: Optional[str] = None,
+        namespace: Node | str | None = None,
+        node_uuid: str | None = None,
         **kwargs,
     ):
         self.ip_value = ip_value
@@ -583,7 +592,7 @@ class IPPrefixReconcileQuery(Query):
         self.add_to_query(get_new_children_query)
         self.return_labels = ["ip_node", "current_parent", "current_children", "new_parent", "new_children"]
 
-    def _get_uuid_from_query(self, node_name: str) -> Optional[str]:
+    def _get_uuid_from_query(self, node_name: str) -> str | None:
         results = list(self.get_results())
         if not results:
             return None
@@ -610,13 +619,13 @@ class IPPrefixReconcileQuery(Query):
                 element_uuids.append(str(element_uuid))
         return element_uuids
 
-    def get_ip_node_uuid(self) -> Optional[str]:
+    def get_ip_node_uuid(self) -> str | None:
         return self._get_uuid_from_query("ip_node")
 
-    def get_current_parent_uuid(self) -> Optional[str]:
+    def get_current_parent_uuid(self) -> str | None:
         return self._get_uuid_from_query("current_parent")
 
-    def get_calculated_parent_uuid(self) -> Optional[str]:
+    def get_calculated_parent_uuid(self) -> str | None:
         return self._get_uuid_from_query("new_parent")
 
     def get_current_children_uuids(self) -> list[str]:
