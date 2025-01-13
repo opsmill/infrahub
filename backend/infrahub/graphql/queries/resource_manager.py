@@ -85,11 +85,17 @@ class PoolAllocated(ObjectType):
 
         fields = await extract_fields_first_node(info=info)
 
+        allocated_kinds = [InfrahubKind.IPPREFIX, InfrahubKind.IPADDRESS]
         pool = _validate_pool_type(pool_id=pool_id, pool=pool)
-        if pool.get_kind() == InfrahubKind.NUMBERPOOL:
-            return await resolve_number_pool_allocation(
-                db=context.db, context=context, pool=pool, fields=fields, offset=offset, limit=limit
-            )
+        match pool.get_kind():
+            case InfrahubKind.NUMBERPOOL:
+                return await resolve_number_pool_allocation(
+                    db=context.db, context=context, pool=pool, fields=fields, offset=offset, limit=limit
+                )
+            case InfrahubKind.IPPREFIXPOOL:
+                allocated_kinds = [InfrahubKind.IPPREFIX]
+            case InfrahubKind.IPADDRESSPOOL:
+                allocated_kinds = [InfrahubKind.IPADDRESS]
 
         resources = await pool.resources.get_peers(db=context.db)  # type: ignore[attr-defined,union-attr]
         if resource_id not in resources:
@@ -98,13 +104,6 @@ class PoolAllocated(ObjectType):
             )
 
         resource = resources[resource_id]
-
-        allocated_kinds = None
-        match pool.get_kind():
-            case InfrahubKind.IPPREFIXPOOL:
-                allocated_kinds = [InfrahubKind.IPPREFIX]
-            case InfrahubKind.IPADDRESSPOOL:
-                allocated_kinds = [InfrahubKind.IPADDRESS]
 
         query = await IPPrefixUtilization.init(
             db=context.db,

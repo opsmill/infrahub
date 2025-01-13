@@ -248,11 +248,9 @@ class IPPrefixUtilization(Query):
     name = "ipprefix_utilization_prefix"
     type = QueryType.READ
 
-    def __init__(self, ip_prefixes: list[str], allocated_kinds: list[str] | None = None, **kwargs):
+    def __init__(self, ip_prefixes: list[str], allocated_kinds: list[str], **kwargs):
         self.ip_prefixes = ip_prefixes
-        self.allocated_kinds = [
-            f'"{kind}"' for kind in (allocated_kinds or [InfrahubKind.IPPREFIX, InfrahubKind.IPADDRESS])
-        ]
+        self.allocated_kinds = [f'"{kind}"' for kind in allocated_kinds]
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
