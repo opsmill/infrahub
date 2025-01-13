@@ -1,3 +1,4 @@
+---
 name: Sync Folders
 
 on:
@@ -32,5 +33,4 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add .
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Sync folder from source repository" && git push)
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Sync folder from source repository" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Sync docs from infrahub repo" && git push)
