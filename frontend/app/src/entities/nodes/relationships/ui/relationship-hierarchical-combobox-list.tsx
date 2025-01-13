@@ -120,6 +120,10 @@ const HierarchicalExplorer = ({
 
   return (
     <Command
+      style={{
+        maxHeight: "min(var(--radix-popover-content-available-height), 300px)",
+        width: "var(--radix-popover-trigger-width)",
+      }}
       shouldFilter={false}
       onKeyDown={(e: React.KeyboardEvent) => {
         if (search.length) return;
