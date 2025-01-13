@@ -41,7 +41,7 @@ test.describe("when searching an object", () => {
       await expect(page.getByTestId("search-anywhere")).toContainText("Go to");
       await page.getByRole("option", { name: "Menu Device" }).click();
       await expect(page.getByRole("heading", { name: "Device" })).toBeVisible();
-      expect(page.url()).toContain("/nodes/InfraDevice");
+      expect(page.url()).toContain("/objects/InfraDevice");
     });
   });
 

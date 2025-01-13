@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../../constants";
 
-test.describe("/nodes/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details page", () => {
+test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details page", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 

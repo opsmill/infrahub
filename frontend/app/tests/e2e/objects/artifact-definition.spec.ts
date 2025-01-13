@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe("/nodes/CoreArtifactDefinition - Artifact Definition page", () => {
+test.describe("/objects/CoreArtifactDefinition - Artifact Definition page", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test.beforeEach(async function ({ page }) {

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe("/nodes/:objectKind/:objectid - relationship tab", () => {
+test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
   // Avoid checking as non-admin + updating as admin at the same time
   test.describe.configure({ mode: "serial" });
   test.slow();
@@ -123,6 +123,6 @@ test.describe("/nodes/:objectKind/:objectid - relationship tab", () => {
     });
     await page.getByRole("link", { name: "atl1", exact: true }).first().click();
     await expect(page.getByText("Nameatl1")).toBeVisible();
-    expect(page.url()).toContain("/nodes/LocationSite/");
+    expect(page.url()).toContain("/objects/LocationSite/");
   });
 });

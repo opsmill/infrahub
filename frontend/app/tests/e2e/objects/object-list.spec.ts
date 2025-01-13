@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe("/nodes/:objectKind", () => {
+test.describe("/objects/:objectKind", () => {
   test.beforeEach(async function ({ page }) {
     page.on("response", async (response) => {
       if (response.status() === 500) {
@@ -60,7 +60,7 @@ test.describe("/nodes/:objectKind", () => {
       await page.goto("/objects/InfraDevice");
       await page.getByRole("link", { name: "Juniper JunOS" }).first().click();
       await expect(page.getByText("NameJuniper JunOS")).toBeVisible();
-      expect(page.url()).toContain("/nodes/InfraPlatform/");
+      expect(page.url()).toContain("/objects/InfraPlatform/");
     });
 
     test("should be able to create a new object", async ({ page }) => {
