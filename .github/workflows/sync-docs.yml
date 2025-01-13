@@ -32,7 +32,7 @@ jobs:
       - name: Sync folders
         run: |
           rm -rf target-repo/docs/docs/*
-          rm target-repo/docs/sidebar.ts
+          rm -f target-repo/docs/sidebar.ts
           cp -r source-repo/docs/docs/* target-repo/docs/docs/
           cp source-repo/docs/sidebar.ts target-repo/docs/sidebar.ts
           cd target-repo
