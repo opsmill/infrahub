@@ -4,9 +4,9 @@ import {
   FormRelationshipValue,
   RelationshipValueFromPool,
 } from "@/shared/components/form/type";
+import { buildField } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData.test";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
 import { describe, expect } from "vitest";
-import { buildField } from "./getCreateMutationFromFormData.test";
 
 describe("getUpdateMutationFromFormData - test", () => {
   it("returns empty if there is no fields in form", () => {

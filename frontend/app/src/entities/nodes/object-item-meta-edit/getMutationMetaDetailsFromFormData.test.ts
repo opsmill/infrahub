@@ -8,15 +8,15 @@ import {
   mutationStringForMetaEdit,
   newDataForMetaEdit,
   updatedObjectForMetaEdit,
-} from "../../mocks/data/devices";
+} from "../../../../tests/mocks/data/devices";
 
 const updatedObject = getMutationMetaDetailsFromFormData(
   deviceDetailsMocksSchema[0],
   newDataForMetaEdit,
-  deviceDetailsMocksData.InfraDevice.edges[0].node,
+  deviceDetailsMocksData.InfraDevice.edges[0]!.node,
   "relationship",
   "site",
-  deviceDetailsMocksData.InfraDevice.edges[0].node.site.properties
+  deviceDetailsMocksData.InfraDevice.edges[0]!.node.site.properties
 );
 
 describe("Mutation details from object data", () => {
@@ -26,7 +26,7 @@ describe("Mutation details from object data", () => {
 
   it("should return a correct mutation from the updated object", () => {
     const mutationString = updateObjectWithId({
-      kind: deviceDetailsMocksSchema[0].kind,
+      kind: deviceDetailsMocksSchema[0]!.kind,
       data: stringifyWithoutQuotes(updatedObject),
     });
 
