@@ -25,7 +25,7 @@ import { TestProvider } from "../../mocks/jotai/atom";
 const graphqlQueryItemsUrl = `/objects/InfraDevice/${deviceDetailsMocksId}`;
 
 // Path that will match the route to display the component
-const graphqlQueryItemsPath = "/nodes/:objectKind/:objectid";
+const graphqlQueryItemsPath = "/objects/:objectKind/:objectid";
 
 // Mock the apollo query and data
 const mocks: any[] = [
