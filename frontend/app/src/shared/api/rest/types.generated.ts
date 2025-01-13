@@ -525,7 +525,7 @@ export interface components {
             display_labels?: string[] | null;
             /**
              * Include In Menu
-             * @description Defines if nodes of this kind should be included in the menu.
+             * @description Defines if objects of this kind should be included in the menu.
              */
             include_in_menu?: boolean | null;
             /**
@@ -639,7 +639,7 @@ export interface components {
             display_labels?: string[] | null;
             /**
              * Include In Menu
-             * @description Defines if nodes of this kind should be included in the menu.
+             * @description Defines if objects of this kind should be included in the menu.
              */
             include_in_menu?: boolean | null;
             /**
@@ -762,7 +762,7 @@ export interface components {
             display_labels?: string[] | null;
             /**
              * Include In Menu
-             * @description Defines if nodes of this kind should be included in the menu.
+             * @description Defines if objects of this kind should be included in the menu.
              */
             include_in_menu?: boolean | null;
             /**
@@ -1240,7 +1240,7 @@ export interface components {
             display_labels?: string[] | null;
             /**
              * Include In Menu
-             * @description Defines if nodes of this kind should be included in the menu.
+             * @description Defines if objects of this kind should be included in the menu.
              */
             include_in_menu?: boolean | null;
             /**
@@ -1420,6 +1420,11 @@ export interface components {
              *     ]
              */
             permission_backends: string[];
+            /**
+             * Public Url
+             * @description Define the public URL of the Infrahub, might be required for OAuth2 and OIDC depending on your infrastructure.
+             */
+            public_url?: string | null;
         };
         /** Menu */
         Menu: {
@@ -1469,7 +1474,7 @@ export interface components {
             permissions?: string[];
             /**
              * Children
-             * @description Child nodes
+             * @description Child objects
              */
             children?: components["schemas"]["MenuItemList"][];
         };
@@ -1545,7 +1550,7 @@ export interface components {
             display_labels?: string[] | null;
             /**
              * Include In Menu
-             * @description Defines if nodes of this kind should be included in the menu.
+             * @description Defines if objects of this kind should be included in the menu.
              */
             include_in_menu?: boolean | null;
             /**
@@ -1669,7 +1674,7 @@ export interface components {
             name: string;
             /**
              * Peer
-             * @description Type (kind) of nodes supported on the other end of the relationship.
+             * @description Type (kind) of objects supported on the other end of the relationship.
              */
             peer: string;
             /**
@@ -1693,19 +1698,19 @@ export interface components {
              */
             identifier?: string | null;
             /**
-             * @description Defines how many nodes are expected on the other side of the relationship.
+             * @description Defines how many objects are expected on the other side of the relationship.
              * @default many
              */
             cardinality: components["schemas"]["RelationshipCardinality"];
             /**
              * Min Count
-             * @description Defines the minimum nodes allowed on the other side of the relationship.
+             * @description Defines the minimum objects allowed on the other side of the relationship.
              * @default 0
              */
             min_count: number;
             /**
              * Max Count
-             * @description Defines the maximum nodes allowed on the other side of the relationship.
+             * @description Defines the maximum objects allowed on the other side of the relationship.
              * @default 0
              */
             max_count: number;
@@ -2101,7 +2106,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": null;
                 };
             };
         };
