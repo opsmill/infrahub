@@ -197,6 +197,11 @@ class S3StorageSettings(BaseSettings):
         alias="AWS_S3_USE_SSL",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_USE_SSL", "AWS_S3_USE_SSL"),
     )
+    signature_version: str = Field(
+        default="s3v4",
+        alias="AWS_SIGNATURE_VERSION",
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_S3_SIGNATURE_VERSION", "AWS_SIGNATURE_VERSION"),
+    )
     default_acl: str = Field(
         default="",
         alias="AWS_DEFAULT_ACL",
