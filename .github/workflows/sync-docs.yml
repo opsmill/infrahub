@@ -7,6 +7,7 @@ on:
     branches:
       - stable
     paths:
+      - '.vale/**'
       - 'docs/docs/**'
       - 'docs/sidebars.ts'
   pull_request:
@@ -31,8 +32,10 @@ jobs:
 
       - name: Sync folders
         run: |
+          rm -rf target-repo/.vale/*
           rm -rf target-repo/docs/docs/*
           rm -f target-repo/docs/sidebars.ts
+          cp -r source-repo/.vale/* target-repo/.vale/
           cp -r source-repo/docs/docs/* target-repo/docs/docs/
           cp source-repo/docs/sidebars.ts target-repo/docs/sidebars.ts
           cd target-repo
