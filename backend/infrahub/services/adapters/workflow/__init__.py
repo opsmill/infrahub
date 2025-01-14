@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, ParamSpec, TypeVar, overload
 
 if TYPE_CHECKING:
-    from infrahub.services import InfrahubServices
     from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 Return = TypeVar("Return")
@@ -12,10 +12,7 @@ Params = ParamSpec("Params")
 FuncType = Callable[Params, Return]
 
 
-class InfrahubWorkflow:
-    async def initialize(self, service: InfrahubServices) -> None:
-        """Initialize the Workflow engine"""
-
+class InfrahubWorkflow(ABC):
     @overload
     async def execute_workflow(
         self,
@@ -34,6 +31,7 @@ class InfrahubWorkflow:
         tags: list[str] | None = ...,
     ) -> Any: ...
 
+    @abstractmethod
     async def execute_workflow(
         self,
         workflow: WorkflowDefinition,
@@ -41,12 +39,13 @@ class InfrahubWorkflow:
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> Any:
-        raise NotImplementedError("InfrahubWorkflow.execute_workflow is an abstract method")
+        raise NotImplementedError()
 
+    @abstractmethod
     async def submit_workflow(
         self,
         workflow: WorkflowDefinition,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> WorkflowInfo:
-        raise NotImplementedError("InfrahubWorkflow.submit_workflow is an abstract method")
+        raise NotImplementedError()

@@ -124,7 +124,7 @@ async def test_diff_get_files_repository(db: InfrahubDatabase, repos_in_main, ba
         )
         return model
 
-    service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
     with (
         patch(
             "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
@@ -167,7 +167,7 @@ async def test_diff_get_files_repositories_for_branch_case01(
         )
         return model
 
-    service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
     with (
         patch(
             "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
@@ -218,7 +218,7 @@ async def test_diff_get_files_repositories_for_branch_case02(
             )
         raise ValueError(f"Should not reach here: {model}")
 
-    service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
     with init_global_service(service):
         branch2 = await create_branch(branch_name="branch2", db=db)
 
@@ -266,7 +266,7 @@ async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repo
             )
         raise ValueError(f"Should not reach here: {model}")
 
-    service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
     with init_global_service(service):
         branch2 = await create_branch(branch_name="branch2", db=db)
 

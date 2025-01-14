@@ -4,7 +4,6 @@ import redis.asyncio as redis
 
 from infrahub import config
 from infrahub.message_bus.types import KVTTL
-from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache import InfrahubCache
 
 
@@ -19,9 +18,6 @@ class RedisCache(InfrahubCache):
             ssl_check_hostname=not config.SETTINGS.cache.tls_insecure,
             ssl_ca_certs=config.SETTINGS.cache.tls_ca_file,
         )
-
-    async def initialize(self, service: InfrahubServices) -> None:
-        pass
 
     async def delete(self, key: str) -> None:
         await self.connection.delete(key)

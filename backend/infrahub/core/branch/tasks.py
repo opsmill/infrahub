@@ -233,7 +233,7 @@ async def merge_branch(branch: str) -> None:
             target_branch=registry.default_branch,
             meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
         )
-        await service.send(message=message)
+        await service.message_bus.send(message=message)
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")

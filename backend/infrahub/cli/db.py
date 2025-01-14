@@ -216,10 +216,10 @@ async def update_core_schema(  # pylint: disable=too-many-statements
             # ----------------------------------------------------------
             # Initialize Schema and Registry
             # ----------------------------------------------------------
-            service = InfrahubServices(
-                database=db, message_bus=BusSimulator(database=db), workflow=WorkflowLocalExecution()
+            service = await InfrahubServices.new(
+                database=db, message_bus=BusSimulator(), workflow=WorkflowLocalExecution()
             )
-            services.prepare(service)
+            services.service = service
             await initialize_registry(db=db)
 
             default_branch = registry.get_branch_from_registry(branch=registry.default_branch)

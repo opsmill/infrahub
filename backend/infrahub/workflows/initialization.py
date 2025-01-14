@@ -39,7 +39,7 @@ async def setup_deployments(client: PrefectClient) -> None:
         log.info(f"Flow {workflow.name}, created successfully ... ")
 
     for automation_setup_workflow in automation_setup_workflows:
-        automation_setup = automation_setup_workflow.get_function()
+        automation_setup = automation_setup_workflow.load_function()
         await automation_setup()
 
 

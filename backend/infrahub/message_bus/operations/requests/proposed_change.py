@@ -84,7 +84,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
                 )
         for event in events:
             event.assign_meta(parent=message)
-            await service.send(message=event)
+            await service.message_bus.send(message=event)
         return
 
     await _gather_repository_repository_diffs(repositories=repositories, service=service)
@@ -183,7 +183,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
 
     for event in events:
         event.assign_meta(parent=message)
-        await service.send(message=event)
+        await service.message_bus.send(message=event)
 
 
 @flow(
@@ -242,7 +242,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
             )
 
             msg.assign_meta(parent=message)
-            await service.send(message=msg)
+            await service.message_bus.send(message=msg)
 
 
 GATHER_ARTIFACT_DEFINITIONS = """
@@ -525,7 +525,10 @@ async def _validate_repository_merge_conflicts(
     for repo in repositories:
         if repo.has_diff and not repo.is_staging:
             git_repo = await InfrahubRepository.init(
-                id=repo.repository_id, name=repo.repository_name, client=service.client
+                id=repo.repository_id,
+                name=repo.repository_name,
+                client=service.client,
+                service=service,
             )
             async with lock.registry.get(name=repo.repository_name, namespace="repository"):
                 repo.conflicts = await git_repo.get_conflicts(
@@ -547,7 +550,10 @@ async def _gather_repository_repository_diffs(
         if repo.has_diff and repo.source_commit and repo.destination_commit:
             # TODO we need to find a way to return all files in the repo if the repo is new
             git_repo = await InfrahubRepository.init(
-                id=repo.repository_id, name=repo.repository_name, client=service.client
+                id=repo.repository_id,
+                name=repo.repository_name,
+                client=service.client,
+                service=service,
             )
 
             files_changed: list[str] = []

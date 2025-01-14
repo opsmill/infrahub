@@ -29,7 +29,7 @@ async def test_trigger_repository_import(
 ):
     repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
     recorder = BusRecorder()
-    service = InfrahubServices(database=db, message_bus=recorder, workflow=WorkflowLocalExecution())
+    service = await InfrahubServices.new(database=db, message_bus=recorder, workflow=WorkflowLocalExecution())
 
     # TODO: Removing this mock triggers issue: `Invalid file system for test-edge-demo, local directory ... missing`
     with (
@@ -81,7 +81,7 @@ async def test_repository_update(db: InfrahubDatabase, register_core_models_sche
     branch2 = await create_branch(branch_name="branch2", db=db)
     repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
     recorder = BusRecorder()
-    service = InfrahubServices(database=db, message_bus=recorder)
+    service = await InfrahubServices.new(database=db, message_bus=recorder)
 
     UPDATE_COMMIT = """
     mutation CoreRepositoryUpdate($id: String!, $commit_id: String!, $internal_status: String!) {

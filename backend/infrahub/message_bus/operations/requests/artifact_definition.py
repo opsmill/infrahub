@@ -128,7 +128,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
     )
     for event in events:
         event.assign_meta(parent=message)
-        await service.send(message=event)
+        await service.message_bus.send(message=event)
 
 
 def _render_artifact(artifact_id: Optional[str], managed_branch: bool, impacted_artifacts: list[str]) -> bool:  # pylint: disable=unused-argument

@@ -259,7 +259,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators) -> None:
                 destination_branch=model.destination_branch,
             )
             msg.assign_meta(parent=model)
-            await service.send(message=msg)
+            await service.message_bus.send(message=msg)
 
     next_messages: list[InfrahubMessage] = []
     if model.refresh_artifacts:
@@ -287,7 +287,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators) -> None:
 
     for next_msg in next_messages:
         next_msg.assign_meta(parent=model)
-        await service.send(message=next_msg)
+        await service.message_bus.send(message=next_msg)
 
 
 @flow(
@@ -421,7 +421,7 @@ async def repository_checks(model: RequestProposedChangeRepositoryChecks) -> Non
         )
     for event in events:
         event.assign_meta(parent=model)
-        await service.send(message=event)
+        await service.message_bus.send(message=event)
 
 
 @flow(

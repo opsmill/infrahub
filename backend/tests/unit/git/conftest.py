@@ -18,6 +18,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
+from infrahub.services import InfrahubServices
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
 from tests.conftest import TestHelper
 from tests.helpers.test_client import dummy_async_request
@@ -137,6 +138,7 @@ async def git_repo_01(
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     return repo
@@ -155,6 +157,7 @@ async def git_repo_01_read_only(
         ref="branch01",
         infrahub_branch_name="main",
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     return repo
@@ -176,6 +179,7 @@ async def git_repo_02(git_upstream_repo_02: dict[str, str | Path], git_repos_dir
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     return repo
@@ -200,6 +204,7 @@ async def git_repo_03(
         name=git_upstream_repo_03["name"],
         location=str(git_upstream_repo_03["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     return repo
@@ -228,6 +233,7 @@ async def git_repo_04(
         name=git_upstream_repo_03["name"],
         location=str(git_upstream_repo_03["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
@@ -265,6 +271,7 @@ async def git_repo_05(
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     # Update the first file at the top level and commit the change in the branch
@@ -296,6 +303,7 @@ async def git_repo_06(
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
@@ -391,6 +399,7 @@ async def git_repo_jinja(
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
@@ -429,6 +438,7 @@ async def git_repo_checks(
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
     return repo
 
@@ -459,6 +469,7 @@ async def git_repo_transforms(
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
     return repo
 
@@ -482,6 +493,7 @@ async def git_repo_10(
         name=git_upstream_repo_10["name"],
         location=str(git_upstream_repo_10["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     repo.client = client

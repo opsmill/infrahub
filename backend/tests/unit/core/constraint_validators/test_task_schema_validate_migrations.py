@@ -36,8 +36,8 @@ async def test_schema_validate_migrations(
         )
     ]
 
-    services.service = InfrahubServices(
-        message_bus=BusSimulator(database=db), client=InfrahubClient(), workflow=WorkflowLocalExecution(), database=db
+    services.service = await InfrahubServices.new(
+        message_bus=BusSimulator(), client=InfrahubClient(), workflow=WorkflowLocalExecution(), database=db
     )
 
     message = SchemaValidateMigrationData(branch=default_branch, schema_branch=schema, constraints=constraints)

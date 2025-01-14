@@ -41,7 +41,7 @@ from infrahub.core.constants import InfrahubKind, RepositorySyncStatus
 from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.exceptions import CheckError, RepositoryInvalidFileSystemError, TransformError
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
-from infrahub.services import InfrahubServices
+from infrahub.log import get_logger
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
@@ -54,6 +54,7 @@ if TYPE_CHECKING:
 
     from infrahub.git.models import RequestArtifactGenerate
     from infrahub.message_bus import messages
+    from infrahub.services import InfrahubServices
 
 # pylint: disable=too-many-lines
 
@@ -130,20 +131,20 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     """
 
     @classmethod
-    async def init(cls, commit: str | None = None, service: InfrahubServices | None = None, **kwargs: Any) -> Self:
-        service = service or InfrahubServices()
+    async def init(cls, service: InfrahubServices, commit: str | None = None, **kwargs: Any) -> Self:
         self = cls(service=service, **kwargs)
+        log = get_logger()
         try:
             self.validate_local_directories()
         except RepositoryInvalidFileSystemError:
             await self.ensure_location_is_defined()
             await self.create_locally(infrahub_branch_name=self.infrahub_branch_name, update_commit_value=False)
-            service.log.info(f"Initialized the local directory for {self.name} because it was missing.")
+            log.info(f"Initialized the local directory for {self.name} because it was missing.")
 
         if commit:
             self.get_commit_worktree(commit=commit)
 
-        service.log.debug(
+        log.debug(
             f"Initiated the object on an existing directory for {self.name}",
         )
         return self

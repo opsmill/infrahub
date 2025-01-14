@@ -266,7 +266,7 @@ async def test_branch_rebase_wrong_branch(
     }
     """
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder)
+    service = await InfrahubServices.new(message_bus=recorder)
     gql_params = await prepare_graphql_params(
         db=db, include_subscription=False, service=service, branch=default_branch, account_session=session_admin
     )
@@ -332,7 +332,7 @@ async def test_branch_merge_wrong_branch(
     }
     """
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder, database=db, workflow=WorkflowLocalExecution())
+    service = await InfrahubServices.new(message_bus=recorder, database=db, workflow=WorkflowLocalExecution())
     with init_global_service(service):
         gql_params = await prepare_graphql_params(
             db=db, include_subscription=False, branch=branch1, account_session=session_admin, service=service
@@ -371,7 +371,7 @@ async def test_branch_merge_with_conflict_fails(db: InfrahubDatabase, car_person
     await car_branch.save(db=db)
 
     recorder = BusRecorder()
-    service = InfrahubServices(message_bus=recorder, database=db, workflow=WorkflowLocalExecution())
+    service = await InfrahubServices.new(message_bus=recorder, database=db, workflow=WorkflowLocalExecution())
     with init_global_service(service):
         gql_params = await prepare_graphql_params(
             db=db, include_subscription=False, branch=branch2, account_session=session_admin, service=service

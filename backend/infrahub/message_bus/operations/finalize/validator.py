@@ -67,7 +67,7 @@ async def execution(message: messages.FinalizeValidatorExecution, service: Infra
                 validator_id=message.validator_id,
                 validator_execution_id=message.validator_execution_id,
             )
-            await service.send(message=message, delay=MessageTTL.FIVE)
+            await service.message_bus.send(message=message, delay=MessageTTL.FIVE)
             return
 
         log.info(

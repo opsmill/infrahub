@@ -103,14 +103,14 @@ async def prepare_proposed_change(
     config = Config(api_token=admin_token, requester=test_client.async_request)
     client = InfrahubClient(config=config)
 
-    service = InfrahubServices(
+    service = await InfrahubServices.new(
         message_bus=bus, client=client, workflow=WorkflowLocalExecution(), database=db, cache=RedisCache()
     )
-    await service.event.initialize(service)
-    await service.component.initialize(service)
-    services.prepare(service=service)
+    services.service = service
 
-    repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
+    repo = await InfrahubRepository.new(
+        id=obj.id, name=file_repo.name, location=file_repo.path, client=client, service=service
+    )
     await repo.sync()
 
     result = await graphql_mutation(
@@ -140,7 +140,7 @@ async def test_run_pipeline_validate_requested_jobs(
     config = Config(api_token=admin_token, requester=test_client.async_request)
     client = InfrahubClient(config=config)
     fake_log = FakeLogger()
-    service = InfrahubServices(
+    service = await InfrahubServices.new(
         client=client,
         log=fake_log,
         message_bus=bus_pre_data_changes,
@@ -155,8 +155,9 @@ async def test_run_pipeline_validate_requested_jobs(
         await obj.new(db=db, name="ci-pipeline-01", description="for use within tests")
         await obj.save(db=db)
 
-        bus_post_data_changes = BusSimulator(database=services.service.database)
-        services.service.message_bus = bus_post_data_changes
+        bus_post_data_changes = BusSimulator()
+        services.service._message_bus = bus_post_data_changes
+        bus_post_data_changes.service = services.service
 
         await pipeline(message=message, service=services.service)
 
@@ -190,7 +191,7 @@ async def test_run_generators_validate_requested_jobs(
     admin_token = await integration_helper.create_token()
     config = Config(api_token=admin_token, requester=test_client.async_request)
     client = InfrahubClient(config=config)
-    service = InfrahubServices(
+    service = await InfrahubServices.new(
         client=client,
         message_bus=bus,
         log=FakeLogger(),

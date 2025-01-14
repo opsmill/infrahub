@@ -76,7 +76,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             ]
 
             for message in message_list:
-                await context.service.send(message=message)
+                await context.service.message_bus.send(message=message)
 
         return proposed_change, result
 
@@ -178,7 +178,7 @@ class ProposedChangeRequestRunCheck(Mutation):
             check_type=check_type,
         )
         if context.service:
-            await context.service.send(message=message)
+            await context.service.message_bus.send(message=message)
 
         return {"ok": True}
 

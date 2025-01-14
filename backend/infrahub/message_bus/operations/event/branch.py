@@ -54,4 +54,4 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
 
         for event in events:
             event.assign_meta(parent=message)
-            await service.send(message=event)
+            await service.message_bus.send(message=event)

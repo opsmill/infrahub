@@ -56,6 +56,7 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
             infrahub_branch_name=model.infrahub_branch_name,
             internal_status=model.internal_status,
             default_branch_name=model.default_branch_name,
+            service=service,
         )
         await repo.import_objects_from_files(
             infrahub_branch_name=model.infrahub_branch_name, git_branch_name=model.default_branch_name
@@ -73,7 +74,7 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
                 infrahub_branch_name=model.infrahub_branch_name,
                 infrahub_branch_id=model.infrahub_branch_id,
             )
-            await service.send(message=notification)
+            await service.message_bus.send(message=notification)
 
 
 @flow(
@@ -92,6 +93,7 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
             client=service.client,
             ref=model.ref,
             infrahub_branch_name=model.infrahub_branch_name,
+            service=service,
         )
         await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name)
         if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
@@ -107,7 +109,7 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
                 infrahub_branch_name=model.infrahub_branch_name,
                 infrahub_branch_id=model.infrahub_branch_id,
             )
-            await service.send(message=notification)
+            await service.message_bus.send(message=notification)
 
 
 @flow(name="git-repositories-create-branch", flow_run_name="Create branch '{branch}' in Git Repositories")
@@ -197,7 +199,7 @@ async def sync_remote_repositories() -> None:
                     infrahub_branch_name=infrahub_branch,
                     infrahub_branch_id=branches[infrahub_branch].id,
                 )
-                await service.send(message=message)
+                await service.message_bus.send(message=message)
             except RepositoryError as exc:
                 log.info(exc.message)
 
@@ -218,7 +220,7 @@ async def git_branch_create(
     service = services.service
     log = get_run_logger()
     repo = await InfrahubRepository.init(
-        id=repository_id, name=repository_name, location=repository_location, client=client
+        id=repository_id, name=repository_name, location=repository_location, client=client, service=service
     )
 
     async with lock.registry.get(name=repository_name, namespace="repository"):
@@ -234,7 +236,7 @@ async def git_branch_create(
             infrahub_branch_name=branch,
             infrahub_branch_id=branch_id,
         )
-        await service.send(message=message)
+        await service.message_bus.send(message=message)
         log.debug("Sent message to all workers to fetch the latest version of the repository (RefreshGitFetch)")
 
 
@@ -375,6 +377,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
                 client=service.client,
                 ref=model.ref,
                 infrahub_branch_name=model.infrahub_branch_name,
+                service=service,
             )
         except RepositoryError:
             init_failed = True
@@ -387,6 +390,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
                 client=service.client,
                 ref=model.ref,
                 infrahub_branch_name=model.infrahub_branch_name,
+                service=service,
             )
 
         await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
@@ -402,7 +406,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
             infrahub_branch_name=model.infrahub_branch_name,
             infrahub_branch_id=model.infrahub_branch_id,
         )
-        await service.send(message=message)
+        await service.message_bus.send(message=message)
 
 
 @flow(
@@ -419,6 +423,7 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
         name=model.repository_name,
         client=service.client,
         default_branch_name=model.default_branch,
+        service=service,
     )
 
     if model.internal_status == RepositoryInternalStatus.STAGING.value:
@@ -447,7 +452,7 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
                     infrahub_branch_name=model.destination_branch,
                     infrahub_branch_id=model.destination_branch_id,
                 )
-                await service.send(message=message)
+                await service.message_bus.send(message=message)
 
 
 @flow(name="git-commit-automation-setup", flow_run_name="Setup git commit updated event in task-manager")

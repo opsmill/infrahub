@@ -5,11 +5,9 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     import httpx
 
-    from infrahub.services import InfrahubServices
-
 
 class InfrahubHTTP:
-    async def initialize(self, service: InfrahubServices) -> None:
+    async def initialize(self) -> None:
         """Initialize the HTTP adapter"""
 
     async def get(

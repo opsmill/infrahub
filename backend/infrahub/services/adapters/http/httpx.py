@@ -2,25 +2,23 @@ from __future__ import annotations
 
 import ssl
 from functools import cached_property
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import httpx
 
 from infrahub import config
 from infrahub.exceptions import HTTPServerError, HTTPServerSSLError, HTTPServerTimeoutError
+from infrahub.log import get_logger
 from infrahub.services.adapters.http import InfrahubHTTP
 
-if TYPE_CHECKING:
-    from infrahub.services import InfrahubServices
+log = get_logger()
 
 
 class HttpxAdapter(InfrahubHTTP):
     settings: config.HTTPSettings
-    service: InfrahubServices
 
-    async def initialize(self, service: InfrahubServices) -> None:
+    async def initialize(self) -> None:
         """Initialize the HTTP adapter"""
-        self.service = service
         self.settings = config.SETTINGS.http
 
         # Cache the context during init, this is to avoid issue when a CA bundle might be accessible
@@ -62,16 +60,16 @@ class HttpxAdapter(InfrahubHTTP):
                     **params,
                 )
             except ssl.SSLCertVerificationError as exc:
-                self.service.log.info(f"TLS verification failed for connection to {url}")
+                log.info(f"TLS verification failed for connection to {url}")
                 raise HTTPServerSSLError(message=f"Unable to validate TLS certificate for connection to {url}") from exc
             except httpx.ReadTimeout as exc:
-                self.service.log.info(f"Connection timed out when trying to reach {url}")
+                log.info(f"Connection timed out when trying to reach {url}")
                 raise HTTPServerTimeoutError(
                     message=f"Connection to {url} timed out after {self.settings.timeout}"
                 ) from exc
             except httpx.RequestError as exc:
                 # Catch all error from httpx
-                self.service.log.warning(f"Unhandled HTTP error for {url} ({exc})")
+                log.warning(f"Unhandled HTTP error for {url} ({exc})")
                 raise HTTPServerError(message=f"Unknown http error when connecting to {url}") from exc
 
         return response

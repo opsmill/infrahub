@@ -1,4 +1,3 @@
-import importlib
 import logging
 import os
 from typing import Any, Optional
@@ -33,6 +32,7 @@ from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
+from infrahub.workers.utils import load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
 WORKER_QUERY_SECONDS = "2"
@@ -65,6 +65,7 @@ class InfrahubWorkerAsync(BaseWorker):
     _documentation_url = "https://example.com/docs"
     _logo_url = "https://example.com/logo"
     _description = "Infrahub worker designed to run the flow in the main async loop."
+    service: InfrahubServices  # keep a reference to `service` so we can inject it within flows parameters.
 
     async def setup(
         self,
@@ -107,20 +108,19 @@ class InfrahubWorkerAsync(BaseWorker):
             )
         )
 
-        client = await self._init_infrahub_client(client=client)
-        service = await self._init_services(client=client)
+        await self._init_services(client=client)
 
         if not registry.schema_has_been_initialized():
-            initialize_lock(service=service)
+            initialize_lock(service=self.service)
 
-            async with service.database.start_session() as db:
+            async with self.service.database.start_session() as db:
                 await initialization(db=db)
 
-            await service.component.refresh_schema_hash()
+            await self.service.component.refresh_schema_hash()
 
         initialize_repositories_directory()
         build_component_registry()
-        await service.scheduler.start_schedule()
+        await self.service.scheduler.start_schedule()
         self._logger.info("Worker initialization completed .. ")
 
     async def run(
@@ -136,8 +136,7 @@ class InfrahubWorkerAsync(BaseWorker):
         file_path, flow_name = entrypoint.split(":")
         file_path.replace("/", ".")
         module_path = file_path.replace("backend/", "").replace(".py", "").replace("/", ".")
-        module = importlib.import_module(module_path)
-        flow_func = getattr(module, flow_name)
+        flow_func = load_flow_function(module_path=module_path, flow_name=flow_name)
 
         flow_run_logger.debug("Validating parameters")
         params = flow_func.validate_parameters(parameters=flow_run.parameters)
@@ -186,32 +185,36 @@ class InfrahubWorkerAsync(BaseWorker):
             else WorkflowLocalExecution()
         )
 
-    async def _init_message_bus(self) -> InfrahubMessageBus:
+    async def _init_message_bus(self, component_type: ComponentType) -> InfrahubMessageBus:
         return config.OVERRIDE.message_bus or (
-            NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
+            await NATSMessageBus.new(component_type=component_type)
+            if config.SETTINGS.broker.driver == config.BrokerDriver.NATS
+            else await RabbitMQMessageBus.new(component_type=component_type)
         )
 
     async def _init_cache(self) -> InfrahubCache:
         return config.OVERRIDE.cache or (
-            NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
+            await NATSCache.new() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
         )
 
-    async def _init_services(self, client: InfrahubClient) -> InfrahubServices:
+    async def _init_services(self, client: InfrahubClient) -> None:
+        component_type = ComponentType.GIT_AGENT
+        client = await self._init_infrahub_client(client=client)
         database = await self._init_database()
         workflow = await self._init_workflow()
-        message_bus = await self._init_message_bus()
+        message_bus = await self._init_message_bus(component_type=component_type)
         cache = await self._init_cache()
 
-        service = InfrahubServices(
+        service = await InfrahubServices.new(
             cache=cache,
             client=client,
             database=database,
             message_bus=message_bus,
             workflow=workflow,
-            component_type=ComponentType.GIT_AGENT,
+            component_type=component_type,
         )
 
-        services.service = service
-        await service.initialize()
+        self.service = service
 
-        return service
+        # TODO This will be removed when all flows support `service` injection
+        services.service = service

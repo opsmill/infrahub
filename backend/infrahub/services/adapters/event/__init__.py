@@ -5,29 +5,18 @@ from typing import TYPE_CHECKING
 
 from prefect.events import emit_event
 
-from infrahub.exceptions import InitializationError
-
 if TYPE_CHECKING:
     from infrahub.events import InfrahubEvent
-    from infrahub.services import InfrahubServices
+    from infrahub.services import InfrahubMessageBus
 
 
 class InfrahubEventService:
     """Base class for infrahub event service"""
 
-    def __init__(self) -> None:
-        self._service: InfrahubServices | None = None
-
-    @property
-    def service(self) -> InfrahubServices:
-        if not self._service:
-            raise InitializationError("Event is not initialized with a service")
-
-        return self._service
-
-    async def initialize(self, service: InfrahubServices) -> None:
-        """Initialize the event service"""
-        self._service = service
+    def __init__(self, message_bus: InfrahubMessageBus | None = None) -> None:
+        # Ideally message_bus should not be optional, we let it like this for existing tests that
+        #  pass without a bus as corresponding tested events do not send bus messages.
+        self.message_bus = message_bus
 
     async def send(self, event: InfrahubEvent) -> None:
         tasks = [self._send_bus(event=event), self._send_prefect(event=event)]
@@ -35,7 +24,9 @@ class InfrahubEventService:
 
     async def _send_bus(self, event: InfrahubEvent) -> None:
         for message in event.get_messages():
-            await self.service.send(message=message)
+            if self.message_bus is None:
+                raise ValueError("InfrahubEventService.message_bus is None.")
+            await self.message_bus.send(message=message)
 
     async def _send_prefect(self, event: InfrahubEvent) -> None:
         emit_event(

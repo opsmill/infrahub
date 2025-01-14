@@ -11,7 +11,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
 from infrahub.git import InfrahubRepository
-from infrahub.server import app, app_initialization
+from infrahub.server import app, lifespan
 from infrahub.services import InfrahubServices, services
 from tests.constants import TestKind
 from tests.helpers.schema import CAR_SCHEMA, load_schema
@@ -19,14 +19,16 @@ from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.test_client import InfrahubTestClient
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from infrahub.database import InfrahubDatabase
     from tests.helpers.file_repo import FileRepo
 
 
 @pytest.fixture
-def init_service():
-    original = services.service
-    service = InfrahubServices(client=InfrahubClient())
+async def init_service():
+    original = services._service
+    service = await InfrahubServices.new(client=InfrahubClient())
     services.service = service
     yield service
     services.service = original
@@ -85,15 +87,14 @@ class TestTransforms(TestInfrahubApp):
         base_dataset,
         redis: dict[int, int] | None,
         nats: dict[int, int] | None,
-    ) -> InfrahubTestClient:
-        await app_initialization(app)
-        return InfrahubTestClient(app=app)
+    ) -> AsyncGenerator[InfrahubTestClient, None]:
+        async with lifespan(app):
+            yield InfrahubTestClient(app=app)
 
     @pytest.fixture(scope="class")
     async def client(self, test_client: InfrahubTestClient, integration_helper):  # type: ignore[override]
         admin_token = await integration_helper.create_token()
         config = Config(api_token=admin_token, requester=test_client.async_request)
-
         return InfrahubClient(config=config)
 
     @pytest.fixture(scope="class")
@@ -114,6 +115,7 @@ class TestTransforms(TestInfrahubApp):
             name=git_repo_car_dealership.name,
             location=git_repo_car_dealership.path,
             client=client,
+            service=await InfrahubServices.new(database=db),
         )
 
         return repo

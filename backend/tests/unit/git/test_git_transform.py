@@ -11,12 +11,12 @@ from infrahub.transformations.tasks import transform_python, transform_render_ji
 
 
 @pytest.fixture
-def init_service():
-    original = services.service
-    service = InfrahubServices(client=InfrahubClient(), workflow=WorkflowLocalExecution())
-    services.service = service
+async def init_service():
+    original = services._service
+    service = await InfrahubServices.new(client=InfrahubClient(), workflow=WorkflowLocalExecution())
+    services._service = service
     yield service
-    services.service = original
+    services._service = original
 
 
 async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository, prefect_test_fixture, helper):

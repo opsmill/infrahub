@@ -34,7 +34,7 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
 
     @pytest.fixture(scope="class", autouse=True)
     def bus_simulator_cache(self, bus_simulator):
-        bus_simulator.service.cache = RedisCache()
+        bus_simulator.service._cache = RedisCache()
 
     @pytest.fixture(scope="class", autouse=True)
     def git_repos_dir(self, git_repos_source_dir_module_scope: Path): ...

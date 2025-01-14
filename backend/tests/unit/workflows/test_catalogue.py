@@ -15,13 +15,13 @@ if TYPE_CHECKING:
 @pytest.mark.parametrize("workflow", [pytest.param(workflow, id=workflow.name) for workflow in workflows])
 def test_workflow_definition(workflow: WorkflowDefinition) -> None:
     """Validate that we can import the function for each workflow."""
-    workflow.validate_workflow()
+    workflow.load_function()
 
 
 @pytest.mark.parametrize("workflow", [pytest.param(workflow, id=workflow.name) for workflow in workflows])
 def test_workflow_definition_matches(workflow: WorkflowDefinition) -> None:
     """Validate that the name of the workflow matches the name of the flow"""
-    flow = workflow.get_function()
+    flow = workflow.load_function()
     assert hasattr(flow, "name")
     assert workflow.name == flow.name
 

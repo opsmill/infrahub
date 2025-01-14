@@ -80,10 +80,12 @@ async def prepare_proposed_change(
     config = Config(api_token=admin_token, requester=test_client.async_request)
     client = InfrahubClient(config=config)
 
-    service = InfrahubServices(message_bus=bus, client=client)
-    services.prepare(service=service)
+    service = await InfrahubServices.new(message_bus=bus, client=client)
+    services.service = service
 
-    repo = await InfrahubRepository.new(id=obj.id, name=file_repo.name, location=file_repo.path, client=client)
+    repo = await InfrahubRepository.new(
+        id=obj.id, name=file_repo.name, location=file_repo.path, client=client, service=service
+    )
 
     await repo.sync()
 
