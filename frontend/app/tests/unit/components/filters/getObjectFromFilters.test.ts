@@ -1,8 +1,8 @@
-import { getObjectFromFilters } from "@/components/filters/utils/getObjectFromFilters";
-import { Filter } from "@/hooks/useFilters";
-import { IModelSchema } from "@/state/atoms/schema.atom";
+import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
+import { buildRelationshipSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema.test";
+import { Filter } from "@/shared/hooks/useFilters";
 import { describe, expect } from "vitest";
-import { buildRelationshipSchema } from "../form/utils/getFormFieldsFromSchema.test";
 
 describe("getObjectFromFilters - test", () => {
   it("returns value for a attribute correctly", () => {

@@ -1,6 +1,6 @@
-import { useAuth } from "@/hooks/useAuth";
-import { ReactComponent as InfrahubLogo } from "@/images/Infrahub-SVG-hori.svg";
-import { Login } from "@/screens/authentification/login";
+import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
+import { Login } from "@/entities/authentication/ui/login";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { Navigate, useLocation } from "react-router-dom";
 
 function LoginPage() {
@@ -15,7 +15,7 @@ function LoginPage() {
   return (
     <div className="bg-stone-100 h-screen w-screen py-[25vh] overflow-auto">
       <div className="flex flex-col items-center gap-6 w-full max-w-sm m-auto">
-        <InfrahubLogo className="h-12" alt="Intrahub logo" />
+        <InfrahubLogo className="h-12" />
 
         <h1 className="text-xl font-semibold text-neutral-900">Log in to your account</h1>
 

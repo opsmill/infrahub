@@ -3,9 +3,9 @@
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
-import { Conversations } from "../../../src/screens/proposed-changes/conversations";
-import { proposedChangedState } from "../../../src/state/atoms/proposedChanges.atom";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { proposedChangedState } from "../../../src/entities/proposed-changes/stores/proposedChanges.atom";
+import { Conversations } from "../../../src/entities/proposed-changes/ui/conversations";
+import { schemaState } from "../../../src/entities/schema/stores/schema.atom";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
   conversationMocksData,

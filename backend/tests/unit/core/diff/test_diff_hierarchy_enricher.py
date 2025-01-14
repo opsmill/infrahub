@@ -1,6 +1,7 @@
 from infrahub.core.diff.enricher.hierarchy import DiffHierarchyEnricher
 from infrahub.core.diff.model.path import DiffAction
 from infrahub.core.initialization import create_branch
+from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 from .factories import EnrichedNodeFactory, EnrichedRelationshipGroupFactory, EnrichedRootFactory
@@ -59,42 +60,83 @@ async def test_node_no_parent_rel(db: InfrahubDatabase, default_branch, person_j
     assert len(jane_node.relationships) == 0
 
 
-async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical_location_data):
+async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical_location_schema):
     branch = await create_branch(db=db, branch_name="branch")
 
-    rack1 = hierarchical_location_data["paris-r1"]
-    site1 = hierarchical_location_data["paris"]
-    europe = hierarchical_location_data["europe"]
+    # we need hierarchies where the
+    region_a = await Node.init(db=db, branch=branch, schema="LocationRegion")
+    await region_a.new(db=db, name="a")
+    await region_a.save(db=db)
+    site_b = await Node.init(db=db, branch=branch, schema="LocationSite")
+    await site_b.new(db=db, name="b", parent=region_a)
+    await site_b.save(db=db)
+    rack_c = await Node.init(db=db, branch=branch, schema="LocationRack")
+    await rack_c.new(db=db, name="c", parent=site_b)
+    await rack_c.save(db=db)
+    region_z = await Node.init(db=db, branch=branch, schema="LocationRegion")
+    await region_z.new(db=db, name="z")
+    await region_z.save(db=db)
+    site_y = await Node.init(db=db, branch=branch, schema="LocationSite")
+    await site_y.new(db=db, name="y", parent=region_z)
+    await site_y.save(db=db)
+    rack_x = await Node.init(db=db, branch=branch, schema="LocationRack")
+    await rack_x.new(db=db, name="x", parent=site_y)
+    await rack_x.save(db=db)
 
-    diff_node = EnrichedNodeFactory.build(uuid=rack1.get_id(), kind=rack1.get_kind(), relationships=set())
+    diff_node1 = EnrichedNodeFactory.build(uuid=rack_c.get_id(), kind=rack_c.get_kind(), relationships=set())
+    diff_node2 = EnrichedNodeFactory.build(uuid=rack_x.get_id(), kind=rack_x.get_kind(), relationships=set())
     diff_root = EnrichedRootFactory.build(
-        base_branch_name=default_branch.name, diff_branch_name=branch.name, nodes={diff_node}
+        base_branch_name=default_branch.name, diff_branch_name=branch.name, nodes={diff_node1, diff_node2}
     )
     enricher = DiffHierarchyEnricher(db=db)
     await enricher.enrich(enriched_diff_root=diff_root, calculated_diffs=None)
 
-    assert len(diff_root.nodes) == 3
+    assert len(diff_root.nodes) == 6
 
-    rack1_node = diff_root.get_node(node_uuid=rack1.get_id())
-    site1_node = diff_root.get_node(node_uuid=site1.get_id())
-    europe_node = diff_root.get_node(node_uuid=europe.get_id())
+    rack_c_node = diff_root.get_node(node_uuid=rack_c.get_id())
+    site_b_node = diff_root.get_node(node_uuid=site_b.get_id())
+    region_a_node = diff_root.get_node(node_uuid=region_a.get_id())
 
-    assert len(rack1_node.relationships) == 1
-    rack1_rel = rack1_node.relationships.pop()
-    assert rack1_rel.name == "parent"
-    assert rack1_rel.action is DiffAction.UNCHANGED
-    assert len(rack1_rel.nodes) == 1
-    rack1_parent_node = rack1_rel.nodes.pop()
-    assert rack1_parent_node.uuid == site1.id
+    assert len(rack_c_node.relationships) == 1
+    rack_c_rel = rack_c_node.relationships.pop()
+    assert rack_c_rel.name == "parent"
+    assert rack_c_rel.action is DiffAction.UNCHANGED
+    assert len(rack_c_rel.nodes) == 1
+    rack_c_parent_node = rack_c_rel.nodes.pop()
+    assert rack_c_parent_node.uuid == site_b.id
 
-    assert site1_node.action == DiffAction.UNCHANGED
-    assert len(site1_node.relationships) == 1
-    site1_rel = site1_node.relationships.pop()
-    assert site1_rel.action == DiffAction.UNCHANGED
-    assert site1_rel.name == "parent"
-    assert len(site1_rel.nodes) == 1
-    site1_parent_node = site1_rel.nodes.pop()
-    assert site1_parent_node.uuid == europe.id
+    assert site_b_node.action == DiffAction.UNCHANGED
+    assert len(site_b_node.relationships) == 1
+    site_b_rel = site_b_node.relationships.pop()
+    assert site_b_rel.action == DiffAction.UNCHANGED
+    assert site_b_rel.name == "parent"
+    assert len(site_b_rel.nodes) == 1
+    site_b_parent_node = site_b_rel.nodes.pop()
+    assert site_b_parent_node.uuid == region_a.id
 
-    assert europe_node.action == DiffAction.UNCHANGED
-    assert len(europe_node.relationships) == 0
+    assert region_a_node.action == DiffAction.UNCHANGED
+    assert len(region_a_node.relationships) == 0
+
+    rack_x_node = diff_root.get_node(node_uuid=rack_x.get_id())
+    site_y_node = diff_root.get_node(node_uuid=site_y.get_id())
+    region_z_node = diff_root.get_node(node_uuid=region_z.get_id())
+
+    assert len(rack_x_node.relationships) == 1
+    rack_x_rel = rack_x_node.relationships.pop()
+    assert rack_x_rel.name == "parent"
+    assert rack_x_rel.action is DiffAction.UNCHANGED
+    assert len(rack_x_rel.nodes) == 1
+    rack_x_parent_node = rack_x_rel.nodes.pop()
+    assert rack_x_parent_node.uuid == site_y.id
+
+    assert site_y_node.action == DiffAction.UNCHANGED
+    assert len(site_y_node.relationships) == 1
+    site_y_rel = site_y_node.relationships.pop()
+    assert site_y_rel.action == DiffAction.UNCHANGED
+    assert site_y_rel.name == "parent"
+    assert len(site_y_rel.nodes) == 1
+    site_y_parent_node = site_y_rel.nodes.pop()
+    assert site_y_parent_node.uuid == region_z.id
+
+    assert region_z_node.action == DiffAction.UNCHANGED
+    assert len(region_z_node.relationships) == 0

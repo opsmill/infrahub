@@ -12,15 +12,15 @@ test.describe("Object filters", () => {
     });
   });
 
-  test("should filter the objects list", async ({ page }) => {
-    await test.step("access objects list and verify initial state", async () => {
+  test("should filter the nodes list", async ({ page }) => {
+    await test.step("access nodes list and verify initial state", async () => {
       await page.goto("/objects/InfraDevice");
       await expect(page.getByText("Just a moment")).not.toBeVisible();
       await expect(page.getByTestId("object-items")).toContainText("Filters: 0");
       await expect(page.getByTestId("object-items")).toContainText("Showing 1 to 10 of 30 results");
     });
 
-    await test.step("start filtering objects", async () => {
+    await test.step("start filtering nodes", async () => {
       await test.step("select filters", async () => {
         await page.getByTestId("apply-filters").click();
         await page.getByLabel("Role").click();
@@ -75,7 +75,7 @@ test.describe("Object filters", () => {
     await expect(page.getByRole("link", { name: "Connected to jfk1-edge2" })).toBeHidden();
   });
 
-  test("should correctly display the filters with hierarchical dropdown pointing to any objects", async ({
+  test("should correctly display the filters with hierarchical dropdown pointing to any nodes", async ({
     page,
   }) => {
     await page.goto("/objects/CoreArtifact");
@@ -97,7 +97,7 @@ test.describe("Object filters", () => {
       await expect(page.getByText("Select an object type")).not.toBeVisible();
     });
 
-    await test.step("filter objects", async () => {
+    await test.step("filter nodes", async () => {
       await page.getByLabel("kind").click();
       await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
       await page.getByRole("button", { name: "Apply filters" }).click();

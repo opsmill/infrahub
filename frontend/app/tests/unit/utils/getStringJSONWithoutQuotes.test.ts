@@ -1,5 +1,5 @@
+import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { describe, expect, it } from "vitest";
-import { stringifyWithoutQuotes } from "../../../src/utils/string";
 import {
   C_JSON1,
   C_JSON1_OUTPUT,
@@ -10,7 +10,7 @@ import {
 } from "../data/jsonSamples";
 
 describe("Convert JSON to JSON without quotes in the key names", () => {
-  it("should work with nested objects", () => {
+  it("should work with nested nodes", () => {
     const output1 = stringifyWithoutQuotes(C_JSON1);
     expect(output1).toEqual(C_JSON1_OUTPUT);
   });
