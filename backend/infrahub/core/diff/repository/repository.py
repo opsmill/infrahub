@@ -185,7 +185,8 @@ class DiffRepository:
 
     @retry_db_transaction(name="enriched_diff_save")
     async def save(self, enriched_diffs: EnrichedDiffs) -> None:
-        log.info("Saving diff...")
+        num_nodes = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
+        log.info(f"Saving diff (num_nodes={num_nodes})...")
         root_query = await EnrichedDiffRootsCreateQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await root_query.execute(db=self.db)
         for node_create_batch in self._get_node_create_request_batch(enriched_diffs=enriched_diffs):
@@ -339,7 +340,7 @@ class DiffRepository:
         return query.get_num_changes_by_branch()
 
     async def get_node_field_specifiers(self, diff_id: str) -> set[NodeFieldSpecifier]:
-        limit = 5000
+        limit = config.SETTINGS.database.query_size_limit
         offset = 0
         specifiers: set[NodeFieldSpecifier] = set()
         while True:
