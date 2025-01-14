@@ -4,8 +4,11 @@ from infrahub.core.diff.query_parser import DiffQueryParser
 from infrahub.core.query.diff import DiffAllPathsQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.log import get_logger
 
 from .model.path import CalculatedDiffs, NodeFieldSpecifier
+
+log = get_logger()
 
 
 class DiffCalculator:
@@ -41,9 +44,13 @@ class DiffCalculator:
             diff_from=from_time,
             diff_to=to_time,
         )
+        log.info("Beginning diff calculation query for branch")
         await branch_diff_query.execute(db=self.db)
+        log.info("Diff calculation query for branch complete")
+        log.info("Reading results of query for branch")
         for query_result in branch_diff_query.get_results():
             diff_parser.read_result(query_result=query_result)
+        log.info("Results of query for branch read")
 
         if base_branch.name != diff_branch.name:
             new_node_field_specifiers = diff_parser.get_new_node_field_specifiers()
@@ -61,10 +68,17 @@ class DiffCalculator:
                 ],
                 new_node_field_specifiers=[(nfs.node_uuid, nfs.field_name) for nfs in new_node_field_specifiers],
             )
+
+            log.info("Beginning diff calculation query for base")
             await base_diff_query.execute(db=self.db)
+            log.info("Diff calculation query for base complete")
+            log.info("Reading results of query for base")
             for query_result in base_diff_query.get_results():
                 diff_parser.read_result(query_result=query_result)
+            log.info("Results of query for branch read")
+        log.info("Parsing calculated diff")
         diff_parser.parse(include_unchanged=include_unchanged)
+        log.info("Calculated diff parsed")
         return CalculatedDiffs(
             base_branch_name=base_branch.name,
             diff_branch_name=diff_branch.name,
