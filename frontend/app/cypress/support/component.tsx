@@ -24,7 +24,7 @@ import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 // Import commands.js using ES2015 syntax:
 import "./commands";
 
-import "../../src/styles/index.css";
+import "../../src/app/styles/index.css";
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')

@@ -1,11 +1,11 @@
 /// <reference types="cypress" />
 
 import { MockedProvider } from "@apollo/client/testing";
-import { AccountMenu } from "../../../src/components/account-menu";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
-import { AuthProvider } from "../../../src/hooks/useAuth";
-import { genericsState } from "../../../src/state/atoms/schema.atom";
-import { encodeJwt } from "../../../src/utils/common";
+import { AuthProvider } from "../../../src/entities/authentication/ui/useAuth";
+import { genericsState } from "../../../src/entities/schema/stores/schema.atom";
+import { AccountMenu } from "../../../src/shared/components/account-menu";
+import { encodeJwt } from "../../../src/shared/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
   profileDetailsMocksData,

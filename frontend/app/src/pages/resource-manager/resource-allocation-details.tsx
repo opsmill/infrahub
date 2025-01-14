@@ -1,15 +1,15 @@
-import { Button } from "@/components/buttons/button-primitive";
-import { Skeleton } from "@/components/skeleton";
-import { Table } from "@/components/table/table";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Pagination } from "@/components/ui/pagination";
 import { QSP } from "@/config/qsp";
-import useQuery from "@/hooks/useQuery";
-import { RESOURCE_POOL_ALLOCATED_KIND } from "@/screens/resource-manager/constants";
-import { GET_RESOURCE_POOL_ALLOCATED } from "@/screens/resource-manager/graphql/resource-pool";
-import { constructPath } from "@/utils/fetch";
-import { getObjectDetailsUrl2 } from "@/utils/objects";
+import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { GET_RESOURCE_POOL_ALLOCATED } from "@/entities/resource-manager/api/resource-pool";
+import { RESOURCE_POOL_ALLOCATED_KIND } from "@/entities/resource-manager/constants";
+import useQuery from "@/shared/api/graphql/useQuery";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { Button } from "@/shared/components/buttons/button-primitive";
+import { Skeleton } from "@/shared/components/skeleton";
+import { Table } from "@/shared/components/table/table";
+import { Badge } from "@/shared/components/ui/badge";
+import { Card } from "@/shared/components/ui/card";
+import { Pagination } from "@/shared/components/ui/pagination";
 import { Icon } from "@iconify-icon/react";
 import { Link, useParams } from "react-router-dom";
 

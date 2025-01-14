@@ -33,7 +33,7 @@ class IPPrefixPoolGetResourceInput(InputObjectType):
     hfid = InputField(String(required=False), description="HFID of the pool to allocate from")
     identifier = InputField(String(required=False), description="Identifier for the allocated resource")
     prefix_length = InputField(Int(required=False), description="Size of the prefix to allocate")
-    member_type = InputField(String(required=False), description="member_type of the newly created prefix")
+    member_type = InputField(String(required=False), description="Type of members for the newly created prefix")
     prefix_type = InputField(String(required=False), description="Kind of prefix to allocate")
     data = InputField(GenericScalar(required=False), description="Additional data to pass to the newly created prefix")
 
@@ -45,9 +45,9 @@ class IPAddressPoolGetResourceInput(InputObjectType):
     prefix_length = InputField(
         Int(required=False), description="Size of the prefix mask to allocate on the new IP address"
     )
-    address_type = InputField(String(required=False), description="Kind of ip address to allocate")
+    address_type = InputField(String(required=False), description="Kind of IP address to allocate")
     data = InputField(
-        GenericScalar(required=False), description="Additional data to pass to the newly created ip address"
+        GenericScalar(required=False), description="Additional data to pass to the newly created IP address"
     )
 
 

@@ -3,10 +3,10 @@ import { Provider } from "jotai";
 import React from "react";
 import { Slide, ToastContainer } from "react-toastify";
 import { render as renderFromVitest } from "vitest-browser-react";
-import { queryClient } from "../../src/api/client";
-import { store } from "../../src/state";
+import { queryClient } from "../../src/shared/api/rest/client";
+import { store } from "../../src/shared/stores";
 
-import "../../src/styles/index.css";
+import "/src/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
 
 export const render = (component: React.ReactElement, options = {}) =>
