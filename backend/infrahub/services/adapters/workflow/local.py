@@ -5,12 +5,13 @@ from typing import Any, Optional
 
 from typing_extensions import TYPE_CHECKING
 
+from infrahub.workers.utils import inject_service_parameter
 from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 from . import InfrahubWorkflow, Return
 
 if TYPE_CHECKING:
-    from ... import InfrahubServices
+    from infrahub.services import InfrahubServices
 
 
 class WorkflowLocalExecution(InfrahubWorkflow):
@@ -23,10 +24,15 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> Any:
-        assert self.service is not None, "service not initialized"
+        if self.service is None:
+            raise ValueError("WorkflowLocalExecution.service is not initialized")
 
-        fn = workflow.load_function()
-        return await fn(**parameters or {})
+        flow_func = workflow.load_function()
+        parameters = dict(parameters) if parameters is not None else {}  # avoid mutating input parameters
+        inject_service_parameter(func=flow_func, parameters=parameters, service=self.service)
+        parameters = flow_func.validate_parameters(parameters=parameters)
+
+        return await flow_func(**parameters)
 
     async def submit_workflow(
         self,

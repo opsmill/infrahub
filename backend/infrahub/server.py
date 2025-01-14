@@ -33,7 +33,7 @@ from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import InfrahubCORSMiddleware
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.nats import NATSCache
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.nats import NATSMessageBus
@@ -90,7 +90,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
     async with application.state.db.start_session() as db:
         await initialization(db=db)
-    services.service = service
+
     application.state.service = service
     application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
     if enable_scheduler:
@@ -98,7 +98,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
 
 
 async def shutdown(application: FastAPI) -> None:
-    await services.service.shutdown()
+    await application.state.service.shutdown()
     await application.state.db.close()
 
 

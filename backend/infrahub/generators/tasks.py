@@ -16,7 +16,7 @@ from infrahub.generators.models import (
 )
 from infrahub.git.base import extract_repo_file_information
 from infrahub.git.repository import get_initialized_repo
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices  # noqa: TC001 needed for prefect flow
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_RUN, REQUEST_GENERATOR_RUN
 from infrahub.workflows.utils import add_tags
 
@@ -25,9 +25,7 @@ from infrahub.workflows.utils import add_tags
     name="generator-run",
     flow_run_name="Run generator {model.generator_definition.definition_name}",
 )
-async def run_generator(model: RequestGeneratorRun) -> None:
-    service = services.service
-
+async def run_generator(model: RequestGeneratorRun, service: InfrahubServices) -> None:
     await add_tags(branches=[model.branch_name], nodes=[model.target_id])
 
     repository = await get_initialized_repo(
@@ -119,9 +117,7 @@ async def _define_instance(model: RequestGeneratorRun, service: InfrahubServices
 
 
 @flow(name="generator-definition-run", flow_run_name="Run all generators")
-async def run_generator_definition(branch: str) -> None:
-    service = services.service
-
+async def run_generator_definition(branch: str, service: InfrahubServices) -> None:
     await add_tags(branches=[branch])
 
     generators = await service.client.filters(
@@ -153,9 +149,7 @@ async def run_generator_definition(branch: str) -> None:
     name="request-generator-definition-run",
     flow_run_name="Execute generator {model.generator_definition.definition_name}",
 )
-async def request_generator_definition_run(model: RequestGeneratorDefinitionRun) -> None:
-    service = services.service
-
+async def request_generator_definition_run(model: RequestGeneratorDefinitionRun, service: InfrahubServices) -> None:
     await add_tags(branches=[model.branch], nodes=[model.generator_definition.definition_id])
 
     group = await service.client.get(

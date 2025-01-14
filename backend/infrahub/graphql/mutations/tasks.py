@@ -13,14 +13,13 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import ValidationError
-from infrahub.services import services
+from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.catalogue import BRANCH_MERGE
 from infrahub.workflows.utils import add_branch_tag
 
 
 @flow(name="merge-branch-mutation", flow_run_name="Merge branch graphQL mutation")
-async def merge_branch_mutation(branch: str) -> None:
-    service = services.service
+async def merge_branch_mutation(branch: str, service: InfrahubServices) -> None:
     await add_branch_tag(branch_name=branch)
 
     async with service.database.start_session() as db:
@@ -57,7 +56,10 @@ async def merge_branch_mutation(branch: str) -> None:
 
         if constraints:
             responses = await schema_validate_migrations(
-                message=SchemaValidateMigrationData(branch=obj, schema_branch=candidate_schema, constraints=constraints)
+                message=SchemaValidateMigrationData(
+                    branch=obj, schema_branch=candidate_schema, constraints=constraints
+                ),
+                service=service,
             )
             error_messages = [violation.message for response in responses for violation in response.violations]
             if error_messages:

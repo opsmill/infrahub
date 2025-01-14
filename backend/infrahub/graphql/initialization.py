@@ -35,9 +35,9 @@ class GraphqlContext:
     branch: Branch
     types: dict
     single_relationship_resolver: SingleRelationshipResolver
+    service: InfrahubServices | None = None
     at: Timestamp | None = None
     related_node_ids: set | None = None
-    service: InfrahubServices | None = None
     account_session: AccountSession | None = None
     permissions: PermissionManager | None = None
     background: BackgroundTasks | None = None

@@ -4,7 +4,7 @@ from prefect import flow
 
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
-from infrahub.services import services
+from infrahub.services import InfrahubServices
 from infrahub.workflows.utils import add_branch_tag
 
 from .models import TransformJinjaTemplateData, TransformPythonData
@@ -13,8 +13,7 @@ log = get_logger()
 
 
 @flow(name="transform_render_python", flow_run_name="Render transform python", persist_result=True)
-async def transform_python(message: TransformPythonData) -> Any:
-    service = services.service
+async def transform_python(message: TransformPythonData, service: InfrahubServices) -> Any:
     await add_branch_tag(branch_name=message.branch)
 
     repo = await get_initialized_repo(
@@ -37,8 +36,7 @@ async def transform_python(message: TransformPythonData) -> Any:
 
 
 @flow(name="transform_render_jinja2_template", flow_run_name="Render transform Jinja2", persist_result=True)
-async def transform_render_jinja2_template(message: TransformJinjaTemplateData) -> str:
-    service = services.service
+async def transform_render_jinja2_template(message: TransformJinjaTemplateData, service: InfrahubServices) -> str:
     await add_branch_tag(branch_name=message.branch)
 
     repo = await get_initialized_repo(

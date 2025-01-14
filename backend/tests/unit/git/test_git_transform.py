@@ -4,7 +4,7 @@ from infrahub_sdk import InfrahubClient
 from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import RepositoryFileNotFoundError, TransformError
 from infrahub.git import InfrahubRepository
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.transformations.models import TransformJinjaTemplateData, TransformPythonData
 from infrahub.transformations.tasks import transform_python, transform_render_jinja2_template
@@ -12,14 +12,12 @@ from infrahub.transformations.tasks import transform_python, transform_render_ji
 
 @pytest.fixture
 async def init_service():
-    original = services._service
-    service = await InfrahubServices.new(client=InfrahubClient(), workflow=WorkflowLocalExecution())
-    services._service = service
-    yield service
-    services._service = original
+    return await InfrahubServices.new(client=InfrahubClient(), workflow=WorkflowLocalExecution())
 
 
-async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository, prefect_test_fixture, helper):
+async def test_git_transform_jinja2_success(
+    git_repo_jinja: InfrahubRepository, init_service, prefect_test_fixture, helper
+):
     commit = git_repo_jinja.get_commit_value(branch_name="main")
     message = TransformJinjaTemplateData(
         repository_id=str(git_repo_jinja.id),
@@ -37,11 +35,13 @@ potum
 album
 magnum
 """
-    response = await transform_render_jinja2_template(message=message)
+    response = await transform_render_jinja2_template(message=message, service=init_service)
     assert response == expected_response
 
 
-async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository, prefect_test_fixture, helper):
+async def test_git_transform_jinja2_missing(
+    git_repo_jinja: InfrahubRepository, init_service, prefect_test_fixture, helper
+):
     commit = git_repo_jinja.get_commit_value(branch_name="main")
 
     message = TransformJinjaTemplateData(
@@ -56,12 +56,18 @@ async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository, 
     )
 
     with pytest.raises(RepositoryFileNotFoundError) as exc:
-        await transform_render_jinja2_template(message=message)
+        await transform_render_jinja2_template(message=message, service=init_service)
 
     assert "Unable to find the file" in exc.value.message
 
 
-async def test_git_transform_jinja2_invalid(git_repo_jinja: InfrahubRepository, prefect_test_fixture, helper, caplog):
+async def test_git_transform_jinja2_invalid(
+    git_repo_jinja: InfrahubRepository,
+    prefect_test_fixture,
+    helper,
+    caplog,
+    init_service,
+):
     commit = git_repo_jinja.get_commit_value(branch_name="main")
 
     message = TransformJinjaTemplateData(
@@ -76,7 +82,7 @@ async def test_git_transform_jinja2_invalid(git_repo_jinja: InfrahubRepository, 
     )
 
     with pytest.raises(TransformError) as exc:
-        await transform_render_jinja2_template(message=message)
+        await transform_render_jinja2_template(message=message, service=init_service)
 
     assert "Encountered unknown tag" in exc.value.message
 
@@ -97,5 +103,5 @@ async def test_transform_python_success(
         data={"multiplier": 2, "key": "abc", "answer": 21},
     )
 
-    response = await transform_python(message=message)
+    response = await transform_python(message=message, service=init_service)
     assert response == {"key": "abcabc", "answer": 42}

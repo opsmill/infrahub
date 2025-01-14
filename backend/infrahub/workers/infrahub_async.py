@@ -22,7 +22,7 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import initialize_repositories_directory
 from infrahub.lock import initialize_lock
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.cache.nats import NATSCache
 from infrahub.services.adapters.cache.redis import RedisCache
@@ -32,7 +32,7 @@ from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
-from infrahub.workers.utils import load_flow_function
+from infrahub.workers.utils import inject_service_parameter, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
 WORKER_QUERY_SECONDS = "2"
@@ -137,7 +137,7 @@ class InfrahubWorkerAsync(BaseWorker):
         file_path.replace("/", ".")
         module_path = file_path.replace("backend/", "").replace(".py", "").replace("/", ".")
         flow_func = load_flow_function(module_path=module_path, flow_name=flow_name)
-
+        inject_service_parameter(func=flow_func, parameters=flow_run.parameters, service=self.service)
         flow_run_logger.debug("Validating parameters")
         params = flow_func.validate_parameters(parameters=flow_run.parameters)
 
@@ -215,6 +215,3 @@ class InfrahubWorkerAsync(BaseWorker):
         )
 
         self.service = service
-
-        # TODO This will be removed when all flows support `service` injection
-        services.service = service

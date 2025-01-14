@@ -45,7 +45,7 @@ from infrahub.proposed_change.models import (
     RequestProposedChangeUserTests,
 )
 from infrahub.pytest_plugin import InfrahubBackendPlugin
-from infrahub.services import services
+from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_SETUP_PYTHON, REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS
 from infrahub.workflows.utils import add_tags
 
@@ -59,10 +59,10 @@ if TYPE_CHECKING:
 
 async def _proposed_change_transition_state(
     state: ProposedChangeState,
+    service: InfrahubServices,
     proposed_change: InternalCoreProposedChange | None = None,
     proposed_change_id: str | None = None,
 ) -> None:
-    service = services.service
     async with service.database.start_session() as db:
         if proposed_change is None and proposed_change_id:
             proposed_change = await registry.manager.get_one(
@@ -95,8 +95,7 @@ async def _proposed_change_transition_state(
     # on_crashed=[proposed_change_transition_open],  # type: ignore
     # on_cancellation=[proposed_change_transition_open],  # type: ignore
 )
-async def merge_proposed_change(proposed_change_id: str, proposed_change_name: str) -> State:
-    service = services.service
+async def merge_proposed_change(proposed_change_id: str, proposed_change_name: str, service: InfrahubServices) -> State:
     log = get_run_logger()
 
     await add_tags(nodes=[proposed_change_id])
@@ -117,25 +116,29 @@ async def merge_proposed_change(proposed_change_id: str, proposed_change_name: s
                 and validation.conclusion.value.value != ValidatorConclusion.SUCCESS.value
             ):
                 # Ignoring Data integrity checks as they are handled again later
-                await _proposed_change_transition_state(proposed_change=proposed_change, state=ProposedChangeState.OPEN)
+                await _proposed_change_transition_state(
+                    proposed_change=proposed_change, state=ProposedChangeState.OPEN, service=service
+                )
                 return Failed(message="Unable to merge proposed change containing failing checks")
             if validator_kind == InfrahubKind.DATAVALIDATOR:
                 data_checks = await validation.checks.get_peers(db=db, peer_type=CoreDataCheck)
                 for check in data_checks.values():
                     if check.conflicts.value and not check.keep_branch.value:
                         await _proposed_change_transition_state(
-                            proposed_change=proposed_change, state=ProposedChangeState.OPEN
+                            proposed_change=proposed_change, state=ProposedChangeState.OPEN, service=service
                         )
                         return Failed(
                             message="Data conflicts found on branch and missing decisions about what branch to keep"
                         )
 
         log.info("Proposed change is eligible to be merged")
-        await merge_branch(branch=source_branch.name)
+        await merge_branch(branch=source_branch.name, service=service)
 
         log.info(f"Branch {source_branch.name} has been merged successfully")
 
-        await _proposed_change_transition_state(proposed_change=proposed_change, state=ProposedChangeState.MERGED)
+        await _proposed_change_transition_state(
+            proposed_change=proposed_change, state=ProposedChangeState.MERGED, service=service
+        )
         await service.workflow.submit_workflow(workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON)
         return Completed(message="proposed change merged successfully")
 
@@ -145,9 +148,7 @@ async def merge_proposed_change(proposed_change_id: str, proposed_change_name: s
     flow_run_name="Cancel all proposed change associated with branch {branch_name}",
     description="Cancel all Proposed change associated with a branch.",
 )
-async def cancel_proposed_changes_branch(branch_name: str) -> None:
-    service = services.service
-
+async def cancel_proposed_changes_branch(branch_name: str, service: InfrahubServices) -> None:
     await add_tags(branches=[branch_name])
 
     proposed_changed_opened = await service.client.filters(
@@ -164,13 +165,11 @@ async def cancel_proposed_changes_branch(branch_name: str) -> None:
     )
 
     for proposed_change in proposed_changed_opened + proposed_changed_closed:
-        await cancel_proposed_change(proposed_change=proposed_change)
+        await cancel_proposed_change(proposed_change=proposed_change, service=service)
 
 
 @task(name="Cancel a propose change", description="Cancel a propose change", cache_policy=NONE)
-async def cancel_proposed_change(proposed_change: CoreProposedChange) -> None:
-    service = services.service
-
+async def cancel_proposed_change(proposed_change: CoreProposedChange, service: InfrahubServices) -> None:
     await add_tags(nodes=[proposed_change.id])
     log = get_run_logger()
 
@@ -184,11 +183,12 @@ async def cancel_proposed_change(proposed_change: CoreProposedChange) -> None:
     name="proposed-changed-data-integrity",
     flow_run_name="Triggers data integrity check",
 )
-async def run_proposed_change_data_integrity_check(model: RequestProposedChangeDataIntegrity) -> None:
+async def run_proposed_change_data_integrity_check(
+    model: RequestProposedChangeDataIntegrity, service: InfrahubServices
+) -> None:
     """Triggers a data integrity validation check on the provided proposed change to start."""
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
-    service = services.service
     async with service.database.start_transaction() as dbt:
         destination_branch = await registry.get_branch(db=dbt, branch=model.destination_branch)
         source_branch = await registry.get_branch(db=dbt, branch=model.source_branch)
@@ -202,8 +202,7 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
     name="proposed-changed-run-generator",
     flow_run_name="Run generators",
 )
-async def run_generators(model: RequestProposedChangeRunGenerators) -> None:
-    service = services.service
+async def run_generators(model: RequestProposedChangeRunGenerators, service: InfrahubServices) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
     generators = await service.client.filters(
@@ -295,11 +294,10 @@ async def run_generators(model: RequestProposedChangeRunGenerators) -> None:
     flow_run_name="Process schema integrity",
 )
 async def run_proposed_change_schema_integrity_check(
-    model: RequestProposedChangeSchemaIntegrity,
+    model: RequestProposedChangeSchemaIntegrity, service: InfrahubServices
 ) -> None:
     # For now, we retrieve the latest schema for each branch from the registry
     # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
-    service = services.service
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
     source_schema = registry.schema.get_schema_branch(name=model.source_branch).duplicate()
@@ -326,7 +324,8 @@ async def run_proposed_change_schema_integrity_check(
     responses = await schema_validate_migrations(
         message=SchemaValidateMigrationData(
             branch=source_branch, schema_branch=candidate_schema, constraints=list(constraints)
-        )
+        ),
+        service=service,
     )
 
     # TODO we need to report a failure if an error happened during the execution of a validator
@@ -388,8 +387,7 @@ async def _get_proposed_change_schema_integrity_constraints(
     name="proposed-changed-repository-checks",
     flow_run_name="Process user defined checks",
 )
-async def repository_checks(model: RequestProposedChangeRepositoryChecks) -> None:
-    service = services.service
+async def repository_checks(model: RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
     events: list[InfrahubMessage] = []
@@ -428,8 +426,7 @@ async def repository_checks(model: RequestProposedChangeRepositoryChecks) -> Non
     name="proposed-changed-user-tests",
     flow_run_name="Run unit tests in repositories",
 )
-async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) -> None:
-    service = services.service
+async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests, service: InfrahubServices) -> None:
     log = get_run_logger()
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
     proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)

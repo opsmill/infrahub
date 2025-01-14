@@ -17,7 +17,6 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_IMPORT_OBJECTS
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql_mutation
-from tests.helpers.utils import init_global_service
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -33,7 +32,6 @@ async def test_trigger_repository_import(
 
     # TODO: Removing this mock triggers issue: `Invalid file system for test-edge-demo, local directory ... missing`
     with (
-        init_global_service(service),
         patch(
             "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
         ) as mock_submit_workflow,

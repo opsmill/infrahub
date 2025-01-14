@@ -14,7 +14,7 @@ from prefect.logging import get_run_logger
 
 from infrahub.core.constants import MutationAction
 from infrahub.exceptions import NodeNotFoundError
-from infrahub.services import services
+from infrahub.services import InfrahubServices
 from infrahub.workflows.catalogue import WEBHOOK_SEND, WEBHOOK_TRIGGER
 
 from .constants import AUTOMATION_NAME_RUN
@@ -22,8 +22,7 @@ from .models import CustomWebhook, SendWebhookData, StandardWebhook, TransformWe
 
 
 @flow(name="event-send-webhook", flow_run_name="Send Webhook")
-async def send_webhook(model: SendWebhookData) -> None:
-    service = services.service
+async def send_webhook(model: SendWebhookData, service: InfrahubServices) -> None:
     log = get_run_logger()
 
     webhook_definition = await service.cache.get(key=f"webhook:active:{model.webhook_id}")
@@ -49,8 +48,7 @@ async def send_webhook(model: SendWebhookData) -> None:
 
 
 @flow(name="webhook-trigger-actions", flow_run_name="Trigger configured webhooks")
-async def trigger_webhooks(event_type: str, event_data: str) -> None:
-    service = services.service
+async def trigger_webhooks(event_type: str, event_data: str, service: InfrahubServices) -> None:
     payload: dict = ujson.loads(event_data)
 
     webhooks = await service.cache.list_keys(filter_pattern="webhook:active:*")
@@ -61,8 +59,7 @@ async def trigger_webhooks(event_type: str, event_data: str) -> None:
 
 
 @flow(name="webhook-setup-automations", flow_run_name="Configuration webhook automation and populate cache")
-async def configure_webhooks() -> None:
-    service = services.service
+async def configure_webhooks(service: InfrahubServices) -> None:
     log = get_run_logger()
 
     log.debug("Refreshing webhook configuration")

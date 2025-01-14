@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, AsyncGenerator
+from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk import Config, InfrahubClient
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -13,22 +12,22 @@ from infrahub.message_bus.operations.requests.proposed_change import pipeline
 from infrahub.message_bus.types import ProposedChangeBranchDiff
 from infrahub.proposed_change.models import RequestProposedChangeRunGenerators
 from infrahub.proposed_change.tasks import run_generators
-from infrahub.server import app, app_initialization
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.graphql import graphql_mutation
-from tests.helpers.test_client import InfrahubTestClient
-from tests.helpers.utils import init_global_service
-from tests.integration.conftest import IntegrationHelper
+from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from infrahub_sdk import InfrahubClient
+
     from infrahub.database import InfrahubDatabase
+    from tests.helpers.test_client import InfrahubTestClient
 
 BRANCH_CREATE = """
     mutation($branch: String!) {
@@ -65,90 +64,75 @@ mutation ProposedChange(
 """
 
 
-@pytest.fixture(scope="module")
-async def test_client(init_db_base, redis, nats) -> AsyncGenerator[InfrahubTestClient, None]:
-    await app_initialization(app)
-    async with InfrahubTestClient(app=app, base_url="http://test") as client:
-        yield client
+class TestProposedChange(TestInfrahubApp):
+    @pytest.fixture(scope="class")
+    async def prepare_proposed_change(
+        self,
+        db: InfrahubDatabase,
+        tmp_path_module_scope,
+        git_repos_dir_module_scope: Path,
+        init_db_base,
+        client: InfrahubClient,
+        redis,
+    ) -> str:
+        source_dir = tmp_path_module_scope / "sources"
+        source_dir.mkdir()
+        file_repo = FileRepo(name="conflict-01", sources_directory=source_dir)
 
+        obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
+        await obj.new(
+            db=db,
+            name=file_repo.name,
+            description="test repository",
+            location=file_repo.path,
+            commit=file_repo.repo.commit("main").hexsha,
+        )
+        await obj.save(db=db)
 
-@pytest.fixture(scope="module")
-async def prepare_proposed_change(
-    db: InfrahubDatabase,
-    tmp_path_module_scope,
-    git_repos_dir_module_scope: Path,
-    init_db_base,
-    test_client: InfrahubTestClient,
-    redis,
-) -> str:
-    source_dir = tmp_path_module_scope / "sources"
-    source_dir.mkdir()
-    file_repo = FileRepo(name="conflict-01", sources_directory=source_dir)
+        bus = BusRecorder()
 
-    obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
-    await obj.new(
-        db=db,
-        name=file_repo.name,
-        description="test repository",
-        location=file_repo.path,
-        commit=file_repo.repo.commit("main").hexsha,
-    )
-    await obj.save(db=db)
+        service = await InfrahubServices.new(
+            message_bus=bus, client=client, workflow=WorkflowLocalExecution(), database=db, cache=RedisCache()
+        )
 
-    bus = BusRecorder()
-    integration_helper = IntegrationHelper(db=db)
+        repo = await InfrahubRepository.new(
+            id=obj.id, name=file_repo.name, location=file_repo.path, client=client, service=service
+        )
+        await repo.sync()
 
-    admin_token = await integration_helper.create_token()
+        result = await graphql_mutation(
+            query=PROPOSED_CHANGE_CREATE,
+            variables={"name": "first", "source_branch": "change1", "destination_branch": "main"},
+            db=db,
+            service=service,
+        )
+        assert not result.errors
+        assert result.data
+        return result.data["CoreProposedChangeCreate"]["object"]["id"]
 
-    config = Config(api_token=admin_token, requester=test_client.async_request)
-    client = InfrahubClient(config=config)
-
-    service = await InfrahubServices.new(
-        message_bus=bus, client=client, workflow=WorkflowLocalExecution(), database=db, cache=RedisCache()
-    )
-    services.service = service
-
-    repo = await InfrahubRepository.new(
-        id=obj.id, name=file_repo.name, location=file_repo.path, client=client, service=service
-    )
-    await repo.sync()
-
-    result = await graphql_mutation(
-        query=PROPOSED_CHANGE_CREATE,
-        variables={"name": "first", "source_branch": "change1", "destination_branch": "main"},
-        db=db,
-    )
-    assert not result.errors
-    assert result.data
-    return result.data["CoreProposedChangeCreate"]["object"]["id"]
-
-
-async def test_run_pipeline_validate_requested_jobs(
-    prepare_proposed_change: str,
-    db: InfrahubDatabase,
-    test_client: InfrahubTestClient,
-):
-    message = messages.RequestProposedChangePipeline(
-        source_branch="change1",
-        source_branch_sync_with_git=True,
-        destination_branch="main",
-        proposed_change=prepare_proposed_change,
-    )
-    integration_helper = IntegrationHelper(db=db)
-    bus_pre_data_changes = BusRecorder()
-    admin_token = await integration_helper.create_token()
-    config = Config(api_token=admin_token, requester=test_client.async_request)
-    client = InfrahubClient(config=config)
-    fake_log = FakeLogger()
-    service = await InfrahubServices.new(
-        client=client,
-        log=fake_log,
-        message_bus=bus_pre_data_changes,
-        database=db,
-        workflow=WorkflowLocalExecution(),
-    )
-    with init_global_service(service):
-        await pipeline(message=message, service=services.service)
+    async def test_run_pipeline_validate_requested_jobs(
+        self,
+        prepare_proposed_change: str,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        client: InfrahubClient,
+    ):
+        message = messages.RequestProposedChangePipeline(
+            source_branch="change1",
+            source_branch_sync_with_git=True,
+            destination_branch="main",
+            proposed_change=prepare_proposed_change,
+        )
+        bus_pre_data_changes = BusRecorder()
+        fake_log = FakeLogger()
+        service = await InfrahubServices.new(
+            client=client,
+            log=fake_log,
+            message_bus=bus_pre_data_changes,
+            database=db,
+            workflow=WorkflowLocalExecution(),
+        )
+        await pipeline(message=message, service=service)
 
         # Add an object to the source_branch to modify the data
         obj = await Node.init(db=db, schema=InfrahubKind.TAG, branch="change1")
@@ -156,10 +140,10 @@ async def test_run_pipeline_validate_requested_jobs(
         await obj.save(db=db)
 
         bus_post_data_changes = BusSimulator()
-        services.service._message_bus = bus_post_data_changes
-        bus_post_data_changes.service = services.service
+        service._message_bus = bus_post_data_changes
+        bus_post_data_changes.service = service
 
-        await pipeline(message=message, service=services.service)
+        await pipeline(message=message, service=service)
 
         assert sorted(bus_pre_data_changes.seen_routing_keys) == [
             "request.proposed_change.refresh_artifacts",
@@ -171,35 +155,31 @@ async def test_run_pipeline_validate_requested_jobs(
             "request.repository.user_checks",
         ]
 
+    async def test_run_generators_validate_requested_jobs(
+        self,
+        prepare_proposed_change: str,
+        db: InfrahubDatabase,
+        test_client: InfrahubTestClient,
+        client: InfrahubClient,
+    ):
+        model = RequestProposedChangeRunGenerators(
+            source_branch="change1",
+            source_branch_sync_with_git=True,
+            destination_branch="main",
+            proposed_change=prepare_proposed_change,
+            branch_diff=ProposedChangeBranchDiff(diff_summary=[], repositories=[], subscribers=[]),
+            refresh_artifacts=True,
+            do_repository_checks=True,
+        )
+        bus = BusRecorder()
+        service = await InfrahubServices.new(
+            client=client,
+            message_bus=bus,
+            log=FakeLogger(),
+            workflow=WorkflowLocalExecution(),
+        )
+        await run_generators(model=model, service=service)
 
-async def test_run_generators_validate_requested_jobs(
-    prepare_proposed_change: str,
-    db: InfrahubDatabase,
-    test_client: InfrahubTestClient,
-):
-    model = RequestProposedChangeRunGenerators(
-        source_branch="change1",
-        source_branch_sync_with_git=True,
-        destination_branch="main",
-        proposed_change=prepare_proposed_change,
-        branch_diff=ProposedChangeBranchDiff(diff_summary=[], repositories=[], subscribers=[]),
-        refresh_artifacts=True,
-        do_repository_checks=True,
-    )
-    integration_helper = IntegrationHelper(db=db)
-    bus = BusRecorder()
-    admin_token = await integration_helper.create_token()
-    config = Config(api_token=admin_token, requester=test_client.async_request)
-    client = InfrahubClient(config=config)
-    service = await InfrahubServices.new(
-        client=client,
-        message_bus=bus,
-        log=FakeLogger(),
-        workflow=WorkflowLocalExecution(),
-    )
-    with init_global_service(service):
-        await run_generators(model=model)
-
-    assert sorted(bus.seen_routing_keys) == [
-        "request.proposed_change.refresh_artifacts",
-    ]
+        assert sorted(bus.seen_routing_keys) == [
+            "request.proposed_change.refresh_artifacts",
+        ]

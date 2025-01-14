@@ -11,7 +11,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.component.registry import ComponentDependencyRegistry
 from infrahub.message_bus import messages
 from infrahub.message_bus.operations.event.branch import merge
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import (
     DIFF_UPDATE,
@@ -23,17 +23,14 @@ from tests.adapters.message_bus import BusRecorder
 
 @pytest.fixture
 async def init_service():
-    original = services._service
     recorder = BusRecorder()
     database = MagicMock()
     workflow = WorkflowLocalExecution()
     service = await InfrahubServices.new(message_bus=recorder, database=database, workflow=workflow)
-    services._service = service
-    yield service
-    services._service = original
+    return service
 
 
-async def test_merged(default_branch: Branch, init_service: InfrahubServices, prefect_test_fixture):
+async def test_merged(default_branch: Branch, prefect_test_fixture, init_service):
     """
     Test that merge flow triggers corrects events/workflows. It does not actually test these events/workflows behaviors
     as they are mocked.
@@ -45,7 +42,6 @@ async def test_merged(default_branch: Branch, init_service: InfrahubServices, pr
     message = messages.EventBranchMerge(
         source_branch=source_branch_name, target_branch=target_branch_name, ipam_node_details=[]
     )
-    service = init_service
 
     tracked_diff_roots = [
         EnrichedDiffRoot(
@@ -82,7 +78,7 @@ async def test_merged(default_branch: Branch, init_service: InfrahubServices, pr
             "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
         ) as mock_submit_workflow,
     ):
-        await merge.fn(message=message, service=service)
+        await merge.fn(message=message, service=init_service)
 
         expected_calls = [
             call(workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE, parameters={"branch": message.target_branch}),
@@ -106,5 +102,5 @@ async def test_merged(default_branch: Branch, init_service: InfrahubServices, pr
     mock_component_registry.get_component.assert_awaited_once_with(DiffRepository, db=ANY, branch=default_branch)
     diff_repo.get_roots_metadata.assert_awaited_once_with(base_branch_names=[target_branch_name])
 
-    assert len(service.message_bus.messages) == 1
-    assert service.message_bus.messages[0] == messages.RefreshRegistryBranches()
+    assert len(init_service.message_bus.messages) == 1
+    assert init_service.message_bus.messages[0] == messages.RefreshRegistryBranches()
