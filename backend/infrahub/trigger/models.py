@@ -6,6 +6,7 @@ from uuid import UUID
 from prefect.events.actions import RunDeployment
 from prefect.events.schemas.automations import EventTrigger as PrefectEventTrigger
 from prefect.events.schemas.automations import Posture
+from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field
 
 from .constants import NAME_SEPARATOR
@@ -20,12 +21,15 @@ class TriggerType(str, Enum):
 class EventTrigger(BaseModel):
     events: set = Field(default_factory=set)
     match: dict[str, Any] = Field(default_factory=dict)
+    match_related: dict[str, Any] = Field(default_factory=dict)
 
     def get_prefect(self) -> PrefectEventTrigger:
         return PrefectEventTrigger(
             posture=Posture.Reactive,
             expect=self.events,
             within=timedelta(0),
+            match=ResourceSpecification(self.match),
+            match_related=ResourceSpecification(self.match_related),
             threshold=1,
         )
 
