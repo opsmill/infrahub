@@ -73,7 +73,9 @@ class InfrahubScheduler:
                 return
             await asyncio.sleep(delay=1)
 
-        assert self.service is not None, "InfrahubScheduler.service is None"
+        if self.service is None:
+            raise ValueError("InfrahubScheduler.service is None")
+
         self.service.log.info("Started recurring task", task=schedule.name)
         while self.running:
             try:

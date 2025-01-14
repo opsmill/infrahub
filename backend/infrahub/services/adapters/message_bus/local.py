@@ -55,6 +55,3 @@ class BusSimulator(InfrahubMessageBus):
     @property
     def seen_routing_keys(self) -> list[str]:
         return list(self.messages_per_routing_key.keys())
-
-    async def shutdown(self) -> None:
-        pass

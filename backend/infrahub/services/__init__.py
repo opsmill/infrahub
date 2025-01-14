@@ -28,12 +28,12 @@ if TYPE_CHECKING:
 
 
 class InfrahubServices:
-    _cache: Optional[InfrahubCache]
-    _client: Optional[InfrahubClient]
-    _database: Optional[InfrahubDatabase]
-    _message_bus: Optional[InfrahubMessageBus]
-    _workflow: Optional[InfrahubWorkflow]
-    _component: Optional[InfrahubComponent]
+    _cache: InfrahubCache | None
+    _client: InfrahubClient | None
+    _database: InfrahubDatabase | None
+    _message_bus: InfrahubMessageBus | None
+    _workflow: InfrahubWorkflow | None
+    _component: InfrahubComponent | None
 
     log: InfrahubLogger
     component_type: ComponentType
@@ -48,23 +48,23 @@ class InfrahubServices:
         http: HttpxAdapter,
         event: InfrahubEventService,
         scheduler: InfrahubScheduler,
-        _cache: Optional[InfrahubCache] = None,
-        _client: Optional[InfrahubClient] = None,
-        _database: Optional[InfrahubDatabase] = None,
-        _message_bus: Optional[InfrahubMessageBus] = None,
-        _workflow: Optional[InfrahubWorkflow] = None,
-        _component: Optional[InfrahubComponent] = None,
+        cache: InfrahubCache | None = None,
+        client: InfrahubClient | None = None,
+        database: InfrahubDatabase | None = None,
+        message_bus: InfrahubMessageBus | None = None,
+        workflow: InfrahubWorkflow | None = None,
+        component: InfrahubComponent | None = None,
     ):
         """
         This method should not be called directly, use `new` instead for a proper initialization.
         """
 
-        self._cache = _cache
-        self._client = _client
-        self._database = _database
-        self._message_bus = _message_bus
-        self._workflow = _workflow
-        self._component = _component
+        self._cache = cache
+        self._client = client
+        self._database = database
+        self._message_bus = message_bus
+        self._workflow = workflow
+        self._component = component
         self.log = log
         self.component_type = component_type
         self.http = http
@@ -74,13 +74,13 @@ class InfrahubServices:
     @classmethod
     async def new(
         cls,
-        cache: Optional[InfrahubCache] = None,
-        client: Optional[InfrahubClient] = None,
-        database: Optional[InfrahubDatabase] = None,
-        message_bus: Optional[InfrahubMessageBus] = None,
-        workflow: Optional[InfrahubWorkflow] = None,
-        log: Optional[InfrahubLogger] = None,
-        component_type: Optional[ComponentType] = None,
+        cache: InfrahubCache | None = None,
+        client: InfrahubClient | None = None,
+        database: InfrahubDatabase | None = None,
+        message_bus: InfrahubMessageBus | None = None,
+        workflow: InfrahubWorkflow | None = None,
+        log: InfrahubLogger | None = None,
+        component_type: ComponentType | None = None,
     ) -> InfrahubServices:
         """
         Instantiate InfrahubServices object, and finalize initializations of underlying services having a circular
@@ -98,12 +98,12 @@ class InfrahubServices:
 
         scheduler = InfrahubScheduler(component_type)
         service = cls(
-            _cache=cache,
-            _client=client,
-            _database=database,
-            _message_bus=message_bus,
-            _workflow=workflow,
-            _component=component,
+            cache=cache,
+            client=client,
+            database=database,
+            message_bus=message_bus,
+            workflow=workflow,
+            component=component,
             log=log or get_logger(),
             component_type=component_type,
             scheduler=scheduler,
@@ -187,10 +187,9 @@ class InfrahubServices:
 ServiceFunction = Callable[[InfrahubServices], Awaitable[None]]
 
 
-# TODO Remove this code once services is no longer
 class ServiceManager:
     # Optional because it is supposed to be really instantiated later
-    _service: Optional[InfrahubServices] = None
+    _service: InfrahubServices | None = None
 
     @property
     def service(self) -> InfrahubServices:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from prefect.events import emit_event
 
@@ -13,9 +13,9 @@ if TYPE_CHECKING:
 class InfrahubEventService:
     """Base class for infrahub event service"""
 
-    def __init__(self, message_bus: Optional[InfrahubMessageBus] = None) -> None:
-        # TODO message_bus should not be optional, we let it like this for existing tests that
-        #  pass without a bus as event send do not have bus messages
+    def __init__(self, message_bus: InfrahubMessageBus | None = None) -> None:
+        # Ideally message_bus should not be optional, we let it like this for existing tests that
+        #  pass without a bus as corresponding tested events do not send bus messages.
         self.message_bus = message_bus
 
     async def send(self, event: InfrahubEvent) -> None:

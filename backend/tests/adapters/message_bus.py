@@ -34,9 +34,6 @@ class BusRecorder(InfrahubMessageBus):
     def seen_routing_keys(self) -> list[str]:
         return list(self.messages_per_routing_key.keys())
 
-    async def shutdown(self) -> None:
-        pass
-
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         raise ValueError("BusRecorder.reply should not be called")
 
@@ -83,6 +80,3 @@ class BusSimulator(InfrahubMessageBus):
     @property
     def seen_routing_keys(self) -> list[str]:
         return list(self.messages_per_routing_key.keys())
-
-    async def shutdown(self) -> None:
-        pass

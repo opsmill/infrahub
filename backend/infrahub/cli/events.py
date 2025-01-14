@@ -26,7 +26,7 @@ async def listen(
     """Listen to event in the Events bus and print them."""
     config.load_and_exit(config_file)
 
-    # TODO below code seems to be a duplicate of `RabbitMQMessageBus._initialize_api_server`.
+    # Below code seems to be a duplicate of `RabbitMQMessageBus._initialize_api_server`.
     #  Also, here we are using ComponentType.NONE so RabbitMQMessageBus will NOT instantiate connection.
     #  We might want to factorize here and use ComponentType.GitAgent so broker instantiates connection correctly.
     component_type = ComponentType.NONE

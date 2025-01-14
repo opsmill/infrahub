@@ -31,9 +31,8 @@ class InfrahubMessageBus(ABC):
     broadcasted_event_bindings: list[str] = ["refresh.git.*"]
     service: InfrahubServices
 
-    @abstractmethod
-    async def shutdown(self) -> None:
-        pass
+    async def shutdown(self) -> None:  # noqa: B027 We want a default empty behavior, so it's ok to have an empty non-abstract method.
+        """Shutdown the Message bus"""
 
     @abstractmethod
     async def publish(

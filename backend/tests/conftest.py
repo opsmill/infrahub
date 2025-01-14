@@ -910,9 +910,6 @@ class BusRPCMock(InfrahubMessageBus):
         data = ujson.loads(response.body)
         return response_class(**data)
 
-    async def shutdown(self) -> None:
-        pass
-
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         raise ValueError("BusRPCMock.reply should not be called")
 
