@@ -1,29 +1,29 @@
-import ObjectEditSlideOverTrigger from "@/components/form/object-edit-slide-over-trigger";
-import { ObjectHelpButton } from "@/components/menu/object-help-button";
-import { Property, PropertyList } from "@/components/table/property-list";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardWithBorder } from "@/components/ui/card";
-import { Link } from "@/components/ui/link";
-import { useObjectDetails } from "@/hooks/useObjectDetails";
-import ErrorScreen from "@/screens/errors/error-screen";
-import NoDataFound from "@/screens/errors/no-data-found";
-import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/screens/ipam/constants";
-import Content from "@/screens/layout/content";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import ResourcePoolUtilization from "@/screens/resource-manager/common/ResourcePoolUtilization";
-import {
-  RESOURCE_GENERIC_KIND,
-  RESOURCE_POOL_UTILIZATION_KIND,
-} from "@/screens/resource-manager/constants";
+import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
+import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import {
   GET_KIND_FOR_RESOURCE_POOL,
   GET_RESOURCE_POOL_UTILIZATION,
-} from "@/screens/resource-manager/graphql/resource-pool";
-import ResourceSelector, { ResourceProps } from "@/screens/resource-manager/resource-selector";
-import { iNodeSchema, schemaState } from "@/state/atoms/schema.atom";
-import { constructPath } from "@/utils/fetch";
-import { ObjectAttributeValue } from "@/utils/getObjectItemDisplayValue";
-import { getObjectDetailsUrl } from "@/utils/objects";
+} from "@/entities/resource-manager/api/resource-pool";
+import {
+  RESOURCE_GENERIC_KIND,
+  RESOURCE_POOL_UTILIZATION_KIND,
+} from "@/entities/resource-manager/constants";
+import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";
+import ResourceSelector, { ResourceProps } from "@/entities/resource-manager/ui/resource-selector";
+import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
+import { constructPath } from "@/shared/api/rest/fetch";
+import ErrorScreen from "@/shared/components/errors/error-screen";
+import NoDataFound from "@/shared/components/errors/no-data-found";
+import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
+import Content from "@/shared/components/layout/content";
+import LoadingScreen from "@/shared/components/loading-screen";
+import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
+import { Property, PropertyList } from "@/shared/components/table/property-list";
+import { Badge } from "@/shared/components/ui/badge";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { Link } from "@/shared/components/ui/link";
 import { useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { Outlet, useParams } from "react-router-dom";

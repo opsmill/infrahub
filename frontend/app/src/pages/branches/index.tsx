@@ -1,4 +1,4 @@
-import BranchesItems from "@/screens/branches/branches-items";
+import BranchesItems from "@/entities/branches/ui/branches-items";
 
 export function Component() {
   return <BranchesItems />;

@@ -35,7 +35,12 @@ class PrefixUtilizationGetter:
 
     async def _run_and_parse_query(self) -> None:
         self._results_by_prefix_id = {}
-        query = await IPPrefixUtilization.init(db=self.db, at=self.at, ip_prefixes=self.ip_prefixes)
+        query = await IPPrefixUtilization.init(
+            db=self.db,
+            at=self.at,
+            ip_prefixes=self.ip_prefixes,
+            allocated_kinds=[InfrahubKind.IPPREFIX, InfrahubKind.IPADDRESS],
+        )
         await query.execute(db=self.db)
 
         for result in query.get_results():

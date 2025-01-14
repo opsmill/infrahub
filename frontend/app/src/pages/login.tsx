@@ -1,6 +1,6 @@
-import { useAuth } from "@/hooks/useAuth";
-import InfrahubLogo from "@/images/Infrahub-SVG-hori.svg?react";
-import { Login } from "@/screens/authentification/login";
+import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
+import { Login } from "@/entities/authentication/ui/login";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { Navigate, useLocation } from "react-router-dom";
 
 function LoginPage() {

@@ -1,12 +1,16 @@
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import NoDataFound from "@/screens/errors/no-data-found";
-import Content from "@/screens/layout/content";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import { HierarchicalTree } from "@/screens/objects/hierarchical-tree";
-import ObjectHeader from "@/screens/objects/object-header";
-import { genericsState, profilesAtom, schemaState } from "@/state/atoms/schema.atom";
-import { stateAtom } from "@/state/atoms/state.atom";
+import { HierarchicalTree } from "@/entities/nodes/hierarchical-tree";
+import ObjectHeader from "@/entities/nodes/object-header";
+import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
+import NoDataFound from "@/shared/components/errors/no-data-found";
+import Content from "@/shared/components/layout/content";
+import LoadingScreen from "@/shared/components/loading-screen";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/shared/components/ui/resizable";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
+import { stateAtom } from "@/shared/stores/state.atom";
 import { useAtomValue } from "jotai";
 import { Outlet, useParams } from "react-router-dom";
 

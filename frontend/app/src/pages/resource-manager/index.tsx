@@ -1,9 +1,9 @@
-import Content from "@/screens/layout/content";
-import LoadingScreen from "@/screens/loading-screen/loading-screen";
-import ObjectItems from "@/screens/object-items/object-items-paginated";
-import ObjectHeader from "@/screens/objects/object-header";
-import { RESOURCE_GENERIC_KIND } from "@/screens/resource-manager/constants";
-import { genericsState } from "@/state/atoms/schema.atom";
+import ObjectHeader from "@/entities/nodes/object-header";
+import ObjectItems from "@/entities/nodes/object-items/object-items-paginated";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
+import { genericsState } from "@/entities/schema/stores/schema.atom";
+import Content from "@/shared/components/layout/content";
+import LoadingScreen from "@/shared/components/loading-screen";
 import { useAtomValue } from "jotai/index";
 
 const ResourceManagerPage = () => {

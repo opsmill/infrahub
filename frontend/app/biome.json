@@ -13,8 +13,8 @@
       "./playwright-report",
       "./test-results",
       "./tests/e2e/.auth",
-      "./src/generated",
-      "./src/infraops.d.ts"
+      "./src/shared/api/rest/types.generated.ts",
+      "./src/shared/api/graphql/generated"
     ]
   },
   "formatter": {

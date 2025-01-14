@@ -3,8 +3,8 @@
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
+import { schemaState } from "../../../src/entities/schema/stores/schema.atom";
 import { ObjectDetailsPage } from "../../../src/pages/objects/object-details";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
 import {
   deviceDetailsMocksASNName,
   deviceDetailsMocksData,
