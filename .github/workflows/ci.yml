@@ -173,6 +173,45 @@ jobs:
     with:
       directory: "./"
 
+  infrahub-testcontainers-check:
+    if: needs.files-changed.outputs.python == 'true'
+    needs: ["files-changed"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: "Setup Python environment"
+        run: |
+          pipx install poetry==1.8.5
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
+
+      - name: Compare package versions
+        run: |
+          INFRAHUB_VERSION=$(poetry version --short)
+          echo "Infrahub version: $INFRAHUB_VERSION"
+
+          cd python_testcontainers
+          TESTCONTAINERS_VERSION=$(poetry version --short)
+          echo "Testcontainers version: $TESTCONTAINERS_VERSION"
+
+          if [ "$INFRAHUB_VERSION" != "$TESTCONTAINERS_VERSION" ]; then
+            echo "Error: Version mismatch!"
+            echo "infrahub version: $INFRAHUB_VERSION"
+            echo "infrahub-testcontainers version: $TESTCONTAINERS_VERSION"
+            echo "The version of infrahub-testcontainers must match the version of infrahub"
+            exit 1
+          fi
+
   # TODO NEED TO REVISIT THIS ONE
   # python-sdk-poetry-check:
   #   if: |
@@ -233,7 +272,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: huge-runners
     timeout-minutes: 45
@@ -286,7 +325,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
     timeout-minutes: 30
@@ -332,7 +371,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
     timeout-minutes: 30
@@ -434,7 +473,7 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.backend == 'true' ||
       needs.files-changed.outputs.documentation == 'true')
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
@@ -518,7 +557,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.documentation == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
@@ -545,7 +584,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.python == 'true') || (needs.files-changed.outputs.documentation_generated == 'true')
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
@@ -575,7 +614,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.release == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
@@ -600,7 +639,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.release == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
@@ -629,6 +668,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -818,6 +858,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -891,6 +932,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -904,6 +946,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
