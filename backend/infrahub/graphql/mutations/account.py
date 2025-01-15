@@ -36,7 +36,6 @@ class InfrahubAccountTokenDeleteInput(InputObjectType):
 
 class InfrahubAccountUpdateSelfInput(InputObjectType):
     password = InputField(String(required=False), description="Password to use instead of the current one")
-    label = InputField(String(required=False), description="Label to use instead of the current one")
     description = InputField(String(required=False), description="Description to use instead of the current one")
 
 
@@ -133,7 +132,7 @@ class AccountMixin:
     async def update_self(
         cls, db: InfrahubDatabase, account: CoreNode, data: dict[str, Any], info: GraphQLResolveInfo
     ) -> Self:
-        for field in ("password", "label", "description"):
+        for field in ("password", "description"):
             if value := data.get(field):
                 getattr(account, field).value = value
 
