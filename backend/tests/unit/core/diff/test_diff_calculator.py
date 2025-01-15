@@ -369,6 +369,87 @@ async def test_attribute_property_multiple_branch_updates(
     assert before_last_change < property_diff.changed_at < after_last_change
 
 
+async def test_attribute_property_branch_create_multiple_updates(
+    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    person = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await person.new(db=db, name="Gerald", height=160)
+    await person.save(db=db)
+    after_create = Timestamp()
+    person.name.value = "Gerald Two"
+    await person.save(db=db)
+    person.name.value = "Gerald Three"
+    await person.save(db=db)
+    before_last_change = Timestamp()
+    person.name.value = "Gerald Four"
+    await person.save(db=db)
+    after_last_change = Timestamp()
+
+    diff_calculator = DiffCalculator(db=db)
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
+    )
+
+    base_root_path = calculated_diffs.base_branch_diff
+    assert base_root_path.nodes == []
+    root_path = calculated_diffs.diff_branch_diff
+    assert root_path.branch == branch.name
+    assert len(root_path.nodes) == 1
+    node_diff = root_path.nodes[0]
+    assert node_diff.uuid == person.id
+    assert node_diff.kind == "TestPerson"
+    assert node_diff.action is DiffAction.ADDED
+    attributes_by_name = {a.name: a for a in node_diff.attributes}
+    assert set(attributes_by_name.keys()) == {"name", "height"}
+    # name attribute
+    attribute_diff = attributes_by_name["name"]
+    assert attribute_diff.action is DiffAction.ADDED
+    prop_diffs_by_type = {p.property_type: p for p in attribute_diff.properties}
+    assert set(prop_diffs_by_type.keys()) == {
+        DatabaseEdgeType.HAS_VALUE,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, new_value in (
+        (DatabaseEdgeType.HAS_VALUE, "Gerald Four"),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ):
+        property_diff = prop_diffs_by_type[prop_type]
+        assert property_diff.action is DiffAction.ADDED
+        assert property_diff.previous_value is None
+        assert property_diff.new_value == new_value
+        if prop_type is DatabaseEdgeType.HAS_VALUE:
+            assert before_last_change < property_diff.changed_at < after_last_change
+        else:
+            assert from_time < property_diff.changed_at < after_create
+    # height attribute
+    attribute_diff = attributes_by_name["height"]
+    assert attribute_diff.action is DiffAction.ADDED
+    prop_diffs_by_type = {p.property_type: p for p in attribute_diff.properties}
+    assert set(prop_diffs_by_type.keys()) == {
+        DatabaseEdgeType.HAS_VALUE,
+        DatabaseEdgeType.IS_VISIBLE,
+        DatabaseEdgeType.IS_PROTECTED,
+    }
+    for prop_type, new_value in (
+        (DatabaseEdgeType.HAS_VALUE, 160),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ):
+        property_diff = prop_diffs_by_type[prop_type]
+        assert property_diff.action is DiffAction.ADDED
+        assert property_diff.previous_value is None
+        assert property_diff.new_value == new_value
+        assert from_time < property_diff.changed_at < after_create
+
+
 async def test_relationship_one_peer_branch_and_main_update(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -764,8 +845,11 @@ async def test_add_node_branch(
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     new_car = await Node.init(db=db, branch=branch, schema="TestCar")
-    await new_car.new(db=db, name="Batmobile", color="#000000", owner=person_jane_main)
+    await new_car.new(db=db, name="Batmobile", color="#000000", owner=person_alfred_main)
     await new_car.save(db=db)
+    fresh_new_car = await NodeManager.get_one(db=db, branch=branch, id=new_car.id)
+    await fresh_new_car.owner.update(db=db, data=person_jane_main)
+    await fresh_new_car.save(db=db)
 
     diff_calculator = DiffCalculator(db=db)
     calculated_diffs = await diff_calculator.calculate_diff(
@@ -2020,6 +2104,64 @@ async def test_branch_relationship_delete_with_property_update(
         assert prop_diff.new_value is None
         assert prop_diff.previous_value == previous_value
         assert before_branch_change < prop_diff.changed_at < after_branch_change
+
+
+async def test_node_deleted_on_base_update_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+):
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    alfred_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_alfred_main.id)
+    await alfred_main.delete(db=db)
+    alfred_branch = await NodeManager.get_one(db=db, branch=branch, id=person_alfred_main.id)
+    alfred_branch.name.value = "Still Alfred"
+    await alfred_branch.save(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
+    )
+
+    # deleted on base
+    diff_root = calculated_diffs.base_branch_diff
+    assert len(diff_root.nodes) == 1
+    diff_node = diff_root.nodes.pop()
+    assert diff_node.action is DiffAction.REMOVED
+    assert diff_node.uuid == person_alfred_main.id
+    attributes_by_name = {a.name: a for a in diff_node.attributes}
+    assert set(attributes_by_name.keys()) == {"name", "height"}
+    for attr_diff in diff_node.attributes:
+        assert attr_diff.action is DiffAction.REMOVED
+        props_by_type = {p.property_type: p for p in attr_diff.properties}
+        assert set(props_by_type.keys()) == {
+            DatabaseEdgeType.HAS_VALUE,
+            DatabaseEdgeType.IS_PROTECTED,
+            DatabaseEdgeType.IS_VISIBLE,
+        }
+        for prop_diff in attr_diff.properties:
+            assert prop_diff.action is DiffAction.REMOVED
+    assert len(diff_node.relationships) == 0
+    # update on branch
+    diff_root = calculated_diffs.diff_branch_diff
+    assert len(diff_root.nodes) == 1
+    diff_node = diff_root.nodes.pop()
+    assert diff_node.action is DiffAction.UPDATED
+    assert diff_node.uuid == person_alfred_main.id
+    attributes_by_name = {a.name: a for a in diff_node.attributes}
+    assert set(attributes_by_name.keys()) == {"name"}
+    attr_diff = diff_node.attributes.pop()
+    assert attr_diff.action is DiffAction.UPDATED
+    props_by_type = {p.property_type: p for p in attr_diff.properties}
+    assert set(props_by_type.keys()) == {DatabaseEdgeType.HAS_VALUE}
+    prop_diff = attr_diff.properties.pop()
+    assert prop_diff.action is DiffAction.UPDATED
+    assert prop_diff.previous_value == "Alfred"
+    assert prop_diff.new_value == "Still Alfred"
+    assert len(diff_node.relationships) == 0
 
 
 async def test_node_deleted_on_both(
