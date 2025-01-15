@@ -56,6 +56,10 @@ class AttributeAddQuery(Query):
         self.params["is_visible_default"] = True
 
         query = """
+        MERGE (av:AttributeValue { value: $attr_value, is_default: true })
+        MERGE (is_protected_value:Boolean { value: $is_protected_default })
+        MERGE (is_visible_value:Boolean { value: $is_visible_default })
+        WITH av, is_protected_value, is_visible_value
         MATCH p = (n:%(node_kind)s)
         CALL {
             WITH n
@@ -66,12 +70,8 @@ class AttributeAddQuery(Query):
             ORDER BY r2.branch_level DESC, r2.from ASC, r1.branch_level DESC, r1.from ASC
             LIMIT 1
         }
-        WITH n1 as n, r11 as r1, r12 as r2
+        WITH n1 as n, r11 as r1, r12 as r2, av, is_protected_value, is_visible_value
         WHERE r1.status = "active" AND (r2 IS NULL OR r2.status = "deleted")
-        MERGE (av:AttributeValue { value: $attr_value, is_default: true })
-        MERGE (is_protected_value:Boolean { value: $is_protected_default })
-        MERGE (is_visible_value:Boolean { value: $is_visible_default })
-        WITH n, av, is_protected_value, is_visible_value, r2
         CREATE (a:Attribute { name: $attr_name, branch_support: $branch_support })
         CREATE (n)-[:HAS_ATTRIBUTE $rel_props ]->(a)
         CREATE (a)-[:HAS_VALUE $rel_props ]->(av)
