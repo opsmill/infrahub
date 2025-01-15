@@ -1,4 +1,4 @@
-import { configState } from "@/config/config.atom";
+import { getConfigQueryOptions } from "@/entities/config/get-config.query";
 import {
   Permission,
   PermissionAction,
@@ -6,7 +6,7 @@ import {
   PermissionDecision,
   PermissionDecisionData,
 } from "@/entities/permission/types";
-import { store } from "@/shared/stores";
+import { queryClient } from "@/shared/api/rest/client";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
 const getMessage = (action: string, decision?: PermissionDecisionData): string => {
@@ -31,7 +31,7 @@ const getMessage = (action: string, decision?: PermissionDecisionData): string =
 export function getPermission(permission?: Array<{ node: PermissionData }>): Permission {
   if (!Array.isArray(permission)) return PERMISSION_ALLOW_ALL;
 
-  const config = store.get(configState);
+  const config = queryClient.getQueryData(getConfigQueryOptions().queryKey);
 
   const createPermissionAction = (action: PermissionAction): PermissionDecision => {
     if (action === "view" && config?.main.allow_anonymous_access) return { isAllowed: true };

@@ -51,6 +51,9 @@ const ConversationsProvider = () => {
 describe("List screen", () => {
   it("should display a conversation with comments", () => {
     cy.viewport(1920, 1080);
+    cy.fixture("config").then(function (json) {
+      cy.intercept("GET", "/api/config", json).as("config");
+    });
 
     // Mount the view with the default route and the mocked data
     cy.mount(
