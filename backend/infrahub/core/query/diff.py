@@ -666,11 +666,10 @@ CALL {
             WITH node_field_specifiers_list, node_ids_list, field_names_list, from_time
             MATCH (root:Root)<-[r_root:IS_PART_OF]-(p:Node)-[diff_rel:HAS_ATTRIBUTE {branch: $branch_name}]->(q:Attribute)
             // exclude attributes and relationships under added/removed nodes b/c they are covered above
-            WHERE (size(node_ids_list) = 0 OR p.uuid IN node_ids_list)
-            AND (size(field_names_list) = 0 OR q.name IN field_names_list)
-            AND (node_field_specifiers_list IS NULL OR [p.uuid, q.name] IN node_field_specifiers_list)
-            AND r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
+            WHERE r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
             AND q.branch_support = $branch_aware
+            AND (size(node_ids_list) = 0 OR p.uuid IN node_ids_list)
+            AND (size(field_names_list) = 0 OR q.name IN field_names_list)
             // if p has a different type of branch support and was addded within our timeframe
             AND (r_root.from < from_time OR p.branch_support = $branch_agnostic)
             AND r_root.status = "active"
@@ -679,16 +678,16 @@ CALL {
             AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
             AND r_root.from <= diff_rel.from
             AND (r_root.to IS NULL OR diff_rel.branch <> r_root.branch OR r_root.to >= diff_rel.from)
+            AND (node_field_specifiers_list IS NULL OR [p.uuid, q.name] IN node_field_specifiers_list)
             RETURN root, r_root, p, diff_rel, q
             UNION ALL
             WITH node_field_specifiers_list, node_ids_list, field_names_list, from_time
             MATCH (root:Root)<-[r_root:IS_PART_OF]-(p:Node)-[diff_rel:IS_RELATED {branch: $branch_name}]-(q:Relationship)
             // exclude attributes and relationships under added/removed nodes b/c they are covered above
-            WHERE (size(node_ids_list) = 0 OR p.uuid IN node_ids_list)
-            AND (size(field_names_list) = 0 OR q.name IN field_names_list)
-            AND (node_field_specifiers_list IS NULL OR [p.uuid, q.name] IN node_field_specifiers_list)
-            AND r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
+            WHERE r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
             AND q.branch_support = $branch_aware
+            AND (size(node_ids_list) = 0 OR p.uuid IN node_ids_list)
+            AND (size(field_names_list) = 0 OR q.name IN field_names_list)
             // if p has a different type of branch support and was addded within our timeframe
             AND (r_root.from < from_time OR p.branch_support = $branch_agnostic)
             // get attributes and relationships added on the branch during the timeframe
@@ -696,6 +695,7 @@ CALL {
             AND (diff_rel.to IS NULL OR (from_time <= diff_rel.to < $to_time))
             AND r_root.from <= diff_rel.from
             AND (r_root.to IS NULL OR diff_rel.branch <> r_root.branch OR r_root.to >= diff_rel.from)
+            AND (node_field_specifiers_list IS NULL OR [p.uuid, q.name] IN node_field_specifiers_list)
             RETURN root, r_root, p, diff_rel, q
         }
         WITH root, r_root, p, diff_rel, q, from_time
@@ -781,13 +781,12 @@ CALL {
         // Identify properties added/removed on branch
         // -------------------------------------
         MATCH diff_rel_path = (root:Root)<-[r_root:IS_PART_OF]-(n:Node)-[r_node]-(p)-[diff_rel {branch: $branch_name}]->(q)
-        WHERE (size(node_ids_list) = 0 OR n.uuid IN node_ids_list)
-        AND (size(field_names_list) = 0 OR p.name IN field_names_list)
-        AND (node_field_specifiers_list IS NULL OR [n.uuid, p.name] IN node_field_specifiers_list)
-        AND (
+        WHERE (
             (from_time <= diff_rel.from < $to_time)
             OR (from_time <= diff_rel.to < $to_time)
         )
+        AND (size(node_ids_list) = 0 OR n.uuid IN node_ids_list)
+        AND (size(field_names_list) = 0 OR p.name IN field_names_list)
         // exclude attributes and relationships under added/removed nodes, attrs, and rels b/c they are covered above
         AND ALL(
             r in [r_root, r_node]
@@ -798,6 +797,7 @@ CALL {
         AND type(diff_rel) IN ["IS_VISIBLE", "IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE"]
         AND any(l in labels(q) WHERE l in ["Boolean", "Node", "AttributeValue"])
         AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
+        AND (node_field_specifiers_list IS NULL OR [n.uuid, p.name] IN node_field_specifiers_list)
         AND ALL(
             r_pair IN [[r_root, r_node], [r_node, diff_rel]]
             // filter out paths where a base branch edge follows a branch edge
