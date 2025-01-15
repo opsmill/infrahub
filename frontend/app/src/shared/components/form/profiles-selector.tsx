@@ -50,7 +50,7 @@ export const ProfilesSelector = ({
       const profileSchema = profiles.find((profileSchema) => profileSchema.name === profile);
 
       // Get attributes for query + form data
-      const attributes = getObjectAttributes({ schema: profileSchema, forListView: true });
+      const attributes = getObjectAttributes({ schema: profileSchema, forProfiles: true });
 
       if (!attributes.length) return null;
 
