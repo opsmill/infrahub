@@ -45,6 +45,13 @@ export const getUpdateMutationFromFormData = ({
 
         if (typeof fieldData.value === "object") {
           if (Array.isArray(fieldData.value)) {
+            if (!fieldData.value.length) {
+              return {
+                ...acc,
+                [field.name]: null,
+              };
+            }
+
             if (fieldData.value.every((value) => typeof value === "string")) {
               return {
                 ...acc,
