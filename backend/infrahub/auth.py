@@ -258,7 +258,7 @@ def _validate_update_account(
 def validate_mutation_permissions_update_node(
     operation: str, node_id: str, account_session: AccountSession, fields: list[str], context: GraphqlContext
 ) -> None:
-    validation_map: dict[str, Callable[[AccountSession, str, list[str]], None]] = {
+    validation_map: dict[str, Callable[[AccountSession, str, list[str], GraphqlContext], None]] = {
         f"{InfrahubKind.ACCOUNT}Update": _validate_update_account,
         f"{InfrahubKind.ACCOUNT}Upsert": _validate_update_account,
     }
