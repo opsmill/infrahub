@@ -292,7 +292,11 @@ class InfrahubMutationMixin:
         if "hfid" in fields:
             fields.remove("hfid")
         validate_mutation_permissions_update_node(
-            operation=cls.__name__, node_id=node_id, account_session=context.account_session, fields=fields
+            operation=cls.__name__,
+            node_id=node_id,
+            account_session=context.account_session,
+            fields=fields,
+            context=context,
         )
 
         await obj.save(db=db, fields=fields)

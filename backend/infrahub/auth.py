@@ -10,8 +10,8 @@ import jwt
 from pydantic import BaseModel
 
 from infrahub import config, models
-from infrahub.core.account import validate_token
-from infrahub.core.constants import AccountStatus, InfrahubKind
+from infrahub.core.account import GlobalPermission, validate_token
+from infrahub.core.constants import AccountStatus, GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup
@@ -21,6 +21,7 @@ from infrahub.exceptions import AuthorizationError, NodeNotFoundError
 if TYPE_CHECKING:
     from infrahub.core.protocols import CoreGenericAccount
     from infrahub.database import InfrahubDatabase
+    from infrahub.graphql.initialization import GraphqlContext
 
 
 class AuthType(str, Enum):
@@ -233,19 +234,29 @@ async def validate_api_key(db: InfrahubDatabase, token: str) -> AccountSession:
     return AccountSession(account_id=account_id, auth_type=AuthType.API)
 
 
-def _validate_update_account(account_session: AccountSession, node_id: str, fields: list[str]) -> None:
+def _validate_update_account(
+    account_session: AccountSession, node_id: str, fields: list[str], context: GraphqlContext
+) -> None:
+    # Account with permissions can change anything on accounts
+    if context.active_permissions.has_permission(
+        permission=GlobalPermission(
+            action=GlobalPermissions.MANAGE_ACCOUNTS.value, decision=PermissionDecision.ALLOW_ALL.value
+        )
+    ):
+        return
+
+    # Account without permissions can only update its own account for a limited subset of fields
     if account_session.account_id != node_id:
-        # A regular account is not allowed to modify another account
-        raise PermissionError("You are not allowed to modify this account")
+        raise PermissionError("You cannot someone else's account")
 
     allowed_fields = ["description", "label", "password"]
     for field in fields:
         if field not in allowed_fields:
-            raise PermissionError(f"You are not allowed to modify '{field}'")
+            raise PermissionError(f"You cannot modify account's {field} value")
 
 
 def validate_mutation_permissions_update_node(
-    operation: str, node_id: str, account_session: AccountSession, fields: list[str]
+    operation: str, node_id: str, account_session: AccountSession, fields: list[str], context: GraphqlContext
 ) -> None:
     validation_map: dict[str, Callable[[AccountSession, str, list[str]], None]] = {
         f"{InfrahubKind.ACCOUNT}Update": _validate_update_account,
@@ -253,7 +264,7 @@ def validate_mutation_permissions_update_node(
     }
 
     if validator := validation_map.get(operation):
-        validator(account_session, node_id, fields)
+        validator(account_session, node_id, fields, context)
 
 
 async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> None:
