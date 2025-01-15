@@ -1,14 +1,13 @@
 import { CONFIG } from "@/config/config";
-import { configState } from "@/config/config.atom";
 import { REFRESH_TOKEN_KEY } from "@/config/constants";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
+import { useConfig } from "@/entities/config/get-config.query";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { fetchUrl } from "@/shared/api/rest/fetch";
 import { components } from "@/shared/api/rest/types.generated";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { parseJwt } from "@/shared/utils/common";
 import { ObservableQuery } from "@apollo/client";
-import { useAtom } from "jotai/index";
 import { ReactElement, ReactNode, createContext, useContext, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -173,11 +172,11 @@ export function useAuth() {
 }
 
 export function RequireAuth({ children }: { children: ReactElement }) {
-  const [config] = useAtom(configState);
+  const { data: config } = useConfig();
   const { isAuthenticated } = useAuth();
   const location = useLocation();
 
-  if (isAuthenticated || config?.main?.allow_anonymous_access) return children;
+  if (isAuthenticated || config.main.allow_anonymous_access) return children;
 
   // Redirect them to the /login page, but save the current location they were
   // trying to go to when they were redirected. This allows us to send them

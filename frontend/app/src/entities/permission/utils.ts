@@ -1,4 +1,4 @@
-import { configState } from "@/config/config.atom";
+import { useConfig } from "@/entities/config/get-config.query";
 import {
   Permission,
   PermissionAction,
@@ -6,7 +6,6 @@ import {
   PermissionDecision,
   PermissionDecisionData,
 } from "@/entities/permission/types";
-import { store } from "@/shared/stores";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
 const getMessage = (action: string, decision?: PermissionDecisionData): string => {
@@ -31,10 +30,10 @@ const getMessage = (action: string, decision?: PermissionDecisionData): string =
 export function getPermission(permission?: Array<{ node: PermissionData }>): Permission {
   if (!Array.isArray(permission)) return PERMISSION_ALLOW_ALL;
 
-  const config = store.get(configState);
+  const { data: config } = useConfig();
 
   const createPermissionAction = (action: PermissionAction): PermissionDecision => {
-    if (action === "view" && config?.main.allow_anonymous_access) return { isAllowed: true };
+    if (action === "view" && config.main.allow_anonymous_access) return { isAllowed: true };
 
     const permissionAllowNode = permission.find(({ node }) => node[action] === "ALLOW");
 
