@@ -7,8 +7,9 @@ from prefect.exceptions import ObjectAlreadyExists
 from prefect.logging import get_run_logger
 
 from infrahub import config
+from infrahub.trigger.tasks import setup_triggers
 
-from .catalogue import automation_setup_workflows, worker_pools, workflows
+from .catalogue import worker_pools, workflows
 from .models import TASK_RESULT_STORAGE_NAME
 
 
@@ -37,10 +38,6 @@ async def setup_deployments(client: PrefectClient) -> None:
         work_pool = worker_pools[0]
         await workflow.save(client=client, work_pool=work_pool)
         log.info(f"Flow {workflow.name}, created successfully ... ")
-
-    for automation_setup_workflow in automation_setup_workflows:
-        automation_setup = automation_setup_workflow.load_function()
-        await automation_setup()
 
 
 @task(name="task-manager-setup-blocks", task_run_name="Setup Blocks", cache_policy=NONE)
@@ -71,3 +68,4 @@ async def setup_task_manager() -> None:
         await setup_blocks()
         await setup_worker_pools(client=client)
         await setup_deployments(client=client)
+        await setup_triggers(client=client)
