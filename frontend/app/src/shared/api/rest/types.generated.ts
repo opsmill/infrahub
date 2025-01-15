@@ -1173,11 +1173,6 @@ export interface components {
         /** ExperimentalFeaturesSettings */
         ExperimentalFeaturesSettings: {
             /**
-             * Pull Request
-             * @default false
-             */
-            pull_request: boolean;
-            /**
              * Graphql Enums
              * @default false
              */
