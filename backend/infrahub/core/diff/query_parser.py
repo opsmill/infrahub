@@ -131,11 +131,11 @@ class DiffPropertyIntermediate:
         new_status = new_diff_value.status
         action = DiffAction.UPDATED
         previous_value = earliest_value.value
-        if earliest_value.changed_at > from_time or (
-            earliest_value.value in (None, NULL_VALUE) and new_value not in (None, NULL_VALUE)
-        ):
+        if earliest_value.changed_at > from_time:
             action = DiffAction.ADDED
             previous_value = None
+        elif earliest_value.value in (None, NULL_VALUE) and new_value not in (None, NULL_VALUE):
+            action = DiffAction.ADDED
         elif (earliest_value.value not in (None, NULL_VALUE) and new_value in (None, NULL_VALUE)) or (
             earliest_value.status,
             new_status,

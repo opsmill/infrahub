@@ -166,6 +166,49 @@ async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: B
     assert before_change < property_diff.changed_at < after_change
 
 
+async def test_attribute_branch_update_from_null(db: InfrahubDatabase, default_branch: Branch, person_john_main: Node):
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="accord", is_electric=False, owner=person_john_main.id)
+    await car.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car.id)
+    car_branch.nbr_seats.value = 5
+    before_change = Timestamp()
+    await car_branch.save(db=db)
+    after_change = Timestamp()
+
+    diff_calculator = DiffCalculator(db=db)
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
+    )
+
+    base_root_path = calculated_diffs.base_branch_diff
+    assert base_root_path.nodes == []
+    branch_root_path = calculated_diffs.diff_branch_diff
+    assert branch_root_path.branch == branch.name
+    assert len(branch_root_path.nodes) == 1
+    node_diff = branch_root_path.nodes[0]
+    assert node_diff.uuid == car.id
+    assert node_diff.kind == "TestCar"
+    assert node_diff.action is DiffAction.UPDATED
+    assert len(node_diff.attributes) == 1
+    attribute_diff = node_diff.attributes[0]
+    assert attribute_diff.name == "nbr_seats"
+    assert attribute_diff.action is DiffAction.UPDATED
+    assert len(attribute_diff.properties) == 1
+    property_diff = attribute_diff.properties[0]
+    assert property_diff.property_type == DatabaseEdgeType.HAS_VALUE
+    assert property_diff.previous_value == "NULL"
+    assert property_diff.new_value == 5
+    assert property_diff.action is DiffAction.ADDED
+    assert before_change < property_diff.changed_at < after_change
+
+
 @pytest.mark.parametrize("use_branch", [True, False])
 async def test_node_delete(db: InfrahubDatabase, default_branch: Branch, car_accord_main, person_john_main, use_branch):
     if use_branch:
