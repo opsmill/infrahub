@@ -184,6 +184,10 @@ describe("Object list", () => {
     const token = encodeJwt(data);
 
     localStorage.setItem(ACCESS_TOKEN_KEY, token);
+
+    cy.fixture("config").then(function (json) {
+      cy.intercept("GET", "/api/config", json).as("config");
+    });
   });
 
   it("should open the add panel, submit without filling the text field and display a required message", function () {
