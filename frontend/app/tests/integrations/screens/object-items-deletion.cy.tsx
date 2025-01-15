@@ -76,6 +76,9 @@ const ObjectItemsProvider = () => {
 describe("List screen", () => {
   beforeEach(function () {
     cy.fixture("device-items-delete").as("delete");
+    cy.fixture("config").then(function (json) {
+      cy.intercept("GET", "/api/config", json).as("config");
+    });
 
     localStorage.setItem(ACCESS_TOKEN_KEY, mockedToken);
   });
