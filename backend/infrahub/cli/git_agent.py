@@ -111,7 +111,7 @@ async def start(
             exporter_protocol=config.SETTINGS.trace.exporter_protocol,
         )
 
-    database = await context.get_db(retry=1)
+    database = await context.init_db(retry=1)
 
     workflow = config.OVERRIDE.workflow or (
         WorkflowWorkerExecution()
