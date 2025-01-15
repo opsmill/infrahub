@@ -1,4 +1,5 @@
 import { getConfigQueryOptions } from "@/entities/config/get-config.query";
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
@@ -11,7 +12,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (error) {
-    return <div>Error: {error.message}</div>;
+    return <ErrorScreen message={error.message} />;
   }
 
   return children;
