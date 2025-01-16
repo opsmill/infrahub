@@ -10,7 +10,7 @@ from .model import SchemaViolation
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.path import GroupedDataPaths
+    from infrahub.core.path import DataPath, GroupedDataPaths
     from infrahub.database import InfrahubDatabase
 
     from .interface import ConstraintCheckerInterface
@@ -65,12 +65,27 @@ class AggregatedConstraintChecker:
                     full_display_label=display_label,
                 )
                 violation.message = await self.render_error_request(
-                    violation=violation, constraint_name=constraint_name, request=request
+                    violation=violation, constraint_name=constraint_name, request=request, data_path=path
                 )
                 violations.append(violation)
         return violations
 
     async def render_error_request(
-        self, violation: SchemaViolation, constraint_name: str, request: SchemaConstraintValidatorRequest
+        self,
+        violation: SchemaViolation,
+        constraint_name: str,
+        request: SchemaConstraintValidatorRequest,
+        data_path: DataPath,
     ) -> str:
-        return f"{violation.full_display_label} is not compatible with the constraint {constraint_name!r} at {request.schema_path.get_path()!r}"
+        error_str = (
+            f"{violation.full_display_label} is not compatible with the constraint {constraint_name!r}"
+            f" at {request.schema_path.get_path()!r}"
+        )
+        error_detail_props = []
+        error_detail_props += [f"field_name={data_path.field_name}"] if data_path.field_name else []
+        error_detail_props += [f"property_name={data_path.property_name}"] if data_path.property_name else []
+        error_detail_props += [f"peer_id={data_path.peer_id}"] if data_path.peer_id else []
+        error_detail_props += [f"value={data_path.value}"] if data_path.value else []
+        if error_detail_props:
+            error_str += " (" + ",".join(error_detail_props) + ")"
+        return error_str
