@@ -379,7 +379,10 @@ async def test_schema_load_endpoint_constraints_not_valid(
             json={"schemas": [{"version": "1.0", "nodes": [person_schema]}]},
         )
 
-    error_message = f"Node John (TestPerson: {person_john_main.id}) is not compatible with the constraint 'attribute.regex.update' at 'schema/TestPerson/name/regex'"  # noqa: E501
+    error_message = (
+        f"Node John (TestPerson: {person_john_main.id}) is not compatible with the constraint 'attribute.regex.update'"
+        " at 'schema/TestPerson/name/regex' (field_name=name,value=John)"
+    )
     assert response.json() == {
         "data": None,
         "errors": [{"extensions": {"code": 422}, "message": error_message}],
