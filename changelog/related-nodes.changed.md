@@ -1,1 +1,0 @@
-Display multiple related nodes in the tasks list and details views

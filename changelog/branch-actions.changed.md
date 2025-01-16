@@ -1,1 +1,0 @@
-Disable action buttons depending on the on going tasks for the different workflows (merge, rebase, validate)
