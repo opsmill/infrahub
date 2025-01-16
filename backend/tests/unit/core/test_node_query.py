@@ -421,7 +421,7 @@ async def test_query_NodeGetHierarchyQuery_ancestors(
         branch=default_branch,
     )
     await query.execute(db=db)
-    assert sorted(list(query.get_peer_ids())) == sorted([paris.id, europe.id])
+    assert sorted(query.get_peer_ids()) == sorted([paris.id, europe.id])
 
 
 async def test_query_NodeGetHierarchyQuery_filters(

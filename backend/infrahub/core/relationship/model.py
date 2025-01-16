@@ -1032,7 +1032,7 @@ class RelationshipManager:
             changed = True
 
         # Check if some relationship got removed by checking if the previous list of relationship is a subset of the current list of not
-        if set(list(previous_relationships.keys())) <= {rel.peer_id for rel in await self.get_relationships(db=db)}:
+        if set(previous_relationships.keys()) <= {rel.peer_id for rel in await self.get_relationships(db=db)}:
             changed = True
 
         if changed:

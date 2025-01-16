@@ -1633,7 +1633,7 @@ class SchemaBranch:
 
         if new_used_by_profile:
             core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=True)
-            core_profile_schema.used_by = sorted(list(profile_schema_kinds))
+            core_profile_schema.used_by = sorted(profile_schema_kinds)
             self.set(name=InfrahubKind.PROFILE, schema=core_profile_schema)
 
         if self.has(name=InfrahubKind.NODE):
@@ -1644,7 +1644,7 @@ class SchemaBranch:
             if new_used_by_node:
                 core_node_schema = self.get(name=InfrahubKind.NODE, duplicate=True)
                 updated_used_by_node = set(chain(profile_schema_kinds, set(core_node_schema.used_by)))
-                core_node_schema.used_by = sorted(list(updated_used_by_node))
+                core_node_schema.used_by = sorted(updated_used_by_node)
                 self.set(name=InfrahubKind.NODE, schema=core_node_schema)
 
     def manage_profile_relationships(self) -> None:

@@ -111,7 +111,7 @@ async def execute_query(
             branch=branch_params.branch.name,
             query_id=gql_query.id,
             query_name=gql_query.name.value,
-            related_node_ids=sorted(list(related_node_ids)),
+            related_node_ids=sorted(related_node_ids),
             subscribers=sorted(subscribers),
             params=params,
         )
