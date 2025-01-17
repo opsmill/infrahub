@@ -78,7 +78,7 @@ def pytest_configure(config):
         markexpr = f"not neo4j and ({markexpr})"
 
     if not config.option.neo4j:
-        setattr(config.option, "markexpr", markexpr)
+        config.option.markexpr = markexpr
 
     log_level = config.option.log_level
     log_level = log_level if log_level is not None else DEFAULT_TESTING_LOG_LEVEL
