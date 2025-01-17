@@ -193,7 +193,7 @@ class SchemaManager(NodeManager):
 
         added_nodes = []
         added_generics = []
-        for item_kind, item_diff in diff.added.items():
+        for item_kind in diff.added.keys():
             item = schema.get(name=item_kind, duplicate=False)
             node = await self.load_node_to_db(node=item, branch=branch, db=db)
             schema.set(name=item_kind, schema=node)
@@ -218,7 +218,7 @@ class SchemaManager(NodeManager):
 
         removed_nodes = []
         removed_generics = []
-        for item_kind, item_diff in diff.removed.items():
+        for item_kind in diff.removed.keys():
             item = schema.get(name=item_kind, duplicate=False)
             node = await self.delete_node_in_db(node=item, branch=branch, db=db)
             schema.delete(name=item_kind)

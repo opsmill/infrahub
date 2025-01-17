@@ -343,7 +343,7 @@ class GraphQLSchemaManager:
         full_schema = self.schema.get_all(duplicate=False)
 
         # Generate all GraphQL Interface  Object first and store them in the registry
-        for node_name, node_schema in full_schema.items():
+        for node_schema in full_schema.values():
             if not isinstance(node_schema, GenericSchema):
                 continue
             interface = self.generate_interface_object(schema=node_schema, populate_cache=True)
@@ -383,7 +383,7 @@ class GraphQLSchemaManager:
             self.set_type(name=nested_edged_interface._meta.name, graphql_type=nested_edged_interface)
 
         # Generate all GraphQL ObjectType, Nested, Paginated & NestedPaginated and store them in the registry
-        for node_name, node_schema in full_schema.items():
+        for node_schema in full_schema.values():
             if isinstance(node_schema, (NodeSchema, ProfileSchema)):
                 node_type = self.generate_graphql_object(schema=node_schema, populate_cache=True)
                 node_type_edged = self.generate_graphql_edged_object(
