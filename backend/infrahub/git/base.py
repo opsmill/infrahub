@@ -12,6 +12,7 @@ from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
 from infrahub_sdk import InfrahubClient  # noqa: TC002
 from prefect import Flow, Task
+from prefect.logging import get_run_logger
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 
