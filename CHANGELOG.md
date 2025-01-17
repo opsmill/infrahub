@@ -19,15 +19,16 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 ### Added
 
-- Artifacts can now be of type: YAML, XML, markdown, SVG and CSV ([#5452](https://github.com/opsmill/infrahub/issues/5452))
+- Artifacts can now be of type: YAML, XML, markdown, SVG and CSV. ([#5452](https://github.com/opsmill/infrahub/issues/5452))
 
 ### Changed
 
-- Updated Infrahub SDK to version 1.6.1
+- Updated Infrahub SDK to version 1.6.1.
 
 ### Fixed
 
 - Fix issue when loading multiple schema files due to load order, schemas are now merged into a single one before importing ([#4188](https://github.com/opsmill/infrahub/issues/4188))
+- Task status indicators now poll for updates only when tab is focused.
 
 ## [Infrahub - v1.1.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.3) - 2025-01-16
 
