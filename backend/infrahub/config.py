@@ -585,7 +585,6 @@ class AnalyticsSettings(BaseSettings):
 
 class ExperimentalFeaturesSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_EXPERIMENTAL_")
-    pull_request: bool = False
     graphql_enums: bool = False
 
 
