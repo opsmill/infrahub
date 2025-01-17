@@ -22,7 +22,6 @@ export const configMocks = {
     api_key: null,
   },
   experimental_features: {
-    pull_request: false,
     graphql_enums: false,
   },
   sso: {

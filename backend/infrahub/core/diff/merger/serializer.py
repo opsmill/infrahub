@@ -97,8 +97,8 @@ class DiffMergeSerializer:
         ):
             return raw_value.lower() == "true"
         # this must be HAS_VALUE
-        if raw_value in (None, "NULL"):
-            return "NULL"
+        if raw_value in (None, NULL_VALUE):
+            return NULL_VALUE
         if value_type:
             if value_type is bool and isinstance(raw_value, str):
                 return raw_value.lower() == "true"

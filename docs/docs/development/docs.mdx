@@ -171,6 +171,17 @@ When writing documentation, it's essential to guide the reader's attention to sp
 
 Incorporating these blocks into your documentation makes it more interactive and user-friendly, guiding the reader through different stages of their learning or implementation process with visual cues that emphasize the significance of each piece of information.
 
+## Documentation sync to `infrahub-docs`
+
+Infrahub documentation is synced and ultimately published via the [`infrahub-docs`](https://github.com/opsmill/infrahub-docs) repository. This is done via the GitHub action `.github/workflows/sync-docs.yml`.
+
+Please note the following important points:
+
+- Today, spelling (the `.vale` directory) is authoritative in the `infrahub` repository, not the `infrahub-docs` repository. If you need to add a spelling exception in another repository (i.e. `infrahub-demo-dc-fabric`), you have to add the exception to the `infrahub` repository.
+- All documentation URLs need to be relative:
+  - Do this: `[some page](../path/to/file)`
+  - Not this: `[some page](/absolute_path/to/file)`
+
 ## Organizing new pages
 
 We organize all documentation into **four** categories: tutorials, guides, topics, and reference. This is heavily influenced by the [Diátaxis framework](https://diataxis.fr/). The goal is to maintain a more organized, understandable set of docs.

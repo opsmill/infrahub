@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import DiffAction, RelationshipCardinality
+from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.database import InfrahubDatabase
 
@@ -45,9 +45,9 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
     def _determine_action(self, previous_value: Any, new_value: Any) -> DiffAction:
         if previous_value == new_value:
             return DiffAction.UNCHANGED
-        if previous_value in (None, "NULL"):
+        if previous_value in (None, NULL_VALUE):
             return DiffAction.ADDED
-        if new_value in (None, "NULL"):
+        if new_value in (None, NULL_VALUE):
             return DiffAction.REMOVED
         return DiffAction.UPDATED
 

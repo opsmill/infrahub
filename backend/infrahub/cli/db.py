@@ -97,7 +97,7 @@ async def init(
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
-    dbdriver = await context.get_db(retry=1)
+    dbdriver = await context.init_db(retry=1)
     async with dbdriver.start_transaction() as db:
         log.info("Delete All Nodes")
         await delete_all_nodes(db=db)
@@ -120,7 +120,7 @@ async def load_test_data(
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
-    dbdriver = await context.get_db(retry=1)
+    dbdriver = await context.init_db(retry=1)
     async with dbdriver.start_session() as db:
         await initialization(db=db)
 
@@ -152,7 +152,7 @@ async def migrate(
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
-    dbdriver = await context.get_db(retry=1)
+    dbdriver = await context.init_db(retry=1)
     async with dbdriver.start_session() as db:
         rprint("Checking current state of the Database")
 
@@ -207,7 +207,7 @@ async def update_core_schema(  # pylint: disable=too-many-statements
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
-    dbdriver = await context.get_db(retry=1)
+    dbdriver = await context.init_db(retry=1)
 
     error_badge = "[bold red]ERROR[/bold red]"
 
@@ -332,7 +332,7 @@ async def constraint(
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
-    dbdriver = await context.get_db(retry=1)
+    dbdriver = await context.init_db(retry=1)
 
     manager: Optional[ConstraintManagerBase] = None
     if dbdriver.db_type == DatabaseType.NEO4J:
@@ -376,7 +376,7 @@ async def index(
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
-    dbdriver = await context.get_db(retry=1)
+    dbdriver = await context.init_db(retry=1)
     dbdriver.manager.index.init(nodes=node_indexes, rels=rel_indexes)
 
     if action == IndexAction.ADD:
