@@ -728,10 +728,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         # Make sure the branch won't conflict on merge
         if self.has_conflicting_changes(target_branch=self.default_branch, source_branch=branch_name):
-            log.warning(
-                f"Remote branch {branch_name} will cause conflicts, they need to be resolved before importing into Infrahub",
-                repository=self.name,
-                branch=branch_name,
+            get_run_logger().warning(
+                f"Remote branch {branch_name} will cause conflicts, they need to be resolved before importing the branch into Infrahub"
             )
             return False
 
