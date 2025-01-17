@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sequence
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import (
@@ -128,13 +128,26 @@ class SchemaUpdate(BaseModel):
         return self.hash != self.previous_hash
 
 
+def _merge_candidate_schemas(schemas: Sequence[SchemaRoot]) -> SchemaRoot:
+    """Merge multiple schemas into one suitable to be loaded."""
+    if not schemas:
+        raise ValueError("Cannot merge an empty list of schemas")
+
+    merged = schemas[0]
+    for schema in schemas[1:]:
+        merged = merged.merge(schema=schema)
+
+    return merged
+
+
 def evaluate_candidate_schemas(
     branch_schema: SchemaBranch, schemas_to_evaluate: SchemasLoadAPI
 ) -> tuple[SchemaBranch, SchemaUpdateValidationResult]:
     candidate_schema = branch_schema.duplicate()
+    schema = _merge_candidate_schemas(schemas=schemas_to_evaluate.schemas)
+
     try:
-        for schema in schemas_to_evaluate.schemas:
-            candidate_schema.load_schema(schema=schema)
+        candidate_schema.load_schema(schema=schema)
         candidate_schema.process()
 
         schema_diff = branch_schema.diff(other=candidate_schema)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Optional, TypeAlias, Union
 
+from infrahub_sdk.utils import deep_merge_dict
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.core.constants import RESTRICTED_NAMESPACES
@@ -85,6 +86,10 @@ class SchemaRoot(BaseModel):
             for item in node.relationships + node.attributes:
                 if not item.id:
                     item.id = str(uuid.uuid4())
+
+    def merge(self, schema: SchemaRoot) -> SchemaRoot:
+        """Return a new `SchemaRoot` after merging `self` with `schema`."""
+        return SchemaRoot.model_validate(deep_merge_dict(dicta=self.model_dump(), dictb=schema.model_dump()))
 
 
 internal_schema = internal.to_dict()
