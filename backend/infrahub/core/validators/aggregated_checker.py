@@ -65,7 +65,7 @@ class AggregatedConstraintChecker:
                     full_display_label=display_label,
                 )
                 violation.message = await self.render_error_request(
-                    violation=violation, constraint_name=constraint_name, request=request, data_path=path
+                    violation=violation, constraint_name=constraint_name, data_path=path
                 )
                 violations.append(violation)
         return violations
@@ -74,18 +74,33 @@ class AggregatedConstraintChecker:
         self,
         violation: SchemaViolation,
         constraint_name: str,
-        request: SchemaConstraintValidatorRequest,
         data_path: DataPath,
     ) -> str:
-        error_str = (
-            f"{violation.full_display_label} is not compatible with the constraint {constraint_name!r}"
-            f" at {request.schema_path.get_path()!r}"
-        )
-        error_detail_props = []
-        error_detail_props += [f"field_name={data_path.field_name}"] if data_path.field_name else []
-        error_detail_props += [f"property_name={data_path.property_name}"] if data_path.property_name else []
-        error_detail_props += [f"peer_id={data_path.peer_id}"] if data_path.peer_id else []
-        error_detail_props += [f"value={data_path.value}"] if data_path.value else []
-        if error_detail_props:
-            error_str += " (" + ",".join(error_detail_props) + ")"
+        constraint_name_str = constraint_name
+        if constraint_name.count(".") == 2:
+            constraint_level, constraint_name_str, _ = constraint_name.split(".", maxsplit=2)
+            error_str = f"{constraint_level.title()}-level '{constraint_name_str}'"
+        else:
+            error_str = f"'{constraint_name_str}'"
+        error_str += f" constraint violation on schema '{violation.node_kind}'."
+        if violation.display_label.startswith("Node"):
+            error_str += f" {violation.display_label}"
+        else:
+            error_str += f" Node ({violation.display_label})"
+        error_str += " is not compliant."
+        error_detail_str_list = []
+        if data_path.field_name:
+            if data_path.value:
+                error_detail_str = data_path.field_name
+                if data_path.property_name:
+                    error_detail_str += f".{data_path.property_name}"
+                error_detail_str += f"={data_path.value!r}"
+                error_detail_str_list.append(error_detail_str)
+            if data_path.peer_id:
+                error_detail_str += f"{data_path.field_name}.id={data_path.peer_id}"
+                error_detail_str_list.append(error_detail_str)
+            if error_detail_str:
+                error_str += " The error relates to field "
+                error_str += ",".join(error_detail_str_list)
+                error_str += "."
         return error_str

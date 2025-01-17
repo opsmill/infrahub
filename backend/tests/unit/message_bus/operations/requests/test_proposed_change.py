@@ -300,6 +300,6 @@ async def test_schema_integrity(
                 "path": "schema/TestPerson/name/regex",
                 "type": "attribute.regex.update",
                 # ruff: noqa: E501
-                "value": f"Node (TestPerson: {person_john_main.id}) is not compatible with the constraint 'attribute.regex.update' at 'schema/TestPerson/name/regex' (field_name=name,value=John)",
+                "value": f"Attribute-level 'regex' constraint violation on schema 'TestPerson'. Node (TestPerson: {person_john_main.id}) is not compliant. The error relates to field name='{person_john_main.name.value}'.",
             }
         ]

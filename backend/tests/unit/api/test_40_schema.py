@@ -380,8 +380,9 @@ async def test_schema_load_endpoint_constraints_not_valid(
         )
 
     error_message = (
-        f"Node John (TestPerson: {person_john_main.id}) is not compatible with the constraint 'attribute.regex.update'"
-        " at 'schema/TestPerson/name/regex' (field_name=name,value=John)"
+        "Attribute-level 'regex' constraint violation on schema 'TestPerson'."
+        f" Node (John) is not compliant."
+        f" The error relates to field name='{person_john_main.name.value}'."
     )
     assert response.json() == {
         "data": None,

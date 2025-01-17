@@ -276,7 +276,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         err_msg = response["errors"][0]["message"]
         assert initial_dataset["boomer"] in err_msg
         assert initial_dataset["athena"] in err_msg
-        assert "node.uniqueness_constraints.update" in err_msg
+        assert "Node-level 'uniqueness_constraints'" in err_msg
 
     async def test_step_02_check_generic_uniqueness_constraint_rebase_failure(
         self,
@@ -305,7 +305,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
         assert initial_dataset["boomer"] in exc.value.message
         assert initial_dataset["athena"] in exc.value.message
-        assert "node.uniqueness_constraints.update" in exc.value.message
+        assert "Node-level 'uniqueness_constraints'" in exc.value.message
 
     async def test_step_03_check_generic_and_node_uniqueness_constraint_failure(
         self,
@@ -336,7 +336,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert initial_dataset["starbuck"] in err_msg
         assert initial_dataset["president"] in err_msg
         assert initial_dataset["gaius"] not in err_msg
-        assert "node.uniqueness_constraints.update" in err_msg
+        assert "Node-level 'uniqueness_constraints'" in err_msg
 
     async def test_step_03_reset(self, db: InfrahubDatabase, initial_dataset):
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
@@ -389,17 +389,42 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
         assert initial_dataset["gaius"] not in exc.value.message
         assert initial_dataset["caprica"] not in exc.value.message
-        for display_label, kind in [
-            (await boomer_main.render_display_label(db=db), "TestingHumanoid"),
-            (await athena_branch.render_display_label(db=db), "TestingHumanoid"),
-            (await boomer_main.render_display_label(db=db), "TestingCylon"),
-            (await athena_branch.render_display_label(db=db), "TestingCylon"),
-            (await starbuck_main.render_display_label(db=db), "TestingPerson"),
-            (await president_branch.render_display_label(db=db), "TestingPerson"),
-        ]:
-            expected_error_msg = (
-                f"Node {display_label} is not compatible with the constraint 'node.uniqueness_constraints.update'"
-                f" at 'schema/{kind}/uniqueness_constraints'"
-            )
+        for node in [boomer_main, athena_branch]:
+            # boomer_main,
+            # athena_branch,
+            # starbuck_main,
+            # president_branch,
+            display_label = await node.render_display_label(db=db)
+            kind = "TestingHumanoid"
+            for field in ("name", "favorite_color"):
+                value = getattr(node, field).value
+                expected_error_msg = (
+                    f"Node-level 'uniqueness_constraints' constraint violation on schema '{kind}'."
+                    f" Node ({display_label}) is not compliant."
+                    f" The error relates to field {field}.value='{value}'"
+                )
+                assert expected_error_msg in exc.value.errors[0]["message"]
 
-            assert expected_error_msg in exc.value.errors[0]["message"]
+        for node in [boomer_main, athena_branch]:
+            display_label = await node.render_display_label(db=db)
+            kind = "TestingCylon"
+            for field in ("model_number", "favorite_color"):
+                value = getattr(node, field).value
+                expected_error_msg = (
+                    f"Node-level 'uniqueness_constraints' constraint violation on schema '{kind}'."
+                    f" Node ({display_label}) is not compliant."
+                    f" The error relates to field {field}.value='{value}'"
+                )
+                assert expected_error_msg in exc.value.errors[0]["message"]
+
+        for node in [starbuck_main, president_branch]:
+            display_label = await node.render_display_label(db=db)
+            kind = "TestingHuman"
+            for field in ("homeworld", "favorite_color"):
+                value = getattr(node, field).value
+                expected_error_msg = (
+                    f"Node-level 'uniqueness_constraints' constraint violation on schema '{kind}'."
+                    f" Node ({display_label}) is not compliant."
+                    f" The error relates to field {field}.value='{value}'"
+                )
+                assert expected_error_msg in exc.value.errors[0]["message"]
