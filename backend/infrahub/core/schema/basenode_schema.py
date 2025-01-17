@@ -22,13 +22,11 @@ if TYPE_CHECKING:
     from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
 
-# pylint: disable=redefined-builtin
-
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
-class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-public-methods
+class BaseNodeSchema(GeneratedBaseNodeSchema):
     _exclude_from_hash: list[str] = ["attributes", "relationships"]
     _sort_by: list[str] = ["namespace", "name"]
 

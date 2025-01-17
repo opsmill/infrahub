@@ -66,8 +66,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
 
-# pylint: disable=redefined-builtin,c-extension-no-member,too-many-lines,too-many-public-methods
-
 
 class DeleteInput(graphene.InputObjectType):
     id = graphene.String(required=False)
@@ -105,7 +103,7 @@ class BranchDetails:
     gql_manager: GraphQLSchemaManager
 
 
-class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
+class GraphQLSchemaManager:
     _extra_types: dict[str, GraphQLTypes] = {}
     _branch_details_by_name: dict[str, BranchDetails] = {}
 
@@ -339,7 +337,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         return RelatedNodeInput
 
-    def generate_object_types(self) -> None:  # pylint: disable=too-many-branches,too-many-statements
+    def generate_object_types(self) -> None:
         """Generate all GraphQL objects for the schema and store them in the internal registry."""
 
         full_schema = self.schema.get_all(duplicate=False)

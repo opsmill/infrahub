@@ -53,7 +53,7 @@ async def validate_namespace(
 
 class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls,
         schema: NodeSchema,
         _meta: Optional[Any] = None,
@@ -84,7 +84,7 @@ class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
 
 class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls,
         schema: NodeSchema,
         _meta: Optional[Any] = None,
@@ -241,7 +241,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
 
 class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls,
         schema: NodeSchema,
         _meta: Optional[Any] = None,

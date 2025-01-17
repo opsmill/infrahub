@@ -18,7 +18,7 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
     If a branch is already present with a different value for the hash
     We pull the new schema from the database and we update the registry.
     """
-    from infrahub.graphql.manager import GraphQLSchemaManager  # pylint: disable=import-outside-toplevel,cyclic-import
+    from infrahub.graphql.manager import GraphQLSchemaManager
 
     async with lock.registry.local_schema_lock():
         branches = await registry.branch_object.get_list(db=db)

@@ -62,9 +62,6 @@ if TYPE_CHECKING:
     from pydantic import ValidationInfo
 
 
-# pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines
-
-
 class SchemaBranch:
     def __init__(
         self,
@@ -90,7 +87,7 @@ class SchemaBranch:
         yield cls.validate
 
     @classmethod
-    def validate(cls, v: Any, info: ValidationInfo) -> Self:  # pylint: disable=unused-argument
+    def validate(cls, v: Any, info: ValidationInfo) -> Self:
         if isinstance(v, cls):
             return v
         if isinstance(v, dict):
@@ -1267,7 +1264,6 @@ class SchemaBranch:
 
         if either node on a relationship support branch, the relationship must be branch aware.
         """
-        # pylint: disable=too-many-branches
 
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
@@ -1329,7 +1325,6 @@ class SchemaBranch:
 
     def process_cardinality_counts(self) -> None:
         """Ensure that all relationships with a cardinality of ONE have a min_count and max_count of 1."""
-        # pylint: disable=too-many-branches
 
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
@@ -1416,7 +1411,6 @@ class SchemaBranch:
             self.set(name=name, schema=node)
 
     def cleanup_inherited_elements(self) -> None:
-        # pylint: disable=too-many-branches
         for name in self.node_names:
             node = self.get_node(name=name, duplicate=False)
 

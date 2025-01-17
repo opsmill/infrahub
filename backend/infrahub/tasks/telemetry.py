@@ -20,7 +20,7 @@ TELEMETRY_VERSION: str = "20240524"
 
 
 @task(name="telemetry-gather-db", task_run_name="Gather Database Information", cache_policy=NONE)
-async def gather_database_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
+async def gather_database_information(service: InfrahubServices, branch: Branch) -> dict:
     async with service.database.start_session() as db:
         data: dict[str, Any] = {
             "database_type": db.db_type.value,
@@ -38,7 +38,7 @@ async def gather_database_information(service: InfrahubServices, branch: Branch)
 
 
 @task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)
-async def gather_schema_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
+async def gather_schema_information(service: InfrahubServices, branch: Branch) -> dict:
     data: dict[str, Any] = {}
     main_schema = registry.schema.get_schema_branch(name=branch.name)
     data["node_count"] = len(main_schema.node_names)
@@ -49,7 +49,7 @@ async def gather_schema_information(service: InfrahubServices, branch: Branch) -
 
 
 @task(name="telemetry-feature-information", task_run_name="Gather Feature Information", cache_policy=NONE)
-async def gather_feature_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
+async def gather_feature_information(service: InfrahubServices, branch: Branch) -> dict:
     async with service.database.start_session() as db:
         data = {}
         features_to_count = [

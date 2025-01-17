@@ -21,7 +21,7 @@ class InfrahubBaseSubscription(ObjectType):
     @classmethod
     async def subscribe_query(
         cls,
-        parent: dict,  # pylint: disable=unused-argument
+        parent: dict,
         info: GraphQLResolveInfo,
         name: str,
         params: dict[str, Any] | None = None,

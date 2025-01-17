@@ -28,8 +28,6 @@ if TYPE_CHECKING:
     from ..initialization import GraphqlContext
 
 
-# pylint: disable=unused-argument
-
 log = get_logger()
 
 

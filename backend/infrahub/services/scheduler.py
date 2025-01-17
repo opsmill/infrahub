@@ -80,7 +80,7 @@ class InfrahubScheduler:
         while self.running:
             try:
                 await schedule.function(self.service)
-            except Exception as exc:  # pylint: disable=broad-exception-caught
+            except Exception as exc:
                 self.service.log.error(str(exc))
             for _ in range(schedule.interval):
                 if not self.running:

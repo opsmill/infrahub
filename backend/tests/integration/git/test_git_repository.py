@@ -25,8 +25,6 @@ from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.test_client import InfrahubTestClient
 
-# pylint: disable=unused-argument
-
 
 async def load_infrastructure_schema(db: InfrahubDatabase):
     base_dir = get_models_dir() / "base"

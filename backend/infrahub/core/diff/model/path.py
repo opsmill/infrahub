@@ -685,7 +685,7 @@ class DiffRoot:
 
 
 @dataclass
-class DatabasePath:  # pylint: disable=too-many-public-methods
+class DatabasePath:
     root_node: Neo4jNode
     path_to_node: Neo4jRelationship
     node_node: Neo4jNode

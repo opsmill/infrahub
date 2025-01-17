@@ -39,7 +39,7 @@ class Status(ObjectType):
 
 
 async def resolve_status(
-    root: dict,  # pylint: disable=unused-argument
+    root: dict,
     info: GraphQLResolveInfo,
 ) -> dict:
     context: GraphqlContext = info.context

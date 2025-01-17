@@ -56,8 +56,6 @@ if TYPE_CHECKING:
     from infrahub.message_bus import messages
     from infrahub.services import InfrahubServices
 
-# pylint: disable=too-many-lines
-
 
 class ArtifactGenerateResult(BaseModel):
     changed: bool
@@ -121,7 +119,7 @@ class TransformPythonInformation(BaseModel):
     """Timeout for the function."""
 
 
-class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=too-many-public-methods
+class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     """
     This class provides interfaces to read and process information from .infrahub.yml files and can perform
     actions for objects defined within those files.
@@ -192,7 +190,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                     branch_name=infrahub_branch_name, commit=commit, config_file=config_file
                 )
 
-        except Exception as exc:  # pylint: disable=broad-exception-caught
+        except Exception as exc:
             sync_status = RepositorySyncStatus.ERROR_IMPORT
             error = exc
 
@@ -235,7 +233,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     async def import_jinja2_transforms(
         self,
         branch_name: str,
-        commit: str,  # pylint: disable=unused-argument
+        commit: str,
         config_file: InfrahubRepositoryConfig,
     ) -> None:
         log = get_run_logger()
@@ -313,7 +311,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     async def compare_jinja2_transform(
         cls, existing_transform: CoreTransformJinja2, local_transform: InfrahubRepositoryJinja2
     ) -> bool:
-        # pylint: disable=no-member
         if (
             existing_transform.description.value != local_transform.description
             or existing_transform.template_path.value != local_transform.template_path
@@ -326,7 +323,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     async def update_jinja2_transform(
         self, existing_transform: CoreTransformJinja2, local_transform: InfrahubRepositoryJinja2
     ) -> None:
-        # pylint: disable=no-member
         if existing_transform.description.value != local_transform.description:
             existing_transform.description.value = local_transform.description
 
@@ -342,7 +338,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     async def import_artifact_definitions(
         self,
         branch_name: str,
-        commit: str,  # pylint: disable=unused-argument
+        commit: str,
         config_file: InfrahubRepositoryConfig,
     ) -> None:
         log = get_run_logger()
@@ -470,7 +466,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
     @task(name="import-schema-files", task_run_name="Import schema files", cache_policy=NONE)
     async def import_schema_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig) -> None:
-        # pylint: disable=too-many-branches
         log = get_run_logger()
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
@@ -749,7 +744,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         if targets:
             generator.targets = targets[0].id
 
-        if (  # pylint: disable=too-many-boolean-expressions
+        if (
             existing_generator.query.id != generator.query
             or existing_generator.file_path.value != str(generator.file_path)
             or existing_generator.class_name.value != generator.class_name
@@ -864,7 +859,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 )
             )
 
-        except Exception as exc:  # pylint: disable=broad-exception-caught
+        except Exception as exc:
             log.error(
                 f"An error occurred while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} "
             )
@@ -897,7 +892,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 )
             )
 
-        except Exception as exc:  # pylint: disable=broad-exception-caught
+        except Exception as exc:
             log.error(
                 f"An error occurred while processing the PythonTransform {transform.name} from {file_path} : {exc} "
             )
@@ -1004,7 +999,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
     ) -> bool:
         """Compare an existing Python Check Object with a Check Class
         and identify if we need to update the object in the database."""
-        # pylint: disable=too-many-boolean-expressions
         if (
             existing_check.query.id != check.query
             or existing_check.file_path.value != check.file_path

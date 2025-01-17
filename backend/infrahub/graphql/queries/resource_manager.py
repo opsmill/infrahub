@@ -72,7 +72,7 @@ class PoolAllocated(ObjectType):
     edges = Field(List(of_type=NonNull(PoolAllocatedEdge), required=True), required=True)
 
     @staticmethod
-    async def resolve(  # pylint: disable=unused-argument
+    async def resolve(
         root: dict,
         info: GraphQLResolveInfo,
         pool_id: str,
@@ -163,7 +163,7 @@ class PoolUtilization(ObjectType):
     edges = Field(List(of_type=NonNull(IPPrefixUtilizationEdge), required=True), required=True)
 
     @staticmethod
-    async def resolve(  # pylint: disable=unused-argument,too-many-branches
+    async def resolve(
         root: dict,
         info: GraphQLResolveInfo,
         pool_id: str,

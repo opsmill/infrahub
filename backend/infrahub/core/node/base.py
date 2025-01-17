@@ -21,7 +21,7 @@ class BaseOptions:
         if not self._frozen:
             super().__setattr__(name, value)
         else:
-            raise Exception(f"Can't modify frozen Options {self}")  # pylint: disable=broad-exception-raised
+            raise Exception(f"Can't modify frozen Options {self}")
 
     def __repr__(self):
         return f"<{self.__class__.__name__} name={repr(self.name)}>"

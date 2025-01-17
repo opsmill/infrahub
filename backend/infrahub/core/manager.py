@@ -35,8 +35,6 @@ if TYPE_CHECKING:
 
 SchemaProtocol = TypeVar("SchemaProtocol")
 
-# pylint: disable=redefined-builtin,too-many-lines
-
 
 def identify_node_class(node: NodeToProcess) -> type[Node]:
     """Identify the proper class to use to create the NodeObject.
@@ -271,7 +269,7 @@ class NodeManager:
         filters: Optional[dict] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
-        account=None,  # pylint: disable=unused-argument
+        account=None,
         partial_match: bool = False,
         branch_agnostic: bool = False,
     ) -> int:
@@ -489,7 +487,7 @@ class NodeManager:
         kind: type[SchemaProtocol],
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        id: str | None = ...,  # pylint: disable=redefined-builtin
+        id: str | None = ...,
         hfid: list[str] | None = ...,
     ) -> SchemaProtocol: ...
 
@@ -501,7 +499,7 @@ class NodeManager:
         kind: str,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        id: str | None = ...,  # pylint: disable=redefined-builtin
+        id: str | None = ...,
         hfid: list[str] | None = ...,
     ) -> Any: ...
 
@@ -512,7 +510,7 @@ class NodeManager:
         kind: type[SchemaProtocol] | str,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        id: str | None = None,  # pylint: disable=redefined-builtin
+        id: str | None = None,
         hfid: list[str] | None = None,
     ) -> Any:
         if not id and not hfid:
@@ -1148,7 +1146,7 @@ class NodeManager:
 
         nodes: dict[str, Node] = {}
 
-        for node_id in ids:  # pylint: disable=too-many-nested-blocks
+        for node_id in ids:
             if node_id not in nodes_info_by_id:
                 continue
 

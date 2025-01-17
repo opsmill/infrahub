@@ -428,7 +428,7 @@ class DiffCombiner:
                     nodes=combined_nodes,
                 )
             )
-        base_branch_diff, diff_branch_diff = combined_diffs  # pylint: disable=unbalanced-tuple-unpacking
+        base_branch_diff, diff_branch_diff = combined_diffs
         base_branch_diff.partner_uuid = diff_branch_diff.uuid
         diff_branch_diff.partner_uuid = base_branch_diff.uuid
         return EnrichedDiffs(

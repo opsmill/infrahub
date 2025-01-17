@@ -58,7 +58,7 @@ class SchemaMigration(BaseModel):
                     query = await migration_query.init(db=ts, branch=branch, at=at, migration=self)
                     await query.execute(db=ts)
                     result.nbr_migrations_executed += query.get_nbr_migrations_executed()
-                except Exception as exc:  # pylint: disable=broad-exception-caught
+                except Exception as exc:
                     result.errors.append(str(exc))
                     return result
 
@@ -126,7 +126,7 @@ class GraphMigration(BaseModel):
                 try:
                     query = await migration_query.init(db=ts)
                     await query.execute(db=ts)
-                except Exception as exc:  # pylint: disable=broad-exception-caught
+                except Exception as exc:
                     result.errors.append(str(exc))
                     return result
 
@@ -141,7 +141,7 @@ class InternalSchemaMigration(BaseModel):
 
     @staticmethod
     def get_internal_schema() -> SchemaBranch:
-        from infrahub.core.schema.schema_branch import SchemaBranch  # pylint: disable=import-outside-toplevel
+        from infrahub.core.schema.schema_branch import SchemaBranch
 
         # load the internal schema from
         schema = SchemaRoot(**internal_schema)
@@ -167,7 +167,7 @@ class InternalSchemaMigration(BaseModel):
             try:
                 execution_result = await migration.execute(db=db, branch=default_branch)
                 result.errors.extend(execution_result.errors)
-            except Exception as exc:  # pylint: disable=broad-exception-caught
+            except Exception as exc:
                 result.errors.append(str(exc))
                 return result
 

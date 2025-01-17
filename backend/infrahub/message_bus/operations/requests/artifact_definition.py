@@ -131,7 +131,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
         await service.message_bus.send(message=event)
 
 
-def _render_artifact(artifact_id: Optional[str], managed_branch: bool, impacted_artifacts: list[str]) -> bool:  # pylint: disable=unused-argument
+def _render_artifact(artifact_id: Optional[str], managed_branch: bool, impacted_artifacts: list[str]) -> bool:
     """Returns a boolean to indicate if an artifact should be generated or not.
     Will return true if:
         * The artifact_id wasn't set which could be that it's a new object that doesn't have a previous artifact

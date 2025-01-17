@@ -400,8 +400,6 @@ jobs:
         run: "poetry install --no-interaction --no-ansi"
       - name: "Mypy Tests"
         run: "poetry run invoke backend.mypy"
-      - name: "Pylint Tests"
-        run: "poetry run invoke backend.pylint"
       - name: "Functional Tests"
         run: "poetry run invoke backend.test-functional"
       - name: "Coveralls : Functional Tests"

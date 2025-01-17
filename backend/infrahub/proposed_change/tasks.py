@@ -95,7 +95,7 @@ async def _proposed_change_transition_state(
     # on_crashed=[proposed_change_transition_open],  # type: ignore
     # on_cancellation=[proposed_change_transition_open],  # type: ignore
 )
-async def merge_proposed_change(proposed_change_id: str, proposed_change_name: str) -> State:  # pylint: disable=unused-argument
+async def merge_proposed_change(proposed_change_id: str, proposed_change_name: str) -> State:
     service = services.service
     log = get_run_logger()
 

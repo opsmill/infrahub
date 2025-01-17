@@ -670,8 +670,6 @@ class Query(ABC):
         return len([result for result in self.results if not result.has_deleted_rels])
 
     def print_table(self) -> None:
-        # pylint: disable=import-outside-toplevel
-
         from rich.console import Console
         from rich.table import Table
 
@@ -689,7 +687,6 @@ class Query(ABC):
         console.print(table)
 
     def print(self, include_var: bool = False) -> None:
-        # pylint: disable=import-outside-toplevel
         from rich import print as rprint
 
         print("-------------------------------------------------------")

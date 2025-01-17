@@ -266,7 +266,7 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
         log.debug(
             f"Generated artifact | changed: {result.changed} | {result.checksum} | {result.storage_id}",
         )
-    except Exception:  # pylint: disable=broad-except
+    except Exception:
         log.exception("Failed to generate artifact")
         artifact.status.value = "Error"
         await artifact.save()

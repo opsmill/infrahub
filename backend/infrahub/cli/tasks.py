@@ -12,8 +12,6 @@ from infrahub.workflows.models import WorkerPoolDefinition
 
 app = AsyncTyper()
 
-# pylint: disable=unused-argument
-
 
 @app.command()
 async def init(

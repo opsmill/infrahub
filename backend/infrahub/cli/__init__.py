@@ -12,8 +12,6 @@ from infrahub.cli.tasks import app as tasks_app
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, get_db
 
-# pylint: disable=import-outside-toplevel
-
 app = typer.Typer(name="Infrahub CLI", pretty_exceptions_enable=False)
 
 

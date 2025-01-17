@@ -25,7 +25,7 @@ log = get_logger()
 
 class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls,
         schema: NodeSchema,
         _meta: Optional[Any] = None,

@@ -78,7 +78,7 @@ class InfrahubEvent(BaseModel):
         return meta
 
 
-class InfrahubBranchEvent(InfrahubEvent):  # pylint: disable=abstract-method
+class InfrahubBranchEvent(InfrahubEvent):
     branch: str = Field(..., description="The branch on which the event happend")
 
     def get_related(self) -> list[dict[str, str]]:

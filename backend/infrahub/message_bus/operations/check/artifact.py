@@ -57,7 +57,7 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
         artifact_result["storage_id"] = result.storage_id
         check_message = "Artifact rendered successfully"
 
-    except Exception as exc:  # pylint: disable=broad-except
+    except Exception as exc:
         conclusion = ValidatorConclusion.FAILURE.value
         artifact.status.value = "Error"
         severity = "critical"

@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -81,7 +81,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         return proposed_change, result
 
     @classmethod
-    async def mutate_update(  # pylint: disable=too-many-branches
+    async def mutate_update(
         cls,
         info: GraphQLResolveInfo,
         data: InputObjectType,
@@ -152,7 +152,7 @@ class ProposedChangeRequestRunCheck(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         data: dict[str, Any],
     ) -> dict[str, bool]:
@@ -198,7 +198,7 @@ class ProposedChangeMerge(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         data: dict[str, Any],
         wait_until_completion: bool = True,

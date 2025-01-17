@@ -10,8 +10,6 @@ from neo4j import Record
 
 from infrahub.config import SETTINGS
 from infrahub.core.query import QueryType
-
-# pylint: skip-file
 from infrahub.database import InfrahubDatabase
 from infrahub.database.constants import Neo4jRuntime
 from infrahub.log import get_logger

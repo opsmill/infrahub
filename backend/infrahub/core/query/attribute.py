@@ -183,7 +183,7 @@ class AttributeGetQuery(AttributeQuery):
         self.return_labels = ["a", "ap", "r2"]
 
 
-async def default_attribute_query_filter(  # pylint: disable=unused-argument,too-many-branches,too-many-statements
+async def default_attribute_query_filter(
     name: str,
     filter_name: str,
     branch: Branch | None = None,

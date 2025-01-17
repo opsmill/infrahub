@@ -31,7 +31,7 @@ class AccountTokenEdges(ObjectType):
 
 
 async def resolve_account_tokens(
-    root: dict,  # pylint: disable=unused-argument
+    root: dict,
     info: GraphQLResolveInfo,
     limit: int = 10,
     offset: int = 0,
@@ -113,7 +113,7 @@ class AccountPermissionsEdges(ObjectType):
 
 
 async def resolve_account_permissions(
-    root: dict,  # pylint: disable=unused-argument
+    root: dict,
     info: GraphQLResolveInfo,
 ) -> dict:
     context: GraphqlContext = info.context

@@ -121,7 +121,7 @@ class BranchInLocal(BaseModel):
     has_worktree: bool = False
 
 
-class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public-methods
+class InfrahubRepositoryBase(BaseModel, ABC):
     """
     Local version of a Git repository organized to work with Infrahub.
     The idea is that all commits that are being tracked in the graph will be checkout out

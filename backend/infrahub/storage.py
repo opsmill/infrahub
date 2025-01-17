@@ -53,6 +53,4 @@ class InfrahubObjectStorage:
             with self._storage.open(identifier) as f:
                 return f.read().decode()
         except (FileNotFoundError, botocore.exceptions.ClientError):
-            raise NodeNotFoundError(  # pylint: disable=raise-missing-from
-                node_type="StorageObject", identifier=identifier
-            )
+            raise NodeNotFoundError(node_type="StorageObject", identifier=identifier)

@@ -21,8 +21,6 @@ from .shared import (
     TestSchemaLifecycleBase,
 )
 
-# pylint: disable=unused-argument
-
 
 class BranchState:
     def __init__(self) -> None:

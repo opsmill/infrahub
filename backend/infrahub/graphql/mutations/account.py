@@ -22,9 +22,6 @@ if TYPE_CHECKING:
     from ..initialization import GraphqlContext
 
 
-# pylint: disable=unused-argument
-
-
 class InfrahubAccountTokenCreateInput(InputObjectType):
     name = InputField(String(required=False), description="The name of the token")
     expiration = InputField(String(required=False), description="Timestamp when the token expires")

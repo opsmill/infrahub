@@ -29,8 +29,6 @@ from tests.adapters.message_bus import BusSimulator
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import init_global_service
 
-# pylint: disable=redefined-outer-name
-
 if TYPE_CHECKING:
     from types import TracebackType
 

@@ -61,7 +61,7 @@ class IPPrefixPoolGetResource(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
     ) -> Self:
@@ -113,7 +113,7 @@ class IPAddressPoolGetResource(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         data: dict[str, Any],
     ) -> Self:
@@ -151,7 +151,7 @@ class IPAddressPoolGetResource(Mutation):
 
 class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls,
         schema: NodeSchema | None = None,
         _meta: InfrahubMutationOptions | None = None,

@@ -294,7 +294,7 @@ class DiffTreeResolver:
     def to_diff_conflict(
         self,
         enriched_conflict: EnrichedDiffConflict,
-        context: GraphqlContext | None = None,  # pylint: disable=unused-argument
+        context: GraphqlContext | None = None,
     ) -> ConflictDetails:
         return ConflictDetails(
             uuid=enriched_conflict.uuid,
@@ -366,7 +366,6 @@ class DiffTreeResolver:
         if diff_branch_name:
             diff_response.num_untracked_diff_changes = branch_change_map.get(diff_branch_name, 0)
 
-    # pylint: disable=unused-argument
     async def resolve(
         self,
         root: dict,
@@ -441,7 +440,6 @@ class DiffTreeResolver:
             )
         return await self.to_graphql(fields=full_fields, diff_object=diff_tree)
 
-    # pylint: disable=unused-argument
     async def summary(
         self,
         root: dict,

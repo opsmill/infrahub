@@ -69,9 +69,9 @@ async def process_transform(
     branch_name: str,
     node_kind: str,
     object_id: str,
-    computed_attribute_name: str,  # pylint: disable=unused-argument
-    computed_attribute_kind: str,  # pylint: disable=unused-argument
-    updated_fields: list[str] | None = None,  # pylint: disable=unused-argument
+    computed_attribute_name: str,
+    computed_attribute_kind: str,
+    updated_fields: list[str] | None = None,
 ) -> None:
     await add_tags(branches=[branch_name], nodes=[object_id])
 
@@ -310,7 +310,7 @@ async def trigger_update_jinja2_computed_attributes(
 
 
 @flow(name="computed-attribute-setup", flow_run_name="Setup computed attributes in task-manager")
-async def computed_attribute_setup(branch_name: str | None = None) -> None:  # pylint: disable=too-many-statements
+async def computed_attribute_setup(branch_name: str | None = None) -> None:
     service = services.service
     branch_name = branch_name or registry.default_branch
 
@@ -475,7 +475,7 @@ async def computed_attribute_setup(branch_name: str | None = None) -> None:  # p
 )
 async def computed_attribute_setup_python(
     branch_name: str | None = None,
-    commit: str | None = None,  # pylint: disable=unused-argument
+    commit: str | None = None,
     trigger_updates: bool = True,
 ) -> None:
     log = get_run_logger()
@@ -667,7 +667,7 @@ async def computed_attribute_remove_python(
 )
 async def query_transform_targets(
     branch_name: str,
-    node_kind: str,  # pylint: disable=unused-argument
+    node_kind: str,
     object_id: str,
 ) -> None:
     await add_tags(branches=[branch_name])

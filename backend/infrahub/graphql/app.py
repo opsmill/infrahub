@@ -76,8 +76,6 @@ if TYPE_CHECKING:
 
     from .auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
 
-# pylint: disable=unused-argument,raise-missing-from
-
 
 GQL_CONNECTION_ACK = "connection_ack"
 GQL_CONNECTION_ERROR = "connection_error"
@@ -450,7 +448,7 @@ class InfrahubGraphQLApp:
             async for result in asyncgen:
                 payload = {"data": result.data}
                 await websocket.send_json({"type": GQL_DATA, "id": operation_id, "payload": payload})
-        except Exception as error:  # pylint: disable=broad-exception-caught
+        except Exception as error:
             if not isinstance(error, GraphQLError):
                 self.logger.error("An exception occurred in resolvers", exc_info=error)
                 error = GraphQLError(str(error), original_error=error)

@@ -307,7 +307,7 @@ class InfrahubDatabase:
         params: dict[str, Any] | None = None,
         name: str = "undefined",
         context: dict[str, str] | None = None,
-        type: QueryType | None = None,  # pylint: disable=redefined-builtin
+        type: QueryType | None = None,
     ) -> list[Record]:
         results, _ = await self.execute_query_with_metadata(
             query=query, params=params, name=name, context=context, type=type
@@ -320,7 +320,7 @@ class InfrahubDatabase:
         params: dict[str, Any] | None = None,
         name: str = "undefined",
         context: dict[str, str] | None = None,
-        type: QueryType | None = None,  # pylint: disable=redefined-builtin
+        type: QueryType | None = None,
     ) -> tuple[list[Record], dict[str, Any]]:
         with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
             span.set_attribute("query", query)

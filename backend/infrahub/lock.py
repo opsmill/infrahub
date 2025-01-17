@@ -253,7 +253,7 @@ class InfrahubLockRegistry:
 
 
 def initialize_lock(local_only: bool = False, service: Optional[InfrahubServices] = None) -> None:
-    global registry  # pylint: disable=global-statement
+    global registry
     registry = InfrahubLockRegistry(local_only=local_only, service=service)
 
 

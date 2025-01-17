@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls, schema: NodeSchema, _meta: Optional[Any] = None, **options: dict[str, Any]
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class

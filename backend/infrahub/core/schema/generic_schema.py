@@ -24,7 +24,7 @@ class GenericSchema(GeneratedGenericSchema):
     def is_profile_schema(self) -> bool:
         return False
 
-    def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
+    def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:
         if self.hierarchical:
             return self
 

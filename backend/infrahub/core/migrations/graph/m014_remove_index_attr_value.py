@@ -33,7 +33,7 @@ class Migration014(GraphMigration):
             try:
                 ts.manager.index.init(nodes=[INDEX_TO_DELETE], rels=[])
                 await ts.manager.index.drop()
-            except Exception as exc:  # pylint: disable=broad-exception-caught
+            except Exception as exc:
                 result.errors.append(str(exc))
                 return result
 

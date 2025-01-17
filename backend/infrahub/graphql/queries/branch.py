@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 async def branch_resolver(
-    root: dict,  # pylint: disable=unused-argument
+    root: dict,
     info: GraphQLResolveInfo,
     **kwargs: Any,
 ) -> list[dict[str, Any]]:
