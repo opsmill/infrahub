@@ -60,6 +60,7 @@ jobs:
           files: |
             docker-compose.yml
             helm/Chart.yaml
+            python_testcontainers/pyproject.toml
           name: opsmill-bot
           email: github-bot@opsmill.com
           rebase: true
