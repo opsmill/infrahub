@@ -54,7 +54,7 @@ async def execute_message(
         if skip_flow and isinstance(func, Flow):
             func = func.fn
         await func(message=message, service=service)
-    except Exception as exc:  # pylint: disable=broad-except
+    except Exception as exc:
         if message.reply_requested:
             response = RPCErrorResponse(errors=[str(exc)], initial_message=message.model_dump())
             await service.message_bus.reply_if_initiator_meta(message=response, initiator=message)

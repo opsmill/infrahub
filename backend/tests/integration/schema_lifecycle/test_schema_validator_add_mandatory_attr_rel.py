@@ -20,8 +20,6 @@ PERSON_KIND = "TestingPerson"
 CYLON_KIND = "TestingCylon"
 CAR_KIND = "TestingCar"
 
-# pylint: disable=unused-argument
-
 
 class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")

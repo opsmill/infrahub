@@ -144,7 +144,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
     async def on_reconnect(
         self,
-        weak: bool = False,  # pylint: disable=unused-argument
+        weak: bool = False,
     ) -> None:
         self.service.log.info("Reconnected to RabbitMQ, reinitializing connection")
         await self._initialize_connection()

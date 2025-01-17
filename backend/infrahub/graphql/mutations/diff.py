@@ -32,7 +32,7 @@ class DiffUpdateMutation(Mutation):
     @retry_db_transaction(name="diff_update")
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         data: DiffUpdateInput,
     ) -> dict[str, bool]:

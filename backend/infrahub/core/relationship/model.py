@@ -51,7 +51,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes, RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=redefined-builtin,too-many-lines
 
 PeerType = TypeVar("PeerType")
 
@@ -158,7 +157,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             return registry.get_global_branch()
         return self.branch
 
-    async def _process_data(self, data: Union[dict, RelationshipPeerData, str]) -> None:  # pylint: disable=too-many-branches
+    async def _process_data(self, data: Union[dict, RelationshipPeerData, str]) -> None:
         self.data = data
 
         if isinstance(data, RelationshipPeerData):
@@ -192,14 +191,14 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         else:
             await self.set_peer(value=data)
 
-    async def new(  # pylint: disable=unused-argument
+    async def new(
         self, db: InfrahubDatabase, data: Union[dict, RelationshipPeerData, Any] = None, **kwargs: Any
     ) -> Relationship:
         await self._process_data(data=data)
 
         return self
 
-    async def load(  # pylint: disable=unused-argument
+    async def load(
         self,
         db: InfrahubDatabase,
         id: Optional[UUID] = None,
@@ -254,7 +253,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     @overload
     async def get_peer(self, db: InfrahubDatabase, peer_type: None = ...) -> Node: ...
 
-    async def get_peer(self, db: InfrahubDatabase, peer_type: type[PeerType] | None = None) -> Any:  # pylint: disable=unused-argument
+    async def get_peer(self, db: InfrahubDatabase, peer_type: type[PeerType] | None = None) -> Any:
         """Return the peer of the relationship."""
         if self._peer is None:
             await self._get_peer(db=db)
@@ -520,8 +519,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         return response
 
     async def get_create_data(self, db: InfrahubDatabase) -> RelationshipCreateData:
-        # pylint: disable=no-member
-
         branch = self.get_branch_based_on_support_type()
 
         await self.resolve(db=db)
@@ -834,7 +831,7 @@ class RelationshipManager:
     async def get_peer(
         self,
         db: InfrahubDatabase,
-        peer_type: type[PeerType] | None = None,  # pylint: disable=unused-argument
+        peer_type: type[PeerType] | None = None,
         raise_on_error: bool = False,
     ) -> Node | PeerType | None:
         if self.schema.cardinality == "many":
@@ -868,7 +865,7 @@ class RelationshipManager:
     async def get_peers(
         self,
         db: InfrahubDatabase,
-        peer_type: type[PeerType] | None = None,  # pylint: disable=unused-argument
+        peer_type: type[PeerType] | None = None,
         branch_agnostic: bool = False,
     ) -> Mapping[str, Node | PeerType]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
@@ -977,7 +974,7 @@ class RelationshipManager:
 
         return self._relationships.as_list()
 
-    async def update(  # pylint: disable=too-many-branches
+    async def update(
         self, data: Union[list[Union[str, Node]], dict[str, Any], str, Node, None], db: InfrahubDatabase
     ) -> bool:
         """Replace and Update the list of relationships with this one."""

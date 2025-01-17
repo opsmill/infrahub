@@ -33,8 +33,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema.relationship_schema import RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=consider-using-f-string,redefined-builtin,too-many-lines
-
 
 @dataclass
 class NodeToProcess:
@@ -1272,7 +1270,7 @@ class NodeGetHierarchyQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # pylint: disable=too-many-statements
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         hierarchy_schema = self.node_schema.get_hierarchy_schema(db=db, branch=self.branch)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)

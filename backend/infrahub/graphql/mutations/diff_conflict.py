@@ -19,9 +19,6 @@ if TYPE_CHECKING:
     from ..initialization import GraphqlContext
 
 
-# pylint: disable=unused-argument
-
-
 class ResolveDiffConflictInput(InputObjectType):
     conflict_id = InputField(String(required=True), description="ID of the diff conflict to resolve")
     selected_branch = InputField(

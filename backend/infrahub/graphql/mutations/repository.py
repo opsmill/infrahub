@@ -45,7 +45,7 @@ log = get_logger()
 
 class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: Optional[NodeSchema] = None, _meta=None, **options):  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(cls, schema: Optional[NodeSchema] = None, _meta=None, **options):
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -226,7 +226,7 @@ class ProcessRepository(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         data: IdentifierInput,
     ) -> dict[str, bool]:
@@ -264,7 +264,7 @@ class ValidateRepositoryConnectivity(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         data: IdentifierInput,
     ) -> dict[str, Any]:

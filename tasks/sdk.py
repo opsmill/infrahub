@@ -66,23 +66,10 @@ def mypy(context: Context) -> None:
 
 
 @task
-def pylint(context: Context) -> None:
-    """This will run pylint for the specified name and Python version."""
-
-    print(f" - [{NAMESPACE}] Check code with pylint")
-    exec_cmd = "pylint infrahub_sdk/"
-    exec_directory = MAIN_DIRECTORY_PATH
-
-    with context.cd(exec_directory):
-        context.run(exec_cmd)
-
-
-@task
 def lint(context: Context) -> Optional[Result]:
     """This will run all linter."""
     ruff(context)
     mypy(context)
-    pylint(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 

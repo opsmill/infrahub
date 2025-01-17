@@ -22,7 +22,7 @@ class Tasks(ObjectType):
 
     @staticmethod
     async def resolve(
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         limit: int = 10,
         offset: int = 0,
@@ -49,7 +49,7 @@ class Tasks(ObjectType):
 
     @staticmethod
     async def resolve_branch_status(
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         branch: str,
     ) -> dict[str, Any]:

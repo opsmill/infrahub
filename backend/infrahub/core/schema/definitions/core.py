@@ -26,8 +26,6 @@ from infrahub.core.constants import (
 )
 from infrahub.proposed_change.constants import ProposedChangeState
 
-# pylint: disable=too-many-lines
-
 core_profile_schema_definition: dict[str, Any] = {
     "name": "Profile",
     "namespace": "Core",

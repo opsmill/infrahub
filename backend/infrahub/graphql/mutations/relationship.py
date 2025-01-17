@@ -25,8 +25,6 @@ if TYPE_CHECKING:
     from ..initialization import GraphqlContext
 
 
-# pylint: disable=unused-argument,too-many-branches
-
 RELATIONSHIP_PEERS_TO_IGNORE = [InfrahubKind.NODE]
 
 

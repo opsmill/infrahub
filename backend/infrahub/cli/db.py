@@ -193,7 +193,7 @@ async def migrate(
 
 
 @app.command()
-async def update_core_schema(  # pylint: disable=too-many-statements
+async def update_core_schema(
     ctx: typer.Context,
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),

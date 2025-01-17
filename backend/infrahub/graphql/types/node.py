@@ -14,7 +14,7 @@ class InfrahubObjectOptions(ObjectTypeOptions):
 
 class InfrahubObject(ObjectType):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls,
         schema: Optional[MainSchemaTypes] = None,
         interfaces: tuple = (),

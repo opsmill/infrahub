@@ -15,9 +15,6 @@ if TYPE_CHECKING:
     from infrahub.permissions import AssignedPermissions
 
 
-# pylint: disable=redefined-builtin
-
-
 @dataclass
 class GlobalPermission:
     action: str

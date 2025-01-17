@@ -75,7 +75,6 @@ numpy = [
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"
-pylint = "~3.1"
 mypy = "*"
 ipython = "~8"
 pytest-asyncio = "^0.21.1"
@@ -128,60 +127,6 @@ branch = true
 
 [tool.coverage.report]
 exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]
-
-[tool.pylint.general]
-extension-pkg-whitelist = ["pydantic", "ujson"]
-
-[tool.pylint.format]
-disable = "logging-fstring-interpolation"
-
-[tool.pylint.basic]
-# No docstrings required for private methods (Pylint default), or for test_ functions.
-no-docstring-rgx = "^(_|test_)"
-
-[tool.pylint.messages_control]
-# Line length is enforced by Black, so pylint doesn't need to check it.
-# Pylint and Black disagree about how to format multi-line arrays; Black wins.
-# assigning-non-slot,no-member,unsupported-membership-test,unsubscriptable-object,unsupported-assignment-operation,not-an-iterable
-# are disabled because of our move to pydantic 2, pylint does not seem to respect the type hint for pydantic 2 model fields.
-disable = """,
-    line-too-long,
-    missing-module-docstring,
-    missing-function-docstring,
-    missing-class-docstring,
-    consider-using-from-import,
-    invalid-name,
-    too-many-arguments,
-    too-many-locals,
-    keyword-arg-before-vararg,
-    too-few-public-methods,
-    too-many-instance-attributes,
-    fixme,
-    consider-using-f-string,
-    protected-access,
-    import-self,
-    wrong-import-order,
-    assigning-non-slot,
-    no-member,
-    unsupported-membership-test,
-    unsubscriptable-object,
-    unsupported-assignment-operation,
-    not-an-iterable,
-    too-many-return-statements,
-    unnecessary-comprehension,
-    multiple-statements,
-    self-assigning-variable,
-    no-else-return,
-    """
-
-[tool.pylint.miscellaneous]
-notes = """,
-    FIXME,
-    XXX,
-    """
-
-[tool.pylint.similarities]
-min-similarity-lines = 20
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

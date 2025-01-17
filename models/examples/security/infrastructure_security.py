@@ -9,7 +9,6 @@ from infrahub_sdk.store import NodeStore
 from infrahub_sdk.protocols import CoreAccount
 
 # flake8: noqa
-# pylint: skip-file
 
 ROLES = ["role11", "role21", "role31"]
 STATUSES = ["reserved", "provisioning", "active", "maintenance", "obsolete"]

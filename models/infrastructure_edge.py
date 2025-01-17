@@ -139,7 +139,6 @@ def translate_str_to_bool(key: str, value: str) -> bool:
     raise TypeError(f"Value for {key} should be 'True' or 'False'")
 
 
-# pylint: skip-file
 class AccountRole(BaseModel):
     name: str
     global_permissions: list[str] | str | None = None

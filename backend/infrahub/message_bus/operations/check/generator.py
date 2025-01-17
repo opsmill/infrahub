@@ -14,8 +14,6 @@ from infrahub.services import InfrahubServices
 from infrahub.tasks.check import set_check_status
 from infrahub.workflows.utils import add_tags
 
-# pylint: disable=duplicate-code
-
 
 @flow(
     name="git-repository-check-generator-run",
@@ -81,7 +79,7 @@ async def run(message: messages.CheckGeneratorRun, service: InfrahubServices) ->
         generator_instance.status.value = GeneratorInstanceStatus.ERROR.value
         check_message = f"Failed to import generator: {exc.message}"
         log.exception(check_message, exc_info=exc)
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except Exception as exc:
         conclusion = ValidatorConclusion.FAILURE
         generator_instance.status.value = GeneratorInstanceStatus.ERROR.value
         check_message = f"Failed to execute generator: {str(exc)}"

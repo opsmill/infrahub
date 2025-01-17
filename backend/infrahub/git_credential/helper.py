@@ -67,7 +67,6 @@ def get(
     print(f"password={repo.credential.peer.password.value}")
 
 
-# pylint: disable=unused-argument
 @app.command()
 def store(
     input_str: str = typer.Argument(None),

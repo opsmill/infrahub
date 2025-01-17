@@ -49,7 +49,7 @@ def find_types_implementing_interface(
     return results
 
 
-async def extract_schema_models(  # pylint: disable=too-many-branches
+async def extract_schema_models(
     fields: dict, schema: Union[GrapheneObjectType, GraphQLUnionType], root_schema: GraphQLSchema
 ) -> set[str]:
     response = set()

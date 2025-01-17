@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
-# pylint: disable=R0801
 
 log = get_logger()
 router = APIRouter(prefix="/oidc")

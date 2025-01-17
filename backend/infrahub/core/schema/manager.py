@@ -35,7 +35,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-# pylint: disable=too-many-public-methods
 class SchemaManager(NodeManager):
     def __init__(self) -> None:
         self._cache: dict[int, Any] = {}
@@ -372,7 +371,7 @@ class SchemaManager(NodeManager):
         self.set(name=new_node.kind, schema=new_node, branch=branch.name)
         return new_node
 
-    async def update_node_in_db_based_on_diff(  # pylint: disable=too-many-branches,too-many-statements
+    async def update_node_in_db_based_on_diff(
         self,
         db: InfrahubDatabase,
         diff: HashableModelDiff,

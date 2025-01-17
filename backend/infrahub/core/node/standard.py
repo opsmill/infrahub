@@ -19,8 +19,6 @@ from infrahub.core.query.standard_node import (
 )
 from infrahub.exceptions import Error, InitializationError
 
-# pylint: disable=redefined-builtin
-
 if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
     from pydantic.fields import FieldInfo

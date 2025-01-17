@@ -58,7 +58,7 @@ class SchemaDropdownAdd(Mutation):
     @retry_db_transaction(name="schema_dropdown_add")
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         data: SchemaDropdownAddInput,
     ) -> Self:
@@ -114,7 +114,7 @@ class SchemaDropdownRemove(Mutation):
     @retry_db_transaction(name="schema_dropdown_remove")
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         data: SchemaDropdownRemoveInput,
     ) -> dict[str, bool]:
@@ -162,7 +162,7 @@ class SchemaEnumAdd(Mutation):
     @retry_db_transaction(name="schema_dropdown_add")
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         data: SchemaEnumInput,
     ) -> dict[str, bool]:
@@ -203,7 +203,7 @@ class SchemaEnumRemove(Mutation):
     @retry_db_transaction(name="schema_enum_remove")
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,
         info: GraphQLResolveInfo,
         data: SchemaEnumInput,
     ) -> dict[str, bool]:

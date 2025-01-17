@@ -37,8 +37,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=redefined-builtin,c-extension-no-member,too-many-lines,too-many-public-methods
-
 
 # Use a more user-friendly threshold than Neo4j one (8167 bytes).
 MAX_STRING_LENGTH = 4096
@@ -81,7 +79,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     _rel_to_node_label: str = RELATIONSHIP_TO_NODE_LABEL
     _rel_to_value_label: str = RELATIONSHIP_TO_VALUE_LABEL
 
-    def __init__(  # pylint: disable=too-many-branches
+    def __init__(
         self,
         name: str,
         schema: AttributeSchema,
@@ -218,7 +216,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         value_to_check = value
         if schema.enum and isinstance(value, Enum):
             value_to_check = value.value
-        if not isinstance(value_to_check, cls.type):  # pylint: disable=isinstance-second-argument-not-valid-type
+        if not isinstance(value_to_check, cls.type):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
     @classmethod
@@ -267,7 +265,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     @classmethod
     def deserialize_from_string(cls, value_as_string: str) -> Any:
         """Return a value corresponding to the attribute type given it formatted as a string."""
-        return cls.type(value_as_string)  # pylint: disable=not-callable
+        return cls.type(value_as_string)
 
     def to_db(self) -> dict[str, Any]:
         """Return the properties of the AttributeValue node in Dict format."""
@@ -472,7 +470,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         permissions: Optional[dict] = None,
     ) -> dict:
         """Generate GraphQL Payload for this attribute."""
-        # pylint: disable=too-many-branches
 
         response: dict[str, Any] = {"id": self.id}
 
@@ -589,7 +586,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return AttributeDBNodeType.DEFAULT
 
     def get_create_data(self) -> AttributeCreateData:
-        # pylint: disable=no-member
         branch = self.branch
         hierarchy_level = branch.hierarchy_level
         if self.schema.branch == BranchSupportType.AGNOSTIC:

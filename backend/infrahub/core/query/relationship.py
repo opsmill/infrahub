@@ -24,8 +24,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema import RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=redefined-builtin
-
 
 @dataclass
 class RelData:
@@ -558,7 +556,7 @@ class RelationshipGetPeerQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # pylint: disable=too-many-statements
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )

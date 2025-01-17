@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Branch(StandardNode):  # pylint: disable=too-many-public-methods
+class Branch(StandardNode):
     name: str = Field(
         max_length=250, min_length=3, description="Name of the branch (git ref standard)", validate_default=True
     )

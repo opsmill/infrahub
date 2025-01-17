@@ -36,7 +36,7 @@ log = get_logger()
 shutdown_event = asyncio.Event()
 
 
-def signal_handler(*args: Any, **kwargs: Any) -> None:  # pylint: disable=unused-argument
+def signal_handler(*args: Any, **kwargs: Any) -> None:
     shutdown_event.set()
 
 

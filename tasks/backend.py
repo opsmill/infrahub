@@ -66,22 +66,10 @@ def mypy(context: Context) -> None:
 
 
 @task
-def pylint(context: Context) -> None:
-    """This will run pylint for the specified name and Python version."""
-
-    print(f" - [{NAMESPACE}] Check code with pylint")
-    exec_cmd = f"poetry run pylint --ignore-paths {MAIN_DIRECTORY}/tests {MAIN_DIRECTORY}"
-
-    with context.cd(ESCAPED_REPO_PATH):
-        context.run(exec_cmd)
-
-
-@task
 def lint(context: Context) -> None:
     """This will run all linters."""
     ruff(context)
     mypy(context)
-    pylint(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 
