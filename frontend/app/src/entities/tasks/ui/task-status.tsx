@@ -1,6 +1,6 @@
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { QSP } from "@/config/qsp";
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/hooks/use-current-branch";
 import { isTaskRunningOnBranchQueryOptions } from "@/entities/tasks/domain/is-task-running-on-branch.query";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
@@ -9,41 +9,60 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { useQuery } from "@tanstack/react-query";
-import { useAtomValue } from "jotai";
 
 export function TaskStatus() {
-  const branch = useAtomValue(currentBranchAtom);
+  const branch = useCurrentBranch();
 
   const {
     error,
     isPending,
     data: isTaskRunningOnBranch,
   } = useQuery({
-    ...isTaskRunningOnBranchQueryOptions(branch?.name as string),
-    enabled: !!branch,
+    ...isTaskRunningOnBranchQueryOptions(branch?.name ?? ""),
+    enabled: !!branch?.name,
     refetchInterval: 10_000,
   });
-
-  if (error) {
-    return <Icon icon="mdi:error-outline" className="text-red-500" />;
-  }
 
   const filter = {
     name: "branch__value",
     value: branch?.name,
   };
 
+  if (error) {
+    const tooltipContent = "Error checking task status";
+    return (
+      <Tooltip enabled content={tooltipContent}>
+        <LinkButton
+          size="square"
+          variant="ghost"
+          className="h-8 w-8 bg-neutral-50 border border-neutral-200 rounded-lg relative"
+          to={constructPath("/tasks", [{ name: QSP.FILTER, value: JSON.stringify([filter]) }])}
+          aria-label={tooltipContent}
+        >
+          <Icon icon="mdi:error-outline" className="text-red-500" />
+        </LinkButton>
+      </Tooltip>
+    );
+  }
+
+  const tooltipContent = isTaskRunningOnBranch
+    ? "Tasks running on this branch"
+    : "View branch tasks";
+
   return (
-    <Tooltip enabled content="Task">
+    <Tooltip enabled content={tooltipContent}>
       <LinkButton
         size="square"
         variant="ghost"
         className="h-8 w-8 bg-neutral-50 border border-neutral-200 rounded-lg relative"
         to={constructPath("/tasks", [{ name: QSP.FILTER, value: JSON.stringify([filter]) }])}
+        aria-label={tooltipContent}
       >
         {isPending ? <Spinner /> : <TasksStatusIcon />}
 
-        {isTaskRunningOnBranch && <Pulse className="right-[6.5px] bottom-[6.5px]" />}
+        {isTaskRunningOnBranch && (
+          <Pulse className="right-[6.5px] bottom-[6.5px]" data-testid="pulse" />
+        )}
       </LinkButton>
     </Tooltip>
   );

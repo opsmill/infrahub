@@ -1,5 +1,5 @@
 import InfrahubLogo from "@/assets/infrahub-logo.svg";
-import { TaskStatus } from "@/entities/tasks/ui/tasks-status";
+import { TaskStatus } from "@/entities/tasks/ui/task-status";
 import { constructPath } from "@/shared/api/rest/fetch";
 import BranchSelector from "@/shared/components/branch-selector";
 import BreadcrumbNavigation from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-navigation";
