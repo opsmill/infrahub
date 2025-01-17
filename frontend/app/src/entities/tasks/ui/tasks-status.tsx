@@ -17,7 +17,7 @@ export function TaskStatus() {
   const {
     error,
     isPending,
-    data: isTaskRunningOnBranchData,
+    data: isTaskRunningOnBranch,
   } = useQuery({
     ...isTaskRunningOnBranchQueryOptions(branch?.name as string),
     enabled: !!branch,
@@ -43,7 +43,7 @@ export function TaskStatus() {
       >
         {isPending ? <Spinner /> : <TasksStatusIcon />}
 
-        {isTaskRunningOnBranchData && <Pulse className="right-[6.5px] bottom-[6.5px]" />}
+        {isTaskRunningOnBranch && <Pulse className="right-[6.5px] bottom-[6.5px]" />}
       </LinkButton>
     </Tooltip>
   );
