@@ -59,7 +59,7 @@ def get_schema(
 ) -> MainSchemaTypes:
     if isinstance(node_schema, str):
         return db.schema.get(name=node_schema, branch=branch.name)
-    if hasattr(node_schema, "_is_runtime_protocol") and getattr(node_schema, "_is_runtime_protocol"):
+    if hasattr(node_schema, "_is_runtime_protocol") and node_schema._is_runtime_protocol:
         return db.schema.get(name=node_schema.__name__, branch=branch.name)
     if not isinstance(node_schema, (MainSchemaTypes)):
         raise ValueError(f"Invalid schema provided {node_schema}")

@@ -205,7 +205,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         elif isinstance(schema, str):
             # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
             attrs["schema"] = db.schema.get(name=schema, branch=branch)
-        elif hasattr(schema, "_is_runtime_protocol") and getattr(schema, "_is_runtime_protocol"):
+        elif hasattr(schema, "_is_runtime_protocol") and schema._is_runtime_protocol:
             attrs["schema"] = db.schema.get(name=schema.__name__, branch=branch)
         else:
             raise ValueError(f"Invalid schema provided {type(schema)}, expected NodeSchema or ProfileSchema")
