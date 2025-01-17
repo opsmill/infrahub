@@ -3,7 +3,7 @@ from dataclasses import dataclass, field, replace
 from typing import Iterable
 from uuid import uuid4
 
-from infrahub.core.constants import DiffAction, RelationshipCardinality
+from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 
 from .model.path import (
@@ -151,7 +151,10 @@ class DiffCombiner:
             if earlier_property.action is DiffAction.ADDED and later_property.action is DiffAction.REMOVED:
                 continue
             combined_action = self._combine_actions(earlier=earlier_property.action, later=later_property.action)
-            if earlier_property.previous_value == later_property.new_value:
+            if earlier_property.previous_value == later_property.new_value or {
+                earlier_property.previous_value,
+                later_property.new_value,
+            } <= {None, NULL_VALUE}:
                 combined_action = DiffAction.UNCHANGED
             combined_conflict = self.combine_conflicts(earlier=earlier_property.conflict, later=later_property.conflict)
             combined_properties.add(

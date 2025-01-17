@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import bcrypt
 import jwt
@@ -231,29 +231,6 @@ async def validate_api_key(db: InfrahubDatabase, token: str) -> AccountSession:
     await validate_active_account(db=db, account_id=str(account_id))
 
     return AccountSession(account_id=account_id, auth_type=AuthType.API)
-
-
-def _validate_update_account(account_session: AccountSession, node_id: str, fields: list[str]) -> None:
-    if account_session.account_id != node_id:
-        # A regular account is not allowed to modify another account
-        raise PermissionError("You are not allowed to modify this account")
-
-    allowed_fields = ["description", "label", "password"]
-    for field in fields:
-        if field not in allowed_fields:
-            raise PermissionError(f"You are not allowed to modify '{field}'")
-
-
-def validate_mutation_permissions_update_node(
-    operation: str, node_id: str, account_session: AccountSession, fields: list[str]
-) -> None:
-    validation_map: dict[str, Callable[[AccountSession, str, list[str]], None]] = {
-        f"{InfrahubKind.ACCOUNT}Update": _validate_update_account,
-        f"{InfrahubKind.ACCOUNT}Upsert": _validate_update_account,
-    }
-
-    if validator := validation_map.get(operation):
-        validator(account_session, node_id, fields)
 
 
 async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> None:

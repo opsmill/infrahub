@@ -1163,6 +1163,17 @@ class ListAttribute(BaseAttribute):
             return ujson.loads(data.value)
         return data.value
 
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        value_to_check = value
+
+        if isinstance(value, str):
+            try:
+                value_to_check = cls.deserialize_from_string(value_as_string=value)
+            except ujson.JSONDecodeError as exc:
+                raise ValidationError({name: f"{value} is not a valid JSON list"}) from exc
+        super().validate_format(value=value_to_check, name=name, schema=schema)
+
 
 class ListAttributeOptional(ListAttribute):
     value: Optional[list[Any]]
@@ -1187,6 +1198,17 @@ class JSONAttribute(BaseAttribute):
         if data.value and isinstance(data.value, (str, bytes)):
             return ujson.loads(data.value)
         return data.value
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        value_to_check = value
+
+        if isinstance(value, str):
+            try:
+                value_to_check = cls.deserialize_from_string(value_as_string=value)
+            except ujson.JSONDecodeError as exc:
+                raise ValidationError({name: f"{value} is not valid JSON"}) from exc
+        super().validate_format(value=value_to_check, name=name, schema=schema)
 
 
 class JSONAttributeOptional(JSONAttribute):

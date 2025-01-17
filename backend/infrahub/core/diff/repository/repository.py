@@ -61,7 +61,6 @@ class DiffRepository:
         include_empty: bool = False,
     ) -> list[EnrichedDiffRoot]:
         final_max_depth = config.SETTINGS.database.max_depth_search_hierarchy
-        final_limit = limit or config.SETTINGS.database.query_size_limit
         query = await EnrichedDiffGetQuery.init(
             db=self.db,
             base_branch_name=base_branch_name,
@@ -70,7 +69,7 @@ class DiffRepository:
             to_time=to_time,
             filters=EnrichedDiffQueryFilters(**dict(filters or {})),
             max_depth=final_max_depth,
-            limit=final_limit,
+            limit=limit,
             offset=offset,
             tracking_id=tracking_id,
             diff_ids=diff_ids,
