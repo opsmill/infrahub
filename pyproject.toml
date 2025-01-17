@@ -383,7 +383,6 @@ ignore = [
     ##################################################################################################
     "FA",       # flake8-future-annotations
     "ARG",      # flake8-unused-arguments
-    "PT",       # flake8-pytest-style
     "PGH",      # pygrep-hooks
     "ERA",      # eradicate commented-out code
     "SLF001",   # flake8-self
@@ -510,6 +509,7 @@ allow-dunder-method-names = [
     "ANN003", # Missing type annotation for `**kwargs`
     "ANN204", # Missing return type annotation for special method
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "PT013",   # Incorrect import of `pytest`; use `import pytest` instead
     "UP007",  # Use X | Y for type annotations
 ]
 
@@ -584,13 +584,22 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Review and change the below later                                                              #
     ##################################################################################################
-    "ANN001", # Missing type annotation for function argument
-    "ANN002", # Missing type annotation for `*args`
-    "ANN003", # Missing type annotation for `**kwargs`
-    "ANN201", # Missing return type annotation for public function
-    "ANN202", # Missing return type annotation for private function
-    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "ANN001",  # Missing type annotation for function argument
+    "ANN002",  # Missing type annotation for `*args`
+    "ANN003",  # Missing type annotation for `**kwargs`
+    "ANN201",  # Missing return type annotation for public function
+    "ANN202",  # Missing return type annotation for private function
+    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
     "PLR0915", # Too many statements
+    "PT003",   # `scope='function'` is implied in `@pytest.fixture()`
+    "PT007",   # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
+    "PT006",   # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
+    "PT011",   # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
+    "PT012",   # `pytest.raises()` block should contain a single simple statement
+    "PT013",   # Incorrect import of `pytest`; use `import pytest` instead 
+    "PT014",   # Duplicate of test case in `pytest.mark.parametrize`
+    "PT018",   # Assertion should be broken down into multiple parts
+    "PT021",   # Use `yield` instead of `request.addfinalizer`
 ]
 
 "backend/tests/integration_docker/test_schema_migration.py" = [
@@ -612,6 +621,14 @@ allow-dunder-method-names = [
     "E501",   # Line too long
     "PLR0915", # Too many statements
 ]
+
+"python_testcontainers/infrahub_testcontainers/helpers.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PT021",   # Use `yield` instead of `request.addfinalizer`
+]
+
 
 "tasks/release.py" = [
     ##################################################################################################
