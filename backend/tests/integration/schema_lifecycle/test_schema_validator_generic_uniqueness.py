@@ -419,7 +419,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
         for node in [starbuck_main, president_branch]:
             display_label = await node.render_display_label(db=db)
-            kind = "TestingHuman"
+            kind = "TestingPerson"
             for field in ("homeworld", "favorite_color"):
                 value = getattr(node, field).value
                 expected_error_msg = (
