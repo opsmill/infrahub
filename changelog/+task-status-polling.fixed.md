@@ -1,1 +1,0 @@
-- Task status indicators now poll for updates only when tab is focused

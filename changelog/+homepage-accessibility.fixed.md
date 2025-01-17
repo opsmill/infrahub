@@ -1,1 +1,0 @@
-- Accessibility improvements to homepage: Helper cards now scale based on user's defined font size
