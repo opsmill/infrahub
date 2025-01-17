@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
 
+import jwt
 import ujson
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from fastapi import APIRouter, Depends, Request, Response
@@ -138,7 +139,7 @@ async def token(
 
     with trace.get_tracer(__name__).start_as_current_span("sso_token_request") as span:
         span.set_attribute("token_request_data", ujson.dumps(token_response.json()))
-        payload = token_response.json()
+        payload: dict[str, Any] = token_response.json()
 
     headers = {"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"}
 
@@ -148,8 +149,10 @@ async def token(
         userinfo_response = await service.http.post(str(oidc_config.userinfo_endpoint), headers=headers)
 
     _validate_response(response=userinfo_response)
-    user_info = userinfo_response.json()
-    sso_groups = user_info.get("groups", [])
+    user_info: dict[str, Any] = userinfo_response.json()
+    sso_groups = user_info.get("groups") or await _get_id_token_groups(
+        oidc_config=oidc_config, service=service, payload=payload, client_id=provider.client_id
+    )
 
     if not sso_groups and config.SETTINGS.security.sso_user_default_group:
         sso_groups = [config.SETTINGS.security.sso_user_default_group]
@@ -185,3 +188,28 @@ def _validate_response(response: httpx.Response) -> None:
         body=response.json(),
     )
     raise GatewayError(message="Invalid response from Authentication provider")
+
+
+async def _get_id_token_groups(
+    oidc_config: OIDCDiscoveryConfig, service: InfrahubServices, payload: dict[str, Any], client_id: str
+) -> list[str]:
+    id_token = payload.get("id_token")
+    if not id_token:
+        return []
+    jwks = await service.http.get(url=str(oidc_config.jwks_uri))
+
+    jwk_client = jwt.PyJWKClient(uri=str(oidc_config.jwks_uri), cache_jwk_set=True)
+    if jwk_client.jwk_set_cache:
+        jwk_client.jwk_set_cache.put(jwks.json())
+
+    signing_key = jwk_client.get_signing_key_from_jwt(id_token)
+
+    decoded_token: dict[str, Any] = jwt.decode(
+        jwt=id_token,
+        key=signing_key.key,
+        algorithms=oidc_config.id_token_signing_alg_values_supported,
+        audience=client_id,
+        issuer=str(oidc_config.issuer),
+    )
+
+    return decoded_token.get("groups", [])
