@@ -954,11 +954,11 @@ class TestHelper:
         return BusRPCMock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def fake_log() -> FakeLogger:
     return FakeLogger()
 
 
-@pytest.fixture()
+@pytest.fixture
 def helper() -> TestHelper:
     return TestHelper()

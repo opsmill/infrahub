@@ -46,7 +46,7 @@ def rpc_bus(helper):
     config.OVERRIDE.message_bus = original
 
 
-@pytest.fixture()
+@pytest.fixture
 async def workflow_local():
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()

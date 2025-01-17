@@ -2935,7 +2935,7 @@ async def prefix_pool_01(
     return ip_dataset_prefix_v4
 
 
-@pytest.fixture()
+@pytest.fixture
 def workflow_local():
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
