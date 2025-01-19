@@ -80,9 +80,13 @@ describe("Artifact Diff", () => {
     cy.viewport(1920, 1080);
     cy.fixture("storage-old").as("storageOld");
     cy.fixture("storage-new").as("storageNew");
+    cy.fixture("config").as("config");
   });
 
   beforeEach(function () {
+    cy.fixture("config").then(function (json) {
+      cy.intercept("GET", "/api/config", json).as("config");
+    });
     cy.fixture("artifacts").then(function (json) {
       cy.intercept("GET", "/api/diff/artifacts*", json).as("artifacts");
     });

@@ -1,4 +1,3 @@
-import { Root } from "@/app/root";
 import { NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { RequireAuth } from "@/entities/authentication/ui/useAuth";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
@@ -21,9 +20,7 @@ export const router = createBrowserRouter([
           objectToSearchString: queryString.stringify,
         }}
       >
-        <Root>
-          <Outlet />
-        </Root>
+        <Outlet />
       </QueryParamProvider>
     ),
     children: [

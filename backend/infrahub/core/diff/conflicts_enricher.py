@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from infrahub.core.constants import DiffAction, RelationshipCardinality
+from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 
 from .model.path import (
@@ -249,7 +249,7 @@ class ConflictsEnricher:
     def _have_same_value(self, base_property: EnrichedDiffProperty, branch_property: EnrichedDiffProperty) -> bool:
         if base_property.new_value == branch_property.new_value:
             return True
-        if {base_property.new_value, branch_property.new_value} <= {"NULL", None}:
+        if {base_property.new_value, branch_property.new_value} <= {NULL_VALUE, None}:
             return True
         if (
             base_property.action is DiffAction.UNCHANGED

@@ -42,13 +42,7 @@ export const RelationshipHierarchicalContent = ({
           <RelationshipComboboxList {...props} />
         </PopoverTabsContent>
 
-        <PopoverTabsContent
-          value="tree"
-          style={{
-            maxHeight: "min(var(--radix-popover-content-available-height), 300px)",
-            width: "var(--radix-popover-trigger-width)",
-          }}
-        >
+        <PopoverTabsContent value="tree">
           <RelationshipHierarchicalComboboxList {...props} />
         </PopoverTabsContent>
       </PopoverTabs>

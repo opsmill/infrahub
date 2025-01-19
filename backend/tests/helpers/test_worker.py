@@ -11,8 +11,6 @@ from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.client.schemas.filters import WorkPoolFilter, WorkPoolFilterId
 from prefect.client.schemas.objects import FlowRun, StateType, WorkPool
 from prefect.workers.base import BaseWorkerResult
-from testcontainers.core.container import DockerContainer
-from testcontainers.core.waiting_utils import wait_for_logs
 
 from infrahub.tasks.dummy import DUMMY_FLOW, DUMMY_FLOW_BROKEN
 from infrahub.workers.infrahub_async import (
@@ -22,11 +20,10 @@ from infrahub.workflows.catalogue import INFRAHUB_WORKER_POOL
 from infrahub.workflows.initialization import setup_blocks
 from infrahub.workflows.models import WorkerPoolDefinition
 from tests.helpers.constants import (
-    INFRAHUB_USE_TEST_CONTAINERS,
     PORT_PREFECT,
 )
 from tests.helpers.test_app import TestInfrahubApp
-from tests.helpers.utils import get_exposed_port
+from tests.helpers.utils import start_prefect_server_container
 
 
 class TestWorkerInfrahubAsync(TestInfrahubApp):
@@ -62,33 +59,17 @@ class TestWorkerInfrahubAsync(TestInfrahubApp):
         )
 
     @pytest.fixture(scope="class")
-    def prefect_container(
+    def prefect_container_class(
         self, request: pytest.FixtureRequest, load_settings_before_session: Any
     ) -> dict[int, int] | None:
-        if not INFRAHUB_USE_TEST_CONTAINERS:
-            return None
-
-        container = (
-            DockerContainer(image="prefecthq/prefect:3.0.11-python3.12")
-            .with_command("prefect server start --host 0.0.0.0 --ui")
-            .with_exposed_ports(PORT_PREFECT)
-        )
-
-        def cleanup() -> None:
-            container.stop()
-
-        container.start()
-        wait_for_logs(container, "Configure Prefect to communicate with the server")
-        request.addfinalizer(cleanup)
-
-        return {PORT_PREFECT: get_exposed_port(container, PORT_PREFECT)}
+        return start_prefect_server_container(request)
 
     @pytest.fixture(scope="class")
     def prefect_server(
-        self, prefect_container: dict[int, int] | None, reload_settings_before_each_module: Any
+        self, prefect_container_class: dict[int, int] | None, reload_settings_before_each_module: Any
     ) -> Generator[str, None, None]:
-        if prefect_container:
-            server_port = prefect_container[PORT_PREFECT]
+        if prefect_container_class:
+            server_port = prefect_container_class[PORT_PREFECT]
             server_api_url = f"http://localhost:{server_port}/api"
         else:
             server_api_url = f"http://localhost:{PORT_PREFECT}/api"

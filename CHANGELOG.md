@@ -11,6 +11,50 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.1.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.4) - 2025-01-17
+
+### Removed
+
+- Removed configuration option for experimental feature "pull request", since this feature was active in the configuration it has been renamed proposed change and is no longer experimental but always enabled. ([#5409](https://github.com/opsmill/infrahub/issues/5409))
+
+### Added
+
+- Artifacts can now be of type: YAML, XML, markdown, SVG and CSV. ([#5452](https://github.com/opsmill/infrahub/issues/5452))
+
+### Changed
+
+- Updated Infrahub SDK to version 1.6.1.
+
+### Fixed
+
+- Fix issue when loading multiple schema files due to load order, schemas are now merged into a single one before importing ([#4188](https://github.com/opsmill/infrahub/issues/4188))
+- Accessibility improvements to homepage: Helper cards now scale based on user's defined font size.
+- Task status indicators now poll for updates only when tab is focused.
+
+## [Infrahub - v1.1.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.3) - 2025-01-16
+
+### Added
+
+- Add a new link in the object details button to redirect to the tasks list with a filter for the current object
+
+### Changed
+
+- Add ID and HFID copy buttons in a new action buttons for the object details ([#4648](https://github.com/opsmill/infrahub/issues/4648))
+  - Remove the ID attribute from the list
+  - Get the description from the object if that's possible, if not then from the schema
+- Disable action buttons depending on the on going tasks for the different workflows (merge, rebase, validate)
+- Display multiple related nodes in the tasks list and details views
+- Changed the default value for the s3.default_acl configuration setting to `private`
+
+### Fixed
+
+- Prevent access to REST API endpoints for anonymous user when anonymous access is not allowed ([#5312](https://github.com/opsmill/infrahub/issues/5312))
+- Fix pool exhaustion error for IP resource pools when some allocated nodes were deleted ([#5315](https://github.com/opsmill/infrahub/issues/5315))
+- Fix IP address being displayed in IP prefix pool after deleting the allocated prefix it was part of ([#5316](https://github.com/opsmill/infrahub/issues/5316))
+- Fixed text overflow when there is too many options when selecting a relationship with a hierarchical model ([#5431](https://github.com/opsmill/infrahub/issues/5431))
+- Allow to change any attributes and relationships when using a mutation on `CoreAccount` ([#5455](https://github.com/opsmill/infrahub/issues/5455))
+- Validate updates to an attribute's `kind` when loading a new schema ([#5460](https://github.com/opsmill/infrahub/issues/5460))
+
 ## [Infrahub - v1.1.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.2) - 2025-01-09
 
 ### Added

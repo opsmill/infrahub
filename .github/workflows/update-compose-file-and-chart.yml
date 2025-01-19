@@ -49,6 +49,8 @@ jobs:
         run: "poetry run invoke release.update-docker-compose"
       - name: "Update AppVersion in helm/chart.yaml file"
         run: "poetry run invoke release.update-helm-chart"
+      - name: "Update Versions in python_testcontainers/pyproject.toml"
+        run: "poetry run invoke release.update-test-containers"
       - name: Commit docker-compose.yml and helm
         uses: github-actions-x/commit@v2.9
         with:
@@ -58,6 +60,7 @@ jobs:
           files: |
             docker-compose.yml
             helm/Chart.yaml
+            python_testcontainers/pyproject.toml
           name: opsmill-bot
           email: github-bot@opsmill.com
           rebase: true

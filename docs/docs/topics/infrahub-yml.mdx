@@ -4,28 +4,28 @@ title: .infrahub.yml file format
 
 # `.infrahub.yml` file {#infrahub-yaml}
 
-To make full use of a [remote repository](/topics/repository) within Infrahub, the remote repository must have a `.infrahub.yml` file defined at the root of the repository. This file enables Infrahub to identify the required imports and tie together the various components.
+To make full use of a [remote repository](../topics/repository) within Infrahub, the remote repository must have a `.infrahub.yml` file defined at the root of the repository. This file enables Infrahub to identify the required imports and tie together the various components.
 
 An external repository can be used to link the following Infrahub objects to an Infrahub instance:
 
-- [GraphQL Query](/topics/graphql)
-- [Schema](/topics/schema)
-- [Jinja2 Transform](/topics/transformation#rendered-file-jinja2-plugin)
-- [Python Transformation](/topics/transformation#transformpython-python-plugin)
-- [Artifact Definition](/topics/artifact)
-- [Generator Definition](/topics/generator)
+- [GraphQL Query](../topics/graphql)
+- [Schema](../topics/schema)
+- [Jinja2 Transform](../topics/transformation#rendered-file-jinja2-plugin)
+- [Python Transformation](../topics/transformation#transformpython-python-plugin)
+- [Artifact Definition](../topics/artifact)
+- [Generator Definition](../topics/generator)
 
 :::info
 
-- See [this guide](/guides/repository) for how to add or update an external repository in Infrahub
-- See [this topic](/topics/repository) for more information on remote repositories in Infrahub
-- See [this reference](/reference/dotinfrahub) for more information on the `.infrahub.yml` file format
+- See [this guide](../guides/repository) for how to add or update an external repository in Infrahub
+- See [this topic](../topics/repository) for more information on remote repositories in Infrahub
+- See [this reference](../reference/dotinfrahub) for more information on the `.infrahub.yml` file format
 
 :::
 
 :::note
 
-To help with the development process of a repository configuration file, you can leverage [schema validation](/reference/schema-validation) within your editor.
+To help with the development process of a repository configuration file, you can leverage [schema validation](../reference/schema-validation) within your editor.
 
 :::
 
@@ -46,7 +46,7 @@ GraphQL queries could be defined in file(s) with a `.gql` extension. Then querie
 
 ## Schema {#schema}
 
-Schemas to be loaded as part of an external repository can be defined in file(s) as described [here](/topics/schema). The schemas must also be explicitly identified in the `.infrahub.yml` file under `schemas`.
+Schemas to be loaded as part of an external repository can be defined in file(s) as described [here](../topics/schema). The schemas must also be explicitly identified in the `.infrahub.yml` file under `schemas`.
 
 <details>
   <summary>Example</summary>
@@ -62,7 +62,7 @@ Infrahub will attempt to import any schemas defined in `.infrahub.yml` when pull
 
 ## Jinja2 transformation {#transform-jinja-2}
 
-Jinja2 Transformations can be defined as described [here](/topics/transformation#rendered-file-jinja2-plugin). To load Jinja2 Transformations into Infrahub from an external repository, you must explicitly define them in the `.infrahub.yml` file. Each Jinja2 Transformations in the `.infrahub.yml` configuration file is defined by the following
+Jinja2 Transformations can be defined as described [here](../topics/transformation#rendered-file-jinja2-plugin). To load Jinja2 Transformations into Infrahub from an external repository, you must explicitly define them in the `.infrahub.yml` file. Each Jinja2 Transformations in the `.infrahub.yml` configuration file is defined by the following
 
 - `name`: name of the transform
 - `query`: the name of an Infrahub `GraphQL query` to use with the transform
@@ -84,7 +84,7 @@ Jinja2 Transformations can be defined as described [here](/topics/transformation
 
 ## Python transformation {#transform-python}
 
-Python Transformations can be defined as described [here](/topics/transformation#transformpython-python-plugin). To load Python Transformations from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. The definition in `.infrahub.yml` includes the following
+Python Transformations can be defined as described [here](../topics/transformation#transformpython-python-plugin). To load Python Transformations from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. The definition in `.infrahub.yml` includes the following
 
 - `name`: name of the transformation
 - `file_path`: path to the Python transformation within this repository
@@ -104,7 +104,7 @@ Python Transformations can be defined as described [here](/topics/transformation
 
 ## Artifact definition {#artifact-definition}
 
-Artifact Definitions can be created as described [here](/topics/artifact). To load Artifact Definitions from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. Each Artifact Definition in `.infrahub.yml` must include the following:
+Artifact Definitions can be created as described [here](../topics/artifact). To load Artifact Definitions from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. Each Artifact Definition in `.infrahub.yml` must include the following:
 
 - `name`: the name of the Artifact Definition
 - `artifact_name`: the name of the Artifact created by this Artifact Definition
@@ -131,7 +131,7 @@ Artifact Definitions can be created as described [here](/topics/artifact). To lo
 
 ## Generator definition {#generator-definition}
 
-Generator Definitions can be created as described [here](/topics/generator). To load Generator Definitions from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. Each Generator Definition in `.infrahub.yml` must include the following:
+Generator Definitions can be created as described [here](../topics/generator). To load Generator Definitions from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. Each Generator Definition in `.infrahub.yml` must include the following:
 
 - `name`: the name of the Generator Definition
 - `file_path`: path to the Generator Python file within this repository

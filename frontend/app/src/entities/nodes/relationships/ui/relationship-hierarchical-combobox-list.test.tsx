@@ -185,4 +185,41 @@ describe("RelationshipHierarchicalComboboxList", () => {
     expect(onSelect).toHaveBeenCalledOnce();
     expect(onSelect).toHaveBeenCalledWith(childRelationships[1]);
   });
+
+  it("displays load more button when there are more results", async () => {
+    // GIVEN
+    const manyRelationships = Array.from({ length: 20 }, (_, i) => ({
+      id: `test-id-${i}`,
+      display_label: `Test Relationship ${i}`,
+      __typename: rootSchema.kind,
+    }));
+    vi.mocked(getRelationships).mockResolvedValue(manyRelationships);
+
+    // WHEN
+    const component = render(
+      <RelationshipHierarchicalComboboxList peer={rootSchema.kind} onSelect={vi.fn()} />
+    );
+
+    // THEN
+    await expect.element(component.getByRole("option", { name: "Load more" })).toBeVisible();
+  });
+
+  it("shows scrollbar when there are many options", async () => {
+    // GIVEN
+    const manyRelationships = Array.from({ length: 30 }, (_, i) => ({
+      id: `test-id-${i}`,
+      display_label: `Test Relationship ${i}`,
+      __typename: rootSchema.kind,
+    }));
+    vi.mocked(getRelationships).mockResolvedValue(manyRelationships);
+
+    // WHEN
+    const component = render(
+      <RelationshipHierarchicalComboboxList peer={rootSchema.kind} onSelect={vi.fn()} />
+    );
+
+    // THEN
+    const listbox = component.getByRole("listbox");
+    expect(listbox.element().scrollHeight).toBeGreaterThan(listbox.element().clientHeight);
+  });
 });

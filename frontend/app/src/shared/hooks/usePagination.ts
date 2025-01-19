@@ -1,6 +1,5 @@
-import { configState } from "@/config/config.atom";
 import { QSP } from "@/config/qsp";
-import { useAtom } from "jotai";
+import { useConfig } from "@/entities/config/get-config.query";
 import { StringParam, useQueryParam } from "use-query-params";
 
 type tPagination = {
@@ -34,7 +33,7 @@ const getVerifiedOffset = (offset: number, config: any) => {
 };
 
 const usePagination = (): [tPagination, Function] => {
-  const [config] = useAtom(configState);
+  const { data: config } = useConfig();
 
   const [paginationInQueryString, setPaginationInQueryString] = useQueryParam(
     QSP.PAGINATION,

@@ -1468,7 +1468,7 @@ async def test_schema_branch_from_dict_schema_object():
 
     exported = schema_branch.to_dict_schema_object()
 
-    exported_json = json.dumps(exported, default=lambda x: x.dict())
+    exported_json = json.dumps(exported, default=lambda x: x.model_dump())
 
     exported_dict = json.loads(exported_json)
     schema_branch_after = SchemaBranch.from_dict_schema_object(data=exported_dict)
@@ -2534,6 +2534,85 @@ async def test_load_schema(
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
+
+
+async def test_load_schemas(
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    part1 = SchemaRoot(
+        extensions={
+            "nodes": [
+                {
+                    "kind": "RandomOrganization",
+                    "relationships": [
+                        {
+                            "cardinality": "many",
+                            "identifier": "organization__model",
+                            "kind": "Component",
+                            "label": "Device Models",
+                            "name": "models",
+                            "optional": True,
+                            "peer": "RandomModel",
+                        }
+                    ],
+                }
+            ]
+        },
+        nodes=[
+            {
+                "attributes": [
+                    {"kind": "Text", "name": "name", "unique": True},
+                    {"kind": "Text", "name": "description", "optional": True},
+                ],
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "human_friendly_id": ["name__value"],
+                "name": "Model",
+                "namespace": "Random",
+                "order_by": ["name__value"],
+                "relationships": [
+                    {
+                        "cardinality": "one",
+                        "identifier": "organization__model",
+                        "kind": "Attribute",
+                        "name": "organization",
+                        "peer": "RandomOrganization",
+                    }
+                ],
+            }
+        ],
+        version="1.0",
+    )
+    part2 = SchemaRoot(
+        nodes=[
+            {
+                "attributes": [
+                    {"kind": "Text", "name": "name", "unique": True},
+                    {"kind": "Text", "name": "description", "optional": True},
+                ],
+                "name": "Organization",
+                "namespace": "Random",
+            }
+        ],
+        version="1.0",
+    )
+    merged = part1.merge(schema=part2)
+
+    assert len(merged.nodes) == 2
+    assert merged.extensions == part1.extensions
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=merged)
+
+    random_org_schema = schema_branch.get(name="RandomOrganization", duplicate=False)
+    try:
+        random_org_schema.get_attribute("name")
+    except ValueError:
+        pytest.fail(reason="Attribute 'name' must be present in 'RandomOrganization'")
+    try:
+        random_org_schema.get_relationship("models")
+    except ValueError:
+        pytest.fail(reason="Relationship 'models' must be present in 'RandomOrganization'")
 
 
 def test_schema_branch_load_schema_append_to_list(schema_all_in_one):
