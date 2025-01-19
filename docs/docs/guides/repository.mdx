@@ -8,8 +8,8 @@ import TabItem from '@theme/TabItem';
 
 Infrahub supports two different types of connections to external Git repositories:
 
-- [**Repository**](/topics/repository#repository) fully integrates with Git version control, including branch tracking and two-way branch synchronization.
-- [**Read-only Repository**](/topics/repository#read-only-repository) links a particular branch in Infrahub to a particular ref in the Git repository. It will only read from the Git repository. It will never make any changes to the external repository.
+- [**Repository**](../topics/repository#repository) fully integrates with Git version control, including branch tracking and two-way branch synchronization.
+- [**Read-only Repository**](../topics/repository#read-only-repository) links a particular branch in Infrahub to a particular ref in the Git repository. It will only read from the Git repository. It will never make any changes to the external repository.
 
 ## Recommendations
 
@@ -72,7 +72,7 @@ In the UI, you should see your new repository. If the repository you added has `
 
 ### Via the GraphQL interface
 
-Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only Repository` via a [Mutation](/topics/graphql).
+Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only Repository` via a [Mutation](../topics/graphql).
 {/*TODO: Detail usage if using external GraphQL browser i.e. insomnia*/}
 
 1. Open the [GraphQL Interface](http://localhost:8000/graphql).
@@ -155,7 +155,7 @@ The repository should be visible under [Unified Storage / Repository](http://loc
 
 ### Via the Infrahub SDK
 
-1. Install and setup the [Infrahub SDK](/python-sdk)
+1. Install and setup the [Infrahub SDK](../python-sdk)
 2. If needed, i.e., your repository is private, create a Credential object to hold your username / password. We highly recommend to provide credentials for Repository to allow branch creation from Infrahub.
 
 ```python
@@ -215,7 +215,7 @@ The repository should be visible under [Unified Storage / Repository](http://loc
 
 ## Pulling changes for read-only repository
 
-`Read-only Repository` and `Repository` work in different ways when it comes to tracking changes on the remote repository. Please refer to the [Repository Topic](/topics/repository#read-only-vs-core) for further details.
+`Read-only Repository` and `Repository` work in different ways when it comes to tracking changes on the remote repository. Please refer to the [Repository Topic](../topics/repository#read-only-vs-core) for further details.
 
 :::warning
 
@@ -261,7 +261,7 @@ Unlike `Repository`, Infrahub does not automatically update `Read-only Repositor
 
 ## Troubleshooting repository
 
-Various issues could affect repositories. The [Repository Status](/topics/repository#repository-statuses) gives you further details about the root cause.
+Various issues could affect repositories. The [Repository Status](../topics/repository#repository-statuses) gives you further details about the root cause.
 
 Also, directly from the UI you can access the output of low level repository operations:
 
@@ -329,7 +329,7 @@ services:
     image: custom/infrahub:latest
 ```
 
-A development environment can then be spun up with `invoke demo.start` command as, explained in the [Installing Infrahub guide](/guides/installation).
+A development environment can then be spun up with `invoke demo.start` command as, explained in the [Installing Infrahub guide](../guides/installation).
 
 ## Disable certificate verification
 
@@ -373,7 +373,7 @@ services:
     image: custom/infrahub:latest
 ```
 
-A development environment can then be spun up with `invoke demo.start` command as, explained in the [Installing Infrahub guide](/guides/installation).
+A development environment can then be spun up with `invoke demo.start` command as, explained in the [Installing Infrahub guide](../guides/installation).
 
 ## Using a proxy server
 
@@ -417,4 +417,4 @@ services:
     image: custom/infrahub:latest
 ```
 
-A development environment can then be spun up with `invoke demo.start` command as, explained in the [Installing Infrahub guide](/guides/installation).
+A development environment can then be spun up with `invoke demo.start` command as, explained in the [Installing Infrahub guide](../guides/installation).

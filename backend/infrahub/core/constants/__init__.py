@@ -120,7 +120,12 @@ class AllowOverrideType(InfrahubStringEnum):
 
 class ContentType(InfrahubStringEnum):
     APPLICATION_JSON = "application/json"
+    APPLICATION_YAML = "application/yaml"
+    APPLICATION_XML = "application/xml"
     TEXT_PLAIN = "text/plain"
+    TEXT_MARKDOWN = "text/markdown"
+    TEXT_CSV = "text/csv"
+    IMAGE_SVG = "image/svg+xml"
 
 
 class CheckType(InfrahubStringEnum):

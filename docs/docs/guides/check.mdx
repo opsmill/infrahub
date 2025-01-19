@@ -4,11 +4,11 @@ title: Creating a Check
 <!-- vale off -->
 ## Creating a Check
 <!-- vale on -->
-Within Infrahub a [Check](/topics/check) is defined in an [external repository](/topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the check using [infrahubctl check](/infrahubctl/infrahubctl-check).
+Within Infrahub a [Check](../topics/check) is defined in an [external repository](../topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the check using [infrahubctl check](../infrahubctl/infrahubctl-check).
 
 The goal of this guide is to develop a `Check` and add it to Infrahub, we will achieve this by following these steps.
 
-1. Identify the relevant data in the database that you want to use as input for the check using a [GraphQL query](/topics/graphql), that can take an input parameter to filter the data
+1. Identify the relevant data in the database that you want to use as input for the check using a [GraphQL query](../topics/graphql), that can take an input parameter to filter the data
 2. Write a Python script that will process and validate the data using your custom business logic
 3. Create an entry for the check within an .infrahub.yml file
 4. Create a Git repository
@@ -110,7 +110,7 @@ Then save the `TagsQuery` as a text file named `tags_check.gql`.
 
 ### 2. Create the Python check file
 
-The next step is to create the Check Python business logic. The check is a Python class that inherits from `InfrahubCheck` from the [Python SDK](/python-sdk). Create a file called `tags_check.py`:
+The next step is to create the Check Python business logic. The check is a Python class that inherits from `InfrahubCheck` from the [Python SDK](../python-sdk). Create a file called `tags_check.py`:
 
 ```python
 import re
@@ -234,7 +234,7 @@ We have now successfully created a check. Most of the checks you will create wou
 
 ### 6. Adding the repository to Infrahub
 
-In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](/guides/repository) in order to sync the repository you created and make it available within Infrahub.
+In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](../guides/repository) in order to sync the repository you created and make it available within Infrahub.
 
 ### 7. Using the check within Infrahub
 

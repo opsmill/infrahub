@@ -16,6 +16,7 @@ codespaces
 combobox
 config
 Config
+Containerlab
 content_type
 convert_query_response
 coroutine
@@ -123,6 +124,7 @@ UUID
 validators
 Version Control
 Vitest
+VLANs
 Yaml
 yamllint
 YouTube

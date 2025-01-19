@@ -27,7 +27,6 @@ export const CONFIG = {
     branch
       ? `${INFRAHUB_API_SERVER_URL}/api/schema?branch=${branch}`
       : `${INFRAHUB_API_SERVER_URL}/api/schema`,
-  CONFIG_URL: `${INFRAHUB_API_SERVER_URL}/api/config`,
   SEARCH_URL: (query: string, limit: number = 3) =>
     `${INFRAHUB_API_SERVER_URL}/api/search/docs?query=${query}&limit=${limit}`,
   INFO_URL: `${INFRAHUB_API_SERVER_URL}/api/info`,
@@ -50,6 +49,4 @@ export const CONFIG = {
   FILES_CONTENT_URL: (repositoryId: string, location: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/file/${repositoryId}/${encodeURIComponent(location)}`,
   STORAGE_DETAILS_URL: (id: string) => `${INFRAHUB_API_SERVER_URL}/api/storage/object/${id}`,
-  MENU_URL: (branch?: string) =>
-    `${INFRAHUB_API_SERVER_URL}/api/menu${branch ? `?branch=${branch}` : ""}`,
 };

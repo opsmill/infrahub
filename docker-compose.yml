@@ -5,7 +5,7 @@
 # https://docs.infrahub.app/reference/configuration
 x-infrahub-config: &infrahub_config
   AWS_ACCESS_KEY_ID:
-  AWS_DEFAULT_ACL:
+  AWS_DEFAULT_ACL: ${AWS_DEFAULT_ACL:-private}
   AWS_QUERYSTRING_AUTH: ${AWS_QUERYSTRING_AUTH:-false}
   AWS_S3_BUCKET_NAME:
   AWS_S3_CUSTOM_DOMAIN:
@@ -63,7 +63,6 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_DB_USERNAME: ${INFRAHUB_DB_USERNAME:-neo4j}
   INFRAHUB_DOCS_INDEX_PATH: ${INFRAHUB_DOCS_INDEX_PATH:-/opt/infrahub/docs/build/search-index.json}
   INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS: ${INFRAHUB_EXPERIMENTAL_GRAPHQL_ENUMS:-false}
-  INFRAHUB_EXPERIMENTAL_PULL_REQUEST: ${INFRAHUB_EXPERIMENTAL_PULL_REQUEST:-false}
   INFRAHUB_GIT_APPEND_GIT_SUFFIX:
   INFRAHUB_GIT_REPOSITORIES_DIRECTORY: ${INFRAHUB_GIT_REPOSITORIES_DIRECTORY:-repositories}
   INFRAHUB_GIT_SYNC_INTERVAL: ${INFRAHUB_GIT_SYNC_INTERVAL:-10}
@@ -98,7 +97,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP:
   INFRAHUB_STORAGE_BUCKET_NAME:
   INFRAHUB_STORAGE_CUSTOM_DOMAIN:
-  INFRAHUB_STORAGE_DEFAULT_ACL:
+  INFRAHUB_STORAGE_DEFAULT_ACL: ${INFRAHUB_STORAGE_DEFAULT_ACL:-private}
   INFRAHUB_STORAGE_DRIVER: ${INFRAHUB_STORAGE_DRIVER:-local}
   INFRAHUB_STORAGE_ENDPOINT_URL:
   INFRAHUB_STORAGE_LOCAL_PATH: ${INFRAHUB_STORAGE_LOCAL_PATH:-/opt/infrahub/storage}
@@ -206,7 +205,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.1.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.1.4}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -252,7 +251,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.1.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.1.4}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

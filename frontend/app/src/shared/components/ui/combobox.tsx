@@ -41,32 +41,33 @@ export const ComboboxTrigger = React.forwardRef<HTMLButtonElement, ComboboxTrigg
 
 export const ComboboxContent = React.forwardRef<
   React.ElementRef<typeof PopoverContent>,
-  React.ComponentPropsWithoutRef<typeof PopoverContent>
->(({ className, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof PopoverContent> & { fitTriggerWidth?: boolean }
+>(({ className, fitTriggerWidth = true, style, ...props }, ref) => {
   return (
-    <PopoverContent ref={ref} className={classNames("p-0", className)} portal={false} {...props} />
+    <PopoverContent
+      ref={ref}
+      className={classNames("p-0", className)}
+      portal={false}
+      style={{
+        ...(fitTriggerWidth
+          ? { width: "var(--radix-popover-trigger-width)" }
+          : { minWidth: "var(--radix-popover-trigger-width)" }),
+        ...style,
+      }}
+      {...props}
+    />
   );
 });
 
 export const ComboboxList = React.forwardRef<
   React.ElementRef<typeof CommandList>,
   React.ComponentPropsWithoutRef<typeof CommandList> & {
-    fitTriggerWidth?: boolean;
     shouldFilter?: boolean;
     onValueChange?: (search: string) => void;
   }
->(({ fitTriggerWidth = true, style, shouldFilter, autoFocus, onValueChange, ...props }, ref) => {
+>(({ shouldFilter, autoFocus, onValueChange, ...props }, ref) => {
   return (
-    <Command
-      style={{
-        maxHeight: "min(var(--radix-popover-content-available-height), 300px)",
-        ...(fitTriggerWidth
-          ? { width: "var(--radix-popover-trigger-width)" }
-          : { minWidth: "var(--radix-popover-trigger-width)" }),
-        ...style,
-      }}
-      shouldFilter={shouldFilter}
-    >
+    <Command shouldFilter={shouldFilter}>
       <CommandInput placeholder="Filter..." autoFocus={autoFocus} onValueChange={onValueChange} />
       <CommandList ref={ref} {...props} />
     </Command>

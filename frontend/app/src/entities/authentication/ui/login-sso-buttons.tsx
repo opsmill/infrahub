@@ -1,12 +1,12 @@
 import { INFRAHUB_API_SERVER_URL } from "@/config/config";
-import { Provider } from "@/config/config.atom";
+import { SSOProvider } from "@/entities/config/types";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useLocation } from "react-router-dom";
 
 export interface LoginWithSSOButtonsProps {
   className?: string;
-  providers: Array<Provider>;
+  providers: Array<SSOProvider>;
 }
 
 export const LoginWithSSOButtons = ({ className, providers }: LoginWithSSOButtonsProps) => {
@@ -30,7 +30,7 @@ export const LoginWithSSOButtons = ({ className, providers }: LoginWithSSOButton
 export const ProviderButton = ({
   provider,
   redirectTo = "/",
-}: { provider: Provider; redirectTo?: string }) => {
+}: { provider: SSOProvider; redirectTo?: string }) => {
   return (
     <a
       className="h-9 px-4 py-2 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed border bg-custom-white shadow-sm hover:bg-gray-100"

@@ -20,13 +20,13 @@ In this guide we will create a schema for a network device and its interfaces.
 
 By no mean this is meant to be a complete schema for a network device, there is far more complexity that goes into modeling a schema for a network device, it is just used as an example to guide you through the process.
 
-For a more detailed explanation of the different Attributes and Relations, you can check out our [Schema Topic](/topics/schema).
+For a more detailed explanation of the different Attributes and Relations, you can check out our [Schema Topic](../topics/schema).
 
 Throughout this guide we will load different schemas into Infrahub into different branches. The fact that multiple schemas can exist simultaneously is a core feature of Infrahub. It is a recommendation and best practice to always use a branch to make changes to the schema.
 
 :::note
 
-To help with the development process of a schema definition file, you can leverage [schema validation](/reference/schema-validation) within your editor.
+To help with the development process of a schema definition file, you can leverage [schema validation](../reference/schema-validation) within your editor.
 
 :::
 
@@ -341,7 +341,7 @@ In the detailed view of the device in the Web UI, we can now see that the device
 
 ## 4. Improving our schema
 
-Although the schema already closely represents what we wanted to achieve, there are still a few improvements we would like to make. For this, we are going to use Infrahub's schema migrations feature. More details can be found in [the Schema topic](/topics/schema#schema-update-and-data-migrations).
+Although the schema already closely represents what we wanted to achieve, there are still a few improvements we would like to make. For this, we are going to use Infrahub's schema migrations feature. More details can be found in [the Schema topic](../topics/schema#schema-update-and-data-migrations).
 
 1. adding and `mtu` and `enabled` attribute on the generic `NetworkInterface`
 4. deleting the `description` attribute of the generic `NetworkInterface`

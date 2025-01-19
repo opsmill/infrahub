@@ -25,6 +25,8 @@ import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 import "./commands";
 
 import "../../src/app/styles/index.css";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "../../src/shared/api/rest/client";
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
@@ -54,17 +56,19 @@ Cypress.Commands.add("mount", (component, options = {}) => {
 
   const wrapped = (
     <React.StrictMode>
-      <MemoryRouter {...routerProps} basename="/">
-        <QueryParamProvider
-          adapter={ReactRouter6Adapter}
-          options={{
-            searchStringToObject: queryString.parse,
-            objectToSearchString: queryString.stringify,
-          }}
-        >
-          {component}
-        </QueryParamProvider>
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter {...routerProps} basename="/">
+          <QueryParamProvider
+            adapter={ReactRouter6Adapter}
+            options={{
+              searchStringToObject: queryString.parse,
+              objectToSearchString: queryString.stringify,
+            }}
+          >
+            {component}
+          </QueryParamProvider>
+        </MemoryRouter>
+      </QueryClientProvider>
     </React.StrictMode>
   );
 

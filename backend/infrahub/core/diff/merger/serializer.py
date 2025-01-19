@@ -31,7 +31,6 @@ class DiffMergeSerializer:
     def __init__(self, db: InfrahubDatabase, max_batch_size: int) -> None:
         self.db = db
         self.max_batch_size = max_batch_size
-        self._relationship_id_cache: dict[tuple[str, str], str] = {}
         self._attribute_type_cache: dict[tuple[str, str], type] = {}
         self._source_branch_name: str | None = None
         self._target_branch_name: str | None = None
@@ -39,7 +38,6 @@ class DiffMergeSerializer:
         self._conflicted_cardinality_one_relationships: set[tuple[str, str, str]] = set()
 
     def _reset_caches(self) -> None:
-        self._relationship_id_cache = {}
         self._attribute_type_cache = {}
 
     @property
@@ -70,20 +68,6 @@ class DiffMergeSerializer:
     def _to_action_str(self, action: DiffAction) -> str:
         return str(action.value).upper()
 
-    def _get_relationship_identifier(self, schema_kind: str, relationship_name: str) -> str:
-        cache_key = (schema_kind, relationship_name)
-        if cache_key in self._relationship_id_cache:
-            return self._relationship_id_cache[cache_key]
-        try:
-            node_schema = self._get_schema(kind=schema_kind, branch_name=self.source_branch_name)
-            relationship_schema = node_schema.get_relationship(name=relationship_name)
-        except (SchemaNotFoundError, ValueError):
-            node_schema = self._get_schema(kind=schema_kind, branch_name=self.target_branch_name)
-            relationship_schema = node_schema.get_relationship(name=relationship_name)
-        relationship_identifier = relationship_schema.get_identifier()
-        self._relationship_id_cache[cache_key] = relationship_identifier
-        return relationship_identifier
-
     def _get_property_type_for_attribute_value(self, schema_kind: str, attribute_name: str) -> type:
         cache_key = (schema_kind, attribute_name)
         if cache_key in self._attribute_type_cache:
@@ -113,8 +97,8 @@ class DiffMergeSerializer:
         ):
             return raw_value.lower() == "true"
         # this must be HAS_VALUE
-        if raw_value in (None, "NULL"):
-            return "NULL"
+        if raw_value in (None, NULL_VALUE):
+            return NULL_VALUE
         if value_type:
             if value_type is bool and isinstance(raw_value, str):
                 return raw_value.lower() == "true"
@@ -132,16 +116,13 @@ class DiffMergeSerializer:
                     for prop in element.properties:
                         if prop.property_type is not DatabaseEdgeType.IS_RELATED:
                             continue
-                        relationship_identifier = self._get_relationship_identifier(
-                            schema_kind=node.kind, relationship_name=rel.name
-                        )
                         if prop.previous_value:
                             self._conflicted_cardinality_one_relationships.add(
-                                (node.uuid, relationship_identifier, prop.previous_value)
+                                (node.uuid, rel.identifier, prop.previous_value)
                             )
                         if prop.new_value:
                             self._conflicted_cardinality_one_relationships.add(
-                                (node.uuid, relationship_identifier, prop.new_value)
+                                (node.uuid, rel.identifier, prop.new_value)
                             )
 
     async def serialize_diff(
@@ -181,13 +162,10 @@ class DiffMergeSerializer:
                 serialized_property_diffs.append(attribute_property_diff)
             relationship_diffs: list[RelationshipMergeDict] = []
             for rel_diff in node.relationships:
-                relationship_identifier = self._get_relationship_identifier(
-                    schema_kind=node.kind, relationship_name=rel_diff.name
-                )
                 for relationship_element_diff in rel_diff.relationships:
                     element_diffs, relationship_property_diffs = self._serialize_relationship_element(
                         relationship_diff=relationship_element_diff,
-                        relationship_identifier=relationship_identifier,
+                        relationship_identifier=rel_diff.identifier,
                         node_uuid=node.uuid,
                     )
                     relationship_diffs.extend(element_diffs)
@@ -251,8 +229,6 @@ class DiffMergeSerializer:
                 # we only delete attributes when the whole attribute is deleted
                 if action is DiffAction.REMOVED and attribute_diff.action is not DiffAction.REMOVED:
                     continue
-                    # action = DiffAction.ADDED
-                    # value = "NULL"
                 prop_dicts.append(
                     PropertyMergeDict(
                         property_type=property_diff.property_type.value,

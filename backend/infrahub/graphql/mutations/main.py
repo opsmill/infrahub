@@ -8,7 +8,6 @@ from infrahub_sdk.utils import extract_fields
 from typing_extensions import Self
 
 from infrahub import config, lock
-from infrahub.auth import validate_mutation_permissions_update_node
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
@@ -269,14 +268,8 @@ class InfrahubMutationMixin:
 
     @classmethod
     async def mutate_update_object(
-        cls,
-        db: InfrahubDatabase,
-        info: GraphQLResolveInfo,
-        data: InputObjectType,
-        branch: Branch,
-        obj: Node,
+        cls, db: InfrahubDatabase, info: GraphQLResolveInfo, data: InputObjectType, branch: Branch, obj: Node
     ) -> Node:
-        context: GraphqlContext = info.context
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
@@ -284,15 +277,11 @@ class InfrahubMutationMixin:
         await obj.from_graphql(db=db, data=data)
         fields_to_validate = list(data)
         await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
-        node_id = data.get("id", obj.id)
+
         fields = list(data.keys())
-        if "id" in fields:
-            fields.remove("id")
-        if "hfid" in fields:
-            fields.remove("hfid")
-        validate_mutation_permissions_update_node(
-            operation=cls.__name__, node_id=node_id, account_session=context.account_session, fields=fields
-        )
+        for field in ("id", "hfid"):
+            if field in fields:
+                fields.remove(field)
 
         await obj.save(db=db, fields=fields)
         obj = await cls._refresh_for_profile_update(

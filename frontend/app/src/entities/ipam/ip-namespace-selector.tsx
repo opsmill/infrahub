@@ -86,8 +86,8 @@ const IpNamespaceSelectorContent = ({ namespaces }: IpNamespaceSelectorContentPr
           {selectedNamespace?.display_label ?? defaultNamespace?.display_label}
         </ComboboxTrigger>
 
-        <ComboboxContent align="start">
-          <ComboboxList fitTriggerWidth={false} className="max-w-md">
+        <ComboboxContent align="start" fitTriggerWidth={false}>
+          <ComboboxList className="max-w-md">
             {namespaces.map((namespace) => (
               <ComboboxItem
                 key={namespace.id}

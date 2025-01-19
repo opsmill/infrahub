@@ -209,6 +209,7 @@ class TestMergeDiff:
         )
         deleted_relationship = EnrichedRelationshipGroupFactory.build(
             name="cars",
+            identifier="testcar__testperson",
             relationships={deleted_relationship_element},
             action=DiffAction.UPDATED,
         )
@@ -300,6 +301,7 @@ class TestMergeDiff:
         )
         added_relationship = EnrichedRelationshipGroupFactory.build(
             name="cars",
+            identifier="testcar__testperson",
             relationships={added_relationship_element},
             action=DiffAction.UPDATED,
         )
@@ -549,6 +551,7 @@ class TestMergeDiff:
         )
         deleted_relationship = EnrichedRelationshipGroupFactory.build(
             name="cars",
+            identifier="testcar__testperson",
             relationships={deleted_relationship_element},
             action=DiffAction.UPDATED,
         )
@@ -600,6 +603,7 @@ class TestMergeDiff:
         )
         updated_relationship = EnrichedRelationshipGroupFactory.build(
             name="owner",
+            identifier="testcar__testperson",
             relationships={updated_relationship_element},
             action=DiffAction.UPDATED,
         )

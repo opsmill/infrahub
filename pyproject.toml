@@ -71,6 +71,7 @@ numpy = [
     { version = "^1.24.2", python = ">=3.9,<3.12" },
     { version = "^1.26.2", python = ">=3.12" },
 ]
+dulwich = "^0.22.7"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -685,6 +686,11 @@ showcontent = true
 [[tool.towncrier.type]]
 directory = "fixed"
 name = "Fixed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "housekeeping"
+name = "Housekeeping"
 showcontent = true
 
 [build-system]
