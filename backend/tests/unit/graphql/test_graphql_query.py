@@ -2365,7 +2365,7 @@ async def test_query_relationship_node_property(
     assert result.errors is None
 
     results = {item["node"]["name"]["value"]: item["node"] for item in result.data["TestPerson"]["edges"]}
-    assert sorted(list(results.keys())) == ["Jane", "John"]
+    assert sorted(results.keys()) == ["Jane", "John"]
     assert len(results["John"]["cars"]["edges"]) == 1
     assert len(results["Jane"]["cars"]["edges"]) == 1
 
