@@ -40,7 +40,7 @@ class FileRepo:
         return initial_directory
 
     def _apply_pull_requests(self, repo_base: Path) -> None:
-        pull_requests = sorted(list(repo_base.glob("pr*")))
+        pull_requests = sorted(repo_base.glob("pr*"))
         for pull_request in pull_requests:
             branch = str(pull_request).split("__")[-1]
             if branch in self._branches:

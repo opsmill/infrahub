@@ -162,7 +162,7 @@ class GraphQLExtractor:
                         FieldNode(
                             kind="field",
                             name=NameNode(kind="name", value=sub_node.key),
-                            selection_set=SelectionSetNode(selections=tuple([sub_node.node])),
+                            selection_set=SelectionSetNode(selections=(sub_node.node,)),
                         )
                     )
                     selection_set.selections = tuple(selections)

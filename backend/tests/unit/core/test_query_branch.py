@@ -12,5 +12,5 @@ async def test_GetAllBranchInternalRelationshipQuery(db: InfrahubDatabase, defau
 
     assert len(query.results)
 
-    unique_ids = set([result.get("r").element_id for result in query.results])
+    unique_ids = {result.get("r").element_id for result in query.results}
     assert len(unique_ids) == len(query.results)

@@ -666,7 +666,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 log.info("New commit detected", repository=self.name, branch=branch_name)
                 updated_branches.append(branch_name)
 
-        return sorted(list(new_branches)), sorted(updated_branches)
+        return sorted(new_branches), sorted(updated_branches)
 
     async def validate_remote_branch(self, branch_name: str) -> bool:
         """Validate a branch present on the remote repository.
