@@ -3522,13 +3522,13 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "prefect"
-version = "3.0.11"
+version = "3.1.13"
 description = "Workflow orchestration and management."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "prefect-3.0.11-py3-none-any.whl", hash = "sha256:09d27c94eb6f745767b5811e4900b9120212a75a44e53bb8186aea0bffa1120f"},
-    {file = "prefect-3.0.11.tar.gz", hash = "sha256:9969cabe8d10080441c1f6e80ce3019ff0f998eafe2da26fd214cf76eaf86e96"},
+    {file = "prefect-3.1.13-py3-none-any.whl", hash = "sha256:06b7cf6e6a0f2c8a0db03c45af080bbd44db63400a9722f6212696c8963d54fe"},
+    {file = "prefect-3.1.13.tar.gz", hash = "sha256:3b5651d230dcd89cd1b45005394197f7d9f055b0707af1a6235466e44a1be1a9"},
 ]
 
 [package.dependencies]
@@ -3542,7 +3542,7 @@ cachetools = ">=5.3,<6.0"
 click = ">=8.0,<8.2"
 cloudpickle = ">=2.0,<4.0"
 coolname = ">=1.0.4,<3.0.0"
-croniter = ">=1.0.12,<4.0.0"
+croniter = ">=1.0.12,<7.0.0"
 cryptography = ">=36.0.1"
 dateparser = ">=1.1.1,<2.0.0"
 docker = ">=4.0,<8.0"
@@ -3558,17 +3558,19 @@ jinja2 = ">=3.0.0,<4.0.0"
 jinja2-humanize-extension = ">=0.4.0"
 jsonpatch = ">=1.32,<2.0"
 jsonschema = ">=4.0.0,<5.0.0"
+opentelemetry-api = ">=1.27.0,<2.0.0"
 orjson = ">=3.7,<4.0"
 packaging = ">=21.3,<24.3"
 pathspec = ">=0.8.0"
 pendulum = ">=3.0.0,<4"
 prometheus-client = ">=0.20.0"
-pydantic = ">=2.7,<3.0.0"
-pydantic-core = ">=2.12.0,<3.0.0"
-pydantic-extra-types = ">=2.8.2,<3.0.0"
-pydantic-settings = ">2.2.1"
-python-dateutil = ">=2.8.2,<3.0.0"
+pydantic = ">=2.9,<2.10.0 || >2.10.0,<3.0.0"
+pydantic_core = ">=2.12.0,<3.0.0"
+pydantic_extra_types = ">=2.8.2,<3.0.0"
+pydantic_settings = ">2.2.1"
+python_dateutil = ">=2.8.2,<3.0.0"
 python-slugify = ">=5.0,<9.0"
+python-socks = {version = ">=2.5.3,<3.0", extras = ["asyncio"]}
 pytz = ">=2021.1,<2025"
 pyyaml = ">=5.4.1,<7.0.0"
 readchar = ">=4.0.0,<5.0.0"
@@ -3578,32 +3580,33 @@ rich = ">=11.0,<14.0"
 sniffio = ">=1.3.0,<2.0.0"
 sqlalchemy = {version = ">=2.0,<3.0.0", extras = ["asyncio"]}
 toml = ">=0.10.0"
-typer = ">=0.12.0,<0.12.2 || >0.12.2,<0.13.0"
-typing-extensions = ">=4.5.0,<5.0.0"
+typer = ">=0.12.0,<0.12.2 || >0.12.2,<0.14.0"
+typing_extensions = ">=4.5.0,<5.0.0"
 ujson = ">=5.8.0,<6.0.0"
 uvicorn = ">=0.14.0,<0.29.0 || >0.29.0"
 websockets = ">=10.4,<14.0"
 
 [package.extras]
-aws = ["prefect-aws (>=0.5.0rc1)"]
-azure = ["prefect-azure (>=0.4.0rc1)"]
-bitbucket = ["prefect-bitbucket (>=0.3.0rc1)"]
-dask = ["prefect-dask (>=0.3.0rc1)"]
-databricks = ["prefect-databricks (>=0.3.0rc1)"]
-dbt = ["prefect-dbt (>=0.6.0rc1)"]
-dev = ["cairosvg", "codespell (>=2.2.6)", "ipython", "jinja2", "mkdocs", "mkdocs-gen-files", "mkdocs-material", "mkdocstrings[python]", "moto (>=5)", "mypy (>=1.9.0)", "numpy", "pillow", "pluggy (>=1.4.0)", "pre-commit", "pytest (>=8.3)", "pytest-asyncio (>=0.24)", "pytest-benchmark", "pytest-codspeed", "pytest-cov", "pytest-env", "pytest-flakefinder", "pytest-timeout", "pytest-xdist (>=3.6.1)", "pyyaml", "redis (>=5.0.1)", "respx", "ruff", "setuptools", "types-PyYAML", "types-cachetools", "uv (>=0.4.5)", "vale", "vermin", "virtualenv", "watchfiles"]
-docker = ["prefect-docker (>=0.6.0rc1)"]
-email = ["prefect-email (>=0.4.0rc1)"]
-gcp = ["prefect-gcp (>=0.6.0rc1)"]
-github = ["prefect-github (>=0.3.0rc1)"]
-gitlab = ["prefect-gitlab (>=0.3.0rc1)"]
-kubernetes = ["prefect-kubernetes (>=0.4.0rc1)"]
-ray = ["prefect-ray (>=0.4.0rc1)"]
+aws = ["prefect-aws (>=0.5.0)"]
+azure = ["prefect-azure (>=0.4.0)"]
+bitbucket = ["prefect-bitbucket (>=0.3.0)"]
+dask = ["prefect-dask (>=0.3.0)"]
+databricks = ["prefect-databricks (>=0.3.0)"]
+dbt = ["prefect-dbt (>=0.6.0)"]
+dev = ["cairosvg", "codespell (>=2.2.6)", "ipython", "jinja2", "mkdocs", "mkdocs-gen-files", "mkdocs-material", "mkdocstrings[python]", "moto (>=5)", "mypy (>=1.9.0)", "numpy", "opentelemetry-distro (>=0.48b0,<1.0.0)", "opentelemetry-exporter-otlp (>=1.27.0,<2.0.0)", "opentelemetry-instrumentation (>=0.48b0,<1.0.0)", "opentelemetry-instrumentation-logging (>=0.48b0,<1.0.0)", "opentelemetry-test-utils (>=0.48b0,<1.0.0)", "pillow", "pluggy (>=1.4.0)", "pre-commit", "pytest (>=8.3)", "pytest-asyncio (>=0.24)", "pytest-benchmark", "pytest-cov", "pytest-env", "pytest-flakefinder", "pytest-mypy-plugins (>=3.2.0)", "pytest-timeout", "pytest-xdist (>=3.6.1)", "pyyaml", "redis (>=5.0.1)", "respx", "ruff", "setuptools", "types-PyYAML", "types-cachetools", "uv (>=0.4.5)", "vale", "vermin", "virtualenv", "watchfiles"]
+docker = ["prefect-docker (>=0.6.0)"]
+email = ["prefect-email (>=0.4.0)"]
+gcp = ["prefect-gcp (>=0.6.0)"]
+github = ["prefect-github (>=0.3.0)"]
+gitlab = ["prefect-gitlab (>=0.3.0)"]
+kubernetes = ["prefect-kubernetes (>=0.4.0)"]
+otel = ["opentelemetry-distro (>=0.48b0,<1.0.0)", "opentelemetry-exporter-otlp (>=1.27.0,<2.0.0)", "opentelemetry-instrumentation (>=0.48b0,<1.0.0)", "opentelemetry-instrumentation-logging (>=0.48b0,<1.0.0)"]
+ray = ["prefect-ray (>=0.4.0)"]
 redis = ["prefect-redis (>=0.2.0)"]
-shell = ["prefect-shell (>=0.3.0rc1)"]
-slack = ["prefect-slack (>=0.3.0rc1)"]
-snowflake = ["prefect-snowflake (>=0.28.0rc1)"]
-sqlalchemy = ["prefect-sqlalchemy (>=0.5.0rc1)"]
+shell = ["prefect-shell (>=0.3.0)"]
+slack = ["prefect-slack (>=0.3.0)"]
+snowflake = ["prefect-snowflake (>=0.28.0)"]
+sqlalchemy = ["prefect-sqlalchemy (>=0.5.0)"]
 
 [[package]]
 name = "prometheus-client"
@@ -4226,6 +4229,26 @@ text-unidecode = ">=1.3"
 
 [package.extras]
 unidecode = ["Unidecode (>=1.1.1)"]
+
+[[package]]
+name = "python-socks"
+version = "2.6.1"
+description = "Proxy (SOCKS4, SOCKS5, HTTP CONNECT) client for Python"
+optional = false
+python-versions = ">=3.8.0"
+files = [
+    {file = "python_socks-2.6.1-py3-none-any.whl", hash = "sha256:7fe9324c1834bb9cdce46ddb6721cf42a05a00da5f1fb87f8507ac0c6f305e1d"},
+    {file = "python_socks-2.6.1.tar.gz", hash = "sha256:9743929aab6ffe0bab640ecfbbee7130af92408ad86e4aa2984789f742f3ec9e"},
+]
+
+[package.dependencies]
+async-timeout = {version = ">=4.0", optional = true, markers = "python_version < \"3.11\" and extra == \"asyncio\""}
+
+[package.extras]
+anyio = ["anyio (>=3.3.4,<5.0.0)"]
+asyncio = ["async-timeout (>=4.0)"]
+curio = ["curio (>=1.4)"]
+trio = ["trio (>=0.24)"]
 
 [[package]]
 name = "pytz"
@@ -5850,4 +5873,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10, < 3.13"
-content-hash = "ac690383b6c2a01aba769b8b1958d8f979063f1c519f4261138030903a93ba47"
+content-hash = "ccef4997d37e764d996288f129a8470f2318b8f294433fadebafc25fba632aa7"

@@ -250,7 +250,7 @@ class PrefectTask:
                             "node": {
                                 "title": flow.name,
                                 "conclusion": CONCLUSION_STATE_MAPPING.get(
-                                    flow.state_name, TaskConclusion.UNKNOWN
+                                    str(flow.state_name), TaskConclusion.UNKNOWN
                                 ).value,
                                 "state": flow.state_type,
                                 "progress": progress_flow.data.get(flow.id, None),

@@ -1,7 +1,6 @@
 import pendulum
 import pytest
 from fastapi.testclient import TestClient
-from prefect.testing.utilities import prefect_test_harness
 
 from infrahub import config
 from infrahub.core.constants import InfrahubKind
@@ -29,12 +28,6 @@ def client_headers():
 @pytest.fixture
 def admin_headers():
     return {"X-INFRAHUB-KEY": "admin-security"}
-
-
-@pytest.fixture(autouse=True, scope="session")
-def prefect_test_fixture():
-    with prefect_test_harness():
-        yield
 
 
 @pytest.fixture

@@ -8,6 +8,8 @@ import pytest
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
+from prefect.logging.loggers import disable_run_logger
+from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
 
 from infrahub import config
@@ -85,6 +87,18 @@ def neo4j_factory():
     """
     hydration_scope = HydrationHandler().new_hydration_scope()
     return hydration_scope._graph_hydrator
+
+
+@pytest.fixture(scope="session", autouse=True)
+def prefect_test_fixture():
+    with prefect_test_harness():
+        yield
+
+
+@pytest.fixture(scope="session")
+def prefect_test(prefect_test_fixture):
+    with disable_run_logger():
+        yield
 
 
 @pytest.fixture

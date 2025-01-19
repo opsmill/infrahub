@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
 
-@task(name="trigger-setup", task_run_name="Setup triggers in task-manager")
+@task(name="trigger-setup", task_run_name="Setup triggers in task-manager")  # type: ignore[arg-type]
 async def setup_triggers(client: PrefectClient) -> None:
     log = get_run_logger()
 

@@ -78,7 +78,7 @@ async def run_generator(model: RequestGeneratorRun, service: InfrahubServices) -
     await generator_instance.update(do_full_update=True)
 
 
-@task(name="generator-define-instance", task_run_name="Define Instance", cache_policy=NONE)
+@task(name="generator-define-instance", task_run_name="Define Instance", cache_policy=NONE)  # type: ignore[arg-type]
 async def _define_instance(model: RequestGeneratorRun, service: InfrahubServices) -> CoreGeneratorInstance:
     if model.generator_instance:
         instance = await service.client.get(

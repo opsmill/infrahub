@@ -39,7 +39,7 @@ def start_prefect_server_container(
         return None
 
     container = (
-        DockerContainer(image="prefecthq/prefect:3.0.11-python3.12")
+        DockerContainer(image="prefecthq/prefect:3.1.13-python3.12")
         .with_command("prefect server start --host 0.0.0.0 --ui")
         .with_exposed_ports(PORT_PREFECT)
     )
