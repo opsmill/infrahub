@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Generator
 
 import pytest
 from infrahub_sdk import Config, InfrahubClient
