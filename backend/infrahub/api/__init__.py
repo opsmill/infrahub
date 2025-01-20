@@ -45,9 +45,6 @@ router.include_router(storage.router)
 router.include_router(transformation.router)
 
 
-# Defines the dependency to get the current user
-
-
 @router.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html(
     _: AccountSession = Depends(get_current_user),
