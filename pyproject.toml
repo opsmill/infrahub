@@ -404,7 +404,6 @@ ignore = [
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
-    "B904",    # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
     "C403",    # Unnecessary `list` comprehension (rewrite as a `set` comprehension)
     "C409",    # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
     "C414",    # Unnecessary `list` call within `sorted()`
@@ -480,7 +479,7 @@ extend-immutable-calls = [
     "fastapi.File",
     "fastapi.Query",
     "fastapi.params.Query",
-    "typer.Argument"
+    "typer.Argument",
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/

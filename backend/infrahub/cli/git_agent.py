@@ -99,7 +99,7 @@ async def start(
         await client.branch.all()
     except SdkError as exc:
         log.error(f"Error in communication with Infrahub: {exc.message}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     # Initialize trace
     if config.SETTINGS.trace.enable:

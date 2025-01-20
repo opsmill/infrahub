@@ -169,9 +169,9 @@ class InfrahubWorkerAsync(BaseWorker):
 
         try:
             await client.branch.all()
-        except SdkError as exc:
-            self._logger.error(f"Error in communication with Infrahub: {exc.message}")
-            raise typer.Exit(1)
+        except SdkError as err:
+            self._logger.error(f"Error in communication with Infrahub: {err.message}")
+            raise typer.Exit(1) from err
 
         return client
 
