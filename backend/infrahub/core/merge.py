@@ -177,14 +177,16 @@ class BranchMerger:
         if self.source_branch.name == registry.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
 
-        log.debug("Updating diff for merge")
-        enriched_diff = await self.diff_coordinator.update_branch_diff_and_return(
+        log.info("Updating diff for merge")
+        await self.diff_coordinator.update_branch_diff(
             base_branch=self.destination_branch, diff_branch=self.source_branch
         )
-        log.debug("Diff updated for merge")
-        conflict_map = enriched_diff.get_all_conflicts()
+        log.info("Diff updated for merge")
+
         errors: list[str] = []
-        for conflict_path, conflict in conflict_map.items():
+        async for conflict_path, conflict in self.diff_repository.get_all_conflicts_for_diff(
+            diff_branch_name=self.source_branch.name, tracking_id=BranchTrackingId(name=self.source_branch.name)
+        ):
             if conflict.selected_branch is None or conflict.resolvable is False:
                 errors.append(conflict_path)
 
