@@ -57,6 +57,12 @@ const ObjectItemsProvider = () => {
 };
 
 describe("List screen", () => {
+  beforeEach(() => {
+    cy.fixture("config").then(function (json) {
+      cy.intercept("GET", "/api/config", json).as("config");
+    });
+  });
+
   it("should fetch items and render list", () => {
     cy.viewport(1920, 1080);
 

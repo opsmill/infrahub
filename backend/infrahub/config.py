@@ -198,7 +198,7 @@ class S3StorageSettings(BaseSettings):
         validation_alias=AliasChoices("INFRAHUB_STORAGE_USE_SSL", "AWS_S3_USE_SSL"),
     )
     default_acl: str = Field(
-        default="",
+        default="private",
         alias="AWS_DEFAULT_ACL",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_DEFAULT_ACL", "AWS_DEFAULT_ACL"),
     )
@@ -585,7 +585,6 @@ class AnalyticsSettings(BaseSettings):
 
 class ExperimentalFeaturesSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_EXPERIMENTAL_")
-    pull_request: bool = False
     graphql_enums: bool = False
 
 

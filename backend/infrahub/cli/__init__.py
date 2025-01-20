@@ -20,7 +20,7 @@ app = typer.Typer(name="Infrahub CLI", pretty_exceptions_enable=False)
 @app.callback()
 def common(ctx: typer.Context) -> None:
     """Infrahub CLI"""
-    ctx.obj = CliContext(database_class=InfrahubDatabase)
+    ctx.obj = CliContext()
 
 
 app.add_typer(server_app, name="server")

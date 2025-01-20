@@ -12,7 +12,6 @@ import {
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
-import fetch from "cross-fetch";
 import { toast } from "react-toastify";
 
 export const defaultOptions: DefaultOptions = {
@@ -34,7 +33,6 @@ const httpLink = new HttpLink({
     // Initial value for url, will be overriden in useQuery
     return CONFIG.GRAPHQL_URL(context?.branch, context?.date);
   },
-  fetch, // Provides fetch to ensure that it is available
 });
 
 // // Web socket link

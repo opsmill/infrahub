@@ -10,6 +10,7 @@ from infrahub.core.protocols import CoreRepository
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
+from infrahub.log import get_logger
 
 from ..git.models import GitRepositoryMerge
 from ..workflows.catalogue import GIT_REPOSITORIES_MERGE
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+
+log = get_logger()
 
 
 class BranchMerger:
@@ -174,9 +177,11 @@ class BranchMerger:
         if self.source_branch.name == registry.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
 
+        log.debug("Updating diff for merge")
         enriched_diff = await self.diff_coordinator.update_branch_diff_and_return(
             base_branch=self.destination_branch, diff_branch=self.source_branch
         )
+        log.debug("Diff updated for merge")
         conflict_map = enriched_diff.get_all_conflicts()
         errors: list[str] = []
         for conflict_path, conflict in conflict_map.items():

@@ -3,13 +3,11 @@
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
-import { configState } from "../../../src/config/config.atom";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
 import { AuthProvider } from "../../../src/entities/authentication/ui/useAuth";
 import { schemaState } from "../../../src/entities/schema/stores/schema.atom";
 import { ObjectItemsPage } from "../../../src/pages/objects/object-items";
 import { mockedToken } from "../../fixtures/auth";
-import { configMocks } from "../../mocks/data/config";
 import {
   graphqlQueriesMocksData,
   graphqlQueriesMocksDataDeleted,
@@ -62,12 +60,7 @@ const AuthenticatedObjectItems = () => (
 // Provide the initial value for jotai
 const ObjectItemsProvider = () => {
   return (
-    <TestProvider
-      initialValues={[
-        [schemaState, schemaMocks],
-        [configState, configMocks],
-      ]}
-    >
+    <TestProvider initialValues={[[schemaState, schemaMocks]]}>
       <AuthenticatedObjectItems />
     </TestProvider>
   );
@@ -76,6 +69,9 @@ const ObjectItemsProvider = () => {
 describe("List screen", () => {
   beforeEach(function () {
     cy.fixture("device-items-delete").as("delete");
+    cy.fixture("config").then(function (json) {
+      cy.intercept("GET", "/api/config", json).as("config");
+    });
 
     localStorage.setItem(ACCESS_TOKEN_KEY, mockedToken);
   });

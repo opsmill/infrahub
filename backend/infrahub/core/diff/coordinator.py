@@ -439,7 +439,9 @@ class DiffCoordinator:
                 else:
                     end_time = diff_request.to_time
                 # if there are no changes on either branch in this time range, then there cannot be a diff
-                log.info(f"Checking number of changes on branches for {diff_request!r}")
+                log.info(
+                    f"Checking number of changes on branches for {diff_request!r}, from_time={current_time}, to_time={end_time}"
+                )
                 num_changes_by_branch = await self.diff_repo.get_num_changes_in_time_range_by_branch(
                     branch_names=[diff_request.base_branch.name, diff_request.diff_branch.name],
                     from_time=current_time,
@@ -520,13 +522,17 @@ class DiffCoordinator:
                 previous_diff_pair = single_enriched_diffs
                 continue
 
+            log.info("Combining diffs...")
             previous_diff_pair = await self._combine_diffs(earlier=previous_diff_pair, later=single_enriched_diffs)
+            log.info("Diffs combined.")
 
         return previous_diff_pair
 
     async def _combine_diffs(
         self, earlier: EnrichedDiffs | EnrichedDiffsMetadata, later: EnrichedDiffs | EnrichedDiffsMetadata
     ) -> EnrichedDiffs | EnrichedDiffsMetadata:
+        log.info(f"Earlier diff to combine: {earlier!r}")
+        log.info(f"Later diff to combine: {later!r}")
         # if one of the diffs is hydrated and has no data, we can combine them without hydrating the other
         if isinstance(earlier, EnrichedDiffs) and earlier.is_empty:
             later.base_branch_diff.from_time = earlier.base_branch_diff.from_time
@@ -539,9 +545,13 @@ class DiffCoordinator:
 
         # hydrate the diffs to combine, if necessary
         if not isinstance(earlier, EnrichedDiffs):
+            log.info("Hydrating earlier diff...")
             earlier = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=earlier)
+            log.info("Earlier diff hydrated.")
         if not isinstance(later, EnrichedDiffs):
+            log.info("Hydrating later diff...")
             later = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=later)
+            log.info("Later diff hydrated.")
 
         return await self.diff_combiner.combine(earlier_diffs=earlier, later_diffs=later)
 

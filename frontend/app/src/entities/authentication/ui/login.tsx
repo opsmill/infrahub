@@ -1,20 +1,19 @@
-import { configState } from "@/config/config.atom";
 import { LoginWithSSOButtons } from "@/entities/authentication/ui/login-sso-buttons";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useConfig } from "@/entities/config/get-config.query";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import InputField from "@/shared/components/form/fields/input.field";
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
-import { useAtomValue } from "jotai";
 import { useState } from "react";
 
 export const Login = () => {
-  const config = useAtomValue(configState);
+  const { data: config } = useConfig();
   const [displaySSO, setDisplaySSO] = useState(true);
 
-  if (config && config.sso.enabled && config.sso.providers.length > 0) {
+  if (config && config.sso.enabled && config.sso.providers && config.sso.providers.length > 0) {
     return displaySSO ? (
       <>
         <LoginWithSSOButtons providers={config.sso.providers} className="animate-in fade-in" />
