@@ -32,11 +32,14 @@ async def schema_validate_migrations(message: SchemaValidateMigrationData) -> li
     log.info(f"{len(message.constraints)} constraint(s) to validate")
     # NOTE this task is a good candidate to add a progress bar
     for constraint in message.constraints:
+        schema = message.schema_branch.get(name=constraint.path.schema_kind)
+        if not isinstance(schema, (GenericSchema, NodeSchema)):
+            continue
         batch.add(
             task=schema_path_validate,
             branch=message.branch,
             constraint_name=constraint.constraint_name,
-            node_schema=message.schema_branch.get(name=constraint.path.schema_kind),
+            node_schema=schema,
             schema_path=constraint.path,
         )
 

@@ -59,7 +59,7 @@ from tests.helpers.constants import (
     PORT_PREFECT,
     PORT_REDIS,
 )
-from tests.helpers.utils import get_exposed_port, start_neo4j_container
+from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
 
 ResponseClass = TypeVar("ResponseClass")
 DEFAULT_TESTING_LOG_LEVEL = "WARNING"
@@ -367,23 +367,7 @@ def nats(nats_container: dict[int, int] | None, reload_settings_before_each_modu
 
 @pytest.fixture(scope="session")
 def prefect_container(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
-    if not INFRAHUB_USE_TEST_CONTAINERS:
-        return None
-
-    container = (
-        DockerContainer(image="prefecthq/prefect:3.0.11-python3.12")
-        .with_command("prefect server start --host 0.0.0.0 --ui")
-        .with_exposed_ports(PORT_PREFECT)
-    )
-
-    def cleanup():
-        container.stop()
-
-    container.start()
-    wait_for_logs(container, "Configure Prefect to communicate with the server")
-    request.addfinalizer(cleanup)
-
-    return {PORT_PREFECT: get_exposed_port(container, PORT_PREFECT)}
+    return start_prefect_server_container(request)
 
 
 @pytest.fixture(scope="module")

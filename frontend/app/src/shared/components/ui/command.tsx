@@ -39,7 +39,10 @@ export const CommandList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.List
     ref={ref}
-    className={classNames("flex-grow p-2 rounded-md overflow-y-auto overflow-x-hidden", className)}
+    className={classNames(
+      "max-h-[300px] flex-grow p-2 rounded-md overflow-y-auto overflow-x-hidden",
+      className
+    )}
     asChild
     {...props}
   />

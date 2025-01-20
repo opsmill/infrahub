@@ -239,7 +239,7 @@ async def test_get_branches_from_local(git_repo_01: InfrahubRepository):
 
     local_branches = repo.get_branches_from_local()
     assert isinstance(local_branches, dict)
-    assert sorted(list(local_branches.keys())) == ["main"]
+    assert sorted(local_branches.keys()) == ["main"]
 
 
 async def test_get_branches_from_remote(git_repo_01: InfrahubRepository):
@@ -247,7 +247,7 @@ async def test_get_branches_from_remote(git_repo_01: InfrahubRepository):
 
     remote_branches = repo.get_branches_from_remote()
     assert isinstance(remote_branches, dict)
-    assert sorted(list(remote_branches.keys())) == ["branch01", "branch02", "clean-branch", "main"]
+    assert sorted(remote_branches.keys()) == ["branch01", "branch02", "clean-branch", "main"]
 
 
 async def test_get_branches_from_graph(

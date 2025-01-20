@@ -15,7 +15,7 @@ RUN mkdir /prom_shared /remote
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install --no-install-recommends -y curl git pkg-config build-essential ca-certificates && \
+    apt-get install --no-install-recommends -y tini curl git pkg-config build-essential ca-certificates && \
     curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.5 python3 - && \
     apt-get autoremove -y && \
     apt-get clean all && \
@@ -99,3 +99,5 @@ RUN poetry install --no-interaction --no-ansi --no-root --no-directory && \
 # --------------------------------------------
 COPY . ./
 RUN poetry install --no-interaction --no-ansi
+
+ENTRYPOINT ["tini", "-g", "--"]

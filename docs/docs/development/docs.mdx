@@ -171,6 +171,17 @@ When writing documentation, it's essential to guide the reader's attention to sp
 
 Incorporating these blocks into your documentation makes it more interactive and user-friendly, guiding the reader through different stages of their learning or implementation process with visual cues that emphasize the significance of each piece of information.
 
+## Documentation sync to `infrahub-docs`
+
+Infrahub documentation is synced and ultimately published via the [`infrahub-docs`](https://github.com/opsmill/infrahub-docs) repository. This is done via the GitHub action `.github/workflows/sync-docs.yml`.
+
+Please note the following important points:
+
+- Today, spelling (the `.vale` directory) is authoritative in the `infrahub` repository, not the `infrahub-docs` repository. If you need to add a spelling exception in another repository (i.e. `infrahub-demo-dc-fabric`), you have to add the exception to the `infrahub` repository.
+- All documentation URLs need to be relative:
+  - Do this: `[some page](../path/to/file)`
+  - Not this: `[some page](/absolute_path/to/file)`
+
 ## Organizing new pages
 
 We organize all documentation into **four** categories: tutorials, guides, topics, and reference. This is heavily influenced by the [Diátaxis framework](https://diataxis.fr/). The goal is to maintain a more organized, understandable set of docs.
@@ -242,7 +253,7 @@ For a deeper dive into reference docs, refer to the [diátaxis reference page](h
 
 ## Application screenshots
 
-To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use [end-to-end (e2e) tests](/development/frontend/testing-guidelines#e2e-tests). You'll find the e2e tests specifically designed for tutorials located in `frontend/app/tests/e2e/tutorial`.
+To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use [end-to-end (e2e) tests](./frontend/testing-guidelines#e2e-tests). You'll find the e2e tests specifically designed for tutorials located in `frontend/app/tests/e2e/tutorial`.
 
 ### Updating all screenshots manually
 
@@ -279,7 +290,7 @@ The screenshots will be saved in `docs/docs/media`. You can then use them in our
 
 #### 1. Locate on which test the screenshot should be added
 
-If the test does not exist yet, create must create it first. Refer to the [write e2e tests](/development/frontend/testing-guidelines#writing-e2e-tests) for more information.
+If the test does not exist yet, create must create it first. Refer to the [write e2e tests](./frontend/testing-guidelines#writing-e2e-tests) for more information.
 
 #### 2. Add the screenshot
 

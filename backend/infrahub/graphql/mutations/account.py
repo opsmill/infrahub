@@ -32,8 +32,8 @@ class InfrahubAccountTokenDeleteInput(InputObjectType):
 
 
 class InfrahubAccountUpdateSelfInput(InputObjectType):
-    password = InputField(String(required=False), description="The new password")
-    description = InputField(String(required=False), description="The new description")
+    password = InputField(String(required=False), description="Password to use instead of the current one")
+    description = InputField(String(required=False), description="Description to use instead of the current one")
 
 
 class ValueType(InfrahubObjectType):
@@ -120,7 +120,7 @@ class AccountMixin:
             raise NodeNotFoundError(node_type="AccountToken", identifier=token_id)
 
         async with db.start_transaction() as dbt:
-            await results[0].delete(db=dbt)  # type: ignore[arg-type]
+            await results[0].delete(db=dbt)
 
         return cls(ok=True)  # type: ignore[call-arg]
 
@@ -134,7 +134,7 @@ class AccountMixin:
                 getattr(account, field).value = value
 
         async with db.start_transaction() as dbt:
-            await account.save(db=dbt)  # type: ignore[arg-type]
+            await account.save(db=dbt)
 
         return cls(ok=True)  # type: ignore[call-arg]
 

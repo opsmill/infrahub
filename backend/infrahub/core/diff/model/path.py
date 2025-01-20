@@ -594,7 +594,9 @@ class EnrichedDiffs(EnrichedDiffsMetadata):
             f"branch_name={self.diff_branch_name},"
             f"base_name={self.base_branch_name},"
             f"from_time={self.diff_branch_diff.from_time},"
-            f"to_time={self.diff_branch_diff.to_time})"
+            f"to_time={self.diff_branch_diff.to_time},"
+            f"num_base_nodes={len(self.base_branch_diff.nodes)},"
+            f"num_branch_nodes={len(self.diff_branch_diff.nodes)}"
         )
 
     @classmethod

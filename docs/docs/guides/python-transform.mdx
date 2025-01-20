@@ -6,11 +6,11 @@ import TabItem from '@theme/TabItem';
 
 # Creating a Python transform
 
-Within Infrahub a [Transform](/topics/transformation) is defined in an [external repository](/topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the transform using [infrahubctl transform](/infrahubctl/infrahubctl-transform).
+Within Infrahub a [Transform](../topics/transformation) is defined in an [external repository](../topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the transform using [infrahubctl transform](../infrahubctl/infrahubctl-transform).
 
 The goal of this guide is to develop a Python Transform and add it to Infrahub, we will achieve this by following these steps.
 
-1. Identify the relevant data you want to extract from the database using a [GraphQL query](/topics/graphql), that can take an input parameter to filter the data
+1. Identify the relevant data you want to extract from the database using a [GraphQL query](../topics/graphql), that can take an input parameter to filter the data
 2. Write a Python script that use the GraphQL query to read information from the system and transforms the data into a new format
 3. Create an entry for the transform within an .infrahub.yml file.
 4. Create a Git repository
@@ -138,7 +138,7 @@ Here the query will require an input parameter called `$name` what will refer to
 
 ## 2. Create the Python transform file
 
-The next step is to create the actual Python transform. The transform is a Python class that inherits from InfrahubTransform from the [Python SDK](/python-sdk). Create a file called `tags_transform.py`:
+The next step is to create the actual Python transform. The transform is a Python class that inherits from InfrahubTransform from the [Python SDK](../python-sdk). Create a file called `tags_transform.py`:
 
 ```python
 from infrahub_sdk.transforms import InfrahubTransform
@@ -244,7 +244,7 @@ queries:
   </TabItem>
 </Tabs>
 
-See [this topic](/topics/infrahub-yml) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
+See [this topic](../topics/infrahub-yml) for a full explanation of everything that can be defined in the `.infrahub.yml` file.
 
 ## 4. Create a Git repository
 
@@ -298,7 +298,7 @@ We have now successfully created a transform. Most of the transforms you will cr
 
 ## 6. Adding the repository to Infrahub
 
-In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](/guides/repository) in order to sync the repository you created and make it available within Infrahub.
+In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](../guides/repository) in order to sync the repository you created and make it available within Infrahub.
 
 ## 7. Accessing the transform from the API
 

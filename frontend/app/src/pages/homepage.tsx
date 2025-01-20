@@ -123,7 +123,7 @@ const HelperCard = ({
   docLabel,
 }: HelperCardProps) => {
   return (
-    <Card className="border flex flex-col hover:shadow-md transition-shadow duration-300 h-[180px] w-[320px]">
+    <Card className="border flex flex-col hover:shadow-md transition-shadow duration-300 h-46 w-80">
       <h3 className="font-semibold flex items-center gap-1 mb-1">
         <Icon icon={icon} /> {title}
       </h3>

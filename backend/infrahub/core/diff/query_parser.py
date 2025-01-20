@@ -4,7 +4,13 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
-from infrahub.core.constants import BranchSupportType, DiffAction, RelationshipCardinality, RelationshipStatus
+from infrahub.core.constants import (
+    NULL_VALUE,
+    BranchSupportType,
+    DiffAction,
+    RelationshipCardinality,
+    RelationshipStatus,
+)
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.timestamp import Timestamp
 
@@ -119,22 +125,25 @@ class DiffPropertyIntermediate:
                 action = DiffAction.REMOVED
                 previous = lone_value.value
             return (action, lone_value.changed_at, previous, new)
-        previous_value = ordered_values[0].value
-        previous_status = ordered_values[0].status
+        earliest_value = ordered_values[0]
         new_diff_value = ordered_values[-1]
         new_value = new_diff_value.value
         new_status = new_diff_value.status
         action = DiffAction.UPDATED
-        if previous_value in (None, "NULL") and new_value not in (None, "NULL"):
+        previous_value = earliest_value.value
+        if earliest_value.changed_at > from_time:
             action = DiffAction.ADDED
-        elif (previous_value not in (None, "NULL") and new_value in (None, "NULL")) or (
-            previous_status,
+            previous_value = None
+        elif earliest_value.value in (None, NULL_VALUE) and new_value not in (None, NULL_VALUE):
+            action = DiffAction.ADDED
+        elif (earliest_value.value not in (None, NULL_VALUE) and new_value in (None, NULL_VALUE)) or (
+            earliest_value.status,
             new_status,
         ) == (RelationshipStatus.ACTIVE, RelationshipStatus.DELETED):
             action = DiffAction.REMOVED
-            if new_value != "NULL":
+            if new_value != NULL_VALUE:
                 new_value = None
-        elif previous_value == new_value or {previous_value, new_value} <= {None, "NULL"}:
+        elif earliest_value.value == new_value or {earliest_value.value, new_value} <= {None, NULL_VALUE}:
             action = DiffAction.UNCHANGED
         return (action, new_diff_value.changed_at, previous_value, new_value)
 
@@ -252,11 +261,11 @@ class DiffSingleRelationshipIntermediate:
         action = DiffAction.UPDATED
         if last_diff_prop.changed_at < from_time:
             action = DiffAction.UNCHANGED
-        elif previous_value in (None, "NULL") and new_value not in (None, "NULL"):
+        elif previous_value in (None, NULL_VALUE) and new_value not in (None, NULL_VALUE):
             action = DiffAction.ADDED
-        elif previous_value not in (None, "NULL") and new_value in (None, "NULL"):
+        elif previous_value not in (None, NULL_VALUE) and new_value in (None, NULL_VALUE):
             action = DiffAction.REMOVED
-        elif previous_value == new_value or {previous_value, new_value} <= {None, "NULL"}:
+        elif previous_value == new_value or {previous_value, new_value} <= {None, NULL_VALUE}:
             action = DiffAction.UNCHANGED
         return DiffProperty(
             property_type=property_type,
@@ -335,6 +344,7 @@ class DiffRelationshipIntermediate:
             )
         )
         to_time = database_path.property_to_time
+        # if the to time was set in the time frame, then it is effectively a delete
         if (
             to_time
             and database_path.property_from_time < diff_from_time <= to_time <= diff_to_time
@@ -513,6 +523,11 @@ class DiffQueryParser:
         self._finalize(include_unchanged=include_unchanged)
 
     def _parse_path(self, database_path: DatabasePath) -> None:
+        to_time = database_path.property_to_time
+        # this path was added and removed within the timeframe, so we ignore it
+        if to_time and self.from_time <= database_path.property_from_time <= to_time <= self.to_time:
+            return
+
         diff_root = self._get_diff_root(database_path=database_path)
         diff_node = self._get_diff_node(database_path=database_path, diff_root=diff_root)
         self._update_attribute_level(database_path=database_path, diff_node=diff_node)

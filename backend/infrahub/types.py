@@ -354,7 +354,7 @@ ATTRIBUTE_PYTHON_TYPES: dict[str, type] = {
     "Color": str,  # Colors often represented as hex strings
     "Number": float,  # Numbers can be floats for general use
     "Bandwidth": float,  # Bandwidth in some units, represented as a float
-    "IPHost": IPvAnyAddress,
+    "IPHost": IPvAnyAddress,  # type: ignore[dict-item]
     "IPNetwork": str,
     "Boolean": bool,
     "Checkbox": bool,  # Checkboxes represent boolean values

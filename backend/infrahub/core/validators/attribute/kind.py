@@ -67,7 +67,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             if value in (None, NULL_VALUE):
                 continue
             try:
-                infrahub_attribute_class.validate(
+                infrahub_attribute_class.validate_format(
                     value=result.get("attribute_value"), name=self.attribute_schema.name, schema=self.attribute_schema
                 )
             except ValidationError:

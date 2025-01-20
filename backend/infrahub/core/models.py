@@ -151,7 +151,7 @@ class SchemaUpdateConstraintInfo(BaseModel):
         return "schema.validator.path"
 
     def __hash__(self) -> int:
-        return hash((type(self),) + tuple([self.constraint_name + self.path.get_path()]))
+        return hash((type(self),) + tuple(self.constraint_name + self.path.get_path()))
 
 
 class SchemaUpdateValidationResult(BaseModel):
@@ -493,8 +493,8 @@ class HashableModel(BaseModel):
             raise ValueError(f"Unable to merge the list for {field_name}, some items have the same _sorting_id")
 
         shared_ids = intersection(list(local_sub_items.keys()), list(other_sub_items.keys()))
-        local_only_ids = set(list(local_sub_items.keys())) - set(shared_ids)
-        other_only_ids = set(list(other_sub_items.keys())) - set(shared_ids)
+        local_only_ids = set(local_sub_items.keys()) - set(shared_ids)
+        other_only_ids = set(other_sub_items.keys()) - set(shared_ids)
 
         new_list = [value for key, value in local_sub_items.items() if key in local_only_ids]
         new_list.extend(
