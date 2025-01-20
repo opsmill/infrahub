@@ -404,7 +404,6 @@ ignore = [
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
-    "B008",    # Do not perform function call `Depends` in argument defaults; 
     "B904",    # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
     "C403",    # Unnecessary `list` comprehension (rewrite as a `set` comprehension)
     "C409",    # Unnecessary `list` literal passed to `tuple()` (rewrite as a `tuple` literal)
@@ -471,6 +470,17 @@ ignore = [
     "UP018",   # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",   # Use format specifiers instead of percent format
     "UP035",   # `typing.List` is deprecated, use `list` instead
+]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Body",
+    "fastapi.Depends",
+    "fastapi.params.Depends",
+    "fastapi.File",
+    "fastapi.Query",
+    "fastapi.params.Query",
+    "typer.Argument"
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/
