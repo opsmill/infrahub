@@ -121,7 +121,12 @@ async def test_create_artifact_definition(
             call(
                 workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
                 parameters={
-                    "model": RequestArtifactDefinitionGenerate(artifact_definition=ad1.id, branch=branch.name, limit=[])
+                    "model": RequestArtifactDefinitionGenerate(
+                        artifact_definition_id=ad1.id,
+                        artifact_definition_name=ad1.name.value,
+                        branch=branch.name,
+                        limit=[],
+                    )
                 },
             ),
         ]
@@ -179,7 +184,10 @@ async def test_update_artifact_definition(
                 workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
                 parameters={
                     "model": RequestArtifactDefinitionGenerate(
-                        artifact_definition=definition1.id, branch=branch.name, limit=[]
+                        artifact_definition_id=definition1.id,
+                        artifact_definition_name=definition1.name.value,
+                        branch=branch.name,
+                        limit=[],
                     )
                 },
             ),

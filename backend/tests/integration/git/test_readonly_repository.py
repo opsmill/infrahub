@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from infrahub_sdk.protocols import CoreArtifact, CoreArtifactDefinition
 
 from infrahub.core import registry
 from infrahub.core.constants import DiffAction, InfrahubKind
@@ -100,23 +101,25 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
     async def test_step02_validate_generated_artifacts(
         self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient, person_john: Node
     ):
-        artifacts = await client.all(kind=InfrahubKind.ARTIFACT, branch="ro_repository")
-        assert artifacts
-        assert artifacts[0].name.value == "Ownership report"
+        artifacts = await client.all(kind=CoreArtifact, branch="ro_repository")
+        artifacts_dict = {item.name.value: item for item in artifacts}
+        assert sorted(artifacts_dict.keys()) == ["Ownership report", "name report"]
         john_display_label = await person_john.render_display_label(db=db)
 
         artifact_diff_calculator = ArtifactDiffCalculator(db=db)
         branch = await registry.get_branch(db=db, branch="ro_repository")
         diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
-        assert len(diffs) == 1
-        assert diffs[0] == BranchDiffArtifact(
+        diffs_dict = {str(item.display_label): item for item in diffs}
+        assert sorted(diffs_dict.keys()) == ["John - Ownership report", "John - name report"]
+        assert diffs_dict["John - Ownership report"] == BranchDiffArtifact(
             branch="ro_repository",
-            id=artifacts[0].id,
+            id=artifacts_dict["Ownership report"].id,
             display_label=f"{john_display_label} - Ownership report",
             action=DiffAction.ADDED,
             target=ArtifactTarget(id=person_john.id, kind="TestingPerson", display_label=john_display_label),
             item_new=BranchDiffArtifactStorage(
-                storage_id=artifacts[0].storage_id.value, checksum=artifacts[0].checksum.value
+                storage_id=str(artifacts_dict["Ownership report"].storage_id.value),
+                checksum=str(artifacts_dict["Ownership report"].checksum.value),
             ),
             item_previous=None,
         )
@@ -134,10 +137,14 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         )
         assert check_definition.file_path.value == "checks/car_overview.py"
 
-        artifact_definitions = await client.all(kind=InfrahubKind.ARTIFACTDEFINITION)
+        artifact_definitions = await client.all(kind=CoreArtifactDefinition)
 
         for artifact_definition in artifact_definitions:
-            model = RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch="main")
+            model = RequestArtifactDefinitionGenerate(
+                branch="main",
+                artifact_definition_id=artifact_definition.id,
+                artifact_definition_name=artifact_definition.name.value,
+            )
             await services.service.workflow.submit_workflow(
                 REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
             )
@@ -168,30 +175,36 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         await john_branch.save(db=db)
         john_display_label = await john_branch.render_display_label(db=db)
 
-        artifact_definitions = await client.all(kind=InfrahubKind.ARTIFACTDEFINITION)
+        artifact_definitions = await client.all(kind=CoreArtifactDefinition)
 
         for artifact_definition in artifact_definitions:
-            model = RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch="branch")
+            model = RequestArtifactDefinitionGenerate(
+                artifact_definition_id=artifact_definition.id,
+                artifact_definition_name=artifact_definition.name.value,
+                branch="branch",
+            )
             await services.service.workflow.submit_workflow(
                 REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
             )
 
-        artifacts = await client.all(kind=InfrahubKind.ARTIFACT, branch="branch")
-        assert artifacts
-        assert artifacts[0].name.value == "Ownership report"
+        artifacts = await client.all(kind=CoreArtifact, branch="branch")
+        artifacts_dict = {item.name.value: item for item in artifacts}
+        assert sorted(artifacts_dict.keys()) == ["Ownership report", "name report"]
         artifact_main = await NodeManager.get_one(db=db, id=artifacts[0].id)
 
         artifact_diff_calculator = ArtifactDiffCalculator(db=db)
         diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
-        assert len(diffs) == 1
-        assert diffs[0] == BranchDiffArtifact(
+        diffs_dict = {str(item.display_label): item for item in diffs}
+        assert sorted(diffs_dict.keys()) == ["John2 - Ownership report", "John2 - name report"]
+        assert diffs_dict["John2 - Ownership report"] == BranchDiffArtifact(
             branch="branch",
-            id=artifacts[0].id,
+            id=artifacts_dict["Ownership report"].id,
             display_label=f"{john_display_label} - Ownership report",
             action=DiffAction.UPDATED,
             target=ArtifactTarget(id=person_john.id, kind="TestingPerson", display_label=john_display_label),
             item_new=BranchDiffArtifactStorage(
-                storage_id=artifacts[0].storage_id.value, checksum=artifacts[0].checksum.value
+                storage_id=str(artifacts_dict["Ownership report"].storage_id.value),
+                checksum=str(artifacts_dict["Ownership report"].checksum.value),
             ),
             item_previous=BranchDiffArtifactStorage(
                 storage_id=artifact_main.storage_id.value, checksum=artifact_main.checksum.value

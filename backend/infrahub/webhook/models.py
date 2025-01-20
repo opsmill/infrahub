@@ -6,11 +6,13 @@ from math import floor
 from typing import Any, Optional, Union
 from uuid import uuid4
 
+from infrahub_sdk.protocols import CoreTransformPython
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from infrahub.services import InfrahubServices
+from infrahub.transformations.constants import DEFAULT_TRANSFORM_TIMEOUT
 
 
 class SendWebhookData(BaseModel):
@@ -95,7 +97,13 @@ class TransformWebhook(Webhook):
         default_branch = repo.default_branch
         commit = repo.get_commit_value(branch_name=default_branch)
 
-        self._payload = await repo.execute_python_transform(
+        timeout = DEFAULT_TRANSFORM_TIMEOUT
+        if transform := await self.service.client.get(
+            kind=CoreTransformPython, name__value=self.transform_name, raise_when_missing=False
+        ):
+            timeout = transform.timeout.value
+
+        self._payload = await repo.execute_python_transform.with_options(timeout_seconds=timeout)(
             branch_name=default_branch,
             commit=commit,
             location=f"{self.transform_file}::{self.transform_class}",
