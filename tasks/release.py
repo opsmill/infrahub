@@ -195,6 +195,25 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
     yaml.dump(docker_yaml, docker_path)
 
 
+@task
+def update_test_containers(context: Context, toml_file: str | None = "python_testcontainers/pyproject.toml") -> None:
+    """Update test containers pyproject.toml with the current version from pyproject.toml."""
+    print(" - [release] Update python_testcontainers/pyproject.toml")
+
+    # Get the version directly from pyproject.toml
+    version = get_version_from_pyproject()  # Returns a string like '1.1.0a0'
+
+    # Read the test containers pyproject.toml file
+    test_containers_file = Path(toml_file)
+    test_containers_toml = test_containers_file.read_text(encoding="utf8")
+
+    # Replace the version referenced there
+    new_toml = re.sub(r'^version = ".*"', f'version = "{version}"', test_containers_toml, flags=re.MULTILINE)
+
+    # Print the new file out
+    test_containers_file.write_text(new_toml, encoding="utf8")
+
+
 def get_enum_mappings() -> dict:
     """Extracts enum mappings dynamically."""
     from infrahub.config import (
