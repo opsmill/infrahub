@@ -42,6 +42,27 @@ describe("getUpdateMutationFromFormData - test", () => {
     });
   });
 
+  it("correctly unset the array for multiselect", () => {
+    // GIVEN
+    const fields: Array<DynamicFieldProps> = [
+      buildField({
+        name: "field1",
+        defaultValue: { source: { type: "user" }, value: ["test"] },
+      }),
+    ];
+    const formData: Record<string, FormAttributeValue> = {
+      field1: { source: { type: "user" }, value: [] },
+    };
+
+    // WHEN
+    const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+    // THEN
+    expect(mutationData).to.deep.equal({
+      field1: null,
+    });
+  });
+
   it("set value to null if it's from the user and is an empty string", () => {
     // GIVEN
     const fields: Array<DynamicFieldProps> = [
