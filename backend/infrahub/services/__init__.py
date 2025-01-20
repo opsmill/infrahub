@@ -53,7 +53,6 @@ class InfrahubServices:
         database: InfrahubDatabase | None = None,
         message_bus: InfrahubMessageBus | None = None,
         workflow: InfrahubWorkflow | None = None,
-        component: InfrahubComponent | None = None,
     ):
         """
         This method should not be called directly, use `new` instead for a proper initialization.
@@ -64,12 +63,12 @@ class InfrahubServices:
         self._database = database
         self._message_bus = message_bus
         self._workflow = workflow
-        self._component = component
         self.log = log
         self.component_type = component_type
         self.http = http
         self.event = event
         self.scheduler = scheduler
+        self._component = None
 
     @classmethod
     async def new(
@@ -89,13 +88,6 @@ class InfrahubServices:
 
         component_type = component_type or ComponentType.NONE
 
-        if cache is not None and database is not None and message_bus is not None:
-            component: Optional[InfrahubComponent] = await InfrahubComponent.new(
-                cache=cache, component_type=component_type, db=database, message_bus=message_bus
-            )
-        else:
-            component = None
-
         scheduler = InfrahubScheduler(component_type)
         service = cls(
             cache=cache,
@@ -103,7 +95,6 @@ class InfrahubServices:
             database=database,
             message_bus=message_bus,
             workflow=workflow,
-            component=component,
             log=log or get_logger(),
             component_type=component_type,
             scheduler=scheduler,
@@ -115,16 +106,27 @@ class InfrahubServices:
         scheduler.service = service
 
         if message_bus is not None:
-            # need circular dependency for injecting `service`  within `execute_message`
+            # Need circular dependency for injecting `service`  within `execute_message`. This might be removed
+            # using proper dependency injections.
             message_bus.service = service
+
+            if cache is not None and database is not None:
+                component = await InfrahubComponent.new(
+                    cache=cache, component_type=component_type, db=database, message_bus=message_bus
+                )
+                # We need to post init `service._component` because InfrahubComponent.new relies on message_bus
+                # itself relying on service.
+                service._component = component
 
         if workflow is not None:
             if isinstance(workflow, WorkflowWorkerExecution):
-                assert component is not None
+                assert service.component is not None
                 # Ideally `WorkflowWorkerExecution.initialize` would be directly part of WorkflowWorkerExecution
                 # constructor but this requires some redesign as it depends on InfrahubComponent which is instantiated
                 # after workflow instantiation.
-                await workflow.initialize(component_is_primary_server=await component.is_primary_gunicorn_worker())
+                await workflow.initialize(
+                    component_is_primary_server=await service.component.is_primary_gunicorn_worker()
+                )
             elif isinstance(workflow, WorkflowLocalExecution):
                 # Circular dependency is only needed for injecting `service` within `execute_workflow` while testing.
                 workflow.service = service
