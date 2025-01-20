@@ -133,7 +133,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
                     branch=str(result.get("branch_name")),
                     path_type=PathType.NODE,
                     node_id=str(result.get("start_node.uuid")),
-                    property_name="children" if self.check_children else "parent",
+                    field_name="children" if self.check_children else "parent",
                     peer_id=str(result.get("current_peer.uuid")),
                     kind=self.node_schema.kind,
                 )
