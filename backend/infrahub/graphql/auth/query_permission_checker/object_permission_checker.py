@@ -36,7 +36,7 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
             else PermissionDecisionFlag.ALLOW_OTHER
         )
 
-        kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
+        kinds = analyzed_query.query_report.impacted_models
 
         # Identify which operations are performed. As we don't have a mapping between kinds and the
         # operation we currently require permissions all defined permissions for all objects
@@ -95,7 +95,7 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         branch: Branch,
     ) -> CheckerResolution:
         is_account_operation = False
-        kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
+        kinds = analyzed_query.query_report.impacted_models
         operation_names = [operation.name for operation in analyzed_query.operations]
 
         for kind in kinds:
@@ -139,7 +139,7 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         branch: Branch,
     ) -> CheckerResolution:
         is_permission_operation = False
-        kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
+        kinds = analyzed_query.query_report.impacted_models
 
         for kind in kinds:
             schema = get_schema(db=db, branch=branch, node_schema=kind)
@@ -180,7 +180,7 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         branch: Branch,
     ) -> CheckerResolution:
         is_repository_operation = False
-        kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
+        kinds = analyzed_query.query_report.impacted_models
 
         for kind in kinds:
             schema = get_schema(db=db, branch=branch, node_schema=kind)

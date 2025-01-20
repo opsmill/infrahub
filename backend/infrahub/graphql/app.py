@@ -282,9 +282,7 @@ class InfrahubGraphQLApp:
         GRAPHQL_QUERY_HEIGHT_METRICS.labels(**labels).observe(await analyzed_query.calculate_height())
         # GRAPHQL_QUERY_VARS_METRICS.labels(**labels).observe(len(analyzed_query.variables))
         GRAPHQL_TOP_LEVEL_QUERIES_METRICS.labels(**labels).observe(analyzed_query.nbr_queries)
-        GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(
-            len(await analyzed_query.get_models_in_use(types=graphql_params.context.types))
-        )
+        GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(len(analyzed_query.query_report.impacted_models))
 
         _, errors = analyzed_query.is_valid
         if errors:
