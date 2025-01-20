@@ -50,6 +50,23 @@ const deviceAttributes = [
     optional: false,
     order_weight: 3000,
   },
+  {
+    id: "cddf970e-446d-4fd1-bf73-b4f7577b4cc9",
+    name: "test",
+    kind: "JSON",
+    label: "JSON",
+    description: null,
+    default_value: null,
+    enum: null,
+    regex: null,
+    max_length: null,
+    min_length: null,
+    inherited: false,
+    unique: false,
+    branch: true,
+    optional: true,
+    order_weight: 3000,
+  },
 ];
 
 const deviceRelationship = [
@@ -65,36 +82,6 @@ const deviceRelationship = [
     cardinality: "one",
     branch: true,
     optional: false,
-    filters: [
-      {
-        name: "id",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "type__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "description__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "name__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-    ],
     order_weight: 500, // Should be first
   },
   {
@@ -109,36 +96,6 @@ const deviceRelationship = [
     cardinality: "one",
     branch: true,
     optional: false,
-    filters: [
-      {
-        name: "id",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "description__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "label__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "name__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-    ],
     order_weight: 4000,
   },
   {
@@ -153,36 +110,6 @@ const deviceRelationship = [
     cardinality: "one",
     branch: true,
     optional: false,
-    filters: [
-      {
-        name: "id",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "name__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "description__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "label__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-    ],
     order_weight: 5000,
   },
   {
@@ -197,50 +124,6 @@ const deviceRelationship = [
     cardinality: "many",
     branch: true,
     optional: true,
-    filters: [
-      {
-        name: "id",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "speed__value",
-        kind: "Number",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "mtu__value",
-        kind: "Number",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "name__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "description__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "enabled__value",
-        kind: "Boolean",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-    ],
     order_weight: 6000,
   },
   {
@@ -255,36 +138,6 @@ const deviceRelationship = [
     cardinality: "one",
     branch: true,
     optional: true,
-    filters: [
-      {
-        name: "id",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "asn__value",
-        kind: "Number",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "name__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "description__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-    ],
     order_weight: 7000,
   },
   {
@@ -299,29 +152,6 @@ const deviceRelationship = [
     cardinality: "many",
     branch: true,
     optional: true,
-    filters: [
-      {
-        name: "id",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "name__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-      {
-        name: "description__value",
-        kind: "Text",
-        enum: null,
-        object_kind: null,
-        description: null,
-      },
-    ],
     order_weight: 8000,
   },
 ];
@@ -339,77 +169,21 @@ export const C_deviceSchema: any = {
   inherit_from: [],
   groups: [],
   branch: true,
-  filters: [
-    {
-      name: "ids",
-      kind: "Text",
-      enum: null,
-      object_kind: null,
-      description: null,
-    },
-    {
-      name: "description__value",
-      kind: "Text",
-      enum: null,
-      object_kind: null,
-      description: null,
-    },
-    {
-      name: "type__value",
-      kind: "Text",
-      enum: null,
-      object_kind: null,
-      description: null,
-    },
-    {
-      name: "name__value",
-      kind: "Text",
-      enum: null,
-      object_kind: null,
-      description: null,
-    },
-    {
-      name: "site__id",
-      kind: "Object",
-      enum: null,
-      object_kind: "Location",
-      description: null,
-    },
-    {
-      name: "tags__id",
-      kind: "Object",
-      enum: null,
-      object_kind: "Tag",
-      description: null,
-    },
-    {
-      name: "asn__id",
-      kind: "Object",
-      enum: null,
-      object_kind: "AutonomousSystem",
-      description: null,
-    },
-    {
-      name: "status__id",
-      kind: "Object",
-      enum: null,
-      object_kind: "Status",
-      description: null,
-    },
-    {
-      name: "role__id",
-      kind: "Object",
-      enum: null,
-      object_kind: "Role",
-      description: null,
-    },
-  ],
 };
 
-export const C_deviceAttributeColumns = deviceAttributes.map((attribute: any) => ({
-  isAttribute: true,
-  ...attribute,
-}));
+export const C_deviceAttributeListColumns = deviceAttributes
+  .filter((attribute: any) => attribute.kind !== "JSON")
+  .map((attribute: any) => ({
+    isAttribute: true,
+    ...attribute,
+  }));
+
+export const C_deviceProfileColumns = deviceAttributes
+  .filter((attribute: any) => attribute.optional)
+  .map((attribute: any) => ({
+    isAttribute: true,
+    ...attribute,
+  }));
 
 export const C_deviceRelationshipColumns = deviceRelationship
   .filter((relationship: any) => relationship.kind !== "Component")
@@ -421,6 +195,6 @@ export const C_deviceRelationshipColumns = deviceRelationship
 
 export const C_deviceObjectColumns = [
   C_deviceRelationshipColumns[0], // Should be first due to order_weight
-  ...C_deviceAttributeColumns,
+  ...C_deviceAttributeListColumns,
   ...C_deviceRelationshipColumns.slice(1), // Rest of the relationships
 ];
