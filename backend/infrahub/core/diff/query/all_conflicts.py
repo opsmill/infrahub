@@ -11,11 +11,14 @@ from ..model.path import TrackingId
 class EnrichedDiffAllConflictsQuery(Query):
     name = "enriched_diff_all_conflicts"
     type = QueryType.READ
+    insert_return = False
 
     def __init__(
         self, diff_branch_name: str, tracking_id: TrackingId | None = None, diff_id: str | None = None, **kwargs: Any
     ) -> None:
         super().__init__(**kwargs)
+        if (diff_id is None and tracking_id is None) or (diff_id and tracking_id):
+            raise ValueError("EnrichedDiffAllConflictsQuery requires one and only one of `tracking_id` or `diff_id`")
         self.diff_branch_name = diff_branch_name
         self.tracking_id = tracking_id
         self.diff_id = diff_id
@@ -43,7 +46,6 @@ UNION
 MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(:DiffRelationship)
     -[:DIFF_HAS_ELEMENT]->(element:DiffRelationshipElement)-[:DIFF_HAS_CONFLICT]->(rel_element_conflict:DiffConflict)
 RETURN element.path_identifier AS path_identifier, rel_element_conflict AS conflict
-UNION
 UNION
 MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(:DiffRelationship)
     -[:DIFF_HAS_ELEMENT]->(:DiffRelationshipElement)-[:DIFF_HAS_PROPERTY]->(property:DiffProperty)
