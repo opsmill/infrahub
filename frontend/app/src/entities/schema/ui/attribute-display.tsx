@@ -1,48 +1,56 @@
 import { components } from "@/shared/api/rest/types.generated";
 import Accordion from "@/shared/components/display/accordion";
+import { ComputedAttributeDisplay } from "./computed-attribute-display";
 import { AccordionStyled, NullDisplay, PropertyRow } from "./styled";
 
 export const AttributeDisplay = ({
   attribute,
 }: {
   attribute: components["schemas"]["AttributeSchema-Output"];
-}) => (
-  <AccordionStyled
-    title={attribute.label || attribute.name}
-    kind={attribute.kind}
-    description={attribute.description}
-    isOptional={attribute.optional}
-    isUnique={attribute.unique}
-    isReadOnly={attribute.read_only}
-  >
-    <div>
-      <PropertyRow title="ID" value={attribute.id} />
-      <PropertyRow title="Kind" value={attribute.kind} />
-      <PropertyRow title="Name" value={attribute.name} />
-      <PropertyRow title="Label" value={attribute.label} />
-      <PropertyRow title="Description" value={attribute.description} />
-      <PropertyRow title="Inherited" value={attribute.inherited} />
-    </div>
+}) => {
+  return (
+    <AccordionStyled
+      title={attribute.label || attribute.name}
+      kind={attribute.kind}
+      description={attribute.description}
+      isOptional={attribute.optional}
+      isUnique={attribute.unique}
+      isReadOnly={attribute.read_only}
+      isComputed={!!attribute.computed_attribute}
+    >
+      <div>
+        <PropertyRow title="ID" value={attribute.id} />
+        <PropertyRow title="Kind" value={attribute.kind} />
+        <PropertyRow
+          title="Computed attribute"
+          value={<ComputedAttributeDisplay computedAttribute={attribute.computed_attribute} />}
+        />
+        <PropertyRow title="Name" value={attribute.name} />
+        <PropertyRow title="Label" value={attribute.label} />
+        <PropertyRow title="Description" value={attribute.description} />
+        <PropertyRow title="Inherited" value={attribute.inherited} />
+      </div>
 
-    <div>
-      <PropertyRow title="Unique" value={attribute.unique} />
-      <PropertyRow title="Optional" value={attribute.optional} />
-      <PropertyRow title="Choices" value={<ChoicesRow choices={attribute.choices} />} />
-      <PropertyRow title="Enum" value={attribute.enum as string[]} />
-    </div>
+      <div>
+        <PropertyRow title="Unique" value={attribute.unique} />
+        <PropertyRow title="Optional" value={attribute.optional} />
+        <PropertyRow title="Choices" value={<ChoicesRow choices={attribute.choices} />} />
+        <PropertyRow title="Enum" value={attribute.enum as string[]} />
+      </div>
 
-    <div>
-      <PropertyRow title="Default value" value={attribute.default_value as any} />
-      <PropertyRow title="Max length" value={attribute.max_length} />
-      <PropertyRow title="Min length" value={attribute.min_length} />
-      <PropertyRow title="Regex" value={attribute.regex} />
-    </div>
-    <div>
-      <PropertyRow title="Branch" value={attribute.branch} />
-      <PropertyRow title="Order weight" value={attribute.order_weight} />
-    </div>
-  </AccordionStyled>
-);
+      <div>
+        <PropertyRow title="Default value" value={attribute.default_value as any} />
+        <PropertyRow title="Max length" value={attribute.max_length} />
+        <PropertyRow title="Min length" value={attribute.min_length} />
+        <PropertyRow title="Regex" value={attribute.regex} />
+      </div>
+      <div>
+        <PropertyRow title="Branch" value={attribute.branch} />
+        <PropertyRow title="Order weight" value={attribute.order_weight} />
+      </div>
+    </AccordionStyled>
+  );
+};
 
 const ChoicesRow = ({
   choices,
