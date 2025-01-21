@@ -187,21 +187,3 @@ class InfrahubServices:
 
 
 ServiceFunction = Callable[[InfrahubServices], Awaitable[None]]
-
-
-class ServiceManager:
-    # Optional because it is supposed to be really instantiated later
-    _service: InfrahubServices | None = None
-
-    @property
-    def service(self) -> InfrahubServices:
-        if self._service is None:
-            raise ValueError("ServiceManager.service is not initialized")
-        return self._service
-
-    @service.setter
-    def service(self, _service: InfrahubServices) -> None:
-        self._service = _service
-
-
-services = ServiceManager()

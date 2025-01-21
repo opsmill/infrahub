@@ -1,11 +1,7 @@
-from contextlib import contextmanager
-from typing import Generator
-
 import pytest
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
-from infrahub.services import InfrahubServices, services
 from tests.helpers.constants import INFRAHUB_USE_TEST_CONTAINERS, PORT_BOLT_NEO4J, PORT_HTTP_NEO4J, PORT_PREFECT
 
 
@@ -56,18 +52,3 @@ def start_prefect_server_container(
     request.addfinalizer(cleanup)
 
     return {PORT_PREFECT: get_exposed_port(container, PORT_PREFECT)}
-
-
-@contextmanager
-def init_global_service(service: InfrahubServices) -> Generator:
-    """
-    `service` needs to be accessed through a global variable within prefect tasks, this utility
-    helps for restoring original `service` values so tests do no have side effects.
-    """
-
-    original = services._service
-    services._service = service
-    try:
-        yield service
-    finally:
-        services._service = original

@@ -27,7 +27,7 @@ from infrahub.exceptions import BranchNotFoundError, MergeFailedError, Validatio
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.log import get_log_data
 from infrahub.message_bus import Meta, messages
-from infrahub.services import services
+from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
@@ -39,9 +39,7 @@ from infrahub.workflows.utils import add_branch_tag
 
 
 @flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
-async def rebase_branch(branch: str) -> None:
-    service = services.service
-
+async def rebase_branch(branch: str, service: InfrahubServices) -> None:
     async with service.database.start_session() as db:
         log = get_run_logger()
         await add_branch_tag(branch_name=branch)
@@ -81,7 +79,10 @@ async def rebase_branch(branch: str) -> None:
             constraints += await merger.calculate_validations(target_schema=candidate_schema)
         if constraints:
             responses = await schema_validate_migrations(
-                message=SchemaValidateMigrationData(branch=obj, schema_branch=candidate_schema, constraints=constraints)
+                message=SchemaValidateMigrationData(
+                    branch=obj, schema_branch=candidate_schema, constraints=constraints
+                ),
+                service=service,
             )
             error_messages = [violation.message for response in responses for violation in response.violations]
             if error_messages:
@@ -119,7 +120,8 @@ async def rebase_branch(branch: str) -> None:
                         new_schema=candidate_schema,
                         previous_schema=schema_in_main_before,
                         migrations=migrations,
-                    )
+                    ),
+                    service=service,
                 )
                 for error in errors:
                     log.error(error)
@@ -146,8 +148,7 @@ async def rebase_branch(branch: str) -> None:
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
-async def merge_branch(branch: str) -> None:
-    service = services.service
+async def merge_branch(branch: str, service: InfrahubServices) -> None:
     async with service.database.start_session() as db:
         log = get_run_logger()
 
@@ -187,7 +188,8 @@ async def merge_branch(branch: str) -> None:
                     new_schema=merger.destination_schema,
                     previous_schema=merger.initial_source_schema,
                     migrations=merger.migrations,
-                )
+                ),
+                service=service,
             )
             for error in errors:
                 log.error(error)
@@ -227,9 +229,7 @@ async def merge_branch(branch: str) -> None:
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")
-async def delete_branch(branch: str) -> None:
-    service = services.service
-
+async def delete_branch(branch: str, service: InfrahubServices) -> None:
     await add_branch_tag(branch_name=branch)
 
     async with service.database.start_session() as db:
@@ -250,8 +250,7 @@ async def delete_branch(branch: str) -> None:
     description="Validate if the branch has some conflicts",
     persist_result=True,
 )
-async def validate_branch(branch: str) -> State:
-    service = services.service
+async def validate_branch(branch: str, service: InfrahubServices) -> State:
     await add_branch_tag(branch_name=branch)
 
     async with service.database.start_session() as db:
@@ -268,8 +267,7 @@ async def validate_branch(branch: str) -> State:
 
 
 @flow(name="create-branch", flow_run_name="Create branch {model.name}")
-async def create_branch(model: BranchCreateModel) -> None:
-    service = services.service
+async def create_branch(model: BranchCreateModel, service: InfrahubServices) -> None:
     await add_branch_tag(model.name)
 
     async with service.database.start_session() as db:

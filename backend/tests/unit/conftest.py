@@ -54,7 +54,7 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
@@ -2942,14 +2942,6 @@ def workflow_local():
     config.OVERRIDE.workflow = workflow
     yield workflow
     config.OVERRIDE.workflow = original
-
-
-@pytest.fixture
-async def init_service(db: InfrahubDatabase):
-    original = services._service
-    services._service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
-    yield services._service
-    services._service = original
 
 
 @pytest.fixture

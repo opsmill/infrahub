@@ -6,7 +6,7 @@ from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.log import get_logger
-from infrahub.services import services
+from infrahub.services import InfrahubServices
 from infrahub.workflows.catalogue import DIFF_REFRESH
 from infrahub.workflows.utils import add_branch_tag
 
@@ -14,8 +14,7 @@ log = get_logger()
 
 
 @flow(name="diff-update", flow_run_name="Update diff for branch {model.branch_name}")
-async def update_diff(model: RequestDiffUpdate) -> None:
-    service = services.service
+async def update_diff(model: RequestDiffUpdate, service: InfrahubServices) -> None:
     await add_branch_tag(branch_name=model.branch_name)
 
     async with service.database.start_session() as db:
@@ -35,8 +34,7 @@ async def update_diff(model: RequestDiffUpdate) -> None:
 
 
 @flow(name="diff-refresh", flow_run_name="Recreate diff for branch {branch_name}")
-async def refresh_diff(branch_name: str, diff_id: str) -> None:
-    service = services.service
+async def refresh_diff(branch_name: str, diff_id: str, service: InfrahubServices) -> None:
     await add_branch_tag(branch_name=branch_name)
 
     async with service.database.start_session() as db:
@@ -49,8 +47,7 @@ async def refresh_diff(branch_name: str, diff_id: str) -> None:
 
 
 @flow(name="diff-refresh-all", flow_run_name="Recreate all diffs for branch {branch_name}")
-async def refresh_diff_all(branch_name: str) -> None:
-    service = services.service
+async def refresh_diff_all(branch_name: str, service: InfrahubServices) -> None:
     await add_branch_tag(branch_name=branch_name)
 
     async with service.database.start_session() as db:

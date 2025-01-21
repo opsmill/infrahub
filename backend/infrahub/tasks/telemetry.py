@@ -13,7 +13,7 @@ from infrahub.core import registry, utils
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GRAPH_SCHEMA
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 
 TELEMETRY_KIND: str = "community"
 TELEMETRY_VERSION: str = "20240524"
@@ -105,8 +105,7 @@ async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict
 
 
 @flow(name="anonymous_telemetry_send", flow_run_name="Send anonymous telemetry")
-async def send_telemetry_push() -> None:
-    service = services.service
+async def send_telemetry_push(service: InfrahubServices) -> None:
     log = get_run_logger()
     if config.SETTINGS.main.telemetry_optout:
         log.info("Skipping, User opted out of this service.")

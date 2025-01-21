@@ -19,9 +19,8 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.initialization import setup_deployments, setup_worker_pools
 from tests.adapters.cache import MemoryCache
-from tests.adapters.message_bus import BusRecorder
+from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.graphql import graphql, graphql_mutation
-from tests.helpers.utils import init_global_service
 
 CREATE_PROPOSED_CHANGE = """
 mutation ProposedChange(
@@ -154,7 +153,10 @@ async def test_trigger_proposed_change(db: InfrahubDatabase, register_core_model
     )
 
     update_status = await graphql_mutation(
-        query=UPDATE_PROPOSED_CHANGE, db=db, variables={"proposed_change": proposed_change.id, "state": "canceled"}
+        query=UPDATE_PROPOSED_CHANGE,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "canceled"},
+        service=service,
     )
 
     cancelled_recorder = BusRecorder()
@@ -195,8 +197,13 @@ async def test_update_merged_proposed_change(db: InfrahubDatabase, register_core
     )
     await proposed_change.save(db=db)
 
+    service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
+
     update_status = await graphql_mutation(
-        query=UPDATE_PROPOSED_CHANGE, db=db, variables={"proposed_change": proposed_change.id, "state": "canceled"}
+        query=UPDATE_PROPOSED_CHANGE,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "canceled"},
+        service=service,
     )
 
     assert update_status.errors
@@ -216,44 +223,45 @@ async def test_merge_proposed_change_permission_failure(
         await setup_worker_pools(client=client)
         await setup_deployments(client)
 
-    with init_global_service(service):
-        registry.permission_backends = [LocalPermissionBackend()]
+    registry.permission_backends = [LocalPermissionBackend()]
 
-        branch_name = "merge-proposed-change-perm"
-        branch = await create_branch(branch_name=branch_name, db=db)
-        await service.cache.set(
-            key=f"workers:schema_hash:branch:{str(branch.get_uuid)}:{service.component_type.value}:worker:{WORKER_IDENTITY}",
-            value=branch.active_schema_hash.main,
-            expires=KVTTL.TWO_HOURS,
-        )
-        await service.cache.set(
-            key=f"workers:active:{service.component_type.value}:worker:{WORKER_IDENTITY}",
-            value=Timestamp().to_string(),
-            expires=KVTTL.FIFTEEN,
-        )
-        await service.component.refresh_heartbeat()
+    branch_name = "merge-proposed-change-perm"
+    branch = await create_branch(branch_name=branch_name, db=db)
+    await service.cache.set(
+        key=f"workers:schema_hash:branch:{str(branch.get_uuid)}:{service.component_type.value}:worker:{WORKER_IDENTITY}",
+        value=branch.active_schema_hash.main,
+        expires=KVTTL.TWO_HOURS,
+    )
+    await service.cache.set(
+        key=f"workers:active:{service.component_type.value}:worker:{WORKER_IDENTITY}",
+        value=Timestamp().to_string(),
+        expires=KVTTL.FIFTEEN,
+    )
+    await service.component.refresh_heartbeat()
 
-        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
-        await proposed_change.new(
-            db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
-        )
-        await proposed_change.save(db=db)
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(
+        db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
+    )
+    await proposed_change.save(db=db)
 
-        update_status = await graphql_mutation(
-            query=UPDATE_PROPOSED_CHANGE,
-            db=db,
-            variables={"proposed_change": proposed_change.id, "state": "merged"},
-            account_session=session_first_account,
-        )
+    update_status = await graphql_mutation(
+        query=UPDATE_PROPOSED_CHANGE,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "merged"},
+        account_session=session_first_account,
+        service=service,
+    )
 
-        assert update_status.errors
-        assert update_status.errors[0].message == "You are not allowed to merge proposed changes"
+    assert update_status.errors
+    assert update_status.errors[0].message == "You are not allowed to merge proposed changes"
 
-        update_status = await graphql_mutation(
-            query=UPDATE_PROPOSED_CHANGE,
-            db=db,
-            variables={"proposed_change": proposed_change.id, "state": "merged"},
-            account_session=session_admin,
-        )
+    update_status = await graphql_mutation(
+        query=UPDATE_PROPOSED_CHANGE,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "merged"},
+        account_session=session_admin,
+        service=service,
+    )
 
-        assert not update_status.errors
+    assert not update_status.errors

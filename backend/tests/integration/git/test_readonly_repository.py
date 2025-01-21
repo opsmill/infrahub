@@ -14,7 +14,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.lock import InfrahubLockRegistry
-from infrahub.services import services
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
@@ -29,6 +28,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch.models import Branch
     from infrahub.core.protocols import CoreCheckDefinition, CoreReadOnlyRepository
     from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubServices
     from tests.conftest import TestHelper
 
 
@@ -129,6 +129,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         db: InfrahubDatabase,
         client: InfrahubClient,
         helper: TestHelper,
+        service: InfrahubServices,
     ):
         await client.branch.merge(branch_name="ro_repository")
 
@@ -145,9 +146,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
                 artifact_definition_id=artifact_definition.id,
                 artifact_definition_name=artifact_definition.name.value,
             )
-            await services.service.workflow.submit_workflow(
-                REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
-            )
+            await service.workflow.submit_workflow(REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model})
 
         artifacts = await client.all(kind=InfrahubKind.ARTIFACT)
         assert artifacts
@@ -160,6 +159,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
         client: InfrahubClient,
         helper: TestHelper,
         person_john: Node,
+        service: InfrahubServices,
     ):
         from infrahub.core import registry
         from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
@@ -183,9 +183,7 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
                 artifact_definition_name=artifact_definition.name.value,
                 branch="branch",
             )
-            await services.service.workflow.submit_workflow(
-                REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
-            )
+            await service.workflow.submit_workflow(REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model})
 
         artifacts = await client.all(kind=CoreArtifact, branch="branch")
         artifacts_dict = {item.name.value: item for item in artifacts}

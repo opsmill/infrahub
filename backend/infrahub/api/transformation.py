@@ -62,7 +62,9 @@ async def transform_python(
             message="Repository doesn't have a commit",
         )
 
-    gql_params = await prepare_graphql_params(db=request.app.state.db, branch=branch_params.branch, at=branch_params.at)
+    gql_params = await prepare_graphql_params(
+        db=request.app.state.db, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
+    )
 
     result = await graphql(
         schema=gql_params.schema,
@@ -122,7 +124,9 @@ async def transform_jinja2(
             message="Repository doesn't have a commit",
         )
 
-    gql_params = await prepare_graphql_params(db=request.app.state.db, branch=branch_params.branch, at=branch_params.at)
+    gql_params = await prepare_graphql_params(
+        db=request.app.state.db, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
+    )
 
     result = await graphql(
         schema=gql_params.schema,

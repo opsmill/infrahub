@@ -9,7 +9,7 @@ from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
 from infrahub.message_bus import Meta, messages
-from infrahub.services import services
+from infrahub.services import InfrahubServices
 from infrahub.worker import WORKER_IDENTITY
 
 from ..log import get_log_data
@@ -34,8 +34,7 @@ from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_init
     name="git-repository-add-read-write",
     flow_run_name="Adding repository {model.repository_name} in branch {model.infrahub_branch_name}",
 )
-async def add_git_repository(model: GitRepositoryAdd) -> None:
-    service = services.service
+async def add_git_repository(model: GitRepositoryAdd, service: InfrahubServices) -> None:
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
@@ -72,8 +71,7 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
     name="git-repository-add-read-only",
     flow_run_name="Adding read only repository {model.repository_name} in branch {model.infrahub_branch_name}",
 )
-async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
-    service = services.service
+async def add_git_repository_read_only(model: GitRepositoryAddReadOnly, service: InfrahubServices) -> None:
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
@@ -104,9 +102,8 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
 
 
 @flow(name="git-repositories-create-branch", flow_run_name="Create branch '{branch}' in Git Repositories")
-async def create_branch(branch: str, branch_id: str) -> None:
+async def create_branch(branch: str, branch_id: str, service: InfrahubServices) -> None:
     """Request to the creation of git branches in available repositories."""
-    service = services.service
     await add_tags(branches=[branch])
     repositories: list[CoreRepository] = await service.client.filters(kind=CoreRepository)
     batch = await service.client.create_batch()
@@ -119,6 +116,7 @@ async def create_branch(branch: str, branch_id: str) -> None:
             repository_name=repository.name.value,
             repository_id=repository.id,
             repository_location=repository.location.value,
+            service=service,
         )
 
     async for _, _ in batch.execute():
@@ -126,9 +124,7 @@ async def create_branch(branch: str, branch_id: str) -> None:
 
 
 @flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
-async def sync_remote_repositories() -> None:
-    service = services.service
-
+async def sync_remote_repositories(service: InfrahubServices) -> None:
     log = get_run_logger()
 
     branches = await service.client.branch.all()
@@ -207,8 +203,8 @@ async def git_branch_create(
     repository_id: str,
     repository_name: str,
     repository_location: str,
+    service: InfrahubServices,
 ) -> None:
-    service = services.service
     log = get_run_logger()
     repo = await InfrahubRepository.init(
         id=repository_id, name=repository_name, location=repository_location, client=client, service=service
@@ -232,8 +228,7 @@ async def git_branch_create(
 
 
 @flow(name="artifact-definition-generate", flow_run_name="Generate all artifacts")
-async def generate_artifact_definition(branch: str) -> None:
-    service = services.service
+async def generate_artifact_definition(branch: str, service: InfrahubServices) -> None:
     await add_branch_tag(branch_name=branch)
 
     artifact_definitions = await service.client.all(kind=CoreArtifactDefinition, branch=branch, include=["id"])
@@ -250,9 +245,7 @@ async def generate_artifact_definition(branch: str) -> None:
 
 
 @flow(name="artifact-generate", flow_run_name="Generate artifact {model.artifact_name}")
-async def generate_artifact(model: RequestArtifactGenerate) -> None:
-    service = services.service
-
+async def generate_artifact(model: RequestArtifactGenerate, service: InfrahubServices) -> None:
     await add_tags(branches=[model.branch_name], nodes=[model.target_id])
     log = get_run_logger()
     repo = await get_initialized_repo(
@@ -281,9 +274,10 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
     name="request_artifact_definitions_generate",
     flow_run_name="Trigger Generation of Artifacts for {model.artifact_definition_name}",
 )
-async def generate_request_artifact_definition(model: RequestArtifactDefinitionGenerate) -> None:
-    service = services.service
-    await add_tags(branches=[model.branch], nodes=[model.artifact_definition_id])
+async def generate_request_artifact_definition(
+    model: RequestArtifactDefinitionGenerate, service: InfrahubServices
+) -> None:
+    await add_tags(branches=[model.branch])
 
     artifact_definition = await service.client.get(
         kind=InfrahubKind.ARTIFACTDEFINITION, id=model.artifact_definition_id, branch=model.branch
@@ -357,9 +351,7 @@ async def generate_request_artifact_definition(model: RequestArtifactDefinitionG
 
 
 @flow(name="git-repository-pull-read-only", flow_run_name="Pull latest commit on {model.repository_name}")
-async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
-    service = services.service
-
+async def pull_read_only(model: GitRepositoryPullReadOnly, service: InfrahubServices) -> None:
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
     log = get_run_logger()
 
@@ -412,9 +404,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
     name="git-repository-merge",
     flow_run_name="Merge {model.source_branch} > {model.destination_branch} in git repository",
 )
-async def merge_git_repository(model: GitRepositoryMerge) -> None:
-    service = services.service
-
+async def merge_git_repository(model: GitRepositoryMerge, service: InfrahubServices) -> None:
     await add_tags(branches=[model.source_branch, model.destination_branch], nodes=[model.repository_id])
 
     repo = await InfrahubRepository.init(
@@ -455,12 +445,12 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
 
 
 @flow(name="git-repository-import-object", flow_run_name="Import objects from git repository")
-async def import_objects_from_git_repository(model: GitRepositoryImportObjects) -> None:
+async def import_objects_from_git_repository(model: GitRepositoryImportObjects, service: InfrahubServices) -> None:
     await add_branch_tag(model.infrahub_branch_name)
     repo = await get_initialized_repo(
         repository_id=model.repository_id,
         name=model.repository_name,
-        service=services.service,
+        service=service,
         repository_kind=model.repository_kind,
         commit=model.commit,
     )
@@ -472,9 +462,9 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
     flow_run_name="Collecting modifications between commits {model.first_commit} and {model.second_commit}",
     persist_result=True,
 )
-async def git_repository_diff_names_only(model: GitDiffNamesOnly) -> GitDiffNamesOnlyResponse:
-    service = services.service
-
+async def git_repository_diff_names_only(
+    model: GitDiffNamesOnly, service: InfrahubServices
+) -> GitDiffNamesOnlyResponse:
     repo = await get_initialized_repo(
         repository_id=model.repository_id,
         name=model.repository_name,

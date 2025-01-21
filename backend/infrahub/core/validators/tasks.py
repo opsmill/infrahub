@@ -13,14 +13,16 @@ from infrahub.core.validators.model import (
     SchemaConstraintValidatorRequest,
 )
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.services import services
+from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.utils import add_tags
 
 from .models.validate_migration import SchemaValidateMigrationData, SchemaValidatorPathResponseData
 
 
 @flow(name="schema_validate_migrations", flow_run_name="Validate schema migrations", persist_result=True)
-async def schema_validate_migrations(message: SchemaValidateMigrationData) -> list[SchemaValidatorPathResponseData]:
+async def schema_validate_migrations(
+    message: SchemaValidateMigrationData, service: InfrahubServices
+) -> list[SchemaValidatorPathResponseData]:
     batch = InfrahubBatch(return_exceptions=True)
     log = get_run_logger()
     await add_tags(branches=[message.branch.name])
@@ -41,6 +43,7 @@ async def schema_validate_migrations(message: SchemaValidateMigrationData) -> li
             constraint_name=constraint.constraint_name,
             node_schema=schema,
             schema_path=constraint.path,
+            service=service,
         )
 
     results = [result async for _, result in batch.execute()]
@@ -59,9 +62,8 @@ async def schema_path_validate(
     constraint_name: str,
     node_schema: NodeSchema | GenericSchema,
     schema_path: SchemaPath,
+    service: InfrahubServices,
 ) -> SchemaValidatorPathResponseData:
-    service = services.service
-
     async with service.database.start_session() as db:
         constraint_request = SchemaConstraintValidatorRequest(
             branch=branch,

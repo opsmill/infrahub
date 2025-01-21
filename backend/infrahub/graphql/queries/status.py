@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, Field, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
-from infrahub.services import services
-
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
@@ -43,7 +41,10 @@ async def resolve_status(
     info: GraphQLResolveInfo,
 ) -> dict:
     context: GraphqlContext = info.context
-    service = context.service or services.service
+    service = context.service
+    if service is None:
+        raise ValueError("GraphqlContext.service is None")
+
     fields = await extract_fields_first_node(info)
     response: dict[str, Any] = {}
     workers = await service.component.list_workers(
