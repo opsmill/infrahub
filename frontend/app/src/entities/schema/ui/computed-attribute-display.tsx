@@ -49,7 +49,7 @@ export const ComputedAttributeDisplay = ({
                 rel="noopener noreferrer"
                 download={"jinja2-template.txt"}
               >
-                <Icon icon={"mdi:download"} />
+                <Icon icon={"mdi:download-outline"} />
               </LinkButton>
             </Tooltip>
           </div>
