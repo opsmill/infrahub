@@ -1,11 +1,12 @@
 import {
   attributesKindForDetailsViewExclude,
-  attributesKindForListView,
   relationshipsForDetailsView,
   relationshipsForListView,
   relationshipsForTabs,
 } from "@/config/constants";
+import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
 import { iGenericSchema, iNodeSchema, profilesAtom } from "@/entities/schema/stores/schema.atom";
+import { AttributeKind } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils";
 import { store } from "@/shared/stores";
 import { sortByOrderWeight } from "@/shared/utils/common";
@@ -34,7 +35,7 @@ export const getObjectAttributes = ({
     .filter((attribute) => (forProfiles ? attribute.optional : true))
     .filter((attribute) =>
       forListView
-        ? attributesKindForListView.includes(attribute.kind)
+        ? ATTRIBUTE_KINDS_FOR_LIST_VIEW.includes(attribute.kind as AttributeKind)
         : !attributesKindForDetailsViewExclude.includes(attribute.kind)
     )
     .map((attribute) => ({

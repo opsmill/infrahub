@@ -1,9 +1,10 @@
-import { SCHEMA_ATTRIBUTE_KIND, SEARCH_QUERY_NAME } from "@/config/constants";
+import { SEARCH_QUERY_NAME } from "@/config/constants";
 import { POOLS_PEER } from "@/entities/ipam/constants";
 import { SEARCH } from "@/entities/nodes/api/search";
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { useSchema } from "@/entities/schema/hooks/useSchema";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -156,17 +157,17 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
     }
     if ("value" in value && value.value) {
       switch (kind) {
-        case SCHEMA_ATTRIBUTE_KIND.BOOLEAN:
+        case ATTRIBUTE_KIND.BOOLEAN:
           return <Icon icon={value.value ? "mdi:check" : "mdi:remove"} className="text-sm" />;
-        case SCHEMA_ATTRIBUTE_KIND.COLOR:
+        case ATTRIBUTE_KIND.COLOR:
           return (
             <div className="h-4 w-4 rounded mt-0.5" style={{ background: value.value as string }} />
           );
-        case SCHEMA_ATTRIBUTE_KIND.DATETIME: {
+        case ATTRIBUTE_KIND.DATETIME: {
           const date = typeof value.value === "string" ? new Date(value.value) : new Date();
           return format(date, "yyyy/MM/dd HH:mm");
         }
-        case SCHEMA_ATTRIBUTE_KIND.DROPDOWN: {
+        case ATTRIBUTE_KIND.DROPDOWN: {
           if (!("color" in value)) return value.value;
 
           const color = value.color === "" ? "#f1f1f1" : value.color;

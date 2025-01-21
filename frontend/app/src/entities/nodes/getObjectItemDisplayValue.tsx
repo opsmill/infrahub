@@ -1,7 +1,7 @@
-import { MAX_VALUE_LENGTH_DISPLAY, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { SchemaAttributeType } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
+import { MAX_VALUE_LENGTH_DISPLAY } from "@/config/constants";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { iSchemaKindNameMap } from "@/entities/schema/stores/schemaKindName.atom";
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import {
   AnyAttribute,
   CheckboxAttribute,
@@ -192,43 +192,43 @@ export const ObjectAttributeValue = ({
 }) => {
   if (!attributeValue.value && attributeValue.value !== 0) return "-";
 
-  switch (attributeSchema.kind as SchemaAttributeType) {
-    case SCHEMA_ATTRIBUTE_KIND.ID:
-    case SCHEMA_ATTRIBUTE_KIND.TEXT:
-    case SCHEMA_ATTRIBUTE_KIND.NUMBER:
-    case SCHEMA_ATTRIBUTE_KIND.BANDWIDTH:
-    case SCHEMA_ATTRIBUTE_KIND.EMAIL:
-    case SCHEMA_ATTRIBUTE_KIND.MAC_ADDRESS:
-    case SCHEMA_ATTRIBUTE_KIND.FILE:
-    case SCHEMA_ATTRIBUTE_KIND.IP_HOST:
-    case SCHEMA_ATTRIBUTE_KIND.IP_NETWORK:
-    case SCHEMA_ATTRIBUTE_KIND.ANY:
+  switch (attributeSchema.kind as AttributeKind) {
+    case ATTRIBUTE_KIND.ID:
+    case ATTRIBUTE_KIND.TEXT:
+    case ATTRIBUTE_KIND.NUMBER:
+    case ATTRIBUTE_KIND.BANDWIDTH:
+    case ATTRIBUTE_KIND.EMAIL:
+    case ATTRIBUTE_KIND.MAC_ADDRESS:
+    case ATTRIBUTE_KIND.FILE:
+    case ATTRIBUTE_KIND.IP_HOST:
+    case ATTRIBUTE_KIND.IP_NETWORK:
+    case ATTRIBUTE_KIND.ANY:
       return <TextDisplay>{getTextValue(attributeValue).toString()}</TextDisplay>;
-    case SCHEMA_ATTRIBUTE_KIND.URL:
+    case ATTRIBUTE_KIND.URL:
       return (
         <Link to={getTextValue(attributeValue).toString()} target="_blank" rel="noreferrer">
           {getTextValue(attributeValue).toString()}
         </Link>
       );
-    case SCHEMA_ATTRIBUTE_KIND.BOOLEAN:
-    case SCHEMA_ATTRIBUTE_KIND.CHECKBOX:
+    case ATTRIBUTE_KIND.BOOLEAN:
+    case ATTRIBUTE_KIND.CHECKBOX:
       return attributeValue ? <CheckIcon className="h-4 w-4" /> : <XMarkIcon className="h-4 w-4" />;
-    case SCHEMA_ATTRIBUTE_KIND.DATETIME:
+    case ATTRIBUTE_KIND.DATETIME:
       return <DateDisplay date={getTextValue(attributeValue)} />;
-    case SCHEMA_ATTRIBUTE_KIND.TEXTAREA:
+    case ATTRIBUTE_KIND.TEXTAREA:
       return <MarkdownViewer markdownText={getTextValue(attributeValue)} />;
-    case SCHEMA_ATTRIBUTE_KIND.PASSWORD:
-    case SCHEMA_ATTRIBUTE_KIND.HASHED_PASSWORD:
+    case ATTRIBUTE_KIND.PASSWORD:
+    case ATTRIBUTE_KIND.HASHED_PASSWORD:
       return <PasswordDisplay value={getTextValue(attributeValue)} />;
-    case SCHEMA_ATTRIBUTE_KIND.DROPDOWN: {
+    case ATTRIBUTE_KIND.DROPDOWN: {
       const dropdownAttribute = attributeValue as Dropdown;
       return (
         <ColorDisplay value={getTextValue(dropdownAttribute)} color={dropdownAttribute.color} />
       );
     }
-    case SCHEMA_ATTRIBUTE_KIND.COLOR:
+    case ATTRIBUTE_KIND.COLOR:
       return <ColorDisplay color={attributeValue.value} />;
-    case SCHEMA_ATTRIBUTE_KIND.LIST: {
+    case ATTRIBUTE_KIND.LIST: {
       const items = attributeValue.value?.map((value?: string) => value ?? "-").slice(0, 5);
 
       const rest = attributeValue.value.slice(5).length;
@@ -243,7 +243,7 @@ export const ObjectAttributeValue = ({
         </div>
       );
     }
-    case SCHEMA_ATTRIBUTE_KIND.JSON:
+    case ATTRIBUTE_KIND.JSON:
       return <CodeEditor value={JSON.stringify(attributeValue.value ?? "", null, 2)} disabled />;
     default:
       return (

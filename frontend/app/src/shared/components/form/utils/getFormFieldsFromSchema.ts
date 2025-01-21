@@ -1,8 +1,9 @@
-import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import { SchemaAttributeType } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { AttributeKind } from "@/entities/schema/types";
+import { components } from "@/shared/api/rest/types.generated";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
   DynamicDropdownFieldProps,
@@ -69,7 +70,7 @@ export const getFormFieldsFromSchema = ({
         permissions: { update: currentFieldValue?.permissions?.update_value },
         isReadOnly: attribute.read_only,
       }),
-      type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
+      type: attribute.kind as Exclude<AttributeKind, "Dropdown">,
       rules: {
         required: !isFilterForm && !attribute.optional,
         validate: {
@@ -102,14 +103,14 @@ export const getFormFieldsFromSchema = ({
       return relationshipField;
     }
 
-    if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.DROPDOWN) {
+    if (attribute.kind === ATTRIBUTE_KIND.DROPDOWN) {
       const dropdownField: DynamicDropdownFieldProps = {
         ...basicFomFieldProps,
-        type: SCHEMA_ATTRIBUTE_KIND.DROPDOWN,
+        type: ATTRIBUTE_KIND.DROPDOWN,
         unique: attribute.unique,
         field: attribute,
         schema: schema,
-        items: (attribute.choices ?? []).map((choice) => ({
+        items: (attribute.choices ?? []).map((choice: components["schemas"]["DropdownChoice"]) => ({
           value: choice.name,
           label: choice.label ?? choice.name,
           color: choice.color ?? undefined,
@@ -133,7 +134,7 @@ export const getFormFieldsFromSchema = ({
       return enumField;
     }
 
-    if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.NUMBER) {
+    if (attribute.kind === ATTRIBUTE_KIND.NUMBER) {
       const numberPools = pools?.filter((pool) => pool.nodeAttribute.name === attribute.name);
 
       const dropdownField: DynamicNumberFieldProps = {

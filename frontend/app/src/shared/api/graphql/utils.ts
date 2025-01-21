@@ -1,4 +1,4 @@
-import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 type AddAttributesToRequestOptions = {
@@ -33,7 +33,7 @@ export const addAttributesToRequest = (
       },
     };
 
-    if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.DROPDOWN) {
+    if (attribute.kind === ATTRIBUTE_KIND.DROPDOWN) {
       return {
         ...acc,
         [attribute.name]: { ...fragment, color: true, description: true, label: true },

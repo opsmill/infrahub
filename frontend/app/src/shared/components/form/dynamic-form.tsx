@@ -1,4 +1,4 @@
-import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { isHierarchicalSchema } from "@/entities/schema/utils";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -57,54 +57,54 @@ const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
 
 export const DynamicInput = (props: DynamicFieldProps) => {
   switch (props.type) {
-    case SCHEMA_ATTRIBUTE_KIND.DATETIME: {
+    case ATTRIBUTE_KIND.DATETIME: {
       const { type, ...otherProps } = props;
       return <DatetimeField {...otherProps} />;
     }
-    case SCHEMA_ATTRIBUTE_KIND.COLOR: {
+    case ATTRIBUTE_KIND.COLOR: {
       const { type, ...otherProps } = props;
       return <ColorField {...otherProps} />;
     }
-    case SCHEMA_ATTRIBUTE_KIND.BOOLEAN:
-    case SCHEMA_ATTRIBUTE_KIND.CHECKBOX: {
+    case ATTRIBUTE_KIND.BOOLEAN:
+    case ATTRIBUTE_KIND.CHECKBOX: {
       const { type, ...otherProps } = props;
       return <CheckboxField {...otherProps} />;
     }
-    case SCHEMA_ATTRIBUTE_KIND.DROPDOWN: {
+    case ATTRIBUTE_KIND.DROPDOWN: {
       const { type, ...otherProps } = props;
       return <DropdownField {...otherProps} />;
     }
-    case SCHEMA_ATTRIBUTE_KIND.JSON: {
+    case ATTRIBUTE_KIND.JSON: {
       const { type, ...otherProps } = props;
       return <JsonField {...otherProps} />;
     }
-    case SCHEMA_ATTRIBUTE_KIND.LIST: {
+    case ATTRIBUTE_KIND.LIST: {
       const { type, ...otherProps } = props;
       return <ListField {...otherProps} />;
     }
-    case SCHEMA_ATTRIBUTE_KIND.BANDWIDTH:
-    case SCHEMA_ATTRIBUTE_KIND.NUMBER: {
+    case ATTRIBUTE_KIND.BANDWIDTH:
+    case ATTRIBUTE_KIND.NUMBER: {
       const { type, ...otherProps } = props;
       return <NumberField {...otherProps} />;
     }
-    case SCHEMA_ATTRIBUTE_KIND.PASSWORD:
-    case SCHEMA_ATTRIBUTE_KIND.HASHED_PASSWORD: {
+    case ATTRIBUTE_KIND.PASSWORD:
+    case ATTRIBUTE_KIND.HASHED_PASSWORD: {
       const { type, ...otherProps } = props;
       return <PasswordInputField {...otherProps} />;
     }
-    case SCHEMA_ATTRIBUTE_KIND.ANY:
-    case SCHEMA_ATTRIBUTE_KIND.EMAIL:
-    case SCHEMA_ATTRIBUTE_KIND.FILE:
-    case SCHEMA_ATTRIBUTE_KIND.ID:
-    case SCHEMA_ATTRIBUTE_KIND.IP_HOST:
-    case SCHEMA_ATTRIBUTE_KIND.IP_NETWORK:
-    case SCHEMA_ATTRIBUTE_KIND.MAC_ADDRESS:
-    case SCHEMA_ATTRIBUTE_KIND.TEXT:
-    case SCHEMA_ATTRIBUTE_KIND.URL: {
+    case ATTRIBUTE_KIND.ANY:
+    case ATTRIBUTE_KIND.EMAIL:
+    case ATTRIBUTE_KIND.FILE:
+    case ATTRIBUTE_KIND.ID:
+    case ATTRIBUTE_KIND.IP_HOST:
+    case ATTRIBUTE_KIND.IP_NETWORK:
+    case ATTRIBUTE_KIND.MAC_ADDRESS:
+    case ATTRIBUTE_KIND.TEXT:
+    case ATTRIBUTE_KIND.URL: {
       const { type, ...otherProps } = props;
       return <InputField {...otherProps} />;
     }
-    case SCHEMA_ATTRIBUTE_KIND.TEXTAREA: {
+    case ATTRIBUTE_KIND.TEXTAREA: {
       const { type, ...otherProps } = props;
       return <TextareaField {...otherProps} />;
     }
