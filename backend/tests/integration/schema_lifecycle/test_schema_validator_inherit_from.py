@@ -202,4 +202,5 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert success is False
         assert len(response["errors"]) == 1
         error = response["errors"][0]
-        assert "is not compatible with the constraint 'node.inherit_from.update'" in error["message"]
+        assert "Node-level 'inherit_from' constraint violation on schema 'SchemaNode'" in error["message"]
+        assert "The error relates to field inherit_from=['TestingHumanoid']." in error["message"]

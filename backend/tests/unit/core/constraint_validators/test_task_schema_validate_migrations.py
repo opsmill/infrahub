@@ -47,4 +47,5 @@ async def test_schema_validate_migrations(
 
     assert len(responses) == 1
     assert len(responses[0].violations) == 1
-    assert "is not compatible with the constraint 'attribute.regex.update'" in responses[0].violations[0].message
+    assert "Attribute-level 'regex' constraint violation" in responses[0].violations[0].message
+    assert f"name='{person_john_main.name.value}'" in responses[0].violations[0].message

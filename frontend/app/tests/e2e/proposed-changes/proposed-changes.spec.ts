@@ -102,7 +102,12 @@ test.describe("/proposed-changes", () => {
             .fill("My description edit");
           await page
             .locator("span")
-            .filter({ hasText: "Crm Synchronization×" })
+            .filter({ hasText: "CRM Synchronization" })
+            .getByLabel("Remove")
+            .click();
+          await page
+            .locator("span")
+            .filter({ hasText: "Olivia Carter" })
             .getByLabel("Remove")
             .click();
           await page.getByLabel("Reviewers").click(); // to close the combobox
@@ -111,7 +116,8 @@ test.describe("/proposed-changes", () => {
 
           await expect(page.getByRole("heading", { name: pcNameEdit, exact: true })).toBeVisible();
           await expect(page.getByTestId("pc-description")).toContainText("My description edit");
-          await expect(page.getByText("ReviewersOC")).toBeVisible();
+          await expect(page.getByText("OC", { exact: true })).not.toBeVisible();
+          await expect(page.getByText("CS", { exact: true })).not.toBeVisible();
         });
       });
 

@@ -23,3 +23,4 @@ class CheckRepositoryUserCheck(InfrahubMessage):
     variables: dict = Field(default_factory=dict, description="Input variables when running the check")
     name: str = Field(..., description="The name of the check")
     branch_diff: ProposedChangeBranchDiff = Field(..., description="The calculated diff between the two branches")
+    timeout: int = Field(..., description="The timeout for the check")

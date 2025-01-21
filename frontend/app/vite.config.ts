@@ -19,7 +19,11 @@ export default defineConfig({
     browser: {
       enabled: true,
       provider: "playwright",
-      name: "chromium",
+      instances: [
+        {
+          browser: "chromium",
+        },
+      ],
     },
     exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/playwright-report/**"],
     globals: true,

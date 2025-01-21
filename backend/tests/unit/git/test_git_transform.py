@@ -28,6 +28,7 @@ async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository, 
         commit=commit,
         branch="main",
         template_location="template01.tpl.j2",
+        timeout=10,
         data={"items": ["consilium", "potum", "album", "magnum"]},
     )
     expected_response = """
@@ -50,6 +51,7 @@ async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository, 
         commit=commit,
         branch="main",
         template_location="template03.tpl.j2",
+        timeout=10,
         data={"data": {"items": ["consilium", "potum", "album", "magnum"]}},
     )
 
@@ -69,6 +71,7 @@ async def test_git_transform_jinja2_invalid(git_repo_jinja: InfrahubRepository, 
         commit=commit,
         branch="main",
         template_location="template02.tpl.j2",
+        timeout=10,
         data={"data": {"items": ["consilium", "potum", "album", "magnum"]}},
     )
 
@@ -90,6 +93,7 @@ async def test_transform_python_success(
         commit=commit,
         branch="main",
         transform_location="unit/transforms/multiplier.py::Multiplier",
+        timeout=10,
         data={"multiplier": 2, "key": "abc", "answer": 21},
     )
 

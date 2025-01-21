@@ -208,7 +208,6 @@ const RelationshipField = ({
           <FormField
             key={`${name}_parent`}
             name={`${name}_parent`}
-            rules={rules}
             defaultValue={defaultValue}
             render={({ field }) => {
               return (
@@ -217,14 +216,12 @@ const RelationshipField = ({
                     label={parentRelationship?.label ?? "Parent"}
                     description={parentRelationship?.description}
                     unique={unique}
-                    required={!!rules?.required}
                     variant="small"
                   />
 
                   <FormInput>
                     <RelationshipInput
                       {...field}
-                      {...props}
                       value={selectedParent}
                       peer={parentRelationship.peer}
                       disabled={props.disabled || !selectedGeneric?.id}

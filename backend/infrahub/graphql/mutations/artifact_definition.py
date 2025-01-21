@@ -55,7 +55,11 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         artifact_definition, result = await super().mutate_create(info=info, data=data, branch=branch)
 
         if context.service:
-            model = RequestArtifactDefinitionGenerate(branch=branch.name, artifact_definition=artifact_definition.id)
+            model = RequestArtifactDefinitionGenerate(
+                branch=branch.name,
+                artifact_definition_id=artifact_definition.id,
+                artifact_definition_name=artifact_definition.name.value,  # type: ignore[attr-defined]
+            )
             await context.service.workflow.submit_workflow(
                 workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
             )
@@ -76,7 +80,11 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         artifact_definition, result = await super().mutate_update(info=info, data=data, branch=branch)
 
         if context.service:
-            model = RequestArtifactDefinitionGenerate(branch=branch.name, artifact_definition=artifact_definition.id)
+            model = RequestArtifactDefinitionGenerate(
+                branch=branch.name,
+                artifact_definition_id=artifact_definition.id,
+                artifact_definition_name=artifact_definition.name.value,  # type: ignore[attr-defined]
+            )
             await context.service.workflow.submit_workflow(
                 workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
             )

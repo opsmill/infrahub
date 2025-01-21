@@ -30,6 +30,13 @@ artifact_definitions:
     content_type: "text/plain"
     targets: "people"
     transformation: "person_with_cars"
+  - name: "name report"
+    artifact_name: "car-name"
+    parameters:
+      name: "name__value"
+    content_type: "application/json"
+    targets: "people"
+    transformation: "PersonWithCarsTransform"
 
 generator_definitions:
   - name: cartags
