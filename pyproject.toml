@@ -72,6 +72,8 @@ numpy = [
     { version = "^1.26.2", python = ">=3.12" },
 ]
 dulwich = "^0.22.7"
+playwright = "^1.49.0"
+pytest-playwright = "^0.6.2"
 
 
 [tool.poetry.group.dev.dependencies]

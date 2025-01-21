@@ -60,5 +60,13 @@ class TestInfrahubDocker:
         return infrahub_app["server"]
 
     @pytest.fixture(scope="class")
+    def infrahub_client(self, infrahub_port: int) -> InfrahubClient:
+        return InfrahubClient(config=Config(address=f"http://localhost:{infrahub_port}"))
+
+    @pytest.fixture(scope="class")
+    def infrahub_client_sync(self, infrahub_port: int) -> InfrahubClientSync:
+        return InfrahubClientSync(config=Config(address=f"http://localhost:{infrahub_port}", username="admin", password="infrahub"))
+
+    @pytest.fixture(scope="class")
     def task_manager_port(self, infrahub_app: dict[str, int]) -> int:
         return infrahub_app["task-manager"]
