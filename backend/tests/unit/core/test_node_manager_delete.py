@@ -7,6 +7,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, RelationshipDeleteBehavior
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -201,4 +202,54 @@ async def test_delete_with_cascade_on_generic_allowed(db, default_branch, depend
 
     assert {d.id for d in deleted} == {human.id, dog.id}
     node_map = await NodeManager.get_many(db=db, ids=[human.id, dog.id])
+    assert node_map == {}
+
+
+async def test_delete_with_cascade_generic_parent_component(db, default_branch):
+    schema = {
+        "generics": [
+            {
+                "name": "InterfaceHolder",
+                "namespace": "Test",
+                "relationships": [
+                    {
+                        "name": "interfaces",
+                        "peer": "TestInterface",
+                        "optional": True,
+                        "cardinality": "many",
+                        "kind": "Component",
+                    },
+                ],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "Device",
+                "namespace": "Test",
+                "inherit_from": ["TestInterfaceHolder"],
+                "attributes": [{"name": "name", "kind": "Text", "optional": False, "unique": True}],
+            },
+            {
+                "name": "Interface",
+                "namespace": "Test",
+                "attributes": [{"name": "name", "kind": "Text", "optional": False, "unique": True}],
+                "relationships": [
+                    {"name": "device", "peer": "TestDevice", "optional": False, "cardinality": "one", "kind": "Parent"},
+                ],
+            },
+        ],
+    }
+    registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+
+    device = await Node.init(db=db, schema="TestDevice", branch=default_branch)
+    await device.new(db=db, name="One device")
+    await device.save(db=db)
+    interface = await Node.init(db=db, schema="TestInterface", branch=default_branch)
+    await interface.new(db=db, name="One interface", device=device)
+    await interface.save(db=db)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[device])
+
+    assert {d.id for d in deleted} == {device.id, interface.id}
+    node_map = await NodeManager.get_many(db=db, ids=[device.id, interface.id])
     assert node_map == {}
