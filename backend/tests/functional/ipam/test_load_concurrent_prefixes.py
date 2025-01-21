@@ -32,3 +32,5 @@ class TestLoadConcurrentPrefixes(TestIpam):
             if n.prefix.value != network_8:
                 # Without locking mechanism server side, parent might not be present
                 assert n.parent.peer.prefix.value == network_8
+
+print("This is a test")
