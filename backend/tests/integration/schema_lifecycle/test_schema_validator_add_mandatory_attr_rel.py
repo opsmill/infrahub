@@ -255,7 +255,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert len(response["errors"]) == 1
         err_msg = response["errors"][0]["message"]
 
-        assert "is not compatible with the constraint 'node.attribute.add'" in err_msg
+        assert "Node-level 'attribute' constraint violation" in err_msg
 
     async def test_check_mandatory_relationship_failure(
         self, client: InfrahubClient, initial_dataset, schema_with_person_mandatory_rel
@@ -267,7 +267,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert len(response["errors"]) == 1
         err_msg = response["errors"][0]["message"]
 
-        assert "is not compatible with the constraint 'node.relationship.add'" in err_msg
+        assert "Node-level 'relationship' constraint violation" in err_msg
 
     async def test_check_mandatory_attribute_after_deleting_nodes(
         self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_with_person_mandatory_attr

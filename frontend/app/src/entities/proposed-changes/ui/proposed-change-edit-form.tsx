@@ -133,5 +133,5 @@ export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChang
     }
   }
 
-  return <DynamicForm onSubmit={onSubmit} fields={fields} className="p-4" />;
+  return <DynamicForm onSubmit={onSubmit} fields={fields} className="overflow-auto p-4" />;
 };

@@ -25,7 +25,7 @@ async def transform_python(message: TransformPythonData) -> Any:
         commit=message.commit,
     )
 
-    transformed_data = await repo.execute_python_transform(
+    transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=message.timeout)(
         branch_name=message.branch,
         commit=message.commit,
         location=message.transform_location,
@@ -49,7 +49,7 @@ async def transform_render_jinja2_template(message: TransformJinjaTemplateData) 
         commit=message.commit,
     )
 
-    rendered_template = await repo.render_jinja2_template(
+    rendered_template = await repo.render_jinja2_template.with_options(timeout_seconds=message.timeout)(
         commit=message.commit, location=message.template_location, data={"data": message.data}
     )
 

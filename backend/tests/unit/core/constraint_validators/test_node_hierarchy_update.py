@@ -115,7 +115,7 @@ async def test_query_children_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r1"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s1r1_rack"].id,
         )
         in all_data_paths
@@ -126,7 +126,7 @@ async def test_query_children_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r2"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s2r2_rack"].id,
         )
         in all_data_paths
@@ -137,7 +137,7 @@ async def test_query_children_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r2"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s1r2_rack"].id,
         )
         in all_data_paths
@@ -148,7 +148,7 @@ async def test_query_children_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r1"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s2r1_rack"].id,
         )
         in all_data_paths
@@ -179,7 +179,7 @@ async def test_query_parent_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r1"].id,
             kind="LocationSite",
-            property_name="parent",
+            field_name="parent",
             peer_id=hldsas["r1"].id,
         )
         in all_data_paths
@@ -190,7 +190,7 @@ async def test_query_parent_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r2"].id,
             kind="LocationSite",
-            property_name="parent",
+            field_name="parent",
             peer_id=hldsas["r2"].id,
         )
         in all_data_paths
@@ -201,7 +201,7 @@ async def test_query_parent_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r2"].id,
             kind="LocationSite",
-            property_name="parent",
+            field_name="parent",
             peer_id=hldsas["r2"].id,
         )
         in all_data_paths
@@ -212,7 +212,7 @@ async def test_query_parent_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r1"].id,
             kind="LocationSite",
-            property_name="parent",
+            field_name="parent",
             peer_id=hldsas["r1"].id,
         )
         in all_data_paths
@@ -247,7 +247,7 @@ async def test_query_update_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r1"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s1r1_rack"].id,
         )
         in all_data_paths
@@ -258,7 +258,7 @@ async def test_query_update_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r1"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=s1r1_rack2.id,
         )
         in all_data_paths
@@ -269,7 +269,7 @@ async def test_query_update_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r2"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s2r2_rack"].id,
         )
         in all_data_paths
@@ -280,7 +280,7 @@ async def test_query_update_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r2"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s1r2_rack"].id,
         )
         in all_data_paths
@@ -291,7 +291,7 @@ async def test_query_update_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r1"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s2r1_rack"].id,
         )
         in all_data_paths
@@ -326,7 +326,7 @@ async def test_query_delete_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r2"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s2r2_rack"].id,
         )
         in all_data_paths
@@ -337,7 +337,7 @@ async def test_query_delete_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s1r2"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s1r2_rack"].id,
         )
         in all_data_paths
@@ -348,7 +348,7 @@ async def test_query_delete_on_branch_failure(
             path_type=PathType.NODE,
             node_id=hldsas["s2r1"].id,
             kind="LocationSite",
-            property_name="children",
+            field_name="children",
             peer_id=hldsas["s2r1_rack"].id,
         )
         in all_data_paths

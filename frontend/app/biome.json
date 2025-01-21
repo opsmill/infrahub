@@ -10,6 +10,7 @@
     "ignore": [
       "./coverage",
       "./dist",
+      "./package.json",
       "./playwright-report",
       "./test-results",
       "./tests/e2e/.auth",

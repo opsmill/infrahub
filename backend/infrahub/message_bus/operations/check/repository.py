@@ -1,3 +1,4 @@
+from infrahub_sdk.protocols import CoreCheckDefinition
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
 from prefect.logging import get_run_logger
@@ -23,7 +24,7 @@ async def check_definition(message: messages.CheckRepositoryCheckDefinition, ser
     log = get_run_logger()
 
     definition = await service.client.get(
-        kind=InfrahubKind.CHECKDEFINITION, id=message.check_definition_id, branch=message.branch_name
+        kind=CoreCheckDefinition, id=message.check_definition_id, branch=message.branch_name
     )
     proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
     validator_execution_id = str(UUIDT())
@@ -87,6 +88,7 @@ async def check_definition(message: messages.CheckRepositoryCheckDefinition, ser
                     proposed_change=message.proposed_change,
                     variables=member.extract(params=definition.parameters.value),
                     branch_diff=message.branch_diff,
+                    timeout=definition.timeout.value,
                 )
             )
 
@@ -108,6 +110,7 @@ async def check_definition(message: messages.CheckRepositoryCheckDefinition, ser
                 check_definition_id=message.check_definition_id,
                 proposed_change=message.proposed_change,
                 branch_diff=message.branch_diff,
+                timeout=definition.timeout.value,
             )
         )
 
@@ -229,7 +232,7 @@ async def user_check(message: messages.CheckRepositoryUserCheck, service: Infrah
     severity = "critical"
     log_entries = ""
     try:
-        check_run = await repo.execute_python_check(
+        check_run = await repo.execute_python_check.with_options(timeout_seconds=message.timeout)(
             branch_name=message.branch_name,
             location=message.file_path,
             class_name=message.class_name,
