@@ -1,13 +1,11 @@
 import pytest
 
-from infrahub.core.branch.models import Branch
 from infrahub.core.diff.model.path import (
     BranchTrackingId,
     EnrichedDiffs,
 )
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
-from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 
 from .factories import (
@@ -22,10 +20,6 @@ from .factories import (
 
 
 class TestDiffGetAllConflicts:
-    @pytest.fixture(autouse=True, scope="function")
-    async def reset_database(self, db: InfrahubDatabase, default_branch: Branch):
-        await delete_all_nodes(db=db)
-
     @pytest.fixture
     def diff_repository(self, db: InfrahubDatabase) -> DiffRepository:
         return DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())

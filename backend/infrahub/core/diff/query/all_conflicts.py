@@ -11,7 +11,6 @@ from ..model.path import TrackingId
 class EnrichedDiffAllConflictsQuery(Query):
     name = "enriched_diff_all_conflicts"
     type = QueryType.READ
-    insert_return = False
 
     def __init__(
         self, diff_branch_name: str, tracking_id: TrackingId | None = None, diff_id: str | None = None, **kwargs: Any
@@ -33,24 +32,29 @@ class EnrichedDiffAllConflictsQuery(Query):
         }
         query = """
 MATCH (root:DiffRoot)
-WHERE root.diff_branch = $diff_branch_name
-AND (root.tracking_id = $tracking_id OR $tracking_id IS NULL)
-AND (root.uuid = $diff_id OR $diff_id IS NULL)
-MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_CONFLICT]->(node_conflict:DiffConflict)
-RETURN node.path_identifier AS path_identifier, node_conflict AS conflict
-UNION
-MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_ATTRIBUTE]->(:DiffAttribute)
-    -[:DIFF_HAS_PROPERTY]->(property:DiffProperty)-[:DIFF_HAS_CONFLICT]->(attr_property_conflict:DiffConflict)
-RETURN property.path_identifier AS path_identifier, attr_property_conflict AS conflict
-UNION
-MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(:DiffRelationship)
-    -[:DIFF_HAS_ELEMENT]->(element:DiffRelationshipElement)-[:DIFF_HAS_CONFLICT]->(rel_element_conflict:DiffConflict)
-RETURN element.path_identifier AS path_identifier, rel_element_conflict AS conflict
-UNION
-MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(:DiffRelationship)
-    -[:DIFF_HAS_ELEMENT]->(:DiffRelationshipElement)-[:DIFF_HAS_PROPERTY]->(property:DiffProperty)
-    -[:DIFF_HAS_CONFLICT]->(rel_property_conflict:DiffConflict)
-RETURN property.path_identifier AS path_identifier, rel_property_conflict AS conflict
+WHERE ($diff_id IS NOT NULL AND root.uuid = $diff_id)
+OR ($tracking_id IS NOT NULL AND root.tracking_id = $tracking_id AND root.diff_branch = $diff_branch_name)
+CALL {
+    WITH root
+    MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_CONFLICT]->(node_conflict:DiffConflict)
+    RETURN node.path_identifier AS path_identifier, node_conflict AS conflict
+    UNION
+    WITH root
+    MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_ATTRIBUTE]->(:DiffAttribute)
+        -[:DIFF_HAS_PROPERTY]->(property:DiffProperty)-[:DIFF_HAS_CONFLICT]->(attr_property_conflict:DiffConflict)
+    RETURN property.path_identifier AS path_identifier, attr_property_conflict AS conflict
+    UNION
+    WITH root
+    MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(:DiffRelationship)
+        -[:DIFF_HAS_ELEMENT]->(element:DiffRelationshipElement)-[:DIFF_HAS_CONFLICT]->(rel_element_conflict:DiffConflict)
+    RETURN element.path_identifier AS path_identifier, rel_element_conflict AS conflict
+    UNION
+    WITH root
+    MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(:DiffRelationship)
+        -[:DIFF_HAS_ELEMENT]->(:DiffRelationshipElement)-[:DIFF_HAS_PROPERTY]->(property:DiffProperty)
+        -[:DIFF_HAS_CONFLICT]->(rel_property_conflict:DiffConflict)
+    RETURN property.path_identifier AS path_identifier, rel_property_conflict AS conflict
+}
 """
         self.return_labels = ["path_identifier", "conflict"]
         self.add_to_query(query=query)
