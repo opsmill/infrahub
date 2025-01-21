@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import deque
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
@@ -22,7 +23,8 @@ from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from infrahub_sdk.utils import extract_fields
 
 from infrahub.core.constants import RelationshipCardinality
-from infrahub.core.schema import GenericSchema, NodeSchema
+from infrahub.core.schema import GenericSchema
+from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graphql.utils import extract_schema_models
 
 if TYPE_CHECKING:
@@ -119,7 +121,7 @@ class GraphQLQueryNode:
     parent: GraphQLQueryNode | None = field(default=None)
     children: list[GraphQLQueryNode] = field(default_factory=list)
     infrahub_model: MainSchemaTypes | None = field(default=None)
-    infrahub_node_models: list[NodeSchema] = field(default_factory=list)
+    infrahub_node_models: list[MainSchemaTypes] = field(default_factory=list)
     infrahub_attributes: set[str] = field(default_factory=set)
     infrahub_relationships: set[str] = field(default_factory=set)
     field_node: FieldNode | None = field(default=None)
@@ -262,6 +264,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         self.operation_name = operation_name
         self.query_variables: dict[str, Any] = query_variables or {}
         self._named_fragments: dict[str, GraphQLQueryNode] = {}
+        self._fragment_dependencies: dict[str, set[str]] = {}
         super().__init__(query=query, schema=schema)
 
     @property
@@ -338,7 +341,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
 
             for field_node in selections.field_nodes:
                 schema_model: MainSchemaTypes
-                infrahub_node_models: list[NodeSchema] = []
+                infrahub_node_models: list[MainSchemaTypes] = []
                 model_name = self._get_model_name(node=field_node, operation_definition=operation_definition)
 
                 if model_name in self.schema_branch.node_names:
@@ -346,7 +349,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
                 elif model_name in self.schema_branch.generic_names:
                     schema_model = self.schema_branch.get_generic(name=model_name, duplicate=False)
                     infrahub_node_models = [
-                        self.schema_branch.get_node(name=used_by, duplicate=False) for used_by in schema_model.used_by
+                        self.schema_branch.get(name=used_by, duplicate=False) for used_by in schema_model.used_by
                     ]
                 elif model_name in self.schema_branch.profile_names:
                     schema_model = self.schema_branch.get_profile(name=model_name, duplicate=False)
@@ -385,14 +388,60 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
                 return node.name.value[:-6]
         return node.name.value
 
+    @property
+    def _sorted_fragment_definitions(self) -> list[FragmentDefinitionNode]:
+        """Sort fragments so that we start processing fragments that don't depend on other fragments"""
+        dependencies = deepcopy(self._fragment_dependencies)
+
+        independent_fragments = deque([frag for frag, deps in dependencies.items() if not deps])
+
+        sorted_fragments = []
+
+        while independent_fragments:
+            fragment_name = independent_fragments.popleft()
+            sorted_fragments.append(fragment_name)
+
+            for dependent, deps in dependencies.items():
+                if fragment_name in deps:
+                    deps.remove(fragment_name)
+                    if not deps:
+                        independent_fragments.append(dependent)
+
+        if len(sorted_fragments) != len(self._fragment_dependencies):
+            raise ValueError("Circular fragment dependency detected.")
+
+        fragment_name_to_definition = {frag.name.value: frag for frag in self._fragment_definitions}
+        return [fragment_name_to_definition[name] for name in sorted_fragments]
+
+    def _populate_fragment_dependency(self, name: str, selection_set: SelectionSetNode | None) -> None:
+        if selection_set:
+            for selection in selection_set.selections:
+                if isinstance(selection, FragmentSpreadNode):
+                    self._fragment_dependencies[name].add(selection.name.value)
+                elif isinstance(selection, FieldNode):
+                    self._populate_fragment_dependency(name=name, selection_set=selection.selection_set)
+                elif isinstance(selection, InlineFragmentNode):
+                    self._populate_fragment_dependency(name=name, selection_set=selection.selection_set)
+
+    def _populate_fragment_dependencies(self) -> None:
+        for fragment in self._fragment_definitions:
+            fragment_name = fragment.name.value
+            self._fragment_dependencies[fragment_name] = set()
+            self._populate_fragment_dependency(name=fragment_name, selection_set=fragment.selection_set)
+
     def _populate_named_fragments(self) -> None:
+        self._populate_fragment_dependencies()
         self._named_fragments = {}
-        for fragment_definition in self._fragment_definitions:
+
+        for fragment_definition in self._sorted_fragment_definitions:
             fragment_name = fragment_definition.name.value
             condition_name = fragment_definition.type_condition.name.value
             selections = self._get_selections(selection_set=fragment_definition.selection_set)
 
-            infrahub_model = self.schema_branch.get(name=condition_name, duplicate=False)
+            try:
+                infrahub_model = self.schema_branch.get(name=condition_name, duplicate=False)
+            except SchemaNotFoundError:
+                infrahub_model = None
 
             named_fragment = GraphQLQueryNode(
                 path=fragment_definition.type_condition.name.value,
@@ -411,7 +460,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
     def _populate_field_node(self, node: FieldNode, query_node: GraphQLQueryNode) -> GraphQLQueryNode:
         context_type = query_node.context_type
         infrahub_model = None
-        infrahub_node_models: list[NodeSchema] = []
+        infrahub_node_models: list[MainSchemaTypes] = []
         if query_node.in_property_level:
             if model := query_node.context_model():
                 if node.name.value in model.attribute_names:
@@ -422,7 +471,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
                         infrahub_model = self.schema_branch.get(name=rel.peer, duplicate=False)
                         if isinstance(infrahub_model, GenericSchema):
                             infrahub_node_models = [
-                                self.schema_branch.get_node(name=used_by, duplicate=False)
+                                self.schema_branch.get(name=used_by, duplicate=False)
                                 for used_by in infrahub_model.used_by
                             ]
 

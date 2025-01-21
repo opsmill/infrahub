@@ -51,7 +51,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         if not valid:
             raise ValueError(f"Query is not valid, {str(errors)}")
 
-        query_info["models"] = {"value": sorted(await analyzer.get_models_in_use(types=info.context.types))}
+        query_info["models"] = {"value": analyzer.query_report.impacted_models}
         query_info["depth"] = {"value": await analyzer.calculate_depth()}
         query_info["height"] = {"value": await analyzer.calculate_height()}
         query_info["operations"] = {
