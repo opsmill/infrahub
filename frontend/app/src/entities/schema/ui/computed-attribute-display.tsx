@@ -27,7 +27,12 @@ export const ComputedAttributeDisplay = ({
       <div className="flex items-center gap-2">
         <Badge variant={"green-outline"}>Jinja2</Badge>
 
-        <Button variant={"active-outline"} size={"icon"} onClick={() => setOpen(true)}>
+        <Button
+          variant={"active-outline"}
+          size={"icon"}
+          onClick={() => setOpen(true)}
+          data-testid="jinja2-transform-button"
+        >
           <Icon icon={"mdi:eye-outline"} />
         </Button>
 
