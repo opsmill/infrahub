@@ -32,6 +32,7 @@ from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
+from infrahub.trace import configure_trace
 from infrahub.workers.utils import inject_service_parameter, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
@@ -89,6 +90,16 @@ class InfrahubWorkerAsync(BaseWorker):
             config.load_and_exit(config_file_name=config_file)
 
         self._init_logger()
+
+        # Initialize trace
+        if config.SETTINGS.trace.enable:
+            configure_trace(
+                service="infrahub-task-worker",
+                version=infrahub_version,
+                exporter_type=config.SETTINGS.trace.exporter_type,
+                exporter_endpoint=config.SETTINGS.trace.exporter_endpoint,
+                exporter_protocol=config.SETTINGS.trace.exporter_protocol,
+            )
 
         # Start metric endpoint
         if metric_port is None or metric_port != 0:
