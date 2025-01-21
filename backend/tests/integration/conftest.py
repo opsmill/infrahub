@@ -127,7 +127,7 @@ def git_repo_car_dealership(git_sources_dir: Path) -> FileRepo:
 
 @pytest.fixture(scope="session", autouse=True)
 def prefect_test_fixture():
-    with prefect_test_harness():
+    with prefect_test_harness(server_startup_timeout=60):
         yield
 
 
