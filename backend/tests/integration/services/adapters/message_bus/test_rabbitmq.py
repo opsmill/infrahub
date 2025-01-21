@@ -384,7 +384,7 @@ async def test_rabbitmq_callback(rabbitmq_api: RabbitMQManager, fake_log: FakeLo
     await queue.consume(bus.on_callback, no_ack=True)
 
     await service.message_bus.send(message=messages.SendEchoRequest(message="Hello there"))
-    await asyncio.sleep(delay=0.1)
+    await asyncio.sleep(delay=1)
 
     assert "Received message: Hello there" in fake_log.info_logs
     await service.shutdown()
@@ -402,7 +402,7 @@ async def test_rabbitmq_callback_with_invalid_routing_key(rabbitmq_api: RabbitMQ
     await queue.consume(bus.on_callback, no_ack=True)
 
     await bus.exchange.publish(Message(body="Completely invalid".encode()), routing_key="event.branch.invalid")
-    await asyncio.sleep(delay=0.1)
+    await asyncio.sleep(delay=1)
     assert "Invalid message received" in fake_log.error_logs
     await service.shutdown()
 
