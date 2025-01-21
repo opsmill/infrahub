@@ -85,7 +85,10 @@ async def generate_artifact(
 
     service = request.app.state.service
     model = RequestArtifactDefinitionGenerate(
-        artifact_definition=artifact_definition.id, branch=branch_params.branch.name, limit=payload.nodes
+        artifact_definition_id=artifact_definition.id,
+        artifact_definition_name=artifact_definition.name.value,
+        branch=branch_params.branch.name,
+        limit=payload.nodes,
     )
 
     await service.workflow.submit_workflow(workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model})

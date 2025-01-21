@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 
     from infrahub_sdk.checks import InfrahubCheck
     from infrahub_sdk.node import InfrahubNode
-    from infrahub_sdk.schema import InfrahubRepositoryArtifactDefinitionConfig
+    from infrahub_sdk.schema.repository import InfrahubRepositoryArtifactDefinitionConfig
     from infrahub_sdk.transforms import InfrahubTransform
 
     from infrahub.git.models import RequestArtifactGenerate
@@ -771,7 +771,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         if str(self.directory_root) not in sys.path:
             sys.path.append(str(self.directory_root))
 
-        transforms = []
+        transforms: list[TransformPythonInformation] = []
         log.info(f"Found {len(config_file.python_transforms)} Python transforms in the repository")
 
         for transform in config_file.python_transforms:
@@ -801,7 +801,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         transform_definition_in_graph = {
             transform.name.value: transform
             for transform in await self.sdk.filters(
-                kind=InfrahubKind.TRANSFORMPYTHON, branch=branch_name, repository__ids=[str(self.id)]
+                kind=CoreTransformPython, branch=branch_name, repository__ids=[str(self.id)]
             )
         }
 
@@ -1029,7 +1029,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         create_payload = self.sdk.schema.generate_payload_create(
             schema=schema,
             data=data,
-            source=self.id,
+            source=str(self.id),
             is_protected=True,
         )
         obj = await self.sdk.create(kind=CoreTransformPython, branch=branch_name, **create_payload)
@@ -1222,12 +1222,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         )
 
         if transformation.typename == InfrahubKind.TRANSFORMJINJA2:
-            artifact_content = await self.render_jinja2_template(
-                commit=commit, location=transformation.template_path.value, data=response
-            )
+            artifact_content = await self.render_jinja2_template.with_options(
+                timeout_seconds=transformation.timeout.value
+            )(commit=commit, location=transformation.template_path.value, data=response)
         elif transformation.typename == InfrahubKind.TRANSFORMPYTHON:
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
-            artifact_content = await self.execute_python_transform(
+            artifact_content = await self.execute_python_transform.with_options(
+                timeout_seconds=transformation.timeout.value
+            )(
                 branch_name=branch_name,
                 commit=commit,
                 location=transformation_location,
@@ -1271,11 +1273,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         )
 
         if message.transform_type == InfrahubKind.TRANSFORMJINJA2:
-            artifact_content = await self.render_jinja2_template(
+            artifact_content = await self.render_jinja2_template.with_options(timeout_seconds=message.timeout)(
                 commit=message.commit, location=message.transform_location, data=response
             )
         elif message.transform_type == InfrahubKind.TRANSFORMPYTHON:
-            artifact_content = await self.execute_python_transform(
+            artifact_content = await self.execute_python_transform.with_options(timeout_seconds=message.timeout)(
                 branch_name=message.branch_name,
                 commit=message.commit,
                 location=message.transform_location,

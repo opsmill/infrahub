@@ -112,7 +112,10 @@ class TestArtifact11(TestInfrahubApp):
                     workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
                     parameters={
                         "model": RequestArtifactDefinitionGenerate(
-                            artifact_definition=definition.id, branch="main", limit=[]
+                            artifact_definition_id=definition.id,
+                            artifact_definition_name=definition.name.value,
+                            branch="main",
+                            limit=[],
                         )
                     },
                 ),
