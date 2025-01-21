@@ -59,7 +59,7 @@ class DiffCalculator:
                 last_result = query_result
             has_more_data = False
             if last_result:
-                has_more_data = query_result.get_as_type("has_more_data", bool)
+                has_more_data = last_result.get_as_type("has_more_data", bool)
             offset += node_limit
 
         branch_diff_query = await DiffAllPathsQuery.init(
