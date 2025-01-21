@@ -1,4 +1,4 @@
-import { NUMBER_POOL_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { NUMBER_POOL_OBJECT } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
@@ -7,6 +7,7 @@ import {
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
   NUMBER_POOL_NODE_FIELD,
 } from "@/entities/resource-manager/constants";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
 import { AttributeSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -154,14 +155,12 @@ const NodeAttributesSelects = () => {
 
   const nodesWithNumberAttributes: Array<iNodeSchema> = nodes.filter((node) =>
     node.attributes?.some(
-      (attribute) => attribute.kind === SCHEMA_ATTRIBUTE_KIND.NUMBER && !attribute.read_only
+      (attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER && !attribute.read_only
     )
   );
 
   const numberAttributeOptions: Array<AttributeSchema> =
-    selectedNode?.attributes?.filter(
-      (attribute) => attribute.kind === SCHEMA_ATTRIBUTE_KIND.NUMBER
-    ) ?? [];
+    selectedNode?.attributes?.filter((attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER) ?? [];
 
   useEffect(() => {
     if (numberAttributeOptions.length === 1) {

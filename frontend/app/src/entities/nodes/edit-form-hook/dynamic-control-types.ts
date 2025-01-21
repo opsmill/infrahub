@@ -1,5 +1,4 @@
-import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
-import { components } from "@/shared/api/rest/types.generated";
+import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { SelectOption } from "@/shared/components/inputs/select";
 import { RegisterOptions } from "react-hook-form";
 import { FormFieldError } from "./form";
@@ -10,7 +9,7 @@ export interface DynamicFieldData {
   type: ControlType;
   name: string;
   peer?: string;
-  kind?: SchemaAttributeType;
+  kind?: AttributeKind;
   placeholder?: string;
   value: any;
   options?: SelectOption[];
@@ -23,14 +22,8 @@ export interface DynamicFieldData {
   disabled?: boolean;
   preventObjectsCreation?: boolean;
   parent?: string;
-  field?:
-    | components["schemas"]["AttributeSchema-Output"]
-    | components["schemas"]["RelationshipSchema-Output"];
+  field?: AttributeSchema | RelationshipSchema;
 }
-
-// Different values for "kind" property of each attribute in the schema
-export type SchemaAttributeType =
-  (typeof SCHEMA_ATTRIBUTE_KIND)[keyof typeof SCHEMA_ATTRIBUTE_KIND];
 
 // Different kind of form inputs
 export type ControlType =

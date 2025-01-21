@@ -1,4 +1,5 @@
 import { IProfileSchema, iGenericSchema, iNodeSchema } from "@/entities/schema/stores/schema.atom";
+import { AttributeSchema } from "@/entities/schema/types";
 
 export const generateNodeSchema = (
   overrides?: Partial<iNodeSchema>
@@ -734,6 +735,29 @@ export const generateProfileSchema = (overrides?: Partial<IProfileSchema>): IPro
     inherit_from: ["LineageSource", "CoreProfile", "CoreNode"],
     kind: "ProfileBuiltinTag",
     hash: "b32d59e55c5088dd461882d7ab104160",
+    ...overrides,
+  };
+};
+
+export const generateAttributeSchema = (overrides?: Partial<AttributeSchema>): AttributeSchema => {
+  return {
+    id: null,
+    state: "present",
+    name: "name",
+    kind: "Text",
+    label: "Name",
+    description: "description",
+    enum: null,
+    computed_attribute: null,
+    default_value: null,
+    order_weight: 0,
+    optional: true,
+    unique: false,
+    allow_override: "any",
+    branch: "aware",
+    inherited: false,
+    read_only: false,
+    deprecation: null,
     ...overrides,
   };
 };
