@@ -59,6 +59,7 @@ from .types import (
 )
 from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
+from .types.event import EVENT_TYPES
 
 if TYPE_CHECKING:
     from graphql import GraphQLSchema
@@ -159,6 +160,7 @@ class GraphQLSchemaManager:
         self._graphql_types: dict[str, GraphQLTypes] = {}
 
         self._load_attribute_types()
+        self._load_event_types()
         if config.SETTINGS.experimental_features.graphql_enums:
             self._load_all_enum_types(node_schemas=self.schema.get_all().values())
         self._load_node_interface()
@@ -270,6 +272,10 @@ class GraphQLSchemaManager:
     def _load_attribute_types(self) -> None:
         for data_type in ATTRIBUTE_TYPES.values():
             self.set_type(name=data_type.get_graphql_type_name(), graphql_type=data_type.get_graphql_type())
+
+    def _load_event_types(self) -> None:
+        for event in EVENT_TYPES.values():
+            self.set_type(name=event._meta.name, graphql_type=event)
 
     def _load_node_interface(self) -> None:
         node_interface_schema = GenericSchema(

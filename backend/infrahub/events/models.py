@@ -1,4 +1,5 @@
 from typing import Any
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
@@ -17,6 +18,14 @@ class EventMeta(BaseModel):
 
 class InfrahubEvent(BaseModel):
     meta: EventMeta | None = None
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        description="UUID of the event",
+    )
+
+    def get_id(self) -> str:
+        return str(self.id)
 
     def get_event_namespace(self) -> str:
         return EVENT_NAMESPACE
