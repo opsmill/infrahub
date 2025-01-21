@@ -1,7 +1,5 @@
-import copy
 from typing import Any
 
-import pytest
 from infrahub_sdk import InfrahubClient
 
 from infrahub.testing.helpers import TestInfrahubDev
@@ -11,7 +9,6 @@ from infrahub.testing.schemas.car_person import (
     SchemaCarPerson,
 )
 
-import re
 import pytest
 from playwright.sync_api import Page, expect, BrowserContext
 

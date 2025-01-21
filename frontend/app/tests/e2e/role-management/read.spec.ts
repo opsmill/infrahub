@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import {createBranchAPI, deleteBranchAPI} from "../utils/actions";
+import { createBranchAPI, deleteBranchAPI } from "../utils/actions";
 
 const BRANCH_NAME = "role-management-read";
 
-test.describe.only("Role management - READ", () => {
+test.describe("Role management - READ", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test.beforeAll(async ({ request }) => {

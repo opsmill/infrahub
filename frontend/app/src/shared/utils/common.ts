@@ -2,7 +2,6 @@ import { type ClassValue, clsx } from "clsx";
 import * as R from "ramda";
 import { twMerge } from "tailwind-merge";
 
-
 export const classNames = (...classes: ClassValue[]) => {
   return twMerge(clsx(classes));
 };
