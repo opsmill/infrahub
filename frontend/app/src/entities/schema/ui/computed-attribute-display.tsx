@@ -55,5 +55,15 @@ export const ComputedAttributeDisplay = ({
     );
   }
 
-  return <div>OK</div>;
+  if (computedAttribute.kind === "TransformPython") {
+    return (
+      <div className="flex items-center gap-2">
+        <Badge variant={"green-outline"}>Transform Python</Badge>
+
+        <Badge variant={"gray-outline"}>{computedAttribute.transform}</Badge>
+      </div>
+    );
+  }
+
+  return null;
 };
