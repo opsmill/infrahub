@@ -1,7 +1,9 @@
 import ipaddress
+from ipaddress import IPv4Network
 
 from infrahub.database import InfrahubDatabase
 from tests.functional.ipam.base import TestIpam
+from tests.helpers.schema import load_schema
 
 
 # See https://github.com/opsmill/infrahub/issues/4523
@@ -32,3 +34,18 @@ class TestLoadConcurrentPrefixes(TestIpam):
             if n.prefix.value != network_8:
                 # Without locking mechanism server side, parent might not be present
                 assert n.parent.peer.prefix.value == network_8
+
+    async def test_too_many_relationships(
+        self, db: InfrahubDatabase, default_branch, client, default_ipnamespace, prefix_with_rel_in_hfid_schema
+    ):
+        await load_schema(db=db, schema=prefix_with_rel_in_hfid_schema)
+
+        prefixes = [IPv4Network("10.0.0.0/8"), IPv4Network("10.0.0.0/16"), IPv4Network("10.1.0.0/16")]
+
+        for prefix_val in prefixes:
+            prefix = await client.create("InfraPrefix", prefix=f"{prefix_val}")
+            await prefix.save()
+
+        results = await client.all("InfraPrefix")
+        prefixes_results = [prefix.prefix.value for prefix in results]
+        assert prefixes_results == prefixes
