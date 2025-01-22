@@ -907,7 +907,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      github.base_ref == 'develop'
+      github.base_ref == 'stable'
     runs-on:
       group: huge-runners
     steps:
