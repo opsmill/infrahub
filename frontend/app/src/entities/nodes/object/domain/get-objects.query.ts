@@ -11,7 +11,14 @@ export function getObjectsInfiniteQueryOptions({ schema }: { schema: IModelSchem
 
   return infiniteQueryOptions({
     queryKey: [currentBranchName, timeMachineDate, schema.kind],
-    queryFn: ({ pageParam }) => getObjects({ schema, offset: pageParam }),
+    queryFn: ({ pageParam }) => {
+      return getObjects({
+        schema,
+        offset: pageParam,
+        branchName: currentBranchName,
+        atDate: timeMachineDate,
+      });
+    },
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
       if (lastPage.length < OBJECTS_PER_PAGE) {

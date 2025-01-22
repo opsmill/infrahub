@@ -12,9 +12,17 @@ export const OBJECTS_PER_PAGE = 20;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export type GetObjects = ({ schema, offset }: { schema: IModelSchema; offset?: number }) => Promise<any>;
+export type GetObjects = ({
+  schema,
+  offset,
+}: {
+  schema: IModelSchema;
+  offset?: number;
+  branchName?: string;
+  atDate?: Date | null;
+}) => Promise<any>;
 
-export const getObjects: GetObjects = async ({ schema, offset }) => {
+export const getObjects: GetObjects = async ({ schema, offset, branchName, atDate }) => {
   const attributesVisible = getAttributesVisibleInListView(schema.attributes ?? []);
   const relationshipsVisible = getRelationshipsVisibleInListView(schema.relationships ?? []);
   const schemaKind = schema.kind as string;
@@ -39,7 +47,13 @@ export const getObjects: GetObjects = async ({ schema, offset }) => {
   });
 
   const query = gql(queryString);
-  const { data } = await graphqlClient.query({ query });
+  const { data } = await graphqlClient.query({
+    query,
+    context: {
+      branch: branchName,
+      date: atDate,
+    },
+  });
 
   return data[schemaKind]?.edges?.map((edge: any) => edge.node) ?? [];
 };
