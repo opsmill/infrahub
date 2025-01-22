@@ -71,7 +71,7 @@ describe("Schema Visualizer Component", () => {
 
     // THEN
     await expect.element(component.getByText("random-id")).toBeVisible();
-    await expect.element(component.getByText("Jinja2")).toBeVisible();
+    await expect.element(component.getByText("CoreTransformJinja2")).toBeVisible();
   });
 
   test("renders jinja template correctly", async () => {
@@ -153,7 +153,7 @@ describe("Schema Visualizer Component", () => {
     await component.getByText("attribute Text").click();
 
     // THEN
-    await expect.element(component.getByText("Transform Python")).toBeVisible();
+    await expect.element(component.getByText("CoreTransformPython")).toBeVisible();
     await expect.element(component.getByText("test-transform").first()).toBeVisible();
   });
 });
