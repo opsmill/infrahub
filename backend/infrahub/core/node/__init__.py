@@ -113,6 +113,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             attr = getattr(node, schema_path.attribute_schema.name)
             return getattr(attr, schema_path.attribute_property_name)
 
+        raise ValueError(f"Unable to retrieve the value of path {path!r} on {self.get_kind()!r}")
+
     def get_labels(self) -> list[str]:
         """Return the labels for this object, composed of the kind
         and the list of Generic this object is inheriting from."""

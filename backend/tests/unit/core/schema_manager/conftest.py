@@ -9,6 +9,8 @@ def _get_schema_by_kind(full_schema, kind):
         if schema_kind == kind:
             return schema_dict
 
+    raise ValueError(f"Schema kind '{kind}' not found in the provided schema.")
+
 
 @pytest.fixture
 async def animal_person_schema_dict() -> dict:

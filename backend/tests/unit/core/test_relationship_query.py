@@ -274,6 +274,8 @@ async def test_query_RelationshipDeleteQuery(
                 if "Relationship" in node.labels and node.get("uuid") != previous_rel:
                     return path, node
 
+        raise ValueError("No active path found")
+
     active_path, latest_rel_node = get_active_path_and_rel(all_paths=paths, previous_rel=rel_node.get("uuid"))
 
     rel_data = RelationshipPeerData(

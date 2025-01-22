@@ -26,7 +26,9 @@ async def aio_benchmark(benchmark, event_loop):
             @benchmark
             def _():
                 return event_loop.run_until_complete(func(*args, **kwargs))
-        else:
-            return benchmark(func, *args, **kwargs)
+
+            return _
+
+        return benchmark(func, *args, **kwargs)
 
     return _wrapper
