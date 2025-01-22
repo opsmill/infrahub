@@ -6,7 +6,8 @@ from pydantic import BaseModel, Field
 class RequestArtifactDefinitionGenerate(BaseModel):
     """Sent to trigger the generation of artifacts for a given branch."""
 
-    artifact_definition: str = Field(..., description="The unique ID of the Artifact Definition")
+    artifact_definition_id: str = Field(..., description="The unique ID of the Artifact Definition")
+    artifact_definition_name: str = Field(..., description="The name of the Artifact Definition")
     branch: str = Field(..., description="The branch to target")
     limit: list[str] = Field(
         default_factory=list,
@@ -18,7 +19,7 @@ class RequestArtifactGenerate(BaseModel):
     """Runs to generate an artifact"""
 
     artifact_name: str = Field(..., description="Name of the artifact")
-    artifact_definition: str = Field(..., description="The the ID of the artifact definition")
+    artifact_definition: str = Field(..., description="The ID of the artifact definition")
     commit: str = Field(..., description="The commit to target")
     content_type: str = Field(..., description="Content type of the artifact")
     transform_type: str = Field(..., description="The type of transform associated with this artifact")

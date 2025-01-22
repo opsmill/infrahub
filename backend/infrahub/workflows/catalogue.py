@@ -57,7 +57,7 @@ TRIGGER_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
 )
 
 TRIGGER_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
-    name="generator_definition_run",
+    name="generator-definition-run",
     type=WorkflowType.CORE,
     module="infrahub.generators.tasks",
     function="run_generator_definition",
@@ -81,7 +81,7 @@ REQUEST_GENERATOR_RUN = WorkflowDefinition(
 )
 
 REQUEST_GENERATOR_DEFINITION_RUN = WorkflowDefinition(
-    name="request_generator_definition_run",
+    name="request-generator-definition-run",
     type=WorkflowType.CORE,
     module="infrahub.generators.tasks",
     function="request_generator_definition_run",
