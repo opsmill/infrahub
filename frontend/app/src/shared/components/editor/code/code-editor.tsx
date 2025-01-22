@@ -1,48 +1,19 @@
 // import "prismjs/components/prism-clike";
-import { ClipboardDocumentCheckIcon, ClipboardDocumentIcon } from "@heroicons/react/24/outline";
 import Prism from "prismjs";
 // import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-json"; // need this
 import "prismjs/themes/prism.css"; //Example style, you can use another
 
-import { Button } from "@/shared/components/buttons/button-primitive";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
-import { useState } from "react";
 import Editor from "react-simple-code-editor";
-import { toast } from "react-toastify";
+import { CopyToClipboard } from "../../buttons/copy-to-clipboard";
 
 export const CodeEditor = (props: any) => {
   const { value, onChange, enableCopy, dark, ...propsToPass } = props;
 
-  const [isCopied, setIsCopied] = useState(false);
-
-  const handleCopy = async () => {
-    setIsCopied(true);
-
-    await navigator.clipboard.writeText(value);
-
-    toast(<Alert message="Content copied" type={ALERT_TYPES.INFO} />);
-
-    setTimeout(() => {
-      setIsCopied(false);
-    }, 3000);
-  };
-
   return (
     <div className="relative">
-      {enableCopy && (
-        <Button
-          className="absolute z-10 top-0 right-0"
-          variant="ghost"
-          size="square"
-          onClick={handleCopy}
-        >
-          {!isCopied && <ClipboardDocumentIcon className="h-4 w-4" />}
-
-          {isCopied && <ClipboardDocumentCheckIcon className="h-4 w-4" />}
-        </Button>
-      )}
+      {enableCopy && <CopyToClipboard text={value} />}
 
       <Editor
         {...propsToPass}

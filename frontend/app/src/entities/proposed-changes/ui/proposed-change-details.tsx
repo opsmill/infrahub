@@ -12,7 +12,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
 import { Avatar } from "@/shared/components/display/avatar";
 import { DateDisplay } from "@/shared/components/display/date-display";
-import { MarkdownViewer } from "@/shared/components/editor/markdown-viewer";
+import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-viewer";
 import { Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";

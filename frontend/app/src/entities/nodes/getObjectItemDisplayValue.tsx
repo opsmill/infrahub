@@ -20,8 +20,8 @@ import { ColorDisplay } from "@/shared/components/display/color-display";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { PasswordDisplay } from "@/shared/components/display/password-display";
 import { TextDisplay } from "@/shared/components/display/text-display";
-import { CodeEditor } from "@/shared/components/editor/code-editor";
-import { MarkdownViewer } from "@/shared/components/editor/markdown-viewer";
+import { CodeEditor } from "@/shared/components/editor/code/code-editor";
+import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-viewer";
 import { Link } from "@/shared/components/ui/link";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 

@@ -5,7 +5,7 @@ import { MoreButton } from "@/shared/components/buttons/more-button";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { PopOver } from "@/shared/components/display/popover";
-import { CodeEditor } from "@/shared/components/editor/code-editor";
+import { CodeEditor } from "@/shared/components/editor/code/code-editor";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Skeleton } from "@/shared/components/skeleton";
 import { List } from "@/shared/components/table/list";

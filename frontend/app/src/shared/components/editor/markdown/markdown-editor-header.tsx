@@ -2,7 +2,7 @@ import { Button } from "@/shared/components/buttons/button";
 import { UseCodeMirror } from "@/shared/hooks/useCodeMirror";
 import { Icon } from "@iconify-icon/react";
 import React, { FC } from "react";
-import { EditorCommand, boldCommand, italicCommand, strikethroughCommand } from "./commands";
+import { EditorCommand, boldCommand, italicCommand, strikethroughCommand } from "../commands";
 
 type ToolbarProps = { codeMirror: UseCodeMirror };
 
