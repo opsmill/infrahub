@@ -53,11 +53,15 @@ class DiffCalculator:
                 limit=node_limit,
                 offset=offset,
             )
+            log.info(f"Beginning diff node-level calculation query for branch {node_limit=}, {offset=}")
             await branch_diff_nodes_query.execute(db=self.db)
+            log.info("Diff node-level calculation query for branch complete")
             last_result = None
+            log.info("Reading node-level results of query for branch")
             for query_result in branch_diff_nodes_query.get_results():
                 diff_parser.read_result(query_result=query_result)
                 last_result = query_result
+            log.info("Results of node-level query for branch read")
             has_more_data = False
             if last_result:
                 has_more_data = last_result.get_as_type("has_more_data", bool)
@@ -76,11 +80,15 @@ class DiffCalculator:
                 limit=fields_limit,
                 offset=offset,
             )
+            log.info(f"Beginning diff field-level calculation query for branch {fields_limit=}, {offset=}")
             await branch_diff_fields_query.execute(db=self.db)
+            log.info("Diff field-level calculation query for branch complete")
             last_result = None
+            log.info("Reading field-level results of query for branch")
             for query_result in branch_diff_fields_query.get_results():
                 diff_parser.read_result(query_result=query_result)
                 last_result = query_result
+            log.info("Results of field-level query for branch read")
             has_more_data = False
             if last_result:
                 has_more_data = last_result.get_as_type("has_more_data", bool)
@@ -123,11 +131,15 @@ class DiffCalculator:
                     limit=node_limit,
                     offset=offset,
                 )
+                log.info(f"Beginning diff node-level calculation query for base {node_limit=}, {offset=}")
                 await base_diff_nodes_query.execute(db=self.db)
+                log.info("Diff node-level calculation query for base complete")
                 last_result = None
+                log.info("Reading field-level results of query for base")
                 for query_result in base_diff_nodes_query.get_results():
                     diff_parser.read_result(query_result=query_result)
                     last_result = query_result
+                log.info("Results of node-level query for base read")
                 has_more_data = False
                 if last_result:
                     has_more_data = query_result.get_as_type("has_more_data", bool)
@@ -150,11 +162,15 @@ class DiffCalculator:
                     limit=fields_limit,
                     offset=offset,
                 )
+                log.info(f"Beginning diff field-level calculation query for base {fields_limit=}, {offset=}")
                 await base_diff_fields_query.execute(db=self.db)
+                log.info("Diff field-level calculation query for base complete")
                 last_result = None
+                log.info("Reading field-level results of query for base")
                 for query_result in base_diff_fields_query.get_results():
                     diff_parser.read_result(query_result=query_result)
                     last_result = query_result
+                log.info("Results of field-level query for base read")
                 has_more_data = False
                 if last_result:
                     has_more_data = query_result.get_as_type("has_more_data", bool)
