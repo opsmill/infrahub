@@ -125,6 +125,7 @@ export default function ArtifactsDetails({ artifactId }: { artifactId: string })
   }
 
   const fileUrl = CONFIG.ARTIFACTS_CONTENT_URL(objectDetailsData?.storage_id?.value);
+  const contentType = objectDetailsData?.content_type?.value;
 
   return (
     <>
@@ -155,7 +156,7 @@ export default function ArtifactsDetails({ artifactId }: { artifactId: string })
       {!qspTab && (
         <div className="flex flex-col-reverse xl:flex-row">
           <div className="flex-2">
-            <File url={fileUrl} enableCopy />
+            <File url={fileUrl} contentType={contentType} enableCopy />
           </div>
 
           <div className="flex-1 bg-custom-white p-4 min-w-[500px]">
