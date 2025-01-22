@@ -66,23 +66,49 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
     >
       <Table>
         <TableHeader columns={table.getFlatHeaders()}>
-          {(header) => (
-            <TableColumn key={header.id} isRowHeader className="sticky top-0 z-10 bg-stone-50">
-              {header.isPlaceholder
-                ? null
-                : flexRender(header.column.columnDef.header, header.getContext())}
-            </TableColumn>
-          )}
+          {(header) => {
+            const { column } = header;
+            const isPinned = header.id === "id";
+
+            return (
+              <TableColumn
+                isRowHeader
+                className="sticky top-0 bg-stone-50"
+                style={{
+                  width: column.getSize(),
+                  left: isPinned ? `${column.getStart("left")}px` : undefined,
+                  zIndex: isPinned ? 2 : undefined,
+                }}
+              >
+                {header.isPlaceholder
+                  ? null
+                  : flexRender(column.columnDef.header, header.getContext())}
+              </TableColumn>
+            );
+          }}
         </TableHeader>
 
         <TableBody items={table.getRowModel().rows} renderEmptyState={() => "No results."}>
           {(row) => (
             <TableRow columns={row.getVisibleCells()}>
-              {(cell) => (
-                <TableCell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              )}
+              {(cell) => {
+                const { column } = cell;
+                const isPinned = column.id === "id";
+
+                return (
+                  <TableCell
+                    className="bg-white"
+                    style={{
+                      width: column.getSize(),
+                      position: isPinned ? "sticky" : undefined,
+                      left: isPinned ? `${column.getStart("left")}px` : undefined,
+                      zIndex: isPinned ? 1 : undefined,
+                    }}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                );
+              }}
             </TableRow>
           )}
         </TableBody>

@@ -26,7 +26,7 @@ export const getObjectTableColumns = (
       header: "ID",
       accessorKey: "id",
       cell: ({ row }) => {
-        const value = row.getValue("id") ?? "-";
+        const value = (row.getValue("id") ?? "-") as string;
         return <Badge variant="blue">{value}</Badge>;
       },
     },
