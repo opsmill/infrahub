@@ -5,6 +5,7 @@ import pytest
 import yaml
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import NodeNotFoundError
+from infrahub_sdk.protocols import CoreCheckDefinition, CoreGraphQLQuery, CoreTransformJinja2, CoreTransformPython
 from starlette.testclient import TestClient
 
 from infrahub import config
@@ -147,7 +148,7 @@ class TestInfrahubClient:
 
         await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)
 
-        queries = await client.all(kind=InfrahubKind.GRAPHQLQUERY)
+        queries = await client.all(kind=CoreGraphQLQuery)
         assert len(queries) == 5
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
@@ -172,11 +173,11 @@ class TestInfrahubClient:
 
         await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)
 
-        modified_query = await client.get(kind=InfrahubKind.GRAPHQLQUERY, id=queries[0].id)
+        modified_query = await client.get(kind=CoreGraphQLQuery, id=queries[0].id)
         assert modified_query.query.value == value_before_change
 
         with pytest.raises(NodeNotFoundError):
-            await client.get(kind=InfrahubKind.GRAPHQLQUERY, id=obj.id)
+            await client.get(kind=CoreGraphQLQuery, id=obj.id)
 
     async def test_import_all_python_files(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
@@ -187,10 +188,10 @@ class TestInfrahubClient:
 
         await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)
 
-        check_definitions = await client.all(kind=InfrahubKind.CHECKDEFINITION)
+        check_definitions = await client.all(kind=CoreCheckDefinition)
         assert len(check_definitions) >= 1
 
-        transforms = await client.all(kind="CoreTransformPython")
+        transforms = await client.all(kind=CoreTransformPython)
         assert len(transforms) >= 2
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
@@ -226,7 +227,7 @@ class TestInfrahubClient:
         )
         await obj1.save(db=db)
 
-        obj2 = await Node.init(schema="CoreTransformPython", db=db)
+        obj2 = await Node.init(schema=InfrahubKind.TRANSFORMPYTHON, db=db)
         await obj2.new(
             db=db,
             name="soontobedeletedtransform",
@@ -239,22 +240,21 @@ class TestInfrahubClient:
 
         await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)
 
-        modified_check0 = await client.get(kind=InfrahubKind.CHECKDEFINITION, id=check_definitions[0].id)
+        modified_check0 = await client.get(kind=CoreCheckDefinition, id=check_definitions[0].id)
         assert modified_check0.timeout.value == check_timeout_value_before_change
         assert modified_check0.query.id == check_query_value_before_change
 
-        modified_transform0 = await client.get(kind="CoreTransformPython", id=transforms[0].id)
-        modified_transform1 = await client.get(kind="CoreTransformPython", id=transforms[1].id)
+        modified_transform0 = await client.get(kind=CoreTransformPython, id=transforms[0].id)
+        modified_transform1 = await client.get(kind=CoreTransformPython, id=transforms[1].id)
 
         assert modified_transform0.timeout.value == transform_timeout_value_before_change
         assert modified_transform1.query.id == transform_query_value_before_change
 
-        # FIXME not implemented yet
         with pytest.raises(NodeNotFoundError):
-            await client.get(kind=InfrahubKind.CHECKDEFINITION, id=obj1.id)
+            await client.get(kind=CoreCheckDefinition, id=obj1.id)
 
         with pytest.raises(NodeNotFoundError):
-            await client.get(kind="CoreTransformPython", id=obj2.id)
+            await client.get(kind=CoreTransformPython, id=obj2.id)
 
     async def test_import_all_yaml_files(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
@@ -264,7 +264,7 @@ class TestInfrahubClient:
         assert config_file
         await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)
 
-        rfiles = await client.all(kind=InfrahubKind.TRANSFORMJINJA2)
+        rfiles = await client.all(kind=CoreTransformJinja2)
         assert len(rfiles) == 2
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
@@ -292,13 +292,12 @@ class TestInfrahubClient:
 
         await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)
 
-        modified_rfile = await client.get(kind=InfrahubKind.TRANSFORMJINJA2, id=rfiles[0].id)
+        modified_rfile = await client.get(kind=CoreTransformJinja2, id=rfiles[0].id)
         assert modified_rfile.template_path.value == rfile_template_path_value_before_change
         assert modified_rfile.query.id == rfile_query_value_before_change
 
-        # FIXME not implemented yet
         with pytest.raises(NodeNotFoundError):
-            await client.get(kind=InfrahubKind.TRANSFORMJINJA2, id=obj.id)
+            await client.get(kind=CoreTransformJinja2, id=obj.id)
 
 
 class TestGetMissingFile(TestInfrahubApp):

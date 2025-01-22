@@ -54,6 +54,7 @@ hfids
 hostname
 httpx
 human_friendly_id
+id_token
 idempotency
 include_in_menu
 Infrahub

@@ -261,7 +261,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         err_msg = response["errors"][0]["message"]
         assert initial_dataset["john"] in err_msg
         assert initial_dataset["jane"] in err_msg
-        assert "attribute.regex.update" in err_msg
+        assert "Attribute-level 'regex' constraint violation" in err_msg
 
     async def test_step_02_check_attr_regex_add_success(
         self, client: InfrahubClient, initial_dataset, schema_02_attr_regex
@@ -303,7 +303,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         assert len(response["errors"]) == 1
         err_msg = response["errors"][0]["message"]
         assert initial_dataset["blue"] in err_msg
-        assert "relationship.count.update" in err_msg
+        assert "Relationship-level 'count' constraint violation" in err_msg
 
     async def test_step_04_check_relationship_cardinality_change_success(
         self, client: InfrahubClient, initial_dataset, schema_04_relationship_cardinality
@@ -356,7 +356,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         err_msg = response["errors"][0]["message"]
         assert pinto.id in err_msg
         assert initial_dataset["accord"] in err_msg
-        assert "attribute.unique.update" in err_msg
+        assert "Attribute-level 'unique' constraint violation" in err_msg
 
     async def test_step_06_check_attribute_unique_change_success(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_05_attribute_unique
@@ -408,7 +408,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         err_msg = response["errors"][0]["message"]
 
         assert car_profile.id in err_msg
-        assert "node.generate_profile.update" in err_msg
+        assert "Node-level 'generate_profile' constraint violation" in err_msg
 
     async def test_step_08_check_generate_profile_failure(
         self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset, schema_07_generate_profile_false
@@ -467,4 +467,4 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         err_msg = response["errors"][0]["message"]
 
         assert generic_profile.id in err_msg
-        assert "node.generate_profile.update" in err_msg
+        assert "Node-level 'generate_profile' constraint violation" in err_msg

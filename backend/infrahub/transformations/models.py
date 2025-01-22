@@ -10,7 +10,8 @@ class TransformPythonData(BaseModel):
     data: dict = Field(..., description="Input data for the template")
     branch: str = Field(..., description="The branch to target")
     transform_location: str = Field(..., description="Location of the transform within the repository")
-    commit: str = Field(..., description="The commit id to use when rendering the template")
+    commit: str = Field(..., description="The commit id to use when generating the artifact")
+    timeout: int = Field(..., description="The timeout value to use when generating the artifact")
 
 
 class TransformJinjaTemplateData(BaseModel):
@@ -23,3 +24,4 @@ class TransformJinjaTemplateData(BaseModel):
     branch: str = Field(..., description="The branch to target")
     template_location: str = Field(..., description="Location of the template within the repository")
     commit: str = Field(..., description="The commit id to use when rendering the template")
+    timeout: int = Field(..., description="The timeout value to use when rendering the template")

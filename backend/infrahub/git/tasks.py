@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from infrahub_sdk import InfrahubClient
-from infrahub_sdk.protocols import CoreRepository
+from infrahub_sdk.protocols import CoreArtifactDefinition, CoreRepository
 from prefect import flow, task
 from prefect.automations import AutomationCore
 from prefect.cache_policies import NONE
@@ -243,10 +243,14 @@ async def generate_artifact_definition(branch: str) -> None:
     service = services.service
     await add_branch_tag(branch_name=branch)
 
-    artifact_definitions = await service.client.all(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch, include=["id"])
+    artifact_definitions = await service.client.all(kind=CoreArtifactDefinition, branch=branch, include=["id"])
 
     for artifact_definition in artifact_definitions:
-        model = RequestArtifactDefinitionGenerate(branch=branch, artifact_definition=artifact_definition.id)
+        model = RequestArtifactDefinitionGenerate(
+            branch=branch,
+            artifact_definition_id=artifact_definition.id,
+            artifact_definition_name=artifact_definition.name.value,
+        )
         await service.workflow.submit_workflow(
             workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
         )
@@ -277,15 +281,19 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
         log.exception("Failed to generate artifact")
         artifact.status.value = "Error"
         await artifact.save()
+        raise
 
 
-@flow(name="request_artifact_definitions_generate", flow_run_name="Trigger Generation of Artifacts for ")
+@flow(
+    name="request_artifact_definitions_generate",
+    flow_run_name="Trigger Generation of Artifacts for {model.artifact_definition_name}",
+)
 async def generate_request_artifact_definition(model: RequestArtifactDefinitionGenerate) -> None:
     service = services.service
-    await add_tags(branches=[model.branch])
+    await add_tags(branches=[model.branch], nodes=[model.artifact_definition_id])
 
     artifact_definition = await service.client.get(
-        kind=InfrahubKind.ARTIFACTDEFINITION, id=model.artifact_definition, branch=model.branch
+        kind=InfrahubKind.ARTIFACTDEFINITION, id=model.artifact_definition_id, branch=model.branch
     )
 
     await artifact_definition.targets.fetch()
@@ -295,7 +303,7 @@ async def generate_request_artifact_definition(model: RequestArtifactDefinitionG
 
     existing_artifacts = await service.client.filters(
         kind=InfrahubKind.ARTIFACT,
-        definition__ids=[model.artifact_definition],
+        definition__ids=[model.artifact_definition_id],
         include=["object"],
         branch=model.branch,
     )
@@ -334,7 +342,7 @@ async def generate_request_artifact_definition(model: RequestArtifactDefinitionG
         request_artifact_generate_model = RequestArtifactGenerate(
             artifact_name=artifact_definition.name.value,
             artifact_id=artifact_id,
-            artifact_definition=model.artifact_definition,
+            artifact_definition=model.artifact_definition_id,
             commit=repository.commit.value,
             content_type=artifact_definition.content_type.value,
             transform_type=transform.typename,

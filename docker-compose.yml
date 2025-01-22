@@ -241,7 +241,7 @@ services:
       - "workflow_data:/opt/infrahub/workflow"
     tty: true
     healthcheck:
-      test: curl -s -f -o /dev/null http://localhost:8000/api/schema/summary || exit 1
+      test: curl -s -f -o /dev/null http://localhost:8000/api/config || exit 1
       interval: 5s
       timeout: 5s
       retries: 20

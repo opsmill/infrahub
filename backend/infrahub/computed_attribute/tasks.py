@@ -4,7 +4,10 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 import ujson
-from infrahub_sdk.protocols import CoreNode  # noqa: TC002
+from infrahub_sdk.protocols import (
+    CoreNode,  # noqa: TC002
+    CoreTransformPython,
+)
 from prefect import flow
 from prefect.automations import AutomationCore
 from prefect.client.orchestration import get_client
@@ -88,17 +91,18 @@ async def process_transform(
 
     for attribute_name, transform_attribute in transform_attributes.items():
         transform = await service.client.get(
-            kind="CoreTransformPython",
+            kind=CoreTransformPython,
             branch=branch_name,
             id=transform_attribute.transform,
             prefetch_relationships=True,
             populate_store=True,
         )
+
         if not transform:
             continue
 
         repo_node = await service.client.get(
-            kind=transform.repository.peer.typename,
+            kind=str(transform.repository.peer.typename),
             branch=branch_name,
             id=transform.repository.peer.id,
             raise_when_missing=True,
@@ -108,7 +112,7 @@ async def process_transform(
             repository_id=transform.repository.peer.id,
             name=transform.repository.peer.name.value,
             service=service,
-            repository_kind=transform.repository.peer.typename,
+            repository_kind=str(transform.repository.peer.typename),
             commit=repo_node.commit.value,
         )
 
@@ -120,7 +124,7 @@ async def process_transform(
             subscribers=[object_id],
         )
 
-        transformed_data = await repo.execute_python_transform(
+        transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=transform.timeout.value)(
             branch_name=branch_name,
             commit=repo_node.commit.value,
             location=f"{transform.file_path.value}::{transform.class_name.value}",

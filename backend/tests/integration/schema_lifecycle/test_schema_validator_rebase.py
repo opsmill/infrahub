@@ -139,7 +139,7 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
             await client.branch.rebase(branch_name=branch_2.name)
 
         assert little_john.id in exc.value.message
-        assert "attribute.regex.update" in exc.value.message
+        assert "Attribute-level 'regex' constraint violation" in exc.value.message
 
     async def test_step_02_node_unique_rebase_failure(
         self, client: InfrahubClient, db: InfrahubDatabase, initial_dataset, schema_02_node_unique, branch_2

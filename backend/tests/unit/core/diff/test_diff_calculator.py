@@ -1,5 +1,6 @@
 import pytest
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality
@@ -12,6 +13,16 @@ from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+
+
+@pytest.fixture(autouse=True, scope="module")
+def low_query_size_limit():
+    original = config.SETTINGS.database.query_size_limit
+    config.SETTINGS.database.query_size_limit = 30
+
+    yield
+
+    config.SETTINGS.database.query_size_limit = original
 
 
 async def test_diff_attribute_branch_update(

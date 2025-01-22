@@ -1,4 +1,4 @@
-from typing import Generator
+from typing import AsyncGenerator, Generator
 
 from infrahub import config
 from infrahub.core import registry
@@ -22,6 +22,7 @@ from ..model.path import (
     TimeRange,
     TrackingId,
 )
+from ..query.all_conflicts import EnrichedDiffAllConflictsQuery
 from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
@@ -317,6 +318,19 @@ class DiffRepository:
         if not conflict_node:
             raise ResourceNotFoundError(f"No conflict with id {conflict_id}")
         return self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node)
+
+    async def get_all_conflicts_for_diff(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+    ) -> AsyncGenerator[tuple[str, EnrichedDiffConflict], None]:
+        query = await EnrichedDiffAllConflictsQuery.init(
+            db=self.db, diff_branch_name=diff_branch_name, tracking_id=tracking_id, diff_id=diff_id
+        )
+        await query.execute(db=self.db)
+        for conflict_path, conflict_node in query.get_conflict_paths_and_nodes():
+            yield (conflict_path, self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node))
 
     async def get_node_field_summaries(
         self, diff_branch_name: str, tracking_id: TrackingId | None = None, diff_id: str | None = None

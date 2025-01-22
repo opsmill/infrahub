@@ -83,6 +83,7 @@ async def transform_python(
         commit=repository.commit.value,  # type: ignore[attr-defined]
         branch=branch_params.branch.name,
         transform_location=f"{transform.file_path.value}::{transform.class_name.value}",
+        timeout=transform.timeout.value,
         data=data,
     )
 
@@ -140,6 +141,7 @@ async def transform_jinja2(
         commit=repository.commit.value,  # type: ignore[attr-defined]
         branch=branch_params.branch.name,
         template_location=transform.template_path.value,
+        timeout=transform.timeout.value,
         data=data,
     )
 

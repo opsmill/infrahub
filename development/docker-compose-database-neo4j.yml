@@ -29,7 +29,6 @@ services:
     ports:
       - "${INFRAHUB_DB_BACKUP_PORT:-6362}:6362"
 
-
 volumes:
   database_data:
   database_logs:
