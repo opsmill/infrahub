@@ -9,6 +9,7 @@ import {
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { Badge } from "@/shared/components/ui/badge";
 
 export const getObjectTableColumns = (
   schema: IModelSchema
@@ -20,14 +21,24 @@ export const getObjectTableColumns = (
     R.sortBy((column) => column.order_weight ?? 0)
   );
 
-  return sortedColumns.map((column) => {
-    return {
-      header: column.label ?? column.name,
-      accessorKey: column.name,
+  return [
+    {
+      header: "ID",
+      accessorKey: "id",
       cell: ({ row }) => {
-        const value = row.getValue(column.name);
-        return <ObjectAttributeValue attributeSchema={column} attributeValue={value} />;
+        const value = row.getValue("id") ?? "-";
+        return <Badge variant="blue">{value}</Badge>;
       },
-    };
-  });
+    },
+    ...sortedColumns.map((column) => {
+      return {
+        header: column.label ?? column.name,
+        accessorKey: column.name,
+        cell: ({ row }) => {
+          const value = row.getValue(column.name);
+          return <ObjectAttributeValue attributeSchema={column} attributeValue={value} />;
+        },
+      };
+    }),
+  ];
 };

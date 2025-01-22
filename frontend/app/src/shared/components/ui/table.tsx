@@ -106,7 +106,8 @@ export const TableCell = ({ className, ...props }: CellProps) => (
   <AriaCell
     className={composeRenderProps(className, (className) =>
       classNames(
-        "p-4 align-middle -outline-offset-2 data-[focus-visible]:outline-ring [&:has([role=checkbox])]:pr-0",
+        "p-4 align-middle",
+        "transition-colors data-[focused='true']:outline data-[focused='true']:outline-custom-blue-600",
         className
       )
     )}
