@@ -8,8 +8,6 @@ from typing import Optional
 from testcontainers.compose import DockerCompose
 from typing_extensions import Self
 
-from infrahub_testcontainers import __version__ as infrahub_version
-
 
 @dataclass
 class ContainerService:
@@ -22,9 +20,8 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
     "task-manager": ContainerService(container="task-manager", port=4200),
 }
 
-PROJECT_ENV_VARIABLES: dict[str, str] = {
-    "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",
-    "INFRAHUB_TESTING_IMAGE_VERSION": infrahub_version,
+ENV_VAR_DEFAULT_VALUES: dict[str, str] = {
+    "INFRAHUB_TESTING_IMAGE_NAME": "registry.opsmill.io/opsmill/infrahub",
     "INFRAHUB_TESTING_PRODUCTION": "false",
     "INFRAHUB_TESTING_DB_ADDRESS": "database",
     "INFRAHUB_TESTING_LOG_LEVEL": "DEBUG",
@@ -51,19 +48,9 @@ class InfrahubDockerCompose(DockerCompose):
     project_name: Optional[str] = None
 
     @classmethod
-    def init(cls, directory: Optional[Path] = None, version: Optional[str] = None) -> Self:
-        if not directory:
-            directory = Path.cwd()
-
-        if not version:
-            version = infrahub_version
-
-        infrahub_image_version = os.environ.get("INFRAHUB_TESTING_IMAGE_VER", None)
-        if version == "local" and infrahub_image_version:
-            version = infrahub_image_version
-
+    def init(cls, directory: Path, image_tag: str) -> Self:
         cls.create_docker_file(directory=directory)
-        cls.create_env_file(directory=directory, version=version)
+        cls.create_env_file(directory=directory, image_tag=image_tag)
 
         return cls(project_name=cls.generate_project_name(), context=directory)
 
@@ -83,15 +70,16 @@ class InfrahubDockerCompose(DockerCompose):
         return test_compose_file
 
     @classmethod
-    def create_env_file(cls, directory: Path, version: str) -> Path:
+    def create_env_file(cls, directory: Path, image_tag: str) -> Path:
         env_file = directory / ".env"
 
-        PROJECT_ENV_VARIABLES.update({"INFRAHUB_TESTING_IMAGE_VERSION": version})
-
         with env_file.open(mode="w", encoding="utf-8") as file:
-            for key, value in PROJECT_ENV_VARIABLES.items():
+            for key, value in ENV_VAR_DEFAULT_VALUES.items():
                 env_var_value = os.environ.get(key, value)
                 file.write(f"{key}={env_var_value}\n")
+
+            file.write(f"INFRAHUB_TESTING_IMAGE_TAG={image_tag}\n")
+
         return env_file.absolute()
 
     # TODO would be good to the support for project_name upstream

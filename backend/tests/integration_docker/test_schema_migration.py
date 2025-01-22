@@ -4,21 +4,18 @@ import pytest
 import yaml
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.schema.main import AttributeKind, AttributeSchema, NodeSchema, SchemaRoot
-from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.schemas.car_person import (
     NAMESPACE,
     TESTING_PERSON,
     SchemaCarPerson,
 )
 
+from tests.integration_docker.classes import TestDockerIntegration
+
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
 
-class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
-    @pytest.fixture(scope="class")
-    def infrahub_version(self) -> str:
-        return "local"
-
+class TestSchemaMigrations(TestDockerIntegration, SchemaCarPerson):
     @pytest.fixture(scope="class")
     def schema_person_mandatory_age(self, schema_person_base: NodeSchema) -> NodeSchema:
         schema_person = schema_person_base.model_copy(deep=True)

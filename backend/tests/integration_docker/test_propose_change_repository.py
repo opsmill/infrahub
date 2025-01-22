@@ -4,7 +4,6 @@ import pytest
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import CoreGenericRepository, CoreProposedChange
 from infrahub_sdk.schema import NodeSchema, SchemaRoot
-from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 from infrahub_sdk.testing.schemas.car_person import (
     TESTING_PERSON,
@@ -13,15 +12,12 @@ from infrahub_sdk.testing.schemas.car_person import (
 
 from infrahub.core.constants import InfrahubKind
 from tests.helpers.fixtures import get_fixtures_dir
+from tests.integration_docker.classes import TestDockerIntegration
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
 
-class TestProposeChangeRepository(TestInfrahubDockerClient, SchemaCarPerson):
-    @pytest.fixture(scope="class")
-    def infrahub_version(self) -> str:
-        return "local"
-
+class TestProposeChangeRepository(TestDockerIntegration, SchemaCarPerson):
     @pytest.fixture(scope="class")
     def schema_person_artifact(self, schema_person_base: NodeSchema) -> NodeSchema:
         person_schema = schema_person_base.model_copy(deep=True)

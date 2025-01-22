@@ -404,19 +404,21 @@ jobs:
               git config --global credential.helper /usr/local/bin/infrahub-git-credential"
       - name: "Set environment variables"
         run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }}>> $GITHUB_ENV
-      - name: "Set environment variables"
+      - name: "Set environment variables prior dev.build"
         run: |
           RUNNER_NAME=$(echo "${{ runner.name }}" | grep -o 'ghrunner[0-9]\+' | sed 's/ghrunner\([0-9]\+\)/ghrunner_\1/')
           echo "PYTEST_DEBUG_TEMPROOT=/var/lib/github/${RUNNER_NAME}/_temp" >> $GITHUB_ENV
           echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-          echo INFRAHUB_TESTING_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-          echo INFRAHUB_TESTING_DOCKER_IMAGE="opsmill/infrahub" >> $GITHUB_ENV
       - name: "Build container"
         run: "inv dev.build"
       - name: "Setup Python environment"
         run: |
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+      - name: "Set environment variables for python_testcontainers"
+        run: |
+          echo INFRAHUB_TESTING_IMAGE_TAG=$INFRAHUB_IMAGE_VER >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_IMAGE_NAME=$INFRAHUB_IMAGE_NAME >> $GITHUB_ENV
       - name: "Run tests"
         run: "poetry run pytest backend/tests/integration_docker/"
 

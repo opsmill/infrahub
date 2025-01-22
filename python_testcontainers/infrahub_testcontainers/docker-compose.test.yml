@@ -80,7 +80,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
+    image: "${INFRAHUB_TESTING_IMAGE_NAME}:${INFRAHUB_TESTING_IMAGE_TAG}"
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
       -w ${INFRAHUB_TESTING_WEB_CONCURRENCY}
@@ -122,7 +122,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
+    image: "${INFRAHUB_TESTING_IMAGE_NAME}:${INFRAHUB_TESTING_IMAGE_TAG}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     environment:
       INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}

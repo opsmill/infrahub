@@ -28,6 +28,9 @@ class Namespace(str, Enum):
     TEST = "test"
 
 
+LOCAL_BUILD_DEFAULT_IMAGE_NAME = "local.build/opsmill/infrahub"
+LOCAL_BUILD_DEFAULT_IMAGE_TAG = "local"
+
 INVOKE_SUDO = os.getenv("INVOKE_SUDO", None)
 INVOKE_PTY = os.getenv("INVOKE_PTY", None)
 DEBUG = os.environ.get("DEBUG", "").lower() in ("true", "1", "yes")
@@ -80,7 +83,7 @@ COMPOSE_FILES_DEPS = {
     True: Path("development/docker-compose-deps-nats.yml"),
 }
 
-IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
+IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", LOCAL_BUILD_DEFAULT_IMAGE_NAME)
 REQUESTED_IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER")
 IMAGE_VER = REQUESTED_IMAGE_VER or "latest"
 
@@ -234,7 +237,7 @@ def get_env_vars(context: Context, namespace: Namespace = Namespace.DEFAULT) -> 
     }
 
     if namespace == Namespace.DEV and not REQUESTED_IMAGE_VER:
-        ENV_VARS_DICT["IMAGE_VER"] = "local"
+        ENV_VARS_DICT["IMAGE_VER"] = LOCAL_BUILD_DEFAULT_IMAGE_TAG
 
     if DATABASE_DOCKER_IMAGE:
         ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = DATABASE_DOCKER_IMAGE
