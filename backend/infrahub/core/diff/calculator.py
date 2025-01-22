@@ -2,7 +2,7 @@ from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.query_parser import DiffQueryParser
-from infrahub.core.query.diff import DiffAllPathsQuery, DiffNodePathsQuery
+from infrahub.core.query.diff import DiffAllPathsQuery, DiffFieldPathsQuery, DiffNodePathsQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
@@ -38,6 +38,7 @@ class DiffCalculator:
             previous_node_field_specifiers=previous_node_specifiers,
         )
         node_limit = int(config.SETTINGS.database.query_size_limit / 10)
+        fields_limit = int(config.SETTINGS.database.query_size_limit / 3)
 
         has_more_data = True
         offset = 0
@@ -55,6 +56,29 @@ class DiffCalculator:
             await branch_diff_nodes_query.execute(db=self.db)
             last_result = None
             for query_result in branch_diff_nodes_query.get_results():
+                diff_parser.read_result(query_result=query_result)
+                last_result = query_result
+            has_more_data = False
+            if last_result:
+                has_more_data = last_result.get_as_type("has_more_data", bool)
+            offset += node_limit
+
+        has_more_data = True
+        offset = 0
+        while has_more_data:
+            branch_diff_fields_query = await DiffFieldPathsQuery.init(
+                db=self.db,
+                branch=diff_branch,
+                base_branch=base_branch,
+                diff_branch_from_time=diff_branch_from_time,
+                diff_from=from_time,
+                diff_to=to_time,
+                limit=fields_limit,
+                offset=offset,
+            )
+            await branch_diff_fields_query.execute(db=self.db)
+            last_result = None
+            for query_result in branch_diff_fields_query.get_results():
                 diff_parser.read_result(query_result=query_result)
                 last_result = query_result
             has_more_data = False
@@ -102,6 +126,33 @@ class DiffCalculator:
                 await base_diff_nodes_query.execute(db=self.db)
                 last_result = None
                 for query_result in base_diff_nodes_query.get_results():
+                    diff_parser.read_result(query_result=query_result)
+                    last_result = query_result
+                has_more_data = False
+                if last_result:
+                    has_more_data = query_result.get_as_type("has_more_data", bool)
+                offset += node_limit
+
+            has_more_data = True
+            offset = 0
+            while has_more_data:
+                base_diff_fields_query = await DiffFieldPathsQuery.init(
+                    db=self.db,
+                    branch=base_branch,
+                    base_branch=base_branch,
+                    diff_branch_from_time=diff_branch_from_time,
+                    diff_from=from_time,
+                    diff_to=to_time,
+                    current_node_field_specifiers=[
+                        (nfs.node_uuid, nfs.field_name) for nfs in current_node_field_specifiers
+                    ],
+                    new_node_field_specifiers=[(nfs.node_uuid, nfs.field_name) for nfs in new_node_field_specifiers],
+                    limit=fields_limit,
+                    offset=offset,
+                )
+                await base_diff_fields_query.execute(db=self.db)
+                last_result = None
+                for query_result in base_diff_fields_query.get_results():
                     diff_parser.read_result(query_result=query_result)
                     last_result = query_result
                 has_more_data = False
