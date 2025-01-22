@@ -1,10 +1,11 @@
 import { getObjectsInfiniteQueryOptions } from "@/entities/nodes/object/domain/get-objects.query";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { Spinner } from "@/shared/components/ui/spinner";
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
+  TableColumn,
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
@@ -59,56 +60,35 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
 
   return (
     <div
-      className="overflow-auto max-h-[calc(100vh-13rem)]"
+      className="overflow-auto max-h-[calc(100vh-10.5rem)]"
       onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
       ref={tableContainerRef}
     >
       <Table>
-        <TableHeader>
-          <TableRow>
-            {table.getFlatHeaders().map((header) => (
-              <TableHead key={header.id}>
-                {header.isPlaceholder
-                  ? null
-                  : flexRender(header.column.columnDef.header, header.getContext())}
-              </TableHead>
-            ))}
-          </TableRow>
+        <TableHeader columns={table.getFlatHeaders()}>
+          {(header) => (
+            <TableColumn key={header.id} isRowHeader className="sticky top-0 z-10 bg-stone-50">
+              {header.isPlaceholder
+                ? null
+                : flexRender(header.column.columnDef.header, header.getContext())}
+            </TableColumn>
+          )}
         </TableHeader>
 
-        <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                No results.
-              </TableCell>
-            </TableRow>
-          )}
-
-          {isFetchingNextPage && (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="h-24">
-                <div className="flex items-center justify-center">
-                  <div className="animate-pulse space-y-2">
-                    <div className="h-4 w-48 bg-gray-200 rounded" />
-                    <div className="h-4 w-32 bg-gray-200 rounded" />
-                  </div>
-                </div>
-              </TableCell>
+        <TableBody items={table.getRowModel().rows} renderEmptyState={() => "No results."}>
+          {(row) => (
+            <TableRow columns={row.getVisibleCells()}>
+              {(cell) => (
+                <TableCell key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              )}
             </TableRow>
           )}
         </TableBody>
       </Table>
+
+      {isFetchingNextPage && <Spinner />}
     </div>
   );
 };
