@@ -405,11 +405,6 @@ ignore = [
     # like this so that we can reactivate them one by one. Alternatively ignored after further       #
     # investigation if they are deemed to not make sense.                                            #
     ##################################################################################################
-    "B007",    # Loop control variable not used within loop body
-    "B008",    # Do not perform function call `Depends` in argument defaults;
-    "B009",    # [*] Do not call `getattr` with a constant attribute value. It is not any safer than normal property access.
-    "B010",    # [*] Do not call `setattr` with a constant attribute value. It is not any safer than normal property access.
-    "B904",    # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
     "FURB113", # Use `networks.extend(...)` instead of repeatedly calling `networks.append()`
     "FURB118", # Use `operator.itemgetter(1)` instead of defining a lambda
     "FURB140", # Use `itertools.starmap` instead of the generator
@@ -471,6 +466,17 @@ ignore = [
     "UP018",   # Unnecessary {literal_type} call (rewrite as a literal)
     "UP031",   # Use format specifiers instead of percent format
     "UP035",   # `typing.List` is deprecated, use `list` instead
+]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Body",
+    "fastapi.Depends",
+    "fastapi.params.Depends",
+    "fastapi.File",
+    "fastapi.Query",
+    "fastapi.params.Query",
+    "typer.Argument",
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/

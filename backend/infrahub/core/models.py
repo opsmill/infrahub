@@ -169,7 +169,7 @@ class SchemaUpdateValidationResult(BaseModel):
         return obj
 
     def process_diff(self, schema: SchemaBranch) -> None:
-        for schema_name, schema_diff in self.diff.removed.items():
+        for schema_name in self.diff.removed.keys():
             self.migrations.append(
                 SchemaUpdateMigrationInfo(
                     path=SchemaPath(  # type: ignore[call-arg]

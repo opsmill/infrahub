@@ -129,7 +129,8 @@ async def execute_query(
 async def graphql_query_post(
     request: Request,
     payload: QueryPayload = Body(
-        QueryPayload(), description="Payload of the request, must be used to provide the variables"
+        QueryPayload(),  # noqa: B008
+        description="Payload of the request, must be used to provide the variables",
     ),
     query_id: str = Path(description="ID or Name of the GraphQL query to execute"),
     subscribers: list[str] = Query(

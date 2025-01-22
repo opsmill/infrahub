@@ -479,8 +479,8 @@ async def _get_operation_from_request(request: Request) -> Union[dict[str, Any],
     if content_type == "application/json":
         try:
             return cast(Union[dict[str, Any], list[Any]], await request.json())
-        except (TypeError, ValueError):
-            raise ValueError("Request body is not a valid JSON")
+        except (TypeError, ValueError) as err:
+            raise ValueError("Request body is not a valid JSON") from err
     elif content_type == "multipart/form-data":
         return await _get_operation_from_multipart(request)
     else:
@@ -490,15 +490,15 @@ async def _get_operation_from_request(request: Request) -> Union[dict[str, Any],
 async def _get_operation_from_multipart(request: Request) -> Union[dict[str, Any], list[Any]]:
     try:
         request_body = await request.form()
-    except Exception:
-        raise ValueError("Request body is not a valid multipart/form-data")
+    except Exception as err:
+        raise ValueError("Request body is not a valid multipart/form-data") from err
 
     try:
         operations_value = request_body.get("operations")
         operations_data = operations_value if isinstance(operations_value, str) else ""
         operations = ujson.loads(operations_data)
-    except (TypeError, ValueError):
-        raise ValueError("'operations' must be a valid JSON")
+    except (TypeError, ValueError) as err:
+        raise ValueError("'operations' must be a valid JSON") from err
     if not isinstance(operations, (dict, list)):
         raise ValueError("'operations' field must be an Object or an Array")
 
@@ -506,8 +506,8 @@ async def _get_operation_from_multipart(request: Request) -> Union[dict[str, Any
         map_value = request_body.get("map")
         map_data = map_value if isinstance(map_value, str) else ""
         name_path_map = ujson.loads(map_data)
-    except (TypeError, ValueError):
-        raise ValueError("'map' field must be a valid JSON")
+    except (TypeError, ValueError) as err:
+        raise ValueError("'map' field must be a valid JSON") from err
     if not isinstance(name_path_map, dict):
         raise ValueError("'map' field must be an Object")
 

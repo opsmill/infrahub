@@ -936,7 +936,7 @@ async def test_create_python_check_definition(
     repo = git_repo_03_w_client
 
     module = helper.import_module_in_fixtures(module="checks/check01")
-    check_class = getattr(module, "Check01")
+    check_class = module.Check01
 
     gql_schema = await repo.client.schema.get(kind=InfrahubKind.GRAPHQLQUERY)
 
@@ -967,7 +967,7 @@ async def test_compare_python_check(
     repo = git_repo_03_w_client
 
     module = helper.import_module_in_fixtures(module="checks/check01")
-    check_class = getattr(module, "Check01")
+    check_class = module.Check01
 
     gql_schema = await repo.client.schema.get(kind=InfrahubKind.GRAPHQLQUERY)
     check_schema = await repo.client.schema.get(kind=InfrahubKind.CHECKDEFINITION)

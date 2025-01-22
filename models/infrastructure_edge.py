@@ -1095,7 +1095,7 @@ async def generate_site(
     }
 
     # Here we need as much prefix as we have edge device
-    for i in range(site_design.num_edge_device):
+    for _ in range(site_design.num_edge_device):
         peer_networks.append(
             await client.allocate_next_ip_prefix(resource_pool=interconnection_pool, kind=IpamIPPrefix, branch=branch)
         )

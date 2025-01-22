@@ -57,7 +57,7 @@ async def generate_artifact(
     request: Request,
     artifact_definition_id: str,
     payload: ArtifactGeneratePayload = Body(
-        ArtifactGeneratePayload(),
+        ArtifactGeneratePayload(),  # noqa: B008
         description="Payload of the request, can be used to limit the scope of the query to a specific list of hosts",
     ),
     db: InfrahubDatabase = Depends(get_db),
