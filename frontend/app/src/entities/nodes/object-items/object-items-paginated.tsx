@@ -9,6 +9,7 @@ import { getDisplayValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useObjectItems } from "@/entities/nodes/hooks/useObjectItems";
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { ObjectItemsCell, TextCell } from "@/entities/nodes/object-items/object-items-cell";
+import { ObjectsTable } from "@/entities/nodes/object/ui/objects-table";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { isOfKind } from "@/entities/schema/utils";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
@@ -120,6 +121,7 @@ export default function ObjectItems({
   return (
     <>
       <div className="overflow-hidden" data-testid="object-items">
+        <ObjectsTable schema={schema} />
         <div className="flex items-center gap-2 p-2">
           <SearchInput
             loading={loading}
