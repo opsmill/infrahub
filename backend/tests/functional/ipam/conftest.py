@@ -32,3 +32,24 @@ async def ipam_schema() -> SchemaRoot:
     }
 
     return SchemaRoot(**SCHEMA)
+
+
+@pytest.fixture(scope="class")
+async def prefix_with_rel_in_hfid_schema() -> SchemaRoot:
+    SCHEMA: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "Prefix",
+                "namespace": "Infra",
+                "description": "IPv4 or IPv6 network (with mask)",
+                "icon": "mdi:ip-network",
+                "include_in_menu": False,
+                "label": "Prefix",
+                "uniqueness_constraints": [["ip_namespace", "prefix__value"]],
+                "human_friendly_id": ["prefix__value", "ip_namespace__name__value"],
+                "inherit_from": ["BuiltinIPPrefix"],
+            }
+        ]
+    }
+
+    return SchemaRoot(**SCHEMA)
