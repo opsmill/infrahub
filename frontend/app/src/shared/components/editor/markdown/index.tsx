@@ -70,6 +70,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = forwardRef<
             codeMirror={codeMirror}
             previewMode={isPreviewActive}
             onPreviewToggle={() => setPreviewActive((prev) => !prev)}
+            editLabel="Raw"
           />
 
           {isPreviewActive ? (

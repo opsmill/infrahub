@@ -64,15 +64,15 @@ export const File = ({ url, contentType }: tFile) => {
     );
   }
 
-  if (contentType === "application/markdown") {
+  if (contentType === "text/markdown") {
     return (
-      <div className="p-4">
-        <MarkdownEditor value={fileContent} />
+      <div className="p-4 relative max-w-xl">
+        <MarkdownEditor value={fileContent} className="max-w-xl" />
 
         <Download
           value={fileContent}
           download={"markdown.md"}
-          className="absolute right-6 top-6"
+          className="absolute -right-4 top-5"
           variant={"outline"}
         />
       </div>
