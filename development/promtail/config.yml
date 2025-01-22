@@ -1,88 +1,148 @@
 ---
+# yamllint disable rule:line-length
 server:
-    http_listen_port: 9080
-    grpc_listen_port: 0
-    log_level: "warn"
-
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: "warn"
 clients:
-    - url: http://loki:3100/loki/api/v1/push
-
+  - url: http://loki:3100/loki/api/v1/push
 scrape_configs:
-    # Reading Docker logs
-    - job_name: docker
-      # Using docker.sock to filter containers for the project `infrahub` only
-      docker_sd_configs:
-          - host: "unix:///var/run/docker.sock"
-            refresh_interval: 15s
-            filters:
-                - name: label
-                  values: ["com.docker.compose.project=infrahub"]
-      pipeline_stages:
-          - docker:
-          - decolorize:
-          # Parsing Database (memgraph) logs
-          - regex:
-                expression: '(?P<time>\S+?) (?P<level>TRACE|DEBUG|INFO|WARNING|ERROR|CRITICAL) (?P<msg>.*)$'
-          # Parsing Infrahub logs when INFRAHUB_PRODUCTION=false
-          - regex:
-                expression: '(?P<time>\S+?) \[(?P<level>[a-z]+)\s+\]
-                 (?P<event>.+)\s+\[(?P<logger>.+)\]\s*(?P<tmp_msg>.*)$'
-          - logfmt:
-                mapping:
-                    app:
-                    request_id:
-                    branch:
-                    trace_id:
-                source: tmp_msg
-          # Parsing Infrahub logs when INFRAHUB_PRODUCTION=true
-          - json:
-                expressions:
-                    level: level
-                    msg: msg
-                    time: time
-                    timestamp: timestamp
-                    domain: domain
-                    event: event
-                    stream: stream
-                    request_id: request_id
-                    trace_id: trace_id
-                    app: app
-                    logger: logger
-                    branch: branch
-                    schema_request: schema_request
-                    output: log
-          - template:
+  # Reading Docker logs
+  - job_name: docker
+    # Using docker.sock to filter containers for the project `infrahub` only
+    docker_sd_configs:
+      - host: "unix:///var/run/docker.sock"
+        refresh_interval: 15s
+        filters:
+          - name: label
+            values: ["com.docker.compose.project=infrahub"]
+    pipeline_stages:
+      - docker:
+      - decolorize:
+      - match:
+          selector: '{container=~".*database.*"}'
+          stages:
+            - regex:
+                expression: '(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+[+-]\d{4})\s+(?P<level>\w+)\s+(?P<message>.*)'
+            - labels:
+                level:
+                timestamp:
+                component: "database"
+      - match:
+          selector: '{container=~".*cache.*"}'
+          stages:
+            - regex:
+                expression: '(?P<timestamp>\d{2}\s+\w{3}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\.\d+)\s+(?P<level>[.#*-])\s+(?P<message>.*)'
+            - template:
                 source: level
-                template: '{{ ToLower .Value }}'
-          - template:
-                source: logger
-                template: "\
-                {{ if .domain }}{{ .domain }}{{ else if .app }}{{ .app }}\
-                {{ else if .logger }}{{ .Value }}\
-                {{ else }}none{{ end }}"
-          - template:
+                template: '{{ if eq .Value "." }}DEBUG{{ else if eq .Value "-" }}VERBOSE{{ else if eq .Value "*" }}NOTICE{{ else if eq .Value "#" }}WARNING{{ end }}'
+            - labels:
+                level:
+                timestamp:
+                message:
+                component: "cache"
+      - match:
+          selector: '{container=~".*server.*", json_mode!="true"}'
+          stages:
+            - regex:
+                expression: '(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+\[(?P<level>\w+)\s*\]\s+(?P<message>.*?)\s+\[(?P<logger>[^\]]+)\](?P<additional_info>.*)'
+            - template:
                 source: message
-                template: "\
-                {{ if .msg }}{{ .msg }}{{ else if .event }}{{ .event }}\
-                {{ if .request_id }}RequestID={{ .request_id }} {{ end }}\
-                {{ if .trace_id }}TraceID={{ .trace_id }} {{ end }}\
-                {{ if .branch }}branch ({{ .branch }}){{ end }}{{ end }}"
-          - template:
+                template: '{{ .message }} {{ .additional_info }}'
+            - labels:
+                level:
+                timestamp:
+                logger:
+                component: "server"
+      - match:
+          selector: '{container=~".*task-worker.*"}'
+          stages:
+            - regex:
+                expression: '(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+\[(?P<level>\w+)\s*\]\s+(?P<message>.*?)\s+\[(?P<logger>[^\]]+)\]'
+            - labels:
+                level:
+                timestamp:
+                logger:
+                component: "task-worker"
+      - match:
+          selector: '{container=~".*task-manager-db.*"}'
+          stages:
+            - regex:
+                expression: '(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+) UTC \[(?P<pid>\d+)\] (?P<level>\w+):\s+(?P<message>.*)'
+            - labels:
+                level:
+                timestamp:
+                component: "task-manager-db"
+      - match:
+          selector: '{container=~".*message-queue.*"}'
+          stages:
+            - regex:
+                expression: '(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2})\s+\[(?P<level>\w+)\]\s+(?P<process>[^>]+>)\s+(?P<message>.*)'
+            - labels:
+                level:
+                timestamp:
+                component: "message-queue"
+      - logfmt:
+          mapping:
+            app:
+            request_id:
+            branch:
+            trace_id:
+          source: tmp_msg
+      # Parsing Infrahub logs when INFRAHUB_PRODUCTION=true
+      - match:
+          selector: '{container=~".*server.*", json_mode="true"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+                  msg: msg
+                  time: time
+                  timestamp: timestamp
+                  domain: domain
+                  event: event
+                  stream: stream
+                  request_id: request_id
+                  trace_id: trace_id
+                  app: app
+                  logger: logger
+                  branch: branch
+                  schema_request: schema_request
+                  output: log
+            - template:
+                source: message
+                template: "{{ if .msg }}{{ .msg }}{{ else if .event }}{{ .event }}{{ if .request_id }}RequestID={{ .request_id }} {{ end }}{{ if .trace_id }}TraceID={{ .trace_id }} {{ end }}{{ if .branch }}branch ({{ .branch }}){{ end }}{{ end }}"
+            - template:
                 source: timestamp
-                template: "\
-                {{ if .time }}{{ .time }}\
-                {{ else if .timestamp }}{{ .Value }}{{ end }}"
-          # Creating Loki Labels
-          - labels:
-                level: ''
-                logger: ''
-                message: ''
-                timestamp: ''
-          # Creating a loki label `infrahub-promtail` in case we want to use other job/source later
-          - static_labels:
-                job: "infrahub-promtail"
-      # Using container name to create a loki label
-      relabel_configs:
-          - source_labels: ['__meta_docker_container_name']
-            regex: '/(.*)'
-            target_label: 'container'
+                template: "{{ if .time }}{{ .time }}{{ else if .timestamp }}{{ .Value }}{{ end }}"
+      - template:
+          source: level
+          template: '{{ ToLower .Value }}'
+      - template:
+          source: output
+          template: '{{.timestamp}} {{.component}} [{{.level}}] {{.message}}'
+      - template:
+          source: logger
+          template: "{{ if .domain }}{{ .domain }}{{ else if .app }}{{ .app }}{{ else if .logger }}{{ .Value }}{{ else }}none{{ end }}"
+      # Creating Loki Labels
+      - labels:
+          level: ''
+          logger: ''
+          message: ''
+          timestamp: ''
+          namespace: ''
+          pod: ''
+      # Creating a loki label `infrahub-promtail` in case we want to use other job/source later
+      - static_labels:
+          job: "infrahub-promtail"
+    # Using container name to create a loki label
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_label_namespace']
+        target_label: 'namespace'
+      - source_labels: ['__meta_docker_container_label_pod']
+        target_label: 'pod'
+      - source_labels: ['__meta_docker_container_env_INFRAHUB_PRODUCTION']
+        target_label: 'json_mode'
