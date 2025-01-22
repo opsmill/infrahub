@@ -51,7 +51,7 @@ export const File = ({ url, contentType }: tFile) => {
 
   if (contentType === "application/json") {
     return (
-      <div className="p-4">
+      <div className="relative">
         <JsonEditor value={fileContent} disabled onChange={function (): void {}} />
 
         <Download
@@ -66,8 +66,8 @@ export const File = ({ url, contentType }: tFile) => {
 
   if (contentType === "text/markdown") {
     return (
-      <div className="p-4 relative max-w-xl">
-        <MarkdownEditor value={fileContent} className="max-w-xl" />
+      <div className="relative">
+        <MarkdownEditor value={fileContent} />
 
         <Download
           value={fileContent}
@@ -81,7 +81,7 @@ export const File = ({ url, contentType }: tFile) => {
 
   if (contentType === "application/yaml") {
     return (
-      <div className="p-4 relative">
+      <div className="relative">
         <YamlEditor value={fileContent} disabled onChange={function (): void {}} />
 
         <Download
@@ -96,7 +96,7 @@ export const File = ({ url, contentType }: tFile) => {
 
   if (contentType === "image/svg+xml") {
     return (
-      <div className="p-4 relative">
+      <div className="relative">
         <Svg value={fileContent} className="border rounded-md p-2" />
 
         <Download
@@ -110,7 +110,7 @@ export const File = ({ url, contentType }: tFile) => {
   }
 
   return (
-    <div className="p-4 relative">
+    <div className="relative">
       <TextEditor value={fileContent} disabled onChange={function (): void {}} />
 
       <Download
