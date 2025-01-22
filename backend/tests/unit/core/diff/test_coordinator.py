@@ -7,7 +7,7 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.diff.combiner import DiffCombiner
 from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRootMetadata, NodeFieldSpecifier
+from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRootMetadata
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -222,7 +222,7 @@ class TestDiffCoordinator:
                     from_time=diff_with_data.to_time,
                     to_time=no_changes_diff.to_time,
                     include_unchanged=True,
-                    previous_node_specifiers={NodeFieldSpecifier(node_uuid=person_john_branch.id, field_name="height")},
+                    previous_node_specifiers={person_john_branch.id: {"height"}},
                 ),
             ]
         )

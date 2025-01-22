@@ -83,15 +83,6 @@ def deserialize_tracking_id(tracking_id_str: str) -> TrackingId:
 
 
 @dataclass
-class NodeFieldSpecifier:
-    node_uuid: str
-    field_name: str
-
-    def __hash__(self) -> int:
-        return hash(f"{self.node_uuid}:{self.field_name}")
-
-
-@dataclass
 class NodeDiffFieldSummary:
     kind: str
     attribute_names: set[str] = field(default_factory=set)

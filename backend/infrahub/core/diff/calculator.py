@@ -7,7 +7,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
 
-from .model.path import CalculatedDiffs, NodeFieldSpecifier
+from .model.path import CalculatedDiffs
 
 log = get_logger()
 
@@ -23,7 +23,7 @@ class DiffCalculator:
         from_time: Timestamp,
         to_time: Timestamp,
         include_unchanged: bool = True,
-        previous_node_specifiers: set[NodeFieldSpecifier] | None = None,
+        previous_node_specifiers: dict[str, set[str]] | None = None,
     ) -> CalculatedDiffs:
         if diff_branch.name == registry.default_branch:
             diff_branch_from_time = from_time
@@ -124,10 +124,8 @@ class DiffCalculator:
                     diff_branch_from_time=diff_branch_from_time,
                     diff_from=from_time,
                     diff_to=to_time,
-                    current_node_field_specifiers=[
-                        (nfs.node_uuid, nfs.field_name) for nfs in current_node_field_specifiers
-                    ],
-                    new_node_field_specifiers=[(nfs.node_uuid, nfs.field_name) for nfs in new_node_field_specifiers],
+                    current_node_field_specifiers=current_node_field_specifiers,
+                    new_node_field_specifiers=new_node_field_specifiers,
                     limit=node_limit,
                     offset=offset,
                 )
@@ -155,10 +153,8 @@ class DiffCalculator:
                     diff_branch_from_time=diff_branch_from_time,
                     diff_from=from_time,
                     diff_to=to_time,
-                    current_node_field_specifiers=[
-                        (nfs.node_uuid, nfs.field_name) for nfs in current_node_field_specifiers
-                    ],
-                    new_node_field_specifiers=[(nfs.node_uuid, nfs.field_name) for nfs in new_node_field_specifiers],
+                    current_node_field_specifiers=current_node_field_specifiers,
+                    new_node_field_specifiers=new_node_field_specifiers,
                     limit=fields_limit,
                     offset=offset,
                 )
@@ -176,6 +172,14 @@ class DiffCalculator:
                     has_more_data = query_result.get_as_type("has_more_data", bool)
                 offset += node_limit
 
+            # Temporary until next change
+            current_node_field_specifier_tuples: list[tuple[str, str]] = []
+            new_node_field_specifier_tuples: list[tuple[str, str]] = []
+            for node_uuid, field_names in current_node_field_specifiers.items():
+                current_node_field_specifier_tuples.extend((node_uuid, field_name) for field_name in field_names)
+            for node_uuid, field_names in new_node_field_specifiers.items():
+                new_node_field_specifier_tuples.extend((node_uuid, field_name) for field_name in field_names)
+
             base_diff_query = await DiffAllPathsQuery.init(
                 db=self.db,
                 branch=base_branch,
@@ -183,10 +187,8 @@ class DiffCalculator:
                 diff_branch_from_time=diff_branch_from_time,
                 diff_from=from_time,
                 diff_to=to_time,
-                current_node_field_specifiers=[
-                    (nfs.node_uuid, nfs.field_name) for nfs in current_node_field_specifiers
-                ],
-                new_node_field_specifiers=[(nfs.node_uuid, nfs.field_name) for nfs in new_node_field_specifiers],
+                current_node_field_specifiers=current_node_field_specifier_tuples,
+                new_node_field_specifiers=new_node_field_specifier_tuples,
             )
 
             log.info("Beginning diff calculation query for base")

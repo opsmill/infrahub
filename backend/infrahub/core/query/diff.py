@@ -321,8 +321,8 @@ class DiffCalculationQuery(DiffQuery):
         self,
         base_branch: Branch,
         diff_branch_from_time: Timestamp,
-        current_node_field_specifiers: list[tuple[str, str]] | None = None,
-        new_node_field_specifiers: list[tuple[str, str]] | None = None,
+        current_node_field_specifiers: dict[str, set[str]] | None = None,
+        new_node_field_specifiers: dict[str, set[str]] | None = None,
         **kwargs: Any,
     ):
         self.base_branch = base_branch
@@ -433,10 +433,10 @@ class DiffNodePathsQuery(DiffCalculationQuery):
         self.params.update(params_dict)
         self.params.update(
             {
-                "new_node_ids_list": [nfs[0] for nfs in self.new_node_field_specifiers]
+                "new_node_ids_list": list(self.new_node_field_specifiers.keys())
                 if self.new_node_field_specifiers
                 else None,
-                "current_node_ids_list": [nfs[0] for nfs in self.current_node_field_specifiers]
+                "current_node_ids_list": list(self.current_node_field_specifiers.keys())
                 if self.current_node_field_specifiers
                 else None,
             }
@@ -563,132 +563,70 @@ class DiffFieldPathsQuery(DiffCalculationQuery):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         params_dict = self.get_params()
         self.params.update(params_dict)
-        current_node_ids: set[str] | None = None
-        new_node_ids: set[str] | None = None
-        current_field_names: set[str] | None = None
-        new_field_names: set[str] | None = None
-        if self.current_node_field_specifiers:
-            current_node_ids, current_field_names = set(), set()
-            for nfs in self.current_node_field_specifiers:
-                current_node_ids.add(nfs[0])
-                current_field_names.add(nfs[1])
-        if self.new_node_field_specifiers:
-            new_node_ids, new_field_names = set(), set()
-            for nfs in self.new_node_field_specifiers:
-                new_node_ids.add(nfs[0])
-                new_field_names.add(nfs[1])
 
         self.params.update(
             {
-                "current_node_ids_list": list(current_node_ids) if current_node_ids is not None else None,
-                "new_node_ids_list": list(new_node_ids) if new_node_ids is not None else None,
-                "current_field_names_list": list(current_field_names) if current_field_names is not None else None,
-                "new_field_names_list": list(new_field_names) if new_field_names is not None else None,
-                "current_node_field_specifiers_list": self.current_node_field_specifiers,
-                "new_node_field_specifiers_list": self.new_node_field_specifiers,
+                "current_node_field_specifiers_map": {
+                    node_uuid: list(field_names)
+                    for node_uuid, field_names in self.current_node_field_specifiers.items()
+                }
+                if self.current_node_field_specifiers
+                else None,
+                "new_node_field_specifiers_map": {
+                    node_uuid: list(field_names) for node_uuid, field_names in self.new_node_field_specifiers.items()
+                }
+                if self.new_node_field_specifiers
+                else None,
             }
         )
         fields_path_query = """
 // -------------------------------------
 // Identify attributes/relationships added/removed on branch
 // -------------------------------------
-CALL {
-    MATCH (root:Root)<-[r_root:IS_PART_OF]-(p:Node)-[diff_rel:HAS_ATTRIBUTE {branch: $branch_name}]->(q:Attribute)
-    // simple filters to start
-    WHERE r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
-    AND q.branch_support = $branch_aware
-    AND r_root.status = "active"
-    AND r_root.from <= diff_rel.from
-    AND (r_root.to IS NULL OR diff_rel.branch <> r_root.branch OR r_root.to >= diff_rel.from)
-    // node ID and field name filtering first pass
-    AND (
-        (
-            $current_node_ids_list IS NOT NULL
-            AND p.uuid IN $current_node_ids_list
-            AND $current_field_names_list IS NOT NULL
-            AND q.name IN $current_field_names_list
-        ) OR (
-            $new_node_ids_list IS NOT NULL
-            AND p.uuid IN $new_node_ids_list
-            AND $new_field_names_list IS NOT NULL
-            AND q.name IN $new_field_names_list
-        ) OR (
-            $current_node_ids_list IS NULL
-            AND $current_field_names_list IS NULL
-            AND $new_node_ids_list IS NULL
-            AND $new_field_names_list IS NULL
-        )
+MATCH (root:Root)<-[r_root:IS_PART_OF]-(p:Node)-[diff_rel {branch: $branch_name}]-(q)
+// simple filters to start
+WHERE type(diff_rel) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
+AND ("Attribute" IN labels(q) OR "Relationship" IN labels(q))
+AND r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
+AND q.branch_support = $branch_aware
+AND r_root.status = "active"
+AND r_root.from <= diff_rel.from
+AND (r_root.to IS NULL OR diff_rel.branch <> r_root.branch OR r_root.to >= diff_rel.from)
+// node ID and field name filtering first pass
+AND (
+    (
+        $current_node_field_specifiers_map IS NOT NULL
+        AND $current_node_field_specifiers_map[p.uuid] IS NOT NULL
+        AND q.name IN $current_node_field_specifiers_map[p.uuid]
+    ) OR (
+        $new_node_field_specifiers_map IS NOT NULL
+        AND $new_node_field_specifiers_map[p.uuid] IS NOT NULL
+        AND q.name IN $new_node_field_specifiers_map[p.uuid]
+    ) OR (
+        $current_node_field_specifiers_map IS NULL
+        AND $new_node_field_specifiers_map IS NULL
     )
-    // node ID and field name filtering second pass
-    AND (
-        // time-based filters for nodes already included in the diff
-        (
-            ($current_node_field_specifiers_list IS NOT NULL AND [p.uuid, q.name] IN $current_node_field_specifiers_list)
-            AND (r_root.from < $from_time OR p.branch_support = $branch_agnostic)
-            AND ($from_time <= diff_rel.from < $to_time)
-            AND (diff_rel.to IS NULL OR ($from_time <= diff_rel.to < $to_time))
-        )
-        // time-based filters for new nodes
-        OR (
-            (
-                ($new_node_field_specifiers_list IS NOT NULL AND [p.uuid, q.name] IN $new_node_field_specifiers_list)
-                OR ($current_node_field_specifiers_list IS NULL AND $new_node_field_specifiers_list IS NULL)
-            )
-            AND (r_root.from < $branch_from_time OR p.branch_support = $branch_agnostic)
-            AND ($branch_from_time <= diff_rel.from < $to_time)
-            AND (diff_rel.to IS NULL OR ($branch_from_time <= diff_rel.to < $to_time))
-        )
+)
+// node ID and field name filtering second pass
+AND (
+    // time-based filters for nodes already included in the diff
+    (
+        ($current_node_field_specifiers_map IS NOT NULL AND q.name IN $current_node_field_specifiers_map[p.uuid])
+        AND (r_root.from < $from_time OR p.branch_support = $branch_agnostic)
+        AND ($from_time <= diff_rel.from < $to_time)
+        AND (diff_rel.to IS NULL OR ($from_time <= diff_rel.to < $to_time))
     )
-    RETURN root, r_root, p, diff_rel, q
-    UNION ALL
-    MATCH (root:Root)<-[r_root:IS_PART_OF]-(p:Node)-[diff_rel:IS_RELATED {branch: $branch_name}]-(q:Relationship)
-    // simple filters to start
-    WHERE r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
-    AND q.branch_support = $branch_aware
-    AND r_root.status = "active"
-    AND r_root.from <= diff_rel.from
-    AND (r_root.to IS NULL OR diff_rel.branch <> r_root.branch OR r_root.to >= diff_rel.from)
-    // node ID and field name filtering first pass
-    AND (
+    // time-based filters for new nodes
+    OR (
         (
-            $current_node_ids_list IS NOT NULL
-            AND p.uuid IN $current_node_ids_list
-            AND $current_field_names_list IS NOT NULL
-            AND q.name IN $current_field_names_list
-        ) OR (
-            $new_node_ids_list IS NOT NULL
-            AND p.uuid IN $new_node_ids_list
-            AND $new_field_names_list IS NOT NULL
-            AND q.name IN $new_field_names_list
-        ) OR (
-            $current_node_ids_list IS NULL
-            AND $current_field_names_list IS NULL
-            AND $new_node_ids_list IS NULL
-            AND $new_field_names_list IS NULL
+            (q.name IN $new_node_field_specifiers_map[p.uuid])
+            OR ($current_node_field_specifiers_map IS NULL AND $new_node_field_specifiers_map IS NULL)
         )
+        AND (r_root.from < $branch_from_time OR p.branch_support = $branch_agnostic)
+        AND ($branch_from_time <= diff_rel.from < $to_time)
+        AND (diff_rel.to IS NULL OR ($branch_from_time <= diff_rel.to < $to_time))
     )
-    // node ID and field name filtering second pass
-    AND (
-        // time-based filters for nodes already included in the diff
-        (
-            ($current_node_field_specifiers_list IS NOT NULL AND [p.uuid, q.name] IN $current_node_field_specifiers_list)
-            AND (r_root.from < $from_time OR p.branch_support = $branch_agnostic)
-            AND ($from_time <= diff_rel.from < $to_time)
-            AND (diff_rel.to IS NULL OR ($from_time <= diff_rel.to < $to_time))
-        )
-        // time-based filters for new nodes
-        OR (
-            (
-                ($new_node_field_specifiers_list IS NOT NULL AND [p.uuid, q.name] IN $new_node_field_specifiers_list)
-                OR ($current_node_field_specifiers_list IS NULL AND $new_node_field_specifiers_list IS NULL)
-            )
-            AND (r_root.from < $branch_from_time OR p.branch_support = $branch_agnostic)
-            AND ($branch_from_time <= diff_rel.from < $to_time)
-            AND (diff_rel.to IS NULL OR ($branch_from_time <= diff_rel.to < $to_time))
-        )
-    )
-    RETURN root, r_root, p, diff_rel, q
-}
+)
 // -------------------------------------
 // Limit the number of paths
 // -------------------------------------
@@ -707,7 +645,7 @@ WITH one_result[0] AS root, one_result[1] AS r_root, one_result[2] AS p, one_res
 // Add correct from_time for row
 // -------------------------------------
 WITH root, r_root, p, diff_rel, q, has_more_data, CASE
-    WHEN $new_node_field_specifiers_list IS NOT NULL AND [p.uuid, q.name] IN $new_node_field_specifiers_list THEN $branch_from_time
+    WHEN $new_node_field_specifiers_map IS NOT NULL AND q.name IN $new_node_field_specifiers_map[p.uuid] THEN $branch_from_time
     ELSE $from_time
 END AS row_from_time
 // -------------------------------------
