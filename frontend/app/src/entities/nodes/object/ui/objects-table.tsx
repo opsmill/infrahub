@@ -21,11 +21,11 @@ import { getObjectTableColumns } from "./get-object-table-columns";
 
 export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
   const tableContainerRef = React.useRef<HTMLTableElement>(null);
-  const columns = getObjectTableColumns(schema);
   const { isPending, data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(
     getObjectsInfiniteQueryOptions({ schema })
   );
 
+  const columns = React.useMemo(() => getObjectTableColumns(schema), [schema.hash]);
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
   const fetchMoreOnBottomReached = React.useCallback(
