@@ -6,6 +6,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
+import { ModelDisplay } from "./styled";
 
 export const ComputedAttributeDisplay = ({
   computedAttribute,
@@ -25,7 +26,7 @@ export const ComputedAttributeDisplay = ({
 
     return (
       <div className="flex items-center gap-2">
-        <Badge variant={"green-outline"}>Jinja2</Badge>
+        <ModelDisplay kinds={["CoreTransformJinja2"]} />
 
         <Button
           variant={"active-outline"}
@@ -63,7 +64,7 @@ export const ComputedAttributeDisplay = ({
   if (computedAttribute.kind === "TransformPython") {
     return (
       <div className="flex items-center gap-2">
-        <Badge variant={"green-outline"}>Transform Python</Badge>
+        <ModelDisplay kinds={["CoreTransformPython"]} />
 
         <Badge variant={"gray-outline"}>{computedAttribute.transform}</Badge>
       </div>
