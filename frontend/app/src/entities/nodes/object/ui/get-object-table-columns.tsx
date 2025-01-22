@@ -1,7 +1,12 @@
 import { ColumnDef } from "@tanstack/react-table";
 import * as R from "remeda";
 
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import {
+  AttributeType,
+  ObjectAttributeValue,
+  RelationshipType,
+} from "@/entities/nodes/getObjectItemDisplayValue";
+import { ObjectItemsCell } from "@/entities/nodes/object-items/object-items-cell";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
@@ -22,7 +27,7 @@ export const getObjectTableColumns = (
       accessorKey: column.name,
       cell: ({ row }) => {
         const value = row.getValue(column.name);
-        return value.value ?? "-";
+        return <ObjectAttributeValue attributeSchema={column} attributeValue={value} />;
       },
     };
   });
