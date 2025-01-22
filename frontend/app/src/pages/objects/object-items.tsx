@@ -1,4 +1,4 @@
-import ObjectItems from "@/entities/nodes/object-items/object-items-paginated";
+import { ObjectsTable } from "@/entities/nodes/object/ui/objects-table";
 import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { useAtomValue } from "jotai";
@@ -15,7 +15,7 @@ export function ObjectItemsPage() {
 
   if (!schema) return <ErrorScreen message={`Object ${objectKind} not found.`} />;
 
-  return <ObjectItems schema={schema} />;
+  return <ObjectsTable schema={schema} />;
 }
 
 export const Component = ObjectItemsPage;

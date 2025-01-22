@@ -32,7 +32,7 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
       if (containerRefElement) {
         const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
         //once the user has scrolled within 500px of the bottom of the table, fetch more data if we can
-        if (scrollHeight - scrollTop - clientHeight < 500 && !isFetchingNextPage && hasNextPage) {
+        if (scrollHeight - scrollTop - clientHeight < 300 && !isFetchingNextPage && hasNextPage) {
           fetchNextPage();
         }
       }
@@ -45,8 +45,8 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
   }, [fetchMoreOnBottomReached]);
 
   const table = useReactTable({
-    data: flatData,
     columns,
+    data: flatData,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     manualSorting: true,
