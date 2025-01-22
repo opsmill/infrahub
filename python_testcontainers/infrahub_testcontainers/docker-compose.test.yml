@@ -49,7 +49,7 @@ services:
       - ${INFRAHUB_TESTING_DATABASE_UI_PORT:-0}:7474
 
   task-manager:
-    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.1.13-python3.12}"
+    image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
     command: prefect server start --host 0.0.0.0 --ui
     depends_on:
       task-manager-db:

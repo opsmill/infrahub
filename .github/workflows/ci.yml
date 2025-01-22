@@ -931,7 +931,6 @@ jobs:
       - name: "Set environment variables"
         run: |
           echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
-          echo TASK_MANAGER_DOCKER_IMAGE="prefecthq/prefect:3.0.11-python3.12" >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 

@@ -60,7 +60,6 @@ jobs:
         run: |
           echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
           echo INFRAHUB_IMAGE_VER=${{ matrix.source_version }} >> $GITHUB_ENV
-          echo TASK_MANAGER_DOCKER_IMAGE="prefecthq/prefect:3.0.11-python3.12" >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Store start time"
@@ -83,7 +82,6 @@ jobs:
       - name: "Set environment variables"
         run: |
           echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
-          echo TASK_MANAGER_DOCKER_IMAGE="" >> $GITHUB_ENV
 
       - name: Build Demo
         run: invoke dev.build
