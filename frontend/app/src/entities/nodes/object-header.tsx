@@ -67,7 +67,10 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
     <div className="flex items-center gap-3">
       {objectDetailsData?.display_label ?? `${schema.label} not found`}
 
-      <ObjectDetailsButton id={objectId} hfid={JSON.stringify(objectDetailsData?.hfid)} />
+      <ObjectDetailsButton
+        id={objectId}
+        hfid={objectDetailsData?.hfid && JSON.stringify(objectDetailsData?.hfid)}
+      />
     </div>
   );
 
