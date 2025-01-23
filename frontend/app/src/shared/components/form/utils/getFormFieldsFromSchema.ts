@@ -1,6 +1,7 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { ProfileData } from "@/shared/components/form/object-form";
 import { DynamicFieldProps, NumberPoolData } from "@/shared/components/form/type";
 import { getFormFieldFromAttribute } from "@/shared/components/form/utils/getFormFieldFromAttribute";
@@ -27,18 +28,18 @@ export const getFormFieldsFromSchema = ({
   pools = [],
   isUpdate,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
-  const unorderedFields = [
+  const unorderedFields: Array<AttributeSchema | RelationshipSchema> = [
     ...(schema.attributes ?? []),
     ...getRelationshipsForForm(schema.relationships ?? [], isUpdate),
   ].filter((attribute) => !attribute.read_only);
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 
-  return orderedFields.map((attribute) => {
-    if ("peer" in attribute) {
+  return orderedFields.map((field) => {
+    if ("peer" in field) {
       return getFormFieldFromRelationship({
         auth,
-        relationshipSchema: attribute,
-        relationshipData: initialObject?.[attribute.name] as RelationshipType | undefined,
+        relationshipSchema: field,
+        relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
         isFilterForm: !!isFilterForm,
         schema,
       });
@@ -46,7 +47,7 @@ export const getFormFieldsFromSchema = ({
 
     return getFormFieldFromAttribute({
       auth,
-      attributeSchema: attribute,
+      attributeSchema: field,
       currentObject: initialObject as Record<string, AttributeType>,
       isFilterForm: !!isFilterForm,
       schema,
