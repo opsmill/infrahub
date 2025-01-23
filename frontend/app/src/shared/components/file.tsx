@@ -6,10 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { Download } from "./buttons/download";
 import { Svg } from "./display/svg";
-import { JsonEditor } from "./editor/json/json-editor";
+import { CodeViewer } from "./editor/code/code-viewer";
 import { MarkdownEditor } from "./editor/markdown";
-import { TextEditor } from "./editor/text/text-editor";
-import { YamlEditor } from "./editor/yaml/yaml-editor";
 import { Badge } from "./ui/badge";
 
 type tFile = {
@@ -58,7 +56,7 @@ export const File = ({ url, contentType }: tFile) => {
           <Badge>Application / JSON</Badge>
         </div>
 
-        <JsonEditor value={fileContent} disabled onChange={function (): void {}} />
+        <CodeViewer>{fileContent}</CodeViewer>
       </div>
     );
   }
@@ -84,7 +82,7 @@ export const File = ({ url, contentType }: tFile) => {
           <Badge>Application / YAML</Badge>
         </div>
 
-        <YamlEditor value={fileContent} disabled onChange={function (): void {}} />
+        <CodeViewer language="yaml">{fileContent}</CodeViewer>
       </div>
     );
   }
@@ -109,7 +107,7 @@ export const File = ({ url, contentType }: tFile) => {
         <Badge>Plain / Text</Badge>
       </div>
 
-      <TextEditor value={fileContent} disabled onChange={function (): void {}} />
+      <CodeViewer language="text">{fileContent}</CodeViewer>
     </div>
   );
 };
