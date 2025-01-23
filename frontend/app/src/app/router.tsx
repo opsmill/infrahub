@@ -73,6 +73,15 @@ export const router = createBrowserRouter([
               {
                 path: `/objects/${ARTIFACT_OBJECT}/:objectid`,
                 lazy: () => import("@/entities/artifacts/ui/artifact-details"),
+                handle: {
+                  breadcrumb: () => {
+                    return {
+                      type: "select",
+                      value: ARTIFACT_OBJECT,
+                      kind: "schema",
+                    };
+                  },
+                },
               },
               {
                 path: "/objects",
