@@ -1,6 +1,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import * as R from "remeda";
 
+import { useAuth } from "@/entities/authentication/ui/useAuth";
 import {
   AttributeType,
   ObjectAttributeValue,
@@ -9,7 +10,16 @@ import {
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
+import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
+import DynamicForm from "@/shared/components/form/dynamic-form";
+import { FormFieldValue } from "@/shared/components/form/type";
+import { getFormFieldFromAttribute } from "@/shared/components/form/utils/getFormFieldFromAttribute";
+import { getFormFieldFromRelationship } from "@/shared/components/form/utils/getFormFieldFromRelationship";
 import { Badge } from "@/shared/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import useFilters from "@/shared/hooks/useFilters";
+import { useState } from "react";
 
 export const getObjectTableColumns = (
   schema: IModelSchema
@@ -32,7 +42,53 @@ export const getObjectTableColumns = (
     },
     ...sortedColumns.map((column) => {
       return {
-        header: column.label ?? column.name,
+        header: () => {
+          const auth = useAuth();
+          const [filters, setFilters] = useFilters();
+          const [showFilters, setShowFilters] = useState(false);
+          const filtersAsObjectData = getObjectFromFilters(schema, filters);
+
+          const handleSubmit = (formData: Record<string, FormFieldValue>) => {
+            const newFilters = getFiltersFromFormData(formData);
+
+            setFilters(newFilters);
+            setShowFilters(false);
+          };
+
+          const field =
+            "peer" in column
+              ? getFormFieldFromRelationship({
+                  schema,
+                  relationshipSchema: column,
+                  relationshipData: filtersAsObjectData[column.name] as
+                    | RelationshipType
+                    | undefined,
+                  isFilterForm: true,
+                  auth,
+                })
+              : getFormFieldFromAttribute({
+                  isFilterForm: true,
+                  schema,
+                  attributeSchema: column,
+                  currentObject: filtersAsObjectData as Record<string, AttributeType>,
+                  auth,
+                });
+
+          return (
+            <Popover open={showFilters} onOpenChange={setShowFilters}>
+              <PopoverTrigger>{column.label ?? column.name}</PopoverTrigger>
+
+              <PopoverContent className="min-w-[19rem]">
+                <DynamicForm
+                  fields={[field]}
+                  onSubmit={handleSubmit}
+                  onCancel={() => setShowFilters(false)}
+                  submitLabel="Filter"
+                />
+              </PopoverContent>
+            </Popover>
+          );
+        },
         accessorKey: column.name,
         cell: ({ row }) => {
           const value = row.getValue(column.name);

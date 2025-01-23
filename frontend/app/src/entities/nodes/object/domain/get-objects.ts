@@ -3,6 +3,7 @@ import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
+import { Filter } from "@/shared/hooks/useFilters";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
@@ -12,20 +13,19 @@ export const OBJECTS_PER_PAGE = 20;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export type GetObjects = ({
-  schema,
-  offset,
-}: {
+export type GetObjects = (args: {
   schema: IModelSchema;
   offset?: number;
   branchName?: string;
   atDate?: Date | null;
+  filters?: Array<Filter>;
 }) => Promise<any>;
 
-export const getObjects: GetObjects = async ({ schema, offset, branchName, atDate }) => {
+export const getObjects: GetObjects = async ({ schema, offset, branchName, atDate, filters }) => {
   const attributesVisible = getAttributesVisibleInListView(schema.attributes ?? []);
   const relationshipsVisible = getRelationshipsVisibleInListView(schema.relationships ?? []);
   const schemaKind = schema.kind as string;
+
   const queryString = jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${schemaKind}`,
@@ -33,6 +33,25 @@ export const getObjects: GetObjects = async ({ schema, offset, branchName, atDat
         __args: {
           limit: OBJECTS_PER_PAGE,
           offset,
+          ...(filters ?? []).reduce(
+            (acc, filter) => {
+              const [fieldName, fieldKey] = filter.name.split("__");
+
+              if (!fieldName || !fieldKey) return acc;
+
+              if (fieldKey === "value" || fieldKey === "values") {
+                acc[filter.name] = filter.value;
+                return acc;
+              }
+
+              if (fieldKey === "ids") {
+                acc[filter.name] = filter.value.map(({ id }: { id: string }) => id);
+              }
+
+              return acc;
+            },
+            {} as Record<string, string>
+          ),
         },
         edges: {
           node: {

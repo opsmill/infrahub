@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
+import useFilters from "@/shared/hooks/useFilters";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   flexRender,
@@ -21,8 +22,9 @@ import { getObjectTableColumns } from "./get-object-table-columns";
 
 export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
   const tableContainerRef = React.useRef<HTMLTableElement>(null);
+  const [filters] = useFilters();
   const { isPending, data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(
-    getObjectsInfiniteQueryOptions({ schema })
+    getObjectsInfiniteQueryOptions({ schema, filters })
   );
 
   const columns = React.useMemo(() => getObjectTableColumns(schema), [schema.hash]);
