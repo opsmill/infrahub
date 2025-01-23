@@ -6,6 +6,7 @@ from typing import Any, Optional
 import pytest
 import yaml
 from infrahub_sdk.uuidt import UUIDT
+from prefect.logging.loggers import disable_run_logger
 from prefect.testing.utilities import prefect_test_harness
 from pytest import TempPathFactory
 
@@ -25,12 +26,6 @@ from tests.helpers.file_repo import FileRepo
 @pytest.fixture(scope="session", autouse=True)
 def add_tracker():
     os.environ["PYTEST_RUNNING"] = "true"
-
-
-@pytest.fixture(autouse=True, scope="session")
-def prefect_test_fixture():
-    with prefect_test_harness():
-        yield
 
 
 @pytest.fixture(scope="session")
@@ -128,3 +123,15 @@ def git_repo_car_dealership(git_sources_dir: Path) -> FileRepo:
     """Simple Git Repository used for testing."""
 
     return FileRepo(name="car-dealership", sources_directory=git_sources_dir)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def prefect_test_fixture():
+    with prefect_test_harness(server_startup_timeout=60):
+        yield
+
+
+@pytest.fixture(scope="session")
+def prefect_test(prefect_test_fixture):
+    with disable_run_logger():
+        yield

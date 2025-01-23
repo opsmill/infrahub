@@ -48,7 +48,7 @@ async def add_git_repository(model: GitRepositoryAdd, service: InfrahubServices)
             default_branch_name=model.default_branch_name,
             service=service,
         )
-        await repo.import_objects_from_files(
+        await repo.import_objects_from_files(  # type: ignore[call-overload]
             infrahub_branch_name=model.infrahub_branch_name, git_branch_name=model.default_branch_name
         )
         if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
@@ -84,7 +84,7 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly, service:
             infrahub_branch_name=model.infrahub_branch_name,
             service=service,
         )
-        await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name)
+        await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name)  # type: ignore[call-overload]
         if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
             await repo.sync_from_remote()
 
@@ -167,7 +167,7 @@ async def sync_remote_repositories(service: InfrahubServices) -> None:
                         internal_status=active_internal_status,
                         default_branch_name=repository_data.repository.default_branch.value,
                     )
-                    await repo.import_objects_from_files(
+                    await repo.import_objects_from_files(  # type: ignore[call-overload]
                         git_branch_name=registry.default_branch, infrahub_branch_name=infrahub_branch
                     )
                 except RepositoryError as exc:
@@ -191,7 +191,7 @@ async def sync_remote_repositories(service: InfrahubServices) -> None:
                 log.info(exc.message)
 
 
-@task(
+@task(  # type: ignore[arg-type]
     name="git-branch-create",
     task_run_name="Create branch '{branch}' in repository {repository_name}",
     cache_policy=NONE,
@@ -384,7 +384,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly, service: InfrahubServ
                 service=service,
             )
 
-        await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
+        await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)  # type: ignore[call-overload]
         await repo.sync_from_remote(commit=model.commit)
 
         # Tell workers to fetch to stay in sync
@@ -454,7 +454,7 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects, 
         repository_kind=model.repository_kind,
         commit=model.commit,
     )
-    await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
+    await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)  # type: ignore[call-overload]
 
 
 @flow(

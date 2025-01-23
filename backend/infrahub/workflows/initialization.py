@@ -13,7 +13,7 @@ from .catalogue import worker_pools, workflows
 from .models import TASK_RESULT_STORAGE_NAME
 
 
-@task(name="task-manager-setup-worker-pools", task_run_name="Setup Worker pools", cache_policy=NONE)
+@task(name="task-manager-setup-worker-pools", task_run_name="Setup Worker pools", cache_policy=NONE)  # type: ignore[arg-type]
 async def setup_worker_pools(client: PrefectClient) -> None:
     log = get_run_logger()
     for worker in worker_pools:
@@ -29,7 +29,7 @@ async def setup_worker_pools(client: PrefectClient) -> None:
             log.warning(f"Work pool {worker.name} already present ")
 
 
-@task(name="task-manager-setup-deployments", task_run_name="Setup Deployments", cache_policy=NONE)
+@task(name="task-manager-setup-deployments", task_run_name="Setup Deployments", cache_policy=NONE)  # type: ignore[arg-type]
 async def setup_deployments(client: PrefectClient) -> None:
     log = get_run_logger()
     for workflow in workflows:
@@ -40,7 +40,7 @@ async def setup_deployments(client: PrefectClient) -> None:
         log.info(f"Flow {workflow.name}, created successfully ... ")
 
 
-@task(name="task-manager-setup-blocks", task_run_name="Setup Blocks", cache_policy=NONE)
+@task(name="task-manager-setup-blocks", task_run_name="Setup Blocks", cache_policy=NONE)  # type: ignore[arg-type]
 async def setup_blocks() -> None:
     log = get_run_logger()
 

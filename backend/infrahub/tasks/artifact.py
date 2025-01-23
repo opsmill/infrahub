@@ -11,7 +11,7 @@ from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 
 
-@task(name="define-artifact", task_run_name="Define Artifact", cache_policy=NONE)
+@task(name="define-artifact", task_run_name="Define Artifact", cache_policy=NONE)  # type: ignore[arg-type]
 async def define_artifact(
     message: Union[messages.CheckArtifactCreate, RequestArtifactGenerate], service: InfrahubServices
 ) -> InfrahubNode:

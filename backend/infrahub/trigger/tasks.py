@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from infrahub_sdk.utils import compare_lists
 from prefect import get_run_logger, task
 from prefect.automations import AutomationCore
+from prefect.cache_policies import NONE
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
 
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
 
-@task(name="trigger-setup", task_run_name="Setup triggers in task-manager")
+@task(name="trigger-setup", task_run_name="Setup triggers in task-manager", cache_policy=NONE)  # type: ignore[arg-type]
 async def setup_triggers(client: PrefectClient) -> None:
     log = get_run_logger()
 

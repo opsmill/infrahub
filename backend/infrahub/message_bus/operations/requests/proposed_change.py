@@ -516,7 +516,7 @@ async def _get_proposed_change_repositories(
     return _parse_proposed_change_repositories(message=message, source=source_all, destination=destination_all)
 
 
-@task(name="proposed-change-validate-repository-conflicts", task_run_name="Validate conflicts on repository")
+@task(name="proposed-change-validate-repository-conflicts", task_run_name="Validate conflicts on repository")  # type: ignore[arg-type]
 async def _validate_repository_merge_conflicts(
     repositories: list[ProposedChangeRepository], service: InfrahubServices
 ) -> bool:

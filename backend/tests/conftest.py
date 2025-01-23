@@ -14,8 +14,6 @@ import ujson
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 from prefect import settings as prefect_settings
-from prefect.logging.loggers import disable_run_logger
-from prefect.testing.utilities import prefect_test_harness
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
@@ -200,18 +198,6 @@ async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
     schema_branch = registry.schema.register_schema(schema=schema, branch=branch.name)
     branch.update_schema_hash()
     return schema_branch
-
-
-@pytest.fixture(scope="session")
-def prefect_test_fixture():
-    with prefect_test_harness():
-        yield
-
-
-@pytest.fixture(scope="session")
-def prefect_test(prefect_test_fixture):
-    with disable_run_logger():
-        yield
 
 
 @pytest.fixture(scope="session")

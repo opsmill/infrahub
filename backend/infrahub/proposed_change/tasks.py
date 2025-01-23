@@ -168,7 +168,7 @@ async def cancel_proposed_changes_branch(branch_name: str, service: InfrahubServ
         await cancel_proposed_change(proposed_change=proposed_change, service=service)
 
 
-@task(name="Cancel a propose change", description="Cancel a propose change", cache_policy=NONE)
+@task(name="Cancel a propose change", description="Cancel a propose change", cache_policy=NONE)  # type: ignore[arg-type]
 async def cancel_proposed_change(proposed_change: CoreProposedChange, service: InfrahubServices) -> None:
     await add_tags(nodes=[proposed_change.id])
     log = get_run_logger()
