@@ -214,7 +214,7 @@ class TestDiffCoordinator:
                     from_time=Timestamp(branch.get_branched_from()),
                     to_time=diff_with_data.from_time,
                     include_unchanged=False,
-                    previous_node_specifiers=set(),
+                    previous_node_specifiers={},
                 ),
                 call(
                     base_branch=default_branch,
@@ -222,7 +222,7 @@ class TestDiffCoordinator:
                     from_time=diff_with_data.to_time,
                     to_time=no_changes_diff.to_time,
                     include_unchanged=True,
-                    previous_node_specifiers={person_john_branch.id: {"height"}},
+                    previous_node_specifiers={person_john_main.id: {"height"}},
                 ),
             ]
         )
