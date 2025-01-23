@@ -32,13 +32,8 @@ export const getFormFieldFromRelationship = ({
     description: relationshipSchema.description ?? undefined,
     disabled: isFieldDisabled({
       auth,
-      owner:
-        relationshipSchema.cardinality === "one"
-          ? (relationshipData as RelationshipOneType | undefined)?.properties?.owner
-          : undefined,
-      isProtected:
-        relationshipSchema.cardinality === "one" &&
-        !!(relationshipData as RelationshipOneType | undefined)?.properties?.is_protected,
+      owner: undefined,
+      isProtected: undefined,
       permissions: undefined, // Permissions are not supported for relationships yet
       isReadOnly: relationshipSchema.read_only,
     }),
