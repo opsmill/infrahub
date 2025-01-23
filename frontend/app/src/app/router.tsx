@@ -1,4 +1,4 @@
-import { NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { ARTIFACT_OBJECT, NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { RequireAuth } from "@/entities/authentication/ui/useAuth";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
@@ -69,6 +69,10 @@ export const router = createBrowserRouter([
                     },
                   },
                 ],
+              },
+              {
+                path: `/objects/${ARTIFACT_OBJECT}/:objectid`,
+                lazy: () => import("@/entities/artifacts/ui/artifact-details"),
               },
               {
                 path: "/objects",
