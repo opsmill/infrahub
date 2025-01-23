@@ -10,6 +10,7 @@ import { JsonEditor } from "./editor/json/json-editor";
 import { MarkdownEditor } from "./editor/markdown";
 import { TextEditor } from "./editor/text/text-editor";
 import { YamlEditor } from "./editor/yaml/yaml-editor";
+import { Badge } from "./ui/badge";
 
 type tFile = {
   url: string;
@@ -51,74 +52,64 @@ export const File = ({ url, contentType }: tFile) => {
 
   if (contentType === "application/json") {
     return (
-      <div className="relative">
-        <JsonEditor value={fileContent} disabled onChange={function (): void {}} />
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Badge>{contentType}</Badge>
+          <Download value={JSON.parse(fileContent)} download={"file.json"} variant={"outline"} />
+        </div>
 
-        <Download
-          value={JSON.parse(fileContent)}
-          download={"file.json"}
-          className="absolute right-6 top-6"
-          variant={"outline"}
-        />
+        <JsonEditor value={fileContent} disabled onChange={function (): void {}} />
       </div>
     );
   }
 
   if (contentType === "text/markdown") {
     return (
-      <div className="relative">
-        <MarkdownEditor value={fileContent} />
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Badge>{contentType}</Badge>
+          <Download value={fileContent} download={"markdown.md"} variant={"outline"} />
+        </div>
 
-        <Download
-          value={fileContent}
-          download={"markdown.md"}
-          className="absolute -right-4 top-5"
-          variant={"outline"}
-        />
+        <MarkdownEditor value={fileContent} />
       </div>
     );
   }
 
   if (contentType === "application/yaml") {
     return (
-      <div className="relative">
-        <YamlEditor value={fileContent} disabled onChange={function (): void {}} />
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Badge>{contentType}</Badge>
+          <Download value={fileContent} download={"file.yaml"} variant={"outline"} />
+        </div>
 
-        <Download
-          value={fileContent}
-          download={"file.yaml"}
-          className="absolute right-6 top-6"
-          variant={"outline"}
-        />
+        <YamlEditor value={fileContent} disabled onChange={function (): void {}} />
       </div>
     );
   }
 
   if (contentType === "image/svg+xml") {
     return (
-      <div className="relative">
-        <Svg value={fileContent} className="border rounded-md p-2" />
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Badge>{contentType}</Badge>
+          <Download value={fileContent} download={"file.svg"} variant={"outline"} />
+        </div>
 
-        <Download
-          value={fileContent}
-          download={"file.svg"}
-          className="absolute right-6 top-6"
-          variant={"outline"}
-        />
+        <Svg value={fileContent} className="border rounded-md p-2" />
       </div>
     );
   }
 
   return (
-    <div className="relative">
-      <TextEditor value={fileContent} disabled onChange={function (): void {}} />
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Badge>{contentType}</Badge>
+        <Download value={fileContent} download={"file.txt"} variant={"outline"} />
+      </div>
 
-      <Download
-        value={fileContent}
-        download={"file.txt"}
-        className="absolute right-6 top-6"
-        variant={"outline"}
-      />
+      <TextEditor value={fileContent} disabled onChange={function (): void {}} />
     </div>
   );
 };
