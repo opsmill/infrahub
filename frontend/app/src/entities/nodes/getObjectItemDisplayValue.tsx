@@ -21,7 +21,7 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { PasswordDisplay } from "@/shared/components/display/password-display";
 import { TextDisplay } from "@/shared/components/display/text-display";
 import { CodeEditor } from "@/shared/components/editor/code/code-editor";
-import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-viewer";
+import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { Link } from "@/shared/components/ui/link";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
@@ -60,7 +60,7 @@ export const getDisplayValue = (
   }
 
   if (attribute?.kind === "TextArea") {
-    return <MarkdownViewer markdownText={row[attribute?.name]?.value} />;
+    return <MarkdownRender markdownText={row[attribute?.name]?.value} />;
   }
 
   if (attribute?.kind === "JSON") {
@@ -216,7 +216,7 @@ export const ObjectAttributeValue = ({
     case SCHEMA_ATTRIBUTE_KIND.DATETIME:
       return <DateDisplay date={getTextValue(attributeValue)} />;
     case SCHEMA_ATTRIBUTE_KIND.TEXTAREA:
-      return <MarkdownViewer markdownText={getTextValue(attributeValue)} />;
+      return <MarkdownRender markdownText={getTextValue(attributeValue)} />;
     case SCHEMA_ATTRIBUTE_KIND.PASSWORD:
     case SCHEMA_ATTRIBUTE_KIND.HASHED_PASSWORD:
       return <PasswordDisplay value={getTextValue(attributeValue)} />;

@@ -12,7 +12,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
 import { Avatar } from "@/shared/components/display/avatar";
 import { DateDisplay } from "@/shared/components/display/date-display";
-import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-viewer";
+import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
@@ -172,7 +172,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
                 />
               </div>
 
-              <MarkdownViewer markdownText={proposedChangesDetails.description.value} />
+              <MarkdownRender markdownText={proposedChangesDetails.description.value} />
             </CardWithBorder>
           )}
 

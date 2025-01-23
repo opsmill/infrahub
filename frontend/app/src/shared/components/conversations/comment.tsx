@@ -1,6 +1,6 @@
 import { Avatar } from "@/shared/components/display/avatar";
 import { DateDisplay } from "@/shared/components/display/date-display";
-import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-viewer";
+import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { classNames } from "@/shared/utils/common";
 import React from "react";
 
@@ -29,7 +29,7 @@ export const Comment: React.FC<CommentProps> = ({ author, createdAt, content, cl
         </div>
       </div>
 
-      <MarkdownViewer markdownText={content} />
+      <MarkdownRender markdownText={content} />
     </div>
   );
 };
