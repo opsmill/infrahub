@@ -2,7 +2,8 @@ import { CONFIG } from "@/config/config";
 import { QSP } from "@/config/qsp";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { fetchUrl, getUrlWithQsp } from "@/shared/api/rest/fetch";
-import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
+import { Button } from "@/shared/components/buttons/button-primitive";
+
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
@@ -65,12 +66,7 @@ export const Generate = (props: tGenerateProps) => {
   };
 
   return (
-    <Button
-      disabled={!isAuthenticated || isLoading}
-      onClick={handleGenerate}
-      className="mr-4"
-      buttonType={BUTTON_TYPES.VALIDATE}
-    >
+    <Button variant={"active"} disabled={!isAuthenticated || isLoading} onClick={handleGenerate}>
       {label ?? "Generate"}
       <ArrowPathIcon
         className={classNames("ml-2 h-4 w-4", isLoading ? "animate-spin" : "")}
