@@ -2,7 +2,6 @@ import { CONFIG } from "@/config/config";
 import { ARTIFACT_OBJECT, MENU_EXCLUDELIST } from "@/config/constants";
 import { Generate } from "@/entities/artifacts/ui/generate";
 import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
-import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import {
   getSchemaObjectColumns,
   getTabs,
@@ -12,19 +11,20 @@ import { getPermission } from "@/entities/permission/utils";
 import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { File } from "@/shared/components/file";
 import LoadingScreen from "@/shared/components/loading-screen";
-import { Property, PropertyList } from "@/shared/components/table/property-list";
-import { CardWithBorder } from "@/shared/components/ui/card";
+import { PropertyList } from "@/shared/components/table/property-list";
+import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { Navigate } from "react-router-dom";
-import { ARTIFACT_ATTRIBUTES_BLACKLIST, ARTIFACT_RELATIONSHIPS_BLACKLIST } from "../constants";
+import { ARTIFACT_RELATIONSHIPS_BLACKLIST } from "../constants";
 
 export default function ArtifactsDetails({ artifactId }: { artifactId: string }) {
   const objectid = artifactId;
@@ -97,21 +97,11 @@ export default function ArtifactsDetails({ artifactId }: { artifactId: string })
   const fileUrl = CONFIG.ARTIFACTS_CONTENT_URL(objectDetailsData?.storage_id?.value);
   const contentType = objectDetailsData?.content_type?.value;
 
-  const properties: Property[] = [
-    { name: "ID", value: objectDetailsData.id },
-    ...(schema?.attributes ?? [])
-      .filter(({ name }) => !ARTIFACT_ATTRIBUTES_BLACKLIST.includes(name))
-      .map((schemaAttribute) => {
-        return {
-          name: schemaAttribute.label || schemaAttribute.name,
-          value: (
-            <ObjectAttributeValue
-              attributeSchema={schemaAttribute}
-              attributeValue={objectDetailsData[schemaAttribute.name]}
-            />
-          ),
-        };
-      }),
+  const properies = [
+    {
+      name: "Status",
+      value: <Badge>{objectDetailsData?.status?.value}</Badge>,
+    },
     ...(schema?.relationships ?? [])
       .filter(({ name }) => !ARTIFACT_RELATIONSHIPS_BLACKLIST.includes(name))
       .map((schemaRelationship) => {
@@ -133,22 +123,40 @@ export default function ArtifactsDetails({ artifactId }: { artifactId: string })
   ];
 
   return (
-    <div className="flex gap-4 p-4">
-      <div className="flex-1 max-w-2xl">
-        <File url={fileUrl} contentType={contentType} className="flex-grow" />
-      </div>
-
-      <CardWithBorder className="flex-1">
-        <CardWithBorder.Title className="flex items-center justify-between gap-1">
+    <div className="flex flex-col gap-4 p-4">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-4">
           <Generate
             label="Re-generate"
             artifactid={objectid}
             definitionid={objectDetailsData?.definition?.node?.id}
           />
-        </CardWithBorder.Title>
 
-        <PropertyList properties={properties} />
-      </CardWithBorder>
+          {objectDetailsData?.checksum?.value && (
+            <CopyToClipboard
+              text={objectDetailsData?.checksum?.value}
+              size={"default"}
+              variant={"outline"}
+            >
+              Checksum
+            </CopyToClipboard>
+          )}
+
+          {objectDetailsData?.storage_id?.value && (
+            <CopyToClipboard
+              text={objectDetailsData?.storage_id?.value}
+              size={"default"}
+              variant={"outline"}
+            >
+              Storage ID
+            </CopyToClipboard>
+          )}
+        </div>
+
+        <PropertyList properties={properies} />
+      </div>
+
+      <File url={fileUrl} contentType={contentType} />
     </div>
   );
 }
