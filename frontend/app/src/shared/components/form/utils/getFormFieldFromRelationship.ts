@@ -1,5 +1,5 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import { RelationshipOneType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { RelationshipSchema } from "@/entities/schema/types";
 import { DynamicRelationshipFieldProps, FormFieldValue } from "@/shared/components/form/type";
