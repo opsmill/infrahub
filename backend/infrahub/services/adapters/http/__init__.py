@@ -7,9 +7,6 @@ if TYPE_CHECKING:
 
 
 class InfrahubHTTP:
-    async def initialize(self) -> None:
-        """Initialize the HTTP adapter"""
-
     async def get(
         self,
         url: str,
