@@ -6,20 +6,11 @@ interface DownloadProps extends Omit<LinkButtonProps, "to"> {
 }
 
 export const Download = ({ value, ...props }: DownloadProps) => {
-  const fileData = JSON.stringify(value);
-  const blob = new Blob([fileData], { type: "text/plain" });
+  const blob = new Blob([value], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
 
   return (
-    <LinkButton
-      variant={"ghost"}
-      size={"icon"}
-      to={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      download={"jinja2-template.txt"}
-      {...props}
-    >
+    <LinkButton to={url} target="_blank" rel="noopener noreferrer" {...props}>
       <Icon icon={"mdi:download-outline"} />
     </LinkButton>
   );
