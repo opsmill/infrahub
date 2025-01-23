@@ -8,18 +8,18 @@ import { getRelationshipParent } from "@/shared/components/form/utils/getRelatio
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isRequired } from "@/shared/components/form/utils/validation";
 
-export const getFormFieldFromRelationshipSchema = ({
+export const getFormFieldFromRelationship = ({
   relationshipSchema,
   relationshipData,
   isFilterForm = false,
   schema,
   auth,
 }: {
+  auth: AuthContextType | undefined;
+  isFilterForm: boolean;
   relationshipSchema: RelationshipSchema;
   relationshipData: RelationshipType | undefined;
-  isFilterForm?: boolean;
   schema: IModelSchema;
-  auth?: AuthContextType;
 }): DynamicRelationshipFieldProps => {
   return {
     type: "relationship",

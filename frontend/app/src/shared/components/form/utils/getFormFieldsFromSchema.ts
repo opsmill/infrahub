@@ -1,24 +1,11 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeKind } from "@/entities/schema/types";
-import { components } from "@/shared/api/rest/types.generated";
 import { ProfileData } from "@/shared/components/form/object-form";
-import {
-  DynamicDropdownFieldProps,
-  DynamicEnumFieldProps,
-  DynamicFieldProps,
-  DynamicInputFieldProps,
-  DynamicNumberFieldProps,
-  FormFieldValue,
-  NumberPoolData,
-} from "@/shared/components/form/type";
-import { getFieldDefaultValue } from "@/shared/components/form/utils/getFieldDefaultValue";
-import { getFormFieldFromRelationshipSchema } from "@/shared/components/form/utils/getFormFieldFromRelationshipSchema";
+import { DynamicFieldProps, NumberPoolData } from "@/shared/components/form/type";
+import { getFormFieldFromAttribute } from "@/shared/components/form/utils/getFormFieldFromAttribute";
+import { getFormFieldFromRelationship } from "@/shared/components/form/utils/getFormFieldFromRelationship";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
-import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
-import { isRequired } from "@/shared/components/form/utils/validation";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 type GetFormFieldsFromSchema = {
@@ -46,101 +33,25 @@ export const getFormFieldsFromSchema = ({
   ].filter((attribute) => !attribute.read_only);
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 
-  const formFields: Array<DynamicFieldProps> = orderedFields.map((attribute) => {
-    const currentFieldValue = initialObject
-      ? (initialObject[attribute.name] as AttributeType)
-      : null;
-
-    const basicFomFieldProps: DynamicInputFieldProps = {
-      name: attribute.name,
-      label: attribute.label ?? undefined,
-      defaultValue: getFieldDefaultValue({
-        fieldSchema: attribute,
-        initialObject: initialObject as Record<string, AttributeType>,
-        profiles,
-        isFilterForm,
-      }),
-      description: attribute.description ?? undefined,
-      disabled: isFieldDisabled({
-        auth,
-        owner: currentFieldValue?.owner,
-        isProtected: !!currentFieldValue?.is_protected,
-        permissions: { update: currentFieldValue?.permissions?.update_value },
-        isReadOnly: attribute.read_only,
-      }),
-      type: attribute.kind as Exclude<AttributeKind, "Dropdown">,
-      rules: {
-        required: !isFilterForm && !attribute.optional,
-        validate: {
-          required: (formFieldValue: FormFieldValue) => {
-            if (isFilterForm || attribute.optional) return true;
-
-            return isRequired(formFieldValue);
-          },
-        },
-      },
-    };
-
+  return orderedFields.map((attribute) => {
     if ("peer" in attribute) {
-      return getFormFieldFromRelationshipSchema({
+      return getFormFieldFromRelationship({
+        auth,
         relationshipSchema: attribute,
         relationshipData: initialObject?.[attribute.name] as RelationshipType | undefined,
-        isFilterForm,
+        isFilterForm: !!isFilterForm,
         schema,
       });
     }
 
-    if (attribute.kind === ATTRIBUTE_KIND.DROPDOWN) {
-      const dropdownField: DynamicDropdownFieldProps = {
-        ...basicFomFieldProps,
-        type: ATTRIBUTE_KIND.DROPDOWN,
-        unique: attribute.unique,
-        field: attribute,
-        schema: schema,
-        items: (attribute.choices ?? []).map((choice: components["schemas"]["DropdownChoice"]) => ({
-          value: choice.name,
-          label: choice.label ?? choice.name,
-          color: choice.color ?? undefined,
-          description: choice.description ?? undefined,
-        })),
-      };
-
-      return dropdownField;
-    }
-
-    if (Array.isArray(attribute.enum)) {
-      const enumField: DynamicEnumFieldProps = {
-        ...basicFomFieldProps,
-        type: "enum",
-        field: attribute,
-        schema: schema,
-        unique: attribute.unique,
-        items: attribute.enum,
-      };
-
-      return enumField;
-    }
-
-    if (attribute.kind === ATTRIBUTE_KIND.NUMBER) {
-      const numberPools = pools?.filter((pool) => pool.nodeAttribute.name === attribute.name);
-
-      const dropdownField: DynamicNumberFieldProps = {
-        ...basicFomFieldProps,
-        type: "Number",
-        unique: attribute.unique,
-        pools: numberPools,
-      };
-
-      return dropdownField;
-    }
-
-    const field: DynamicInputFieldProps = {
-      ...basicFomFieldProps,
-      unique: attribute.unique,
-    };
-
-    return field;
+    return getFormFieldFromAttribute({
+      auth,
+      attributeSchema: attribute,
+      currentObject: initialObject as Record<string, AttributeType>,
+      isFilterForm: !!isFilterForm,
+      schema,
+      pools,
+      profiles,
+    });
   });
-
-  return formFields;
 };
