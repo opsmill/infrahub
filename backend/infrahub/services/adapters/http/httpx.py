@@ -15,15 +15,15 @@ log = get_logger()
 
 
 class HttpxAdapter(InfrahubHTTP):
-    settings: config.HTTPSettings
+    _settings: config.HTTPSettings | None = None
 
-    async def initialize(self) -> None:
-        """Initialize the HTTP adapter"""
-        self.settings = config.SETTINGS.http
+    @property
+    def settings(self) -> config.HTTPSettings:
+        if self._settings:
+            return self._settings
 
-        # Cache the context during init, this is to avoid issue when a CA bundle might be accessible
-        # when Infrahub initializes but then removed before the first external HTTP call is made.
-        _ = self.tls_context
+        self._settings = config.SETTINGS.http
+        return self._settings
 
     @cached_property
     def tls_context(self) -> ssl.SSLContext:
