@@ -11,13 +11,11 @@ import {
   DynamicFieldProps,
   DynamicInputFieldProps,
   DynamicNumberFieldProps,
-  DynamicRelationshipFieldProps,
   FormFieldValue,
   NumberPoolData,
 } from "@/shared/components/form/type";
 import { getFieldDefaultValue } from "@/shared/components/form/utils/getFieldDefaultValue";
-import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
-import { getRelationshipParent } from "@/shared/components/form/utils/getRelationshipParent";
+import { getFormFieldFromRelationshipSchema } from "@/shared/components/form/utils/getFormFieldFromRelationshipSchema";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isRequired } from "@/shared/components/form/utils/validation";
@@ -84,23 +82,12 @@ export const getFormFieldsFromSchema = ({
     };
 
     if ("peer" in attribute) {
-      const currentRelationshipData = initialObject?.[attribute.name] as
-        | RelationshipType
-        | undefined;
-
-      const relationshipField: DynamicRelationshipFieldProps = {
-        ...basicFomFieldProps,
-        type: "relationship",
-        defaultValue: getRelationshipDefaultValue({
-          relationshipData: currentRelationshipData,
-          isFilterForm,
-        }),
-        parent: getRelationshipParent(currentRelationshipData),
-        relationship: attribute,
+      return getFormFieldFromRelationshipSchema({
+        relationshipSchema: attribute,
+        relationshipData: initialObject?.[attribute.name] as RelationshipType | undefined,
+        isFilterForm,
         schema,
-      };
-
-      return relationshipField;
+      });
     }
 
     if (attribute.kind === ATTRIBUTE_KIND.DROPDOWN) {

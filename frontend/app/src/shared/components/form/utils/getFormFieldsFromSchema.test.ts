@@ -100,9 +100,9 @@ describe("getFormFieldsFromSchema", () => {
 
     // THEN
     expect(fields.length).to.equal(3);
-    expect(fields[0].name).to.equal("first");
-    expect(fields[1].name).to.equal("second");
-    expect(fields[2].name).to.equal("third");
+    expect(fields[0]!.name).to.equal("first");
+    expect(fields[1]!.name).to.equal("second");
+    expect(fields[2]!.name).to.equal("third");
   });
 
   it("should map a text attribute correctly", () => {

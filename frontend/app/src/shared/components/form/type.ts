@@ -120,6 +120,12 @@ export type DynamicEnumFieldProps = FormFieldProps & {
   schema?: IModelSchema;
 };
 
+export type DynamicAttributeFieldProps =
+  | DynamicInputFieldProps
+  | DynamicNumberFieldProps
+  | DynamicDropdownFieldProps
+  | DynamicEnumFieldProps;
+
 export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue"> & {
   type: "relationship";
   defaultValue?: FormRelationshipValue;
@@ -131,12 +137,7 @@ export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue">
   peerField?: string;
 };
 
-export type DynamicFieldProps =
-  | DynamicInputFieldProps
-  | DynamicNumberFieldProps
-  | DynamicDropdownFieldProps
-  | DynamicEnumFieldProps
-  | DynamicRelationshipFieldProps;
+export type DynamicFieldProps = DynamicAttributeFieldProps | DynamicRelationshipFieldProps;
 
 export const isFormFieldValueFromPool = (
   fieldData: FormFieldValue

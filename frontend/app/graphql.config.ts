@@ -7,7 +7,7 @@ const config: CodegenConfig = {
   generates: {
     "src/shared/api/graphql/generated/": {
       config: {
-        withHooks: true,
+        enumsAsTypes: true,
       },
       plugins: ["typescript"],
       preset: "client",
