@@ -10,21 +10,32 @@ import { store } from "../../src/shared/stores";
 
 import "/src/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
+import queryString from "query-string";
+import { QueryParamProvider } from "use-query-params";
+import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 
 export const render = (component: React.ReactElement, options = {}) =>
   renderFromVitest(component, {
     wrapper: ({ children }) => (
       <Provider store={store}>
         <QueryClientProvider client={queryClient}>
-          <ToastContainer
-            hideProgressBar={true}
-            transition={Slide}
-            autoClose={5000}
-            closeOnClick={false}
-            newestOnTop
-            position="bottom-right"
-          />
-          <BrowserRouter> {children}</BrowserRouter>
+          <QueryParamProvider
+            adapter={ReactRouter6Adapter}
+            options={{
+              searchStringToObject: queryString.parse,
+              objectToSearchString: queryString.stringify,
+            }}
+          >
+            <ToastContainer
+              hideProgressBar={true}
+              transition={Slide}
+              autoClose={5000}
+              closeOnClick={false}
+              newestOnTop
+              position="bottom-right"
+            />
+            <BrowserRouter> {children}</BrowserRouter>
+          </QueryParamProvider>
         </QueryClientProvider>
       </Provider>
     ),

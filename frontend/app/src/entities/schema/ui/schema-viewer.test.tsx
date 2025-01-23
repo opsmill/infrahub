@@ -1,6 +1,3 @@
-import queryString from "query-string";
-import { QueryParamProvider } from "use-query-params";
-import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 import { describe, expect, test } from "vitest";
 import { render } from "../../../../tests/components/render";
 import { generateNodeSchema } from "../../../../tests/fake/schema";
@@ -15,17 +12,7 @@ describe("Schema Visualizer Component", () => {
       description: "Test Node description",
     });
 
-    const component = render(
-      <QueryParamProvider
-        adapter={ReactRouter6Adapter}
-        options={{
-          searchStringToObject: queryString.parse,
-          objectToSearchString: queryString.stringify,
-        }}
-      >
-        <SchemaViewer schema={schema} onClose={function (): void {}} />
-      </QueryParamProvider>
-    );
+    const component = render(<SchemaViewer schema={schema} onClose={function (): void {}} />);
 
     // THEN
     await expect
@@ -53,17 +40,7 @@ describe("Schema Visualizer Component", () => {
       ],
     });
 
-    const component = render(
-      <QueryParamProvider
-        adapter={ReactRouter6Adapter}
-        options={{
-          searchStringToObject: queryString.parse,
-          objectToSearchString: queryString.stringify,
-        }}
-      >
-        <SchemaViewer schema={schema} onClose={function (): void {}} />
-      </QueryParamProvider>
-    );
+    const component = render(<SchemaViewer schema={schema} onClose={function (): void {}} />);
 
     // WHEN
     await component.getByText("Attributes").click();
@@ -94,17 +71,7 @@ describe("Schema Visualizer Component", () => {
       ],
     });
 
-    const component = render(
-      <QueryParamProvider
-        adapter={ReactRouter6Adapter}
-        options={{
-          searchStringToObject: queryString.parse,
-          objectToSearchString: queryString.stringify,
-        }}
-      >
-        <SchemaViewer schema={schema} onClose={function (): void {}} />
-      </QueryParamProvider>
-    );
+    const component = render(<SchemaViewer schema={schema} onClose={function (): void {}} />);
 
     // WHEN
     await component.getByText("Attributes").click();
@@ -136,17 +103,7 @@ describe("Schema Visualizer Component", () => {
       ],
     });
 
-    const component = render(
-      <QueryParamProvider
-        adapter={ReactRouter6Adapter}
-        options={{
-          searchStringToObject: queryString.parse,
-          objectToSearchString: queryString.stringify,
-        }}
-      >
-        <SchemaViewer schema={schema} onClose={function (): void {}} />
-      </QueryParamProvider>
-    );
+    const component = render(<SchemaViewer schema={schema} onClose={function (): void {}} />);
 
     // WHEN
     await component.getByText("Attributes").click();
