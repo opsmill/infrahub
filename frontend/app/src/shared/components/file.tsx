@@ -54,8 +54,8 @@ export const File = ({ url, contentType }: tFile) => {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Badge>{contentType}</Badge>
           <Download value={JSON.parse(fileContent)} download={"file.json"} variant={"outline"} />
+          <Badge>Application / JSON</Badge>
         </div>
 
         <JsonEditor value={fileContent} disabled onChange={function (): void {}} />
@@ -67,8 +67,8 @@ export const File = ({ url, contentType }: tFile) => {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Badge>{contentType}</Badge>
           <Download value={fileContent} download={"markdown.md"} variant={"outline"} />
+          <Badge>Text / Markdown</Badge>
         </div>
 
         <MarkdownEditor value={fileContent} />
@@ -80,8 +80,8 @@ export const File = ({ url, contentType }: tFile) => {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Badge>{contentType}</Badge>
           <Download value={fileContent} download={"file.yaml"} variant={"outline"} />
+          <Badge>Application / YAML</Badge>
         </div>
 
         <YamlEditor value={fileContent} disabled onChange={function (): void {}} />
@@ -93,8 +93,8 @@ export const File = ({ url, contentType }: tFile) => {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Badge>{contentType}</Badge>
           <Download value={fileContent} download={"file.svg"} variant={"outline"} />
+          <Badge>Image / SVG</Badge>
         </div>
 
         <Svg value={fileContent} className="border rounded-md p-2" />
@@ -105,8 +105,8 @@ export const File = ({ url, contentType }: tFile) => {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Badge>{contentType}</Badge>
         <Download value={fileContent} download={"file.txt"} variant={"outline"} />
+        <Badge>Plain / Text</Badge>
       </div>
 
       <TextEditor value={fileContent} disabled onChange={function (): void {}} />
