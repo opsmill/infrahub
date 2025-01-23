@@ -7,7 +7,7 @@ import { toast } from "react-toastify";
 import { Download } from "./buttons/download";
 import { Svg } from "./display/svg";
 import { CodeViewer } from "./editor/code/code-viewer";
-import { MarkdownEditor } from "./editor/markdown";
+import { MarkdownViewer } from "./editor/markdown/markdown-viewer";
 import { Badge } from "./ui/badge";
 
 type tFile = {
@@ -69,7 +69,7 @@ export const File = ({ url, contentType }: tFile) => {
           <Badge>Text / Markdown</Badge>
         </div>
 
-        <MarkdownEditor value={fileContent} />
+        <MarkdownViewer>{fileContent}</MarkdownViewer>
       </div>
     );
   }

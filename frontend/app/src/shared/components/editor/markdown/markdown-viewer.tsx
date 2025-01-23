@@ -1,16 +1,43 @@
-import "@/app/styles/markdown.css";
 import { classNames } from "@/shared/utils/common";
-import { FC } from "react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { useState } from "react";
+import { Button } from "../../buttons/button-primitive";
+import { CodeViewer } from "../code/code-viewer";
+import { MarkdownRender } from "./markdown-render";
 
-type MarkdownViewerProps = {
-  className?: string;
-  markdownText?: string;
-};
+export function MarkdownViewer({ children }: { children: string }) {
+  const [displayRaw, setDisplayRaw] = useState(false);
 
-export const MarkdownViewer: FC<MarkdownViewerProps> = ({ className = "", markdownText = "" }) => (
-  <Markdown remarkPlugins={[remarkGfm]} className={classNames("markdown", className)}>
-    {markdownText}
-  </Markdown>
-);
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Button
+          variant={"ghost"}
+          className={classNames(
+            "border-b border-custom-blue-700 rounded-none",
+            displayRaw ? "" : "border-0"
+          )}
+          onClick={() => setDisplayRaw(true)}
+        >
+          Raw
+        </Button>
+
+        <Button
+          variant={"ghost"}
+          className={classNames(
+            "border-b border-custom-blue-700 rounded-none",
+            displayRaw ? "border-0" : ""
+          )}
+          onClick={() => setDisplayRaw(false)}
+        >
+          Preview
+        </Button>
+      </div>
+
+      {displayRaw ? (
+        <CodeViewer language="markdown">{children}</CodeViewer>
+      ) : (
+        <MarkdownRender markdownText={children} />
+      )}
+    </div>
+  );
+}
