@@ -139,3 +139,5 @@ function ArtifactsDetails() {
 export const Component = () => {
   return <ArtifactsDetails />;
 };
+
+export default Component;
