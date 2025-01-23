@@ -77,7 +77,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         # TODO need to handle properly the situation when a branch is not valid.
         if self.internal_status == RepositoryInternalStatus.ACTIVE.value:
             for branch_name in new_branches:
-                is_valid = await self.validate_remote_branch(branch_name=branch_name)
+                is_valid = self.validate_remote_branch(branch_name=branch_name)
                 if not is_valid:
                     continue
 
@@ -98,7 +98,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 await self.import_objects_from_files(infrahub_branch_name=infrahub_branch, commit=commit)
 
             for branch_name in updated_branches:
-                is_valid = await self.validate_remote_branch(branch_name=branch_name)
+                is_valid = self.validate_remote_branch(branch_name=branch_name)
                 if not is_valid:
                     continue
 
