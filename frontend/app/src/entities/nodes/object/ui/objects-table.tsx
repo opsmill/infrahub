@@ -32,7 +32,7 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
     (containerRefElement?: HTMLDivElement | null) => {
       if (containerRefElement) {
         const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
-        //once the user has scrolled within 500px of the bottom of the table, fetch more data if we can
+        //once the user has scrolled within 300px of the bottom of the table, fetch more data if we can
         if (scrollHeight - scrollTop - clientHeight < 300 && !isFetchingNextPage && hasNextPage) {
           fetchNextPage();
         }
