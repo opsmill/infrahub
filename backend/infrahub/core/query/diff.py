@@ -570,12 +570,12 @@ class DiffFieldPathsQuery(DiffCalculationQuery):
                     node_uuid: list(field_names)
                     for node_uuid, field_names in self.current_node_field_specifiers.items()
                 }
-                if self.current_node_field_specifiers
+                if self.current_node_field_specifiers is not None
                 else None,
                 "new_node_field_specifiers_map": {
                     node_uuid: list(field_names) for node_uuid, field_names in self.new_node_field_specifiers.items()
                 }
-                if self.new_node_field_specifiers
+                if self.new_node_field_specifiers is not None
                 else None,
             }
         )
@@ -609,19 +609,19 @@ AND (
 )
 // node ID and field name filtering second pass
 AND (
-    // time-based filters for nodes already included in the diff
+    // time-based filters for nodes already included in the diff or fresh changes
     (
-        ($current_node_field_specifiers_map IS NOT NULL AND q.name IN $current_node_field_specifiers_map[p.uuid])
+        (
+            ($current_node_field_specifiers_map IS NOT NULL AND q.name IN $current_node_field_specifiers_map[p.uuid])
+            OR ($current_node_field_specifiers_map IS NULL AND $new_node_field_specifiers_map IS NULL)
+        )
         AND (r_root.from < $from_time OR p.branch_support = $branch_agnostic)
         AND ($from_time <= diff_rel.from < $to_time)
         AND (diff_rel.to IS NULL OR ($from_time <= diff_rel.to < $to_time))
     )
     // time-based filters for new nodes
     OR (
-        (
-            (q.name IN $new_node_field_specifiers_map[p.uuid])
-            OR ($current_node_field_specifiers_map IS NULL AND $new_node_field_specifiers_map IS NULL)
-        )
+        ($new_node_field_specifiers_map IS NOT NULL AND q.name IN $new_node_field_specifiers_map[p.uuid])
         AND (r_root.from < $branch_from_time OR p.branch_support = $branch_agnostic)
         AND ($branch_from_time <= diff_rel.from < $to_time)
         AND (diff_rel.to IS NULL OR ($branch_from_time <= diff_rel.to < $to_time))
