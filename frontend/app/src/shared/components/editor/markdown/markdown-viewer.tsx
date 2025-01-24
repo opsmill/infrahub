@@ -14,22 +14,22 @@ export function MarkdownViewer({ children }: { children: string }) {
           variant={"ghost"}
           className={classNames(
             "border-b border-custom-blue-700 rounded-none",
-            displayRaw ? "" : "border-0"
+            displayRaw ? "border-0" : ""
           )}
-          onClick={() => setDisplayRaw(true)}
+          onClick={() => setDisplayRaw(false)}
         >
-          Raw
+          View
         </Button>
 
         <Button
           variant={"ghost"}
           className={classNames(
             "border-b border-custom-blue-700 rounded-none",
-            displayRaw ? "border-0" : ""
+            displayRaw ? "" : "border-0"
           )}
-          onClick={() => setDisplayRaw(false)}
+          onClick={() => setDisplayRaw(true)}
         >
-          Preview
+          Raw
         </Button>
       </div>
 
