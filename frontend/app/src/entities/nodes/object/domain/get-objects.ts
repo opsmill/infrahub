@@ -33,25 +33,27 @@ export const getObjects: GetObjects = async ({ schema, offset, branchName, atDat
         __args: {
           limit: OBJECTS_PER_PAGE,
           offset,
-          ...(filters ?? []).reduce(
-            (acc, filter) => {
-              const [fieldName, fieldKey] = filter.name.split("__");
+          ...(filters
+            ? filters.reduce(
+                (acc, filter) => {
+                  const [fieldName, fieldKey] = filter.name.split("__");
 
-              if (!fieldName || !fieldKey) return acc;
+                  if (!fieldName || !fieldKey) return acc;
 
-              if (fieldKey === "value" || fieldKey === "values") {
-                acc[filter.name] = filter.value;
-                return acc;
-              }
+                  if (fieldKey === "value" || fieldKey === "values") {
+                    acc[filter.name] = filter.value;
+                    return acc;
+                  }
 
-              if (fieldKey === "ids") {
-                acc[filter.name] = filter.value.map(({ id }: { id: string }) => id);
-              }
+                  if (fieldKey === "ids") {
+                    acc[filter.name] = filter.value.map(({ id }: { id: string }) => id);
+                  }
 
-              return acc;
-            },
-            {} as Record<string, string>
-          ),
+                  return acc;
+                },
+                { partial_match: true } as Record<string, string | number | boolean>
+              )
+            : {}),
         },
         edges: {
           node: {

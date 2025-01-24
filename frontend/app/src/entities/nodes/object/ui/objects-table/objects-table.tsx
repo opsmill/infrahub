@@ -1,4 +1,7 @@
 import { getObjectsInfiniteQueryOptions } from "@/entities/nodes/object/domain/get-objects.query";
+import { ObjectFilterDisplay } from "@/entities/nodes/object/ui/objects-table/filtering/object-filter-display";
+import { ObjectFilterResetButton } from "@/entities/nodes/object/ui/objects-table/filtering/object-filter-reset-button";
+import { ObjectSearchInput } from "@/entities/nodes/object/ui/objects-table/filtering/object-search-input";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { Spinner } from "@/shared/components/ui/spinner";
 import {
@@ -56,16 +59,22 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
     debugTable: true,
   });
 
-  if (isPending) {
-    return <>Loading...</>;
-  }
-
   return (
     <div
       className="overflow-auto max-h-[calc(100vh-10.5rem)]"
       onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
       ref={tableContainerRef}
     >
+      <div className="flex items-center gap-2 p-2">
+        <ObjectSearchInput schema={schema} loading={isPending} />
+
+        {filters.map((filter) => (
+          <ObjectFilterDisplay key={filter.name} filter={filter} schema={schema} />
+        ))}
+
+        {filters.length > 0 && <ObjectFilterResetButton />}
+      </div>
+
       <Table>
         <TableHeader columns={table.getFlatHeaders()}>
           {(header) => {
@@ -115,7 +124,6 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
           )}
         </TableBody>
       </Table>
-
       {isFetchingNextPage && <Spinner />}
     </div>
   );

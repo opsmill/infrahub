@@ -19,6 +19,8 @@ import { getFormFieldFromRelationship } from "@/shared/components/form/utils/get
 import { Badge } from "@/shared/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
+import { classNames } from "@/shared/utils/common";
+import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
 export const getObjectTableColumns = (
@@ -47,11 +49,12 @@ export const getObjectTableColumns = (
           const [filters, setFilters] = useFilters();
           const [showFilters, setShowFilters] = useState(false);
           const filtersAsObjectData = getObjectFromFilters(schema, filters);
+          const currentColumnFilters = filtersAsObjectData[column.name];
 
           const handleSubmit = (formData: Record<string, FormFieldValue>) => {
             const newFilters = getFiltersFromFormData(formData);
 
-            setFilters(newFilters);
+            setFilters([...filters, ...newFilters]);
             setShowFilters(false);
           };
 
@@ -76,7 +79,16 @@ export const getObjectTableColumns = (
 
           return (
             <Popover open={showFilters} onOpenChange={setShowFilters}>
-              <PopoverTrigger>{column.label ?? column.name}</PopoverTrigger>
+              <PopoverTrigger className="flex items-center gap-1">
+                {column.label ?? column.name}{" "}
+                <Icon
+                  icon="mdi:filter-variant"
+                  className={classNames(
+                    "text-lg",
+                    currentColumnFilters ? "text-indigo-700" : "text-gray-300"
+                  )}
+                />
+              </PopoverTrigger>
 
               <PopoverContent className="min-w-[19rem]">
                 <DynamicForm

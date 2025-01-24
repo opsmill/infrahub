@@ -1,4 +1,4 @@
-import { ObjectsTable } from "@/entities/nodes/object/ui/objects-table";
+import { ObjectsTable } from "@/entities/nodes/object/ui/objects-table/objects-table";
 import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { useAtomValue } from "jotai";
