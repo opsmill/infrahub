@@ -6,7 +6,6 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
-from infrahub.core.diff.model.path import NodeFieldSpecifier
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -1630,7 +1629,7 @@ async def test_diff_attribute_branch_update_with_previous_base_update_ignored(
         diff_branch=branch,
         from_time=from_time,
         to_time=Timestamp(),
-        previous_node_specifiers={NodeFieldSpecifier(node_uuid=alfred_main.id, field_name="name")},
+        previous_node_specifiers={alfred_main.id: {"name"}},
         include_unchanged=True,
     )
 
@@ -1683,7 +1682,7 @@ async def test_diff_attribute_branch_update_with_concurrent_base_update_captured
         diff_branch=branch,
         from_time=from_time,
         to_time=Timestamp(),
-        previous_node_specifiers={NodeFieldSpecifier(node_uuid=alfred_main.id, field_name="name")},
+        previous_node_specifiers={alfred_main.id: {"name"}},
         include_unchanged=True,
     )
 
@@ -1819,8 +1818,8 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
         from_time=from_time,
         to_time=Timestamp(),
         previous_node_specifiers={
-            NodeFieldSpecifier(node_uuid=car_accord_main.id, field_name="color"),
-            NodeFieldSpecifier(node_uuid=person_alfred_main.id, field_name="name"),
+            car_accord_main.id: {"color"},
+            person_alfred_main.id: {"name"},
         },
         include_unchanged=True,
     )
@@ -2777,8 +2776,8 @@ async def test_diff_unchanged_included_when_not_first_diff(
         from_time=from_time,
         to_time=Timestamp(),
         previous_node_specifiers={
-            NodeFieldSpecifier(node_uuid=car_accord_main.id, field_name="color"),
-            NodeFieldSpecifier(node_uuid=person_alfred_main.id, field_name="name"),
+            car_accord_main.id: {"color"},
+            person_alfred_main.id: {"name"},
         },
         include_unchanged=True,
     )
@@ -3059,7 +3058,7 @@ async def test_diff_relationship_property_update_on_main(
         from_time=from_time,
         to_time=Timestamp(),
         previous_node_specifiers={
-            NodeFieldSpecifier(node_uuid=car_accord_main.id, field_name=owner_rel_schema.get_identifier()),
+            car_accord_main.id: {owner_rel_schema.get_identifier()},
         },
         include_unchanged=True,
     )

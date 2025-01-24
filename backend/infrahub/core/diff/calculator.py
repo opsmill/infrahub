@@ -1,20 +1,67 @@
+from dataclasses import dataclass, field
+
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.query_parser import DiffQueryParser
-from infrahub.core.query.diff import DiffAllPathsQuery, DiffNodePathsQuery
+from infrahub.core.query.diff import DiffAllPathsQuery, DiffCalculationQuery, DiffFieldPathsQuery, DiffNodePathsQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
 
-from .model.path import CalculatedDiffs, NodeFieldSpecifier
+from .model.path import CalculatedDiffs
 
 log = get_logger()
+
+
+@dataclass
+class DiffCalculationRequest:
+    base_branch: Branch
+    diff_branch: Branch
+    branch_from_time: Timestamp
+    from_time: Timestamp
+    to_time: Timestamp
+    current_node_field_specifiers: dict[str, set[str]] | None = field(default=None)
+    new_node_field_specifiers: dict[str, set[str]] | None = field(default=None)
 
 
 class DiffCalculator:
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
+
+    async def _run_diff_calculation_query(
+        self,
+        diff_parser: DiffQueryParser,
+        query_class: type[DiffCalculationQuery],
+        calculation_request: DiffCalculationRequest,
+        limit: int,
+    ) -> None:
+        has_more_data = True
+        offset = 0
+        while has_more_data:
+            diff_query = await query_class.init(
+                db=self.db,
+                branch=calculation_request.diff_branch,
+                base_branch=calculation_request.base_branch,
+                diff_branch_from_time=calculation_request.branch_from_time,
+                diff_from=calculation_request.from_time,
+                diff_to=calculation_request.to_time,
+                current_node_field_specifiers=calculation_request.current_node_field_specifiers,
+                new_node_field_specifiers=calculation_request.new_node_field_specifiers,
+                limit=limit,
+                offset=offset,
+            )
+            log.info(f"Beginning one diff calculation query {limit=}, {offset=}")
+            await diff_query.execute(db=self.db)
+            log.info("Diff calculation query complete")
+            last_result = None
+            for query_result in diff_query.get_results():
+                diff_parser.read_result(query_result=query_result)
+                last_result = query_result
+            has_more_data = False
+            if last_result:
+                has_more_data = last_result.get_as_type("has_more_data", bool)
+            offset += limit
 
     async def calculate_diff(
         self,
@@ -23,7 +70,7 @@ class DiffCalculator:
         from_time: Timestamp,
         to_time: Timestamp,
         include_unchanged: bool = True,
-        previous_node_specifiers: set[NodeFieldSpecifier] | None = None,
+        previous_node_specifiers: dict[str, set[str]] | None = None,
     ) -> CalculatedDiffs:
         if diff_branch.name == registry.default_branch:
             diff_branch_from_time = from_time
@@ -38,29 +85,33 @@ class DiffCalculator:
             previous_node_field_specifiers=previous_node_specifiers,
         )
         node_limit = int(config.SETTINGS.database.query_size_limit / 10)
+        fields_limit = int(config.SETTINGS.database.query_size_limit / 3)
 
-        has_more_data = True
-        offset = 0
-        while has_more_data:
-            branch_diff_nodes_query = await DiffNodePathsQuery.init(
-                db=self.db,
-                branch=diff_branch,
-                base_branch=base_branch,
-                diff_branch_from_time=diff_branch_from_time,
-                diff_from=from_time,
-                diff_to=to_time,
-                limit=node_limit,
-                offset=offset,
-            )
-            await branch_diff_nodes_query.execute(db=self.db)
-            last_result = None
-            for query_result in branch_diff_nodes_query.get_results():
-                diff_parser.read_result(query_result=query_result)
-                last_result = query_result
-            has_more_data = False
-            if last_result:
-                has_more_data = last_result.get_as_type("has_more_data", bool)
-            offset += node_limit
+        calculation_request = DiffCalculationRequest(
+            base_branch=base_branch,
+            diff_branch=diff_branch,
+            branch_from_time=diff_branch_from_time,
+            from_time=from_time,
+            to_time=to_time,
+        )
+
+        log.info("Beginning diff node-level calculation queries for branch")
+        await self._run_diff_calculation_query(
+            diff_parser=diff_parser,
+            query_class=DiffNodePathsQuery,
+            calculation_request=calculation_request,
+            limit=node_limit,
+        )
+        log.info("Diff node-level calculation queries for branch complete")
+
+        log.info("Beginning diff field-level calculation queries for branch")
+        await self._run_diff_calculation_query(
+            diff_parser=diff_parser,
+            query_class=DiffFieldPathsQuery,
+            calculation_request=calculation_request,
+            limit=fields_limit,
+        )
+        log.info("Diff field-level calculation queries for branch complete")
 
         branch_diff_query = await DiffAllPathsQuery.init(
             db=self.db,
@@ -79,35 +130,43 @@ class DiffCalculator:
         log.info("Results of query for branch read")
 
         if base_branch.name != diff_branch.name:
-            new_node_field_specifiers = diff_parser.get_new_node_field_specifiers()
             current_node_field_specifiers = diff_parser.get_current_node_field_specifiers()
+            new_node_field_specifiers = diff_parser.get_new_node_field_specifiers()
+            calculation_request = DiffCalculationRequest(
+                base_branch=base_branch,
+                diff_branch=base_branch,
+                branch_from_time=diff_branch_from_time,
+                from_time=from_time,
+                to_time=to_time,
+                current_node_field_specifiers=current_node_field_specifiers,
+                new_node_field_specifiers=new_node_field_specifiers,
+            )
 
-            has_more_data = True
-            offset = 0
-            while has_more_data:
-                base_diff_nodes_query = await DiffNodePathsQuery.init(
-                    db=self.db,
-                    branch=base_branch,
-                    base_branch=base_branch,
-                    diff_branch_from_time=diff_branch_from_time,
-                    diff_from=from_time,
-                    diff_to=to_time,
-                    current_node_field_specifiers=[
-                        (nfs.node_uuid, nfs.field_name) for nfs in current_node_field_specifiers
-                    ],
-                    new_node_field_specifiers=[(nfs.node_uuid, nfs.field_name) for nfs in new_node_field_specifiers],
-                    limit=node_limit,
-                    offset=offset,
-                )
-                await base_diff_nodes_query.execute(db=self.db)
-                last_result = None
-                for query_result in base_diff_nodes_query.get_results():
-                    diff_parser.read_result(query_result=query_result)
-                    last_result = query_result
-                has_more_data = False
-                if last_result:
-                    has_more_data = query_result.get_as_type("has_more_data", bool)
-                offset += node_limit
+            log.info("Beginning diff node-level calculation queries for base")
+            await self._run_diff_calculation_query(
+                diff_parser=diff_parser,
+                query_class=DiffNodePathsQuery,
+                calculation_request=calculation_request,
+                limit=node_limit,
+            )
+            log.info("Diff node-level calculation queries for base complete")
+
+            log.info("Beginning diff field-level calculation queries for base")
+            await self._run_diff_calculation_query(
+                diff_parser=diff_parser,
+                query_class=DiffFieldPathsQuery,
+                calculation_request=calculation_request,
+                limit=fields_limit,
+            )
+            log.info("Diff field-level calculation queries for base complete")
+
+            # Temporary until next change
+            current_node_field_specifier_tuples: list[tuple[str, str]] = []
+            new_node_field_specifier_tuples: list[tuple[str, str]] = []
+            for node_uuid, field_names in current_node_field_specifiers.items():
+                current_node_field_specifier_tuples.extend((node_uuid, field_name) for field_name in field_names)
+            for node_uuid, field_names in new_node_field_specifiers.items():
+                new_node_field_specifier_tuples.extend((node_uuid, field_name) for field_name in field_names)
 
             base_diff_query = await DiffAllPathsQuery.init(
                 db=self.db,
@@ -116,10 +175,8 @@ class DiffCalculator:
                 diff_branch_from_time=diff_branch_from_time,
                 diff_from=from_time,
                 diff_to=to_time,
-                current_node_field_specifiers=[
-                    (nfs.node_uuid, nfs.field_name) for nfs in current_node_field_specifiers
-                ],
-                new_node_field_specifiers=[(nfs.node_uuid, nfs.field_name) for nfs in new_node_field_specifiers],
+                current_node_field_specifiers=current_node_field_specifier_tuples,
+                new_node_field_specifiers=new_node_field_specifier_tuples,
             )
 
             log.info("Beginning diff calculation query for base")
