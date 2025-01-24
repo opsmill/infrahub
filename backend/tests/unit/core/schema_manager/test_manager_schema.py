@@ -17,6 +17,7 @@ from infrahub.core.constants import (
     RelationshipKind,
     SchemaPathType,
 )
+from infrahub.core.node import Node
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -2793,3 +2794,93 @@ async def test_process_deprecations(organization_schema):
     assert test_criticality.get_attribute(name="description").optional
     assert test_criticality.get_relationship(name="first").optional
     assert not test_criticality.get_relationship(name="second").optional
+
+
+async def test_hierarchical_validate_parent_children(db, default_branch):
+    schema = {
+        "generics": [
+            {
+                "attributes": [{"kind": "Text", "name": "name"}],
+                "description": "Generic hierarchical location",
+                "hierarchical": True,
+                "human_friendly_id": ["name__value"],
+                "label": "Location",
+                "name": "Generic",
+                "namespace": "Location",
+            }
+        ],
+        "nodes": [
+            {
+                "children": "LocationCountry",
+                "description": "A continent on planet earth",
+                "display_labels": ["name__value"],
+                "generate_profile": False,
+                "human_friendly_id": ["name__value"],
+                "inherit_from": ["LocationGeneric"],
+                "name": "Continent",
+                "namespace": "Location",
+                "order_by": ["name__value"],
+                "parent": "",
+                "uniqueness_constraints": [["name__value"]],
+            },
+            {
+                "children": "LocationSite",
+                "description": "A country within a continent",
+                "display_labels": ["name__value"],
+                "generate_profile": False,
+                "human_friendly_id": ["parent__name__value", "name__value"],
+                "inherit_from": ["LocationGeneric"],
+                "name": "Country",
+                "namespace": "Location",
+                "order_by": ["name__value"],
+                "parent": "LocationContinent",
+                "uniqueness_constraints": [["parent", "name__value"]],
+            },
+            {
+                "attributes": [{"kind": "Text", "name": "city", "optional": True}],
+                "children": "",
+                "description": "A site within a country",
+                "display_labels": ["name__value"],
+                "human_friendly_id": ["parent__name__value", "name__value"],
+                "inherit_from": ["LocationGeneric"],
+                "name": "Site",
+                "namespace": "Location",
+                "order_by": ["name__value"],
+                "parent": "LocationCountry",
+                "uniqueness_constraints": [["parent", "name__value"]],
+            },
+        ],
+    }
+
+    registry.schema.register_schema(schema=SchemaRoot(**schema), branch=default_branch.name)
+
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+    with pytest.raises(ValueError, match=r"Unable to find the relationship"):
+        continent_schema = schema_branch.get(name="LocationContinent", duplicate=False)
+        continent_schema.get_relationship(name="parent")
+
+    assert continent_schema.uniqueness_constraints == [["name__value"]]
+    assert continent_schema.human_friendly_id == ["name__value"]
+
+    with pytest.raises(ValueError, match=r"Unable to find the relationship"):
+        site_schema = schema_branch.get(name="LocationSite", duplicate=False)
+        site_schema.get_relationship(name="children")
+
+    assert site_schema.uniqueness_constraints == [["parent", "name__value"]]
+    assert site_schema.human_friendly_id == ["parent__name__value", "name__value"]
+
+    eu: Node = await Node.init(db=db, schema="LocationContinent", branch=default_branch)
+    await eu.new(db=db, name="Europe")
+    await eu.save(db=db)
+
+    fr: Node = await Node.init(db=db, schema="LocationCountry", branch=default_branch)
+    await fr.new(db=db, name="France", parent=eu)
+    await fr.save(db=db)
+
+    uk: Node = await Node.init(db=db, schema="LocationCountry", branch=default_branch)
+    with pytest.raises(ValidationError, match=r"parent is mandatory"):
+        await uk.new(db=db, name="United Kingdom")
+
+    await uk.new(db=db, name="United Kingdom", parent=eu)
+    await uk.save(db=db)
