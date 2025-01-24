@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from infrahub_sdk import InfrahubClient
-from infrahub_sdk.protocols import CoreArtifactDefinition, CoreRepository
+from infrahub_sdk.protocols import CoreArtifact, CoreArtifactDefinition, CoreRepository
 from prefect import flow, task
 from prefect.automations import AutomationCore
 from prefect.cache_policies import NONE
@@ -293,7 +293,7 @@ async def generate_request_artifact_definition(model: RequestArtifactDefinitionG
     await add_tags(branches=[model.branch], nodes=[model.artifact_definition_id])
 
     artifact_definition = await service.client.get(
-        kind=InfrahubKind.ARTIFACTDEFINITION, id=model.artifact_definition_id, branch=model.branch
+        kind=CoreArtifactDefinition, id=model.artifact_definition_id, branch=model.branch
     )
 
     await artifact_definition.targets.fetch()
@@ -302,7 +302,7 @@ async def generate_request_artifact_definition(model: RequestArtifactDefinitionG
     current_members = [member.id for member in group.members.peers]
 
     existing_artifacts = await service.client.filters(
-        kind=InfrahubKind.ARTIFACT,
+        kind=CoreArtifact,
         definition__ids=[model.artifact_definition_id],
         include=["object"],
         branch=model.branch,
@@ -340,12 +340,12 @@ async def generate_request_artifact_definition(model: RequestArtifactDefinitionG
             continue
 
         request_artifact_generate_model = RequestArtifactGenerate(
-            artifact_name=artifact_definition.name.value,
+            artifact_name=artifact_definition.artifact_name.value,
             artifact_id=artifact_id,
             artifact_definition=model.artifact_definition_id,
             commit=repository.commit.value,
             content_type=artifact_definition.content_type.value,
-            transform_type=transform.typename,
+            transform_type=str(transform.typename),
             transform_location=transform_location,
             repository_id=repository.id,
             repository_name=repository.name.value,

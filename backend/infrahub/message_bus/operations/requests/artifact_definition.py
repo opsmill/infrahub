@@ -91,7 +91,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
             log.info(f"Trigger Artifact processing for {member.display_label}")
             events.append(
                 messages.CheckArtifactCreate(
-                    artifact_name=message.artifact_definition.definition_name,
+                    artifact_name=message.artifact_definition.artifact_name,
                     artifact_id=artifact_id,
                     artifact_definition=message.artifact_definition.definition_id,
                     commit=repository.source_commit,
