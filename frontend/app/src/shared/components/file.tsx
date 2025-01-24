@@ -4,6 +4,7 @@ import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import { CopyToClipboard } from "./buttons/copy-to-clipboard";
 import { Download } from "./buttons/download";
 import { Svg } from "./display/svg";
 import { CodeViewer } from "./editor/code/code-viewer";
@@ -52,11 +53,12 @@ export const File = ({ url, contentType }: tFile) => {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Download value={JSON.parse(fileContent)} download={"file.json"} variant={"outline"} />
-          <Badge>Application / JSON</Badge>
+          <Download value={JSON.parse(fileContent)} download={"file.json"} variant={"primary"} />
+          <CopyToClipboard text={fileContent} />
+          <Badge>JSON</Badge>
         </div>
 
-        <CodeViewer>{fileContent}</CodeViewer>
+        <CodeViewer language="json">{fileContent}</CodeViewer>
       </div>
     );
   }
@@ -65,8 +67,9 @@ export const File = ({ url, contentType }: tFile) => {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Download value={fileContent} download={"markdown.md"} variant={"outline"} />
-          <Badge>Text / Markdown</Badge>
+          <Download value={fileContent} download={"markdown.md"} variant={"primary"} />
+          <CopyToClipboard text={fileContent} />
+          <Badge>Markdown</Badge>
         </div>
 
         <MarkdownViewer>{fileContent}</MarkdownViewer>
@@ -78,8 +81,9 @@ export const File = ({ url, contentType }: tFile) => {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Download value={fileContent} download={"file.yaml"} variant={"outline"} />
-          <Badge>Application / YAML</Badge>
+          <Download value={fileContent} download={"file.yaml"} variant={"primary"} />
+          <CopyToClipboard text={fileContent} />
+          <Badge>YAML</Badge>
         </div>
 
         <CodeViewer language="yaml">{fileContent}</CodeViewer>
@@ -91,8 +95,9 @@ export const File = ({ url, contentType }: tFile) => {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Download value={fileContent} download={"file.svg"} variant={"outline"} />
-          <Badge>Image / SVG</Badge>
+          <Download value={fileContent} download={"file.svg"} variant={"primary"} />
+          <CopyToClipboard text={fileContent} />
+          <Badge>SVG</Badge>
         </div>
 
         <Svg value={fileContent} className="border rounded-md p-2" />
@@ -103,8 +108,9 @@ export const File = ({ url, contentType }: tFile) => {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Download value={fileContent} download={"file.txt"} variant={"outline"} />
-        <Badge>Plain / Text</Badge>
+        <Download value={fileContent} download={"file.txt"} variant={"primary"} />
+        <CopyToClipboard text={fileContent} />
+        <Badge>Text</Badge>
       </div>
 
       <CodeViewer language="text">{fileContent}</CodeViewer>
