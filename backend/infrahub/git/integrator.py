@@ -37,7 +37,7 @@ from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
-from infrahub.core.constants import InfrahubKind, RepositorySyncStatus
+from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositorySyncStatus
 from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.exceptions import CheckError, RepositoryInvalidFileSystemError, TransformError
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
@@ -1210,6 +1210,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         transformation: CoreTransformation,
         query: CoreGraphQLQuery,
     ) -> ArtifactGenerateResult:
+        """It doesn't look like this is used anywhere today ... we should either remove it or refactor render_artifact below to use this."""
         variables = target.extract(params=definition.parameters.value)
         response = await self.sdk.query_gql_query(
             name=query.name.value,
@@ -1237,9 +1238,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 client=self.sdk,
             )
 
-        if definition.content_type.value == "application/json":
+        if definition.content_type.value == ContentType.APPLICATION_JSON.value:
             artifact_content_str = ujson.dumps(artifact_content, indent=2)
-        elif definition.content_type.value == "text/plain":
+        elif definition.content_type.value == ContentType.TEXT_PLAIN.value:
             artifact_content_str = artifact_content
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
@@ -1254,7 +1255,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
 
         artifact.checksum.value = checksum
         artifact.storage_id.value = storage_id
-        artifact.status.value = "Ready"
+        artifact.status.value = ArtifactStatus.READY.value
+        if artifact.name.value != definition.artifact_name.value:
+            artifact.name.value = definition.artifact_name.value
         await artifact.save()
 
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
@@ -1285,9 +1288,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 client=self.sdk,
             )
 
-        if message.content_type == "application/json":
+        if message.content_type == ContentType.APPLICATION_JSON.value:
             artifact_content_str = ujson.dumps(artifact_content, indent=2)
-        elif message.content_type == "text/plain":
+        elif message.content_type == ContentType.TEXT_PLAIN.value:
             artifact_content_str = artifact_content
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
@@ -1303,6 +1306,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
         artifact.content_type.value = message.content_type
         artifact.checksum.value = checksum
         artifact.storage_id.value = storage_id
-        artifact.status.value = "Ready"
+        artifact.status.value = ArtifactStatus.READY.value
+        if artifact.name.value != message.artifact_name:
+            artifact.name.value = message.artifact_name
         await artifact.save()
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)

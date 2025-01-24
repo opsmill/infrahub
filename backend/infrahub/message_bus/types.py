@@ -87,6 +87,7 @@ class ProposedChangeSubscriber(BaseModel):
 class ProposedChangeArtifactDefinition(BaseModel):
     definition_id: str
     definition_name: str
+    artifact_name: str
     query_name: str
     query_models: list[str]
     repository_id: str
