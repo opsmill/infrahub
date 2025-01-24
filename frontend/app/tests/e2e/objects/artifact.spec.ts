@@ -15,18 +15,16 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
 
   test("should generate artifacts successfully", async ({ page }) => {
     await page.goto(
-      '/objects/CoreArtifact?filters=[{"name":"name__value","value":"Startup Config for Edge devices"}]'
+      '/objects/CoreArtifact?filters=[{"name":"name__value","value":"startup-config"}]'
     );
 
     // reload page until we have artifacts defined
-    while (
-      await page.getByRole("link", { name: "startup Config for Edge devices" }).first().isHidden()
-    ) {
+    while (await page.getByRole("link", { name: "startup-config" }).first().isHidden()) {
       await page.reload();
       await expect(page.getByText("Previous")).toBeVisible();
     }
 
-    await page.getByRole("link", { name: "startup Config for Edge devices" }).first().click();
+    await page.getByRole("link", { name: "startup-config" }).first().click();
     await expect(page.getByText("no aaa root").first()).toBeVisible();
   });
 
@@ -42,9 +40,9 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
     test("should add generated artifact to a group", async ({ page }) => {
       await page.goto(
         // eslint-disable-next-line quotes
-        '/objects/CoreArtifact?filters=[{"name":"name__value","value":"Startup Config for Edge devices"}]'
+        '/objects/CoreArtifact?filters=[{"name":"name__value","value":"startup-config"}]'
       );
-      await page.getByRole("link", { name: "startup Config for Edge devices" }).first().click();
+      await page.getByRole("link", { name: "startup-config" }).first().click();
 
       await test.step("add artifact to a group", async () => {
         await page.getByRole("button", { name: "Manage groups" }).click();

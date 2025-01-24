@@ -103,23 +103,23 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
     ):
         artifacts = await client.all(kind=CoreArtifact, branch="ro_repository")
         artifacts_dict = {item.name.value: item for item in artifacts}
-        assert sorted(artifacts_dict.keys()) == ["Ownership report", "name report"]
+        assert sorted(artifacts_dict.keys()) == ["car-name", "car-owner"]
         john_display_label = await person_john.render_display_label(db=db)
 
         artifact_diff_calculator = ArtifactDiffCalculator(db=db)
         branch = await registry.get_branch(db=db, branch="ro_repository")
         diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
         diffs_dict = {str(item.display_label): item for item in diffs}
-        assert sorted(diffs_dict.keys()) == ["John - Ownership report", "John - name report"]
-        assert diffs_dict["John - Ownership report"] == BranchDiffArtifact(
+        assert sorted(diffs_dict.keys()) == ["John - car-name", "John - car-owner"]
+        assert diffs_dict["John - car-owner"] == BranchDiffArtifact(
             branch="ro_repository",
-            id=artifacts_dict["Ownership report"].id,
-            display_label=f"{john_display_label} - Ownership report",
+            id=artifacts_dict["car-owner"].id,
+            display_label=f"{john_display_label} - car-owner",
             action=DiffAction.ADDED,
             target=ArtifactTarget(id=person_john.id, kind="TestingPerson", display_label=john_display_label),
             item_new=BranchDiffArtifactStorage(
-                storage_id=str(artifacts_dict["Ownership report"].storage_id.value),
-                checksum=str(artifacts_dict["Ownership report"].checksum.value),
+                storage_id=str(artifacts_dict["car-owner"].storage_id.value),
+                checksum=str(artifacts_dict["car-owner"].checksum.value),
             ),
             item_previous=None,
         )
@@ -149,9 +149,8 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
                 REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
             )
 
-        artifacts = await client.all(kind=InfrahubKind.ARTIFACT)
-        assert artifacts
-        assert artifacts[0].name.value == "Ownership report"
+        artifacts = await client.all(kind=CoreArtifact)
+        assert sorted([artifact.name.value for artifact in artifacts]) == ["car-name", "car-owner"]
 
     async def test_step04_new_branch_with_artifact(
         self,
@@ -189,22 +188,22 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
 
         artifacts = await client.all(kind=CoreArtifact, branch="branch")
         artifacts_dict = {item.name.value: item for item in artifacts}
-        assert sorted(artifacts_dict.keys()) == ["Ownership report", "name report"]
-        artifact_main = await NodeManager.get_one(db=db, id=artifacts[0].id)
+        assert sorted(artifacts_dict.keys()) == ["car-name", "car-owner"]
+        artifact_main = await NodeManager.get_one(db=db, id=artifacts_dict["car-owner"].id)
 
         artifact_diff_calculator = ArtifactDiffCalculator(db=db)
         diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
         diffs_dict = {str(item.display_label): item for item in diffs}
-        assert sorted(diffs_dict.keys()) == ["John2 - Ownership report", "John2 - name report"]
-        assert diffs_dict["John2 - Ownership report"] == BranchDiffArtifact(
+        assert sorted(diffs_dict.keys()) == ["John2 - car-name", "John2 - car-owner"]
+        assert diffs_dict["John2 - car-owner"] == BranchDiffArtifact(
             branch="branch",
-            id=artifacts_dict["Ownership report"].id,
-            display_label=f"{john_display_label} - Ownership report",
+            id=artifacts_dict["car-owner"].id,
+            display_label=f"{john_display_label} - car-owner",
             action=DiffAction.UPDATED,
             target=ArtifactTarget(id=person_john.id, kind="TestingPerson", display_label=john_display_label),
             item_new=BranchDiffArtifactStorage(
-                storage_id=str(artifacts_dict["Ownership report"].storage_id.value),
-                checksum=str(artifacts_dict["Ownership report"].checksum.value),
+                storage_id=str(artifacts_dict["car-owner"].storage_id.value),
+                checksum=str(artifacts_dict["car-owner"].checksum.value),
             ),
             item_previous=BranchDiffArtifactStorage(
                 storage_id=artifact_main.storage_id.value, checksum=artifact_main.checksum.value

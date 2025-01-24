@@ -254,6 +254,9 @@ query GatherArtifactDefinitions {
         name {
           value
         }
+        artifact_name {
+          value
+        }
         content_type {
             value
         }
@@ -479,6 +482,7 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
         artifact_definition = ProposedChangeArtifactDefinition(
             definition_id=definition["node"]["id"],
             definition_name=definition["node"]["name"]["value"],
+            artifact_name=definition["node"]["artifact_name"]["value"],
             content_type=definition["node"]["content_type"]["value"],
             timeout=definition["node"]["transformation"]["node"]["timeout"]["value"],
             query_name=definition["node"]["transformation"]["node"]["query"]["node"]["name"]["value"],
