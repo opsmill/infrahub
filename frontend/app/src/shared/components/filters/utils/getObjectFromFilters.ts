@@ -16,6 +16,10 @@ export const getObjectFromFilters = (
     (acc, filter) => {
       const [fieldName, fieldKey] = filter.name.split("__");
 
+      if (!fieldName || !fieldKey) {
+        return acc;
+      }
+
       if (fieldKey === "value") {
         return {
           ...acc,
@@ -56,7 +60,7 @@ export const getObjectFromFilters = (
           return {
             ...acc,
             [fieldName]: {
-              node: { id: filter.value[0], display_label: "", __typename: relationshipSchema.peer },
+              node: { ...filter.value[0] },
             } satisfies RelationshipOneType,
           };
         }

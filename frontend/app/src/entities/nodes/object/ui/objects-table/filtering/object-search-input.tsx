@@ -27,7 +27,7 @@ export const ObjectSearchInput = ({ schema, className, ...props }: ObjectSearchI
 
   return (
     <SearchInput
-      className="h-8 border-none"
+      className="h-8"
       defaultValue={search}
       onChange={debouncedHandleSearch}
       placeholder={"Search " + (schema.label ?? schema.name)}

@@ -61,26 +61,26 @@ export const getObjectTableColumns = (
           const field =
             "peer" in column
               ? getFormFieldFromRelationship({
+                  auth,
                   schema,
+                  isFilterForm: true,
                   relationshipSchema: column,
                   relationshipData: filtersAsObjectData[column.name] as
                     | RelationshipType
                     | undefined,
-                  isFilterForm: true,
-                  auth,
                 })
               : getFormFieldFromAttribute({
-                  isFilterForm: true,
+                  auth,
                   schema,
+                  isFilterForm: true,
                   attributeSchema: column,
                   currentObject: filtersAsObjectData as Record<string, AttributeType>,
-                  auth,
                 });
 
           return (
             <Popover open={showFilters} onOpenChange={setShowFilters}>
-              <PopoverTrigger className="flex items-center gap-1">
-                {column.label ?? column.name}{" "}
+              <PopoverTrigger className="flex items-center gap-1.5 p-2">
+                {column.label ?? column.name}
                 <Icon
                   icon="mdi:filter-variant"
                   className={classNames(

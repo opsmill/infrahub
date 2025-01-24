@@ -21,22 +21,24 @@ import {
 
 export const ResizableTableContainer = AriaResizableTableContainer;
 
-export const Table = ({ className, ...props }: TableProps) => (
-  <AriaTable
-    className={composeRenderProps(className, (className) =>
-      classNames(
-        "w-full caption-bottom text-sm -outline-offset-2 data-[focus-visible]:outline-ring",
-        className
-      )
-    )}
-    {...props}
-  />
-);
+export function Table({ className, ...props }: TableProps) {
+  return (
+    <AriaTable
+      className={composeRenderProps(className, (className) =>
+        classNames(
+          "w-full caption-bottom text-sm -outline-offset-2 data-[focus-visible]:outline-ring",
+          className
+        )
+      )}
+      {...props}
+    />
+  );
+}
 
 export const TableHeader = <T extends object>({ className, ...props }: TableHeaderProps<T>) => (
   <AriaTableHeader
     className={composeRenderProps(className, (className) =>
-      classNames("[&_tr]:border-b", className)
+      classNames("[&_tr]:border-y", className)
     )}
     {...props}
   />

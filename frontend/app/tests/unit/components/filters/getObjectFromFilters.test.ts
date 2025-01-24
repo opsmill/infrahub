@@ -33,7 +33,12 @@ describe("getObjectFromFilters - test", () => {
 
   it("returns value for a relationship of cardinality one correctly", () => {
     // GIVEN
-    const filters: Array<Filter> = [{ name: "relationship1__ids", value: ["id1"] }];
+    const filters: Array<Filter> = [
+      {
+        name: "relationship1__ids",
+        value: [{ id: "id1", display_label: "relationship1", __typename: "peer1" }],
+      },
+    ];
     const schema = {
       relationships: [
         buildRelationshipSchema({ name: "relationship1", cardinality: "one", peer: "peer1" }),
@@ -45,7 +50,7 @@ describe("getObjectFromFilters - test", () => {
 
     // THEN
     expect(objectData).toEqual({
-      relationship1: { node: { id: "id1", display_label: "", __typename: "peer1" } },
+      relationship1: { node: { id: "id1", display_label: "relationship1", __typename: "peer1" } },
     });
   });
 

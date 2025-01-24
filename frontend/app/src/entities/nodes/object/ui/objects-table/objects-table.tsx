@@ -3,6 +3,7 @@ import { ObjectFilterDisplay } from "@/entities/nodes/object/ui/objects-table/fi
 import { ObjectFilterResetButton } from "@/entities/nodes/object/ui/objects-table/filtering/object-filter-reset-button";
 import { ObjectSearchInput } from "@/entities/nodes/object/ui/objects-table/filtering/object-search-input";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Spinner } from "@/shared/components/ui/spinner";
 import {
   Table,
@@ -60,71 +61,77 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
   });
 
   return (
-    <div
-      className="overflow-auto max-h-[calc(100vh-10.5rem)]"
-      onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
-      ref={tableContainerRef}
-    >
-      <div className="flex items-center gap-2 p-2">
-        <ObjectSearchInput schema={schema} loading={isPending} />
+    <>
+      <div className="flex items-center gap-2 h-14 px-3">
+        <ObjectSearchInput schema={schema} />
 
-        {filters.map((filter) => (
-          <ObjectFilterDisplay key={filter.name} filter={filter} schema={schema} />
-        ))}
+        <ScrollArea scrollX>
+          <div className="flex items-center gap-2 py-3">
+            {filters.map((filter) => (
+              <ObjectFilterDisplay key={filter.name} filter={filter} schema={schema} />
+            ))}
+          </div>
+        </ScrollArea>
 
         {filters.length > 0 && <ObjectFilterResetButton />}
       </div>
 
-      <Table>
-        <TableHeader columns={table.getFlatHeaders()}>
-          {(header) => {
-            const { column } = header;
-            const isPinned = header.id === "id";
+      <div
+        className="overflow-auto max-h-[calc(100vh-10.5rem)]"
+        onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
+        ref={tableContainerRef}
+      >
+        <Table>
+          <TableHeader columns={table.getFlatHeaders()}>
+            {(header) => {
+              const { column } = header;
+              const isPinned = header.id === "id";
 
-            return (
-              <TableColumn
-                isRowHeader
-                className="sticky top-0 bg-stone-50"
-                style={{
-                  width: column.getSize(),
-                  left: isPinned ? `${column.getStart("left")}px` : undefined,
-                  zIndex: isPinned ? 2 : undefined,
+              return (
+                <TableColumn
+                  isRowHeader
+                  className="sticky top-0 bg-stone-50"
+                  style={{
+                    width: column.getSize(),
+                    left: isPinned ? `${column.getStart("left")}px` : undefined,
+                    zIndex: isPinned ? 2 : undefined,
+                  }}
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(column.columnDef.header, header.getContext())}
+                </TableColumn>
+              );
+            }}
+          </TableHeader>
+
+          <TableBody items={table.getRowModel().rows} renderEmptyState={() => "No results."}>
+            {(row) => (
+              <TableRow columns={row.getVisibleCells()}>
+                {(cell) => {
+                  const { column } = cell;
+                  const isPinned = column.id === "id";
+
+                  return (
+                    <TableCell
+                      className="bg-white"
+                      style={{
+                        width: column.getSize(),
+                        position: isPinned ? "sticky" : undefined,
+                        left: isPinned ? `${column.getStart("left")}px` : undefined,
+                        zIndex: isPinned ? 1 : undefined,
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  );
                 }}
-              >
-                {header.isPlaceholder
-                  ? null
-                  : flexRender(column.columnDef.header, header.getContext())}
-              </TableColumn>
-            );
-          }}
-        </TableHeader>
-
-        <TableBody items={table.getRowModel().rows} renderEmptyState={() => "No results."}>
-          {(row) => (
-            <TableRow columns={row.getVisibleCells()}>
-              {(cell) => {
-                const { column } = cell;
-                const isPinned = column.id === "id";
-
-                return (
-                  <TableCell
-                    className="bg-white"
-                    style={{
-                      width: column.getSize(),
-                      position: isPinned ? "sticky" : undefined,
-                      left: isPinned ? `${column.getStart("left")}px` : undefined,
-                      zIndex: isPinned ? 1 : undefined,
-                    }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                );
-              }}
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-      {isFetchingNextPage && <Spinner />}
-    </div>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+        {isFetchingNextPage && <Spinner />}
+      </div>
+    </>
   );
 };

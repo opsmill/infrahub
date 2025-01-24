@@ -1,5 +1,11 @@
+import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { AttributeKind } from "@/entities/schema/types";
+import { focusVisibleStyle } from "@/shared/components/ui/style";
 import useFilters, { Filter } from "@/shared/hooks/useFilters";
+import { classNames } from "@/shared/utils/common";
+import { formatFullDate } from "@/shared/utils/date";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 import { Button, ButtonProps } from "react-aria-components";
@@ -31,7 +37,10 @@ export const ObjectFilterDisplay = ({ schema, filter }: FilterBadgeProps) => {
       <FilterButton
         onPress={() => handleRemoveFilter(filter.name)}
         label={attributeSchema.label ?? attributeSchema.name}
-        value={filter.value}
+        value={formatAttributeFilterValue({
+          kind: attributeSchema.kind as AttributeKind,
+          value: filter.value,
+        })}
       />
     );
   }
@@ -42,12 +51,9 @@ export const ObjectFilterDisplay = ({ schema, filter }: FilterBadgeProps) => {
       return null;
     }
 
-    const value =
-      relationshipSchema.cardinality === "many"
-        ? filter.value
-            .map(({ display_label }: { display_label: string }) => display_label)
-            .join(", ")
-        : filter.value.display_label;
+    const value = filter.value
+      .map(({ display_label }: { display_label: string }) => display_label)
+      .join(", ");
 
     return (
       <FilterButton
@@ -66,10 +72,17 @@ interface FilterButtonProps extends Omit<ButtonProps, "value"> {
   value: React.ReactNode;
 }
 
-const FilterButton = ({ label, value, ...props }: FilterButtonProps) => {
+const FilterButton = ({ label, value, className, ...props }: FilterButtonProps) => {
   return (
     <Button
-      className="group border border-dashed border-gray-300 bg-neutral-100 text-gray-600 rounded-full inline-flex items-center px-1 text-sm hover:bg-gray-100 gap-1.5"
+      className={classNames(
+        focusVisibleStyle,
+        "text-gray-600 text-sm whitespace-nowrap",
+        "group bg-neutral-100 rounded-full inline-flex items-center gap-1.5 px-1",
+        "border border-gray-300",
+        "data-[hovered]:bg-gray-100 data-[hovered]:border-indigo-700",
+        className
+      )}
       {...props}
     >
       <span className="ml-1.5">{label}</span>
@@ -77,8 +90,22 @@ const FilterButton = ({ label, value, ...props }: FilterButtonProps) => {
       <span className="text-indigo-700 font-medium">{value}</span>
       <Icon
         icon="mdi:close-circle-outline"
-        className="text-base text-gray-400 group-hover:text-gray-700"
+        className="text-base text-gray-400 group-hover:text-indigo-700"
       />
     </Button>
   );
 };
+
+export function formatAttributeFilterValue({
+  kind,
+  value,
+}: { kind: AttributeKind; value: AttributeType["value"] }) {
+  switch (kind) {
+    case ATTRIBUTE_KIND.BOOLEAN:
+      return value.toString();
+    case ATTRIBUTE_KIND.DATETIME:
+      return formatFullDate(value);
+    default:
+      return value;
+  }
+}
