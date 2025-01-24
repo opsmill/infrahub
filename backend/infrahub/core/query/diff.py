@@ -239,22 +239,21 @@ WHERE (
 AND p.branch_support = $branch_aware
 AND (
     (
-        ($new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list)
+        (
+            ($new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list)
+            OR ($new_node_ids_list IS NULL AND $current_node_ids_list IS NULL)
+        )
         AND (
-            ($branch_from_time <= diff_rel.from < $to_time)
+            ($branch_from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
             OR ($branch_from_time <= diff_rel.to < $to_time)
         )
     )
     OR (
         ($current_node_ids_list IS NOT NULL AND p.uuid IN $current_node_ids_list)
         AND (
-            ($from_time <= diff_rel.from < $to_time)
+            ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
             OR ($from_time <= diff_rel.to < $to_time)
         )
-    )
-    OR (
-        ($from_time <= diff_rel.from < $to_time)
-        OR ($from_time <= diff_rel.to < $to_time)
     )
 )
 // -------------------------------------
@@ -401,15 +400,19 @@ AND (
             OR ($current_node_field_specifiers_map IS NULL AND $new_node_field_specifiers_map IS NULL)
         )
         AND (r_root.from < $from_time OR p.branch_support = $branch_agnostic)
-        AND ($from_time <= diff_rel.from < $to_time)
-        AND (diff_rel.to IS NULL OR ($from_time <= diff_rel.to < $to_time))
+        AND (
+            ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+            OR ($from_time <= diff_rel.to < $to_time)
+        )
     )
     // time-based filters for new nodes
     OR (
         ($new_node_field_specifiers_map IS NOT NULL AND q.name IN $new_node_field_specifiers_map[p.uuid])
         AND (r_root.from < $branch_from_time OR p.branch_support = $branch_agnostic)
-        AND ($branch_from_time <= diff_rel.from < $to_time)
-        AND (diff_rel.to IS NULL OR ($branch_from_time <= diff_rel.to < $to_time))
+        AND (
+            ($branch_from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
+            OR ($branch_from_time <= diff_rel.to < $to_time)
+        )
     )
 )
 // -------------------------------------
@@ -568,16 +571,26 @@ AND (
             OR ($current_node_field_specifiers_map IS NULL AND $new_node_field_specifiers_map IS NULL)
         )
         AND (
-            ($from_time <= diff_rel.from < $to_time)
+            ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
             OR ($from_time <= diff_rel.to < $to_time)
+        )
+        // skip paths where nodes/attrs/rels are updated after $from_time, those are handled in other queries
+        AND (
+            r_root.from <= $from_time AND (r_root.to IS NULL OR r_root.branch <> diff_rel.branch OR r_root.to <= $from_time)
+            AND r_node.from <= $from_time AND (r_node.to IS NULL OR r_node.branch <> diff_rel.branch OR r_node.to <= $from_time)
         )
     )
     // time-based filters for new nodes
     OR (
         ($new_node_field_specifiers_map IS NOT NULL AND p.name IN $new_node_field_specifiers_map[n.uuid])
         AND (
-            ($branch_from_time <= diff_rel.from < $to_time)
+            ($branch_from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
             OR ($branch_from_time <= diff_rel.to < $to_time)
+        )
+        // skip paths where nodes/attrs/rels are updated after $branch_from_time, those are handled in other queries
+        AND (
+            r_root.from <= $branch_from_time AND (r_root.to IS NULL OR r_root.branch <> diff_rel.branch OR r_root.to <= $branch_from_time)
+            AND r_node.from <= $branch_from_time AND (r_node.to IS NULL OR r_node.branch <> diff_rel.branch OR r_node.to <= $branch_from_time)
         )
     )
 )
