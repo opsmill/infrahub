@@ -1,5 +1,4 @@
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
 import {
   Cell as AriaCell,
   Column as AriaColumn,
@@ -18,6 +17,7 @@ import {
   TableProps,
   composeRenderProps,
 } from "react-aria-components";
+import { focusVisibleStyle } from "./style";
 
 export const ResizableTableContainer = AriaResizableTableContainer;
 
@@ -25,56 +25,47 @@ export function Table({ className, ...props }: TableProps) {
   return (
     <AriaTable
       className={composeRenderProps(className, (className) =>
-        classNames(
-          "w-full caption-bottom text-sm -outline-offset-2 data-[focus-visible]:outline-ring",
-          className
-        )
+        classNames("w-full text-sm outline-none border-spacing-0", className)
       )}
       {...props}
     />
   );
 }
 
-export const TableHeader = <T extends object>({ className, ...props }: TableHeaderProps<T>) => (
-  <AriaTableHeader
-    className={composeRenderProps(className, (className) =>
-      classNames("[&_tr]:border-y", className)
-    )}
-    {...props}
-  />
+export const TableHeader = <T extends object>({ ...props }: TableHeaderProps<T>) => (
+  <AriaTableHeader {...props} />
 );
 
-export interface ColumnProps extends AriaColumnProps {
-  isResizable?: boolean;
-}
+export interface ColumnProps extends AriaColumnProps {}
 
 export const TableColumn = ({ className, children, ...props }: ColumnProps) => (
   <AriaColumn
     className={composeRenderProps(className, (className) =>
-      classNames(
-        "h-12 text-left align-middle font-medium text-muted-foreground -outline-offset-2 data-[focus-visible]:outline-ring",
-        className
-      )
+      classNames("h-10 font-medium sticky top-0", className)
     )}
     {...props}
   >
-    {composeRenderProps(children, (children, { allowsSorting }) => (
-      <div className="flex items-center">
+    {composeRenderProps(children, (children) => (
+      <div className="flex items-center border-y">
         <Group
           role="presentation"
           tabIndex={-1}
           className={classNames(
-            "flex h-10 flex-1 items-center gap-1 overflow-hidden rounded-md px-4",
-            allowsSorting && "p-2 data-[hovered]:bg-accent data-[hovered]:text-accent-foreground",
-            "focus-visible:outline-none  data-[focus-visible]:-outline-offset-2 data-[focus-visible]:outline-ring [&:has([slot=selection])]:pr-0"
+            focusVisibleStyle,
+            "flex-grow flex items-center gap-1 h-10 overflow-hidden px-4 p-2 bg-stone-50",
+            "data-[hovered]:bg-gray-100"
           )}
         >
           <span className="truncate">{children}</span>
-          {allowsSorting && <Icon icon="mdi:arrow-down" className="ml-2 size-4" />}
         </Group>
-        {props.isResizable && (
-          <ColumnResizer className="data-[focus-visible]:ring-rin box-content h-5 w-px translate-x-[8px] cursor-col-resize rounded bg-muted-foreground bg-clip-content px-[8px]  py-1 focus-visible:outline-none data-[resizing]:w-[2px] data-[resizing]:bg-primary data-[resizing]:pl-[7px] data-[focus-visible]:ring-1  data-[focus-visible]:ring-ring" />
-        )}
+        <ColumnResizer
+          className={classNames(
+            focusVisibleStyle,
+            "h-10 w-px cursor-col-resize bg-gray-200 border-none",
+            "data-[hovered]:bg-custom-blue-600",
+            "data-[resizing]:bg-indigo-700 data-[resizing]:ring-2 data-[resizing]:ring-custom-blue-600/25"
+          )}
+        />
       </div>
     ))}
   </AriaColumn>

@@ -6,6 +6,7 @@ import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Spinner } from "@/shared/components/ui/spinner";
 import {
+  ResizableTableContainer,
   Table,
   TableBody,
   TableCell,
@@ -81,55 +82,57 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
         onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
         ref={tableContainerRef}
       >
-        <Table>
-          <TableHeader columns={table.getFlatHeaders()}>
-            {(header) => {
-              const { column } = header;
-              const isPinned = header.id === "id";
+        <ResizableTableContainer>
+          <Table>
+            <TableHeader columns={table.getFlatHeaders()}>
+              {(header) => {
+                const { column } = header;
+                const isPinned = header.id === "id";
 
-              return (
-                <TableColumn
-                  isRowHeader
-                  className="sticky top-0 bg-stone-50"
-                  style={{
-                    width: column.getSize(),
-                    left: isPinned ? `${column.getStart("left")}px` : undefined,
-                    zIndex: isPinned ? 2 : undefined,
+                return (
+                  <TableColumn
+                    minWidth={column.getSize()}
+                    isRowHeader
+                    style={{
+                      left: isPinned ? `${column.getStart("left")}px` : undefined,
+                      zIndex: isPinned ? 2 : undefined,
+                    }}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(column.columnDef.header, header.getContext())}
+                  </TableColumn>
+                );
+              }}
+            </TableHeader>
+
+            <TableBody items={table.getRowModel().rows} renderEmptyState={() => "No results."}>
+              {(row) => (
+                <TableRow columns={row.getVisibleCells()}>
+                  {(cell) => {
+                    const { column } = cell;
+                    const isPinned = column.id === "id";
+
+                    return (
+                      <TableCell
+                        className="bg-white"
+                        style={{
+                          width: column.getSize(),
+                          position: isPinned ? "sticky" : undefined,
+                          left: isPinned ? `${column.getStart("left")}px` : undefined,
+                          zIndex: isPinned ? 1 : undefined,
+                        }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    );
                   }}
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(column.columnDef.header, header.getContext())}
-                </TableColumn>
-              );
-            }}
-          </TableHeader>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </ResizableTableContainer>
 
-          <TableBody items={table.getRowModel().rows} renderEmptyState={() => "No results."}>
-            {(row) => (
-              <TableRow columns={row.getVisibleCells()}>
-                {(cell) => {
-                  const { column } = cell;
-                  const isPinned = column.id === "id";
-
-                  return (
-                    <TableCell
-                      className="bg-white"
-                      style={{
-                        width: column.getSize(),
-                        position: isPinned ? "sticky" : undefined,
-                        left: isPinned ? `${column.getStart("left")}px` : undefined,
-                        zIndex: isPinned ? 1 : undefined,
-                      }}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  );
-                }}
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
         {isFetchingNextPage && <Spinner />}
       </div>
     </>
