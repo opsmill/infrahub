@@ -1522,18 +1522,22 @@ class SchemaBranch:
             read_only=read_only,
         )
 
-    def _get_hierarchy_parent_rel(self, peer: str, hierarchical: str, read_only: bool) -> RelationshipSchema:
+    def _get_hierarchy_parent_rel(
+        self, peer: str, hierarchical: str, read_only: bool, optional: str
+    ) -> RelationshipSchema:
         return RelationshipSchema(
             name="parent",
             identifier="parent__child",
             peer=peer,
             kind=RelationshipKind.HIERARCHY,
             cardinality=RelationshipCardinality.ONE,
+            min_count=0 if optional else 1,
             max_count=1,
             branch=BranchSupportType.AWARE,
             direction=RelationshipDirection.OUTBOUND,
             hierarchical=hierarchical,
             read_only=read_only,
+            optional=optional,
         )
 
     def add_hierarchy_generic(self) -> None:
@@ -1548,7 +1552,9 @@ class SchemaBranch:
 
             if "parent" not in generic.relationship_names:
                 generic.relationships.append(
-                    self._get_hierarchy_parent_rel(peer=generic_name, hierarchical=generic_name, read_only=read_only)
+                    self._get_hierarchy_parent_rel(
+                        peer=generic_name, hierarchical=generic_name, read_only=read_only, optional=True
+                    )
                 )
             if "children" not in generic.relationship_names:
                 generic.relationships.append(
@@ -1571,7 +1577,10 @@ class SchemaBranch:
                 if "parent" not in node.relationship_names:
                     node.relationships.append(
                         self._get_hierarchy_parent_rel(
-                            peer=node.parent, hierarchical=node.hierarchy, read_only=read_only
+                            peer=node.parent,
+                            hierarchical=node.hierarchy,
+                            read_only=read_only,
+                            optional=node.parent in [node_name] + self.generic_names,
                         )
                     )
                 else:
