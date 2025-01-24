@@ -492,6 +492,8 @@ class SchemaBranch:
         self.process_branch_support()
         self.manage_profile_schemas()
         self.manage_profile_relationships()
+        self.add_hierarchy_generic()
+        self.add_hierarchy_node()
 
     def process_validate(self) -> None:
         self.validate_names()
@@ -512,8 +514,6 @@ class SchemaBranch:
     def process_post_validation(self) -> None:
         self.cleanup_inherited_elements()
         self.add_groups()
-        self.add_hierarchy_generic()
-        self.add_hierarchy_node()
         self.generate_weight()
         self.process_labels()
         self.process_dropdowns()
