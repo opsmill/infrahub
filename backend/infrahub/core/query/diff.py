@@ -239,17 +239,17 @@ WHERE (
 AND p.branch_support = $branch_aware
 AND (
     (
-        (
-            ($new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list)
-            OR ($new_node_ids_list IS NULL AND $current_node_ids_list IS NULL)
-        )
+        ($new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list)
         AND (
             ($branch_from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
             OR ($branch_from_time <= diff_rel.to < $to_time)
         )
     )
     OR (
-        ($current_node_ids_list IS NOT NULL AND p.uuid IN $current_node_ids_list)
+        (
+            ($current_node_ids_list IS NOT NULL AND p.uuid IN $current_node_ids_list)
+            OR ($current_node_ids_list IS NULL AND $new_node_ids_list IS NULL)
+        )
         AND (
             ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
             OR ($from_time <= diff_rel.to < $to_time)
