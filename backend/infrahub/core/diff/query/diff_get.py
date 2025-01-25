@@ -17,8 +17,6 @@ QUERY_MATCH_NODES = """
     AND ($to_time IS NULL OR diff_root.to_time <= $to_time)
     AND ($tracking_id IS NULL OR diff_root.tracking_id = $tracking_id)
     AND ($diff_ids IS NULL OR diff_root.uuid IN $diff_ids)
-    WITH diff_root
-    ORDER BY diff_root.base_branch, diff_root.diff_branch, diff_root.from_time, diff_root.to_time
     // get all the nodes attached to the diffs
     OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode)
     """
@@ -79,26 +77,21 @@ class EnrichedDiffGetQuery(Query):
             self.add_to_query(query=query_filters)
 
         query_2 = """
-        // group by diff node uuid for pagination
-        WITH diff_node.uuid AS diff_node_uuid, diff_node.kind AS diff_node_kind, collect([diff_root, diff_node]) AS node_root_tuples
-        // order by kind and latest label for each diff_node uuid
-        CALL {
-            WITH node_root_tuples
-            UNWIND node_root_tuples AS nrt
-            WITH nrt[0] AS diff_root, nrt[1] AS diff_node
-            ORDER BY diff_root.from_time DESC
-            RETURN diff_node.label AS latest_node_label
-            LIMIT 1
-        }
-        WITH diff_node_kind, node_root_tuples, latest_node_label
-        ORDER BY diff_node_kind, latest_node_label
+        WITH diff_root, diff_node
+        ORDER BY diff_root.base_branch, diff_root.diff_branch, diff_root.from_time, diff_root.to_time, diff_node.uuid
+        // -------------------------------------
+        // Limit number of results
+        // -------------------------------------
         SKIP COALESCE($offset, 0)
         LIMIT $limit
-        UNWIND node_root_tuples AS nrt
-        WITH nrt[0] AS diff_root, nrt[1] AS diff_node
-        WITH diff_root, diff_node
+        // -------------------------------------
+        // Check if more data after this limited group
+        // -------------------------------------
+        WITH collect([diff_root, diff_node]) AS limited_results
+        WITH limited_results, size(limited_results) = $limit AS has_more_data
+        UNWIND limited_results AS one_result
+        WITH one_result[0] AS diff_root, one_result[1] AS diff_node, has_more_data
         // if depth limit, make sure not to exceed it when traversing linked nodes
-        WITH diff_root, diff_node
         // -------------------------------------
         // Retrieve Parents
         // -------------------------------------
@@ -109,12 +102,12 @@ class EnrichedDiffGetQuery(Query):
             ORDER BY size(nodes(parents_path)) DESC
             LIMIT 1
         }
-        WITH diff_root, diff_node, parents_path
+        WITH diff_root, diff_node, has_more_data, parents_path
         // -------------------------------------
         // Retrieve conflicts
         // -------------------------------------
         OPTIONAL MATCH (diff_node)-[:DIFF_HAS_CONFLICT]->(diff_node_conflict:DiffConflict)
-        WITH diff_root, diff_node, parents_path, diff_node_conflict
+        WITH diff_root, diff_node, has_more_data, parents_path, diff_node_conflict
         // -------------------------------------
         // Retrieve Attributes
         // -------------------------------------
@@ -128,7 +121,7 @@ class EnrichedDiffGetQuery(Query):
             RETURN diff_attribute, diff_attr_property, diff_attr_property_conflict
             ORDER BY diff_attribute.name, diff_attr_property.property_type
         }
-        WITH diff_root, diff_node, parents_path, diff_node_conflict, collect([diff_attribute, diff_attr_property, diff_attr_property_conflict]) as diff_attributes
+        WITH diff_root, diff_node, has_more_data, parents_path, diff_node_conflict, collect([diff_attribute, diff_attr_property, diff_attr_property_conflict]) as diff_attributes
         // -------------------------------------
         // Retrieve Relationships
         // -------------------------------------
@@ -150,6 +143,7 @@ class EnrichedDiffGetQuery(Query):
         WITH
             diff_root,
             diff_node,
+            has_more_data,
             parents_path,
             diff_node_conflict,
             diff_attributes,
@@ -161,6 +155,7 @@ class EnrichedDiffGetQuery(Query):
         self.return_labels = [
             "diff_root",
             "diff_node",
+            "has_more_data",
             "parents_path",
             "diff_node_conflict",
             "diff_attributes",

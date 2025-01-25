@@ -42,6 +42,7 @@ class TestDiffRepositorySaveAndLoad:
     @pytest.fixture
     def diff_repository(self, db: InfrahubDatabase) -> DiffRepository:
         config.SETTINGS.database.max_depth_search_hierarchy = 10
+        config.SETTINGS.database.query_size_limit = 50
         return DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
 
     def build_diff_node(self, num_sub_fields=2, no_recurse=False) -> EnrichedDiffNode:
