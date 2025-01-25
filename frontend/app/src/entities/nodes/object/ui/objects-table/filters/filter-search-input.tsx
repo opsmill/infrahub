@@ -8,7 +8,7 @@ interface ObjectSearchInputProps extends Omit<SearchInputProps, "onChange"> {
   schema: IModelSchema;
 }
 
-export const ObjectSearchInput = ({ schema, className, ...props }: ObjectSearchInputProps) => {
+export const FilterSearchInput = ({ schema, className, ...props }: ObjectSearchInputProps) => {
   const [filters, setFilters] = useFilters();
 
   const handleSearch = (text: string) => {

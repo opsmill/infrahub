@@ -77,7 +77,7 @@ export interface SearchInputProps extends AriaSearchFieldProps {
 
 export function SearchInput({ className, placeholder, ...props }: SearchInputProps) {
   return (
-    <SearchField {...props}>
+    <SearchField {...props} aria-label="Search">
       <SearchFieldGroup className={className}>
         <Icon icon="mdi:magnify" className="text-lg" />
         <SearchFieldInput placeholder={placeholder} />

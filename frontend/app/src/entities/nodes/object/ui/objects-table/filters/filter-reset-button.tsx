@@ -4,7 +4,7 @@ import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { Button } from "react-aria-components";
 
-export const ObjectFilterResetButton = () => {
+export const FilterResetButton = () => {
   const [, setFilters] = useFilters();
 
   const handleResetFilters = () => {

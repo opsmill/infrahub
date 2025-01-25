@@ -1,7 +1,7 @@
 import { getObjectsInfiniteQueryOptions } from "@/entities/nodes/object/domain/get-objects.query";
-import { ObjectFilterDisplay } from "@/entities/nodes/object/ui/objects-table/filtering/object-filter-display";
-import { ObjectFilterResetButton } from "@/entities/nodes/object/ui/objects-table/filtering/object-filter-reset-button";
-import { ObjectSearchInput } from "@/entities/nodes/object/ui/objects-table/filtering/object-search-input";
+import { ActiveFilterTags } from "@/entities/nodes/object/ui/objects-table/filters/active-filter-tags";
+import { FilterResetButton } from "@/entities/nodes/object/ui/objects-table/filters/filter-reset-button";
+import { FilterSearchInput } from "@/entities/nodes/object/ui/objects-table/filters/filter-search-input";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Spinner } from "@/shared/components/ui/spinner";
@@ -64,17 +64,13 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
   return (
     <>
       <div className="flex items-center gap-2 h-14 px-3">
-        <ObjectSearchInput schema={schema} />
+        <FilterSearchInput schema={schema} />
 
         <ScrollArea scrollX>
-          <div className="flex items-center gap-2 py-3">
-            {filters.map((filter) => (
-              <ObjectFilterDisplay key={filter.name} filter={filter} schema={schema} />
-            ))}
-          </div>
+          <ActiveFilterTags schema={schema} />
         </ScrollArea>
 
-        {filters.length > 0 && <ObjectFilterResetButton />}
+        {filters.length > 0 && <FilterResetButton />}
       </div>
 
       <div
