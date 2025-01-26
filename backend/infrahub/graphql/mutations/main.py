@@ -54,7 +54,7 @@ class InfrahubMutationOptions(MutationOptions):
 
 class InfrahubMutationMixin:
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: InputObjectType, *args: Any, **kwargs):
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: InputObjectType, *args: Any, **kwargs):  # noqa: ARG003
         context: GraphqlContext = info.context
 
         obj = None
@@ -268,7 +268,12 @@ class InfrahubMutationMixin:
 
     @classmethod
     async def mutate_update_object(
-        cls, db: InfrahubDatabase, info: GraphQLResolveInfo, data: InputObjectType, branch: Branch, obj: Node
+        cls,
+        db: InfrahubDatabase,
+        info: GraphQLResolveInfo,  # noqa: ARG003
+        data: InputObjectType,
+        branch: Branch,
+        obj: Node,
     ) -> Node:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)

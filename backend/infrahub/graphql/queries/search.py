@@ -97,7 +97,7 @@ def _collapse_ipv6(s: str) -> str:
 
 
 async def search_resolver(
-    root: dict,
+    root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
     q: str,
     limit: int = 10,

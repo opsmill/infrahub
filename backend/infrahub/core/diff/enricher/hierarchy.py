@@ -22,7 +22,9 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
         self.db = db
 
     async def enrich(
-        self, enriched_diff_root: EnrichedDiffRoot, calculated_diffs: CalculatedDiffs | None = None
+        self,
+        enriched_diff_root: EnrichedDiffRoot,
+        calculated_diffs: CalculatedDiffs | None = None,  # noqa: ARG002
     ) -> None:
         # A hierarchy can be defined in 2 ways
         # - A node has a relationship of kind parent

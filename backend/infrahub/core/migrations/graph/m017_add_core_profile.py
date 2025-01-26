@@ -22,7 +22,7 @@ class Migration017(InternalSchemaMigration):
     minimum_version: int = 16
     migrations: Sequence[SchemaMigration] = []
 
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         result = MigrationResult()
 
         return result

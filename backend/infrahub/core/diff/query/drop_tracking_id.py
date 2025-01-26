@@ -15,7 +15,7 @@ class EnrichedDiffDropTrackingIdQuery(Query):
         super().__init__(**kwargs)
         self.tracking_ids = tracking_ids
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {"tracking_ids": [t_id.serialize() for t_id in self.tracking_ids]}
         query = """
         MATCH (d_root:DiffRoot)

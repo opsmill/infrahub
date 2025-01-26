@@ -20,7 +20,7 @@ TELEMETRY_VERSION: str = "20240524"
 
 
 @task(name="telemetry-gather-db", task_run_name="Gather Database Information", cache_policy=NONE)  # type: ignore[arg-type]
-async def gather_database_information(service: InfrahubServices, branch: Branch) -> dict:
+async def gather_database_information(service: InfrahubServices) -> dict:
     async with service.database.start_session() as db:
         data: dict[str, Any] = {
             "database_type": db.db_type.value,
@@ -38,7 +38,7 @@ async def gather_database_information(service: InfrahubServices, branch: Branch)
 
 
 @task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)  # type: ignore[arg-type]
-async def gather_schema_information(service: InfrahubServices, branch: Branch) -> dict:
+async def gather_schema_information(branch: Branch) -> dict:
     data: dict[str, Any] = {}
     main_schema = registry.schema.get_schema_branch(name=branch.name)
     data["node_count"] = len(main_schema.node_names)
@@ -49,7 +49,7 @@ async def gather_schema_information(service: InfrahubServices, branch: Branch) -
 
 
 @task(name="telemetry-feature-information", task_run_name="Gather Feature Information", cache_policy=NONE)  # type: ignore[arg-type]
-async def gather_feature_information(service: InfrahubServices, branch: Branch) -> dict:
+async def gather_feature_information(service: InfrahubServices) -> dict:
     async with service.database.start_session() as db:
         data = {}
         features_to_count = [
@@ -87,9 +87,9 @@ async def gather_anonymous_telemetry_data(service: InfrahubServices) -> dict:
         "branches": {
             "total": len(registry.branch),
         },
-        "features": await gather_feature_information(service=service, branch=default_branch),
-        "schema": await gather_schema_information(service=service, branch=default_branch),
-        "database": await gather_database_information(service=service, branch=default_branch),
+        "features": await gather_feature_information(service=service),
+        "schema": await gather_schema_information(branch=default_branch),
+        "database": await gather_database_information(service=service),
     }
 
     data["execution_time"] = time.time() - start_time

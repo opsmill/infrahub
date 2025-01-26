@@ -44,7 +44,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
     async def execute_workflow(
         self,
         workflow: WorkflowDefinition,
-        expected_return: type[Return] | None = None,
+        expected_return: type[Return] | None = None,  # noqa: ARG002
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> Any:

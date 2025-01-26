@@ -22,7 +22,7 @@ class ArtifactDiffQuery(Query):
         self.target_rel_identifier = target_rel_identifier
         self.definition_rel_identifier = definition_rel_identifier
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         source_branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 

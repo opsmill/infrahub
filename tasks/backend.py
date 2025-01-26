@@ -173,7 +173,7 @@ def generate(context: Context) -> None:
 
 
 @task
-def validate_generated(context: Context, docker: bool = False) -> None:
+def validate_generated(context: Context, docker: bool = False) -> None:  # noqa: ARG001
     """Validate that the generated documentation is committed to Git."""
 
     _generate_schemas(context=context)

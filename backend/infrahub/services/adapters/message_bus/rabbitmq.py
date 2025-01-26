@@ -144,7 +144,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
     async def on_reconnect(
         self,
-        weak: bool = False,
+        weak: bool = False,  # noqa: ARG002
     ) -> None:
         self.service.log.info("Reconnected to RabbitMQ, reinitializing connection")
         await self._initialize_connection()
@@ -218,7 +218,11 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         await queue.consume(callback=self.on_message, no_ack=False)
 
     async def publish(
-        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+        self,
+        message: InfrahubMessage,
+        routing_key: str,
+        delay: Optional[MessageTTL] = None,
+        is_retry: bool = False,  # noqa: ARG002
     ) -> None:
         for enricher in self.message_enrichers:
             await enricher(message)

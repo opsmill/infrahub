@@ -95,7 +95,7 @@ async def _proposed_change_transition_state(
     # on_crashed=[proposed_change_transition_open],  # type: ignore
     # on_cancellation=[proposed_change_transition_open],  # type: ignore
 )
-async def merge_proposed_change(proposed_change_id: str, proposed_change_name: str, service: InfrahubServices) -> State:
+async def merge_proposed_change(proposed_change_id: str, proposed_change_name: str, service: InfrahubServices) -> State:  # noqa: ARG001
     log = get_run_logger()
 
     await add_tags(nodes=[proposed_change_id])

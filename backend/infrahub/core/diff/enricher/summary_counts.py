@@ -17,7 +17,9 @@ from .interface import DiffEnricherInterface
 
 class DiffSummaryCountsEnricher(DiffEnricherInterface):
     async def enrich(
-        self, enriched_diff_root: EnrichedDiffRoot, calculated_diffs: CalculatedDiffs | None = None
+        self,
+        enriched_diff_root: EnrichedDiffRoot,
+        calculated_diffs: CalculatedDiffs | None = None,  # noqa: ARG002
     ) -> None:
         self._add_root_summaries(diff_root=enriched_diff_root)
 

@@ -24,7 +24,7 @@ class IPAddressGetNextAvailable(ObjectType):
 
     @staticmethod
     async def resolve(
-        root: dict,
+        root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         prefix_id: str,
         prefix_length: Optional[int] = None,
@@ -71,7 +71,7 @@ class IPPrefixGetNextAvailable(ObjectType):
 
     @staticmethod
     async def resolve(
-        root: dict,
+        root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         prefix_id: str,
         prefix_length: int,

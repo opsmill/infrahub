@@ -17,8 +17,8 @@ class Info(ObjectType):
 
     @staticmethod
     async def resolve(
-        root: dict,
-        info: GraphQLResolveInfo,
+        root: dict,  # noqa: ARG004
+        info: GraphQLResolveInfo,  # noqa: ARG004
     ) -> dict[str, str]:
         return {"deployment_id": str(registry.id), "version": __version__}
 

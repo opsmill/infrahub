@@ -37,7 +37,7 @@ class Status(ObjectType):
 
 
 async def resolve_status(
-    root: dict,
+    root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
 ) -> dict:
     context: GraphqlContext = info.context

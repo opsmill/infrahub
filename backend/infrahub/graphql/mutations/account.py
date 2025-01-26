@@ -49,7 +49,7 @@ class AccountMixin:
     @classmethod
     async def mutate(
         cls,
-        root: dict,
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: dict[str, Any],
     ) -> Self:
@@ -105,7 +105,11 @@ class AccountMixin:
     @classmethod
     @retry_db_transaction(name="account_token_delete")
     async def delete_token(
-        cls, db: InfrahubDatabase, account: CoreNode, data: dict[str, Any], info: GraphQLResolveInfo
+        cls,
+        db: InfrahubDatabase,
+        account: CoreNode,
+        data: dict[str, Any],
+        info: GraphQLResolveInfo,  # noqa: ARG003
     ) -> Self:
         token_id = str(data.get("id"))
 
@@ -127,7 +131,11 @@ class AccountMixin:
     @classmethod
     @retry_db_transaction(name="account_update_self")
     async def update_self(
-        cls, db: InfrahubDatabase, account: CoreNode, data: dict[str, Any], info: GraphQLResolveInfo
+        cls,
+        db: InfrahubDatabase,
+        account: CoreNode,
+        data: dict[str, Any],
+        info: GraphQLResolveInfo,  # noqa: ARG003
     ) -> Self:
         for field in ("password", "description"):
             if value := data.get(field):

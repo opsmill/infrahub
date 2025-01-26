@@ -192,7 +192,10 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             await self.set_peer(value=data)
 
     async def new(
-        self, db: InfrahubDatabase, data: Union[dict, RelationshipPeerData, Any] = None, **kwargs: Any
+        self,
+        db: InfrahubDatabase,  # noqa: ARG002
+        data: Union[dict, RelationshipPeerData, Any] = None,
+        **kwargs: Any,  # noqa: ARG002
     ) -> Relationship:
         await self._process_data(data=data)
 
@@ -200,7 +203,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
     async def load(
         self,
-        db: InfrahubDatabase,
+        db: InfrahubDatabase,  # noqa: ARG002
         id: Optional[UUID] = None,
         db_id: Optional[str] = None,
         updated_at: Optional[Union[Timestamp, str]] = None,
@@ -253,7 +256,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
     @overload
     async def get_peer(self, db: InfrahubDatabase, peer_type: None = ...) -> Node: ...
 
-    async def get_peer(self, db: InfrahubDatabase, peer_type: type[PeerType] | None = None) -> Any:
+    async def get_peer(self, db: InfrahubDatabase, peer_type: type[PeerType] | None = None) -> Any:  # noqa: ARG002
         """Return the peer of the relationship."""
         if self._peer is None:
             await self._get_peer(db=db)
@@ -831,7 +834,7 @@ class RelationshipManager:
     async def get_peer(
         self,
         db: InfrahubDatabase,
-        peer_type: type[PeerType] | None = None,
+        peer_type: type[PeerType] | None = None,  # noqa: ARG002
         raise_on_error: bool = False,
     ) -> Node | PeerType | None:
         if self.schema.cardinality == "many":
@@ -865,7 +868,7 @@ class RelationshipManager:
     async def get_peers(
         self,
         db: InfrahubDatabase,
-        peer_type: type[PeerType] | None = None,
+        peer_type: type[PeerType] | None = None,  # noqa: ARG002
         branch_agnostic: bool = False,
     ) -> Mapping[str, Node | PeerType]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)

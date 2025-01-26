@@ -226,7 +226,7 @@ def execute_command(context: Context, command: str, print_cmd: bool = False, hid
     return context.run(command, pty=params["pty"], hide=should_hide)
 
 
-def get_env_vars(context: Context, namespace: Namespace = Namespace.DEFAULT) -> str:
+def get_env_vars(context: Context, namespace: Namespace = Namespace.DEFAULT) -> str:  # noqa: ARG001
     ENV_VARS_DICT = {
         "IMAGE_NAME": IMAGE_NAME,
         "IMAGE_VER": IMAGE_VER,

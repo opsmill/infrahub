@@ -63,7 +63,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
+        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
     ):
         context: GraphqlContext = info.context
 
@@ -145,7 +145,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
+        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
         node: Optional[Node] = None,
     ):
         context: GraphqlContext = info.context
@@ -226,7 +226,7 @@ class ProcessRepository(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: IdentifierInput,
     ) -> dict[str, bool]:
@@ -264,7 +264,7 @@ class ValidateRepositoryConnectivity(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: IdentifierInput,
     ) -> dict[str, Any]:

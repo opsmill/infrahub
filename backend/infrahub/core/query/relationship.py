@@ -202,7 +202,7 @@ class RelationshipCreateQuery(RelationshipQuery):
 
         super().__init__(destination=destination, destination_id=destination_id, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
@@ -287,7 +287,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["rel_node_id"] = self.data.rel_node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -365,7 +365,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         self.data = data
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.data.peer_id
         self.params["rel_node_id"] = self.data.rel_node_id
@@ -429,7 +429,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         if inspect.isclass(self.rel):
             raise TypeError("An instance of Relationship must be provided to RelationshipDeleteQuery")
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         rel_filter, rel_params = self.branch.get_query_filter_path(at=self.at, variable_name="edge")
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
@@ -556,7 +556,7 @@ class RelationshipGetPeerQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
@@ -763,7 +763,7 @@ class RelationshipGetQuery(RelationshipQuery):
 
     type: QueryType = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
@@ -824,7 +824,7 @@ class RelationshipGetByIdentifierQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["identifiers"] = self.identifiers
         self.params["full_identifiers"] = [
             [full_id.source_kind, full_id.identifier, full_id.destination_kind] for full_id in self.full_identifiers
@@ -889,7 +889,7 @@ class RelationshipCountPerNodeQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 

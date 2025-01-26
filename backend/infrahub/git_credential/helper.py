@@ -69,7 +69,7 @@ def get(
 
 @app.command()
 def store(
-    input_str: str = typer.Argument(None),
-    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+    input_str: str = typer.Argument(None),  # noqa: ARG001
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),  # noqa: ARG001
 ) -> None:
     raise typer.Exit()

@@ -55,7 +55,7 @@ class BranchCreate(Mutation):
     @trace.get_tracer(__name__).start_as_current_span("branch_create")
     async def mutate(
         cls,
-        root: dict,
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: BranchCreateInput,
         background_execution: bool = False,
@@ -101,7 +101,11 @@ class BranchDelete(Mutation):
 
     @classmethod
     async def mutate(
-        cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: BranchNameInput,
+        wait_until_completion: bool = True,
     ) -> Self:
         context: GraphqlContext = info.context
         obj = await Branch.get_by_name(db=context.db, name=str(data.name))
@@ -126,7 +130,7 @@ class BranchUpdate(Mutation):
 
     @classmethod
     @retry_db_transaction(name="branch_update")
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:  # noqa: ARG003
         context: GraphqlContext = info.context
 
         obj = await Branch.get_by_name(db=context.db, name=data["name"])
@@ -153,7 +157,11 @@ class BranchRebase(Mutation):
 
     @classmethod
     async def mutate(
-        cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: BranchNameInput,
+        wait_until_completion: bool = True,
     ) -> Self:
         context: GraphqlContext = info.context
 
@@ -191,7 +199,11 @@ class BranchValidate(Mutation):
     @classmethod
     @retry_db_transaction(name="branch_validate")
     async def mutate(
-        cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: BranchNameInput,
+        wait_until_completion: bool = True,
     ) -> Self:
         context: GraphqlContext = info.context
 
@@ -225,7 +237,11 @@ class BranchMerge(Mutation):
 
     @classmethod
     async def mutate(
-        cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: BranchNameInput,
+        wait_until_completion: bool = True,
     ) -> Self:
         branch_name = data["name"]
         task: dict | None = None

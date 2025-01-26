@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 
 async def account_resolver(
-    root: dict,
+    root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
 ) -> dict:
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -135,7 +135,7 @@ async def parent_field_name_resolver(parent: dict[str, dict], info: GraphQLResol
 
 
 async def default_paginated_list_resolver(
-    root: dict,
+    root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
     offset: int | None = None,
     limit: int | None = None,

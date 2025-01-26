@@ -294,7 +294,7 @@ class DiffTreeResolver:
     def to_diff_conflict(
         self,
         enriched_conflict: EnrichedDiffConflict,
-        context: GraphqlContext | None = None,
+        context: GraphqlContext | None = None,  # noqa: ARG002
     ) -> ConflictDetails:
         return ConflictDetails(
             uuid=enriched_conflict.uuid,
@@ -368,7 +368,7 @@ class DiffTreeResolver:
 
     async def resolve(
         self,
-        root: dict,
+        root: dict,  # noqa: ARG002
         info: GraphQLResolveInfo,
         branch: str | None = None,
         name: str | None = None,
@@ -442,7 +442,7 @@ class DiffTreeResolver:
 
     async def summary(
         self,
-        root: dict,
+        root: dict,  # noqa: ARG002
         info: GraphQLResolveInfo,
         branch: str | None = None,
         from_time: datetime | None = None,

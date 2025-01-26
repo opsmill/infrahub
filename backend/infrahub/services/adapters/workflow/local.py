@@ -20,9 +20,9 @@ class WorkflowLocalExecution(InfrahubWorkflow):
     async def execute_workflow(
         self,
         workflow: WorkflowDefinition,
-        expected_return: type[Return] | None = None,
+        expected_return: type[Return] | None = None,  # noqa: ARG002
         parameters: dict[str, Any] | None = None,
-        tags: list[str] | None = None,
+        tags: list[str] | None = None,  # noqa: ARG002
     ) -> Any:
         if self.service is None:
             raise ValueError("WorkflowLocalExecution.service is not initialized")
@@ -38,7 +38,7 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         self,
         workflow: WorkflowDefinition,
         parameters: dict[str, Any] | None = None,
-        tags: list[str] | None = None,
+        tags: list[str] | None = None,  # noqa: ARG002
     ) -> WorkflowInfo:
         await self.execute_workflow(workflow=workflow, parameters=parameters)
         return WorkflowInfo(id=uuid.uuid4())

@@ -15,7 +15,7 @@ class EventNodeInterface(Interface):
     branch = String(required=False)
 
     @classmethod
-    def resolve_type(cls, instance: dict[str, Any], info: GraphQLResolveInfo) -> ObjectType:
+    def resolve_type(cls, instance: dict[str, Any], info: GraphQLResolveInfo) -> ObjectType:  # noqa: ARG003
         if "event" in instance:
             return EVENT_TYPES.get(instance["event"], StandardEvent)
         return StandardEvent

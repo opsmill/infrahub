@@ -30,7 +30,7 @@ def generate(context: Context) -> None:
 
 
 @task
-def generate_schema(context: Context) -> None:
+def generate_schema(context: Context) -> None:  # noqa: ARG001
     """Generate documentation for the schema."""
     _generate_infrahub_schema_documentation()
 

@@ -67,7 +67,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
+        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
 
@@ -83,8 +83,8 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
-        node: Optional[Node] = None,
+        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
+        node: Optional[Node] = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
         context: GraphqlContext = info.context
 

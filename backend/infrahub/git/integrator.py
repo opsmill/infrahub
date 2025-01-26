@@ -233,7 +233,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_jinja2_transforms(
         self,
         branch_name: str,
-        commit: str,
+        commit: str,  # noqa: ARG002
         config_file: InfrahubRepositoryConfig,
     ) -> None:
         log = get_run_logger()
@@ -338,7 +338,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_artifact_definitions(
         self,
         branch_name: str,
-        commit: str,
+        commit: str,  # noqa: ARG002
         config_file: InfrahubRepositoryConfig,
     ) -> None:
         log = get_run_logger()

@@ -26,7 +26,11 @@ class BusSimulator(InfrahubMessageBus):
         build_component_registry()
 
     async def publish(
-        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+        self,
+        message: InfrahubMessage,
+        routing_key: str,
+        delay: Optional[MessageTTL] = None,  # noqa: ARG002
+        is_retry: bool = False,  # noqa: ARG002
     ) -> None:
         self.messages.append(message)
         if routing_key not in self.messages_per_routing_key:
@@ -35,7 +39,7 @@ class BusSimulator(InfrahubMessageBus):
         assert self.service is not None
         await execute_message(routing_key=routing_key, message_body=message.body, service=self.service)
 
-    async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
+    async def reply(self, message: InfrahubMessage, routing_key: str) -> None:  # noqa: ARG002
         correlation_id = message.meta.correlation_id or "default"
         self.replies[correlation_id].append(message)
 
