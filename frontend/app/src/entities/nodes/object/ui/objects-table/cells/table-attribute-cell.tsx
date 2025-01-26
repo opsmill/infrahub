@@ -1,7 +1,9 @@
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { TableCell } from "@/entities/nodes/object/ui/objects-table/cells/table-cell";
-import { formatAttributeValue } from "@/entities/nodes/object/ui/objects-table/utils";
-import { AttributeKind, AttributeSchema } from "@/entities/schema/types";
+import { DropdownCell } from "@/entities/nodes/object/ui/objects-table/cells/dropdown-cell";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { AttributeSchema } from "@/entities/schema/types";
+import { Dropdown } from "@/shared/api/graphql/generated/graphql";
+import { formatRelativeTimeFromNow } from "@/shared/utils/date";
 
 export interface TableAttributeCellProps {
   attributeSchema: AttributeSchema;
@@ -9,14 +11,18 @@ export interface TableAttributeCellProps {
 }
 
 export function TableAttributeCell({ attributeSchema, attributeData }: TableAttributeCellProps) {
-  return (
-    <TableCell>
-      <span className="truncate">
-        {formatAttributeValue({
-          kind: attributeSchema.kind as AttributeKind,
-          value: attributeData.value,
-        })}
-      </span>
-    </TableCell>
-  );
+  switch (attributeSchema.kind) {
+    case ATTRIBUTE_KIND.DROPDOWN: {
+      return <DropdownCell dropdown={attributeData as Dropdown} />;
+    }
+    case ATTRIBUTE_KIND.DATETIME: {
+      return <span className="truncate">{formatRelativeTimeFromNow(attributeData.value)}</span>;
+    }
+    case ATTRIBUTE_KIND.BOOLEAN: {
+      return <span className="truncate">{attributeData.value.toString()}</span>;
+    }
+    default: {
+      return <span className="truncate">{attributeData.value}</span>;
+    }
+  }
 }

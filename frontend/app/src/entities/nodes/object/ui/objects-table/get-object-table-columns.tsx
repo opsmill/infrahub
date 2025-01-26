@@ -4,6 +4,7 @@ import * as R from "remeda";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { cellHeaderStyle, cellsStyle } from "@/entities/nodes/object/ui/objects-table/cells/style";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/objects-table/cells/table-attribute-cell";
+import { TableCell } from "@/entities/nodes/object/ui/objects-table/cells/table-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/objects-table/cells/table-column-header";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/objects-table/cells/table-relationship-cell";
 import { TableRowIdentifier } from "@/entities/nodes/object/ui/objects-table/cells/table-row-identifier";
@@ -48,10 +49,16 @@ export const getObjectTableColumns = (
           const value = row.getValue(columnSchema.name);
           if ("peer" in columnSchema) {
             return (
-              <TableRelationshipCell relationshipSchema={columnSchema} relationshipData={value} />
+              <TableCell>
+                <TableRelationshipCell relationshipSchema={columnSchema} relationshipData={value} />
+              </TableCell>
             );
           }
-          return <TableAttributeCell attributeSchema={columnSchema} attributeData={value} />;
+          return (
+            <TableCell>
+              <TableAttributeCell attributeSchema={columnSchema} attributeData={value} />
+            </TableCell>
+          );
         },
       };
     }),

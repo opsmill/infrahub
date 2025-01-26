@@ -23,13 +23,9 @@ export function TableRelationshipCell({
   if (relationshipSchema.cardinality === "one") {
     const { node } = relationshipData as RelationshipOneType;
 
-    if (!node) return <TableCell>-</TableCell>;
+    if (!node) return <span>-</span>;
 
-    return (
-      <TableCell>
-        <RelationshipNodeDisplay node={node} />
-      </TableCell>
-    );
+    return <RelationshipNodeDisplay node={node} />;
   }
 
   const nodes = (relationshipData as RelationshipManyType).edges
@@ -38,13 +34,7 @@ export function TableRelationshipCell({
 
   if (!nodes.length) return <TableCell>-</TableCell>;
 
-  return (
-    <TableCell>
-      {nodes.map((node) => (
-        <RelationshipNodeDisplay key={node.id} node={node} />
-      ))}
-    </TableCell>
-  );
+  return nodes.map((node) => <RelationshipNodeDisplay key={node.id} node={node} />);
 }
 
 export function RelationshipNodeDisplay({ node }: { node: Node }) {
