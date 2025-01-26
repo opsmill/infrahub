@@ -59,6 +59,7 @@ export const getObjects: GetObjects = async ({ schema, offset, branchName, atDat
           node: {
             id: true,
             display_label: true,
+            hfid: true,
             ...addAttributesToRequest(attributesVisible),
             ...addRelationshipsToRequest(relationshipsVisible),
           },

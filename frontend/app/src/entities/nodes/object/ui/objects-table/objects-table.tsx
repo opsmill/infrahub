@@ -7,7 +7,6 @@ import {
   TableBody,
   TableCell,
   TableColumn,
-  TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
 import useFilters from "@/shared/hooks/useFilters";
@@ -56,6 +55,30 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
     manualSorting: true,
     debugTable: true,
   });
+
+  const allHeaders = table.getFlatHeaders();
+  const allRows = table.getRowModel().rows;
+
+  return (
+    <div
+      className="overflow-auto max-h-[calc(100vh-14rem)] grid"
+      onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
+      ref={tableContainerRef}
+      style={{
+        gridTemplateColumns: `repeat(${allHeaders.length}, 1fr)`,
+      }}
+    >
+      {allHeaders.map((header) => {
+        return flexRender(header.column.columnDef.header, header.getContext());
+      })}
+
+      {allRows.map((row) => {
+        return row.getAllCells().map((cell) => {
+          return flexRender(cell.column.columnDef.cell, cell.getContext());
+        });
+      })}
+    </div>
+  );
 
   return (
     <>

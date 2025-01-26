@@ -6,7 +6,6 @@ import { useSchema } from "@/entities/schema/hooks/useSchema";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import useFilters from "@/shared/hooks/useFilters";
-import React from "react";
 import { useParams } from "react-router-dom";
 
 export function ObjectItemsPage() {
