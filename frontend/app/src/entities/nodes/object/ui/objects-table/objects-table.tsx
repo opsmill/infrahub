@@ -1,9 +1,5 @@
 import { getObjectsInfiniteQueryOptions } from "@/entities/nodes/object/domain/get-objects.query";
-import { ActiveFilterTags } from "@/entities/nodes/object/ui/objects-table/filters/active-filter-tags";
-import { FilterResetButton } from "@/entities/nodes/object/ui/objects-table/filters/filter-reset-button";
-import { FilterSearchInput } from "@/entities/nodes/object/ui/objects-table/filters/filter-search-input";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Spinner } from "@/shared/components/ui/spinner";
 import {
   ResizableTableContainer,
@@ -40,7 +36,7 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
       if (containerRefElement) {
         const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
         //once the user has scrolled within 300px of the bottom of the table, fetch more data if we can
-        if (scrollHeight - scrollTop - clientHeight < 300 && !isFetchingNextPage && hasNextPage) {
+        if (scrollHeight - scrollTop - clientHeight < 100 && !isFetchingNextPage && hasNextPage) {
           fetchNextPage();
         }
       }
@@ -63,18 +59,8 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
 
   return (
     <>
-      <div className="flex items-center gap-2 h-14 px-3">
-        <FilterSearchInput schema={schema} />
-
-        <ScrollArea scrollX>
-          <ActiveFilterTags schema={schema} />
-        </ScrollArea>
-
-        {filters.length > 0 && <FilterResetButton />}
-      </div>
-
       <div
-        className="overflow-auto max-h-[calc(100vh-10.5rem)]"
+        className="overflow-auto max-h-[calc(100vh-14rem)]"
         onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
         ref={tableContainerRef}
       >
