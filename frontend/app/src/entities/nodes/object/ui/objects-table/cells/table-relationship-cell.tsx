@@ -4,7 +4,6 @@ import {
   RelationshipOneType,
   RelationshipType,
 } from "@/entities/nodes/getObjectItemDisplayValue";
-import { TableCell } from "@/entities/nodes/object/ui/objects-table/cells/table-cell";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { RelationshipSchema } from "@/entities/schema/types";
@@ -23,7 +22,7 @@ export function TableRelationshipCell({
   if (relationshipSchema.cardinality === "one") {
     const { node } = relationshipData as RelationshipOneType;
 
-    if (!node) return <span>-</span>;
+    if (!node) return "-";
 
     return <RelationshipNodeDisplay node={node} />;
   }
@@ -32,7 +31,7 @@ export function TableRelationshipCell({
     .map(({ node }) => node)
     .filter((node) => !!node);
 
-  if (!nodes.length) return <TableCell>-</TableCell>;
+  if (!nodes.length) return "-";
 
   return nodes.map((node) => <RelationshipNodeDisplay key={node.id} node={node} />);
 }
