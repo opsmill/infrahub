@@ -14,7 +14,7 @@ export function FilterTag({ label, value, ...props }: FilterTagProps) {
     <Tag
       className={classNames(
         focusVisibleStyle,
-        "group text-gray-600 text-sm whitespace-nowrap bg-neutral-100 rounded-full inline-flex items-center gap-1.5 px-1 border border-gray-300",
+        "group text-gray-600 text-sm whitespace-nowrap bg-neutral-100 rounded-full inline-flex items-center gap-1.5 px-1 border border-gray-300 cursor-pointer",
         "data-[hovered]:bg-gray-100 data-[hovered]:border-indigo-700"
       )}
       textValue={`${label} contains ${value}`}
@@ -22,7 +22,7 @@ export function FilterTag({ label, value, ...props }: FilterTagProps) {
     >
       <span className="ml-1.5">{label}</span>
       <div className="w-px bg-gray-300 self-stretch h-6" />
-      <span className="text-indigo-700 font-medium">{value}</span>
+      <span className="text-indigo-700 font-medium inline-flex items-center">{value}</span>
       <Icon
         icon="mdi:close-circle-outline"
         className="text-base text-gray-400 group-hover:text-indigo-700"
