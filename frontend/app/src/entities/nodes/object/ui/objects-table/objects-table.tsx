@@ -74,7 +74,7 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema; permissions: Pe
 
       {(isPending || isFetchingNextPage) && (
         <>
-          {[...Array(20)].map((_, rowIndex) => (
+          {[...Array(10)].map((_, rowIndex) => (
             <React.Fragment key={`skeleton-row-${rowIndex}`}>
               {[...Array(allHeaders.length)].map((_, colIndex) => (
                 <TableCell key={`skeleton-${rowIndex}-${colIndex}`}>
