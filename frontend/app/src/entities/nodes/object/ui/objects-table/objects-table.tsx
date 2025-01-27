@@ -1,4 +1,5 @@
 import { getObjectsInfiniteQueryOptions } from "@/entities/nodes/object/domain/get-objects.query";
+import { Permission } from "@/entities/permission/types";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { Spinner } from "@/shared/components/ui/spinner";
 import {
@@ -20,7 +21,7 @@ import {
 import React from "react";
 import { getObjectTableColumns } from "./get-object-table-columns";
 
-export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
+export const ObjectsTable = ({ schema }: { schema: IModelSchema; permissions: Permission }) => {
   const tableContainerRef = React.useRef<HTMLTableElement>(null);
   const [filters] = useFilters();
   const { isPending, data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(
