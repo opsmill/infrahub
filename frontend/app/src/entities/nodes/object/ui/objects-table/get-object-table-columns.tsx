@@ -12,6 +12,7 @@ import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/ge
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { classNames } from "@/shared/utils/common";
+import { Icon } from "@iconify-icon/react";
 
 export const getObjectTableColumns = (
   schema: IModelSchema
@@ -28,7 +29,10 @@ export const getObjectTableColumns = (
       id: "id",
       accessorFn: (row) => row.hfid ?? row.display_label ?? row.id,
       header: () => (
-        <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10")}>{schema.label}</div>
+        <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10")}>
+          <Icon icon="mdi:card-account-details-outline" />
+          <span className="truncate">{schema.label}</span>
+        </div>
       ),
       cell: ({ row }) => {
         const value = (row.getValue("id") ?? "-") as string;

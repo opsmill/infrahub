@@ -58,7 +58,7 @@ export function TableColumnHeader({ schema, columnSchema }: TableColumnHeaderPro
         <Icon
           icon="mdi:filter-variant"
           className={classNames(
-            "text-lg",
+            "text-lg ml-auto",
             currentColumnFilters ? "text-indigo-700" : "text-gray-300"
           )}
         />
