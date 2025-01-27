@@ -15,7 +15,6 @@ from .model.path import (
     EnrichedDiffs,
     EnrichedDiffsMetadata,
     NameTrackingId,
-    NodeFieldSpecifier,
     TrackingId,
 )
 
@@ -44,7 +43,7 @@ class EnrichedDiffRequest:
     from_time: Timestamp
     to_time: Timestamp
     tracking_id: TrackingId | None = field(default=None)
-    node_field_specifiers: set[NodeFieldSpecifier] = field(default_factory=set)
+    node_field_specifiers: dict[str, set[str]] = field(default_factory=dict)
 
     def __repr__(self) -> str:
         return (

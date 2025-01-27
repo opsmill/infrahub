@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import AsyncGenerator, Generator
 
 from infrahub import config
@@ -18,7 +19,6 @@ from ..model.path import (
     EnrichedDiffsMetadata,
     EnrichedNodeCreateRequest,
     NodeDiffFieldSummary,
-    NodeFieldSpecifier,
     TimeRange,
     TrackingId,
 )
@@ -352,23 +352,18 @@ class DiffRepository:
         await query.execute(db=self.db)
         return query.get_num_changes_by_branch()
 
-    async def get_node_field_specifiers(self, diff_id: str) -> set[NodeFieldSpecifier]:
+    async def get_node_field_specifiers(self, diff_id: str) -> dict[str, set[str]]:
         limit = config.SETTINGS.database.query_size_limit
         offset = 0
-        specifiers: set[NodeFieldSpecifier] = set()
+        specifiers: dict[str, set[str]] = defaultdict(set)
         while True:
             query = await EnrichedDiffFieldSpecifiersQuery.init(db=self.db, diff_id=diff_id, offset=offset, limit=limit)
             await query.execute(db=self.db)
-
-            new_specifiers = {
-                NodeFieldSpecifier(
-                    node_uuid=field_specifier_tuple[0],
-                    field_name=field_specifier_tuple[1],
-                )
-                for field_specifier_tuple in query.get_node_field_specifier_tuples()
-            }
-            if not new_specifiers:
+            has_data = False
+            for field_specifier_tuple in query.get_node_field_specifier_tuples():
+                specifiers[field_specifier_tuple[0]].add(field_specifier_tuple[1])
+                has_data = True
+            if not has_data:
                 break
-            specifiers |= new_specifiers
             offset += limit
         return specifiers
