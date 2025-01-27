@@ -21,7 +21,7 @@ export const FilterResetButton = () => {
       onPress={handleResetFilters}
     >
       <Icon icon="mdi:filter-variant-remove" className="mr-1 text-base" />
-      Reset filters
+      Clear filters
     </Button>
   );
 };

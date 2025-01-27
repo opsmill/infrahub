@@ -44,7 +44,7 @@ export function RelationshipNodeDisplay({ node }: { node: Node }) {
       to={getObjectDetailsUrl2(node.__typename, node.id)}
       className="transition-colors border rounded-full px-2 py-1 truncate inline-flex items-center hover:underline hover:border-custom-blue-700"
     >
-      {schema?.icon && <Icon icon={schema.icon} className="mr-1 text-custom-blue-800" />}
+      <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="mr-1 text-custom-blue-800" />
       {node.display_label}
     </Link>
   );

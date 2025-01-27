@@ -51,7 +51,6 @@ export function RelationshipTableColumnHeaderIcon({
   relationshipSchema,
 }: { relationshipSchema: RelationshipSchema }) {
   const { schema } = useSchema(relationshipSchema.peer);
-  if (!schema || !schema.icon) return null;
 
-  return <Icon icon={schema.icon} className="text-stone-400" />;
+  return <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="text-stone-400" />;
 }
