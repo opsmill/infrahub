@@ -9,14 +9,14 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const OBJECTS_PER_PAGE = 20;
+export const OBJECTS_PER_PAGE = 30;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export type GetObjects = (args: {
   schema: IModelSchema;
   offset?: number;
-  branchName?: string;
+  branchName: string;
   atDate?: Date | null;
   filters?: Array<Filter>;
 }) => Promise<any>;

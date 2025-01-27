@@ -14,7 +14,7 @@ export function getObjectsInfiniteQueryOptions({
   const timeMachineDate = store.get(datetimeAtom);
 
   return infiniteQueryOptions({
-    queryKey: [currentBranchName, timeMachineDate, schema.kind, JSON.stringify(filters)],
+    queryKey: ["objects", schema.kind, currentBranchName, timeMachineDate, JSON.stringify(filters)],
     queryFn: ({ pageParam }) => {
       return getObjects({
         schema,

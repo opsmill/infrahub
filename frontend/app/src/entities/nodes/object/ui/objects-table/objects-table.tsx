@@ -28,8 +28,8 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
     (containerRefElement?: HTMLDivElement | null) => {
       if (containerRefElement) {
         const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
-        //once the user has scrolled within 300px of the bottom of the table, fetch more data if we can
-        if (scrollHeight - scrollTop - clientHeight < 100 && !isFetchingNextPage && hasNextPage) {
+        //once the user has scrolled within 250px of the bottom of the table, fetch more data if we can
+        if (scrollHeight - scrollTop - clientHeight < 250 && !isFetchingNextPage && hasNextPage) {
           fetchNextPage();
         }
       }
@@ -47,7 +47,6 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     manualSorting: true,
-    debugTable: true,
   });
 
   const allHeaders = table.getFlatHeaders();
@@ -55,7 +54,7 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
 
   return (
     <div
-      className="overflow-auto max-h-[calc(100vh-14rem)] grid"
+      className="overflow-auto h-[calc(100vh-14rem)] grid content-start"
       onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
       ref={tableContainerRef}
       style={{
@@ -78,7 +77,7 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
 
       {(isPending || isFetchingNextPage) && (
         <>
-          {[...Array(10)].map((_, rowIndex) => (
+          {[...Array(15)].map((_, rowIndex) => (
             <React.Fragment key={`skeleton-row-${rowIndex}`}>
               {[...Array(allHeaders.length)].map((_, colIndex) => (
                 <TableCell key={`skeleton-${rowIndex}-${colIndex}`}>
