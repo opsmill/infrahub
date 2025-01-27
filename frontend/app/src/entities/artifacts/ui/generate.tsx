@@ -1,6 +1,7 @@
 import { CONFIG } from "@/config/config";
 import { QSP } from "@/config/qsp";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { queryClient } from "@/shared/api/rest/client";
 import { fetchUrl, getUrlWithQsp } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 
@@ -43,13 +44,19 @@ export const Generate = (props: tGenerateProps) => {
 
       const urlWithQsp = getUrlWithQsp(url, options);
 
-      await fetchUrl(urlWithQsp, {
+      const res = await fetchUrl(urlWithQsp, {
         method: "POST",
         headers: {
           authorization: `Bearer ${auth.accessToken}`,
         },
         ...(artifactid ? { body: JSON.stringify({ nodes: [artifactid] }) } : {}),
       });
+
+      if (res.errors?.length) {
+        throw new Error("Error while generating artifact");
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["is-task-running"] });
 
       if (artifactid) {
         toast(<Alert message="Artifact re-generated" type={ALERT_TYPES.SUCCESS} />);
@@ -62,6 +69,9 @@ export const Generate = (props: tGenerateProps) => {
       console.error("Error when generating artifacts: ", error);
 
       setIsLoading(false);
+      toast(
+        <Alert message="An error occured while generating the artifact" type={ALERT_TYPES.ERROR} />
+      );
     }
   };
 
