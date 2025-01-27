@@ -8,6 +8,7 @@ import {
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { getPermission } from "@/entities/permission/utils";
 import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -22,13 +23,13 @@ import { useTitle } from "@/shared/hooks/useTitle";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { Navigate, useParams } from "react-router-dom";
-import { ARTIFACT_RELATIONSHIPS_BLACKLIST } from "../constants";
 import ArtifactHeader from "./artifact-header";
 
 function ArtifactsDetails() {
   const { objectid } = useParams();
 
   const [schemaList] = useAtom(schemaState);
+  const [schemaLabels] = useAtom(schemaKindLabelState);
   const [genericList] = useAtom(genericsState);
   const schema = schemaList.find((s) => s.kind === ARTIFACT_OBJECT);
   const generic = genericList.find((s) => s.kind === ARTIFACT_OBJECT);
@@ -96,24 +97,38 @@ function ArtifactsDetails() {
   const fileUrl = CONFIG.ARTIFACTS_CONTENT_URL(objectDetailsData?.storage_id?.value);
   const contentType = objectDetailsData?.content_type?.value;
 
-  const properies = (schema?.relationships ?? [])
-    .filter(({ name }) => !ARTIFACT_RELATIONSHIPS_BLACKLIST.includes(name))
-    .map((schemaRelationship) => {
-      const relationshipData = objectDetailsData[schemaRelationship.name]?.node;
-
-      return {
-        name: schemaRelationship.label || schemaRelationship.name,
-        value: relationshipData && (
-          <Link
-            to={constructPath(
-              getObjectDetailsUrl(relationshipData.id, relationshipData.__typename)
-            )}
-          >
-            {relationshipData?.display_label}
-          </Link>
-        ),
-      };
-    });
+  const properties = [
+    {
+      name: schemaLabels[objectDetailsData?.object?.node?.__typename],
+      value: (
+        <Link
+          to={constructPath(
+            getObjectDetailsUrl(
+              objectDetailsData?.object?.node?.id,
+              objectDetailsData?.object?.node?.__typename
+            )
+          )}
+        >
+          {objectDetailsData?.object?.node?.display_label}
+        </Link>
+      ),
+    },
+    {
+      name: schemaLabels[objectDetailsData?.definition?.node?.__typename],
+      value: (
+        <Link
+          to={constructPath(
+            getObjectDetailsUrl(
+              objectDetailsData?.definition?.node?.id,
+              objectDetailsData?.definition?.node?.__typename
+            )
+          )}
+        >
+          {objectDetailsData?.definition?.node?.display_label}
+        </Link>
+      ),
+    },
+  ];
 
   return (
     <Content.Card className="p-4">
@@ -128,7 +143,7 @@ function ArtifactsDetails() {
       />
 
       <div className="flex flex-col gap-4">
-        <PropertyList properties={properies} />
+        <PropertyList properties={properties} />
 
         <File url={fileUrl} contentType={contentType} />
       </div>

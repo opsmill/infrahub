@@ -1,4 +1,0 @@
-import { RELATIONSHIP_VIEW_BLACKLIST } from "@/config/constants";
-
-export const ARTIFACT_ATTRIBUTES_BLACKLIST = ["parameters"];
-export const ARTIFACT_RELATIONSHIPS_BLACKLIST = RELATIONSHIP_VIEW_BLACKLIST;
