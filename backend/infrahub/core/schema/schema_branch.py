@@ -1509,7 +1509,7 @@ class SchemaBranch:
             if changed:
                 self.set(name=node_name, schema=schema)
 
-    def _get_hierarchy_child_rel(self, peer: str, hierarchical: str, read_only: bool) -> RelationshipSchema:
+    def _get_hierarchy_child_rel(self, peer: str, hierarchical: str | None, read_only: bool) -> RelationshipSchema:
         return RelationshipSchema(
             name="children",
             identifier="parent__child",
@@ -1523,7 +1523,7 @@ class SchemaBranch:
         )
 
     def _get_hierarchy_parent_rel(
-        self, peer: str, hierarchical: str, read_only: bool, optional: str
+        self, peer: str, hierarchical: str | None, read_only: bool, optional: bool
     ) -> RelationshipSchema:
         return RelationshipSchema(
             name="parent",
