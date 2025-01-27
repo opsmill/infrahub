@@ -30,7 +30,7 @@ export const getObjectTableColumns = (
       accessorFn: (row) => row.hfid ?? row.display_label ?? row.id,
       header: () => (
         <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10")}>
-          <Icon icon="mdi:card-account-details-outline" />
+          {schema.icon && <Icon icon={schema.icon} className="text-stone-400" />}
           <span className="truncate">{schema.label}</span>
         </div>
       ),

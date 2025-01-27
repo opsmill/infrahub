@@ -1,8 +1,9 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { cellHeaderStyle, cellsStyle } from "@/entities/nodes/object/ui/objects-table/cells/style";
+import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/objects-table/cells/table-column-header-icon";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import DynamicForm from "@/shared/components/form/dynamic-form";
@@ -54,6 +55,8 @@ export function TableColumnHeader({ schema, columnSchema }: TableColumnHeaderPro
   return (
     <Popover open={showFilters} onOpenChange={setShowFilters}>
       <PopoverTrigger className={classNames(cellsStyle, cellHeaderStyle)}>
+        <TableColumnHeaderIcon fieldSchema={columnSchema} />
+
         <span className="truncate">{columnSchema.label ?? columnSchema.name}</span>
         <Icon
           icon="mdi:filter-variant"
