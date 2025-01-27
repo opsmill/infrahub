@@ -343,23 +343,23 @@ class SchemaManager(NodeManager):
         new_node = node.duplicate()
 
         # Update the attributes and the relationships nodes as well
-        await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id])
+        await obj.attributes.update(db=db, data=[item.id for item in node.attributes if item.id])
         await obj.relationships.update(
-            db=db, data=[item.id for item in node.local_relationships if item.id and item.name != "profiles"]
+            db=db, data=[item.id for item in node.relationships if item.id and item.name != "profiles"]
         )
         await obj.save(db=db)
 
         # Then Update the Attributes and the relationships
 
         items = await self.get_many(
-            ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
+            ids=[item.id for item in node.attributes + node.relationships if item.id],
             db=db,
             branch=branch,
             include_owner=True,
             include_source=True,
         )
 
-        for item in node.local_attributes:
+        for item in node.attributes:
             if item.id and item.id in items:
                 await self.update_attribute_in_db(item=item, attr=items[item.id], db=db)
             elif not item.id:
@@ -368,7 +368,7 @@ class SchemaManager(NodeManager):
                 )
                 new_node.attributes.append(new_attr)
 
-        for item in node.local_relationships:
+        for item in node.relationships:
             if item.id and item.id in items:
                 await self.update_relationship_in_db(item=item, rel=items[item.id], db=db)
             elif not item.id:
@@ -425,7 +425,7 @@ class SchemaManager(NodeManager):
 
         item_ids = set()
         item_names = set()
-        for field in node.local_attributes + node.local_relationships:
+        for field in node.attributes + node.relationships:
             if field.name not in attrs_rels_to_update:
                 continue
             if field.id:
@@ -462,10 +462,10 @@ class SchemaManager(NodeManager):
             items.update({field.id: field for field in missing_attrs + missing_rels})
 
         if diff_attributes:
-            await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id])
+            await obj.attributes.update(db=db, data=[item.id for item in node.attributes if item.id])
 
         if diff_relationships:
-            await obj.relationships.update(db=db, data=[item.id for item in node.local_relationships if item.id])
+            await obj.relationships.update(db=db, data=[item.id for item in node.relationships if item.id])
 
         await obj.save(db=db)
 
@@ -511,10 +511,10 @@ class SchemaManager(NodeManager):
 
         field_names_to_remove = []
         if diff_attributes and diff_attributes.removed:
-            attr_names_to_remove = set(diff_attributes.removed.keys()) - set(node.local_attribute_names)
+            attr_names_to_remove = set(diff_attributes.removed.keys()) - set(node.attribute_names)
             field_names_to_remove.extend(list(attr_names_to_remove))
         if diff_relationships and diff_relationships.removed:
-            rel_names_to_remove = set(diff_relationships.removed.keys()) - set(node.local_relationship_names)
+            rel_names_to_remove = set(diff_relationships.removed.keys()) - set(node.relationship_names)
             field_names_to_remove.extend(list(rel_names_to_remove))
         if field_names_to_remove:
             for field_schema in items.values():
