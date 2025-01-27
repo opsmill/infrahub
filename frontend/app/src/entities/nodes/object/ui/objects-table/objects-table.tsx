@@ -60,6 +60,7 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
       style={{
         gridTemplateColumns: `repeat(${allHeaders.length}, 1fr)`,
       }}
+      data-testid="object-items"
     >
       {allHeaders.map((header) => {
         return flexRender(header.column.columnDef.header, header.getContext());

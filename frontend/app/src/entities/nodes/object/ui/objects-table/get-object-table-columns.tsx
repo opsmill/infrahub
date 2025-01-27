@@ -38,7 +38,7 @@ export const getObjectTableColumns = (
         const value = (row.getValue("id") ?? "-") as string;
         return (
           <TableRowIdentifier
-            objectKind={schema.kind as string}
+            objectKind={row.original.__typename as string}
             objectId={row.original.id as string}
             identifier={value}
           />
