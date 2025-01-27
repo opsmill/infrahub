@@ -83,7 +83,7 @@ export const router = createBrowserRouter([
                 },
                 children: [
                   {
-                    path: "",
+                    index: true,
                     lazy: () => import("@/entities/artifacts/ui/artifact-details"),
                     handle: {
                       breadcrumb: (match: UIMatch) => {
