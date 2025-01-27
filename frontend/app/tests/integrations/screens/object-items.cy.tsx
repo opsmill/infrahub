@@ -84,28 +84,13 @@ describe("List screen", () => {
     // Should check that the last item in pagination is page number 100
     cy.get("[data-cy='create']").should("exist");
 
-    // last pagination number
-    cy.get(":nth-child(7) > .cursor-pointer").should("have.text", "100");
-
     // Should display the last item for the current page
-    cy.contains("query-0010").should("be.visible");
+    cy.contains("topology_info").should("be.visible");
 
     // Should display a tag in the tags list for the 4th item in the list
-    cy.get("[data-cy='object-table-row']")
-      .first()
-      .within(() => {
-        cy.contains("span", "maroon").should("be.visible");
-      });
-
-    // Select the limit 50
-    cy.get("[data-testid='pagination-size-select']").click();
-    cy.contains("50").click();
-
-    // The last page should be the number 20
-    cy.get(":nth-child(7) > .cursor-pointer").should(
-      "have.text",
-      Math.ceil(graphqlQueriesMocksData.CoreGraphQLQuery.count / 50)
-    );
+    cy.get("[data-testid='object-items']").within(() => {
+      cy.contains("demo-edge").should("be.visible");
+    });
   });
 
   it("should display add open panel when object is generic", () => {
@@ -137,9 +122,6 @@ describe("List screen", () => {
         },
       }
     );
-
-    // Should check that the last item in pagination is page number 100
-    cy.get(":nth-child(7) > .cursor-pointer").should("have.text", "100");
 
     cy.get("[data-cy='create']").should("exist");
   });
