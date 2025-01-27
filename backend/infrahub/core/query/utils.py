@@ -17,7 +17,7 @@ def find_node_schema(
     for label in node.labels:
         if db.schema.has(name=label, branch=branch):
             schema = db.schema.get(name=label, branch=branch, duplicate=duplicate)
-            if isinstance(schema, (NodeSchema, ProfileSchema)):
+            if isinstance(schema, NodeSchema | ProfileSchema):
                 return schema
 
     return None

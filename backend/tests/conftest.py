@@ -7,7 +7,7 @@ import time
 from contextlib import ExitStack
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, AsyncGenerator, Generator, Optional, TypeVar
+from typing import Any, AsyncGenerator, Generator, TypeVar
 
 import pytest
 import ujson
@@ -104,7 +104,7 @@ def event_loop():
 
 @pytest.fixture(scope="module")
 async def db(
-    neo4j: Optional[dict[int, int]], memgraph: Optional[dict[int, int]], reload_settings_before_each_module
+    neo4j: dict[int, int] | None, memgraph: dict[int, int] | None, reload_settings_before_each_module
 ) -> AsyncGenerator[InfrahubDatabase, None]:
     if INFRAHUB_USE_TEST_CONTAINERS:
         config.SETTINGS.database.address = "localhost"
@@ -153,7 +153,7 @@ async def do_default_branch(db: InfrahubDatabase) -> Branch:
 
 
 @pytest.fixture
-async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Optional[Node]:
+async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Node | None:
     if not registry._default_ipnamespace:
         ip_namespace = await create_ipam_namespace(db=db)
         registry.default_ipnamespace = ip_namespace.id
@@ -201,7 +201,7 @@ async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
 
 
 @pytest.fixture(scope="session")
-def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
+def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
         return None
 
@@ -297,7 +297,7 @@ def wait_for_memgraph_ready(host, port, timeout=15):
 
 
 @pytest.fixture(scope="session")
-def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
+def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type != "memgraph":
         return None
 
@@ -323,7 +323,7 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Op
 
 
 @pytest.fixture(scope="session")
-def nats_container(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
+def nats_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.NATS:
         return None
 
@@ -352,7 +352,7 @@ def nats(nats_container: dict[int, int] | None, reload_settings_before_each_modu
 
 
 @pytest.fixture(scope="session")
-def prefect_container(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
+def prefect_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
     return start_prefect_server_container(request)
 
 
@@ -867,7 +867,7 @@ class BusRPCMock(InfrahubMessageBus):
         self.messages: list[InfrahubMessage] = []
 
     async def publish(
-        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+        self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
     ) -> None:
         self.messages.append(message)
 
@@ -913,7 +913,7 @@ class TestHelper:
         return BusRecorder()
 
     @staticmethod
-    async def get_message_bus_simulator(db: Optional[InfrahubDatabase] = None) -> BusSimulator:
+    async def get_message_bus_simulator(db: InfrahubDatabase | None = None) -> BusSimulator:
         service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
         message_bus = service.message_bus
         assert isinstance(message_bus, BusSimulator)

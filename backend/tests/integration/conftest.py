@@ -1,7 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 import yaml
@@ -81,7 +81,7 @@ class IntegrationHelper:
             self._admin_headers = {"X-INFRAHUB-KEY": await self.create_token()}
         return self._admin_headers
 
-    async def create_token(self, account_name: Optional[str] = None) -> str:
+    async def create_token(self, account_name: str | None = None) -> str:
         token = str(UUIDT())
         account_name = account_name or "admin"
         response = await NodeManager.query(

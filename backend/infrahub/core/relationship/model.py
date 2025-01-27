@@ -744,7 +744,7 @@ class RelationshipManager:
         await rm._validate_hierarchy()
 
         for item in data:
-            if not isinstance(item, (rm.rel_class, str, dict)) and not hasattr(item, "_schema"):
+            if not isinstance(item, rm.rel_class | str | dict) and not hasattr(item, "_schema"):
                 raise ValidationError({rm.name: f"Invalid data provided to form a relationship {item}"})
 
             rel = rm.rel_class(schema=rm.schema, branch=rm.branch, at=rm.at, node=rm.node)
@@ -991,7 +991,7 @@ class RelationshipManager:
         changed = False
 
         for item in list_data:
-            if not isinstance(item, (self.rel_class, str, dict, type(None))) and not hasattr(item, "_schema"):
+            if not isinstance(item, self.rel_class | str | dict | type(None)) and not hasattr(item, "_schema"):
                 raise ValidationError({self.name: f"Invalid data provided to form a relationship {item}"})
 
             if hasattr(item, "_schema"):
@@ -1039,7 +1039,7 @@ class RelationshipManager:
 
     async def add(self, data: Union[dict[str, Any], Node], db: InfrahubDatabase) -> bool:
         """Add a new relationship to the list of existing ones, avoid duplication."""
-        if not isinstance(data, (self.rel_class, dict)) and not hasattr(data, "_schema"):
+        if not isinstance(data, self.rel_class | dict) and not hasattr(data, "_schema"):
             raise ValidationError({self.name: f"Invalid data provided to form a relationship {data}"})
 
         await self._validate_hierarchy()

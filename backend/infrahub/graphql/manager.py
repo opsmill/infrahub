@@ -251,7 +251,7 @@ class GraphQLSchemaManager:
 
     def get_type(self, name: str) -> type[InfrahubObject]:
         if name in self._graphql_types and issubclass(
-            self._graphql_types[name], (BaseAttributeType, graphene.Interface, graphene.ObjectType)
+            self._graphql_types[name], BaseAttributeType | graphene.Interface | graphene.ObjectType
         ):
             return self._graphql_types[name]
         raise ValueError(f"Unable to find {name!r}")
@@ -390,7 +390,7 @@ class GraphQLSchemaManager:
 
         # Generate all GraphQL ObjectType, Nested, Paginated & NestedPaginated and store them in the registry
         for node_schema in full_schema.values():
-            if isinstance(node_schema, (NodeSchema, ProfileSchema)):
+            if isinstance(node_schema, NodeSchema | ProfileSchema):
                 node_type = self.generate_graphql_object(schema=node_schema, populate_cache=True)
                 node_type_edged = self.generate_graphql_edged_object(
                     schema=node_schema, node=node_type, populate_cache=True
@@ -520,7 +520,7 @@ class GraphQLSchemaManager:
             else:
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 
-            if isinstance(node_schema, (NodeSchema, ProfileSchema)):
+            if isinstance(node_schema, NodeSchema | ProfileSchema):
                 mutations = self.generate_graphql_mutations(schema=node_schema, base_class=base_class)
 
                 class_attrs[f"{node_schema.kind}Create"] = mutations.create.Field()
@@ -546,7 +546,7 @@ class GraphQLSchemaManager:
 
         interfaces: set[type[InfrahubObject]] = set()
 
-        if isinstance(schema, (NodeSchema, ProfileSchema)) and schema.inherit_from:
+        if isinstance(schema, NodeSchema | ProfileSchema) and schema.inherit_from:
             for generic_name in schema.inherit_from:
                 generic = self.get_type(name=generic_name)
                 interfaces.add(generic)
@@ -983,7 +983,7 @@ class GraphQLSchemaManager:
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
-        if isinstance(schema, (NodeSchema, GenericSchema)):
+        if isinstance(schema, NodeSchema | GenericSchema):
             main_attrs["permissions"] = graphene.Field(
                 PaginatedObjectPermission, required=True, resolver=parent_field_name_resolver
             )

@@ -370,7 +370,7 @@ class InfrahubMutation(InfrahubMutationMixin, Mutation):
         cls, schema: Optional[Union[NodeSchema, GenericSchema, ProfileSchema]] = None, _meta=None, **options
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
-        if not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
+        if not isinstance(schema, NodeSchema | GenericSchema | ProfileSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
 
         if not _meta:

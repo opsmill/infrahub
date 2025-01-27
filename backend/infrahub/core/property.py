@@ -123,7 +123,7 @@ class NodePropertyMixin:
         If the value is a Node, we save the node and we extract the ID
         if the value is None, we just initialize the 2 variables."""
 
-        if isinstance(value, (str, UUID)):
+        if isinstance(value, str | UUID):
             setattr(self, f"{name}_id", value)
             setattr(self, f"_{name}", None)
         elif isinstance(value, dict) and "id" in value:

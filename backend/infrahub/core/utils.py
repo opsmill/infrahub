@@ -184,7 +184,7 @@ def parse_node_kind(kind: str) -> NodeKind:
 def convert_ip_to_binary_str(
     obj: Union[ipaddress.IPv6Network, ipaddress.IPv4Network, ipaddress.IPv4Interface, ipaddress.IPv6Interface],
 ) -> str:
-    if isinstance(obj, (ipaddress.IPv6Network, ipaddress.IPv4Network)):
+    if isinstance(obj, ipaddress.IPv6Network | ipaddress.IPv4Network):
         prefix_bin = f"{int(obj.network_address):b}"
         return prefix_bin.zfill(obj.max_prefixlen)
 
@@ -204,7 +204,7 @@ def build_regex_attr(value: str | int | bool) -> str:
     """
     if isinstance(value, str):
         return f'"{value}"'
-    if isinstance(value, (bool, int)):
+    if isinstance(value, bool | int):
         value_str = str(value).lower()
         return rf'(?<=[^\w"\d]){value_str}(?=[^\w"\d])'
 

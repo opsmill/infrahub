@@ -129,7 +129,7 @@ class EnrichedDiffDeserializer:
 
         # TODO Ensure the list is even
         current_node_uuid = node_uuid
-        for rel, parent in zip(parents_path[::2], parents_path[1::2]):
+        for rel, parent in zip(parents_path[::2], parents_path[1::2], strict=False):
             enriched_root.add_parent(
                 node_id=current_node_uuid,
                 parent_id=parent.get("uuid"),

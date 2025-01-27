@@ -345,13 +345,12 @@ def _generate_infrahub_events_documentation() -> None:
     using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
     """
     from collections import defaultdict
-    from typing import Optional, Union
 
     from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
     def group_classes_by_category(
-        classes: dict[str, type[Union[InfrahubMessage, InfrahubResponse]]],
-        priority_map: Optional[dict[str, int]] = None,
+        classes: dict[str, type[InfrahubMessage | InfrahubResponse]],
+        priority_map: dict[str, int] | None = None,
     ) -> dict[str, dict[str, list[dict[str, any]]]]:
         """
         Group classes into a nested dictionary by primary and secondary categories, including priority.

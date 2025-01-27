@@ -517,7 +517,7 @@ async def test_schema_branch_generate_weight(schema_all_in_one):
     def extract_weights(schema: SchemaBranch):
         weights = []
         for node in schema.get_all().values():
-            if not isinstance(node, (NodeSchema, GenericSchema)):
+            if not isinstance(node, NodeSchema | GenericSchema):
                 continue
             for item in node.attributes + node.relationships:
                 weights.append(f"{node.name}__{item.name}__{item.order_weight}")

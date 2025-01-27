@@ -5,7 +5,7 @@ import uuid
 from collections import defaultdict
 from enum import Enum
 from ipaddress import IPv4Network, IPv6Network
-from typing import Optional, cast
+from typing import cast
 
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.batch import InfrahubBatch
@@ -184,7 +184,7 @@ class BgpPeerGroup(BaseModel):
     import_policies: str
     export_policies: str
     local_as: str
-    remote_as: Optional[str] = Field(default=None)
+    remote_as: str | None = Field(default=None)
 
 
 class Device(BaseModel):
@@ -261,7 +261,7 @@ class P2pNetwork(BaseModel):
     site2: str
     edge: int
     circuit: str
-    pool: Optional[IpamIPPrefix] = None
+    pool: IpamIPPrefix | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
