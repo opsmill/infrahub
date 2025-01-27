@@ -53,7 +53,12 @@ export const File = ({ url, contentType }: tFile) => {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Download value={JSON.parse(fileContent)} download={"file.json"} variant={"primary"} />
+          <Download
+            value={fileContent}
+            download={"file.json"}
+            variant={"primary"}
+            type="application/json"
+          />
           <CopyToClipboard text={fileContent} />
           <Badge>JSON</Badge>
         </div>
@@ -67,7 +72,12 @@ export const File = ({ url, contentType }: tFile) => {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Download value={fileContent} download={"markdown.md"} variant={"primary"} />
+          <Download
+            value={fileContent}
+            download={"markdown.md"}
+            variant={"primary"}
+            type="text/markdown"
+          />
           <CopyToClipboard text={fileContent} />
           <Badge>Markdown</Badge>
         </div>
@@ -81,7 +91,12 @@ export const File = ({ url, contentType }: tFile) => {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Download value={fileContent} download={"file.yaml"} variant={"primary"} />
+          <Download
+            value={fileContent}
+            download={"file.yaml"}
+            variant={"primary"}
+            type="application/yaml"
+          />
           <CopyToClipboard text={fileContent} />
           <Badge>YAML</Badge>
         </div>
@@ -95,7 +110,12 @@ export const File = ({ url, contentType }: tFile) => {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Download value={fileContent} download={"file.svg"} variant={"primary"} />
+          <Download
+            value={fileContent}
+            download={"file.svg"}
+            variant={"primary"}
+            type="image/svg+xml"
+          />
           <CopyToClipboard text={fileContent} />
           <Badge>SVG</Badge>
         </div>

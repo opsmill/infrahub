@@ -5,8 +5,8 @@ interface DownloadProps extends Omit<LinkButtonProps, "to"> {
   value: string;
 }
 
-export const Download = ({ value, ...props }: DownloadProps) => {
-  const blob = new Blob([value], { type: "text/plain" });
+export const Download = ({ value, type, ...props }: DownloadProps) => {
+  const blob = new Blob([value], { type: type ?? "plain/text" });
   const url = URL.createObjectURL(blob);
 
   return (
