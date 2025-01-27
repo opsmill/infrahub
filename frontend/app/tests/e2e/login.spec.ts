@@ -170,7 +170,7 @@ test.describe("/login", () => {
 
       await page.goto("/objects/BuiltinTag");
 
-      await expect(page.getByRole("cell", { name: "blue" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "blue" })).toBeVisible();
     });
   });
 });
