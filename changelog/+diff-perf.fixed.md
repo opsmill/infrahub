@@ -1,0 +1,1 @@
+Significant improvements to diff calculation performance
