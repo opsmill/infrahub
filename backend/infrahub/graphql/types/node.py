@@ -21,7 +21,7 @@ class InfrahubObject(ObjectType):
         _meta: InfrahubObjectOptions | None = None,
         **options: Any,
     ) -> None:
-        if not isinstance(schema, (NodeSchema, GenericSchema, ProfileSchema)):
+        if not isinstance(schema, NodeSchema | GenericSchema | ProfileSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
 
         if not _meta:

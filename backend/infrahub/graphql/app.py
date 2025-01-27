@@ -499,7 +499,7 @@ async def _get_operation_from_multipart(request: Request) -> Union[dict[str, Any
         operations = ujson.loads(operations_data)
     except (TypeError, ValueError) as err:
         raise ValueError("'operations' must be a valid JSON") from err
-    if not isinstance(operations, (dict, list)):
+    if not isinstance(operations, dict | list):
         raise ValueError("'operations' field must be an Object or an Array")
 
     try:

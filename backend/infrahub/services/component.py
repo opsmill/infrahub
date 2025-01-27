@@ -69,7 +69,7 @@ class InfrahubComponent:
             schema_hash_keys = [key for key in keys if f":schema_hash:branch:{branch}" in key]
             response = await self.cache.get_values(keys=schema_hash_keys)
 
-        for key, value in zip(schema_hash_keys, response):
+        for key, value in zip(schema_hash_keys, response, strict=False):
             if match := WORKER_MATCH.search(key):
                 identity = match.group(1)
                 workers[identity].add_value(key=key, value=value)

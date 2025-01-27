@@ -535,7 +535,7 @@ class HashableModel(BaseModel):
             if attr_other is None or attr_local == attr_other:
                 continue
 
-            if attr_local is None or isinstance(attr_other, (int, str, bool, float)):
+            if attr_local is None or isinstance(attr_other, int | str | bool | float):
                 setattr(self, field_name, attr_other)
                 continue
 

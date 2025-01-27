@@ -286,7 +286,7 @@ class SchemaManager(NodeManager):
         new_node.id = obj.id
 
         # Then create the Attributes and the relationships
-        if isinstance(node, (NodeSchema, GenericSchema)):
+        if isinstance(node, NodeSchema | GenericSchema):
             new_node.relationships = []
             new_node.attributes = []
 

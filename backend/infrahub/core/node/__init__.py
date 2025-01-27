@@ -200,7 +200,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         branch = await registry.get_branch(branch=branch, db=db)
 
-        if isinstance(schema, (NodeSchema, ProfileSchema)):
+        if isinstance(schema, NodeSchema | ProfileSchema):
             attrs["schema"] = schema
         elif isinstance(schema, str):
             # TODO need to raise a proper exception for this, right now it will raise a generic ValueError

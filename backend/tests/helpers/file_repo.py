@@ -1,7 +1,6 @@
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from git.repo import Repo
 
@@ -20,8 +19,8 @@ class FileRepo:
     # when https://github.com/opsmill/infrahub/issues/4296 is fixed.
     local_repo_base_path: Path = get_fixtures_dir() / "repos"
 
-    _repo: Optional[Repo] = None
-    _initial_branch: Optional[str] = None
+    _repo: Repo | None = None
+    _initial_branch: str | None = None
     _branches: list[str] = field(default_factory=list)
 
     @property

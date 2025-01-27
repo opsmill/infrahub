@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 def get_full_name(obj: CoreMenuItem | NodeSchema | GenericSchema | ProfileSchema) -> str:
-    if isinstance(obj, (NodeSchema, GenericSchema, ProfileSchema)):
+    if isinstance(obj, NodeSchema | GenericSchema | ProfileSchema):
         return _get_full_name_schema(obj)
     return _get_full_name_node(obj)
 

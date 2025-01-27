@@ -1,5 +1,3 @@
-from typing import Optional
-
 from invoke import Context, task
 from invoke.runners import Result
 
@@ -66,7 +64,7 @@ def mypy(context: Context) -> None:
 
 
 @task
-def lint(context: Context) -> Optional[Result]:
+def lint(context: Context) -> Result | None:
     """This will run all linter."""
     ruff(context)
     mypy(context)
@@ -75,7 +73,7 @@ def lint(context: Context) -> Optional[Result]:
 
 
 @task
-def test_unit(context: Context) -> Optional[Result]:
+def test_unit(context: Context) -> Result | None:
     """Run unit tests for the Python SDK."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_sdk {MAIN_DIRECTORY / 'tests' / 'unit'}"
@@ -83,7 +81,7 @@ def test_unit(context: Context) -> Optional[Result]:
 
 
 @task(optional=["database"])
-def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
+def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     """Run integration tests for the Python SDK."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_sdk {MAIN_DIRECTORY / 'tests' / 'integration'}"

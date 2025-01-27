@@ -524,7 +524,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                     field = field.value
             if isinstance(field, str):
                 response[field_name] = self._filter_sensitive(value=field, filter_sensitive=filter_sensitive)
-            elif isinstance(field, (int, bool, dict, list)):
+            elif isinstance(field, int | bool | dict | list):
                 response[field_name] = field
 
             if related_node_ids and self.is_from_profile and self.source_id:
@@ -1155,7 +1155,7 @@ class ListAttribute(BaseAttribute):
 
     def deserialize_value(self, data: AttributeFromDB) -> Any:
         """Deserialize the value (potentially) coming from the database."""
-        if isinstance(data.value, (str, bytes)):
+        if isinstance(data.value, str | bytes):
             return ujson.loads(data.value)
         return data.value
 
@@ -1191,7 +1191,7 @@ class JSONAttribute(BaseAttribute):
 
     def deserialize_value(self, data: AttributeFromDB) -> Any:
         """Deserialize the value (potentially) coming from the database."""
-        if data.value and isinstance(data.value, (str, bytes)):
+        if data.value and isinstance(data.value, str | bytes):
             return ujson.loads(data.value)
         return data.value
 

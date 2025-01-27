@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import TYPE_CHECKING, Optional, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 import ujson
 from infrahub_sdk.uuidt import UUIDT
@@ -23,7 +23,7 @@ class BusRecorder(InfrahubMessageBus):
         self.messages_per_routing_key: dict[str, list[InfrahubMessage]] = {}
 
     async def publish(
-        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+        self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
     ) -> None:
         self.messages.append(message)
         if routing_key not in self.messages_per_routing_key:
@@ -52,7 +52,7 @@ class BusSimulator(InfrahubMessageBus):
         self.service: InfrahubServices
 
     async def publish(
-        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+        self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
     ) -> None:
         self.messages.append(message)
         if routing_key not in self.messages_per_routing_key:

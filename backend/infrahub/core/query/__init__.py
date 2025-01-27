@@ -479,7 +479,7 @@ class Query(ABC):
         """Search for all the variables in a Query string and replace each variable with its value."""
 
         def prep_value(v: Any) -> str:
-            if isinstance(v, (int, list)):
+            if isinstance(v, int | list):
                 return str(v)
             return f'"{v}"'
 
@@ -517,7 +517,7 @@ class Query(ABC):
         params = []
 
         for key, value in self.params.items():
-            if isinstance(value, (int, list)):
+            if isinstance(value, int | list):
                 params.append(f"{key}: {str(value)}")
             else:
                 params.append(f'{key}: "{value}"')

@@ -800,7 +800,7 @@ class NodeManager:
             raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=hfid_str)
 
         filters = {}
-        for key, item in zip(node_schema.human_friendly_id, hfid):
+        for key, item in zip(node_schema.human_friendly_id, hfid, strict=False):
             path = node_schema.parse_schema_path(path=key, schema=registry.schema.get_schema_branch(name=branch.name))
 
             if path.is_type_relationship:
