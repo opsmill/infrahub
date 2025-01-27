@@ -4,7 +4,12 @@ from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.query_parser import DiffQueryParser
-from infrahub.core.query.diff import DiffAllPathsQuery, DiffCalculationQuery, DiffFieldPathsQuery, DiffNodePathsQuery
+from infrahub.core.query.diff import (
+    DiffCalculationQuery,
+    DiffFieldPathsQuery,
+    DiffNodePathsQuery,
+    DiffPropertyPathsQuery,
+)
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
@@ -86,6 +91,7 @@ class DiffCalculator:
         )
         node_limit = int(config.SETTINGS.database.query_size_limit / 10)
         fields_limit = int(config.SETTINGS.database.query_size_limit / 3)
+        properties_limit = int(config.SETTINGS.database.query_size_limit)
 
         calculation_request = DiffCalculationRequest(
             base_branch=base_branch,
@@ -113,21 +119,14 @@ class DiffCalculator:
         )
         log.info("Diff field-level calculation queries for branch complete")
 
-        branch_diff_query = await DiffAllPathsQuery.init(
-            db=self.db,
-            branch=diff_branch,
-            base_branch=base_branch,
-            diff_branch_from_time=diff_branch_from_time,
-            diff_from=from_time,
-            diff_to=to_time,
+        log.info("Beginning diff property-level calculation queries for branch")
+        await self._run_diff_calculation_query(
+            diff_parser=diff_parser,
+            query_class=DiffPropertyPathsQuery,
+            calculation_request=calculation_request,
+            limit=properties_limit,
         )
-        log.info("Beginning diff calculation query for branch")
-        await branch_diff_query.execute(db=self.db)
-        log.info("Diff calculation query for branch complete")
-        log.info("Reading results of query for branch")
-        for query_result in branch_diff_query.get_results():
-            diff_parser.read_result(query_result=query_result)
-        log.info("Results of query for branch read")
+        log.info("Diff property-level calculation queries for branch complete")
 
         if base_branch.name != diff_branch.name:
             current_node_field_specifiers = diff_parser.get_current_node_field_specifiers()
@@ -160,32 +159,15 @@ class DiffCalculator:
             )
             log.info("Diff field-level calculation queries for base complete")
 
-            # Temporary until next change
-            current_node_field_specifier_tuples: list[tuple[str, str]] = []
-            new_node_field_specifier_tuples: list[tuple[str, str]] = []
-            for node_uuid, field_names in current_node_field_specifiers.items():
-                current_node_field_specifier_tuples.extend((node_uuid, field_name) for field_name in field_names)
-            for node_uuid, field_names in new_node_field_specifiers.items():
-                new_node_field_specifier_tuples.extend((node_uuid, field_name) for field_name in field_names)
-
-            base_diff_query = await DiffAllPathsQuery.init(
-                db=self.db,
-                branch=base_branch,
-                base_branch=base_branch,
-                diff_branch_from_time=diff_branch_from_time,
-                diff_from=from_time,
-                diff_to=to_time,
-                current_node_field_specifiers=current_node_field_specifier_tuples,
-                new_node_field_specifiers=new_node_field_specifier_tuples,
+            log.info("Beginning diff property-level calculation queries for base")
+            await self._run_diff_calculation_query(
+                diff_parser=diff_parser,
+                query_class=DiffPropertyPathsQuery,
+                calculation_request=calculation_request,
+                limit=properties_limit,
             )
+            log.info("Diff property-level calculation queries for base complete")
 
-            log.info("Beginning diff calculation query for base")
-            await base_diff_query.execute(db=self.db)
-            log.info("Diff calculation query for base complete")
-            log.info("Reading results of query for base")
-            for query_result in base_diff_query.get_results():
-                diff_parser.read_result(query_result=query_result)
-            log.info("Results of query for branch read")
         log.info("Parsing calculated diff")
         diff_parser.parse(include_unchanged=include_unchanged)
         log.info("Calculated diff parsed")
