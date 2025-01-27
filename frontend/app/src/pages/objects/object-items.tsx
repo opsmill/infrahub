@@ -28,11 +28,11 @@ export function ObjectItemsPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-2 h-14 px-3">
+      <div className="flex items-center h-14 px-3">
         <FilterSearchInput schema={schema} />
 
         <ScrollArea scrollX>
-          <ActiveFilterTags schema={schema} />
+          <ActiveFilterTags schema={schema} className="mx-2" />
         </ScrollArea>
 
         {filters.length > 0 && <FilterResetButton />}
