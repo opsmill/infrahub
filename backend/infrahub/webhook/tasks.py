@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import ujson
 from infrahub_sdk.protocols import CoreCustomWebhook, CoreStandardWebhook, CoreTransformPython
@@ -19,6 +19,9 @@ from infrahub.workflows.catalogue import WEBHOOK_SEND, WEBHOOK_TRIGGER
 
 from .constants import AUTOMATION_NAME_RUN
 from .models import CustomWebhook, SendWebhookData, StandardWebhook, TransformWebhook, Webhook
+
+if TYPE_CHECKING:
+    from prefect.events.schemas.automations import Automation
 
 
 @flow(name="event-send-webhook", flow_run_name="Send Webhook")
@@ -132,7 +135,10 @@ async def configure_webhooks(service: InfrahubServices) -> None:
 
         deployment_id_webhook_trigger = deployments[WEBHOOK_TRIGGER.name].id
 
-        webhook_configure_automation = await client.find_automation(id_or_name=AUTOMATION_NAME_RUN)
+        webhook_configure_automation: Automation | None = None
+        automations = await client.read_automations_by_name(name=AUTOMATION_NAME_RUN)
+        if automations:
+            webhook_configure_automation = automations[0]
 
         if not has_webhooks:
             if webhook_configure_automation:
