@@ -1,5 +1,6 @@
 import { getObjectsInfiniteQueryOptions } from "@/entities/nodes/object/domain/get-objects.query";
 import { TableCell } from "@/entities/nodes/object/ui/objects-table/cells/table-cell";
+import { ObjectTableNoResults } from "@/entities/nodes/object/ui/objects-table/object-table-no-results";
 import { Permission } from "@/entities/permission/types";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { Skeleton } from "@/shared/components/skeleton";
@@ -71,6 +72,10 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema; permissions: Pe
           return flexRender(cell.column.columnDef.cell, cell.getContext());
         });
       })}
+
+      {!(isPending || isFetchingNextPage) && allRows.length === 0 && (
+        <ObjectTableNoResults schema={schema} />
+      )}
 
       {(isPending || isFetchingNextPage) && (
         <>
