@@ -8,6 +8,7 @@ import {
 } from "@/entities/permission/types";
 import { queryClient } from "@/shared/api/rest/client";
 import { warnUnexpectedType } from "@/shared/utils/common";
+import { PERMISSION_ALLOW_ALL } from "./constants";
 
 const getMessage = (action: string, decision?: PermissionDecisionData): string => {
   if (!decision)
@@ -57,10 +58,3 @@ export function getPermission(permission?: Array<{ node: PermissionData }>): Per
     delete: createPermissionAction("delete"),
   };
 }
-
-export const PERMISSION_ALLOW_ALL: Permission = {
-  view: { isAllowed: true },
-  create: { isAllowed: true },
-  update: { isAllowed: true },
-  delete: { isAllowed: true },
-};

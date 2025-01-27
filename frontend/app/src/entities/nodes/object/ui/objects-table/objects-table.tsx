@@ -15,7 +15,7 @@ import {
 import React from "react";
 import { getObjectTableColumns } from "./get-object-table-columns";
 
-export const ObjectsTable = ({ schema }: { schema: IModelSchema; permissions: Permission }) => {
+export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
   const tableContainerRef = React.useRef<HTMLTableElement>(null);
   const [filters] = useFilters();
   const { isPending, data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(

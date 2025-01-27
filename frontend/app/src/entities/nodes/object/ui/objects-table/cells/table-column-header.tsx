@@ -3,7 +3,7 @@ import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemD
 import { cellHeaderStyle, cellsStyle } from "@/entities/nodes/object/ui/objects-table/cells/style";
 import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/objects-table/cells/table-column-header-icon";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import DynamicForm from "@/shared/components/form/dynamic-form";
