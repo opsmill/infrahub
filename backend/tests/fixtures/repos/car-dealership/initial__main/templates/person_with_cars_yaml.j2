@@ -1,0 +1,8 @@
+---
+# This is a YAML file
+name: {{ data.TestingPerson.edges[0].node.name.value }}
+cars:
+{% for car in data.TestingPerson.edges[0].node.cars.edges %}
+  - name: {{ car.node.name.value }}
+{% endfor %}
+
