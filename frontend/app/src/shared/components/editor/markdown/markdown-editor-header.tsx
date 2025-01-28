@@ -2,7 +2,7 @@ import { Button } from "@/shared/components/buttons/button";
 import { UseCodeMirror } from "@/shared/hooks/useCodeMirror";
 import { Icon } from "@iconify-icon/react";
 import React, { FC } from "react";
-import { EditorCommand, boldCommand, italicCommand, strikethroughCommand } from "./commands";
+import { EditorCommand, boldCommand, italicCommand, strikethroughCommand } from "../commands";
 
 type ToolbarProps = { codeMirror: UseCodeMirror };
 
@@ -36,16 +36,20 @@ type EditorHeaderProps = {
   codeMirror: UseCodeMirror;
   previewMode: boolean;
   onPreviewToggle: () => void;
+  editLabel?: string;
+  previewLabel?: string;
 };
 
 export const MarkdownEditorHeader: FC<EditorHeaderProps> = ({
   codeMirror,
   previewMode,
   onPreviewToggle,
+  editLabel,
+  previewLabel,
 }) => (
   <div className="border-b flex justify-between overflow-auto">
     <Button onClick={onPreviewToggle} className="bg-white border-none rounded-none rounded-tl-md">
-      {previewMode ? "Continue editing" : "Preview"}
+      {previewMode ? (editLabel ?? "Continue editing") : (previewLabel ?? "Preview")}
     </Button>
 
     {!previewMode && <ToolBar codeMirror={codeMirror} />}

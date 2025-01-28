@@ -4,16 +4,19 @@ import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { CodeEditor } from "./editor/code-editor";
+import { CopyToClipboard } from "./buttons/copy-to-clipboard";
+import { Download } from "./buttons/download";
+import { Svg } from "./display/svg";
+import { CodeViewer } from "./editor/code/code-viewer";
+import { MarkdownViewer } from "./editor/markdown/markdown-viewer";
+import { Badge } from "./ui/badge";
 
 type tFile = {
   url: string;
-  enableCopy?: boolean;
+  contentType?: string;
 };
 
-export const File = (props: tFile) => {
-  const { url, enableCopy } = props;
-
+export const File = ({ url, contentType }: tFile) => {
   const [isLoading, setIsLoading] = useState(false);
   const [fileContent, setFileContent] = useState("");
 
@@ -46,9 +49,91 @@ export const File = (props: tFile) => {
     return <NoDataFound message="No file found." />;
   }
 
+  if (contentType === "application/json") {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Download
+            value={fileContent}
+            download={"file.json"}
+            variant={"primary"}
+            type="application/json"
+          />
+          <CopyToClipboard text={fileContent} />
+          <Badge>JSON</Badge>
+        </div>
+
+        <CodeViewer language="json">{fileContent}</CodeViewer>
+      </div>
+    );
+  }
+
+  if (contentType === "text/markdown") {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Download
+            value={fileContent}
+            download={"markdown.md"}
+            variant={"primary"}
+            type="text/markdown"
+          />
+          <CopyToClipboard text={fileContent} />
+          <Badge>Markdown</Badge>
+        </div>
+
+        <MarkdownViewer>{fileContent}</MarkdownViewer>
+      </div>
+    );
+  }
+
+  if (contentType === "application/yaml") {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Download
+            value={fileContent}
+            download={"file.yaml"}
+            variant={"primary"}
+            type="application/yaml"
+          />
+          <CopyToClipboard text={fileContent} />
+          <Badge>YAML</Badge>
+        </div>
+
+        <CodeViewer language="yaml">{fileContent}</CodeViewer>
+      </div>
+    );
+  }
+
+  if (contentType === "image/svg+xml") {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Download
+            value={fileContent}
+            download={"file.svg"}
+            variant={"primary"}
+            type="image/svg+xml"
+          />
+          <CopyToClipboard text={fileContent} />
+          <Badge>SVG</Badge>
+        </div>
+
+        <Svg value={fileContent} className="border rounded-md p-2" />
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4">
-      <CodeEditor value={fileContent} disabled enableCopy={enableCopy} />
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Download value={fileContent} download={"file.txt"} variant={"primary"} />
+        <CopyToClipboard text={fileContent} />
+        <Badge>Text</Badge>
+      </div>
+
+      <CodeViewer language="text">{fileContent}</CodeViewer>
     </div>
   );
 };

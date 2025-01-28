@@ -34,7 +34,7 @@ describe("Schema Visualizer Component", () => {
           read_only: false,
           computed_attribute: {
             kind: "Jinja2",
-            jinja2_template: "",
+            jinja2_template: "test",
           },
         },
       ],

@@ -1,6 +1,6 @@
 import { components } from "@/shared/api/rest/types.generated";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
-import { CodeEditor } from "@/shared/components/editor/code-editor";
+import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import Modal, { ModalTitle } from "@/shared/components/modals/modal";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
@@ -19,7 +19,7 @@ export const ComputedAttributeDisplay = ({
     return "-";
   }
 
-  if (computedAttribute.kind === "Jinja2") {
+  if (computedAttribute.kind === "Jinja2" && computedAttribute.jinja2_template) {
     const fileData = JSON.stringify(computedAttribute.jinja2_template);
     const blob = new Blob([fileData], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -55,7 +55,7 @@ export const ComputedAttributeDisplay = ({
             </Tooltip>
           </div>
 
-          <CodeEditor value={computedAttribute.jinja2_template} disabled />
+          <CodeViewer>{computedAttribute.jinja2_template}</CodeViewer>
         </Modal>
       </div>
     );

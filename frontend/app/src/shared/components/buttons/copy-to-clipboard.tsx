@@ -1,3 +1,4 @@
+import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import React, { useState } from "react";
 import { Button, ButtonProps } from "./button-primitive";
@@ -33,7 +34,7 @@ export const CopyToClipboard = ({
         icon={
           copied ? "mdi:checkbox-multiple-marked-outline" : "mdi:checkbox-multiple-blank-outline"
         }
-        className={"text-base"}
+        className={classNames("text-base", children && "mr-2")}
       />
 
       {children}

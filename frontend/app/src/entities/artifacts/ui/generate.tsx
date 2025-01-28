@@ -1,8 +1,10 @@
 import { CONFIG } from "@/config/config";
 import { QSP } from "@/config/qsp";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { queryClient } from "@/shared/api/rest/client";
 import { fetchUrl, getUrlWithQsp } from "@/shared/api/rest/fetch";
-import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
+import { Button } from "@/shared/components/buttons/button-primitive";
+
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
@@ -42,13 +44,19 @@ export const Generate = (props: tGenerateProps) => {
 
       const urlWithQsp = getUrlWithQsp(url, options);
 
-      await fetchUrl(urlWithQsp, {
+      const res = await fetchUrl(urlWithQsp, {
         method: "POST",
         headers: {
           authorization: `Bearer ${auth.accessToken}`,
         },
         ...(artifactid ? { body: JSON.stringify({ nodes: [artifactid] }) } : {}),
       });
+
+      if (res?.errors?.length) {
+        throw new Error("Error while generating artifact");
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["is-task-running"] });
 
       if (artifactid) {
         toast(<Alert message="Artifact re-generated" type={ALERT_TYPES.SUCCESS} />);
@@ -61,16 +69,14 @@ export const Generate = (props: tGenerateProps) => {
       console.error("Error when generating artifacts: ", error);
 
       setIsLoading(false);
+      toast(
+        <Alert message="An error occured while generating the artifact" type={ALERT_TYPES.ERROR} />
+      );
     }
   };
 
   return (
-    <Button
-      disabled={!isAuthenticated || isLoading}
-      onClick={handleGenerate}
-      className="mr-4"
-      buttonType={BUTTON_TYPES.VALIDATE}
-    >
+    <Button variant={"active"} disabled={!isAuthenticated || isLoading} onClick={handleGenerate}>
       {label ?? "Generate"}
       <ArrowPathIcon
         className={classNames("ml-2 h-4 w-4", isLoading ? "animate-spin" : "")}
