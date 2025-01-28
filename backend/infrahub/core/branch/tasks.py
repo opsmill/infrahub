@@ -133,7 +133,7 @@ async def rebase_branch(branch: str) -> None:
                 )
                 for error in errors:
                     log.error(error)
-
+        #
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the rebase
         # -------------------------------------------------------------
