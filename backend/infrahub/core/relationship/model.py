@@ -1110,7 +1110,7 @@ class RelationshipManager:
         # - Update the existing relationship if we are on the same branch
         rel_ids_per_branch = peer_data.rel_ids_per_branch()
         if branch.name in rel_ids_per_branch:
-            await update_relationships_to([str(ri) for ri in rel_ids_per_branch[self.branch.name]], to=remove_at, db=db)
+            await update_relationships_to([str(ri) for ri in rel_ids_per_branch[branch.name]], to=remove_at, db=db)
 
         # - Create a new rel of type DELETED if the existing relationship is on a different branch
         rel_branches: set[str] = set()

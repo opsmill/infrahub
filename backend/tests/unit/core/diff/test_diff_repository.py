@@ -1,6 +1,7 @@
 import random
 from dataclasses import replace
 from datetime import UTC
+from typing import Generator
 from uuid import uuid4
 
 import pytest
@@ -40,9 +41,14 @@ class TestDiffRepositorySaveAndLoad:
         await delete_all_nodes(db=db)
 
     @pytest.fixture
-    def diff_repository(self, db: InfrahubDatabase) -> DiffRepository:
+    def diff_repository(self, db: InfrahubDatabase) -> Generator[DiffRepository, None, None]:
+        original_depth = config.SETTINGS.database.max_depth_search_hierarchy
+        original_size = config.SETTINGS.database.query_size_limit
         config.SETTINGS.database.max_depth_search_hierarchy = 10
-        return DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
+        config.SETTINGS.database.query_size_limit = 50
+        yield DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
+        config.SETTINGS.database.max_depth_search_hierarchy = original_depth
+        config.SETTINGS.database.query_size_limit = original_size
 
     def build_diff_node(self, num_sub_fields=2, no_recurse=False) -> EnrichedDiffNode:
         enriched_node = EnrichedNodeFactory.build(
