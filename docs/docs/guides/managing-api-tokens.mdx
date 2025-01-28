@@ -1,17 +1,35 @@
 ---
 title: Managing API tokens
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Managing API tokens
 
 API tokens can be used as an authentication mechanism for Infrahub's REST- and GraphQL API, the Python SDK and infrahubctl.
 
-Managing API tokens for users is, at this moment, only possible through the GraphQL API. In the future we will be adding support for managing tokens through the web interface.
+<Tabs>
+  <TabItem value="web" label="Via the Web Interface" default>
 
-## Generating an API token for a user
+1. Login to Infrahub's web interface as an administrator.
+2. Click on the user in the left side menu.
+3. Navigate to the **Account settings**.
+4. In the user profile page, click on **Tokens** tab.
+![Profile Tokens](../media/profile_tokens.png)
+5. Click **+ Add Account Token**.
+![Creating an API Token](../media/profile_tokens_create.png)
+6. Fill in the details and click **Save**.
+7. Copy the generated token and store in a safe location.
+![Copy API Token](../media/profile_tokens_copy.png)
+8. Deleting a token can be achieved by selecting the trash icon on the token table item.
 
-1. Login to Infrahub's web interface as the user for which the token should be generated
-2. In the GraphQL sandbox, execute the following mutation, replace the name of the token in the mutation with a value that is appropriate for your use case
+  </TabItem>
+
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+## Creating a new API Token
+
+In the GraphQL sandbox, execute the following mutation, replace the name of the token in the mutation with a value that is appropriate for your use case:
 
 ```graphql
 mutation {
@@ -25,12 +43,11 @@ mutation {
 }
 ```
 
-3. The result of the query will show you the value of the token that was generated for the token. Store the token in a secure location, as there will be no way to retrieve the token from Infrahub at a later stage.
+The result of the query will show you the value of the token that was generated for the token. Store the token in a secure location, as there will be no way to retrieve the token from Infrahub at a later stage.
 
-## Listing existing API tokens for a user
+## Listing existing API Tokens for a user
 
-1. Login to Infrahub's web interface as the user for which you want to list the tokens
-2. In the GraphQL sandbox, execute the following query
+In the GraphQL sandbox, execute the following query:
 
 ```graphql
 query {
@@ -48,8 +65,7 @@ query {
 
 ## Deleting an API token for a user
 
-1. Login to Infrahub's web interface as the user for which the token should be generated
-2. In the GraphQL sandbox, execute the following mutation, replace the id of the token in the mutation with the id of the token that you want to delete
+In the GraphQL sandbox, execute the following mutation, replace the id of the token in the mutation with the id of the token that you want to delete:
 
 ```graphql
 mutation {
@@ -58,3 +74,6 @@ mutation {
   }
 }
 ```
+
+  </TabItem>
+</Tabs>

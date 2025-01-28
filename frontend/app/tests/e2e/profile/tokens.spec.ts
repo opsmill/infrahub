@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("/profile?tab=tokens", () => {
   test.beforeEach(async function ({ page }) {
@@ -27,15 +28,18 @@ test.describe("/profile?tab=tokens", () => {
         await page.getByRole("menuitem", { name: "Account settings" }).click();
         await page.getByText("Tokens").click();
         await expect(page.getByTestId("create-object-button")).toBeVisible();
+        await saveScreenshotForDocs(page, "profile_tokens");
       });
 
       await test.step("create a new token", async () => {
         await page.getByTestId("create-object-button").click();
         await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
         await page.getByLabel("Name *").fill("test token");
+        await saveScreenshotForDocs(page, "profile_tokens_create");
         await page.getByRole("button", { name: "Save" }).click();
         await expect(page.getByText("Make sure to copy your API")).toBeVisible();
         await expect(page.getByRole("button", { name: "Confirm" })).toBeVisible();
+        await saveScreenshotForDocs(page, "profile_tokens_copy");
         await page.getByRole("button", { name: "Confirm" }).click();
         await expect(page.getByRole("button", { name: "Confirm" })).not.toBeVisible();
       });
