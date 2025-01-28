@@ -3,6 +3,8 @@ import * as R from "remeda";
 
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ActionsCell } from "@/entities/nodes/object/ui/objects-table/cells/actions-cell";
+import { KindBodyCell } from "@/entities/nodes/object/ui/objects-table/cells/generics/kind-body-cell";
+import { KindHeaderCell } from "@/entities/nodes/object/ui/objects-table/cells/generics/kind-header-cell";
 import { cellHeaderStyle, cellsStyle } from "@/entities/nodes/object/ui/objects-table/cells/style";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/objects-table/cells/table-attribute-cell";
 import { TableCell } from "@/entities/nodes/object/ui/objects-table/cells/table-cell";
@@ -12,6 +14,7 @@ import { TableRowIdentifier } from "@/entities/nodes/object/ui/objects-table/cel
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { isGenericSchema } from "@/entities/schema/utils";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 
@@ -46,6 +49,16 @@ export const getObjectTableColumns = (
         );
       },
     },
+    ...(isGenericSchema(schema)
+      ? [
+          {
+            id: "kind",
+            accessorFn: (row) => row.__typename,
+            header: () => <KindHeaderCell schema={schema} />,
+            cell: ({ row }) => <KindBodyCell schemaKind={row.getValue("kind") as string} />,
+          },
+        ]
+      : []),
     ...sortedColumns.map((columnSchema) => {
       return {
         accessorKey: columnSchema.name,

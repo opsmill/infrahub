@@ -103,24 +103,25 @@ test.describe("Object filters", () => {
 
   test("should correctly filter from a kind", async ({ page }) => {
     await page.goto("/objects/InfraInterface");
-    await page.getByTestId("apply-filters").click();
+    await expect(page.getByTestId("object-items")).toContainText("Interface L2");
+    await expect(page.getByTestId("object-items")).toContainText("Interface L3");
 
-    await test.step("profiles selector should not be visible", async () => {
-      await expect(page.getByText("Select an object type")).not.toBeVisible();
+    await test.step("filter using kind", async () => {
+      await page.getByRole("button", { name: "Kind", exact: true }).click();
+      await page.getByLabel("Kind").click();
+      await page.getByRole("option", { name: "Interface L3 Infra", exact: true }).click();
+      await page.getByRole("button", { name: "Filter" }).click();
+
+      await expect(page.getByLabel("Kind contains InfraInterfaceL3")).toBeVisible();
+      await expect(page.getByTestId("object-items")).toContainText("Interface L3");
+      await expect(page.getByTestId("object-items")).not.toContainText("Interface L2");
     });
 
-    await test.step("filter nodes", async () => {
-      await page.getByLabel("kind").click();
-      await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
-      await page.getByRole("button", { name: "Apply filters" }).click();
-      await expect(page.getByTestId("object-items")).toContainText(
-        "Showing 1 to 10 of 510 results"
-      );
-    });
+    await test.step("clear kind filter", async () => {
+      await page.getByLabel("Kind contains InfraInterfaceL3").click();
 
-    await test.step("verify filter initial value", async () => {
-      await page.getByTestId("apply-filters").click();
-      await expect(page.getByLabel("Kind")).toContainText("Interface L2 Infra");
+      await expect(page.getByTestId("object-items")).toContainText("Interface L2");
+      await expect(page.getByTestId("object-items")).toContainText("Interface L3");
     });
   });
 });

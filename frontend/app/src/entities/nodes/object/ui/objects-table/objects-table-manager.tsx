@@ -1,7 +1,7 @@
 import { getObjectsInfiniteQueryOptions } from "@/entities/nodes/object/domain/get-objects.query";
-import { ActiveFilterTags } from "@/entities/nodes/object/ui/objects-table/filters/active-filter-tags";
-import { FilterResetButton } from "@/entities/nodes/object/ui/objects-table/filters/filter-reset-button";
-import { FilterSearchInput } from "@/entities/nodes/object/ui/objects-table/filters/filter-search-input";
+import { ActiveFilterTags } from "@/entities/nodes/object/ui/filters/active-filter-tags";
+import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
+import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectsTable } from "@/entities/nodes/object/ui/objects-table/objects-table";
 import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";

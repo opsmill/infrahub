@@ -24,18 +24,23 @@ export type GetObjects = (args: {
 export const getObjects: GetObjects = async ({ schema, offset, branchName, atDate, filters }) => {
   const attributesVisible = getAttributesVisibleInListView(schema.attributes ?? []);
   const relationshipsVisible = getRelationshipsVisibleInListView(schema.relationships ?? []);
+
   const schemaKind = schema.kind as string;
+  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
+  const schemaKindToQuery: string = kindFilter?.value ?? schemaKind;
 
   const queryString = jsonToGraphQLQuery({
     query: {
       __name: `GetObjects${schemaKind}`,
-      [schemaKind]: {
+      [schemaKindToQuery]: {
         __args: {
           limit: OBJECTS_PER_PAGE,
           offset,
           ...(filters
             ? filters.reduce(
                 (acc, filter) => {
+                  if (filter.name === "kind__value") return acc;
+
                   const [fieldName, fieldKey] = filter.name.split("__");
 
                   if (!fieldName || !fieldKey) return acc;
@@ -77,5 +82,5 @@ export const getObjects: GetObjects = async ({ schema, offset, branchName, atDat
     },
   });
 
-  return data[schemaKind]?.edges?.map((edge: any) => edge.node) ?? [];
+  return data[schemaKindToQuery]?.edges?.map((edge: any) => edge.node) ?? [];
 };

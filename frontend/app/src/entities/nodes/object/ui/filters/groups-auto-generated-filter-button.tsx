@@ -1,5 +1,5 @@
-import { FilterSuggestionTag } from "@/entities/nodes/object/ui/objects-table/filters/filter-suggestion-tag";
-import { FilterTag } from "@/entities/nodes/object/ui/objects-table/filters/filter-tag";
+import { FilterSuggestionTag } from "@/entities/nodes/object/ui/filters/filter-suggestion-tag";
+import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
 import useFilters, { Filter } from "@/shared/hooks/useFilters";
 import { useEffect } from "react";
 import type { TagProps } from "react-aria-components";
