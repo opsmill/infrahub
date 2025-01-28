@@ -44,9 +44,9 @@ export const DropdownMenuItem = forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={classNames(
-      "rounded-lg p-2",
+      "rounded-lg px-2 py-1.5",
       "text-neutral-800 text-sm",
-      "relative flex items-center gap-2",
+      "relative flex items-center gap-1.5",
       "cursor-pointer outline-none focus:bg-neutral-100",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       className

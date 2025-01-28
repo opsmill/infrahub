@@ -2,6 +2,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import * as R from "remeda";
 
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { ActionsCell } from "@/entities/nodes/object/ui/objects-table/cells/actions-cell";
 import { cellHeaderStyle, cellsStyle } from "@/entities/nodes/object/ui/objects-table/cells/style";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/objects-table/cells/table-attribute-cell";
 import { TableCell } from "@/entities/nodes/object/ui/objects-table/cells/table-cell";
@@ -66,5 +67,26 @@ export const getObjectTableColumns = (
         },
       };
     }),
+    {
+      id: "actions",
+      header: () => (
+        <div
+          className={classNames(
+            cellsStyle,
+            cellHeaderStyle,
+            "right-0 z-10 border-l size-10 -ml-px"
+          )}
+        />
+      ),
+      cell: ({ row }) => {
+        return (
+          <ActionsCell
+            objectKind={row.original.__typename as string}
+            objectLabel={row.getValue("id") as string}
+            objectId={row.original.id as string}
+          />
+        );
+      },
+    },
   ];
 };

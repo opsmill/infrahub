@@ -57,7 +57,7 @@ export function TableColumnHeader({ schema, columnSchema }: TableColumnHeaderPro
       <PopoverTrigger className={classNames(cellsStyle, cellHeaderStyle)}>
         <TableColumnHeaderIcon fieldSchema={columnSchema} />
 
-        <span className="truncate">{columnSchema.label ?? columnSchema.name}</span>
+        <span className="truncate mr-2">{columnSchema.label ?? columnSchema.name}</span>
         <Icon
           icon="mdi:filter-variant"
           className={classNames(
