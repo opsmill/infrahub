@@ -25,7 +25,12 @@ export function ActionsCell({ objectKind, objectId, objectLabel }: ActionsCellPr
       <TableCell className="sticky right-0 border-l size-10 items-center justify-center  -ml-px">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="square" variant="ghost" className="size-6">
+            <Button
+              size="square"
+              variant="ghost"
+              className="size-6"
+              data-testid={`actions-cell-${objectLabel}`}
+            >
               <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
             </Button>
           </DropdownMenuTrigger>
