@@ -290,7 +290,7 @@ class InfrahubGraphQLApp:
 
         return json_response
 
-    def _set_labels(self, request: Request, branch: Branch, query: InfrahubGraphQLQueryAnalyzer) -> dict[str, Any]:
+    def _set_labels(self, request: Request, branch: Branch, query: InfrahubGraphQLQueryAnalyzer) -> dict[str, Any]:  # noqa: ARG002
         return {
             "type": "mutation" if query.contains_mutation else "query",
             "branch": branch.name,
@@ -301,7 +301,7 @@ class InfrahubGraphQLApp:
 
     async def _evaluate_permissions(
         self,
-        request: Request,
+        request: Request,  # noqa: ARG002
         db: InfrahubDatabase,
         query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,

@@ -4,5 +4,5 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 
 class DiffDeserializerDependency(DependencyBuilder[EnrichedDiffDeserializer]):
     @classmethod
-    def build(cls, context: DependencyBuilderContext) -> EnrichedDiffDeserializer:
+    def build(cls, context: DependencyBuilderContext) -> EnrichedDiffDeserializer:  # noqa: ARG003
         return EnrichedDiffDeserializer()

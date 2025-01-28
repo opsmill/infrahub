@@ -13,7 +13,7 @@ class EnrichedDiffDeleteQuery(Query):
         super().__init__(**kwargs)
         self.enriched_diff_root_uuids = enriched_diff_root_uuids
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {"diff_root_uuids": self.enriched_diff_root_uuids}
         query = """
         MATCH (d_root:DiffRoot)

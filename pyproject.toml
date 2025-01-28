@@ -384,7 +384,6 @@ ignore = [
     # Rules below needs to be Investigated                                                           #
     ##################################################################################################
     "FA",       # flake8-future-annotations
-    "ARG",      # flake8-unused-arguments
     "PGH",      # pygrep-hooks
     "ERA",      # eradicate commented-out code
     "SLF001",   # flake8-self
@@ -582,9 +581,12 @@ allow-dunder-method-names = [
 ]
 
 "backend/tests/**.py" = [
-    "S101", # Use of assert detected
-    "S105", #  Possible hardcoded password assigned to variable
-    "S106", #  Possible hardcoded password assigned to argument
+    "S101",    # Use of assert detected
+    "S105",    # Possible hardcoded password assigned to variable
+    "S106",    # Possible hardcoded password assigned to argument
+    "ARG001",  # Unused function argument
+    "ARG002",  # Unused method argument
+    "ARG003",  # Unused class method argument
     ##################################################################################################
     # Review and change the below later                                                              #
     ##################################################################################################

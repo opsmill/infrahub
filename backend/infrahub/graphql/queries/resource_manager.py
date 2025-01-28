@@ -73,7 +73,7 @@ class PoolAllocated(ObjectType):
 
     @staticmethod
     async def resolve(
-        root: dict,
+        root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         pool_id: str,
         resource_id: str,
@@ -175,7 +175,7 @@ class PoolUtilization(ObjectType):
 
     @staticmethod
     async def resolve(
-        root: dict,
+        root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         pool_id: str,
     ) -> dict:

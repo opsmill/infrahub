@@ -119,7 +119,7 @@ app = FastAPI(
 )
 
 
-def server_request_hook(span: Span, scope: dict) -> None:
+def server_request_hook(span: Span, scope: dict) -> None:  # noqa: ARG001
     if span and span.is_recording():
         span.set_attribute("worker", WORKER_IDENTITY)
 
@@ -218,5 +218,5 @@ async def documentation() -> RedirectResponse:
 
 
 @app.get("/{rest_of_path:path}", include_in_schema=False)
-async def react_app(req: Request, rest_of_path: str) -> Response:
+async def react_app(req: Request, rest_of_path: str) -> Response:  # noqa: ARG001
     return templates.TemplateResponse("index.html", {"request": req})

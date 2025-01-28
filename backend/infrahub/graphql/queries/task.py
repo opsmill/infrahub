@@ -22,7 +22,7 @@ class Tasks(ObjectType):
 
     @staticmethod
     async def resolve(
-        root: dict,
+        root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         limit: int = 10,
         offset: int = 0,
@@ -49,7 +49,7 @@ class Tasks(ObjectType):
 
     @staticmethod
     async def resolve_branch_status(
-        root: dict,
+        root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         branch: str,
     ) -> dict[str, Any]:

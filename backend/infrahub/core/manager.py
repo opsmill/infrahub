@@ -269,7 +269,7 @@ class NodeManager:
         filters: Optional[dict] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
-        account=None,
+        account=None,  # noqa: ARG003
         partial_match: bool = False,
         branch_agnostic: bool = False,
     ) -> int:

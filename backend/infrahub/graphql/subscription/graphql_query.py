@@ -18,7 +18,7 @@ log = get_logger(name="infrahub.graphql")
 
 
 async def resolver_graphql_query(
-    parent: dict,
+    parent: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
     name: str,
     graphql_schema: Schema,

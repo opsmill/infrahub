@@ -135,7 +135,11 @@ class NATSCache(InfrahubCache):
         return [key.replace(".", ":") for key in keys]
 
     async def set(
-        self, key: str, value: str, expires: Optional[KVTTL] = None, not_exists: bool = False
+        self,
+        key: str,
+        value: str,
+        expires: Optional[KVTTL] = None,  # noqa: ARG002
+        not_exists: bool = False,
     ) -> Optional[bool]:
         key = self._tokenize_key_name(key)
         if not_exists:

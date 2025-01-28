@@ -61,7 +61,7 @@ class IPPrefixPoolGetResource(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: InputObjectType,
     ) -> Self:
@@ -113,7 +113,7 @@ class IPAddressPoolGetResource(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: dict[str, Any],
     ) -> Self:
@@ -174,7 +174,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: InfrahubDatabase | None = None,
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
     ) -> Any:
         try:
             pool_node = registry.get_node_schema(name=data["node"].value)
@@ -204,7 +204,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: InfrahubDatabase | None = None,
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
         node: Node | None = None,
     ) -> tuple[Node, Self]:
         if (data.get("node") and data.get("node").value) or (

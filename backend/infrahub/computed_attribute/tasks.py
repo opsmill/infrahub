@@ -71,10 +71,10 @@ async def process_transform(
     branch_name: str,
     node_kind: str,
     object_id: str,
-    computed_attribute_name: str,
-    computed_attribute_kind: str,
+    computed_attribute_name: str,  # noqa: ARG001
+    computed_attribute_kind: str,  # noqa: ARG001
     service: InfrahubServices,
-    updated_fields: list[str] | None = None,
+    updated_fields: list[str] | None = None,  # noqa: ARG001
 ) -> None:
     await add_tags(branches=[branch_name], nodes=[object_id])
 
@@ -478,7 +478,7 @@ async def computed_attribute_setup(service: InfrahubServices, branch_name: str |
 async def computed_attribute_setup_python(
     service: InfrahubServices,
     branch_name: str | None = None,
-    commit: str | None = None,
+    commit: str | None = None,  # noqa: ARG001
     trigger_updates: bool = True,
 ) -> None:
     log = get_run_logger()
@@ -669,7 +669,7 @@ async def computed_attribute_remove_python(
 )
 async def query_transform_targets(
     branch_name: str,
-    node_kind: str,
+    node_kind: str,  # noqa: ARG001
     object_id: str,
     service: InfrahubServices,
 ) -> None:

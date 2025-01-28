@@ -41,7 +41,7 @@ class PrefectEvent:
     def _generate_filters(
         cls,
         ids: list[str] | None = None,
-        related_nodes: list[str] | None = None,
+        related_nodes: list[str] | None = None,  # noqa: ARG003
         branch: str | None = None,
     ) -> EventFilter:
         filters = EventFilter(event=EventNameFilter(prefix=["infrahub."], name=[]))  # type: ignore[call-arg]
@@ -62,11 +62,11 @@ class PrefectEvent:
     async def query(
         cls,
         fields: dict[str, Any],
-        q: str | None = None,
+        q: str | None = None,  # noqa: ARG003
         ids: list[str] | None = None,
         branch: str | None = None,
-        limit: int | None = None,
-        offset: int | None = None,
+        limit: int | None = None,  # noqa: ARG003
+        offset: int | None = None,  # noqa: ARG003
     ) -> dict[str, Any]:
         nodes: list[dict] = []
 

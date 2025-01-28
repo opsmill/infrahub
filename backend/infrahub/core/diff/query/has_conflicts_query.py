@@ -25,7 +25,7 @@ class EnrichedDiffHasConflictQuery(Query):
         self.tracking_id = tracking_id
         self.diff_id = diff_id
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "diff_branch_name": self.diff_branch_name,
             "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,

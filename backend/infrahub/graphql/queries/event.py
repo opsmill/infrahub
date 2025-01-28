@@ -18,7 +18,7 @@ class Events(ObjectType):
 
     @staticmethod
     async def resolve(
-        root: dict,
+        root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         limit: int = 10,
         offset: int = 0,

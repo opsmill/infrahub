@@ -30,7 +30,7 @@ class RootNodeCreateQuery(StandardNodeQuery):
     name = "standard_node_create"
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         node_type = self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
 
@@ -46,7 +46,7 @@ class StandardNodeCreateQuery(StandardNodeQuery):
     name = "standard_node_create"
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         node_type = self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
 
@@ -63,7 +63,7 @@ class StandardNodeUpdateQuery(StandardNodeQuery):
     name = "standard_node_update"
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
         self.params["node_prop"]["uuid"] = str(self.node.uuid)
@@ -83,7 +83,7 @@ class StandardNodeDeleteQuery(StandardNodeQuery):
     insert_return = False
     type = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         MATCH (n:%s { uuid: $uuid })
         DETACH DELETE (n)
@@ -103,7 +103,7 @@ class StandardNodeGetItemQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
             MATCH (n:%(node_type)s)
             WHERE %(id_func)s(n) = $node_id OR n.uuid = $node_id
@@ -128,7 +128,7 @@ class StandardNodeGetListQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         filters = []
         if self.ids:
             filters.append("n.uuid in $ids_value")

@@ -436,7 +436,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     async def _generate_relationship_default(
         self,
-        name: str,
+        name: str,  # noqa: ARG002
         schema: RelationshipSchema,
         data: Any,
         db: InfrahubDatabase,
@@ -457,7 +457,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         name: str,
         schema: AttributeSchema,
         data: Any,
-        db: InfrahubDatabase,
+        db: InfrahubDatabase,  # noqa: ARG002
     ) -> BaseAttribute:
         attr_class = ATTRIBUTE_TYPES[schema.kind].get_infrahub_class()
         attr = attr_class(
@@ -472,7 +472,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         )
         return attr
 
-    async def process_label(self, db: Optional[InfrahubDatabase] = None) -> None:
+    async def process_label(self, db: Optional[InfrahubDatabase] = None) -> None:  # noqa: ARG002
         # If there label and name are both defined for this node
         #  if label is not define, we'll automatically populate it with a human friendy vesion of name
         if not self._existing and hasattr(self, "label") and hasattr(self, "name"):
@@ -726,7 +726,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return changed
 
-    async def render_display_label(self, db: Optional[InfrahubDatabase] = None) -> str:
+    async def render_display_label(self, db: Optional[InfrahubDatabase] = None) -> str:  # noqa: ARG002
         if not self._schema.display_labels:
             return repr(self)
 

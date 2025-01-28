@@ -20,7 +20,7 @@ class Relationships(ObjectType):
 
     @staticmethod
     async def resolve(
-        root: dict,
+        root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         ids: list[str],
         limit: int = 10,

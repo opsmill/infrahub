@@ -218,7 +218,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         log.info("Created new repository locally.", repository=self.name)
         return self
 
-    def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
+    def get_commit_value(self, branch_name: str, remote: bool = False) -> str:  # noqa: ARG002
         """Always get the latest commit for this repository's ref on the remote"""
         git_repo = self.get_git_repo_main()
         git_repo.remotes.origin.fetch()

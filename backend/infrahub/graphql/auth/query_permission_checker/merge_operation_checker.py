@@ -17,16 +17,16 @@ class MergeBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         action=GlobalPermissions.MERGE_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
-    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002
         return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
-        db: InfrahubDatabase,
-        account_session: AccountSession,
+        db: InfrahubDatabase,  # noqa: ARG002
+        account_session: AccountSession,  # noqa: ARG002
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
-        branch: Branch,
+        branch: Branch,  # noqa: ARG002
     ) -> CheckerResolution:
         if "BranchMerge" in [operation.name for operation in analyzed_query.operations]:
             query_parameters.context.active_permissions.raise_for_permission(permission=self.permission_required)

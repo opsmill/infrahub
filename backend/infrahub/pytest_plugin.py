@@ -52,7 +52,7 @@ class InfrahubBackendPlugin:
 
         return validator, True
 
-    def pytest_collection_modifyitems(self, session: Session, config: Config, items: list[Item]) -> None:
+    def pytest_collection_modifyitems(self, session: Session, config: Config, items: list[Item]) -> None:  # noqa: ARG002
         """This function is called after item collection and gives the opportunity to work on the collection before sending the items for testing.
 
         All items without an "infrahub" marker will be discarded. Items will also be re-ordered to be run in a specific order:
@@ -82,7 +82,7 @@ class InfrahubBackendPlugin:
         filtered_items.sort(key=sort_key)
         items[:] = filtered_items
 
-    def pytest_collection_finish(self, session: Session) -> None:
+    def pytest_collection_finish(self, session: Session) -> None:  # noqa: ARG002
         """This function is called when tests have been collected and modified, meaning they are ready to be run."""
         self.proposed_change = self.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=self.proposed_change_id)
         self.proposed_change.validations.fetch()
@@ -95,7 +95,7 @@ class InfrahubBackendPlugin:
                 check = relationship.peer
                 self.checks[check.origin.value] = check
 
-    def pytest_runtestloop(self, session: Session) -> Optional[object]:
+    def pytest_runtestloop(self, session: Session) -> Optional[object]:  # noqa: ARG002
         """This function is called when the test loop is being run."""
         self.validator.conclusion.value = "unknown"
         self.validator.state.value = "in_progress"
@@ -144,7 +144,7 @@ class InfrahubBackendPlugin:
         # Workaround for https://github.com/opsmill/infrahub/issues/2184
         check.update(do_full_update=True)
 
-    def pytest_sessionfinish(self, session: Session) -> None:
+    def pytest_sessionfinish(self, session: Session) -> None:  # noqa: ARG002
         """Set the final RepositoryValidator details after completing the test session."""
         conclusion = "success"
 

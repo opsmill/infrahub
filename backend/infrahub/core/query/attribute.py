@@ -44,7 +44,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -93,7 +93,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -130,7 +130,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -159,7 +159,7 @@ class AttributeGetQuery(AttributeQuery):
     name = "attribute_get"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["attr_uuid"] = self.attr.id
         self.params["node_uuid"] = self.attr.node.id
 
@@ -186,12 +186,12 @@ class AttributeGetQuery(AttributeQuery):
 async def default_attribute_query_filter(
     name: str,
     filter_name: str,
-    branch: Branch | None = None,
+    branch: Branch | None = None,  # noqa: ARG001
     filter_value: str | int | bool | list | None = None,
     attribute_kind: str | None = None,
     include_match: bool = True,
     param_prefix: str | None = None,
-    db: InfrahubDatabase | None = None,
+    db: InfrahubDatabase | None = None,  # noqa: ARG001
     partial_match: bool = False,
     support_profiles: bool = False,
 ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:

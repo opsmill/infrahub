@@ -81,7 +81,7 @@ def test_unit(context: Context) -> Result | None:
 
 
 @task(optional=["database"])
-def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:  # noqa: ARG001
     """Run integration tests for the Python SDK."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_sdk {MAIN_DIRECTORY / 'tests' / 'integration'}"

@@ -18,16 +18,16 @@ from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     """Checker that makes sure a user account can perform some action on some kind of objects."""
 
-    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002
         return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
-        db: InfrahubDatabase,
-        account_session: AccountSession,
+        db: InfrahubDatabase,  # noqa: ARG002
+        account_session: AccountSession,  # noqa: ARG002
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
-        branch: Branch,
+        branch: Branch,  # noqa: ARG002
     ) -> CheckerResolution:
         required_decision = (
             PermissionDecisionFlag.ALLOW_DEFAULT
@@ -83,13 +83,13 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         action=GlobalPermissions.MANAGE_ACCOUNTS.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
-    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002
         return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
         db: InfrahubDatabase,
-        account_session: AccountSession,
+        account_session: AccountSession,  # noqa: ARG002
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
         branch: Branch,
@@ -127,13 +127,13 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         action=GlobalPermissions.MANAGE_PERMISSIONS.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
-    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002
         return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
         db: InfrahubDatabase,
-        account_session: AccountSession,
+        account_session: AccountSession,  # noqa: ARG002
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
         branch: Branch,
@@ -168,13 +168,13 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         action=GlobalPermissions.MANAGE_REPOSITORIES.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
-    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002
         return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
         db: InfrahubDatabase,
-        account_session: AccountSession,
+        account_session: AccountSession,  # noqa: ARG002
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
         branch: Branch,

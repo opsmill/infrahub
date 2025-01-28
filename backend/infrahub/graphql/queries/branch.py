@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 async def branch_resolver(
-    root: dict,
+    root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
     **kwargs: Any,
 ) -> list[dict[str, Any]]:

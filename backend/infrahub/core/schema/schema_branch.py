@@ -87,7 +87,7 @@ class SchemaBranch:
         yield cls.validate
 
     @classmethod
-    def validate(cls, v: Any, info: ValidationInfo) -> Self:
+    def validate(cls, v: Any, info: ValidationInfo) -> Self:  # noqa: ARG003
         if isinstance(v, cls):
             return v
         if isinstance(v, dict):

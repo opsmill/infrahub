@@ -976,7 +976,11 @@ async def create_bgp_mesh(client: InfrahubClient, log: logging.Logger, branch: s
 
 
 async def generate_site_vlans(
-    client: InfrahubClient, log: logging.Logger, branch: str, site: Site, site_id: int
+    client: InfrahubClient,
+    log: logging.Logger,  # noqa: ARG001
+    branch: str,
+    site: Site,
+    site_id: int,
 ) -> None:
     account_pop = store.get("pop-builder", kind=CoreAccount, raise_when_missing=True)
     group_eng = store.get("eng-team", kind=CoreAccountGroup, raise_when_missing=True)
@@ -997,7 +1001,7 @@ async def generate_site_vlans(
         store.set(key=vlan_name, node=obj)
 
 
-async def generate_site_mlag_domain(client: InfrahubClient, log: logging.Logger, branch: str, site: Site) -> None:
+async def generate_site_mlag_domain(client: InfrahubClient, log: logging.Logger, branch: str, site: Site) -> None:  # noqa: ARG001
     # --------------------------------------------------
     # Set up MLAG domains
     # --------------------------------------------------
@@ -1829,7 +1833,7 @@ async def generate_continents_countries(client: InfrahubClient, log: logging.Log
     log.info("Created continents and countries")
 
 
-async def prepare_permissions(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_permissions(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     for p in GLOBAL_PERMISSIONS:
         obj = await client.get(
             branch=branch, kind="CoreGlobalPermission", hfid=[p.action, str(p.decision)], raise_when_missing=True
@@ -1847,7 +1851,7 @@ async def prepare_permissions(client: InfrahubClient, log: logging.Logger, branc
         store.set(key=name, node=obj)
 
 
-async def prepare_account_roles(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_account_roles(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     for role in ACCOUNT_ROLES:
         obj = await client.create(
             branch=branch,
@@ -1858,7 +1862,7 @@ async def prepare_account_roles(client: InfrahubClient, log: logging.Logger, bra
         store.set(key=role.name, node=obj)
 
 
-async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     for account in ACCOUNTS:
         obj = await client.create(branch=branch, kind="CoreAccount", data=account.model_dump(exclude={"groups"}))
         batch.add(task=obj.save, node=obj)
@@ -1873,7 +1877,10 @@ async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: 
 
 
 async def map_permissions_to_roles(
-    client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch
+    client: InfrahubClient,  # noqa: ARG001
+    log: logging.Logger,  # noqa: ARG001
+    branch: str,  # noqa: ARG001
+    batch: InfrahubBatch,
 ) -> None:
     for role in ACCOUNT_ROLES:
         if not role.global_permissions and not role.object_permissions:
@@ -1919,7 +1926,10 @@ async def map_permissions_to_roles(
 
 
 async def map_user_and_roles_to_groups(
-    client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch
+    client: InfrahubClient,  # noqa: ARG001
+    log: logging.Logger,  # noqa: ARG001
+    branch: str,  # noqa: ARG001
+    batch: InfrahubBatch,
 ) -> None:
     for group_name, group in ACCOUNT_GROUPS.items():
         updated = False
@@ -1942,7 +1952,7 @@ async def map_user_and_roles_to_groups(
             batch.add(task=obj.save, node=obj)
 
 
-async def prepare_asns(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_asns(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     account_chloe = store.get("cobrian", kind=CoreAccount, raise_when_missing=True)
     account_crm = store.get("crm-sync", kind=CoreAccount, raise_when_missing=True)
     organizations_dict = {org.name: org.type for org in ORGANIZATIONS}
@@ -2005,7 +2015,7 @@ async def prepare_bgp_peer_groups(
         store.set(key=peer_group.name, node=obj)
 
 
-async def prepare_groups(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_groups(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     for group in GROUPS:
         obj = await client.create(branch=branch, kind=CoreStandardGroup, data=group.model_dump())
 
@@ -2014,7 +2024,10 @@ async def prepare_groups(client: InfrahubClient, log: logging.Logger, branch: st
 
 
 async def prepare_interface_profiles(
-    client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch
+    client: InfrahubClient,
+    log: logging.Logger,  # noqa: ARG001
+    branch: str,
+    batch: InfrahubBatch,
 ) -> None:
     for intf_profile in INTERFACE_PROFILES:
         data_profile = {
@@ -2026,7 +2039,7 @@ async def prepare_interface_profiles(
         store.set(key=intf_profile.name, node=profile)
 
 
-async def prepare_organizations(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_organizations(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     for org in ORGANIZATIONS:
         data_org = {
             "name": {"value": org.name, "is_protected": True},
@@ -2036,7 +2049,7 @@ async def prepare_organizations(client: InfrahubClient, log: logging.Logger, bra
         store.set(key=org.name, node=obj)
 
 
-async def prepare_platforms(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_platforms(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     for platform in PLATFORMS:
         obj = await client.create(
             branch=branch,

@@ -57,7 +57,7 @@ class AccountGlobalPermissionQuery(Query):
         self.account_id = account_id
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["account_id"] = self.account_id
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -172,7 +172,7 @@ class AccountObjectPermissionQuery(Query):
         self.account_id = account_id
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["account_id"] = self.account_id
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -324,7 +324,7 @@ class AccountRoleGlobalPermissionQuery(Query):
         self.role_id = role_id
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["role_id"] = self.role_id
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -414,7 +414,7 @@ class AccountRoleObjectPermissionQuery(Query):
         self.role_id = role_id
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["role_id"] = self.role_id
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -541,7 +541,7 @@ class AccountTokenValidateQuery(Query):
         self.token = token
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         token_filter_perms, token_params = self.branch.get_query_filter_relationships(
             rel_labels=["r1", "r2"], at=self.at, include_outside_parentheses=True
         )

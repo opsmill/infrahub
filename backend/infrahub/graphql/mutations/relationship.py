@@ -40,7 +40,7 @@ class RelationshipMixin:
     @classmethod
     async def mutate(
         cls,
-        root: dict,
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: RelationshipNodesInput,
     ):

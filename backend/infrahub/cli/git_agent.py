@@ -36,7 +36,7 @@ log = get_logger()
 shutdown_event = asyncio.Event()
 
 
-def signal_handler(*args: Any, **kwargs: Any) -> None:
+def signal_handler(*args: Any, **kwargs: Any) -> None:  # noqa: ARG001
     shutdown_event.set()
 
 

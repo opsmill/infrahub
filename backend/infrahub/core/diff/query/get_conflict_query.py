@@ -14,7 +14,7 @@ class EnrichedDiffConflictQuery(Query):
         super().__init__(**kwargs)
         self.conflict_id = conflict_id
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {"conflict_id": self.conflict_id}
         query = "MATCH (conflict:DiffConflict {uuid: $conflict_id})"
         self.return_labels = ["conflict"]

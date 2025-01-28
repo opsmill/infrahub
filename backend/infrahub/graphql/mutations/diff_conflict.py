@@ -36,7 +36,7 @@ class ResolveDiffConflict(Mutation):
     @retry_db_transaction(name="resolve_diff_conflict")
     async def mutate(
         cls,
-        root: dict,
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: ResolveDiffConflictInput,
     ) -> ResolveDiffConflict:

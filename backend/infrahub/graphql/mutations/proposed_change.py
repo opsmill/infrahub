@@ -49,7 +49,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
+        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
     ):
         context: GraphqlContext = info.context
         db: InfrahubDatabase = info.context.db
@@ -86,8 +86,8 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
-        node: Optional[Node] = None,
+        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
+        node: Optional[Node] = None,  # noqa: ARG003
     ):
         context: GraphqlContext = info.context
 
@@ -152,7 +152,7 @@ class ProposedChangeRequestRunCheck(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: dict[str, Any],
     ) -> dict[str, bool]:
@@ -198,7 +198,7 @@ class ProposedChangeMerge(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: dict[str, Any],
         wait_until_completion: bool = True,

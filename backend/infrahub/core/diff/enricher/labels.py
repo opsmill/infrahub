@@ -181,7 +181,7 @@ class DiffLabelsEnricher(DiffEnricherInterface):
     async def enrich(
         self,
         enriched_diff_root: EnrichedDiffRoot,
-        calculated_diffs: CalculatedDiffs | None = None,
+        calculated_diffs: CalculatedDiffs | None = None,  # noqa: ARG002
         conflicts_only: bool = False,
     ) -> None:
         self._base_branch_name = enriched_diff_root.base_branch_name
