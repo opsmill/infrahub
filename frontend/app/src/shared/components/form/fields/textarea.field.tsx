@@ -1,4 +1,4 @@
-import { MarkdownEditor } from "@/shared/components/editor";
+import { MarkdownEditor } from "@/shared/components/editor/markdown";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { FormAttributeValue, FormFieldProps } from "@/shared/components/form/type";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";

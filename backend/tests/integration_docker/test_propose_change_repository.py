@@ -1,8 +1,9 @@
+import asyncio
 from pathlib import Path
 
 import pytest
 from infrahub_sdk import InfrahubClient
-from infrahub_sdk.protocols import CoreGenericRepository, CoreProposedChange
+from infrahub_sdk.protocols import CoreArtifact, CoreGenericRepository, CoreProposedChange
 from infrahub_sdk.schema import NodeSchema, SchemaRoot
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
@@ -11,10 +12,28 @@ from infrahub_sdk.testing.schemas.car_person import (
     SchemaCarPerson,
 )
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import ArtifactStatus, InfrahubKind
 from tests.helpers.fixtures import get_fixtures_dir
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
+
+
+async def wait_for_artifact_to_be_ready(
+    client: InfrahubClient, interval: int = 3, retries: int = 5
+) -> list[CoreArtifact]:
+    for _ in range(retries):
+        artifacts = await client.all(kind=CoreArtifact)
+
+        artifact_statuses = [artifact.status.value for artifact in artifacts]
+
+        if all(
+            artifact_status in [ArtifactStatus.READY.value, ArtifactStatus.ERROR.value]
+            for artifact_status in artifact_statuses
+        ):
+            return artifacts
+        await asyncio.sleep(interval)
+
+    raise Exception(f"Artifacts are not ready after {retries} retries")
 
 
 class TestProposeChangeRepository(TestInfrahubDockerClient, SchemaCarPerson):
@@ -71,6 +90,10 @@ class TestProposeChangeRepository(TestInfrahubDockerClient, SchemaCarPerson):
 
         repos = await client.all(kind=CoreGenericRepository)
         assert repos
+
+    async def test_validate_artifact(self, client: InfrahubClient) -> None:
+        artifacts = await wait_for_artifact_to_be_ready(client=client)
+        assert all(artifact.status.value == ArtifactStatus.READY.value for artifact in artifacts)
 
     async def test_create_propose_change(self, client: InfrahubClient, default_branch: str) -> None:
         branch = await client.branch.create(branch_name="branch2")

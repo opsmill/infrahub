@@ -1,4 +1,5 @@
-from typing import Generator
+from collections import defaultdict
+from typing import AsyncGenerator, Generator
 
 from infrahub import config
 from infrahub.core import registry
@@ -18,10 +19,10 @@ from ..model.path import (
     EnrichedDiffsMetadata,
     EnrichedNodeCreateRequest,
     NodeDiffFieldSummary,
-    NodeFieldSpecifier,
     TimeRange,
     TrackingId,
 )
+from ..query.all_conflicts import EnrichedDiffAllConflictsQuery
 from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
@@ -46,6 +47,49 @@ class DiffRepository:
         self.db = db
         self.deserializer = deserializer
 
+    async def _run_get_diff_query(
+        self,
+        base_branch_name: str,
+        diff_branch_names: list[str],
+        limit: int,
+        from_time: Timestamp | None = None,
+        to_time: Timestamp | None = None,
+        filters: EnrichedDiffQueryFilters | None = None,
+        offset: int = 0,
+        include_parents: bool = True,
+        max_depth: int | None = None,
+        tracking_id: TrackingId | None = None,
+        diff_ids: list[str] | None = None,
+    ) -> list[EnrichedDiffRoot]:
+        self.deserializer.initialize()
+        has_more_data = True
+        while has_more_data:
+            get_query = await EnrichedDiffGetQuery.init(
+                db=self.db,
+                base_branch_name=base_branch_name,
+                diff_branch_names=diff_branch_names,
+                from_time=from_time,
+                to_time=to_time,
+                filters=filters,
+                max_depth=max_depth,
+                limit=limit,
+                offset=offset,
+                tracking_id=tracking_id,
+                diff_ids=diff_ids,
+            )
+            log.info(f"Beginning enriched diff get query {limit=}, {offset=}")
+            await get_query.execute(db=self.db)
+            log.info("Enriched diff get query complete")
+            last_result = None
+            for query_result in get_query.get_results():
+                await self.deserializer.read_result(result=query_result, include_parents=include_parents)
+                last_result = query_result
+            has_more_data = False
+            if last_result:
+                has_more_data = last_result.get_as_type("has_more_data", bool)
+            offset += limit
+        return await self.deserializer.deserialize()
+
     async def get(
         self,
         base_branch_name: str,
@@ -61,22 +105,19 @@ class DiffRepository:
         include_empty: bool = False,
     ) -> list[EnrichedDiffRoot]:
         final_max_depth = config.SETTINGS.database.max_depth_search_hierarchy
-        query = await EnrichedDiffGetQuery.init(
-            db=self.db,
+        limit = limit or int(config.SETTINGS.database.query_size_limit / 10)
+        diff_roots = await self._run_get_diff_query(
             base_branch_name=base_branch_name,
             diff_branch_names=diff_branch_names,
             from_time=from_time,
             to_time=to_time,
             filters=EnrichedDiffQueryFilters(**dict(filters or {})),
+            include_parents=include_parents,
             max_depth=final_max_depth,
             limit=limit,
-            offset=offset,
+            offset=offset or 0,
             tracking_id=tracking_id,
             diff_ids=diff_ids,
-        )
-        await query.execute(db=self.db)
-        diff_roots = await self.deserializer.deserialize(
-            database_results=query.get_results(), include_parents=include_parents
         )
         if not include_empty:
             diff_roots = [dr for dr in diff_roots if len(dr.nodes) > 0]
@@ -90,29 +131,22 @@ class DiffRepository:
         to_time: Timestamp,
     ) -> list[EnrichedDiffs]:
         max_depth = config.SETTINGS.database.max_depth_search_hierarchy
-        query = await EnrichedDiffGetQuery.init(
-            db=self.db,
+        limit = int(config.SETTINGS.database.query_size_limit / 10)
+        diff_branch_roots = await self._run_get_diff_query(
             base_branch_name=base_branch_name,
             diff_branch_names=[diff_branch_name],
             from_time=from_time,
             to_time=to_time,
             max_depth=max_depth,
-        )
-        await query.execute(db=self.db)
-        diff_branch_roots = await self.deserializer.deserialize(
-            database_results=query.get_results(), include_parents=True
+            limit=limit,
         )
         diffs_by_uuid = {dbr.uuid: dbr for dbr in diff_branch_roots}
-        base_partner_query = await EnrichedDiffGetQuery.init(
-            db=self.db,
+        base_branch_roots = await self._run_get_diff_query(
             base_branch_name=base_branch_name,
             diff_branch_names=[base_branch_name],
             max_depth=max_depth,
+            limit=limit,
             diff_ids=[d.partner_uuid for d in diffs_by_uuid.values()],
-        )
-        await base_partner_query.execute(db=self.db)
-        base_branch_roots = await self.deserializer.deserialize(
-            database_results=base_partner_query.get_results(), include_parents=True
         )
         diffs_by_uuid.update({bbr.uuid: bbr for bbr in base_branch_roots})
         return [
@@ -318,6 +352,19 @@ class DiffRepository:
             raise ResourceNotFoundError(f"No conflict with id {conflict_id}")
         return self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node)
 
+    async def get_all_conflicts_for_diff(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+    ) -> AsyncGenerator[tuple[str, EnrichedDiffConflict], None]:
+        query = await EnrichedDiffAllConflictsQuery.init(
+            db=self.db, diff_branch_name=diff_branch_name, tracking_id=tracking_id, diff_id=diff_id
+        )
+        await query.execute(db=self.db)
+        for conflict_path, conflict_node in query.get_conflict_paths_and_nodes():
+            yield (conflict_path, self.deserializer.deserialize_conflict(diff_conflict_node=conflict_node))
+
     async def get_node_field_summaries(
         self, diff_branch_name: str, tracking_id: TrackingId | None = None, diff_id: str | None = None
     ) -> list[NodeDiffFieldSummary]:
@@ -338,23 +385,18 @@ class DiffRepository:
         await query.execute(db=self.db)
         return query.get_num_changes_by_branch()
 
-    async def get_node_field_specifiers(self, diff_id: str) -> set[NodeFieldSpecifier]:
+    async def get_node_field_specifiers(self, diff_id: str) -> dict[str, set[str]]:
         limit = config.SETTINGS.database.query_size_limit
         offset = 0
-        specifiers: set[NodeFieldSpecifier] = set()
+        specifiers: dict[str, set[str]] = defaultdict(set)
         while True:
             query = await EnrichedDiffFieldSpecifiersQuery.init(db=self.db, diff_id=diff_id, offset=offset, limit=limit)
             await query.execute(db=self.db)
-
-            new_specifiers = {
-                NodeFieldSpecifier(
-                    node_uuid=field_specifier_tuple[0],
-                    field_name=field_specifier_tuple[1],
-                )
-                for field_specifier_tuple in query.get_node_field_specifier_tuples()
-            }
-            if not new_specifiers:
+            has_data = False
+            for field_specifier_tuple in query.get_node_field_specifier_tuples():
+                specifiers[field_specifier_tuple[0]].add(field_specifier_tuple[1])
+                has_data = True
+            if not has_data:
                 break
-            specifiers |= new_specifiers
             offset += limit
         return specifiers

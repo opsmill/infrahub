@@ -4,6 +4,7 @@ import shutil
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
@@ -12,6 +13,7 @@ from infrahub_sdk.protocols import CoreDataCheck, CoreProposedChange
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.protocols import CoreValidator
@@ -26,8 +28,17 @@ from tests.helpers.test_app import TestInfrahubApp
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
+
+
+class ErroringBranchMerger(BranchMerger):
+    async def merge(
+        self,
+        at: str | Timestamp | None = None,
+    ) -> None:
+        raise ValueError("This will always fail")
 
 
 class TestProposedChangePipelineConflict(TestInfrahubApp):
@@ -102,6 +113,13 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         )
         john.age.value = 26  # type: ignore[attr-defined]
         await john.save(db=db)
+
+    @pytest.fixture(scope="class")
+    async def failing_branch_dataset(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> None:
+        branch1 = await client.branch.create(branch_name="failing_branch")
+        steve = await Node.init(schema=TestKind.PERSON, db=db, branch=branch1.name)
+        await steve.new(db=db, name="Steve", height=178)
+        await steve.save(db=db)
 
     @pytest.fixture(scope="class")
     async def conflict_dataset(self, db: InfrahubDatabase, initial_dataset: None) -> None:
@@ -225,6 +243,27 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         proposed_change_after = await client.get(kind=CoreProposedChange, id=proposed_change_create.id)
         assert proposed_change_after.state.value == ProposedChangeState.MERGED.value
+
+    async def test_merge_failure(
+        self,
+        db: InfrahubDatabase,
+        failing_branch_dataset: None,
+        client: InfrahubClient,
+    ) -> None:
+        proposed_change_create = await client.create(
+            kind=CoreProposedChange,
+            data={"source_branch": "failing_branch", "destination_branch": "main", "name": "failing_branch-pr"},
+        )
+        await proposed_change_create.save()
+
+        # -------------------------------------------------
+        # Merge the proposed change and ensure everything looks good
+        # -------------------------------------------------
+        proposed_change_create.state.value = ProposedChangeState.MERGED.value
+        with patch("infrahub.core.branch.tasks.BranchMerger", new=ErroringBranchMerger):
+            with pytest.raises(GraphQLError) as exc:
+                await proposed_change_create.save()
+                assert "Failed to merge branch 'failing_branch'" in exc.value.message
 
     async def test_connectivity(self, db: InfrahubDatabase, initial_dataset: str, client: InfrahubClient) -> None:
         """Validate that the request to check connectivity to the remote repository is successful"""

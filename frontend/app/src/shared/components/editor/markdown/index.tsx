@@ -3,7 +3,7 @@ import { useCodeMirror } from "@/shared/hooks/useCodeMirror";
 import { classNames } from "@/shared/utils/common";
 import { FC, forwardRef, useRef, useState } from "react";
 import { MarkdownEditorHeader } from "./markdown-editor-header";
-import { MarkdownViewer } from "./markdown-viewer";
+import { MarkdownRender } from "./markdown-render";
 
 type MarkdownEditorProps = {
   className?: string;
@@ -39,7 +39,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = forwardRef<
 
     if (disabled) {
       return (
-        <MarkdownViewer
+        <MarkdownRender
           markdownText={codeMirror.view?.state?.doc.toString()}
           className="w-full bg-gray-100 min-h-10 rounded-md p-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 cursor-not-allowed"
         />
@@ -70,10 +70,11 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = forwardRef<
             codeMirror={codeMirror}
             previewMode={isPreviewActive}
             onPreviewToggle={() => setPreviewActive((prev) => !prev)}
+            editLabel="Raw"
           />
 
           {isPreviewActive ? (
-            <MarkdownViewer markdownText={codeMirror.view?.state?.doc.toString()} className="p-2" />
+            <MarkdownRender markdownText={codeMirror.view?.state?.doc.toString()} className="p-2" />
           ) : (
             <div ref={codeMirrorRef} data-cy="codemirror-editor" data-testid="codemirror-editor" />
           )}

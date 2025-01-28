@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 
 from infrahub.core import registry
+from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.initialization import create_branch
-from infrahub.core.query.diff import DiffAllPathsQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.constants import Neo4jRuntime
 from infrahub.log import get_logger
@@ -45,16 +45,14 @@ async def test_diff(benchmark_config, car_person_schema_root, graph_generator, i
     # Build function to profile
     async def init_and_execute():
         # Need this function to avoid loading data between `init` and `execute` methods.
-        query = await DiffAllPathsQuery.init(
-            db=db_profiling_queries,
-            branch=diff_branch,
+        diff_calculator = DiffCalculator(db=db_profiling_queries)
+        calculated_diffs = await diff_calculator.calculate_diff(
             base_branch=default_branch,
-            diff_branch_from_time=Timestamp(diff_branch.branched_from),
-            diff_from=Timestamp(diff_branch.branched_from),
-            diff_to=Timestamp(),
+            diff_branch=diff_branch,
+            from_time=Timestamp(diff_branch.branched_from),
+            to_time=Timestamp(),
         )
-        await query.execute(db=db_profiling_queries)
-        assert len(query.results) != 0, "expected some diff"
+        assert len(calculated_diffs.diff_branch_diff.nodes) != 0, "expected some diff"
 
     nb_cars = 5000
     cars_generator = CarWithDiffInSecondBranchGenerator(

@@ -4,12 +4,12 @@ import { FC } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-type MarkdownViewerProps = {
+type MarkdownRenderProps = {
   className?: string;
   markdownText?: string;
 };
 
-export const MarkdownViewer: FC<MarkdownViewerProps> = ({ className = "", markdownText = "" }) => (
+export const MarkdownRender: FC<MarkdownRenderProps> = ({ className = "", markdownText = "" }) => (
   <Markdown remarkPlugins={[remarkGfm]} className={classNames("markdown", className)}>
     {markdownText}
   </Markdown>

@@ -1,4 +1,4 @@
-import { NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
+import { ARTIFACT_OBJECT, NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { RequireAuth } from "@/entities/authentication/ui/useAuth";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
@@ -64,6 +64,33 @@ export const router = createBrowserRouter([
                         return {
                           type: "branch",
                           value: match.params["*"],
+                        };
+                      },
+                    },
+                  },
+                ],
+              },
+              {
+                path: `/objects/${ARTIFACT_OBJECT}/:objectid`,
+                handle: {
+                  breadcrumb: () => {
+                    return {
+                      type: "select",
+                      value: ARTIFACT_OBJECT,
+                      kind: "schema",
+                    };
+                  },
+                },
+                children: [
+                  {
+                    index: true,
+                    lazy: () => import("@/entities/artifacts/ui/artifact-details"),
+                    handle: {
+                      breadcrumb: (match: UIMatch) => {
+                        return {
+                          type: "select",
+                          value: match.params.objectid,
+                          kind: ARTIFACT_OBJECT,
                         };
                       },
                     },

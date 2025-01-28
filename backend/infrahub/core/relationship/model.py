@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import copy
 import sys
 from dataclasses import dataclass
@@ -719,6 +720,7 @@ class RelationshipManager:
         )
         self._relationship_id_details: Optional[RelationshipUpdateDetails] = None
         self.has_fetched_relationships: bool = False
+        self.lock = asyncio.Lock()
 
     @classmethod
     async def init(
@@ -972,8 +974,14 @@ class RelationshipManager:
     async def get_relationships(
         self, db: InfrahubDatabase, branch_agnostic: bool = False, force_refresh: bool = False
     ) -> list[Relationship]:
-        if force_refresh or not self.has_fetched_relationships:
-            await self._fetch_relationships(db=db, branch_agnostic=branch_agnostic, force_refresh=force_refresh)
+        # Use lock to avoid concurrent mutations on this object. This may typically happen while querying two nodes
+        # having the same parent, with the parent having another extra relationship. Concurrent coroutines will try to
+        # add this relationship to this object, and the second one will fail. See https://github.com/opsmill/infrahub/issues/5474.
+        # Note it also prevents extra relationships fetching. Ideally, DataLoader would fetch all needed data only once
+        # and exporting node to graphql would then not mutate this object.
+        async with self.lock:
+            if force_refresh or not self.has_fetched_relationships:
+                await self._fetch_relationships(db=db, branch_agnostic=branch_agnostic, force_refresh=force_refresh)
 
         return self._relationships.as_list()
 
@@ -1102,7 +1110,7 @@ class RelationshipManager:
         # - Update the existing relationship if we are on the same branch
         rel_ids_per_branch = peer_data.rel_ids_per_branch()
         if branch.name in rel_ids_per_branch:
-            await update_relationships_to([str(ri) for ri in rel_ids_per_branch[self.branch.name]], to=remove_at, db=db)
+            await update_relationships_to([str(ri) for ri in rel_ids_per_branch[branch.name]], to=remove_at, db=db)
 
         # - Create a new rel of type DELETED if the existing relationship is on a different branch
         rel_branches: set[str] = set()

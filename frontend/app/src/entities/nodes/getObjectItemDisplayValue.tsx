@@ -20,7 +20,7 @@ import { ColorDisplay } from "@/shared/components/display/color-display";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { PasswordDisplay } from "@/shared/components/display/password-display";
 import { TextDisplay } from "@/shared/components/display/text-display";
-import { CodeEditor } from "@/shared/components/editor/code-editor";
+import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { MarkdownViewer } from "@/shared/components/editor/markdown-viewer";
 import { Link } from "@/shared/components/ui/link";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
@@ -64,9 +64,7 @@ export const getDisplayValue = (
   }
 
   if (attribute?.kind === "JSON") {
-    return (
-      <CodeEditor value={JSON.stringify(row[attribute?.name]?.value ?? "", null, 2)} disabled />
-    );
+    return <CodeViewer>{JSON.stringify(row[attribute?.name]?.value ?? "", null, 2)}</CodeViewer>;
   }
 
   if (attribute?.kind === "List") {
@@ -244,7 +242,7 @@ export const ObjectAttributeValue = ({
       );
     }
     case ATTRIBUTE_KIND.JSON:
-      return <CodeEditor value={JSON.stringify(attributeValue.value ?? "", null, 2)} disabled />;
+      return <CodeViewer>{JSON.stringify(attributeValue.value ?? "", null, 2)}</CodeViewer>;
     default:
       return (
         <div className="flex items-center min-w-7 min-h-7">{getTextValue(attributeValue)}</div>

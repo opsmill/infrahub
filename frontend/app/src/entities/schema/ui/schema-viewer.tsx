@@ -64,7 +64,7 @@ export const SchemaViewer = ({
   onClose,
   style,
 }: {
-  className: string;
+  className?: string;
   schema: IModelSchema;
   onClose: () => void;
   style?: CSSProperties;
