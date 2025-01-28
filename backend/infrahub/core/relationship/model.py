@@ -540,7 +540,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             is_protected=self.is_protected,
             is_visible=self.is_visible,
         )
-        #
         if hasattr(self, "source_id") and self.source_id:
             data.source_prop.append(NodePropertyData(name="source", peer_id=str(self.source_id)))
 
