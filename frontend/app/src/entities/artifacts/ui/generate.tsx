@@ -52,7 +52,7 @@ export const Generate = (props: tGenerateProps) => {
         ...(artifactid ? { body: JSON.stringify({ nodes: [artifactid] }) } : {}),
       });
 
-      if (res.errors?.length) {
+      if (res?.errors?.length) {
         throw new Error("Error while generating artifact");
       }
 
