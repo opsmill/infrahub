@@ -7,8 +7,8 @@ import {
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { RelationshipSchema } from "@/entities/schema/types";
+import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router-dom";
 
 export interface TableRelationshipCellProps {
   relationshipSchema: RelationshipSchema;
@@ -40,12 +40,14 @@ export function RelationshipNodeDisplay({ node }: { node: Node }) {
   const { schema } = useSchema(node.__typename);
 
   return (
-    <Link
+    <LinkButton
+      variant="outline"
+      size="sm"
       to={getObjectDetailsUrl2(node.__typename, node.id)}
-      className="transition-colors border rounded-full px-2 py-1 truncate inline-flex items-center hover:underline hover:border-custom-blue-700"
+      className="rounded-full truncate hover:underline hover:border-custom-blue-700"
     >
       <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="mr-1 text-custom-blue-800" />
       {node.display_label}
-    </Link>
+    </LinkButton>
   );
 }

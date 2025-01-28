@@ -1,26 +1,25 @@
 import { TableCell } from "@/entities/nodes/object/ui/objects-table/cells/table-cell";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { classNames } from "@/shared/utils/common";
-import { Link } from "react-router-dom";
+import { LinkButton } from "@/shared/components/buttons/button-primitive";
 
 export interface TableRowIdentifierProps {
   objectKind: string;
   objectId: string;
   identifier: string | string[];
 }
+
 export function TableRowIdentifier({ objectKind, objectId, identifier }: TableRowIdentifierProps) {
   const display = Array.isArray(identifier) ? identifier.join(", ") : identifier;
   return (
     <TableCell className="sticky left-0">
-      <Link
+      <LinkButton
+        variant="ghost"
+        size="sm"
         to={getObjectDetailsUrl2(objectKind, objectId)}
-        className={classNames(
-          "underline text-custom-blue-700 truncate font-medium",
-          "transition-colors hover:bg-custom-blue-700/10 px-2 py-1 rounded-full"
-        )}
+        className="underline truncate rounded-full text-custom-blue-700 hover:bg-custom-blue-700/10"
       >
         {display}
-      </Link>
+      </LinkButton>
     </TableCell>
   );
 }

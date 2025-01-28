@@ -1,4 +1,4 @@
-import { focusVisibleStyle } from "@/shared/components/ui/style";
+import { focusVisibleStyle } from "@/shared/components/style-rac";
 import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";

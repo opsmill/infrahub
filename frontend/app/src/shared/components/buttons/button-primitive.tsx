@@ -1,5 +1,5 @@
 import { Spinner } from "@/shared/components/ui/spinner";
-import { focusStyle } from "@/shared/components/ui/style";
+import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { Tooltip, TooltipProps } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { type VariantProps, cva } from "class-variance-authority";
@@ -7,7 +7,7 @@ import { ButtonHTMLAttributes, forwardRef } from "react";
 import { Link, LinkProps } from "react-router-dom";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed",
+  "inline-flex items-center justify-center whitespace-nowrap rounded text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed border border-transparent",
   {
     variants: {
       variant: {
@@ -49,7 +49,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         type={type}
-        className={classNames(focusStyle, buttonVariants({ variant, size, className }))}
+        className={classNames(focusVisibleStyle, buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}
       >
@@ -81,7 +81,7 @@ export const LinkButton = forwardRef<HTMLAnchorElement, LinkButtonProps>(
     return (
       <Link
         ref={ref}
-        className={classNames(focusStyle, buttonVariants({ variant, size, className }))}
+        className={classNames(focusVisibleStyle, buttonVariants({ variant, size, className }))}
         {...props}
       />
     );
