@@ -219,7 +219,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert len(org_schema.relationships) == initial_nbr_relationships + 1
 
         # check that the node schema on the database has the expected relationships on the branch
-        retrieved_node_schema = await NodeManager.get_one(db=db, branch=branch_name, id=org_schema.id)
+        retrieved_node_schema = await NodeManager.get_one(db=db, branch=branch_name, id=org_schema.get_id())
         schema_rels = await retrieved_node_schema.relationships.get(db=db)
         schema_rel_peers = [await r.get_peer(db) for r in schema_rels]
         schema_rel_names = {srp.name.value for srp in schema_rel_peers}
@@ -227,7 +227,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
 
         # check that the generic schema on the database has the expected relationships on the branch
         org_generic = registry.schema.get(name="OrganizationGeneric", branch=branch_name)
-        retrieved_generic_schema = await NodeManager.get_one(db=db, branch=branch_name, id=org_generic.id)
+        retrieved_generic_schema = await NodeManager.get_one(db=db, branch=branch_name, id=org_generic.get_id())
         schema_rels = await retrieved_generic_schema.relationships.get(db=db)
         schema_rel_peers = [await r.get_peer(db) for r in schema_rels]
         schema_rel_names = {srp.name.value for srp in schema_rel_peers}
