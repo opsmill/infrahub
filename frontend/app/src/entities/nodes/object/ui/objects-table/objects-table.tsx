@@ -4,6 +4,7 @@ import { ObjectTableNoResults } from "@/entities/nodes/object/ui/objects-table/o
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { Skeleton } from "@/shared/components/skeleton";
 import useFilters from "@/shared/hooks/useFilters";
+import { classNames } from "@/shared/utils/common";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   flexRender,
@@ -54,11 +55,11 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
 
   return (
     <div
-      className="overflow-auto h-[calc(100vh-14rem)] grid content-start"
+      className="grid content-start"
       onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
       ref={tableContainerRef}
       style={{
-        gridTemplateColumns: `repeat(${allHeaders.length}, 1fr)`,
+        gridTemplateColumns: `repeat(${allHeaders.length - 1}, 1fr) 40px`,
       }}
       data-testid="object-items"
     >
@@ -81,7 +82,10 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
           {[...Array(15)].map((_, rowIndex) => (
             <React.Fragment key={`skeleton-row-${rowIndex}`}>
               {[...Array(allHeaders.length)].map((_, colIndex) => (
-                <TableCell key={`skeleton-${rowIndex}-${colIndex}`}>
+                <TableCell
+                  key={`skeleton-${rowIndex}-${colIndex}`}
+                  className={classNames(colIndex === 0 && "sticky left-0")}
+                >
                   <Skeleton className="h-4 w-full" />
                 </TableCell>
               ))}
