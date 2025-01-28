@@ -50,9 +50,7 @@ export function ObjectsTableManager({ schema }: ObjectsTableManagerProps) {
         />
       </div>
 
-      <ScrollArea scrollX className="h-[calc(100vh-14rem)]">
-        <ObjectsTable schema={schema} />
-      </ScrollArea>
+      <ObjectsTable schema={schema} />
     </div>
   );
 }

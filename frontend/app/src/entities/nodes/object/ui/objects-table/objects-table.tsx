@@ -55,7 +55,7 @@ export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
 
   return (
     <div
-      className="grid content-start"
+      className="grid content-start h-[calc(100vh-14rem)] overflow-auto"
       onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
       ref={tableContainerRef}
       style={{
