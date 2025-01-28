@@ -47,11 +47,7 @@ export const FilterKindSelector = ({ genericSchema }: { genericSchema: iGenericS
 
         return (
           <div className="flex flex-col gap-2">
-            <LabelFormField
-              label="Kind"
-              description="Select a kind to filter nodes"
-              fieldData={currentFieldValue}
-            />
+            <LabelFormField label="Kind" fieldData={currentFieldValue} />
 
             <Combobox open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
               <FormInput>

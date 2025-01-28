@@ -15,82 +15,94 @@ test.describe("Object filters", () => {
   test("should filter the nodes list", async ({ page }) => {
     await test.step("access nodes list and verify initial state", async () => {
       await page.goto("/objects/InfraDevice");
-      await expect(page.getByText("Just a moment")).not.toBeVisible();
-      await expect(page.getByTestId("object-items")).toContainText("Filters: 0");
-      await expect(page.getByTestId("object-items")).toContainText("Showing 1 to 10 of 30 results");
+      await expect(page.getByRole("heading", { name: "Device" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
     });
 
-    await test.step("start filtering nodes", async () => {
-      await test.step("select filters", async () => {
-        await page.getByTestId("apply-filters").click();
-        await page.getByLabel("Role").click();
-        await page.getByRole("option", { name: "Edge Router" }).click();
+    await test.step("filter using an attribute", async () => {
+      await page.getByRole("button", { name: "Role" }).click();
+      await page.getByLabel("Role").click();
+      await page.getByRole("option", { name: "Edge Router" }).click();
+      await page.getByRole("button", { name: "Filter", exact: true }).click();
 
-        await page.getByLabel("Tags").click();
-        await page.getByTestId("side-panel-container").getByText("red").click();
-        await page.getByLabel("Tags").click(); // Closes the multiselect
+      await expect(
+        page.getByLabel("Active filters").getByLabel("Role contains edge")
+      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "Clear filters" })).toBeVisible();
 
-        await page.getByRole("button", { name: "Apply filters" }).scrollIntoViewIfNeeded();
-        await page.getByRole("button", { name: "Apply filters" }).click();
-      });
-
-      await test.step("verify filter initial value", async () => {
-        await page.getByTestId("apply-filters").click();
-
-        await expect(page.getByLabel("Role")).toHaveText("Edge Router");
-      });
-
-      await expect(page.locator("form")).toContainText("red");
-
-      await page.getByRole("button", { name: "Apply filters" }).scrollIntoViewIfNeeded();
-      await page.getByRole("button", { name: "Apply filters" }).click();
+      await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-core1" })).not.toBeVisible();
     });
 
-    await test.step("verify new state", async () => {
-      await expect(page.getByTestId("object-items")).toContainText("Filters: 2");
-      await expect(page.getByTestId("object-items")).toContainText("Showing 1 to 10 of 10 results");
+    await test.step("filter using a relationship of cardinality one", async () => {
+      await page.getByRole("button", { name: "Site" }).click();
+      await page.getByLabel("Site").click();
+      await page.getByRole("option", { name: "atl1" }).click();
+      await page.getByRole("button", { name: "Filter", exact: true }).click();
+
+      await expect(
+        page.getByLabel("Active filters").getByLabel("Site contains atl1")
+      ).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "den1-edge1" })).not.toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-core1" })).not.toBeVisible();
     });
 
-    await test.step("remove filters and verify initial state", async () => {
-      await page.getByTestId("remove-filters").click();
-      await expect(page.getByTestId("object-items")).toContainText("Filters: 0");
-      await expect(page.getByTestId("object-items")).toContainText("Showing 1 to 10 of 30 results");
+    await test.step("remove an attribute filter", async () => {
+      await page.getByLabel("Active filters").getByLabel("Role contains edge").click();
+
+      await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "den1-edge1" })).not.toBeVisible();
     });
-  });
 
-  test("should filter using a relationship of cardinality one", async ({ page }) => {
-    await page.goto("/objects/InfraInterface");
+    await test.step("filter using a relationship of cardinality many", async () => {
+      await page.getByRole("button", { name: "Tags" }).click();
+      await page.getByLabel("Tags").click();
+      await page.getByRole("option", { name: "blue" }).click();
+      await page.getByLabel("Tags").click();
+      await page.getByRole("button", { name: "Filter", exact: true }).click();
 
-    await expect(page.getByRole("link", { name: "Connected to jfk1-edge2" })).toBeVisible();
+      await expect(
+        page.getByLabel("Active filters").getByLabel("Site contains atl1")
+      ).toBeVisible();
+      await expect(
+        page.getByLabel("Active filters").getByLabel("Tags contains blue")
+      ).toBeVisible();
 
-    await page.getByTestId("apply-filters").click();
+      await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-edge1" })).not.toBeVisible();
+      await expect(page.getByRole("link", { name: "den1-edge1" })).not.toBeVisible();
+    });
 
-    await page.getByLabel("Device").click();
-    await page.getByRole("option", { name: "atl1-core1" }).click();
-    await page.getByRole("button", { name: "Apply filters" }).click();
+    await test.step("clear all filters", async () => {
+      await page.getByRole("button", { name: "Clear filters" }).click();
 
-    await expect(
-      page.getByRole("row", { name: "InfraInterfaceL3 atl1-core1 Loopback0" })
-    ).toBeVisible();
-    await expect(page.getByRole("link", { name: "Connected to jfk1-edge2" })).toBeHidden();
+      await expect(page.getByLabel("Site contains atl1")).not.toBeVisible();
+      await expect(page.getByLabel("Tags contains blue")).not.toBeVisible();
+
+      await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
+    });
   });
 
   test("should correctly display the filters with hierarchical dropdown pointing to any nodes", async ({
     page,
   }) => {
     await page.goto("/objects/CoreArtifact");
-    await page.getByTestId("apply-filters").click();
-    await expect(page.getByTestId("side-panel-container").getByText("Object")).toBeVisible();
 
-    await page.getByLabel("kind").click();
-    await expect(
-      page.getByRole("option", { name: "BGP Session Infra", exact: true })
-    ).toBeVisible();
+    await page.getByTestId("object-items").getByRole("button", { name: "Object" }).click();
+    await page.getByLabel("Kind").click();
+    await page.getByRole("option", { name: "BGP Session Infra" }).click();
+    await expect(page.getByLabel("BGP Session")).toBeVisible();
   });
 
   test("should correctly filter from a kind", async ({ page }) => {
     await page.goto("/objects/InfraInterface");
-    await expect(page.getByText("Just a moment")).not.toBeVisible();
     await page.getByTestId("apply-filters").click();
 
     await test.step("profiles selector should not be visible", async () => {
