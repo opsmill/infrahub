@@ -114,7 +114,6 @@ export const DynamicInput = (props: DynamicFieldProps) => {
     }
     case "relationship": {
       const { schema: peerSchema } = getSchema(props.relationship.peer);
-      console.log("props: ", props);
 
       if (peerSchema && isHierarchicalSchema(peerSchema)) {
         return <RelationshipHierarchicalField {...props} />;
