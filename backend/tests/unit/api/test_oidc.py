@@ -14,7 +14,7 @@ from tests.adapters.http import MemoryHTTP
 
 async def test_get_id_token_groups_for_oidc() -> None:
     memory_http = MemoryHTTP()
-    service = InfrahubServices(http=memory_http)
+    service = await InfrahubServices.new(http=memory_http)
     client_id = "testing-oicd-1234"
 
     helper = OIDCTestHelper()
@@ -42,7 +42,7 @@ async def test_get_id_token_groups_for_oidc() -> None:
 
 async def test_get_id_token_groups_for_oidc_no_id_token() -> None:
     memory_http = MemoryHTTP()
-    service = InfrahubServices(http=memory_http)
+    service = await InfrahubServices.new(http=memory_http)
     client_id = "testing-oicd-1234"
 
     helper = OIDCTestHelper()

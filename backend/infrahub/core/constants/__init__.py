@@ -175,8 +175,8 @@ class GeneratorInstanceStatus(InfrahubStringEnum):
 
 
 class MutationAction(InfrahubStringEnum):
-    ADDED = "added"
-    REMOVED = "removed"
+    CREATED = "created"
+    DELETED = "deleted"
     UPDATED = "updated"
     UNDEFINED = "undefined"
 

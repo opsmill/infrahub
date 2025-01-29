@@ -373,9 +373,14 @@ async def load_schema(
     log_data = get_log_data()
     request_id = log_data.get("request_id", "")
     event = SchemaUpdatedEvent(
-        branch=branch.name,
+        branch_name=branch.name,
         schema_hash=branch.active_schema_hash.main,
-        meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id, account_id=account_session.account_id),
+        meta=EventMeta(
+            initiator_id=WORKER_IDENTITY,
+            request_id=request_id,
+            account_id=account_session.account_id,
+            branch=branch.name,
+        ),
     )
     await service.event.send(event=event)
 
