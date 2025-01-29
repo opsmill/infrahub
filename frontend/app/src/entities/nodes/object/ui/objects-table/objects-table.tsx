@@ -63,7 +63,7 @@ export const ObjectsTable = ({
       onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
       ref={tableContainerRef}
       style={{
-        gridTemplateColumns: `repeat(${allHeaders.length - 1}, 1fr) 40px`,
+        gridTemplateColumns: `repeat(${allHeaders.length - 1}, minmax(auto, 20rem)) 2.5rem`,
       }}
       data-testid="object-items"
     >

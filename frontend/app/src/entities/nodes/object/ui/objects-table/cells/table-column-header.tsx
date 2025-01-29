@@ -62,7 +62,7 @@ export function TableColumnHeader({ schema, columnSchema }: TableColumnHeaderPro
           icon="mdi:filter-variant"
           className={classNames(
             "text-lg ml-auto",
-            currentColumnFilters ? "text-indigo-700" : "text-gray-300"
+            currentColumnFilters ? "text-indigo-700" : "invisible"
           )}
         />
       </PopoverTrigger>
