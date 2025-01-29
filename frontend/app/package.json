@@ -57,7 +57,7 @@
     "@tanstack/react-query-devtools": "^5.65.1",
     "@tanstack/react-table": "^8.20.6",
     "@uiw/react-color": "^2.3.4",
-    "@vitejs/plugin-react": "^4.2.1",
+    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.0",
@@ -101,7 +101,7 @@
     "tailwindcss-animate": "^1.0.7",
     "unidiff": "^1.0.4",
     "use-query-params": "^2.2.1",
-    "vite": "^5.2.8",
+    "vite": "^6.0.11",
     "vite-plugin-svgr": "^4.3.0",
     "vite-tsconfig-paths": "^5.1.4"
   },
