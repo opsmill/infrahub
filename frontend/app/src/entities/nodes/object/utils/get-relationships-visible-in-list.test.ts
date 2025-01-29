@@ -26,6 +26,8 @@ describe("getRelationshipsVisibleInListView", () => {
       { kind: "Attribute", cardinality: "one" },
       { kind: "Attribute", cardinality: "many" },
       { kind: "Hierarchy", cardinality: "one" },
+      { kind: "Parent", cardinality: "one" },
+      { kind: "Parent", cardinality: "many" },
     ]);
   });
 
