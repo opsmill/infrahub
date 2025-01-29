@@ -176,6 +176,9 @@ class TestLoadSchemaAPI(TestInfrahubApp):
                 "nodes": [
                     {
                         "kind": "ThingNode",
+                        "attributes": [
+                            {"kind": "Text", "name": "something", "optional": True},
+                        ],
                         "relationships": [
                             {
                                 "name": "devices",
@@ -198,17 +201,25 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         node_schema = registry.schema.get(name="ThingNode", branch=branch_name)
         assert len(node_schema.relationships) == initial_nbr_relationships + 1
 
-        # check that the node schema on the database has the expected relationships on the branch
+        # check that the node schema on the database has the expected relationships and attributes on the branch
         retrieved_node_schema = await NodeManager.get_one(db=db, branch=branch_name, id=node_schema.get_id())
         schema_rels = await retrieved_node_schema.relationships.get(db=db)
         schema_rel_peers = [await r.get_peer(db) for r in schema_rels]
         schema_rel_names = {srp.name.value for srp in schema_rel_peers}
         assert schema_rel_names == {"devices", "interfaces", "profiles", "member_of_groups", "subscriber_of_groups"}
+        schema_attrs = await retrieved_node_schema.attributes.get(db=db)
+        schema_attr_peers = [await r.get_peer(db) for r in schema_attrs]
+        schema_attr_names = {srp.name.value for srp in schema_attr_peers}
+        assert schema_attr_names == {"name", "description", "something"}
 
-        # check that the generic schema on the database has the expected relationships on the branch
+        # check that the generic schema on the database has the expected relationships and attributes on the branch
         generic_schema = registry.schema.get(name="ThingGeneric", branch=branch_name)
         retrieved_generic_schema = await NodeManager.get_one(db=db, branch=branch_name, id=generic_schema.get_id())
         schema_rels = await retrieved_generic_schema.relationships.get(db=db)
         schema_rel_peers = [await r.get_peer(db) for r in schema_rels]
         schema_rel_names = {srp.name.value for srp in schema_rel_peers}
         assert schema_rel_names == {"interfaces", "profiles", "member_of_groups", "subscriber_of_groups"}
+        schema_attrs = await retrieved_generic_schema.attributes.get(db=db)
+        schema_attr_peers = [await r.get_peer(db) for r in schema_attrs]
+        schema_attr_names = {srp.name.value for srp in schema_attr_peers}
+        assert schema_attr_names == {"name"}
