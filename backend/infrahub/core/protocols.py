@@ -148,6 +148,11 @@ class CoreMenu(CoreNode):
     children: RelationshipManager
 
 
+class CoreObjectTemplate(CoreNode):
+    template_name: String
+    kind: String
+
+
 class CoreProfile(CoreNode):
     profile_name: String
     profile_priority: IntegerOptional
