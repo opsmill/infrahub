@@ -44,19 +44,19 @@ class RelationshipMixin:
         info: GraphQLResolveInfo,
         data: RelationshipNodesInput,
     ):
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
         input_id = str(data.id)
 
         if not (
             source := await NodeManager.get_one(
-                db=context.db,
+                db=graphql_context.db,
                 id=input_id,
-                branch=context.branch,
+                branch=graphql_context.branch,
                 include_owner=True,
                 include_source=True,
             )
         ):
-            raise NodeNotFoundError(context.branch, None, input_id)
+            raise NodeNotFoundError(graphql_context.branch, None, input_id)
 
         # Check if the name of the relationship provided exist for this node and is of cardinality Many
         if data.get("name") not in source._schema.relationship_names:
@@ -71,7 +71,7 @@ class RelationshipMixin:
         # Query the node in the database and validate that all of them exist and are if the correct kind
         node_ids: list[str] = [node_data["id"] for node_data in data.get("nodes") if "id" in node_data]
         nodes = await NodeManager.get_many(
-            db=context.db, ids=node_ids, fields={"display_label": None}, branch=context.branch
+            db=graphql_context.db, ids=node_ids, fields={"display_label": None}, branch=graphql_context.branch
         )
 
         _, _, in_list2 = compare_lists(list1=list(nodes.keys()), list2=node_ids)
@@ -92,7 +92,7 @@ class RelationshipMixin:
                 and peer_relationships[0].cardinality == RelationshipCardinality.ONE
             ):
                 peer_relationship: RelationshipManager = getattr(node, peer_relationships[0].name)
-                if peer := await peer_relationship.get_peer(db=context.db):
+                if peer := await peer_relationship.get_peer(db=graphql_context.db):
                     if peer.id != input_id:
                         raise ValidationError(
                             f"{node_id!r} {node.get_kind()!r} is already related to another peer on '{peer_relationships[0].name}'"
@@ -100,19 +100,19 @@ class RelationshipMixin:
 
         # The nodes that are already present in the db
         query = await RelationshipGetPeerQuery.init(
-            db=context.db,
+            db=graphql_context.db,
             source=source,
-            rel=Relationship(schema=rel_schema, branch=context.branch, node=source),
+            rel=Relationship(schema=rel_schema, branch=graphql_context.branch, node=source),
         )
-        await query.execute(db=context.db)
+        await query.execute(db=graphql_context.db)
         existing_peers: dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query.get_peers()}
 
-        async with context.db.start_transaction() as db:
+        async with graphql_context.db.start_transaction() as db:
             if cls.__name__ == "RelationshipAdd":
                 for node_data in data.get("nodes"):
                     # Instantiate and resolve a relationship
                     # This will take care of allocating a node from a pool if needed
-                    rel = Relationship(schema=rel_schema, branch=context.branch, node=source)
+                    rel = Relationship(schema=rel_schema, branch=graphql_context.branch, node=source)
                     await rel.new(db=db, data=node_data)
                     await rel.resolve(db=db)
                     # Save it only if it does not exist
@@ -125,7 +125,7 @@ class RelationshipMixin:
                         # TODO once https://github.com/opsmill/infrahub/issues/792 has been fixed
                         # we should use RelationshipDataDeleteQuery to delete the relationship
                         # it would be more query efficient
-                        rel = Relationship(schema=rel_schema, branch=context.branch, node=source)
+                        rel = Relationship(schema=rel_schema, branch=graphql_context.branch, node=source)
                         await rel.load(db=db, data=existing_peers[node_data.get("id")])
                         await rel.delete(db=db)
 

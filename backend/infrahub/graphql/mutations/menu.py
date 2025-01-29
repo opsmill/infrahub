@@ -70,10 +70,10 @@ class InfrahubCoreMenuMutation(InfrahubMutationMixin, Mutation):
         database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
         node: Optional[Node] = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         obj = await NodeManager.find_object(
-            db=context.db, kind=CoreMenuItem, id=data.get("id"), hfid=data.get("hfid"), branch=branch
+            db=graphql_context.db, kind=CoreMenuItem, id=data.get("id"), hfid=data.get("hfid"), branch=branch
         )
         validate_namespace(data=data)
 
@@ -90,9 +90,9 @@ class InfrahubCoreMenuMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
         obj = await NodeManager.find_object(
-            db=context.db, kind=CoreMenuItem, id=data.get("id"), hfid=data.get("hfid"), branch=branch
+            db=graphql_context.db, kind=CoreMenuItem, id=data.get("id"), hfid=data.get("hfid"), branch=branch
         )
         if obj.protected.value:
             raise ValidationError(input_value="This object is protected, it can't be deleted.")

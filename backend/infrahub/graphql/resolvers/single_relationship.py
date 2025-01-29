@@ -39,7 +39,7 @@ class SingleRelationshipResolver:
             else info.parent_type.graphene_type._meta.schema  # type: ignore[attr-defined]
         )
 
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         # Extract the name of the fields in the GQL query
         fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -59,10 +59,10 @@ class SingleRelationshipResolver:
 
         if requires_relationship_metadata:
             node_graph = await self._get_entities_simple(
-                db=context.db,
-                branch=context.branch,
-                at=context.at,
-                related_node_ids=context.related_node_ids,
+                db=graphql_context.db,
+                branch=graphql_context.branch,
+                at=graphql_context.at,
+                related_node_ids=graphql_context.related_node_ids,
                 field_name=info.field_name,
                 parent_id=parent["id"],
                 source_kind=node_schema.kind,
@@ -72,10 +72,10 @@ class SingleRelationshipResolver:
             )
         else:
             node_graph = await self._get_entities_with_data_loader(
-                db=context.db,
-                branch=context.branch,
-                at=context.at,
-                related_node_ids=context.related_node_ids,
+                db=graphql_context.db,
+                branch=graphql_context.branch,
+                at=graphql_context.at,
+                related_node_ids=graphql_context.related_node_ids,
                 rel_schema=node_rel,
                 parent=parent,
                 node_fields=node_fields,

@@ -51,10 +51,9 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
     ):
-        context: GraphqlContext = info.context
-        db: InfrahubDatabase = info.context.db
+        graphql_context: GraphqlContext = info.context
 
-        async with db.start_transaction() as dbt:
+        async with graphql_context.db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_create(info=info, data=data, branch=branch, database=dbt)
             destination_branch = proposed_change.destination_branch.value
             source_branch = await _get_source_branch(db=dbt, name=proposed_change.source_branch.value)
@@ -65,7 +64,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     input_value="Currently only the 'main' branch is supported as a destination for a proposed change"
                 )
 
-        if context.service:
+        if graphql_context.service:
             message_list = [
                 messages.RequestProposedChangePipeline(
                     proposed_change=proposed_change.id,
@@ -76,7 +75,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             ]
 
             for message in message_list:
-                await context.service.message_bus.send(message=message)
+                await graphql_context.service.message_bus.send(message=message)
 
         return proposed_change, result
 
@@ -89,10 +88,10 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
         node: Optional[Node] = None,  # noqa: ARG003
     ):
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         obj = await NodeManager.get_one_by_id_or_default_filter(
-            db=context.db,
+            db=graphql_context.db,
             kind=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
@@ -108,9 +107,9 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             state.validate_state_transition(updated_state)
 
         # Check before starting a transaction, stopping in the middle of the transaction seems to break with memgraph
-        if updated_state == ProposedChangeState.MERGED and context.account_session:
+        if updated_state == ProposedChangeState.MERGED and graphql_context.account_session:
             try:
-                context.active_permissions.raise_for_permission(
+                graphql_context.active_permissions.raise_for_permission(
                     permission=GlobalPermission(
                         action=GlobalPermissions.MERGE_PROPOSED_CHANGE.value,
                         decision=PermissionDecision.ALLOW_ALL.value,
@@ -123,11 +122,11 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             data["state"]["value"] = ProposedChangeState.MERGING.value
 
         proposed_change, result = await super().mutate_update(
-            info=info, data=data, branch=branch, database=context.db, node=obj
+            info=info, data=data, branch=branch, database=graphql_context.db, node=obj
         )
 
         if updated_state == ProposedChangeState.MERGED:
-            await context.service.workflow.execute_workflow(
+            await graphql_context.service.workflow.execute_workflow(
                 workflow=PROPOSED_CHANGE_MERGE,
                 parameters={
                     "proposed_change_id": proposed_change.id,
@@ -156,19 +155,19 @@ class ProposedChangeRequestRunCheck(Mutation):
         info: GraphQLResolveInfo,
         data: dict[str, Any],
     ) -> dict[str, bool]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         check_type = data.get("check_type") or CheckType.ALL
 
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=identifier, kind=InfrahubKind.PROPOSEDCHANGE, db=context.db
+            id=identifier, kind=InfrahubKind.PROPOSEDCHANGE, db=graphql_context.db
         )
         state = ProposedChangeState(proposed_change.state.value.value)
         state.validate_state_check_run()
 
         destination_branch = proposed_change.destination_branch.value
-        source_branch = await _get_source_branch(db=context.db, name=proposed_change.source_branch.value)
+        source_branch = await _get_source_branch(db=graphql_context.db, name=proposed_change.source_branch.value)
 
         message = messages.RequestProposedChangePipeline(
             proposed_change=proposed_change.id,
@@ -177,8 +176,8 @@ class ProposedChangeRequestRunCheck(Mutation):
             destination_branch=destination_branch,
             check_type=check_type,
         )
-        if context.service:
-            await context.service.message_bus.send(message=message)
+        if graphql_context.service:
+            await graphql_context.service.message_bus.send(message=message)
 
         return {"ok": True}
 
@@ -203,23 +202,23 @@ class ProposedChangeMerge(Mutation):
         data: dict[str, Any],
         wait_until_completion: bool = True,
     ) -> dict[str, bool]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
         task: dict | None = None
 
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one(
-            id=identifier, kind=InfrahubKind.PROPOSEDCHANGE, db=context.db, raise_on_error=True
+            id=identifier, kind=InfrahubKind.PROPOSEDCHANGE, db=graphql_context.db, raise_on_error=True
         )
         state = ProposedChangeState(proposed_change.state.value.value)
         if state != ProposedChangeState.OPEN:
             raise ValidationError("Only proposed change in OPEN state can be merged")
 
-        async with context.db.start_session() as db:
+        async with graphql_context.db.start_session() as db:
             proposed_change.state.value = ProposedChangeState.MERGING.value
             proposed_change.save(db=db)
 
         if wait_until_completion:
-            await context.service.workflow.execute_workflow(
+            await graphql_context.service.workflow.execute_workflow(
                 workflow=PROPOSED_CHANGE_MERGE,
                 parameters={
                     "proposed_change_id": proposed_change.id,
@@ -227,7 +226,7 @@ class ProposedChangeMerge(Mutation):
                 },
             )
         else:
-            workflow = await context.service.workflow.submit_workflow(
+            workflow = await graphql_context.service.workflow.submit_workflow(
                 workflow=PROPOSED_CHANGE_MERGE,
                 parameters={
                     "proposed_change_id": proposed_change.id,
