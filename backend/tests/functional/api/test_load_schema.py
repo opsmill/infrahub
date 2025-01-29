@@ -141,8 +141,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
             "generics": [
                 {
                     "name": "Generic",
-                    "namespace": "Organization",
-                    "label": "Organization",
+                    "namespace": "Thing",
                     "attributes": [{"kind": "Text", "name": "name", "unique": True}],
                     "relationships": [
                         {
@@ -157,77 +156,58 @@ class TestLoadSchemaAPI(TestInfrahubApp):
             ],
             "nodes": [
                 {
-                    "name": "Device",
-                    "namespace": "Test",
+                    "name": "Node",
+                    "namespace": "Thing",
+                    "inherit_from": ["ThingGeneric"],
                     "attributes": [
-                        {"kind": "Text", "name": "name", "unique": True},
-                        {"kind": "Text", "name": "description", "optional": True, "order_weight": 900},
-                        {"kind": "Text", "name": "type"},
-                        {"choices": [{"name": "router"}, {"name": "firewall"}], "kind": "Dropdown", "name": "role"},
-                        {"choices": [{"name": "active"}, {"name": "planned"}], "kind": "Dropdown", "name": "status"},
-                    ],
-                },
-                {
-                    "name": "Interface",
-                    "namespace": "Test",
-                    "attributes": [
-                        {"kind": "Text", "name": "name"},
                         {"kind": "Text", "name": "description", "optional": True},
-                        {"kind": "Number", "name": "speed"},
-                        {"default_value": True, "kind": "Boolean", "name": "enabled"},
-                    ],
-                },
-                {
-                    "name": "Organization",
-                    "namespace": "Testing",
-                    "inherit_from": ["OrganizationGeneric"],
-                    "attributes": [
-                        {"kind": "Text", "name": "name", "unique": True},
-                        {"kind": "Text", "name": "label", "optional": True},
-                        {"kind": "Text", "name": "description", "optional": True},
-                    ],
-                    "branch": "aware",
-                },
-                {
-                    "name": "Site",
-                    "namespace": "Infra",
-                    "attributes": [
-                        {"kind": "Text", "name": "name", "unique": True},
-                        {"kind": "Text", "name": "description", "optional": True},
-                        {"kind": "Text", "name": "type"},
                     ],
                 },
             ],
         }
-
-        schema = registry.schema.get_schema_branch(name=default_branch.name)
-        await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
         simple = await client.schema.load(schemas=[start_schema_dict])
         assert not simple.errors
-        org_schema = registry.schema.get(name="TestingOrganization", branch=default_branch.name)
-        initial_nbr_relationships = len(org_schema.relationships)
+        node_schema = registry.schema.get(name="ThingNode", branch=default_branch.name)
+        initial_nbr_relationships = len(node_schema.relationships)
 
+        extension_schema_dict = {
+            "version": "1.0",
+            "extensions": {
+                "nodes": [
+                    {
+                        "kind": "ThingNode",
+                        "relationships": [
+                            {
+                                "name": "devices",
+                                "peer": "InfraDevice",
+                                "kind": "Generic",
+                                "cardinality": "many",
+                                "optional": True,
+                            }
+                        ],
+                    }
+                ]
+            },
+        }
         branch_name = "extension_branch"
         await client.branch.create(branch_name=branch_name)
-        extended_schema = await client.schema.load(
-            branch=branch_name, schemas=[helper.schema_file("infra_w_extensions_01.json")]
-        )
+        extended_schema = await client.schema.load(branch=branch_name, schemas=[extension_schema_dict])
         assert not extended_schema.errors
         assert extended_schema.schema_updated
 
-        org_schema = registry.schema.get(name="TestingOrganization", branch=branch_name)
-        assert len(org_schema.relationships) == initial_nbr_relationships + 1
+        node_schema = registry.schema.get(name="ThingNode", branch=branch_name)
+        assert len(node_schema.relationships) == initial_nbr_relationships + 1
 
         # check that the node schema on the database has the expected relationships on the branch
-        retrieved_node_schema = await NodeManager.get_one(db=db, branch=branch_name, id=org_schema.get_id())
+        retrieved_node_schema = await NodeManager.get_one(db=db, branch=branch_name, id=node_schema.get_id())
         schema_rels = await retrieved_node_schema.relationships.get(db=db)
         schema_rel_peers = [await r.get_peer(db) for r in schema_rels]
         schema_rel_names = {srp.name.value for srp in schema_rel_peers}
         assert schema_rel_names == {"devices", "interfaces", "profiles", "member_of_groups", "subscriber_of_groups"}
 
         # check that the generic schema on the database has the expected relationships on the branch
-        org_generic = registry.schema.get(name="OrganizationGeneric", branch=branch_name)
-        retrieved_generic_schema = await NodeManager.get_one(db=db, branch=branch_name, id=org_generic.get_id())
+        generic_schema = registry.schema.get(name="ThingGeneric", branch=branch_name)
+        retrieved_generic_schema = await NodeManager.get_one(db=db, branch=branch_name, id=generic_schema.get_id())
         schema_rels = await retrieved_generic_schema.relationships.get(db=db)
         schema_rel_peers = [await r.get_peer(db) for r in schema_rels]
         schema_rel_names = {srp.name.value for srp in schema_rel_peers}
