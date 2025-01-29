@@ -8,7 +8,6 @@ import { ReactRouter7Adapter } from "@/shared/lib/use-query-params";
 import queryString from "query-string";
 import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router";
 import { QueryParamProvider } from "use-query-params";
-import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 
 export const router = createBrowserRouter([
   {
