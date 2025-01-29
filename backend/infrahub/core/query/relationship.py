@@ -905,7 +905,8 @@ class RelationshipCountPerNodeQuery(Query):
             path = "<-[r:IS_RELATED]-"
 
         query = """
-        MATCH (rl:Relationship { name: $rel_identifier })
+        MATCH (peer_node:Node)%(path)s(rl:Relationship { name: $rel_identifier })
+        WHERE peer_node.uuid IN $peer_ids AND %(branch_filter)s
         CALL {
             WITH rl
             MATCH path = (peer_node:Node)%(path)s(rl)
