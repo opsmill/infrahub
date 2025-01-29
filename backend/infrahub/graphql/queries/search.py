@@ -103,7 +103,7 @@ async def search_resolver(
     limit: int = 10,
     partial_match: bool = True,
 ) -> dict[str, Any]:
-    context: GraphqlContext = info.context
+    graphql_context: GraphqlContext = info.context
     response: dict[str, Any] = {}
     results: list[CoreNode] = []
 
@@ -111,7 +111,7 @@ async def search_resolver(
 
     if is_valid_uuid(q):
         matching: Optional[CoreNode] = await NodeManager.get_one(
-            db=context.db, branch=context.branch, at=context.at, id=q
+            db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, id=q
         )
         if matching:
             results.append(matching)
@@ -124,8 +124,8 @@ async def search_resolver(
 
         for kind in [InfrahubKind.NODE, InfrahubKind.GENERICGROUP]:
             objs = await NodeManager.query(
-                db=context.db,
-                branch=context.branch,
+                db=graphql_context.db,
+                branch=graphql_context.branch,
                 schema=kind,
                 filters={"any__value": q},
                 limit=limit,

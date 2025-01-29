@@ -17,7 +17,7 @@ async def branch_resolver(
     **kwargs: Any,
 ) -> list[dict[str, Any]]:
     fields = await extract_fields_first_node(info)
-    return await BranchType.get_list(context=info.context, fields=fields, **kwargs)
+    return await BranchType.get_list(graphql_context=info.context, fields=fields, **kwargs)
 
 
 BranchQueryList = Field(

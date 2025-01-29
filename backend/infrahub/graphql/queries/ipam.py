@@ -29,13 +29,13 @@ class IPAddressGetNextAvailable(ObjectType):
         prefix_id: str,
         prefix_length: Optional[int] = None,
     ) -> dict[str, str]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
-        prefix = await NodeManager.get_one(id=prefix_id, db=context.db, branch=context.branch)
+        prefix = await NodeManager.get_one(id=prefix_id, db=graphql_context.db, branch=graphql_context.branch)
 
         if not prefix:
             raise NodeNotFoundError(
-                branch_name=context.branch.name, node_type=InfrahubKind.IPPREFIX, identifier=prefix_id
+                branch_name=graphql_context.branch.name, node_type=InfrahubKind.IPPREFIX, identifier=prefix_id
             )
 
         ip_prefix = ipaddress.ip_network(prefix.prefix.value)  # type: ignore[attr-defined]
@@ -44,12 +44,12 @@ class IPAddressGetNextAvailable(ObjectType):
         if not ip_prefix.prefixlen <= prefix_length <= ip_prefix.max_prefixlen:
             raise ValidationError(input_value="Invalid prefix length for current selected prefix")
 
-        namespace = await prefix.ip_namespace.get_peer(db=context.db)  # type: ignore[attr-defined]
+        namespace = await prefix.ip_namespace.get_peer(db=graphql_context.db)  # type: ignore[attr-defined]
         addresses = await get_ip_addresses(
-            db=context.db,
+            db=graphql_context.db,
             ip_prefix=ip_prefix,
             namespace=namespace,
-            branch=context.branch,
+            branch=graphql_context.branch,
         )
 
         available = get_available(
@@ -76,21 +76,21 @@ class IPPrefixGetNextAvailable(ObjectType):
         prefix_id: str,
         prefix_length: int,
     ) -> dict[str, str]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
-        prefix = await NodeManager.get_one(id=prefix_id, db=context.db, branch=context.branch)
+        prefix = await NodeManager.get_one(id=prefix_id, db=graphql_context.db, branch=graphql_context.branch)
 
         if not prefix:
             raise NodeNotFoundError(
-                branch_name=context.branch.name, node_type=InfrahubKind.IPPREFIX, identifier=prefix_id
+                branch_name=graphql_context.branch.name, node_type=InfrahubKind.IPPREFIX, identifier=prefix_id
             )
 
-        namespace = await prefix.ip_namespace.get_peer(db=context.db)  # type: ignore[attr-defined]
+        namespace = await prefix.ip_namespace.get_peer(db=graphql_context.db)  # type: ignore[attr-defined]
         subnets = await get_subnets(
-            db=context.db,
+            db=graphql_context.db,
             ip_prefix=ipaddress.ip_network(prefix.prefix.value),  # type: ignore[attr-defined]
             namespace=namespace,
-            branch=context.branch,
+            branch=graphql_context.branch,
         )
 
         pool = IPSet([prefix.prefix.value])

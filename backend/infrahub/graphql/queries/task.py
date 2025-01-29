@@ -72,11 +72,11 @@ class Tasks(ObjectType):
         limit: int | None = None,
         offset: int | None = None,
     ) -> dict[str, Any]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
         fields = await extract_fields_first_node(info)
 
         prefect_tasks = await PrefectTask.query(
-            db=context.db,
+            db=graphql_context.db,
             fields=fields,
             q=q,
             ids=ids,

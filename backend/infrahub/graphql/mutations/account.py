@@ -53,19 +53,21 @@ class AccountMixin:
         info: GraphQLResolveInfo,
         data: dict[str, Any],
     ) -> Self:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
-        if not context.account_session:
+        if not graphql_context.account_session:
             raise ValueError("An account_session is mandatory to execute this mutation")
 
-        if context.account_session.auth_type != AuthType.JWT:
+        if graphql_context.account_session.auth_type != AuthType.JWT:
             raise PermissionDeniedError("This operation requires authentication with a JWT token")
 
         results = await NodeManager.query(
-            schema=CoreAccount, filters={"ids": [context.account_session.account_id]}, db=context.db
+            schema=CoreAccount, filters={"ids": [graphql_context.account_session.account_id]}, db=graphql_context.db
         )
         if not results:
-            raise NodeNotFoundError(node_type=InfrahubKind.ACCOUNT, identifier=context.account_session.account_id)
+            raise NodeNotFoundError(
+                node_type=InfrahubKind.ACCOUNT, identifier=graphql_context.account_session.account_id
+            )
 
         account = results[0]
 
@@ -74,10 +76,10 @@ class AccountMixin:
             "InfrahubAccountTokenDelete": cls.delete_token,
             "InfrahubAccountSelfUpdate": cls.update_self,
         }
-        response = await mutation_map[cls.__name__](db=context.db, account=account, data=data, info=info)
+        response = await mutation_map[cls.__name__](db=graphql_context.db, account=account, data=data, info=info)
 
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
-        context.at = Timestamp()
+        graphql_context.at = Timestamp()
 
         return response
 

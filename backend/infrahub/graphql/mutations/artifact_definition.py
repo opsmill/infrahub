@@ -50,17 +50,17 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         artifact_definition, result = await super().mutate_create(info=info, data=data, branch=branch)
 
-        if context.service:
+        if graphql_context.service:
             model = RequestArtifactDefinitionGenerate(
                 branch=branch.name,
                 artifact_definition_id=artifact_definition.id,
                 artifact_definition_name=artifact_definition.name.value,  # type: ignore[attr-defined]
             )
-            await context.service.workflow.submit_workflow(
+            await graphql_context.service.workflow.submit_workflow(
                 workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
             )
 
@@ -75,17 +75,17 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
         node: Optional[Node] = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         artifact_definition, result = await super().mutate_update(info=info, data=data, branch=branch)
 
-        if context.service:
+        if graphql_context.service:
             model = RequestArtifactDefinitionGenerate(
                 branch=branch.name,
                 artifact_definition_id=artifact_definition.id,
                 artifact_definition_name=artifact_definition.name.value,  # type: ignore[attr-defined]
             )
-            await context.service.workflow.submit_workflow(
+            await graphql_context.service.workflow.submit_workflow(
                 workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
             )
 

@@ -55,34 +55,34 @@ class InfrahubMutationOptions(MutationOptions):
 class InfrahubMutationMixin:
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: InputObjectType, *args: Any, **kwargs):  # noqa: ARG003
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         obj = None
         mutation = None
         action = MutationAction.UNDEFINED
 
         if "Create" in cls.__name__:
-            obj, mutation = await cls.mutate_create(info=info, branch=context.branch, data=data, **kwargs)
+            obj, mutation = await cls.mutate_create(info=info, branch=graphql_context.branch, data=data, **kwargs)
             action = MutationAction.CREATED
         elif "Update" in cls.__name__:
-            obj, mutation = await cls.mutate_update(info=info, branch=context.branch, data=data, **kwargs)
+            obj, mutation = await cls.mutate_update(info=info, branch=graphql_context.branch, data=data, **kwargs)
             action = MutationAction.UPDATED
         elif "Upsert" in cls.__name__:
             node_manager = NodeManager()
             node_getters = [
-                MutationNodeGetterById(db=context.db, node_manager=node_manager),
-                MutationNodeGetterByHfid(db=context.db, node_manager=node_manager),
-                MutationNodeGetterByDefaultFilter(db=context.db, node_manager=node_manager),
+                MutationNodeGetterById(db=graphql_context.db, node_manager=node_manager),
+                MutationNodeGetterByHfid(db=graphql_context.db, node_manager=node_manager),
+                MutationNodeGetterByDefaultFilter(db=graphql_context.db, node_manager=node_manager),
             ]
             obj, mutation, created = await cls.mutate_upsert(
-                info=info, branch=context.branch, data=data, node_getters=node_getters, **kwargs
+                info=info, branch=graphql_context.branch, data=data, node_getters=node_getters, **kwargs
             )
             if created:
                 action = MutationAction.CREATED
             else:
                 action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
-            obj, mutation = await cls.mutate_delete(info=info, branch=context.branch, data=data, **kwargs)
+            obj, mutation = await cls.mutate_delete(info=info, branch=graphql_context.branch, data=data, **kwargs)
             action = MutationAction.DELETED
         else:
             raise ValueError(
@@ -90,23 +90,23 @@ class InfrahubMutationMixin:
             )
 
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
-        context.at = Timestamp()
+        graphql_context.at = Timestamp()
 
-        if config.SETTINGS.broker.enable and context.background:
+        if config.SETTINGS.broker.enable and graphql_context.background:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
-            graphql_payload = await obj.to_graphql(db=context.db, filter_sensitive=True)
+            graphql_payload = await obj.to_graphql(db=graphql_context.db, filter_sensitive=True)
             event = NodeMutatedEvent(
                 kind=obj._schema.kind,
                 node_id=obj.id,
                 data=graphql_payload,
                 action=action,
                 fields=_get_data_fields(data),
-                meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id, branch=context.branch.name),
+                meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id, branch=graphql_context.branch.name),
             )
 
-            context.background.add_task(context.active_service.event.send, event)
+            graphql_context.background.add_task(graphql_context.active_service.event.send, event)
 
         return mutation
 
@@ -158,8 +158,8 @@ class InfrahubMutationMixin:
         branch: Branch,
         database: Optional[InfrahubDatabase] = None,
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
-        db = database or context.db
+        graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
         obj = await cls._call_mutate_create_object(data=data, db=db, branch=branch)
         result = await cls.mutate_create_to_graphql(info=info, db=db, obj=obj)
         return obj, result
@@ -251,8 +251,8 @@ class InfrahubMutationMixin:
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
-        db = database or context.db
+        graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
 
         obj = node or await NodeManager.find_object(
             db=db, kind=cls._meta.schema.kind, id=data.get("id"), hfid=data.get("hfid"), branch=branch
@@ -319,8 +319,8 @@ class InfrahubMutationMixin:
     ) -> tuple[Node, Self, bool]:
         schema_name = cls._meta.schema.kind
 
-        context: GraphqlContext = info.context
-        db = database or context.db
+        graphql_context: GraphqlContext = info.context
+        db = database or graphql_context.db
 
         node_schema = db.schema.get(name=schema_name, branch=branch)
 
@@ -348,14 +348,14 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         obj = await NodeManager.find_object(
-            db=context.db, kind=cls._meta.schema.kind, id=data.get("id"), hfid=data.get("hfid"), branch=branch
+            db=graphql_context.db, kind=cls._meta.schema.kind, id=data.get("id"), hfid=data.get("hfid"), branch=branch
         )
 
         try:
-            async with context.db.start_transaction() as db:
+            async with graphql_context.db.start_transaction() as db:
                 deleted = await NodeManager.delete(db=db, branch=branch, nodes=[obj])
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc

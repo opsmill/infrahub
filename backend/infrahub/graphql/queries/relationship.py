@@ -27,18 +27,18 @@ class Relationships(ObjectType):
         offset: int = 0,
         excluded_namespaces: Optional[list[str]] = None,
     ) -> dict[str, Any]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         fields = await extract_fields_first_node(info)
         excluded_namespaces = excluded_namespaces or []
 
         response: dict[str, Any] = {"edges": [], "count": None}
 
-        async with context.db.start_session() as db:
+        async with graphql_context.db.start_session() as db:
             query = await RelationshipGetByIdentifierQuery.init(
                 db=db,
-                branch=context.branch,
-                at=context.at,
+                branch=graphql_context.branch,
+                at=graphql_context.at,
                 identifiers=ids,
                 excluded_namespaces=excluded_namespaces,
                 limit=limit,

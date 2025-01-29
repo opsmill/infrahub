@@ -40,15 +40,15 @@ async def resolve_status(
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
 ) -> dict:
-    context: GraphqlContext = info.context
-    service = context.service
+    graphql_context: GraphqlContext = info.context
+    service = graphql_context.service
     if service is None:
         raise ValueError("GraphqlContext.service is None")
 
     fields = await extract_fields_first_node(info)
     response: dict[str, Any] = {}
     workers = await service.component.list_workers(
-        branch=str(context.branch.uuid) or context.branch.name, schema_hash=True
+        branch=str(graphql_context.branch.uuid) or graphql_context.branch.name, schema_hash=True
     )
 
     if summary := fields.get("summary"):
