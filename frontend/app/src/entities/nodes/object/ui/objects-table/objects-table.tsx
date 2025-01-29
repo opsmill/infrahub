@@ -68,12 +68,18 @@ export const ObjectsTable = ({
       data-testid="object-items"
     >
       {allHeaders.map((header) => {
-        return flexRender(header.column.columnDef.header, header.getContext());
+        return flexRender(header.column.columnDef.header, {
+          ...header.getContext(),
+          key: header.id,
+        });
       })}
 
       {allRows.map((row) => {
         return row.getAllCells().map((cell) => {
-          return flexRender(cell.column.columnDef.cell, cell.getContext());
+          return flexRender(cell.column.columnDef.cell, {
+            ...cell.getContext(),
+            key: cell.id,
+          });
         });
       })}
 
