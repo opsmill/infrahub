@@ -61,6 +61,7 @@ export const TimeFrameSelector = () => {
       />
 
       <Transition
+        as="div"
         show={!!date}
         enter="linear duration-300"
         enterFrom="w-0 opacity-0"

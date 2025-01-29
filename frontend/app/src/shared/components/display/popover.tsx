@@ -1,8 +1,5 @@
-// type PopOver = {}
-
-import Transition from "@/shared/components/ui/transition";
 import { classNames } from "@/shared/utils/common";
-import { Popover } from "@headlessui/react";
+import { Popover, Transition } from "@headlessui/react";
 import { CSSProperties, forwardRef, useState } from "react";
 import { usePopper } from "react-popper";
 
@@ -117,7 +114,14 @@ export const PopOver = (props: PopOverProps) => {
         {buttonComponent}
       </Popover.Button>
 
-      <Transition>
+      <Transition
+        enter="transition-opacity duration-200"
+        enterFrom="opacity-0"
+        enterTo="opacity-100"
+        leave="transition-opacity duration-200"
+        leaveFrom="opacity-100"
+        leaveTo="opacity-0"
+      >
         <PopOverPanel
           {...propsToPass}
           ref={setPopperElement}
