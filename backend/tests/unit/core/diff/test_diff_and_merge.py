@@ -24,6 +24,29 @@ from infrahub.dependencies.registry import get_component_registry
 from tests.unit.core.test_utils import verify_all_linked_edges_deleted
 
 
+async def verify_no_duplicate_paths(db: InfrahubDatabase) -> None:
+    """Verify that no duplicate paths exist at the database level"""
+    query = """
+MATCH path = (p)-[e]->(q)
+WITH COALESCE(p.uuid, p.value) AS node_id1, e.branch AS branch, e.from AS from_time, type(e) AS edge_type, COALESCE(q.uuid, q.value) AS node_id2, path
+WHERE node_id1 IS NOT NULL AND node_id2 IS NOT NULL
+WITH node_id1, branch, from_time, edge_type, node_id2, size(collect(path)) AS num_paths
+WHERE num_paths > 1
+RETURN node_id1, branch, from_time, edge_type, node_id2, num_paths
+    """
+    records = await db.execute_query(query=query)
+    for record in records:
+        node_id1 = record.get("node_id1")
+        branch = record.get("branch")
+        from_time = record.get("from_time")
+        edge_type = record.get("edge_type")
+        node_id2 = record.get("node_id2")
+        num_paths = record.get("num_paths")
+        raise ValueError(
+            f"{num_paths} paths ({branch=},{edge_type=},{from_time=}) between nodes '{node_id1}' and '{node_id2}'"
+        )
+
+
 class TestDiffAndMerge:
     @pytest.fixture
     async def diff_repository(self, db: InfrahubDatabase, default_branch: Branch) -> DiffRepository:
@@ -57,6 +80,7 @@ class TestDiffAndMerge:
 
         updated_node = await NodeManager.get_one(db=db, branch=default_branch, id=new_node.id)
         assert updated_node.mylist.value == ["c", "d", 3, 4]
+        await verify_no_duplicate_paths(db=db)
 
     async def test_diff_and_merge_schema_with_default_values(
         self,
@@ -105,6 +129,7 @@ class TestDiffAndMerge:
         assert "num_cupholders" not in attribute_names
         assert "is_cool" not in attribute_names
         assert "nickname" not in attribute_names
+        await verify_no_duplicate_paths(db=db)
 
     @pytest.mark.parametrize(
         "conflict_selection,expected_value",
@@ -149,6 +174,7 @@ class TestDiffAndMerge:
 
         rolled_back_john = await NodeManager.get_one(db=db, id=person_john_main.id)
         assert rolled_back_john.name.value == "John-main"
+        await verify_no_duplicate_paths(db=db)
 
     @pytest.mark.parametrize(
         "conflict_selection",
@@ -198,6 +224,7 @@ class TestDiffAndMerge:
         rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
         owner_rel = await rolled_back_car.owner.get(db=db)
         assert owner_rel.peer_id == person_alfred_main.id
+        await verify_no_duplicate_paths(db=db)
 
     @pytest.mark.parametrize(
         "conflict_selection",
@@ -247,6 +274,7 @@ class TestDiffAndMerge:
         rolled_back_john = await NodeManager.get_one(db=db, id=person_john_main.id, include_source=True)
         attr_source = await rolled_back_john.name.get_source(db=db)
         assert attr_source.id == person_alfred_main.id
+        await verify_no_duplicate_paths(db=db)
 
     @pytest.mark.parametrize(
         "conflict_selection",
@@ -299,6 +327,7 @@ class TestDiffAndMerge:
         owner_rel = await rolled_back_car.owner.get(db=db)
         owner_prop = await owner_rel.get_owner(db=db)
         assert owner_prop.id == person_alfred_main.id
+        await verify_no_duplicate_paths(db=db)
 
     @pytest.mark.parametrize("new_height", (0, 1000, None))
     async def test_single_attribute_update(
@@ -321,6 +350,35 @@ class TestDiffAndMerge:
 
         updated_person = await NodeManager.get_one(db=db, id=person_jane_main.id)
         assert updated_person.height.value == new_height
+        await verify_no_duplicate_paths(db=db)
+
+    async def test_one_many_relationship_added(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main, car_camry_main
+    ):
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        branch_car = await Node.init(db=db, schema="TestCar", branch=branch2)
+        await branch_car.new(db=db, name="new camry", nbr_seats=5, is_electric=False, owner=person_jane_main.id)
+        await branch_car.save(db=db)
+
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+            base_branch=default_branch, diff_branch=branch2
+        )
+        car_node = enriched_diff.get_node(node_uuid=branch_car.id)
+        assert car_node.action is DiffAction.ADDED
+        person_node = enriched_diff.get_node(node_uuid=person_jane_main.id)
+        assert person_node.action is DiffAction.UPDATED
+
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        await diff_merger.merge_graph(at=Timestamp())
+
+        updated_car = await NodeManager.get_one(db=db, id=branch_car.id)
+        assert updated_car.name.value == "new camry"
+        assert updated_car.nbr_seats.value == 5
+        assert updated_car.is_electric.value is False
+        owner_rel = await updated_car.owner.get(db=db)
+        assert owner_rel.peer_id == person_jane_main.id
+        await verify_no_duplicate_paths(db=db)
 
     async def test_relationship_set_to_null(self, db: InfrahubDatabase, default_branch: Branch, animal_person_schema):
         person_main = await Node.init(db=db, schema="TestPerson")
@@ -356,6 +414,7 @@ class TestDiffAndMerge:
         updated_friend = await NodeManager.get_one(db=db, id=friend_main.id)
         best_friend_rels = await updated_friend.best_friends.get_relationships(db=db)
         assert len(best_friend_rels) == 0
+        await verify_no_duplicate_paths(db=db)
 
     async def test_local_and_aware_nodes_added_on_branch(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local: SchemaBranch
@@ -423,6 +482,7 @@ class TestDiffAndMerge:
         )
         assert len(owner_rels) == 1
         assert owner_rels[0].peer_id == person.id
+        await verify_no_duplicate_paths(db=db)
 
     async def test_agnostic_and_aware_nodes_added_on_branch(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_global
@@ -499,6 +559,7 @@ class TestDiffAndMerge:
         )
         assert len(owner_rels) == 1
         assert owner_rels[0].peer_id == person.id
+        await verify_no_duplicate_paths(db=db)
 
     async def test_update_individual_relationship_properties_one_at_a_time(
         self,
@@ -542,6 +603,7 @@ class TestDiffAndMerge:
         assert owner_rel.peer_id == person_john_main.id
         assert owner_rel.is_protected is False
         assert owner_rel.is_visible is True
+        await verify_no_duplicate_paths(db=db)
 
     async def test_branch_delete_with_added_base_relationship(
         self,
@@ -604,6 +666,7 @@ class TestDiffAndMerge:
         assert owner_rel.peer_id == person_john_main.id
         assert owner_rel.is_protected is False
         assert owner_rel.is_visible is True
+        await verify_no_duplicate_paths(db=db)
 
     async def test_base_delete_with_added_branch_relationship(
         self,
@@ -663,6 +726,7 @@ class TestDiffAndMerge:
         # validate that car remains deleted after rollback
         rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
         assert rolled_back_car is None
+        await verify_no_duplicate_paths(db=db)
 
     async def test_delete_with_many_relationship_added(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
@@ -713,6 +777,7 @@ class TestDiffAndMerge:
         # including the relationship connecting car_1 and person_1 is deleted,
         # requires a special query b/c TestCar has no relationship to TestPerson in the schema
         await verify_all_linked_edges_deleted(db=db, node_uuid=person_1.id, branch_name=default_branch.name)
+        await verify_no_duplicate_paths(db=db)
 
     @pytest.mark.parametrize("selection", [ConflictSelection.BASE_BRANCH, ConflictSelection.DIFF_BRANCH])
     async def test_attribute_update_with_conflict(
@@ -754,3 +819,4 @@ class TestDiffAndMerge:
             assert updated_person.height.value == branch_value
         else:
             assert updated_person.height.value == main_value
+        await verify_no_duplicate_paths(db=db)

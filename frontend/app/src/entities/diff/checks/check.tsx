@@ -5,7 +5,7 @@ import { MoreButton } from "@/shared/components/buttons/more-button";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { PopOver } from "@/shared/components/display/popover";
-import { CodeEditor } from "@/shared/components/editor/code-editor";
+import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Skeleton } from "@/shared/components/skeleton";
 import { List } from "@/shared/components/table/list";
@@ -179,7 +179,7 @@ export const Check = ({ id }: tCheckProps) => {
           {message?.value && (
             <div className="mt-2">
               <Accordion title={"Message"}>
-                <CodeEditor value={message?.value} disabled dark />
+                <CodeViewer>{message?.value}</CodeViewer>
               </Accordion>
             </div>
           )}

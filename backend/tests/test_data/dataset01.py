@@ -95,8 +95,14 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = 0) -> None:
     # roles_dict = {}
 
     log.info("Creating Site")
+    continent = await Node.init(db=db, schema="LocationContinent")
+    await continent.new(db=db, name="Africa")
+    await continent.save(db=db)
+    country = await Node.init(db=db, schema="LocationCountry")
+    await country.new(db=db, name="Kingdom of Wakanda", parent=continent)
+    await country.save(db=db)
     site_hq = await Node.init(db=db, schema="LocationSite")
-    await site_hq.new(db=db, name="HQ")
+    await site_hq.new(db=db, name="HQ", parent=country)
     await site_hq.save(db=db)
 
     active_status = "active"

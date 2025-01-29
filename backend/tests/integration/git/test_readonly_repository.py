@@ -103,14 +103,19 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
     ):
         artifacts = await client.all(kind=CoreArtifact, branch="ro_repository")
         artifacts_dict = {item.name.value: item for item in artifacts}
-        assert sorted(artifacts_dict.keys()) == ["car-name", "car-owner"]
+        assert sorted(artifacts_dict.keys()) == ["car-name", "car-owner", "car-owner-yaml", "car-spec-markdown"]
         john_display_label = await person_john.render_display_label(db=db)
 
         artifact_diff_calculator = ArtifactDiffCalculator(db=db)
         branch = await registry.get_branch(db=db, branch="ro_repository")
         diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
         diffs_dict = {str(item.display_label): item for item in diffs}
-        assert sorted(diffs_dict.keys()) == ["John - car-name", "John - car-owner"]
+        assert sorted(diffs_dict.keys()) == [
+            "John - car-name",
+            "John - car-owner",
+            "John - car-owner-yaml",
+            "John - car-spec-markdown",
+        ]
         assert diffs_dict["John - car-owner"] == BranchDiffArtifact(
             branch="ro_repository",
             id=artifacts_dict["car-owner"].id,
@@ -150,7 +155,12 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
             )
 
         artifacts = await client.all(kind=CoreArtifact)
-        assert sorted([artifact.name.value for artifact in artifacts]) == ["car-name", "car-owner"]
+        assert sorted([artifact.name.value for artifact in artifacts]) == [
+            "car-name",
+            "car-owner",
+            "car-owner-yaml",
+            "car-spec-markdown",
+        ]
 
     async def test_step04_new_branch_with_artifact(
         self,
@@ -188,13 +198,13 @@ class TestCreateReadOnlyRepository(TestInfrahubApp):
 
         artifacts = await client.all(kind=CoreArtifact, branch="branch")
         artifacts_dict = {item.name.value: item for item in artifacts}
-        assert sorted(artifacts_dict.keys()) == ["car-name", "car-owner"]
+        assert sorted(artifacts_dict.keys()) == ["car-name", "car-owner", "car-owner-yaml", "car-spec-markdown"]
         artifact_main = await NodeManager.get_one(db=db, id=artifacts_dict["car-owner"].id)
 
         artifact_diff_calculator = ArtifactDiffCalculator(db=db)
         diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
         diffs_dict = {str(item.display_label): item for item in diffs}
-        assert sorted(diffs_dict.keys()) == ["John2 - car-name", "John2 - car-owner"]
+        assert sorted(diffs_dict.keys()) == ["John2 - car-name", "John2 - car-owner", "John2 - car-owner-yaml"]
         assert diffs_dict["John2 - car-owner"] == BranchDiffArtifact(
             branch="branch",
             id=artifacts_dict["car-owner"].id,

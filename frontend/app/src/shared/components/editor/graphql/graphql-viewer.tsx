@@ -1,4 +1,4 @@
-import { CodeViewerLimiter } from "@/shared/components/editor/code-viewer-limiter";
+import { CodeViewerLimiter } from "@/shared/components/editor/code/code-viewer-limiter";
 import { useCodeMirror } from "@/shared/hooks/useCodeMirror";
 import { useRef } from "react";
 

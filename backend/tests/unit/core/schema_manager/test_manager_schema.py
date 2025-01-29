@@ -17,6 +17,7 @@ from infrahub.core.constants import (
     RelationshipKind,
     SchemaPathType,
 )
+from infrahub.core.node import Node
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -2793,3 +2794,38 @@ async def test_process_deprecations(organization_schema):
     assert test_criticality.get_attribute(name="description").optional
     assert test_criticality.get_relationship(name="first").optional
     assert not test_criticality.get_relationship(name="second").optional
+
+
+async def test_hierarchical_validate_parent_children(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple_unregistered: SchemaRoot
+):
+    site_schema = hierarchical_location_schema_simple_unregistered.get(name="LocationSite")
+    site_schema.human_friendly_id = ["parent__name__value", "name__value"]
+    site_schema.uniqueness_constraints = [["parent", "name__value"]]
+
+    registry.schema.register_schema(schema=hierarchical_location_schema_simple_unregistered, branch=default_branch.name)
+
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+    with pytest.raises(ValueError, match=r"Unable to find the relationship"):
+        region_schema = schema_branch.get(name="LocationRegion", duplicate=False)
+        region_schema.get_relationship(name="parent")
+
+    with pytest.raises(ValueError, match=r"Unable to find the relationship"):
+        rack_schema = schema_branch.get(name="LocationRack", duplicate=False)
+        rack_schema.get_relationship(name="children")
+
+    eu: Node = await Node.init(db=db, schema="LocationRegion", branch=default_branch)
+    await eu.new(db=db, name="Europe")
+    await eu.save(db=db)
+
+    fr: Node = await Node.init(db=db, schema="LocationSite", branch=default_branch)
+    await fr.new(db=db, name="France", parent=eu)
+    await fr.save(db=db)
+
+    uk: Node = await Node.init(db=db, schema="LocationSite", branch=default_branch)
+    with pytest.raises(ValidationError, match=r"parent is mandatory"):
+        await uk.new(db=db, name="United Kingdom")
+
+    await uk.new(db=db, name="United Kingdom", parent=eu)
+    await uk.save(db=db)

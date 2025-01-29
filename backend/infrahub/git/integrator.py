@@ -1238,10 +1238,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 client=self.sdk,
             )
 
-        if definition.content_type.value == ContentType.APPLICATION_JSON.value:
+        if definition.content_type.value == ContentType.APPLICATION_JSON.value and isinstance(artifact_content, dict):
             artifact_content_str = ujson.dumps(artifact_content, indent=2)
-        elif definition.content_type.value == ContentType.TEXT_PLAIN.value:
-            artifact_content_str = artifact_content
+        elif definition.content_type.value == ContentType.APPLICATION_YAML.value and isinstance(artifact_content, dict):
+            artifact_content_str = yaml.dump(artifact_content, indent=2)
+        else:
+            artifact_content_str = str(artifact_content)
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 
@@ -1288,10 +1290,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):  # pylint: disable=t
                 client=self.sdk,
             )
 
-        if message.content_type == ContentType.APPLICATION_JSON.value:
+        if message.content_type == ContentType.APPLICATION_JSON.value and isinstance(artifact_content, dict):
             artifact_content_str = ujson.dumps(artifact_content, indent=2)
-        elif message.content_type == ContentType.TEXT_PLAIN.value:
-            artifact_content_str = artifact_content
+        elif message.content_type == ContentType.APPLICATION_YAML.value and isinstance(artifact_content, dict):
+            artifact_content_str = yaml.dump(artifact_content, indent=2)
+        else:
+            artifact_content_str = str(artifact_content)
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 

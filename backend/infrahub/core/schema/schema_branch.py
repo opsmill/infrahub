@@ -492,6 +492,8 @@ class SchemaBranch:
         self.process_branch_support()
         self.manage_profile_schemas()
         self.manage_profile_relationships()
+        self.add_hierarchy_generic()
+        self.add_hierarchy_node()
 
     def process_validate(self) -> None:
         self.validate_names()
@@ -512,8 +514,6 @@ class SchemaBranch:
     def process_post_validation(self) -> None:
         self.cleanup_inherited_elements()
         self.add_groups()
-        self.add_hierarchy_generic()
-        self.add_hierarchy_node()
         self.generate_weight()
         self.process_labels()
         self.process_dropdowns()
@@ -633,7 +633,7 @@ class SchemaBranch:
                     and not (
                         schema_attribute_path.relationship_schema.name == "ip_namespace"
                         and isinstance(node_schema, NodeSchema)
-                        and (node_schema.is_ip_address() or node_schema.is_ip_prefix)
+                        and (node_schema.is_ip_address() or node_schema.is_ip_prefix())
                     )
                 ):
                     raise ValueError(
@@ -1509,7 +1509,7 @@ class SchemaBranch:
             if changed:
                 self.set(name=node_name, schema=schema)
 
-    def _get_hierarchy_child_rel(self, peer: str, hierarchical: str, read_only: bool) -> RelationshipSchema:
+    def _get_hierarchy_child_rel(self, peer: str, hierarchical: str | None, read_only: bool) -> RelationshipSchema:
         return RelationshipSchema(
             name="children",
             identifier="parent__child",
@@ -1522,18 +1522,22 @@ class SchemaBranch:
             read_only=read_only,
         )
 
-    def _get_hierarchy_parent_rel(self, peer: str, hierarchical: str, read_only: bool) -> RelationshipSchema:
+    def _get_hierarchy_parent_rel(
+        self, peer: str, hierarchical: str | None, read_only: bool, optional: bool
+    ) -> RelationshipSchema:
         return RelationshipSchema(
             name="parent",
             identifier="parent__child",
             peer=peer,
             kind=RelationshipKind.HIERARCHY,
             cardinality=RelationshipCardinality.ONE,
+            min_count=0 if optional else 1,
             max_count=1,
             branch=BranchSupportType.AWARE,
             direction=RelationshipDirection.OUTBOUND,
             hierarchical=hierarchical,
             read_only=read_only,
+            optional=optional,
         )
 
     def add_hierarchy_generic(self) -> None:
@@ -1548,7 +1552,9 @@ class SchemaBranch:
 
             if "parent" not in generic.relationship_names:
                 generic.relationships.append(
-                    self._get_hierarchy_parent_rel(peer=generic_name, hierarchical=generic_name, read_only=read_only)
+                    self._get_hierarchy_parent_rel(
+                        peer=generic_name, hierarchical=generic_name, read_only=read_only, optional=True
+                    )
                 )
             if "children" not in generic.relationship_names:
                 generic.relationships.append(
@@ -1571,7 +1577,10 @@ class SchemaBranch:
                 if "parent" not in node.relationship_names:
                     node.relationships.append(
                         self._get_hierarchy_parent_rel(
-                            peer=node.parent, hierarchical=node.hierarchy, read_only=read_only
+                            peer=node.parent,
+                            hierarchical=node.hierarchy,
+                            read_only=read_only,
+                            optional=node.parent in [node_name] + self.generic_names,
                         )
                     )
                 else:

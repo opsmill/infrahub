@@ -116,7 +116,7 @@ class IpamDiffParser:
                 rels = await node_from_db.ip_namespace.get_relationships(db=self.db)  # type: ignore[attr-defined]
                 if rels:
                     cnd.namespace_id = rels[0].get_peer_id()
-            if cnd.ip_value and cnd.namespace_id:
+            if cnd.ip_value and cnd.namespace_id and cnd.node_uuid in uuids_missing_data:
                 uuids_missing_data.remove(cnd.node_uuid)
 
     async def _add_missing_values(
