@@ -28,21 +28,21 @@ class EventNodes(ObjectType):
 # ---------------------------------------
 # Branch events
 # ---------------------------------------
-class BranchCreateEvent(ObjectType):
+class BranchCreatedEvent(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
 
     payload = Field(GenericScalar, required=True)
 
 
-class BranchRebaseEvent(ObjectType):
+class BranchRebasedEvent(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
 
     payload = Field(GenericScalar, required=True)
 
 
-class BranchDeleteEvent(ObjectType):
+class BranchDeletedEvent(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
 
@@ -68,8 +68,8 @@ class StandardEvent(ObjectType):
 
 EVENT_TYPES: dict[str, type[ObjectType]] = {
     "infrahub.node.added": NodeAddedEvent,
-    "infrahub.branch.created": BranchCreateEvent,
-    "infrahub.branch.rebased": BranchRebaseEvent,
-    "infrahub.branch.deleted": BranchDeleteEvent,
+    "infrahub.branch.created": BranchCreatedEvent,
+    "infrahub.branch.rebased": BranchRebasedEvent,
+    "infrahub.branch.deleted": BranchDeletedEvent,
     "undefined": StandardEvent,
 }

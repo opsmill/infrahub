@@ -4,23 +4,24 @@ from infrahub.message_bus import InfrahubMessage
 from infrahub.message_bus.messages.refresh_registry_branches import RefreshRegistryBranches
 from infrahub.message_bus.messages.refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
 
-from .models import InfrahubBranchEvent
+from .constants import EVENT_NAMESPACE
+from .models import InfrahubEvent
 
 
-class BranchDeleteEvent(InfrahubBranchEvent):
+class BranchDeletedEvent(InfrahubEvent):
     """Event generated when a branch has been deleted"""
 
+    event_name: str = f"{EVENT_NAMESPACE}.branch.deleted"
+
+    branch_name: str = Field(..., description="The name of the branch")
     branch_id: str = Field(..., description="The ID of the mutated node")
     sync_with_git: bool = Field(..., description="Indicates if the branch was extended to Git")
 
-    def get_name(self) -> str:
-        return f"{self.get_event_namespace()}.branch.deleted"
-
     def get_resource(self) -> dict[str, str]:
         return {
-            "prefect.resource.id": f"infrahub.branch.{self.branch}",
+            "prefect.resource.id": f"infrahub.branch.{self.branch_name}",
             "infrahub.branch.id": self.branch_id,
-            "infrahub.branch.name": self.branch,
+            "infrahub.branch.name": self.branch_name,
         }
 
     def get_messages(self) -> list[InfrahubMessage]:
@@ -36,20 +37,20 @@ class BranchDeleteEvent(InfrahubBranchEvent):
         return events
 
 
-class BranchCreateEvent(InfrahubBranchEvent):
+class BranchCreatedEvent(InfrahubEvent):
     """Event generated when a branch has been created"""
 
-    branch_id: str = Field(..., description="The ID of the mutated node")
-    sync_with_git: bool = Field(..., description="Indicates if the branch was extended to Git")
+    event_name: str = f"{EVENT_NAMESPACE}.branch.created"
 
-    def get_name(self) -> str:
-        return f"{self.get_event_namespace()}.branch.created"
+    branch_name: str = Field(..., description="The name of the branch")
+    branch_id: str = Field(..., description="The ID of the branch")
+    sync_with_git: bool = Field(..., description="Indicates if the branch was extended to Git")
 
     def get_resource(self) -> dict[str, str]:
         return {
-            "prefect.resource.id": f"infrahub.branch.{self.branch}",
+            "prefect.resource.id": f"infrahub.branch.{self.branch_name}",
             "infrahub.branch.id": self.branch_id,
-            "infrahub.branch.name": self.branch,
+            "infrahub.branch.name": self.branch_name,
         }
 
     def get_messages(self) -> list[InfrahubMessage]:
@@ -65,17 +66,17 @@ class BranchCreateEvent(InfrahubBranchEvent):
         return events
 
 
-class BranchRebaseEvent(InfrahubBranchEvent):
+class BranchRebasedEvent(InfrahubEvent):
     """Event generated when a branch has been rebased"""
 
-    branch_id: str = Field(..., description="The ID of the mutated node")
+    event_name: str = f"{EVENT_NAMESPACE}.branch.rebased"
 
-    def get_name(self) -> str:
-        return f"{self.get_event_namespace()}.branch.rebased"
+    branch_id: str = Field(..., description="The ID of the mutated node")
+    branch_name: str = Field(..., description="The name of the branch")
 
     def get_resource(self) -> dict[str, str]:
         return {
-            "prefect.resource.id": f"infrahub.branch.{self.branch}",
+            "prefect.resource.id": f"infrahub.branch.{self.branch_name}",
             "infrahub.branch.id": self.branch_id,
         }
 
@@ -85,6 +86,6 @@ class BranchRebaseEvent(InfrahubBranchEvent):
             #     branch=self.branch,
             #     meta=self.get_message_meta(),
             # ),
-            RefreshRegistryRebasedBranch(branch=self.branch),
+            RefreshRegistryRebasedBranch(branch=self.branch_name),
         ]
         return events

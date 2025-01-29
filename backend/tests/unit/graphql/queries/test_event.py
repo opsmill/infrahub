@@ -7,7 +7,7 @@ from prefect.client.orchestration import PrefectClient, get_client
 
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
-from infrahub.events.branch_action import BranchCreateEvent, BranchRebaseEvent
+from infrahub.events.branch_action import BranchCreatedEvent, BranchRebasedEvent
 from infrahub.events.models import InfrahubEvent
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.events import send_events
@@ -42,10 +42,10 @@ async def branch2_id() -> str:
 @pytest.fixture(scope="module")
 async def events_data(prefect_client: PrefectClient, branch1_id, branch2_id) -> dict[str, InfrahubEvent]:
     items: dict[str, InfrahubEvent] = {
-        "branch1_created": BranchCreateEvent(branch="branch1", branch_id=branch1_id, sync_with_git=True),
-        "branch1_rebased": BranchRebaseEvent(branch="branch1", branch_id=branch1_id),
-        "branch2_created": BranchCreateEvent(branch="branch2", branch_id=branch2_id, sync_with_git=False),
-        "branch2_rebased": BranchRebaseEvent(branch="branch2", branch_id=branch2_id),
+        "branch1_created": BranchCreatedEvent(branch_name="branch1", branch_id=branch1_id, sync_with_git=True),
+        "branch1_rebased": BranchRebasedEvent(branch_name="branch1", branch_id=branch1_id),
+        "branch2_created": BranchCreatedEvent(branch_name="branch2", branch_id=branch2_id, sync_with_git=False),
+        "branch2_rebased": BranchRebasedEvent(branch_name="branch2", branch_id=branch2_id),
     }
 
     await send_events(client=prefect_client, events=items.values())

@@ -63,7 +63,7 @@ class InfrahubMutationMixin:
 
         if "Create" in cls.__name__:
             obj, mutation = await cls.mutate_create(info=info, branch=context.branch, data=data, **kwargs)
-            action = MutationAction.ADDED
+            action = MutationAction.CREATED
         elif "Update" in cls.__name__:
             obj, mutation = await cls.mutate_update(info=info, branch=context.branch, data=data, **kwargs)
             action = MutationAction.UPDATED
@@ -78,12 +78,12 @@ class InfrahubMutationMixin:
                 info=info, branch=context.branch, data=data, node_getters=node_getters, **kwargs
             )
             if created:
-                action = MutationAction.ADDED
+                action = MutationAction.CREATED
             else:
                 action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
             obj, mutation = await cls.mutate_delete(info=info, branch=context.branch, data=data, **kwargs)
-            action = MutationAction.REMOVED
+            action = MutationAction.DELETED
         else:
             raise ValueError(
                 f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
@@ -98,13 +98,12 @@ class InfrahubMutationMixin:
 
             graphql_payload = await obj.to_graphql(db=context.db, filter_sensitive=True)
             event = NodeMutatedEvent(
-                branch=context.branch.name,
                 kind=obj._schema.kind,
                 node_id=obj.id,
                 data=graphql_payload,
                 action=action,
                 fields=_get_data_fields(data),
-                meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+                meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id, branch=context.branch.name),
             )
 
             context.background.add_task(context.active_service.event.send, event)
