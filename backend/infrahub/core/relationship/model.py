@@ -23,6 +23,7 @@ from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel, Field
 
 from infrahub.core import registry
+from infrahub.core.changelog.models import ChangelogRelationshipMapper
 from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.property import (
     FlagPropertyMixin,
@@ -48,6 +49,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
+    from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipCardinalityOneChangelog
     from infrahub.core.node import Node
     from infrahub.core.schema import MainSchemaTypes, RelationshipSchema
     from infrahub.database import InfrahubDatabase
@@ -1130,18 +1132,21 @@ class RelationshipManager:
         )
         await query.execute(db=db)
 
-    async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> Self:
+    async def save(
+        self, db: InfrahubDatabase, at: Optional[Timestamp] = None
+    ) -> RelationshipCardinalityManyChangelog | RelationshipCardinalityOneChangelog:
         """Create or Update the Relationship in the database."""
 
         await self.resolve(db=db)
 
         save_at = Timestamp(at)
         details = await self.fetch_relationship_ids(db=db, force_refresh=True)
-
+        relationship_mapper = ChangelogRelationshipMapper(schema=self.schema)
         # If we have previously fetched the relationships from the database
         # Update the one in the database that shouldn't be here.
         if self.has_fetched_relationships:
             for peer_id in details.peer_ids_present_database_only:
+                relationship_mapper.remove_peer(peer_data=details.peers_database[peer_id])
                 await self.remove_in_db(peer_data=details.peers_database[peer_id], at=save_at, db=db)
 
         # Create the new relationship that are not present in the database
@@ -1149,6 +1154,8 @@ class RelationshipManager:
         for rel in await self.get_relationships(db=db):
             if rel.peer_id in details.peer_ids_present_local_only:
                 await rel.save(at=save_at, db=db)
+
+                relationship_mapper.add_peer_from_relationship(relationship=rel)
 
             elif rel.peer_id in details.peer_ids_present_both:
                 if properties_not_matching := rel.compare_properties_with_data(
@@ -1161,7 +1168,7 @@ class RelationshipManager:
                         db=db,
                     )
 
-        return self
+        return relationship_mapper.changelog
 
     async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
         """Delete all the relationships."""

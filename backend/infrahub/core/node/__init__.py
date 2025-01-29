@@ -7,6 +7,7 @@ from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
+from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import BranchSupportType, ComputedAttributeKind, InfrahubKind, RelationshipCardinality
 from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.protocols import CoreNumberPool
@@ -167,6 +168,14 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Lists of attributes and relationships names
         self._attributes: list[str] = []
         self._relationships: list[str] = []
+        self._node_changelog: NodeChangelog | None = None
+
+    @property
+    def node_changelog(self) -> NodeChangelog:
+        if self._node_changelog:
+            return self._node_changelog
+
+        raise InitializationError("The node has not been saved so no changelog exists")
 
     @overload
     @classmethod
@@ -521,7 +530,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         await self._process_fields(db=db, fields=kwargs)
         return self
 
-    async def _create(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
+    async def _create(self, db: InfrahubDatabase, at: Timestamp | None = None) -> NodeChangelog:
         create_at = Timestamp(at)
 
         query = await NodeCreateAllQuery.init(db=db, node=self, at=create_at)
@@ -533,44 +542,53 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._existing = True
 
         new_ids = query.get_ids()
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
         # Go over the list of Attribute and assign the new IDs one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
             attr.id, attr.db_id = new_ids[name]
             attr.at = create_at
+            node_changelog.create_attribute(attribute=attr)
 
         # Go over the list of relationships and assign the new IDs one by one
         for name in self._relationships:
             relm: RelationshipManager = getattr(self, name)
             for rel in relm._relationships:
                 identifier = f"{rel.schema.identifier}::{rel.peer_id}"
+
                 rel.id, rel.db_id = new_ids[identifier]
+
+                node_changelog.create_relationship(relationship=rel)
+
+        node_changelog.display_label = await self.render_display_label(db=db)
+        return node_changelog
 
     async def _update(
         self, db: InfrahubDatabase, at: Optional[Timestamp] = None, fields: list[str] | None = None
-    ) -> None:
+    ) -> NodeChangelog:
         """Update the node in the database if needed."""
 
         update_at = Timestamp(at)
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
-            if fields and name in fields:
+            if (fields and name in fields) or not fields:
                 attr: BaseAttribute = getattr(self, name)
-                await attr.save(at=update_at, db=db)
-            else:
-                attr: BaseAttribute = getattr(self, name)
-                await attr.save(at=update_at, db=db)
+                updated_attribute = await attr.save(at=update_at, db=db)
+                if updated_attribute:
+                    node_changelog.add_attribute(attribute=updated_attribute)
 
         # Go over the list of relationships and update them one by one
         for name in self._relationships:
-            if fields and name in fields:
+            if (fields and name in fields) or not fields:
                 rel: RelationshipManager = getattr(self, name)
-                await rel.save(at=update_at, db=db)
-            else:
-                attr: BaseAttribute = getattr(self, name)
-                await attr.save(at=update_at, db=db)
+                updated_relationship = await rel.save(at=update_at, db=db)
+                node_changelog.add_relationship(relationship=updated_relationship)
+
+        node_changelog.display_label = await self.render_display_label(db=db)
+        return node_changelog
 
     async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None, fields: list[str] | None = None) -> Self:
         """Create or Update the Node in the database."""
@@ -578,10 +596,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         save_at = Timestamp(at)
 
         if self._existing:
-            await self._update(at=save_at, db=db, fields=fields)
+            self._node_changelog = await self._update(at=save_at, db=db, fields=fields)
             return self
 
-        await self._create(at=save_at, db=db)
+        self._node_changelog = await self._create(at=save_at, db=db)
         return self
 
     async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
@@ -589,6 +607,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         delete_at = Timestamp(at)
 
+        changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
@@ -620,6 +639,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at)
         await query.execute(db=db)
+        self._node_changelog = changelog
 
     async def to_graphql(
         self,

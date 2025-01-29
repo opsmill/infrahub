@@ -51,13 +51,11 @@ async def send_webhook(model: SendWebhookData, service: InfrahubServices) -> Non
 
 
 @flow(name="webhook-trigger-actions", flow_run_name="Trigger configured webhooks")
-async def trigger_webhooks(event_type: str, event_data: str, service: InfrahubServices) -> None:
-    payload: dict = ujson.loads(event_data)
-
+async def trigger_webhooks(event_type: str, event_data: dict, service: InfrahubServices) -> None:
     webhooks = await service.cache.list_keys(filter_pattern="webhook:active:*")
     for webhook in webhooks:
         webhook_id = webhook.split(":")[-1]
-        model = SendWebhookData(webhook_id=webhook_id, event_type=event_type, event_data=payload)
+        model = SendWebhookData(webhook_id=webhook_id, event_type=event_type, event_data=event_data)
         await service.workflow.submit_workflow(workflow=WEBHOOK_SEND, parameters={"model": model})
 
 
@@ -166,7 +164,10 @@ async def configure_webhooks(service: InfrahubServices) -> None:
                     deployment_id=deployment_id_webhook_trigger,
                     parameters={
                         "event_type": "{{ event.resource['infrahub.node.kind'] }}.{{ event.resource['infrahub.node.action'] }}",
-                        "event_data": "{{ event.payload['data'] | tojson }}",
+                        "event_data": {
+                            "__prefect_kind": "json",
+                            "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['data'] | tojson }}"},
+                        },
                     },
                     job_variables={},
                 ),

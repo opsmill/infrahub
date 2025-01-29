@@ -96,11 +96,10 @@ class InfrahubMutationMixin:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
-            graphql_payload = await obj.to_graphql(db=graphql_context.db, filter_sensitive=True)
             event = NodeMutatedEvent(
                 kind=obj._schema.kind,
                 node_id=obj.id,
-                data=graphql_payload,
+                data=obj.node_changelog.model_dump(),
                 action=action,
                 fields=_get_data_fields(data),
                 meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id, branch=graphql_context.branch.name),
@@ -125,7 +124,7 @@ class InfrahubMutationMixin:
             return obj
         current_profile_ids = await cls._get_profile_ids(db=db, obj=obj)
         if previous_profile_ids is None or previous_profile_ids != current_profile_ids:
-            return await NodeManager.get_one_by_id_or_default_filter(
+            refreshed_node = await NodeManager.get_one_by_id_or_default_filter(
                 db=db,
                 kind=cls._meta.schema.kind,
                 id=obj.get_id(),
@@ -133,6 +132,8 @@ class InfrahubMutationMixin:
                 include_owner=True,
                 include_source=True,
             )
+            refreshed_node._node_changelog = obj.node_changelog
+            return refreshed_node
         return obj
 
     @classmethod
@@ -288,6 +289,7 @@ class InfrahubMutationMixin:
                 fields.remove(field)
 
         await obj.save(db=db, fields=fields)
+
         obj = await cls._refresh_for_profile_update(
             db=db, branch=branch, obj=obj, previous_profile_ids=before_mutate_profile_ids
         )
