@@ -21,7 +21,7 @@ export const TimeFrameSelector = () => {
     setDate(qspDate ?? null);
   }, [qspDate]);
 
-  const onChange = (newDate: Date) => {
+  const onChange = (newDate: Date | null) => {
     setDate(newDate);
     setQspDate(newDate);
   };
@@ -57,6 +57,7 @@ export const TimeFrameSelector = () => {
         calendarStartDay={1}
         maxDate={new Date()}
         filterTime={(date) => isPast(date)}
+        popperPlacement="bottom-start"
       />
 
       <Transition
