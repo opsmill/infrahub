@@ -11,7 +11,7 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router";
 
 type DetailsButtonsProps = {
   schema: IModelSchema;

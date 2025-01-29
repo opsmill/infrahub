@@ -4,7 +4,7 @@ import { useConfig } from "@/entities/config/get-config.query";
 import { fetchUrl } from "@/shared/api/rest/fetch";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { useEffect, useState } from "react";
-import { Navigate, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useParams, useSearchParams } from "react-router";
 
 function AuthCallback() {
   const { protocol, provider } = useParams();

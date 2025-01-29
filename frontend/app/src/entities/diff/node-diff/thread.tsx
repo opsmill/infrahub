@@ -9,7 +9,7 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 
 import { getPermission } from "@/entities/permission/utils";
 import { Button } from "@/shared/components/buttons/button-primitive";

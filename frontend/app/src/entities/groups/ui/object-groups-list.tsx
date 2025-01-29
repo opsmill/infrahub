@@ -14,7 +14,7 @@ import { pluralize } from "@/shared/utils/string";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 type ObjectGroupsListProps = {
   className?: string;

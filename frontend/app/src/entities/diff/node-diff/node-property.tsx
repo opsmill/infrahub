@@ -4,7 +4,7 @@ import { DiffRow, formatPropertyName, formatValue } from "@/entities/diff/node-d
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { Conflict } from "./conflict";
 import { DiffThread } from "./thread";
 

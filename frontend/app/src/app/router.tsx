@@ -5,7 +5,7 @@ import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ip
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { constructPath } from "@/shared/api/rest/fetch";
 import queryString from "query-string";
-import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router-dom";
+import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router";
 import { QueryParamProvider } from "use-query-params";
 import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 

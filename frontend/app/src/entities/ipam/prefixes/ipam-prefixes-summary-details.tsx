@@ -13,7 +13,7 @@ import { Link } from "@/shared/components/ui/link";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import { IpamSummarySkeleton } from "./ipam-summary-skeleton";
 

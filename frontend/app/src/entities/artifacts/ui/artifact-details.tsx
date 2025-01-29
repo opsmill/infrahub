@@ -22,7 +22,7 @@ import { Link } from "@/shared/components/ui/link";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router";
 import ArtifactHeader from "./artifact-header";
 
 function ArtifactsDetails() {

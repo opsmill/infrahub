@@ -3,7 +3,7 @@ import { getProposedChangesChecks } from "@/entities/proposed-changes/api/getPro
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Pill } from "@/shared/components/display/pill";
 import { gql } from "@apollo/client";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 
 export const ProposedChangesChecksTab = () => {
   const { proposedChangeId } = useParams();

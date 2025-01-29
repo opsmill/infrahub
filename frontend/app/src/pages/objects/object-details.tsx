@@ -10,7 +10,7 @@ import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router";
 import GraphqlQueryDetailsPage from "./CoreGraphQLQuery/graphql-query-details";
 
 export function ObjectDetailsPage() {

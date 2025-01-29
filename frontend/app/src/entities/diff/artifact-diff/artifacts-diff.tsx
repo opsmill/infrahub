@@ -8,7 +8,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useAtom } from "jotai";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 import "react-diff-view/style/index.css";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ArtifactRepoDiff } from "./artifact-repo-diff";

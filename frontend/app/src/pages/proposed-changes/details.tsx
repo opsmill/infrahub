@@ -26,7 +26,7 @@ import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Badge } from "@/shared/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 
 export const PROPOSED_CHANGES_TABS = {

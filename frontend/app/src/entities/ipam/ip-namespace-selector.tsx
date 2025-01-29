@@ -13,7 +13,7 @@ import {
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useId } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import { defaultIpNamespaceAtom } from "./common/namespace.state";
 import { constructPathForIpam } from "./common/utils";

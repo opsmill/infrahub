@@ -8,7 +8,7 @@ import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 import { HTMLAttributes } from "react";
-import { Link, LinkProps } from "react-router-dom";
+import { Link, LinkProps } from "react-router";
 
 type ObjectItemsCellProps = {
   row: any;

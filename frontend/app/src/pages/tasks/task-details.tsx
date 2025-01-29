@@ -10,7 +10,7 @@ import { Link } from "@/shared/components/ui/link";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 
 const TaskDetailsPage = () => {
   useTitle("Task Details");

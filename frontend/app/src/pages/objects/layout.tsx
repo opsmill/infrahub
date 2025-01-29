@@ -12,7 +12,7 @@ import {
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { stateAtom } from "@/shared/stores/state.atom";
 import { useAtomValue } from "jotai";
-import { Outlet, useParams } from "react-router-dom";
+import { Outlet, useParams } from "react-router";
 
 const ObjectPageLayout = () => {
   const { objectKind, objectid } = useParams();

@@ -4,7 +4,7 @@ import { Tooltip, TooltipProps } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { type VariantProps, cva } from "class-variance-authority";
 import { ButtonHTMLAttributes, forwardRef } from "react";
-import { Link, LinkProps } from "react-router-dom";
+import { Link, LinkProps } from "react-router";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center whitespace-nowrap rounded text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed border border-transparent",

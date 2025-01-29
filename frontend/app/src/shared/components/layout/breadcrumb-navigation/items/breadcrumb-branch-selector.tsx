@@ -12,7 +12,7 @@ import { CommandEmpty, CommandItem } from "@/shared/components/ui/command";
 import { classNames } from "@/shared/utils/common";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 
 export default function BreadcrumbBranchSelector({
   value,

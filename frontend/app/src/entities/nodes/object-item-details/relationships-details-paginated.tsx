@@ -11,7 +11,7 @@ import { Pagination } from "@/shared/components/ui/pagination";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { forwardRef, useEffect, useImperativeHandle } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import RelationshipDetails from "./relationship-details-paginated";

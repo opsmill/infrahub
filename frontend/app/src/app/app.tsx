@@ -4,7 +4,7 @@ import mdiIcons from "@iconify-json/mdi/icons.json";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Provider } from "jotai";
 import { ErrorBoundary } from "react-error-boundary";
-import { RouterProvider } from "react-router-dom";
+import { RouterProvider } from "react-router/dom";
 import { Slide, ToastContainer } from "react-toastify";
 
 import { TanStackQueryDevtools } from "@/app/devtools";

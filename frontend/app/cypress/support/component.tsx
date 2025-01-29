@@ -2,7 +2,7 @@ import { MountOptions, MountReturn } from "cypress/react";
 import { mount } from "cypress/react18";
 import queryString from "query-string";
 import React from "react";
-import { MemoryRouter, MemoryRouterProps } from "react-router-dom";
+import { MemoryRouter, MemoryRouterProps } from "react-router";
 import { QueryParamProvider } from "use-query-params";
 import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 

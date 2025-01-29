@@ -17,7 +17,7 @@ import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-inp
 import useFilters, { Filter } from "@/shared/hooks/useFilters";
 import { debounce } from "@/shared/utils/common";
 import { forwardRef, useImperativeHandle } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router";
 import { getStateBadge } from "./task-item-details";
 
 interface TaskItemsProps {
