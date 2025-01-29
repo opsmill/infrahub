@@ -1,6 +1,7 @@
 import { getObjectsInfiniteQueryOptions } from "@/entities/nodes/object/domain/get-objects.query";
 import { TableCell } from "@/entities/nodes/object/ui/objects-table/cells/table-cell";
 import { ObjectTableNoResults } from "@/entities/nodes/object/ui/objects-table/object-table-no-results";
+import { Permission } from "@/entities/permission/types";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { Skeleton } from "@/shared/components/skeleton";
 import useFilters from "@/shared/hooks/useFilters";
@@ -15,14 +16,17 @@ import {
 import React from "react";
 import { getObjectTableColumns } from "./get-object-table-columns";
 
-export const ObjectsTable = ({ schema }: { schema: IModelSchema }) => {
+export const ObjectsTable = ({
+  schema,
+  permission,
+}: { schema: IModelSchema; permission: Permission }) => {
   const tableContainerRef = React.useRef<HTMLTableElement>(null);
   const [filters] = useFilters();
   const { isPending, data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(
     getObjectsInfiniteQueryOptions({ schema, filters })
   );
 
-  const columns = React.useMemo(() => getObjectTableColumns(schema), [schema.hash]);
+  const columns = React.useMemo(() => getObjectTableColumns(schema, permission), [schema.hash]);
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
   const fetchMoreOnBottomReached = React.useCallback(

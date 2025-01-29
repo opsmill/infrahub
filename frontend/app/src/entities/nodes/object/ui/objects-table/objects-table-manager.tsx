@@ -19,14 +19,14 @@ export interface ObjectsTableManagerProps {
 
 export function ObjectsTableManager({ schema }: ObjectsTableManagerProps) {
   const [filters] = useFilters();
-  const { isPending, error, data: permissions } = useGetObjectPermissions(schema.kind as string);
+  const { isPending, error, data: permission } = useGetObjectPermissions(schema.kind as string);
 
   if (isPending) return <LoadingScreen />;
 
   if (error) return <ErrorScreen message={error.message} />;
 
-  if (!permissions.view.isAllowed) {
-    return <UnauthorizedScreen message={permissions.view.message} />;
+  if (!permission.view.isAllowed) {
+    return <UnauthorizedScreen message={permission.view.message} />;
   }
 
   return (
@@ -45,12 +45,12 @@ export function ObjectsTableManager({ schema }: ObjectsTableManagerProps) {
           onSuccess={() => {
             queryClient.invalidateQueries(getObjectsInfiniteQueryOptions({ schema, filters }));
           }}
-          permission={permissions}
+          permission={permission}
           className="ml-auto"
         />
       </div>
 
-      <ObjectsTable schema={schema} />
+      <ObjectsTable schema={schema} permission={permission} />
     </div>
   );
 }

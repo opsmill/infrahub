@@ -4,6 +4,7 @@ import {
 } from "@/entities/nodes/object/ui/delete-object-modal";
 import { TableCell } from "@/entities/nodes/object/ui/objects-table/cells/table-cell";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { Permission } from "@/entities/permission/types";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import {
   DropdownMenu,
@@ -11,14 +12,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
+import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-export interface ActionsCellProps extends Omit<DeleteObjectModalProps, "open" | "setOpen"> {}
+export interface ActionsCellProps extends Omit<DeleteObjectModalProps, "open" | "setOpen"> {
+  permission: Permission;
+}
 
-export function ActionsCell({ objectKind, objectId, objectLabel }: ActionsCellProps) {
+export function ActionsCell({ objectKind, objectId, objectLabel, permission }: ActionsCellProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const isDeleteAllowed = permission.delete.isAllowed;
 
   return (
     <>
@@ -43,10 +48,17 @@ export function ActionsCell({ objectKind, objectId, objectLabel }: ActionsCellPr
               </Link>
             </DropdownMenuItem>
 
-            <DropdownMenuItem onClick={() => setShowDeleteModal(true)}>
-              <Icon icon="mdi:delete-outline" className="text-base" />
-              Delete
-            </DropdownMenuItem>
+            <Tooltip enabled={!isDeleteAllowed} content={permission.delete.message} side="left">
+              <div>
+                <DropdownMenuItem
+                  disabled={!isDeleteAllowed}
+                  onClick={() => isDeleteAllowed && setShowDeleteModal(true)}
+                >
+                  <Icon icon="mdi:delete-outline" className="text-base" />
+                  Delete
+                </DropdownMenuItem>
+              </div>
+            </Tooltip>
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>

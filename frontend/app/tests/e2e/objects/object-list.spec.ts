@@ -19,7 +19,8 @@ test.describe("/objects/:objectKind", () => {
         page.getByText("Standard Tag object to attached to other objects to provide some context.")
       ).toBeVisible();
       await expect(page.getByTestId("create-object-button")).toBeDisabled();
-      await expect(page.getByRole("row", { name: "blue" }).getByRole("button")).toBeDisabled();
+      await page.getByTestId("actions-cell-blue").click();
+      await expect(page.getByRole("menuitem", { name: "Delete" })).toBeDisabled();
     });
 
     test("should be able to open object details in a new tab", async ({ page, context }) => {
@@ -43,10 +44,10 @@ test.describe("/objects/:objectKind", () => {
 
     test("should display 'kind' column on when the object is a generic", async ({ page }) => {
       await page.goto("/objects/CoreGroup");
-      await expect(page.locator("thead")).toContainText("Kind");
+      await expect(page.getByTestId("object-items")).toContainText("Kind");
     });
 
-    test("should display default column when a relationship schema has no attributes/relationship", async ({
+    test("should display default column when a relationship schema has no attributes/relationships", async ({
       page,
     }) => {
       await page.goto("/objects/CoreStandardGroup");
@@ -68,7 +69,8 @@ test.describe("/objects/:objectKind", () => {
 
       await expect(page.getByRole("heading", { name: "Tag" })).toBeVisible();
       await expect(page.getByTestId("create-object-button")).toBeEnabled();
-      await expect(page.getByRole("row", { name: "blue" }).getByRole("button")).toBeEnabled();
+      await page.getByTestId("actions-cell-blue").click();
+      await expect(page.getByRole("menuitem", { name: "Delete" })).toBeEnabled();
       await page.getByTestId("create-object-button").click();
       await expect(page.getByRole("heading", { name: "Create Tag", exact: true })).toBeVisible();
     });

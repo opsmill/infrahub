@@ -96,7 +96,7 @@ test.describe("Object filters", () => {
     await page.goto("/objects/CoreArtifact");
 
     await page.getByTestId("object-items").getByRole("button", { name: "Object" }).click();
-    await page.getByLabel("Kind").click();
+    await page.getByLabel("Kind").click({ position: { x: 200, y: 20 } }); // (?) tooltip is above and blocking normal click
     await page.getByRole("option", { name: "BGP Session Infra" }).click();
     await expect(page.getByLabel("BGP Session")).toBeVisible();
   });
