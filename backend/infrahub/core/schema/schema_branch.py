@@ -487,6 +487,8 @@ class SchemaBranch:
         self.process_inheritance()
         self.process_hierarchy()
         self.process_branch_support()
+        self.manage_object_template_schemas()
+        self.manage_object_template_relationships()
         self.manage_profile_schemas()
         self.manage_profile_relationships()
         self.add_hierarchy_generic()
@@ -1740,3 +1742,149 @@ class SchemaBranch:
             profile.attributes.append(attr)
 
         return profile
+
+    def _get_object_template_kind(self, node_kind: str) -> str:
+        return f"Template{node_kind}"
+
+    def manage_object_template_relationships(self) -> None:
+        for node_name in self.node_names + self.generic_names:
+            node = self.get(name=node_name, duplicate=False)
+
+            if (
+                node.namespace in RESTRICTED_NAMESPACES
+                or not node.generate_template
+                or node.state == HashableModelState.ABSENT
+            ):
+                continue
+
+            template_rel_settings: dict[str, Any] = {
+                "name": "object_template",
+                "identifier": "node__objecttemplate",
+                "peer": self._get_object_template_kind(node.kind),
+                "kind": RelationshipKind.PROFILE,  # FIXME: create new kind or use which one?
+                "cardinality": RelationshipCardinality.ONE,
+                "branch": BranchSupportType.AWARE,
+                "order_weight": 1,
+            }
+
+            # Add relationship between node and template
+            if "object_template" not in node.relationship_names:
+                node_schema = self.get(name=node_name, duplicate=True)
+
+                node_schema.relationships.append(RelationshipSchema(**template_rel_settings))
+                self.set(name=node_name, schema=node_schema)
+            else:
+                has_changes: bool = False
+                rel_template = node.get_relationship(name="object_template")
+                for name, value in template_rel_settings.items():
+                    if getattr(rel_template, name) != value:
+                        has_changes = True
+
+                if not has_changes:
+                    continue
+
+                node_schema = self.get(name=node_name, duplicate=True)
+                rel_template = node_schema.get_relationship(name="object_template")
+                for name, value in template_rel_settings.items():
+                    if getattr(rel_template, name) != value:
+                        setattr(rel_template, name, value)
+
+                self.set(name=node_name, schema=node_schema)
+
+    def generate_object_template_from_node(self, node: NodeSchema) -> NodeSchema:
+        core_template_schema = self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+        core_name_attr = core_template_schema.get_attribute(name="template_name")
+        template_name_attr = AttributeSchema(
+            **core_name_attr.model_dump(exclude=["id", "inherited"]),
+        )
+        template_name_attr.branch = node.branch
+        core_kind_attr = core_template_schema.get_attribute(name="kind")
+        template_kind_attr = AttributeSchema(
+            **core_kind_attr.model_dump(exclude=["id", "inherited"]),
+        )
+        template_kind_attr.branch = node.branch
+
+        template = NodeSchema(
+            name=node.kind,
+            namespace="Template",
+            label=f"Object template {node.label}",
+            description=f"Object template for {node.kind}",
+            branch=node.branch,
+            include_in_menu=True,
+            display_labels=["template_name__value"],
+            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.OBJECTTEMPLATE, InfrahubKind.NODE],
+            human_friendly_id=["template_name__value"],
+            default_filter="template_name__value",
+            attributes=[template_name_attr, template_kind_attr],
+            relationships=[
+                RelationshipSchema(
+                    name="related_nodes",
+                    identifier="node__objecttemplate",
+                    peer=node.kind,
+                    kind=RelationshipKind.PROFILE,  # FIXME: create new kind or use which one?
+                    cardinality=RelationshipCardinality.MANY,
+                    branch=BranchSupportType.AWARE,
+                )
+            ],
+        )
+
+        for node_attr in node.attributes:
+            if node_attr.unique:
+                continue
+
+            attr = AttributeSchema(
+                optional=True,
+                **node_attr.model_dump(exclude=["id", "unique", "optional", "read_only", "inherited"]),
+            )
+            template.attributes.append(attr)
+
+        return template
+
+    def manage_object_template_schemas(self) -> None:
+        template_schema_kinds = set()
+        for node_name in self.node_names + self.generic_names:
+            node = self.get(name=node_name, duplicate=False)
+
+            # Delete old object templates if schemas were removed
+            if (
+                node.namespace in RESTRICTED_NAMESPACES
+                or not node.generate_template
+                or node.state == HashableModelState.ABSENT
+            ):
+                try:
+                    self.delete(name=self._get_object_template_kind(node_kind=node.kind))
+                except SchemaNotFoundError:
+                    ...
+                continue
+
+            template = self.generate_object_template_from_node(node=node)
+            self.set(name=template.kind, schema=template)
+            template_schema_kinds.add(template.kind)
+
+        for previous_template in list(self.profiles.keys()):
+            # Ensure that we remove previous object template schemas if a node has been renamed
+            if previous_template not in template_schema_kinds:
+                self.delete(name=previous_template)
+
+        if not template_schema_kinds:
+            return
+
+        core_template_schema = self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+        current_used_by_template = set(core_template_schema.used_by)
+        new_used_by_template = template_schema_kinds - current_used_by_template
+
+        if new_used_by_template:
+            core_template_schema = self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=True)
+            core_template_schema.used_by = sorted(template_schema_kinds)
+            self.set(name=InfrahubKind.OBJECTTEMPLATE, schema=core_template_schema)
+
+        if self.has(name=InfrahubKind.NODE):
+            core_node_schema = self.get(name=InfrahubKind.NODE, duplicate=False)
+            current_used_by_node = set(core_node_schema.used_by)
+            new_used_by_node = template_schema_kinds - current_used_by_node
+
+            if new_used_by_node:
+                core_node_schema = self.get(name=InfrahubKind.NODE, duplicate=True)
+                updated_used_by_node = set(chain(template_schema_kinds, set(core_node_schema.used_by)))
+                core_node_schema.used_by = sorted(updated_used_by_node)
+                self.set(name=InfrahubKind.NODE, schema=core_node_schema)

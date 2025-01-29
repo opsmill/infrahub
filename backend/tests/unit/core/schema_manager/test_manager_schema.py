@@ -2829,3 +2829,62 @@ async def test_hierarchical_validate_parent_children(
 
     await uk.new(db=db, name="United Kingdom", parent=eu)
     await uk.save(db=db)
+
+
+async def test_manage_object_templates():
+    SCHEMA = {
+        "name": "Device",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "generate_template": True,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "manufacturer", "kind": "Text", "optional": False},
+            {"name": "height", "kind": "Number", "default_value": 1},
+            {"name": "weight", "kind": "Number"},
+            {
+                "name": "airflow",
+                "kind": "Text",
+                "enum": [
+                    "Front to rear",
+                    "Rear to front",
+                    "Left to right",
+                    "Right to left",
+                    "Side to rear",
+                    "Rear to side",
+                    "Bottom to top",
+                    "Top to bottom",
+                    "Passive",
+                    "Mixed",
+                ],
+            },
+            {"name": "part_number", "kind": "Text"},
+        ],
+    }
+
+    copy_core_models = copy.deepcopy(core_models)
+    copy_core_models["nodes"].append(SCHEMA)
+    schema = SchemaRoot(**copy_core_models)
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema)
+    schema_branch.manage_object_template_schemas()
+    schema_branch.manage_object_template_relationships()
+
+    # Verify the generated template
+    test_object_template_device = schema_branch.get_node("TemplateTestDevice", duplicate=False)
+    assert not test_object_template_device.generate_template
+
+    for attr in SCHEMA["attributes"]:
+        if attr.get("unique", False):
+            with pytest.raises(ValueError, match=r"Unable to find the attribute"):
+                test_object_template_device.get_attribute(name=attr["name"])
+        else:
+            template_attr = test_object_template_device.get_attribute(name=attr["name"])
+            assert template_attr.optional
+
+    # Check for the relationship from the object back to its template
+    test_device = schema_branch.get_node(name="TestDevice", duplicate=False)
+    assert test_device.generate_template
+    assert test_device.get_relationship(name="object_template").peer == test_object_template_device.kind
