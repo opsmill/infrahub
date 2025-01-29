@@ -20,6 +20,11 @@ class GeneratedNodeSchema(BaseNodeSchema):
         description="Indicate if a profile schema should be generated for this schema",
         json_schema_extra={"update": "validate_constraint"},
     )
+    generate_template: bool = Field(
+        default=False,
+        description="Indicate if an object template schema should be generated for this schema",
+        json_schema_extra={"update": "validate_constraint"},
+    )
     hierarchy: Optional[str] = Field(
         default=None,
         description="Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",
