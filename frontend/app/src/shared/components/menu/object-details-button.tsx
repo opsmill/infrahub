@@ -14,11 +14,11 @@ import { CopyToClipboard } from "../buttons/copy-to-clipboard";
 
 interface ObjectDetailsButtonProps extends ButtonProps {
   id: string;
-  hfid: string;
+  hfid?: string;
   className?: string;
 }
 
-export const ObjectDetailsButton = ({ id, hfid, ...props }: ObjectDetailsButtonProps) => {
+export const ObjectDetailsButton = ({ id, hfid, children, ...props }: ObjectDetailsButtonProps) => {
   const taskFilter = {
     name: "node__value",
     value: id,
@@ -39,15 +39,19 @@ export const ObjectDetailsButton = ({ id, hfid, ...props }: ObjectDetailsButtonP
           </CopyToClipboard>
         </DropdownMenuItem>
 
-        <DropdownMenuItem className="p-0">
-          <CopyToClipboard
-            size={"default"}
-            className="flex-grow justify-start gap-2 p-2"
-            text={hfid}
-          >
-            Copy HFID
-          </CopyToClipboard>
-        </DropdownMenuItem>
+        {hfid && hfid !== "null" && (
+          <DropdownMenuItem className="p-0">
+            <CopyToClipboard
+              size={"default"}
+              className="flex-grow justify-start gap-2 p-2"
+              text={hfid}
+            >
+              Copy HFID
+            </CopyToClipboard>
+          </DropdownMenuItem>
+        )}
+
+        {children}
 
         <DropdownMenuItem asChild>
           <Link

@@ -1,3 +1,4 @@
+import io
 import tempfile
 from typing import Any, BinaryIO
 
@@ -17,11 +18,11 @@ class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
         super().__init__()
 
     def open(self, name: str) -> BinaryIO:
-        with tempfile.NamedTemporaryFile() as f:
-            self._bucket.download_fileobj(name, f)
-            f.flush()
-            f.seek(0)
-            return f  # type: ignore
+        f = io.BytesIO()
+        self._bucket.download_fileobj(name, f)
+        f.flush()
+        f.seek(0)
+        return f  # type: ignore
 
 
 fastapi_storages.InfrahubS3ObjectStorage = InfrahubS3ObjectStorage

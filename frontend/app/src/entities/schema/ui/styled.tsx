@@ -13,6 +13,7 @@ interface AccordionStyleProps extends AccordionProps {
   isOptional?: boolean;
   isUnique?: boolean;
   isReadOnly?: boolean;
+  isComputed?: boolean;
 }
 
 export const AccordionStyled = ({
@@ -23,6 +24,7 @@ export const AccordionStyled = ({
   isOptional,
   isUnique,
   isReadOnly,
+  isComputed,
   ...props
 }: AccordionStyleProps) => (
   <Accordion
@@ -37,6 +39,7 @@ export const AccordionStyled = ({
             {isOptional && <Badge variant="yellow">optional</Badge>}
             {isUnique && <Badge variant="red">unique</Badge>}
             {isReadOnly && <Badge variant="blue">read-only</Badge>}
+            {isComputed && <Badge variant="green">computed</Badge>}
           </div>
         </div>
 

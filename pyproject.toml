@@ -110,6 +110,7 @@ ruamel-yaml = "^0.18.6"
 pytest-httpx = ">=0.30"
 docker = "^7.1.0"
 psutil = "^6.1.0"
+jwcrypto = "1.5.6"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
@@ -602,7 +603,7 @@ allow-dunder-method-names = [
     "PT006",   # Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
     "PT011",   # `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
     "PT012",   # `pytest.raises()` block should contain a single simple statement
-    "PT013",   # Incorrect import of `pytest`; use `import pytest` instead 
+    "PT013",   # Incorrect import of `pytest`; use `import pytest` instead
     "PT014",   # Duplicate of test case in `pytest.mark.parametrize`
     "PT018",   # Assertion should be broken down into multiple parts
     "PT021",   # Use `yield` instead of `request.addfinalizer`

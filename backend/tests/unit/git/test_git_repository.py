@@ -31,6 +31,7 @@ from infrahub.git.worktree import Worktree
 from infrahub.services import InfrahubServices
 from infrahub.utils import find_first_file_in_directory
 from tests.conftest import TestHelper
+from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -308,6 +309,19 @@ async def test_create_branch_in_git_not_in_remote(git_repo_01: InfrahubRepositor
     assert len(worktrees) == 3
 
 
+@pytest.mark.xfail(reason="Failing at reproducing conflicts without remote branches to trigger the function to test")
+async def test_has_conflicting_changes(git_repos_source_dir_module_scope: Path):
+    test_repo = MultipleStagesFileRepo(name="conflicting-branches", sources_directory=git_repos_source_dir_module_scope)
+    repository = await InfrahubRepository.new(
+        id=UUIDT.new(),
+        name=test_repo.name,
+        location=test_repo.path,
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+
+    assert repository.has_conflicting_changes(target_branch="main", source_branch="change1")
+
+
 async def test_pull_branch(git_repo_04: InfrahubRepository):
     repo = git_repo_04
     await repo.fetch()
@@ -368,7 +382,7 @@ async def test_pull_branch_conflict(git_repo_06: InfrahubRepository):
     with pytest.raises(RepositoryError) as exc:
         await repo.pull(branch_name=branch_name)
 
-    assert "there is a conflict that must be resolved" in str(exc.value)
+    assert "there are conflicts that must be resolved" in str(exc.value)
 
 
 async def test_pull_main(git_repo_05: InfrahubRepository):

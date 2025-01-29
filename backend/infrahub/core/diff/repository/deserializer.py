@@ -1,5 +1,3 @@
-from typing import Iterable
-
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Path as Neo4jPath
 
@@ -30,37 +28,47 @@ class EnrichedDiffDeserializer:
         self._diff_node_rel_group_map: dict[tuple[str, str, str], EnrichedDiffRelationship] = {}
         self._diff_node_rel_element_map: dict[tuple[str, str, str, str], EnrichedDiffSingleRelationship] = {}
         self._diff_prop_map: dict[tuple[str, str, str, str] | tuple[str, str, str, str, str], EnrichedDiffProperty] = {}
+        # {EnrichedDiffRoot: [(node_uuid, parents_path: Neo4jPath), ...]}
+        self._parents_path_map: dict[EnrichedDiffRoot, list[tuple[str, Neo4jPath]]] = {}
 
-    def _initialize(self) -> None:
+    def initialize(self) -> None:
         self._diff_root_map = {}
         self._diff_node_map = {}
         self._diff_node_attr_map = {}
         self._diff_node_rel_group_map = {}
         self._diff_node_rel_element_map = {}
         self._diff_prop_map = {}
+        self._parents_path_map = {}
 
-    async def deserialize(
-        self, database_results: Iterable[QueryResult], include_parents: bool
-    ) -> list[EnrichedDiffRoot]:
-        self._initialize()
-        results = list(database_results)
-        for result in results:
-            enriched_root = self._deserialize_diff_root(root_node=result.get_node("diff_root"))
-            node_node = result.get(label="diff_node")
-            if not isinstance(node_node, Neo4jNode):
-                continue
-            enriched_node = self._deserialize_diff_node(node_node=node_node, enriched_root=enriched_root)
-            node_conflict_node = result.get(label="diff_node_conflict")
-            if isinstance(node_conflict_node, Neo4jNode) and not enriched_node.conflict:
-                conflict = self.deserialize_conflict(diff_conflict_node=node_conflict_node)
-                enriched_node.conflict = conflict
-            self._deserialize_attributes(result=result, enriched_root=enriched_root, enriched_node=enriched_node)
-            self._deserialize_relationships(result=result, enriched_root=enriched_root, enriched_node=enriched_node)
+    def _track_parents_path(self, enriched_root: EnrichedDiffRoot, node_uuid: str, parents_path: Neo4jPath) -> None:
+        if enriched_root not in self._parents_path_map:
+            self._parents_path_map[enriched_root] = []
+        self._parents_path_map[enriched_root].append((node_uuid, parents_path))
+
+    async def read_result(self, result: QueryResult, include_parents: bool) -> None:
+        enriched_root = self._deserialize_diff_root(root_node=result.get_node("diff_root"))
+        node_node = result.get(label="diff_node")
+        if not isinstance(node_node, Neo4jNode):
+            return
+        enriched_node = self._deserialize_diff_node(node_node=node_node, enriched_root=enriched_root)
 
         if include_parents:
-            for result in results:
-                enriched_root = self._deserialize_diff_root(root_node=result.get_node("diff_root"))
-                self._deserialize_parents(result=result, enriched_root=enriched_root)
+            parents_path = result.get("parents_path")
+            if parents_path and isinstance(parents_path, Neo4jPath):
+                self._track_parents_path(
+                    enriched_root=enriched_root, node_uuid=enriched_node.uuid, parents_path=parents_path
+                )
+
+        node_conflict_node = result.get(label="diff_node_conflict")
+        if isinstance(node_conflict_node, Neo4jNode) and not enriched_node.conflict:
+            conflict = self.deserialize_conflict(diff_conflict_node=node_conflict_node)
+            enriched_node.conflict = conflict
+        self._deserialize_attributes(result=result, enriched_root=enriched_root, enriched_node=enriched_node)
+        self._deserialize_relationships(result=result, enriched_root=enriched_root, enriched_node=enriched_node)
+
+    async def deserialize(self, include_parents: bool = True) -> list[EnrichedDiffRoot]:
+        if include_parents:
+            self._deserialize_parents()
 
         return list(self._diff_root_map.values())
 
@@ -117,30 +125,26 @@ class EnrichedDiffDeserializer:
                 conflict = self.deserialize_conflict(diff_conflict_node=property_conflict)
                 element_property.conflict = conflict
 
-    def _deserialize_parents(self, result: QueryResult, enriched_root: EnrichedDiffRoot) -> None:
-        parents_path = result.get("parents_path")
-        if not parents_path or not isinstance(parents_path, Neo4jPath):
-            return
+    def _deserialize_parents(self) -> None:
+        for enriched_root, node_path_tuples in self._parents_path_map.items():
+            for node_uuid, parents_path in node_path_tuples:
+                # Remove the node itself from the path
+                parents_path_slice = parents_path.nodes[1:]
 
-        node_uuid = result.get(label="diff_node").get("uuid")
-
-        # Remove the node itself from the path
-        parents_path = parents_path.nodes[1:]  # type: ignore[union-attr]
-
-        # TODO Ensure the list is even
-        current_node_uuid = node_uuid
-        for rel, parent in zip(parents_path[::2], parents_path[1::2], strict=False):
-            enriched_root.add_parent(
-                node_id=current_node_uuid,
-                parent_id=parent.get("uuid"),
-                parent_kind=parent.get("kind"),
-                parent_label=parent.get("label"),
-                parent_rel_name=rel.get("name"),
-                parent_rel_identifier=rel.get("identifier"),
-                parent_rel_cardinality=RelationshipCardinality(rel.get("cardinality")),
-                parent_rel_label=rel.get("label"),
-            )
-            current_node_uuid = parent.get("uuid")
+                # TODO Ensure the list is even
+                current_node_uuid = node_uuid
+                for rel, parent in zip(parents_path_slice[::2], parents_path_slice[1::2], strict=False):
+                    enriched_root.add_parent(
+                        node_id=current_node_uuid,
+                        parent_id=parent.get("uuid"),
+                        parent_kind=parent.get("kind"),
+                        parent_label=parent.get("label"),
+                        parent_rel_name=rel.get("name"),
+                        parent_rel_identifier=rel.get("identifier"),
+                        parent_rel_cardinality=RelationshipCardinality(rel.get("cardinality")),
+                        parent_rel_label=rel.get("label"),
+                    )
+                    current_node_uuid = parent.get("uuid")
 
     @classmethod
     def _get_str_or_none_property_value(cls, node: Neo4jNode, property_name: str) -> str | None:

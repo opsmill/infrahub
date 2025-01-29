@@ -31,6 +31,7 @@ from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.exceptions import MergeFailedError
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
@@ -132,7 +133,13 @@ async def merge_proposed_change(proposed_change_id: str, proposed_change_name: s
                         )
 
         log.info("Proposed change is eligible to be merged")
-        await merge_branch(branch=source_branch.name, service=service)
+        try:
+            await merge_branch(branch=source_branch.name, service=service)
+        except MergeFailedError as exc:
+            await _proposed_change_transition_state(
+                proposed_change=proposed_change, state=ProposedChangeState.OPEN, service=service
+            )
+            return Failed(message=f"Merge failure when trying to merge {exc.message}")
 
         log.info(f"Branch {source_branch.name} has been merged successfully")
 

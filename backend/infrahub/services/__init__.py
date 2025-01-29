@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from infrahub.message_bus.types import MessageTTL
 
     from .adapters.cache import InfrahubCache
+    from .adapters.http import InfrahubHTTP
     from .adapters.message_bus import InfrahubMessageBus
     from .adapters.workflow import InfrahubWorkflow
     from .protocols import InfrahubLogger
@@ -37,7 +38,7 @@ class InfrahubServices:
 
     log: InfrahubLogger
     component_type: ComponentType
-    http: HttpxAdapter
+    http: InfrahubHTTP
     event: InfrahubEventService
     scheduler: InfrahubScheduler
 
@@ -45,7 +46,7 @@ class InfrahubServices:
         self,
         log: InfrahubLogger,
         component_type: ComponentType,
-        http: HttpxAdapter,
+        http: InfrahubHTTP,
         event: InfrahubEventService,
         scheduler: InfrahubScheduler,
         cache: InfrahubCache | None = None,
@@ -80,6 +81,7 @@ class InfrahubServices:
         workflow: InfrahubWorkflow | None = None,
         log: InfrahubLogger | None = None,
         component_type: ComponentType | None = None,
+        http: InfrahubHTTP | None = None,
     ) -> InfrahubServices:
         """
         Instantiate InfrahubServices object, and finalize initializations of underlying services having a circular
@@ -99,7 +101,7 @@ class InfrahubServices:
             component_type=component_type,
             scheduler=scheduler,
             event=InfrahubEventService(message_bus),
-            http=HttpxAdapter(),
+            http=http or HttpxAdapter(),
         )
 
         # This circular dependency could be removed if InfrahubScheduler only depends on what it needs.
