@@ -2,7 +2,6 @@ import { ARTIFACT_OBJECT, GRAPHQL_QUERY_OBJECT, TASK_OBJECT } from "@/config/con
 import ArtifactsDetails from "@/entities/artifacts/ui/artifact-details";
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
-import ObjectItems from "@/entities/nodes/object-items/object-items-paginated";
 import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -25,9 +24,7 @@ export function ObjectDetailsPage() {
 
   if (!schema) return <ErrorScreen message={`Object ${objectKind} not found.`} />;
 
-  if (!objectid) return <ObjectItems schema={schema} />;
-
-  const { data, networkStatus, error, permission } = useObjectDetails(schema, objectid);
+  const { data, networkStatus, error, permission } = useObjectDetails(schema, objectid as string);
 
   if (networkStatus === NetworkStatus.loading) {
     return <LoadingScreen />;

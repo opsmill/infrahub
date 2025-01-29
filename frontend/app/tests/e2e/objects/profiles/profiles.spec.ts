@@ -155,12 +155,10 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("Delete the profile", async () => {
-      await page
-        .getByRole("row", { name: "ProfileBuiltinTag profile" })
-        .getByTestId("delete-row-button")
-        .click();
+      await page.getByTestId("actions-cell-profile test tag").click();
+      await page.getByRole("menuitem", { name: "Delete" }).click();
       await expect(page.getByTestId("modal-delete")).toContainText(
-        'Are you sure you want to remove the Profile"profile test tag"?'
+        "Are you sure you want to remove profile test tag?"
       );
       await page.getByTestId("modal-delete-confirm").click();
     });

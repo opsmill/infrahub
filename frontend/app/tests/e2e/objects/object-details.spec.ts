@@ -13,8 +13,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
   test.describe("when not logged in", () => {
     test("should not be able to edit object", async ({ page }) => {
       await page.goto("/objects/InfraBGPSession");
-      await expect(page.getByText("Just a moment")).not.toBeVisible();
-      await page.getByRole("cell", { name: "EXTERNAL" }).first().click();
+      await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       await expect(page.getByTestId("edit-button")).toBeDisabled();
       await expect(page.getByTestId("manage-groups")).toBeDisabled();
@@ -26,8 +25,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
 
     test("should be able to edit object", async ({ page }) => {
       await page.goto("/objects/InfraBGPSession");
-      await expect(page.getByText("Just a moment")).not.toBeVisible();
-      await page.getByRole("link", { name: "EXTERNAL" }).first().click();
+      await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       await expect(page.getByTestId("edit-button")).toBeEnabled();
       await expect(page.getByTestId("manage-groups")).toBeEnabled();
@@ -35,8 +33,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
 
     test("should display relationships correctly", async ({ page }) => {
       await page.goto("/objects/InfraBGPSession");
-      await expect(page.getByText("Just a moment")).not.toBeVisible();
-      await page.getByRole("cell", { name: "EXTERNAL" }).first().click();
+      await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       // Attribute
       await expect(page.locator("dl")).toContainText("Type");

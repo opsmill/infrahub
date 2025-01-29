@@ -1,5 +1,5 @@
 import ObjectHeader from "@/entities/nodes/object-header";
-import ObjectItems from "@/entities/nodes/object-items/object-items-paginated";
+import { ObjectsTableManager } from "@/entities/nodes/object/ui/objects-table/objects-table-manager";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { genericsState } from "@/entities/schema/stores/schema.atom";
 import Content from "@/shared/components/layout/content";
@@ -16,7 +16,7 @@ const ResourceManagerPage = () => {
     <Content.Card>
       <ObjectHeader schema={resourcePoolSchema} />
 
-      <ObjectItems schema={resourcePoolSchema} />
+      <ObjectsTableManager schema={resourcePoolSchema} />
     </Content.Card>
   );
 };

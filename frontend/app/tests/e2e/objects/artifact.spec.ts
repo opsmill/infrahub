@@ -20,8 +20,9 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
 
     // reload page until we have artifacts defined
     while (await page.getByRole("link", { name: "startup-config" }).first().isHidden()) {
-      await page.reload();
-      await expect(page.getByText("Previous")).toBeVisible();
+      if (await page.getByText("No Artifact found").isVisible()) {
+        await page.reload();
+      }
     }
 
     await page.getByRole("link", { name: "startup-config" }).first().click();
