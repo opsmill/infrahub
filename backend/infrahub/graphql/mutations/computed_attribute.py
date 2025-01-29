@@ -9,7 +9,8 @@ from infrahub.core.constants import ComputedAttributeKind, MutationAction, Permi
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
-from infrahub.events import EventMeta, NodeMutatedEvent
+from infrahub.events import EventMeta
+from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.log import get_log_data
 from infrahub.worker import WORKER_IDENTITY
@@ -89,14 +90,18 @@ class UpdateComputedAttribute(Mutation):
 
             graphql_payload = await target_node.to_graphql(db=context.db, filter_sensitive=True)
 
-            event = NodeMutatedEvent(
-                branch=context.branch.name,
+            event = NodeUpdatedEvent(
                 kind=node_schema.kind,
                 node_id=target_node.get_id(),
                 data=graphql_payload,
                 fields=[str(data.attribute)],
                 action=MutationAction.UPDATED,
-                meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+                meta=EventMeta(
+                    initiator_id=WORKER_IDENTITY,
+                    request_id=request_id,
+                    account_id=context.active_account_session.account_id,
+                    branch=context.branch.name,
+                ),
             )
             await context.active_service.event.send(event=event)
 

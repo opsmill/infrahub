@@ -22,7 +22,8 @@ from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.events.branch_action import BranchCreateEvent, BranchDeleteEvent, BranchRebaseEvent
+from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchRebasedEvent
+from infrahub.events.models import EventMeta
 from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.log import get_log_data
@@ -144,7 +145,10 @@ async def rebase_branch(branch: str, service: InfrahubServices) -> None:
     # -------------------------------------------------------------
     # Generate an event to indicate that a branch has been rebased
     # -------------------------------------------------------------
-    await service.event.send(event=BranchRebaseEvent(branch=obj.name, branch_id=obj.get_id()))
+    # TODO Add account information
+    await service.event.send(
+        event=BranchRebasedEvent(branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj.name))
+    )
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
@@ -234,8 +238,11 @@ async def delete_branch(branch: str, service: InfrahubServices) -> None:
 
     async with service.database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=str(branch))
-        event = BranchDeleteEvent(branch=branch, branch_id=obj.get_id(), sync_with_git=obj.sync_with_git)
         await obj.delete(db=db)
+
+        event = BranchDeletedEvent(
+            branch_name=branch, branch_id=str(obj.uuid), sync_with_git=obj.sync_with_git, meta=EventMeta(branch=branch)
+        )
 
         await service.workflow.submit_workflow(
             workflow=BRANCH_CANCEL_PROPOSED_CHANGES, parameters={"branch_name": branch}
@@ -298,7 +305,12 @@ async def create_branch(model: BranchCreateModel, service: InfrahubServices) -> 
             registry.branch[obj.name] = obj
             await service.component.refresh_schema_hash(branches=[obj.name])
 
-        event = BranchCreateEvent(branch=obj.name, branch_id=str(obj.uuid), sync_with_git=obj.sync_with_git)
+        event = BranchCreatedEvent(
+            branch_name=obj.name,
+            branch_id=str(obj.uuid),
+            sync_with_git=obj.sync_with_git,
+            meta=EventMeta(branch=obj.name),
+        )
         await service.event.send(event=event)
 
         if obj.sync_with_git:

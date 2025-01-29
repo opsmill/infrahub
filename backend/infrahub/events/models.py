@@ -9,11 +9,34 @@ from .constants import EVENT_NAMESPACE
 
 
 class EventMeta(BaseModel):
+    branch: str = ""
     request_id: str = ""
     account_id: str = ""
     initiator_id: str | None = Field(
         default=None, description="The worker identity of the initial sender of this message"
     )
+    context: list[dict] = Field(default_factory=list)
+
+    def get_related(self) -> list[dict[str, str]]:
+        related: list[dict[str, str]] = []
+        if self.account_id:
+            related.append(
+                {
+                    "prefect.resource.id": f"infrahub.account.{self.account_id}",
+                    "prefect.resource.role": "account",
+                }
+            )
+
+        if self.branch:
+            related.append(
+                {
+                    "prefect.resource.id": "infrahub.branch",
+                    "prefect.resource.name": self.branch,
+                    "prefect.resource.role": "branch",
+                }
+            )
+
+        return related
 
 
 class InfrahubEvent(BaseModel):
@@ -24,6 +47,8 @@ class InfrahubEvent(BaseModel):
         description="UUID of the event",
     )
 
+    event_name: str
+
     def get_id(self) -> str:
         return str(self.id)
 
@@ -31,7 +56,7 @@ class InfrahubEvent(BaseModel):
         return EVENT_NAMESPACE
 
     def get_name(self) -> str:
-        return f"{self.get_event_namespace()}.unknown"
+        return self.event_name
 
     def get_resource(self) -> dict[str, str]:
         raise NotImplementedError
@@ -40,36 +65,9 @@ class InfrahubEvent(BaseModel):
         raise NotImplementedError
 
     def get_related(self) -> list[dict[str, str]]:
-        related: list[dict[str, str]] = []
-
         if not self.meta:
-            return related
-
-        if self.meta.account_id:
-            related.append(
-                {
-                    "prefect.resource.id": f"infrahub.account.{self.meta.account_id}",
-                    "prefect.resource.role": "account",
-                }
-            )
-
-        if self.meta.request_id:
-            related.append(
-                {
-                    "prefect.resource.id": f"infrahub.request.{self.meta.request_id}",
-                    "prefect.resource.role": "request",
-                }
-            )
-
-        if self.meta.initiator_id:
-            related.append(
-                {
-                    "prefect.resource.id": f"infrahub.source.{self.meta.initiator_id}",
-                    "prefect.resource.role": "event_source",
-                }
-            )
-
-        return related
+            return []
+        return self.meta.get_related()
 
     def get_payload(self) -> dict[str, Any]:
         return {}
@@ -85,18 +83,3 @@ class InfrahubEvent(BaseModel):
             meta.initiator_id = self.meta.request_id
 
         return meta
-
-
-class InfrahubBranchEvent(InfrahubEvent):
-    branch: str = Field(..., description="The branch on which the event happend")
-
-    def get_related(self) -> list[dict[str, str]]:
-        related = super().get_related()
-        related.append(
-            {
-                "prefect.resource.id": "infrahub.branch",
-                "prefect.resource.name": self.branch,
-                "prefect.resource.role": "branch",
-            }
-        )
-        return related
