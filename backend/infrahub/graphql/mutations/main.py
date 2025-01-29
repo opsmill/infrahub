@@ -92,7 +92,7 @@ class InfrahubMutationMixin:
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         context.at = Timestamp()
 
-        if config.SETTINGS.broker.enable and context.background:
+        if config.SETTINGS.broker.enable and context.background and False:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
