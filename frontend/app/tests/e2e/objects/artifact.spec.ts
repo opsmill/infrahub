@@ -19,9 +19,7 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
     );
 
     // reload page until we have artifacts defined
-    while (
-      await page.getByRole("link", { name: "startup Config for Edge devices" }).first().isHidden()
-    ) {
+    while (await page.getByRole("link", { name: "startup-config" }).first().isHidden()) {
       if (await page.getByText("No Artifact found").isVisible()) {
         await page.reload();
       }

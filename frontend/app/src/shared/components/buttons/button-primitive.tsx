@@ -13,14 +13,13 @@ const buttonVariants = cva(
       variant: {
         primary: "text-white bg-custom-blue-700 shadow enabled:hover:bg-custom-blue-700/90",
         "primary-outline":
-          "text-custom-blue-700 border border-custom-blue-700 bg-custom-white shadow-sm enabled:hover:bg-gray-100",
+          "text-custom-blue-700 border-custom-blue-700 bg-custom-white shadow-sm enabled:hover:bg-gray-100",
         danger: "text-white bg-red-500 shadow enabled:hover:bg-red-500/90",
         warning: "text-white bg-yellow-500 shadow enabled:hover:bg-yellow-500/90",
         active: "text-white bg-green-600 shadow enabled:hover:bg-green-600/90",
-        "active-outline":
-          "bg-custom-white border border-green-600 shadow-sm enabled:hover:bg-gray-100",
-        outline: "border bg-custom-white shadow-sm enabled:hover:bg-gray-100",
-        dark: "border bg-gray-200 shadow-sm enabled:hover:bg-gray-300",
+        "active-outline": "bg-custom-white border-green-600 shadow-sm enabled:hover:bg-gray-100",
+        outline: "border-gray-200 bg-custom-white shadow-sm enabled:hover:bg-gray-100",
+        dark: "bg-gray-200 shadow-sm enabled:hover:bg-gray-300",
         ghost: "hover:bg-gray-100",
       },
       size: {
