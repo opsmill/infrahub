@@ -73,14 +73,15 @@ export const PoolSelector = forwardRef<HTMLElement, PoolSelectorProps>(
           </Tooltip>
         </div>
 
-        <ComboboxContent>
+        <ComboboxContent portal={true}>
           <ComboboxList>
             {items.map((item) => (
               <ComboboxItem
                 key={item.value.from_pool.id}
-                value={item.label}
+                value={item.value.from_pool.id}
+                keywords={[item.label]}
                 onSelect={() => onChange(item.value)}
-                selectedValue={value?.from_pool?.id}
+                selectedValue={value?.source?.id}
               >
                 {item.label}
               </ComboboxItem>
