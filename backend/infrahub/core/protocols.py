@@ -150,7 +150,6 @@ class CoreMenu(CoreNode):
 
 class CoreObjectTemplate(CoreNode):
     template_name: String
-    kind: String
 
 
 class CoreProfile(CoreNode):

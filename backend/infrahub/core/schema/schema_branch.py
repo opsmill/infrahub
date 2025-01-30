@@ -1798,11 +1798,6 @@ class SchemaBranch:
             **core_name_attr.model_dump(exclude=["id", "inherited"]),
         )
         template_name_attr.branch = node.branch
-        core_kind_attr = core_template_schema.get_attribute(name="kind")
-        template_kind_attr = AttributeSchema(
-            **core_kind_attr.model_dump(exclude=["id", "inherited"]),
-        )
-        template_kind_attr.branch = node.branch
 
         template = NodeSchema(
             name=node.kind,
@@ -1815,7 +1810,7 @@ class SchemaBranch:
             inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.OBJECTTEMPLATE, InfrahubKind.NODE],
             human_friendly_id=["template_name__value"],
             default_filter="template_name__value",
-            attributes=[template_name_attr, template_kind_attr],
+            attributes=[template_name_attr],
             relationships=[
                 RelationshipSchema(
                     name="related_nodes",

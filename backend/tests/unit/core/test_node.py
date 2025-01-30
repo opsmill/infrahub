@@ -759,7 +759,6 @@ async def test_node_create_with_object_template(
     await template.new(
         db=db,
         template_name="Juniper MX204",
-        kind="TestDevice",
         manufacturer="Juniper",
         height=1,
         weight=8,

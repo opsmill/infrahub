@@ -978,8 +978,7 @@ core_models: dict[str, Any] = {
             "default_filter": "template_name__value",
             "uniqueness_constraints": [["template_name__value"]],
             "attributes": [
-                {"name": "template_name", "kind": "Text", "optional": False, "unique": True, "order_weight": 1000},
-                {"name": "kind", "kind": "Text", "optional": False, "order_weight": 2000},
+                {"name": "template_name", "kind": "Text", "optional": False, "unique": True, "order_weight": 1000}
             ],
         },
         generic_menu_item,

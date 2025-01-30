@@ -290,7 +290,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         )
 
         for attribute in template._attributes:
-            if attribute in list(fields.values()) + ["kind", "template_name"]:
+            if attribute in list(fields.values()) + ["template_name"]:
                 continue
 
             fields[attribute] = {"value": getattr(template, attribute).value}
