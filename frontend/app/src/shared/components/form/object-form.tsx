@@ -8,7 +8,10 @@ import {
   READONLY_REPOSITORY_KIND,
   REPOSITORY_KIND,
 } from "@/config/constants";
+
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { IP_ADDRESS_POOL } from "@/entities/resource-manager/constants";
+import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
 import { NumberPoolForm } from "@/entities/resource-manager/ui/number-pool-form";
 import { AccountForm } from "@/entities/role-manager/ui/account-form";
 import { AccountGroupForm } from "@/entities/role-manager/ui/account-group-form";
@@ -84,6 +87,10 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
 
   if (kind === OBJECT_PERMISSION_OBJECT) {
     return <ObjectPermissionForm {...props} />;
+  }
+
+  if (kind === IP_ADDRESS_POOL) {
+    return <IpAddressPoolForm {...props} />;
   }
 
   if (isGeneric) {
