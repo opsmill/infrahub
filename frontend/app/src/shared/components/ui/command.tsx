@@ -55,7 +55,8 @@ export const CommandItem = React.forwardRef<
   <CommandPrimitive.Item
     ref={ref}
     className={classNames(
-      "flex items-center gap-2 cursor-default select-none rounded-md px-2 py-1.5 text-sm outline-none data-[selected='true']:bg-gray-100 data-[selected=true]:bg-gray-100 data-[disabled=true]:opacity-50 data-[disabled=true]:pointer-events-none",
+      "flex items-center gap-2 cursor-default select-none rounded-md px-2 py-1.5 text-sm outline-none ",
+      "data-[selected='true']:bg-gray-100 data-[selected=true]:bg-gray-100 data-[disabled=true]:opacity-50 data-[disabled=true]:pointer-events-none",
       className
     )}
     {...props}
