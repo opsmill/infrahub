@@ -57,7 +57,7 @@ export const getObjectTableColumns = (
             id: "kind",
             accessorFn: (row) => row.__typename,
             header: () => <KindHeaderCell schema={schema} />,
-            cell: ({ row }) => <KindBodyCell schemaKind={row.getValue("kind") as string} />,
+            cell: ({ cell }) => <KindBodyCell schemaKind={cell.getValue() as string} />,
           },
         ]
       : []),
@@ -65,8 +65,8 @@ export const getObjectTableColumns = (
       return {
         accessorKey: columnSchema.name,
         header: () => <TableColumnHeader columnSchema={columnSchema} schema={schema} />,
-        cell: ({ row }) => {
-          const value = row.getValue(columnSchema.name);
+        cell: ({ cell }) => {
+          const value = cell.getValue();
           if ("peer" in columnSchema) {
             return (
               <TableCell>
