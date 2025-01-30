@@ -89,10 +89,6 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     return <ObjectPermissionForm {...props} />;
   }
 
-  if (kind === OBJECT_PERMISSION_OBJECT) {
-    return <ObjectPermissionForm {...props} />;
-  }
-
   if (kind === IP_ADDRESS_POOL) {
     return <IpAddressPoolForm {...props} />;
   }
