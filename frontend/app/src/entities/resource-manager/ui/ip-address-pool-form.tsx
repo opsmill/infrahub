@@ -6,6 +6,7 @@ import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { schemaState } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -24,6 +25,7 @@ import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
   ComboboxContent,
@@ -145,7 +147,7 @@ export const IpAddressPoolForm = ({
       <Form form={form} onSubmit={handleSubmit}>
         <InputField name="name" label="Name" rules={{ required: true }} />
         <InputField name="description" label="Description" />
-        <AddressTypesDropdown currentObject={currentObject} />
+        <AddressTypesCombobox currentObject={currentObject} />
         <NumberField
           name="default_prefix_length"
           label={prefixLenghtAttribute?.label}
@@ -187,8 +189,11 @@ export const IpAddressPoolForm = ({
   );
 };
 
-const AddressTypesDropdown = ({ currentObject }) => {
+const AddressTypesCombobox = ({
+  currentObject,
+}: { currentObject?: Record<string, AttributeType | RelationshipType> }) => {
   const { schema } = useSchema(IP_ADDRESS_POOL);
+  const schemaList = useAtomValue(schemaState);
   const { schema: genericSchema, isGeneric } = useSchema(IP_ADDRESS_GENERIC);
   const schemaKindName = useAtomValue(schemaKindLabelState);
   const [open, setOpen] = useState(false);
@@ -200,9 +205,12 @@ const AddressTypesDropdown = ({ currentObject }) => {
   const items =
     (isGeneric &&
       genericSchema?.used_by?.map((kind) => {
+        const currentSchema = schemaList.find((schema) => schema.kind === kind);
+
         return {
           value: kind,
           label: schemaKindName[kind],
+          namespace: currentSchema?.namespace,
         };
       })) ??
     [];
@@ -253,8 +261,9 @@ const AddressTypesDropdown = ({ currentObject }) => {
                             setOpen(false);
                           }}
                         >
-                          <div className="overflow-hidden">
+                          <div className="overflow-hidden w-full flex items-center justify-between">
                             <div className="truncate font-semibold">{item.label}</div>
+                            <Badge className="font-medium">{item.namespace}</Badge>
                           </div>
                         </ComboboxItem>
                       );
