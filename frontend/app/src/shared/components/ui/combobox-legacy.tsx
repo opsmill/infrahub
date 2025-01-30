@@ -44,41 +44,6 @@ export const MultiCombobox = forwardRef<HTMLButtonElement, MultiComboboxProps>(
   }
 );
 
-export interface ComboboxProps extends Omit<ButtonProps, "onChange"> {
-  children?: React.ReactNode;
-  placeholder?: string;
-  items?: ComboboxListProps["items"];
-  onChange?: (value: string) => void;
-}
-
-export const Combobox = forwardRef<HTMLButtonElement, ComboboxProps>(
-  ({ value, onChange, items = [], ...props }, ref) => {
-    const [open, setOpen] = React.useState(false);
-
-    const handleChange = (v: unknown) => {
-      if (onChange) onChange(v as string);
-      setOpen(false);
-    };
-
-    const item = items.find((item) => item.value === value);
-
-    return (
-      <ComboboxPrimitive onChange={handleChange}>
-        <Popover open={open} onOpenChange={setOpen}>
-          <ComboboxTrigger ref={ref} {...props}>
-            <div className="flex justify-between">
-              {item?.label || value}
-              {item?.badge && <Badge className="mr-2">{item.badge}</Badge>}
-            </div>
-          </ComboboxTrigger>
-
-          <ComboboxList items={items} onReset={handleChange} />
-        </Popover>
-      </ComboboxPrimitive>
-    );
-  }
-);
-
 interface ComboboxTriggerProps extends PopoverTriggerProps {
   value?: string;
   placeholder?: string;
