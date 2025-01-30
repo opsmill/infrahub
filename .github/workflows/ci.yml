@@ -309,15 +309,15 @@ jobs:
         with:
           flag-name: backend-unit
           parallel: true
-      - name: Generate tracing spans
-        if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
-        uses: inception-health/otel-upload-test-artifact-action@v1
-        with:
-          jobName: "backend-tests-unit"
-          stepName: "Unit Tests"
-          path: "pytest-junit.xml"
-          type: "junit"
-          githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
+      # - name: Generate tracing spans
+      #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
+      #   uses: inception-health/otel-upload-test-artifact-action@v1
+      #   with:
+      #     jobName: "backend-tests-unit"
+      #     stepName: "Unit Tests"
+      #     path: "pytest-junit.xml"
+      #     type: "junit"
+      #     githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
 
   backend-tests-integration:
     if: |
@@ -835,15 +835,15 @@ jobs:
       - name: Run Playwright tests
         run: npm run ci:test:e2e
 
-      - name: Generate tracing spans
-        if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
-        uses: inception-health/otel-upload-test-artifact-action@v1
-        with:
-          jobName: "E2E-testing-playwright"
-          stepName: "Run Playwright tests"
-          path: "frontend/app/playwright-junit.xml"
-          type: "junit"
-          githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
+      # - name: Generate tracing spans
+      #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
+      #   uses: inception-health/otel-upload-test-artifact-action@v1
+      #   with:
+      #     jobName: "E2E-testing-playwright"
+      #     stepName: "Run Playwright tests"
+      #     path: "frontend/app/playwright-junit.xml"
+      #     type: "junit"
+      #     githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
 
       - name: playwright-report
         if: always()
