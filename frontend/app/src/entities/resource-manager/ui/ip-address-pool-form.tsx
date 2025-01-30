@@ -9,27 +9,39 @@ import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import DropdownField from "@/shared/components/form/fields/dropdown.field";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
 import NumberField from "@/shared/components/form/fields/number.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationship-many.field";
 import RelationshipField from "@/shared/components/form/fields/relationship.field";
 import { NodeFormProps } from "@/shared/components/form/node-form";
-import { FormFieldValue } from "@/shared/components/form/type";
+import { FormAttributeValue, FormFieldValue } from "@/shared/components/form/type";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
+import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Form, FormSubmit } from "@/shared/components/ui/form";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxTrigger,
+} from "@/shared/components/ui/combobox";
+import { Form, FormField, FormInput, FormSubmit } from "@/shared/components/ui/form";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
+import { useState } from "react";
 import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import { IP_ADDRESS_POOL } from "../constants";
+
+const ADDRESS_DEFAULT_TYPE_FIELD_NAME = "default_address_type";
 
 interface IpAddressPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
   currentObject?: Record<string, AttributeType | RelationshipType>;
@@ -51,7 +63,6 @@ export const IpAddressPoolForm = ({
   const defaultValues = {
     name: getCurrentFieldValue("name", currentObject),
     description: getCurrentFieldValue("description", currentObject),
-    default_address_type: getCurrentFieldValue("default_address_type", currentObject),
     default_prefix_length: getCurrentFieldValue("default_prefix_length", currentObject),
     resources: getRelationshipDefaultValue({
       relationshipData: currentObject?.resources,
@@ -134,7 +145,7 @@ export const IpAddressPoolForm = ({
       <Form form={form} onSubmit={handleSubmit}>
         <InputField name="name" label="Name" rules={{ required: true }} />
         <InputField name="description" label="Description" />
-        <AddressTypesDropdown />
+        <AddressTypesDropdown currentObject={currentObject} />
         <NumberField
           name="default_prefix_length"
           label={prefixLenghtAttribute?.label}
@@ -176,31 +187,85 @@ export const IpAddressPoolForm = ({
   );
 };
 
-const AddressTypesDropdown = () => {
+const AddressTypesDropdown = ({ currentObject }) => {
   const { schema } = useSchema(IP_ADDRESS_POOL);
   const { schema: genericSchema, isGeneric } = useSchema(IP_ADDRESS_GENERIC);
   const schemaKindName = useAtomValue(schemaKindLabelState);
+  const [open, setOpen] = useState(false);
 
   const prefixTypeAttribute = schema?.attributes?.find((attribute) => {
-    return attribute.name === "default_address_type";
+    return attribute.name === ADDRESS_DEFAULT_TYPE_FIELD_NAME;
   });
 
   const items =
-    isGeneric &&
-    genericSchema?.used_by?.map((kind) => {
-      return {
-        value: kind,
-        label: schemaKindName[kind],
-      };
-    });
+    (isGeneric &&
+      genericSchema?.used_by?.map((kind) => {
+        return {
+          value: kind,
+          label: schemaKindName[kind],
+        };
+      })) ??
+    [];
+
+  const currentValue = getCurrentFieldValue(ADDRESS_DEFAULT_TYPE_FIELD_NAME, currentObject);
+
+  const defaultValue =
+    (items[0] ?? currentValue)
+      ? { source: { type: "user" }, value: items[0].value }
+      : DEFAULT_FORM_FIELD_VALUE;
 
   return (
-    <DropdownField
-      name="default_address_type"
-      label={prefixTypeAttribute?.label}
-      description={prefixTypeAttribute?.description}
-      items={items}
+    <FormField
+      name={ADDRESS_DEFAULT_TYPE_FIELD_NAME}
       rules={{ required: true, validate: { required: isRequired } }}
+      defaultValue={defaultValue}
+      render={({ field }) => {
+        const fieldData: FormAttributeValue = field.value;
+
+        return (
+          <div className="flex flex-col gap-2">
+            <LabelFormField
+              label={prefixTypeAttribute?.label}
+              required
+              description={prefixTypeAttribute?.description}
+              fieldData={fieldData}
+            />
+
+            <FormInput>
+              <Combobox open={open} onOpenChange={setOpen}>
+                <ComboboxTrigger data-testid="namespace-select">
+                  {items.find((item) => item.value === fieldData?.value)?.label}
+                </ComboboxTrigger>
+
+                <ComboboxContent align="start" fitTriggerWidth={false}>
+                  <ComboboxList className="max-w-md">
+                    {items.map((item) => {
+                      return (
+                        <ComboboxItem
+                          key={item.value}
+                          value={item.value}
+                          selectedValue={fieldData?.value}
+                          onSelect={() => {
+                            const newValue = fieldData?.value === item.value ? null : item.value;
+                            field.onChange(
+                              updateFormFieldValue(newValue ?? null, DEFAULT_FORM_FIELD_VALUE)
+                            );
+                            setOpen(false);
+                          }}
+                        >
+                          <div className="overflow-hidden">
+                            <div className="truncate font-semibold">{item.label}</div>
+                          </div>
+                        </ComboboxItem>
+                      );
+                    })}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </FormInput>
+          </div>
+        );
+      }}
     />
   );
 };
