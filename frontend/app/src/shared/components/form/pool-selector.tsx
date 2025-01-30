@@ -1,9 +1,8 @@
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { FormFieldValue, NumberPoolData } from "@/shared/components/form/type";
-import { ComboboxList, tComboboxItem } from "@/shared/components/ui/combobox-legacy";
+import { ComboboxContent, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { Popover, PopoverAnchor, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Combobox as ComboboxPrimitive } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { Slot } from "@radix-ui/react-slot";
 import React, { forwardRef } from "react";
@@ -19,16 +18,15 @@ export type PoolValue = {
 type PoolSelectorProps = {
   children: React.ReactNode;
   onChange: (value: PoolValue) => void;
-  onReset: () => void;
   pools: Array<NumberPoolData>;
   value: FormFieldValue;
 };
 
 export const PoolSelector = forwardRef<HTMLElement, PoolSelectorProps>(
-  ({ children, onChange, onReset, value, pools }, ref) => {
+  ({ children, onChange, value, pools }, ref) => {
     const [override, setOverride] = React.useState(false);
 
-    const items: Array<tComboboxItem> = pools.map((pool) => ({
+    const items = pools.map((pool) => ({
       label: pool.label,
       value: {
         from_pool: {
@@ -75,9 +73,21 @@ export const PoolSelector = forwardRef<HTMLElement, PoolSelectorProps>(
           </Tooltip>
         </div>
 
-        <ComboboxPrimitive onChange={onChange}>
-          <ComboboxList items={items} onReset={onReset} />
-        </ComboboxPrimitive>
+        <ComboboxContent portal={true}>
+          <ComboboxList>
+            {items.map((item) => (
+              <ComboboxItem
+                key={item.value.from_pool.id}
+                value={item.value.from_pool.id}
+                keywords={[item.label]}
+                onSelect={() => onChange(item.value)}
+                selectedValue={value?.source?.id}
+              >
+                {item.label}
+              </ComboboxItem>
+            ))}
+          </ComboboxList>
+        </ComboboxContent>
       </Popover>
     );
   }

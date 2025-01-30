@@ -5,7 +5,12 @@ import {
   relationshipsForTabs,
 } from "@/config/constants";
 import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
-import { iGenericSchema, iNodeSchema, profilesAtom } from "@/entities/schema/stores/schema.atom";
+import {
+  IModelSchema,
+  iGenericSchema,
+  iNodeSchema,
+  profilesAtom,
+} from "@/entities/schema/stores/schema.atom";
 import { AttributeKind } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils";
 import { store } from "@/shared/stores";
@@ -13,7 +18,7 @@ import { sortByOrderWeight } from "@/shared/utils/common";
 import * as R from "ramda";
 
 type tgetObjectAttributes = {
-  schema: iNodeSchema | iGenericSchema | undefined;
+  schema: IModelSchema | undefined;
   forListView?: boolean;
   forQuery?: boolean;
   forProfiles?: boolean;
