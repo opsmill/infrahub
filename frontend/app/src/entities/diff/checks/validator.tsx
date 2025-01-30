@@ -1,9 +1,9 @@
-import { MoreButton } from "@/shared/components/buttons/more-button";
+import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { DurationDisplay } from "@/shared/components/display/duration-display";
-import { PopOver } from "@/shared/components/display/popover";
 import { List } from "@/shared/components/table/list";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { ValidatorDetails } from "./validator-details";
@@ -106,9 +106,15 @@ export const Validator = ({ validator }: tValidatorProps) => {
       <DurationDisplay date={started_at.value} endDate={completed_at.value} />
 
       <div className="flex flex-grow justify-end">
-        <PopOver buttonComponent={MoreButton}>
-          <List columns={columns} row={row} />
-        </PopOver>
+        <Popover>
+          <PopoverTrigger onClick={(e) => e.stopPropagation()} asChild>
+            <InfoButton />
+          </PopoverTrigger>
+
+          <PopoverContent>
+            <List columns={columns} row={row} />
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );
