@@ -22,7 +22,7 @@ import { classNames } from "@/shared/utils/common";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai/index";
-import { useId } from "react";
+import { useEffect, useId } from "react";
 
 type ProfilesSelectorProps = {
   schema: iNodeSchema;
@@ -38,6 +38,12 @@ export const ProfilesSelector = ({
   onChange,
 }: ProfilesSelectorProps) => {
   const id = useId();
+
+  useEffect(() => {
+    if (!value && defaultValue) {
+      onChange(defaultValue);
+    }
+  }, [defaultValue]);
 
   const genericSchemas = useAtomValue(genericsState);
   const profileSchemas = useAtomValue(profilesAtom);
@@ -113,10 +119,6 @@ export const ProfilesSelector = ({
     onChange([...selectedValues, profile]);
   };
 
-  if (!value && defaultValue) {
-    onChange(defaultValue);
-  }
-
   const handleRemove = (profile: ProfileData) => {
     onChange(selectedValues.filter((item) => item.id !== profile.id));
   };
@@ -160,11 +162,9 @@ export const ProfilesSelector = ({
 
             {loading && <Spinner className="ml-auto" />}
 
-            <PopoverTrigger asChild>
-              <button id={id} type="button" className="text-gray-600 outline-none w-3.5 h-3.5">
-                <Icon icon="mdi:unfold-more-horizontal" />
-              </button>
-            </PopoverTrigger>
+            <button id={id} type="button" className="text-gray-600 outline-none w-3.5 h-3.5">
+              <Icon icon="mdi:unfold-more-horizontal" />
+            </button>
           </div>
         </PopoverTrigger>
 

@@ -68,6 +68,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await test.step("Select profile and enter details", async () => {
       await page.getByLabel("Select profiles").click();
       await page.getByRole("option", { name: "profile test tag" }).click();
+      await page.getByLabel("Select profiles").click();
 
       // Verify initial input fields for profile
       await expect(page.getByLabel("Name *")).toBeEmpty();
@@ -140,8 +141,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("remove profile from tag", async () => {
-      await page.getByLabel("Select profiles optional").click();
-      await page.getByRole("option", { name: "profile test tag" }).click();
+      await page.getByText("profile test tag×").getByTestId("remove-option").click();
       await expect(page.getByLabel("Description")).toBeEmpty();
       await page.getByRole("button", { name: "Save" }).click();
     });
