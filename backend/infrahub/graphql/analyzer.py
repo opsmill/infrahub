@@ -33,6 +33,12 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 
+class MutateAction(str, Enum):
+    CREATE = "create"
+    DELETE = "delete"
+    UPDATE = "update"
+
+
 class ContextType(str, Enum):
     EDGE = "edge"
     NODE = "node"
@@ -109,6 +115,7 @@ class GraphQLQueryModel:
     arguments: list[GraphQLArgument]
     attributes: set[str]
     relationships: set[str]
+    mutate_actions: list[MutateAction] = field(default_factory=list)
 
 
 @dataclass
@@ -125,6 +132,7 @@ class GraphQLQueryNode:
     infrahub_attributes: set[str] = field(default_factory=set)
     infrahub_relationships: set[str] = field(default_factory=set)
     field_node: FieldNode | None = field(default=None)
+    mutate_actions: list[MutateAction] = field(default_factory=list)
 
     def context_model(self) -> MainSchemaTypes | None:
         """Return the closest Infrahub object by going up in the tree"""
@@ -169,8 +177,8 @@ class GraphQLQueryNode:
     @property
     def at_root(self) -> bool:
         if self.parent:
-            return True
-        return False
+            return False
+        return True
 
     @property
     def in_property_level(self) -> bool:
@@ -202,6 +210,7 @@ class GraphQLQueryNode:
                     arguments=self.arguments,
                     attributes=self.infrahub_attributes,
                     relationships=self.infrahub_relationships,
+                    mutate_actions=self.mutate_actions,
                 )
             )
             for used_by in self.infrahub_node_models:
@@ -212,6 +221,7 @@ class GraphQLQueryNode:
                         arguments=self.arguments,
                         attributes=self.infrahub_attributes,
                         relationships=self.infrahub_relationships,
+                        mutate_actions=self.mutate_actions,
                     )
                 )
 
@@ -234,7 +244,7 @@ class GraphQLQueryReport:
 
         return sorted(models)
 
-    @property
+    @cached_property
     def requested_read(self) -> dict[str, ObjectAccess]:
         """Return Infrahub objects and the fields (attributes and relationships) that this query would attempt to read"""
         access: dict[str, ObjectAccess] = {}
@@ -245,6 +255,34 @@ class GraphQLQueryReport:
                     access[query_model.model.kind] = ObjectAccess()
                 access[query_model.model.kind].attributes.update(query_model.attributes)
                 access[query_model.model.kind].relationships.update(query_model.relationships)
+
+        return access
+
+    @cached_property
+    def kind_action_map(self) -> dict[str, set[MutateAction]]:
+        access: dict[str, set[MutateAction]] = {}
+        root_models: set[str] = set()
+        includes_mutations: bool = False
+        for query in self.queries:
+            query_models = query.get_models()
+            for query_model in query_models:
+                if query_model.mutate_actions:
+                    includes_mutations = True
+                if includes_mutations:
+                    if query_model.model.kind not in access:
+                        access[query_model.model.kind] = set()
+                    if query_model.root:
+                        root_models.add(query_model.model.kind)
+                    access[query_model.model.kind].update(query_model.mutate_actions)
+
+        # Until we properly analyze the data payload it is assumed that the required permissions on non-root objects is update
+        # the idea around this is that at this point even if we only return data from a relationship without actually updating
+        # that relationship we'd still expect to have UPDATE permissions on that related object. However, this is still a step
+        # in the right direction as we'd previously require the same permissions as that of the base object so this is still
+        # more correct.
+        for node_kind, node_actions in access.items():
+            if node_kind not in root_models:
+                node_actions.add(MutateAction.UPDATE)
 
         return access
 
@@ -361,6 +399,9 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
                     path=schema_model.kind,
                     infrahub_model=schema_model,
                     infrahub_node_models=infrahub_node_models,
+                    mutate_actions=self._get_model_mutations(
+                        node=field_node, operation_definition=operation_definition
+                    ),
                     context_type=ContextType.from_operation(operation=operation_definition.operation),
                     arguments=self._parse_arguments(field_node=field_node),
                     variables=self._get_variables(operation=operation_definition),
@@ -377,16 +418,24 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
 
     @staticmethod
     def _get_model_name(node: FieldNode, operation_definition: OperationDefinitionNode) -> str:
+        if operation_definition.operation == OperationType.MUTATION and node.name.value.endswith(
+            ("Create", "Delete", "Update", "Upsert")
+        ):
+            return node.name.value[:-6]
+        return node.name.value
+
+    @staticmethod
+    def _get_model_mutations(node: FieldNode, operation_definition: OperationDefinitionNode) -> list[MutateAction]:
         if operation_definition.operation == OperationType.MUTATION:
             if node.name.value.endswith("Create"):
-                return node.name.value[:-6]
+                return [MutateAction.CREATE]
             if node.name.value.endswith("Delete"):
-                return node.name.value[:-6]
+                return [MutateAction.DELETE]
             if node.name.value.endswith("Update"):
-                return node.name.value[:-6]
+                return [MutateAction.UPDATE]
             if node.name.value.endswith("Upsert"):
-                return node.name.value[:-6]
-        return node.name.value
+                return [MutateAction.CREATE, MutateAction.UPDATE]
+        return []
 
     @property
     def _sorted_fragment_definitions(self) -> list[FragmentDefinitionNode]:
@@ -463,7 +512,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         infrahub_node_models: list[MainSchemaTypes] = []
         if query_node.in_property_level:
             if model := query_node.context_model():
-                if node.name.value in model.attribute_names:
+                if node.name.value in model.attribute_names or node.name.value == "display_label":
                     query_node.append_attribute(attribute=node.name.value)
                 elif node.name.value in model.relationship_names:
                     rel = model.get_relationship_or_none(name=node.name.value)

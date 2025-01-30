@@ -36,34 +36,27 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
             else PermissionDecisionFlag.ALLOW_OTHER
         )
 
-        kinds = analyzed_query.query_report.impacted_models
-
-        # Identify which operations are performed. As we don't have a mapping between kinds and the
-        # operation we currently require permissions all defined permissions for all objects
-        # within the GraphQL query / mutation
-        actions: set[str] = set()
-        for operation in analyzed_query.operations:
-            for kind in kinds:
-                if operation.name and operation.name.startswith(kind):
-                    # An empty string after prefix removal means a query to "view"
-                    query_action = operation.name[len(kind) :].lower() or "view"
-                    if query_action == "upsert":
-                        # Require both create and update for Upsert mutations
-                        actions.add("create")
-                        actions.add("update")
-                    else:
-                        actions.add(query_action)
-
-        # Infer required permissions from the kind/operation map
         permissions: list[ObjectPermission] = []
-        for action in actions:
-            for kind in kinds:
+        for kind, object_access in analyzed_query.query_report.requested_read.items():
+            if object_access.attributes or object_access.relationships:
                 extracted_words = extract_camelcase_words(kind)
                 permissions.append(
                     ObjectPermission(
                         namespace=extracted_words[0],
                         name="".join(extracted_words[1:]),
-                        action=action.lower(),
+                        action="view",
+                        decision=required_decision,
+                    )
+                )
+
+        for kind, requested_permissions in analyzed_query.query_report.kind_action_map.items():
+            for requested_permission in requested_permissions:
+                extracted_words = extract_camelcase_words(kind)
+                permissions.append(
+                    ObjectPermission(
+                        namespace=extracted_words[0],
+                        name="".join(extracted_words[1:]),
+                        action=requested_permission.value,
                         decision=required_decision,
                     )
                 )

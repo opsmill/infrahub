@@ -4,7 +4,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer, MutateAction
 from infrahub.graphql.initialization import prepare_graphql_params
 
 
@@ -205,7 +205,7 @@ async def test_query_report(db: InfrahubDatabase, default_branch: Branch, car_pe
 
     mutation_query_with_return_data = """
     mutation {
-        TestElectricCar(
+        TestElectricCarCreate(
             data: {
                 name: { value: "Accord" }
                 nbr_seats: { value: 5 }
@@ -247,6 +247,50 @@ async def test_query_report(db: InfrahubDatabase, default_branch: Branch, car_pe
     assert gqa.query_report.requested_read["TestElectricCar"].relationships == {"owner"}
     assert gqa.query_report.requested_read["TestPerson"].attributes == {"name"}
     assert gqa.query_report.requested_read["TestPerson"].relationships == set()
+    assert len(gqa.query_report.kind_action_map.keys()) == 2
+    assert gqa.query_report.kind_action_map["TestElectricCar"] == {MutateAction.CREATE}
+    assert gqa.query_report.kind_action_map["TestPerson"] == {MutateAction.UPDATE}
+
+    mutation_query_with_simple_return_data = """
+    mutation {
+        TestElectricCarCreate(
+            data: {
+                name: { value: "Accord" }
+                nbr_seats: { value: 5 }
+                is_electric: { value: true }
+                owner: { id: "John" }
+            }
+        ) {
+            ok
+            object {
+                id
+                name {
+                    value
+                }
+                nbr_seats {
+                    value
+                }
+            }
+        }
+    }
+    """
+    gqa = InfrahubGraphQLQueryAnalyzer(
+        query=mutation_query_with_simple_return_data,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    # As we only return data from the object we created and also from a related object
+    # we'd need read access from both TestElectricCar and TestPerson
+    assert len(gqa.query_report.requested_read.keys()) == 1
+    assert gqa.query_report.requested_read["TestElectricCar"].attributes == {"name", "nbr_seats"}
+    assert gqa.query_report.requested_read["TestElectricCar"].relationships == set()
+    # Unlike the test case above this one doesn't return data for the owner and as such we don't currently
+    # need the update permission on the test person. This is something that we will want to change in the
+    # future
+    assert len(gqa.query_report.kind_action_map.keys()) == 1
+    assert gqa.query_report.kind_action_map["TestElectricCar"] == {MutateAction.CREATE}
 
     query_with_source_only_id = """
     query {
