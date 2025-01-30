@@ -35,7 +35,7 @@ export function KindHeaderCell({ schema }: { schema: iGenericSchema }) {
           icon="mdi:filter-variant"
           className={classNames(
             "text-lg ml-auto",
-            currentKindFilters ? "text-indigo-700" : "text-gray-300"
+            currentKindFilters ? "text-indigo-700" : "invisible"
           )}
         />
       </PopoverTrigger>
