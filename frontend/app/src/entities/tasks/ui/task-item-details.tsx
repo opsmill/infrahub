@@ -12,7 +12,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { forwardRef, useImperativeHandle, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Logs, tLog } from "./logs";
 

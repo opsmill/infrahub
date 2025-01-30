@@ -27,7 +27,7 @@ import { EyeSlashIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
 import { Fragment, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 import LoadingScreen from "../../../shared/components/loading-screen";
 import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";

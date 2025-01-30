@@ -24,7 +24,7 @@ import { NetworkStatus, gql } from "@apollo/client";
 import { formatISO } from "date-fns";
 import { useAtomValue } from "jotai/index";
 import { HTMLAttributes, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 
 export const Conversations = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const { proposedChangeId } = useParams();

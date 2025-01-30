@@ -1,7 +1,7 @@
 import { Pill } from "@/shared/components/display/pill";
 import { classNames } from "@/shared/utils/common";
 import { ReactNode } from "react";
-import { Link, useMatch } from "react-router-dom";
+import { Link, useMatch } from "react-router";
 
 type TabProps = {
   to: string;

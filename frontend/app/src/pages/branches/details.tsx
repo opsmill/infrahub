@@ -13,7 +13,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { useAtomValue } from "jotai";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 
 export const BRANCH_TABS = {

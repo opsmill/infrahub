@@ -1,10 +1,6 @@
-// type PopOver = {}
-
-import Transition from "@/shared/components/ui/transition";
 import { classNames } from "@/shared/utils/common";
-import { Popover } from "@headlessui/react";
-import { CSSProperties, forwardRef, useState } from "react";
-import { usePopper } from "react-popper";
+import { Popover, Transition } from "@headlessui/react";
+import { CSSProperties, forwardRef } from "react";
 
 export enum POPOVER_SIZE {
   NONE,
@@ -65,6 +61,7 @@ const PopOverPanel = forwardRef<HTMLDivElement, PopOverProps>(
     return (
       <Popover.Panel
         ref={ref}
+        anchor="bottom"
         className={classNames(
           "absolute overflow-scroll z-10 rounded-lg border shadow-xl grid grid-cols-1 divide-y divide-gray-200",
           className?.includes("bg-") ? "" : "bg-custom-white",
@@ -93,19 +90,6 @@ const PopOverPanel = forwardRef<HTMLDivElement, PopOverProps>(
 
 export const PopOver = (props: PopOverProps) => {
   const { buttonComponent, fixed, disabled, static: staticProp, open, ...propsToPass } = props;
-  let [referenceElement, setReferenceElement] = useState();
-  let [popperElement, setPopperElement] = useState();
-  let { styles, attributes } = usePopper(referenceElement, popperElement, {
-    modifiers: [
-      {
-        name: "preventOverflow",
-        enabled: !fixed,
-        options: {
-          padding: 8,
-        },
-      },
-    ],
-  });
 
   if (staticProp) {
     return <Popover className="flex-1">{open && <PopOverPanel {...propsToPass} static />}</Popover>;
@@ -113,17 +97,19 @@ export const PopOver = (props: PopOverProps) => {
 
   return (
     <Popover>
-      <Popover.Button as="div" className="h-full" disabled={disabled} ref={setReferenceElement}>
+      <Popover.Button as="div" className="h-full" disabled={disabled}>
         {buttonComponent}
       </Popover.Button>
 
-      <Transition>
-        <PopOverPanel
-          {...propsToPass}
-          ref={setPopperElement}
-          style={styles.popper}
-          {...attributes.popper}
-        />
+      <Transition
+        enter="transition-opacity duration-200"
+        enterFrom="opacity-0"
+        enterTo="opacity-100"
+        leave="transition-opacity duration-200"
+        leaveFrom="opacity-100"
+        leaveTo="opacity-0"
+      >
+        <PopOverPanel {...propsToPass} />
       </Transition>
     </Popover>
   );

@@ -4,7 +4,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import BranchSelector from "@/shared/components/branch-selector";
 import BreadcrumbNavigation from "@/shared/components/layout/breadcrumb-navigation/breadcrumb-navigation";
 import { TimeFrameSelector } from "@/shared/components/time-selector";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 export default function Header() {
   return (

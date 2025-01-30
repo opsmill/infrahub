@@ -18,7 +18,7 @@ import { classNames } from "@/shared/utils/common";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { toast } from "react-toastify";
 
 type tChecksSummaryProps = {

@@ -7,7 +7,7 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../ui/alert";
 import ModalDelete from "./modal-delete";

@@ -29,7 +29,7 @@ import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-inp
 import { classNames, debounce } from "@/shared/utils/common";
 import { NetworkStatus } from "@apollo/client";
 import { useState } from "react";
-import { Link, LinkProps, useNavigate } from "react-router-dom";
+import { Link, LinkProps, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { getPermission } from "../../permission/utils";

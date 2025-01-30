@@ -2,7 +2,7 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router";
 import { schemaState } from "../../../src/entities/schema/stores/schema.atom";
 import { ObjectDetailsPage } from "../../../src/pages/objects/object-details";
 import {

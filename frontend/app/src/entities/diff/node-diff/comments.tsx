@@ -20,7 +20,7 @@ import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useContext } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { DiffContext } from ".";
 
 type tDiffComments = {

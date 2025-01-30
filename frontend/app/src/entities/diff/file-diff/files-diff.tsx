@@ -8,7 +8,7 @@ import LoadingScreen from "@/shared/components/loading-screen";
 import { useAtom } from "jotai";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 import "react-diff-view/style/index.css";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import { FileRepoDiff } from "./file-repo-diff";
 

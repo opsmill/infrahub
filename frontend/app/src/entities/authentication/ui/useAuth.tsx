@@ -9,7 +9,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { parseJwt } from "@/shared/utils/common";
 import { ObservableQuery } from "@apollo/client";
 import { ReactElement, ReactNode, createContext, useContext, useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router";
 import { toast } from "react-toastify";
 
 type User = {

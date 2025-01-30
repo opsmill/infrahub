@@ -26,7 +26,7 @@ import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 import { useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { Outlet, useParams } from "react-router-dom";
+import { Outlet, useParams } from "react-router";
 
 const ResourcePoolDetailsPage = () => {
   const { resourcePoolId } = useParams();

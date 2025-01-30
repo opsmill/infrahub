@@ -1,16 +1,18 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Provider } from "jotai";
+import queryString from "query-string";
 import React from "react";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter } from "react-router";
 import { Slide, ToastContainer } from "react-toastify";
+import { QueryParamProvider } from "use-query-params";
 import { render as renderFromVitest } from "vitest-browser-react";
+
 import { queryClient } from "../../src/shared/api/rest/client";
+import { ReactRouter7Adapter } from "../../src/shared/lib/use-query-params";
 import { store } from "../../src/shared/stores";
+
 import "/src/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
-import queryString from "query-string";
-import { QueryParamProvider } from "use-query-params";
-import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 
 export const render = (component: React.ReactElement, options = {}) =>
   renderFromVitest(component, {
@@ -27,7 +29,7 @@ export const render = (component: React.ReactElement, options = {}) =>
           />
           <BrowserRouter>
             <QueryParamProvider
-              adapter={ReactRouter6Adapter}
+              adapter={ReactRouter7Adapter}
               options={{
                 searchStringToObject: queryString.parse,
                 objectToSearchString: queryString.stringify,

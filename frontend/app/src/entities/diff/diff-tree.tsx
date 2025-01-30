@@ -7,7 +7,7 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
 import { Icon } from "@iconify-icon/react";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router";
 
 interface DiffTreeProps extends Omit<TreeProps, "data"> {
   nodes: Array<DiffNode>;

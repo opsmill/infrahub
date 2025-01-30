@@ -26,7 +26,7 @@ import { useTitle } from "@/shared/hooks/useTitle";
 import { classNames, debounce } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate } from "react-router";
 
 type ObjectItemsProps = {
   schema: IModelSchema;

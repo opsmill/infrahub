@@ -4,7 +4,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router";
 
 import { GET_PREFIXES_ONLY } from "@/entities/ipam/api/prefixes";
 import { defaultIpNamespaceAtom } from "@/entities/ipam/common/namespace.state";

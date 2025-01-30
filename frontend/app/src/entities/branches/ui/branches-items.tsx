@@ -9,7 +9,7 @@ import { useTitle } from "@/shared/hooks/useTitle";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import * as R from "ramda";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 const BranchesItems = () => {
   const [storedBranches, setBranches] = useAtom(branchesState);

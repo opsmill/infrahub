@@ -14,7 +14,7 @@ import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import { getObjectPermissionsQuery } from "../permission/queries/getObjectPermissions";
 import { defaultIpNamespaceAtom } from "./common/namespace.state";

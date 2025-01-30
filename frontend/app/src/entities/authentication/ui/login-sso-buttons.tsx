@@ -2,7 +2,7 @@ import { INFRAHUB_API_SERVER_URL } from "@/config/config";
 import { SSOProvider } from "@/entities/config/types";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 
 export interface LoginWithSSOButtonsProps {
   className?: string;

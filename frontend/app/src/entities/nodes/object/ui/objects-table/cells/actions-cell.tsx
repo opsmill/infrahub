@@ -15,7 +15,7 @@ import {
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 export interface ActionsCellProps extends Omit<DeleteObjectModalProps, "open" | "setOpen"> {
   permission: Permission;

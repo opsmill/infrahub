@@ -2,7 +2,7 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
 import { AuthProvider } from "../../../src/entities/authentication/ui/useAuth";
 import { ArtifactsDiff } from "../../../src/entities/diff/artifact-diff/artifacts-diff";
