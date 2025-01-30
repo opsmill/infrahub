@@ -16,7 +16,7 @@ from infrahub.core.constants import (
     RelationshipKind,
 )
 from infrahub.core.constants.schema import SchemaElementPathType
-from infrahub.core.protocols import CoreNumberPool
+from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
 from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
@@ -272,6 +272,31 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 )
             )
 
+    async def handle_object_template(self, fields: dict, db: InfrahubDatabase) -> None:
+        """Fill the `fields` parameters with values from an object template if one is in use."""
+        object_template_field = fields.get("object_template")
+        if not object_template_field:
+            return fields
+
+        # FIXME: This is ugly
+        from infrahub.core.manager import NodeManager
+
+        template: CoreObjectTemplate = await NodeManager.find_object(
+            db=db,
+            kind=self._schema.get_relationship(name="object_template").peer,
+            id=object_template_field.get("id"),
+            hfid=object_template_field.get("hfid"),
+            branch=self.get_branch_based_on_support_type(),
+        )
+
+        for attribute in template._attributes:
+            if attribute in list(fields.values()) + ["kind", "template_name"]:
+                continue
+
+            fields[attribute] = {"value": getattr(template, attribute).value}
+
+        return fields
+
     async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
         errors = []
 
@@ -289,6 +314,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for field_name in fields.keys():
             if field_name not in self._schema.valid_input_names:
                 errors.append(ValidationError({field_name: f"{field_name} is not a valid input for {self.get_kind()}"}))
+
+        # Backfill fields with the ones from the template if there's one
+        await self.handle_object_template(fields=fields, db=db)
 
         # If the object is new, we need to ensure that all mandatory attributes and relationships have been provided
         if not self._existing:

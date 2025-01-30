@@ -7,7 +7,7 @@ import graphene
 
 from infrahub import config
 from infrahub.core.attribute import String
-from infrahub.core.constants import InfrahubKind, RelationshipKind
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipKind
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -421,13 +421,13 @@ class GraphQLSchemaManager:
                     continue
                 peer_filters = self.generate_filters(schema=peer_schema, top_level=False)
 
-                if rel.cardinality == "one":
+                if rel.cardinality == RelationshipCardinality.ONE:
                     peer_type = self.get_type(name=f"NestedEdged{peer_schema.kind}")
                     node_type._meta.fields[rel.name] = graphene.Field(
                         peer_type, resolver=single_relationship_resolver, required=True
                     )
 
-                elif rel.cardinality == "many":
+                elif rel.cardinality == RelationshipCardinality.MANY:
                     peer_type = self.get_type(name=f"NestedPaginated{peer_schema.kind}")
 
                     if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
@@ -578,7 +578,7 @@ class GraphQLSchemaManager:
         for attr in schema.local_attributes:
             attr_kind = get_attr_kind(schema, attr)
             attr_type = self.get_type(name=get_attribute_type(kind=attr_kind).get_graphql_type_name())
-            main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
+            main_attrs[attr.name] = graphene.Field(attr_type, description=attr.description)
 
         graphql_object = type(schema.kind, (InfrahubObject,), main_attrs)
 
@@ -609,7 +609,7 @@ class GraphQLSchemaManager:
         for attr in schema.attributes:
             attr_kind = get_attr_kind(node_schema=schema, attr_schema=attr)
             attr_type = self.get_type(name=get_attribute_type(kind=attr_kind).get_graphql_type_name())
-            main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
+            main_attrs[attr.name] = graphene.Field(attr_type, description=attr.description)
 
         interface_object = type(schema.kind, (InfrahubInterface,), main_attrs)
 
@@ -688,10 +688,7 @@ class GraphQLSchemaManager:
             attr_kind = get_attr_kind(schema, attr)
             attr_type = get_attribute_type(kind=attr_kind).get_graphql_create()
 
-            # A Field is not required if explicitly indicated or if a default value has been provided
-            required = not attr.optional if not attr.default_value else False
-
-            attrs[attr.name] = graphene.InputField(attr_type, required=required, description=attr.description)
+            attrs[attr.name] = graphene.InputField(attr_type, description=attr.description)
 
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
@@ -699,14 +696,11 @@ class GraphQLSchemaManager:
 
             input_type = self._get_related_input_type(relationship=rel)
 
-            required = not rel.optional
-            if rel.cardinality == "one":
-                attrs[rel.name] = graphene.InputField(input_type, required=required, description=rel.description)
+            if rel.cardinality == RelationshipCardinality.ONE:
+                attrs[rel.name] = graphene.InputField(input_type, description=rel.description)
 
-            elif rel.cardinality == "many":
-                attrs[rel.name] = graphene.InputField(
-                    graphene.List(input_type), required=required, description=rel.description
-                )
+            elif rel.cardinality == RelationshipCardinality.MANY:
+                attrs[rel.name] = graphene.InputField(graphene.List(input_type), description=rel.description)
 
         return type(f"{schema.kind}CreateInput", (graphene.InputObjectType,), attrs)
 
@@ -739,10 +733,10 @@ class GraphQLSchemaManager:
 
             input_type = self._get_related_input_type(relationship=rel)
 
-            if rel.cardinality == "one":
+            if rel.cardinality == RelationshipCardinality.ONE:
                 attrs[rel.name] = graphene.InputField(input_type, required=False, description=rel.description)
 
-            elif rel.cardinality == "many":
+            elif rel.cardinality == RelationshipCardinality.MANY:
                 attrs[rel.name] = graphene.InputField(
                     graphene.List(input_type), required=False, description=rel.description
                 )
@@ -786,10 +780,10 @@ class GraphQLSchemaManager:
             input_type = self._get_related_input_type(relationship=rel)
 
             required = not rel.optional
-            if rel.cardinality == "one":
+            if rel.cardinality == RelationshipCardinality.ONE:
                 attrs[rel.name] = graphene.InputField(input_type, required=required, description=rel.description)
 
-            elif rel.cardinality == "many":
+            elif rel.cardinality == RelationshipCardinality.MANY:
                 attrs[rel.name] = graphene.InputField(
                     graphene.List(input_type), required=required, description=rel.description
                 )

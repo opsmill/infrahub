@@ -2832,7 +2832,7 @@ async def test_hierarchical_validate_parent_children(
 
 
 async def test_manage_object_templates():
-    SCHEMA = {
+    schema = {
         "name": "Device",
         "namespace": "Test",
         "default_filter": "name__value",
@@ -2864,11 +2864,10 @@ async def test_manage_object_templates():
     }
 
     copy_core_models = copy.deepcopy(core_models)
-    copy_core_models["nodes"].append(SCHEMA)
-    schema = SchemaRoot(**copy_core_models)
+    copy_core_models["nodes"].append(schema)
 
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=schema)
+    schema_branch.load_schema(schema=SchemaRoot(**copy_core_models))
     schema_branch.manage_object_template_schemas()
     schema_branch.manage_object_template_relationships()
 
@@ -2876,7 +2875,7 @@ async def test_manage_object_templates():
     test_object_template_device = schema_branch.get_node("TemplateTestDevice", duplicate=False)
     assert not test_object_template_device.generate_template
 
-    for attr in SCHEMA["attributes"]:
+    for attr in schema["attributes"]:
         if attr.get("unique", False):
             with pytest.raises(ValueError, match=r"Unable to find the attribute"):
                 test_object_template_device.get_attribute(name=attr["name"])

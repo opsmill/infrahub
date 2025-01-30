@@ -8,6 +8,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_relationships, get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
@@ -711,6 +712,74 @@ async def test_node_create_with_multiple_relationship(db: InfrahubDatabase, defa
     assert len(paths) == 2
     paths = await get_paths_between_nodes(db=db, source_id=f1.db_id, destination_id=t3.db_id, max_length=2)
     assert len(paths) == 2
+
+
+async def test_node_create_with_object_template(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+):
+    schema = {
+        "name": "Device",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "generate_template": True,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "manufacturer", "kind": "Text", "optional": False},
+            {"name": "height", "kind": "Number", "default_value": 1},
+            {"name": "weight", "kind": "Number"},
+            {
+                "name": "airflow",
+                "kind": "Text",
+                "enum": [
+                    "Front to rear",
+                    "Rear to front",
+                    "Left to right",
+                    "Right to left",
+                    "Side to rear",
+                    "Rear to side",
+                    "Bottom to top",
+                    "Top to bottom",
+                    "Passive",
+                    "Mixed",
+                ],
+            },
+            {"name": "part_number", "kind": "Text"},
+        ],
+    }
+    node = NodeSchema(**schema)
+
+    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
+
+    template_schema = registry.schema.get(name="TemplateTestDevice", branch=default_branch.name)
+    node_schema = registry.schema.get(name=node.kind, branch=default_branch.name)
+
+    template = await Node.init(db=db, schema=template_schema)
+    await template.new(
+        db=db,
+        template_name="Juniper MX204",
+        kind="TestDevice",
+        manufacturer="Juniper",
+        height=1,
+        weight=8,
+        airflow="Front to rear",
+        part_number="MX204",
+    )
+    await template.save(db=db)
+
+    device = await Node.init(db=db, schema=node_schema)
+    await device.new(db=db, name="par-th2-br01", object_template={"id": template.id})
+    await device.save(db=db)
+
+    assert device.id
+    assert device.db_id
+    assert device.name.value == "par-th2-br01"
+    assert device.manufacturer.value == "Juniper"
+    assert device.height.value == 1
+    assert device.weight.value == 8
+    assert device.airflow.value.value == "Front to rear"
+    assert device.part_number.value == "MX204"
 
 
 # --------------------------------------------------------------------------
