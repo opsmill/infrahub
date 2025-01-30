@@ -3,7 +3,6 @@ import { FormFieldValue, NumberPoolData } from "@/shared/components/form/type";
 import { ComboboxContent, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { Popover, PopoverAnchor, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { Combobox as ComboboxPrimitive } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { Slot } from "@radix-ui/react-slot";
 import React, { forwardRef } from "react";
@@ -75,20 +74,18 @@ export const PoolSelector = forwardRef<HTMLElement, PoolSelectorProps>(
         </div>
 
         <ComboboxContent>
-          <ComboboxPrimitive onChange={onChange}>
-            <ComboboxList>
-              {items.map((item) => (
-                <ComboboxItem
-                  key={item.value.from_pool.id}
-                  value={item.label}
-                  onSelect={() => onChange(item.value)}
-                  selectedValue={value?.from_pool?.id}
-                >
-                  {item.label}
-                </ComboboxItem>
-              ))}
-            </ComboboxList>
-          </ComboboxPrimitive>
+          <ComboboxList>
+            {items.map((item) => (
+              <ComboboxItem
+                key={item.value.from_pool.id}
+                value={item.label}
+                onSelect={() => onChange(item.value)}
+                selectedValue={value?.from_pool?.id}
+              >
+                {item.label}
+              </ComboboxItem>
+            ))}
+          </ComboboxList>
         </ComboboxContent>
       </Popover>
     );
