@@ -294,10 +294,6 @@ class DiffMergeSerializer:
         actions_and_peers = self._get_actions_and_peers(relationship_diff=relationship_diff)
         added_peer_ids = [peer_id for action, peer_id in actions_and_peers if action is DiffAction.ADDED]
         removed_peer_ids = [peer_id for action, peer_id in actions_and_peers if action is DiffAction.REMOVED]
-        if not added_peer_ids:
-            added_peer_ids = [relationship_diff.peer_id]
-        if not removed_peer_ids:
-            removed_peer_ids = [relationship_diff.peer_id]
         for action, peer_id in actions_and_peers:
             if (
                 peer_id
@@ -314,6 +310,7 @@ class DiffMergeSerializer:
             relationship_diff_properties=relationship_diff.properties,
             added_peer_ids=added_peer_ids,
             removed_peer_ids=removed_peer_ids,
+            unchanged_peer_id=relationship_diff.peer_id,
         )
         return relationship_dicts, relationship_property_dicts
 
@@ -324,9 +321,14 @@ class DiffMergeSerializer:
         relationship_diff_properties: set[EnrichedDiffProperty],
         added_peer_ids: list[str],
         removed_peer_ids: list[str],
+        unchanged_peer_id: str,
     ) -> list[RelationshipPropertyMergeDict]:
-        added_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.ADDED)
-        removed_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.REMOVED)
+        added_property_dicts = {}
+        removed_property_dicts = {}
+        if added_peer_ids:
+            added_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.ADDED)
+        if removed_peer_ids:
+            removed_property_dicts = self._get_default_property_merge_dicts(action=DiffAction.REMOVED)
         for property_diff in relationship_diff_properties:
             if property_diff.property_type is DatabaseEdgeType.IS_RELATED:
                 # handled above
@@ -348,10 +350,15 @@ class DiffMergeSerializer:
                 elif action is DiffAction.REMOVED:
                     removed_property_dicts[property_diff.property_type] = property_dict
         relationship_property_dicts = []
+        peers_and_property_dicts: list[tuple[str, dict[DatabaseEdgeType, PropertyMergeDict]]] = []
         if added_property_dicts:
-            peers_and_property_dicts = [(peer_id, added_property_dicts) for peer_id in added_peer_ids]
+            peers_and_property_dicts += [
+                (peer_id, added_property_dicts) for peer_id in (added_peer_ids or [unchanged_peer_id])
+            ]
         if removed_property_dicts:
-            peers_and_property_dicts += [(peer_id, removed_property_dicts) for peer_id in removed_peer_ids]
+            peers_and_property_dicts += [
+                (peer_id, removed_property_dicts) for peer_id in (removed_peer_ids or [unchanged_peer_id])
+            ]
         for peer_id, property_dicts in peers_and_property_dicts:
             if (
                 peer_id
