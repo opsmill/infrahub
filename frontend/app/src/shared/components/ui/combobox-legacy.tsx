@@ -1,74 +1,11 @@
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { classNames } from "@/shared/utils/common";
 import { Combobox as ComboboxPrimitive } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React, { forwardRef, useState } from "react";
+import { useState } from "react";
 import { Badge } from "./badge";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { PopoverContent } from "./popover";
 import { SearchInput } from "./search-input";
-
-export interface MultiComboboxProps extends Omit<ButtonProps, "onChange"> {
-  children?: React.ReactNode;
-  placeholder?: string;
-  value: Array<string>;
-  items?: ComboboxListProps["items"];
-  onChange?: (value: string[]) => void;
-}
-
-export const MultiCombobox = forwardRef<HTMLButtonElement, MultiComboboxProps>(
-  ({ value = [], onChange, items = [], ...props }, ref) => {
-    const [open, setOpen] = React.useState(false);
-
-    const handleChange = (newValues: unknown) => {
-      if (onChange) onChange(newValues as string[]);
-    };
-
-    const selectedItems = items.filter((item) => value.includes(item.value)) ?? [];
-
-    return (
-      <ComboboxPrimitive onChange={handleChange} multiple value={value}>
-        <Popover open={open} onOpenChange={setOpen}>
-          <ComboboxTrigger ref={ref} {...props}>
-            <div className="flex flex-wrap gap-2">
-              {selectedItems.map((item, index) => (
-                <Badge key={index}>{item.label}</Badge>
-              ))}
-            </div>
-          </ComboboxTrigger>
-
-          <ComboboxList items={items} onReset={() => handleChange([])} />
-        </Popover>
-      </ComboboxPrimitive>
-    );
-  }
-);
-
-interface ComboboxTriggerProps extends PopoverTriggerProps {
-  value?: string;
-  placeholder?: string;
-}
-
-export const ComboboxTrigger = forwardRef<HTMLButtonElement, ComboboxTriggerProps>(
-  ({ className, children, placeholder, ...props }, ref) => {
-    return (
-      <PopoverTrigger
-        ref={ref}
-        role="combobox"
-        className={classNames(
-          "min-h-10 p-2 flex justify-between items-center w-full rounded-md border border-gray-300 bg-custom-white text-sm focus:outline-none focus:ring-1 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 disabled:cursor-not-allowed disabled:bg-gray-100",
-          className
-        )}
-        {...props}
-      >
-        <div className="flex-grow">
-          {children || <span className="text-gray-400 font-normal">{placeholder}</span>}
-        </div>
-        <Icon icon="mdi:unfold-more-horizontal" className="text-gray-600" />
-      </PopoverTrigger>
-    );
-  }
-);
 
 type ComboboxListProps = {
   items: Array<tComboboxItem>;
