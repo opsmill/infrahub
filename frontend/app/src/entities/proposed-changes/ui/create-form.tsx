@@ -94,26 +94,26 @@ export const ProposedChangeCreateForm = () => {
             return (
               <div className="w-full relative mb-2 flex flex-col">
                 <FormLabel>Source Branch *</FormLabel>
-                <FormInput>
-                  <Combobox>
+                <Combobox>
+                  <FormInput>
                     <ComboboxTrigger>{fieldData}</ComboboxTrigger>
+                  </FormInput>
 
-                    <ComboboxContent>
-                      <ComboboxList>
-                        {branchesToSelectOptions(sourceBranches).map(({ name }) => (
-                          <ComboboxItem
-                            key={name}
-                            value={name}
-                            selectedValue={fieldData}
-                            onSelect={() => field.onChange(name)}
-                          >
-                            {name}
-                          </ComboboxItem>
-                        ))}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
-                </FormInput>
+                  <ComboboxContent>
+                    <ComboboxList>
+                      {branchesToSelectOptions(sourceBranches).map(({ name }) => (
+                        <ComboboxItem
+                          key={name}
+                          value={name}
+                          selectedValue={fieldData}
+                          onSelect={() => field.onChange(name)}
+                        >
+                          {name}
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
                 <FormMessage />
               </div>
             );
@@ -132,11 +132,11 @@ export const ProposedChangeCreateForm = () => {
           render={({ field }) => (
             <div className="w-full relative mb-2 flex flex-col">
               <FormLabel>Destination Branch *</FormLabel>
-              <FormInput>
-                <Combobox>
+              <Combobox>
+                <FormInput>
                   <ComboboxTrigger disabled>{field.value}</ComboboxTrigger>
-                </Combobox>
-              </FormInput>
+                </FormInput>
+              </Combobox>
               <FormMessage />
             </div>
           )}
