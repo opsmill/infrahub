@@ -37,6 +37,7 @@ const BadgeLink: React.FC<{
         tabSearchParam,
         { name: QSP.STATUS, value: status },
       ])}
+      data-testid={`diff-${status.toLowerCase()}-count`}
     >
       <DiffBadge status={status}>{count}</DiffBadge>
     </Link>
