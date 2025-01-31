@@ -838,6 +838,24 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
+@pytest.fixture
+async def standard_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
+    SCHEMA: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "StandardGroup",
+                "namespace": "Core",
+                "inherit_from": [InfrahubKind.GENERICGROUP],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                ],
+            }
+        ]
+    }
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
 @pytest.fixture(scope="module")
 def tmp_path_module_scope() -> Generator[Path, None, None]:
     """Fixture similar to tmp_path but with scope=module"""
