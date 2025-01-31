@@ -73,15 +73,16 @@ export function SearchFieldClear({ className, ...props }: AriaButtonProps) {
 export interface SearchInputProps extends AriaSearchFieldProps {
   className?: string;
   placeholder?: AriaInputProps["placeholder"];
+  onPressReset?: () => void;
 }
 
-export function SearchInput({ className, placeholder, ...props }: SearchInputProps) {
+export function SearchInput({ className, placeholder, onPressReset, ...props }: SearchInputProps) {
   return (
     <SearchField {...props} aria-label="Search">
       <SearchFieldGroup className={className}>
         <Icon icon="mdi:magnify" className="text-lg" />
         <SearchFieldInput placeholder={placeholder} />
-        <SearchFieldClear>
+        <SearchFieldClear onPress={onPressReset}>
           <Icon icon="mdi:close" className="text-lg" />
         </SearchFieldClear>
       </SearchFieldGroup>

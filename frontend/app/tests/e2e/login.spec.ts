@@ -107,7 +107,7 @@ test.describe("/login", () => {
     test("should redirect to the initial page after login", async ({ page }) => {
       await disableSSO(page);
       const date = encodeURIComponent(new Date().toISOString());
-      const initialPage = `/objects/BuiltinTag?branch=atl1-delete-upstream&at=${date}`;
+      const initialPage = `/objects/BuiltinTag?at=${date}&branch=atl1-delete-upstream`;
       await page.goto(initialPage);
 
       await page.getByRole("link", { name: "Log in anonymous" }).click();
