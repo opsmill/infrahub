@@ -137,6 +137,14 @@ CALL {
         r in relationships(latest_base_path)
         WHERE r.from < $branch_from_time
     )
+    // ------------------------
+    // special handling for nodes that had their kind updated,
+    // the migration leaves two nodes with the same UUID linked to the same Relationship
+    // ------------------------
+    AND (
+        n.uuid IS NULL OR base_prop.uuid IS NULL OR n.uuid <> base_prop.uuid
+        OR type(base_r_node) <> "IS_RELATED" OR type(base_r_prop) <> "IS_RELATED"
+    )
     WITH latest_base_path, base_r_root, base_r_node, base_r_prop
     ORDER BY base_r_prop.from DESC, base_r_node.from DESC, base_r_root.from DESC
     LIMIT 1
@@ -175,8 +183,13 @@ CALL {
         OR peer_r_node.to IS NULL
         OR peer_r_node.to >= r_peer.from
     )
+    // ------------------------
+    // special handling for nodes that had their kind updated,
+    // the migration leaves two nodes with the same UUID linked to the same Relationship
+    // ------------------------
+    AND (n.uuid IS NULL OR peer.uuid IS NULL OR n.uuid <> peer.uuid)
     WITH peer_path, r_peer, r_prop
-    ORDER BY r_peer.branch = r_prop.branch DESC, r_peer.from DESC
+    ORDER BY r_peer.branch = r_prop.branch DESC, r_peer.from DESC, r_peer.status ASC
     LIMIT 1
     RETURN peer_path
 }
@@ -309,6 +322,14 @@ CALL {
     AND [%(id_func)s(p), type(r_node)] <> [%(id_func)s(prop), type(r_prop)]
     AND top_diff_rel.status = r_node.status
     AND top_diff_rel.status = r_prop.status
+    // ------------------------
+    // special handling for nodes that had their kind updated,
+    // the migration leaves two nodes with the same UUID linked to the same Relationship
+    // ------------------------
+    AND (
+        p.uuid IS NULL OR prop.uuid IS NULL OR p.uuid <> prop.uuid
+        OR type(r_node) <> "IS_RELATED" OR type(r_prop) <> "IS_RELATED"
+    )
     WITH path, p, node, prop, r_prop, r_node, type(r_node) AS rel_type, row_from_time
     // -------------------------------------
     // Exclude attributes/relationships added then removed on branch within timeframe
@@ -483,6 +504,14 @@ CALL {
     AND [%(id_func)s(p), type(mid_diff_rel)] <> [%(id_func)s(prop), type(r_prop)]
     // exclude paths where an active edge is below a deleted edge
     AND (mid_diff_rel.status = "active" OR r_prop.status = "deleted")
+    // ------------------------
+    // special handling for nodes that had their kind updated,
+    // the migration leaves two nodes with the same UUID linked to the same Relationship
+    // ------------------------
+    AND (
+        p.uuid IS NULL OR prop.uuid IS NULL OR p.uuid <> prop.uuid
+        OR type(mid_diff_rel) <> "IS_RELATED" OR type(r_prop) <> "IS_RELATED"
+    )
     WITH path, prop, r_prop, mid_r_root
     ORDER BY
         type(r_prop),
@@ -493,7 +522,7 @@ CALL {
     RETURN latest_prop_path
 }
 // -------------------------------------
-// Exclude properties within the timeframe
+// Exclude properties added and deleted within the timeframe
 // -------------------------------------
 WITH q, nodes(latest_prop_path)[3] AS prop, type(relationships(latest_prop_path)[2]) AS rel_type, latest_prop_path, has_more_data, row_from_time
 CALL {
@@ -593,6 +622,14 @@ AND (
             AND r_node.from <= $branch_from_time AND (r_node.to IS NULL OR r_node.branch <> diff_rel.branch OR r_node.to <= $branch_from_time)
         )
     )
+)
+// ------------------------
+// special handling for nodes that had their kind updated,
+// the migration leaves two nodes with the same UUID linked to the same Relationship
+// ------------------------
+AND (
+    n.uuid IS NULL OR q.uuid IS NULL OR n.uuid <> q.uuid
+    OR type(r_node) <> "IS_RELATED" OR type(diff_rel) <> "IS_RELATED"
 )
 AND ALL(
     r_pair IN [[r_root, r_node], [r_node, diff_rel]]

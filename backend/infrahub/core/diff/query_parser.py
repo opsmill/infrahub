@@ -397,6 +397,9 @@ class DiffNodeIntermediate(TrackedStatusUpdates):
     force_action: DiffAction | None
     uuid: str
     kind: str
+    db_id: str
+    from_time: Timestamp
+    status: RelationshipStatus
     attributes_by_name: dict[str, DiffAttributeIntermediate] = field(default_factory=dict)
     relationships_by_name: dict[str, DiffRelationshipIntermediate] = field(default_factory=dict)
 
@@ -567,11 +570,27 @@ class DiffQueryParser:
             diff_root.nodes_by_id[node_id] = DiffNodeIntermediate(
                 uuid=node_id,
                 kind=database_path.node_kind,
+                db_id=database_path.node_db_id,
+                from_time=database_path.node_changed_at,
+                status=database_path.node_status,
                 force_action=DiffAction.UPDATED
                 if database_path.node_branch_support is BranchSupportType.AGNOSTIC
                 else None,
             )
         diff_node = diff_root.nodes_by_id[node_id]
+        # special handling for nodes that have their kind updated, which results in 2 nodes with the same uuid
+        if diff_node.db_id != database_path.node_db_id and (
+            database_path.node_changed_at > diff_node.from_time
+            or (
+                database_path.node_changed_at >= diff_node.from_time
+                and (diff_node.status, database_path.node_status)
+                == (RelationshipStatus.DELETED, RelationshipStatus.ACTIVE)
+            )
+        ):
+            diff_node.kind = database_path.node_kind
+            diff_node.db_id = database_path.node_db_id
+            diff_node.from_time = database_path.node_changed_at
+            diff_node.status = database_path.node_status
         diff_node.track_database_path(database_path=database_path)
         return diff_node
 
