@@ -30,7 +30,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
     def get_context(self) -> dict[str, str]:
         return {"kind": self.query_request.kind}
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # pylint: disable=too-many-branches
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
         from_times = db.render_list_comprehension(items="relationships(potential_path)", item_name="from")
@@ -56,6 +56,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
         relationship_names = set()
         relationship_attr_paths = []
         relationship_only_attr_paths = []
+        relationship_only_attr_values = []
         relationship_attr_paths_with_value = []
         for rel_path in self.query_request.relationship_attribute_paths:
             relationship_names.add(rel_path.identifier)
@@ -67,6 +68,8 @@ class NodeUniqueAttributeConstraintQuery(Query):
                 relationship_attr_paths.append((rel_path.identifier, rel_path.attribute_name))
             else:
                 relationship_only_attr_paths.append(rel_path.identifier)
+                if rel_path.value:
+                    relationship_only_attr_values.append(rel_path.value)
 
         if (
             not attr_paths
@@ -89,6 +92,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
                 "relationship_attr_paths": relationship_attr_paths,
                 "relationship_attr_paths_with_value": relationship_attr_paths_with_value,
                 "relationship_only_attr_paths": relationship_only_attr_paths,
+                "relationship_only_attr_values": relationship_only_attr_values,
                 "min_count_required": self.min_count_required,
             }
         )
@@ -111,9 +115,14 @@ class NodeUniqueAttributeConstraintQuery(Query):
 
         relationship_only_attr_paths_subquery = """
         MATCH rel_path = (start_node:%(node_kind)s)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)
-        WHERE relationship_node.name in $relationship_only_attr_paths
+        WHERE %(rel_node_filter)s relationship_node.name in $relationship_only_attr_paths
         RETURN start_node, rel_path as potential_path, relationship_node.name as rel_identifier, "id" as potential_attr, related_n.uuid as potential_attr_value
-        """ % {"node_kind": self.query_request.kind}
+        """ % {
+            "node_kind": self.query_request.kind,
+            "rel_node_filter": "related_n.uuid IN $relationship_only_attr_values AND "
+            if relationship_only_attr_values
+            else "",
+        }
 
         select_subqueries = []
         if attr_paths or attr_paths_with_value:
