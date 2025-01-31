@@ -77,6 +77,7 @@ class InfrahubServices:
         cache: InfrahubCache | None = None,
         client: InfrahubClient | None = None,
         database: InfrahubDatabase | None = None,
+        event: InfrahubEventService | None = None,
         message_bus: InfrahubMessageBus | None = None,
         workflow: InfrahubWorkflow | None = None,
         log: InfrahubLogger | None = None,
@@ -100,7 +101,7 @@ class InfrahubServices:
             log=log or get_logger(),
             component_type=component_type,
             scheduler=scheduler,
-            event=InfrahubEventService(message_bus),
+            event=event or InfrahubEventService(message_bus),
             http=http or HttpxAdapter(),
         )
 

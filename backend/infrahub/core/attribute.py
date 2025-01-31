@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from infrahub import config
 from infrahub.core import registry
+from infrahub.core.changelog.models import AttributeChangelog
 from infrahub.core.constants import NULL_VALUE, AttributeDBNodeType, BranchSupportType, RelationshipStatus
 from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
 from infrahub.core.query.attribute import (
@@ -316,13 +317,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         """Deserialize the value coming from the database."""
         return data.value
 
-    async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
+    async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> AttributeChangelog | None:
         """Create or Update the Attribute in the database."""
 
         save_at = Timestamp(at)
 
         if not self.id or self.is_from_profile:
-            return False
+            return None
 
         return await self._update(at=save_at, db=db)
 
@@ -378,7 +379,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return True
 
-    async def _update(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
+    async def _update(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> AttributeChangelog | None:
         """Update the attribute in the database.
 
         Get the current value
@@ -418,6 +419,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         branch = self.get_branch_based_on_support_type()
 
+        changelog = AttributeChangelog(
+            name=self.name,
+            value=self.to_db().get("value"),
+            value_previous=current_attr_data.value,
+            kind=self.schema.kind,
+        )
+
         # ---------- Update the Value ----------
         if current_attr_data.content != self.to_db():
             # Create the new AttributeValue and update the existing relationship
@@ -437,6 +445,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         for flag_name, _, rel_name in SUPPORTED_FLAGS:
             if current_attr_data.flag_properties[flag_name] != getattr(self, flag_name):
+                changelog.add_property(
+                    name=flag_name,
+                    value_current=getattr(self, flag_name),
+                    value_previous=current_attr_data.flag_properties[flag_name],
+                )
                 query = await AttributeUpdateFlagQuery.init(db=db, attr=self, at=update_at, flag_name=flag_name)
                 await query.execute(db=db)
 
@@ -450,6 +463,16 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 prop_name in current_attr_data.node_properties
                 and current_attr_data.node_properties[prop_name].uuid == getattr(self, f"{prop_name}_id")
             ):
+                previous_attribute_node_property = current_attr_data.node_properties.get(prop_name)
+                previous_value = None
+                if previous_attribute_node_property:
+                    previous_value = previous_attribute_node_property.uuid
+
+                changelog.add_property(
+                    name=prop_name,
+                    value_current=getattr(self, f"{prop_name}_id"),
+                    value_previous=previous_value,
+                )
                 query = await AttributeUpdateNodePropertyQuery.init(
                     db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=getattr(self, f"{prop_name}_id")
                 )
@@ -459,7 +482,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 if rel and rel.get("branch") == branch.name:
                     await update_relationships_to([rel.element_id], to=update_at, db=db)
 
-        return True
+        if changelog.has_updates:
+            return changelog
 
     async def to_graphql(
         self,

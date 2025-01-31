@@ -90,12 +90,10 @@ class UpdateComputedAttribute(Mutation):
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
-            graphql_payload = await target_node.to_graphql(db=graphql_context.db, filter_sensitive=True)
-
             event = NodeMutatedEvent(
                 kind=node_schema.kind,
                 node_id=target_node.get_id(),
-                data=graphql_payload,
+                data=target_node.node_changelog.model_dump(),
                 fields=[str(data.attribute)],
                 action=MutationAction.UPDATED,
                 meta=EventMeta(

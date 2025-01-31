@@ -403,6 +403,17 @@ def reload_settings_before_each_module(tmpdir_factory):
 
 
 @pytest.fixture
+def enable_broker_config():
+    # This is required for situations where we need the broker to be enabled.
+    # We should really remove this setting as it doesn't make any sense to have
+    # outside of the test environment
+    original_config = config.SETTINGS.broker.enable
+    config.SETTINGS.broker.enable = True
+    yield
+    config.SETTINGS.broker.enable = original_config
+
+
+@pytest.fixture
 async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     SCHEMA: dict[str, Any] = {
         "generics": [

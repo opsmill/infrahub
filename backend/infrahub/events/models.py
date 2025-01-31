@@ -23,6 +23,7 @@ class EventMeta(BaseModel):
             related.append(
                 {
                     "prefect.resource.id": f"infrahub.account.{self.account_id}",
+                    "infrahub.resource.id": self.account_id,
                     "prefect.resource.role": "account",
                 }
             )
