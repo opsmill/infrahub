@@ -234,45 +234,6 @@ const sidebars: SidebarsConfig = {
             },
           ],
         },
-        {
-          type: 'category',
-          label: 'Infrahub Sync',
-          link: {
-            type: 'doc',
-            id: 'integrations/sync/readme'
-          },
-          items: [
-            {
-              type: 'category',
-              label: 'Guides',
-              items: [
-                'integrations/sync/guides/installation',
-                'integrations/sync/guides/creation',
-                'integrations/sync/guides/run',
-              ],
-            },
-            {
-              type: 'category',
-              label: 'Reference',
-              items: [
-                'integrations/sync/reference/config',
-                'integrations/sync/reference/cli',
-              ],
-            },
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Nornir plugin for Infrahub',
-          link: {
-            type: 'doc',
-            id: 'integrations/nornir-infrahub/readme'
-          },
-          items: [
-            {
-            },
-          ],
-        },
       ]
     },
     {
