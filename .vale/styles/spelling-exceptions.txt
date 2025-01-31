@@ -95,6 +95,7 @@ opentelemetry
 order_by
 Prefetch
 profile_name
+pseudocode
 PyPI
 query_peers
 rebase
