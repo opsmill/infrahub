@@ -11,6 +11,37 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.1.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.6) - 2025-01-30
+
+### Artifact improvements
+
+As part of our ongoing efforts to enhance the integrations and capabilities of Infrahub, the Artifact detail page has been redesigned.
+
+This redesign focused on allowing a richer and more powerful Artifact experience.
+Enhancements include support for additional content-types (as listed below), colorized syntax highlighting, and easier access to download or copy artifacts.
+
+**Supported Artifact Content Types**:
+
+- Markdown
+- YAML
+- JSON
+- Text
+- SVG
+
+### Added
+
+- Allow Default Address Type quick selection in the Resource Manager form ([#3489](https://github.com/opsmill/infrahub/issues/3489))
+- Added code viewer for new content-types, preview of raw markdown content, one-click file download or cop, and redesign of artifact details view ([#5452](https://github.com/opsmill/infrahub/issues/5452))
+
+### Fixed
+
+- Automatically mark hierarchical nodes `parent` relationship as optional if the parent is of the same kind or mandatory if the parent is of a different kind ([#3682](https://github.com/opsmill/infrahub/issues/3682))
+- Revert back to `state=open` from `state=merging` if the merge of a proposed change fails.
+  This fixes the possibility of leaving a proposed change in an unexpected state. ([#5563](https://github.com/opsmill/infrahub/issues/5563))
+- Fixes an issue with retrieving object from S3 storage backend. ([#5573](https://github.com/opsmill/infrahub/issues/5573))
+- Loosened requirement for group discovery using OIDC and id_token. This will probably be reverted or presented as a configuration option in the future. ([#5623](https://github.com/opsmill/infrahub/issues/5623))
+- Significant improvements to diff calculation performance.
+
 ## [Infrahub - v1.1.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.5) - 2025-01-24
 
 ### Added
