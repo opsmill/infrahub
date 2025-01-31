@@ -22,6 +22,7 @@ from infrahub.config import load_and_exit
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality, RelationshipDirection
+from infrahub.core.graph.index import node_indexes, rel_indexes
 from infrahub.core.initialization import (
     create_default_branch,
     create_global_branch,
@@ -115,6 +116,7 @@ async def db(
             config.SETTINGS.database.port = memgraph[PORT_MEMGRAPH]
 
     driver = InfrahubDatabase(driver=await get_db(retry=5))
+    driver.manager.index.init(nodes=node_indexes, rels=rel_indexes)
 
     yield driver
 

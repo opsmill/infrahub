@@ -39,7 +39,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
         )
 
         attribute_names = set()
-        attr_paths, attr_paths_with_value = [], []
+        attr_paths, attr_paths_with_value, attr_values = [], [], []
         for attr_path in self.query_request.unique_attribute_paths:
             try:
                 property_rel_name = self.attribute_property_map[attr_path.property_name or "value"]
@@ -50,6 +50,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
             attribute_names.add(attr_path.attribute_name)
             if attr_path.value:
                 attr_paths_with_value.append((attr_path.attribute_name, property_rel_name, attr_path.value))
+                attr_values.append(attr_path.value)
             else:
                 attr_paths.append((attr_path.attribute_name, property_rel_name))
 
@@ -57,6 +58,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
         relationship_attr_paths = []
         relationship_only_attr_paths = []
         relationship_only_attr_values = []
+        relationship_attr_values = []
         relationship_attr_paths_with_value = []
         for rel_path in self.query_request.relationship_attribute_paths:
             relationship_names.add(rel_path.identifier)
@@ -64,6 +66,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
                 relationship_attr_paths_with_value.append(
                     (rel_path.identifier, rel_path.attribute_name, rel_path.value)
                 )
+                relationship_attr_values.append(rel_path.value)
             elif rel_path.attribute_name:
                 relationship_attr_paths.append((rel_path.identifier, rel_path.attribute_name))
             else:
@@ -87,12 +90,14 @@ class NodeUniqueAttributeConstraintQuery(Query):
                 "node_kind": self.query_request.kind,
                 "attr_paths": attr_paths,
                 "attr_paths_with_value": attr_paths_with_value,
+                "attr_values": attr_values,
                 "attribute_names": list(attribute_names),
                 "relationship_names": list(relationship_names),
                 "relationship_attr_paths": relationship_attr_paths,
                 "relationship_attr_paths_with_value": relationship_attr_paths_with_value,
                 "relationship_only_attr_paths": relationship_only_attr_paths,
                 "relationship_only_attr_values": relationship_only_attr_values,
+                "relationship_attr_values": relationship_attr_values,
                 "min_count_required": self.min_count_required,
             }
         )
@@ -105,6 +110,14 @@ class NodeUniqueAttributeConstraintQuery(Query):
         RETURN start_node, attr_path as potential_path, NULL as rel_identifier, attr.name as potential_attr, attr_value.value as potential_attr_value
         """ % {"node_kind": self.query_request.kind}
 
+        # attr_paths_subquery = """
+        # MATCH attr_path = (start_node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[r:HAS_VALUE]->(attr_value:AttributeValue)
+        # USING INDEX attr_value:AttributeValue(value)
+        # WHERE attr.name in $attribute_names AND attr_value.value in $attr_values
+        #     AND [attr.name, type(r), attr_value.value] in $attr_paths_with_value
+        # RETURN start_node, attr_path as potential_path, NULL as rel_identifier, attr.name as potential_attr, attr_value.value as potential_attr_value
+        # """ % {"node_kind": self.query_request.kind}
+
         relationship_attr_paths_with_value_subquery = """
         MATCH rel_path = (start_node:%(node_kind)s)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]->(rel_attr:Attribute)-[:HAS_VALUE]->(rel_attr_value:AttributeValue)
         WHERE relationship_node.name in $relationship_names
@@ -112,6 +125,15 @@ class NodeUniqueAttributeConstraintQuery(Query):
             OR [relationship_node.name, rel_attr.name, rel_attr_value.value] in $relationship_attr_paths_with_value)
         RETURN start_node, rel_path as potential_path, relationship_node.name as rel_identifier, rel_attr.name as potential_attr, rel_attr_value.value as potential_attr_value
         """ % {"node_kind": self.query_request.kind}
+
+        # relationship_attr_paths_with_value_subquery = """
+        # MATCH rel_path = (start_node:%(node_kind)s)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]->(rel_attr:Attribute)-[:HAS_VALUE]->(rel_attr_value:AttributeValue)
+        # USING INDEX rel_attr_value:AttributeValue(value)
+        # WHERE relationship_node.name in $relationship_names AND rel_attr_value.value in $relationship_attr_values
+        #     AND ([relationship_node.name, rel_attr.name] in $relationship_attr_paths
+        #     OR [relationship_node.name, rel_attr.name, rel_attr_value.value] in $relationship_attr_paths_with_value)
+        # RETURN start_node, rel_path as potential_path, relationship_node.name as rel_identifier, rel_attr.name as potential_attr, rel_attr_value.value as potential_attr_value
+        # """ % {"node_kind": self.query_request.kind}
 
         relationship_only_attr_paths_subquery = """
         MATCH rel_path = (start_node:%(node_kind)s)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)
