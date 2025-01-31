@@ -244,7 +244,9 @@ class TestLoadSchemaAPI(TestInfrahubApp):
                 {
                     "name": "Generic",
                     "namespace": "Thing",
-                    "attributes": [{"id": getattr(name_attr, "id"), "kind": "Text", "name": "hot_new_name", "unique": True}],
+                    "attributes": [
+                        {"id": getattr(name_attr, "id"), "kind": "Text", "name": "hot_new_name", "unique": True}
+                    ],
                     "human_friendly_id": [],
                     "uniqueness_constraints": [],
                     "relationships": [
