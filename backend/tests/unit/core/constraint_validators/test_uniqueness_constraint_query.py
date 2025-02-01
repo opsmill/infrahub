@@ -2,6 +2,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.uniqueness.model import NodeUniquenessQueryRequest
 from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
 from infrahub.database import InfrahubDatabase
@@ -423,6 +424,81 @@ async def test_query_relationship_violation_no_attribute(
     for result in query_result.results:
         serial_result = dict(result.data)
         assert serial_result in expected_result_dicts
+
+
+async def test_query_relationship_no_violation_same_peer_different_rels(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+):
+    john = await Node.init(schema="TestPerson", db=db)
+    await john.new(db=db, name="John", height=175)
+    await john.save(db=db)
+    jane = await Node.init(schema="TestPerson", db=db)
+    await jane.new(db=db, name="Jane", height=165)
+    await jane.save(db=db)
+    johns_dog = await Node.init(schema="TestDog", db=db)
+    await johns_dog.new(db=db, name="J-dog", breed="mixed", owner=john, best_friend=jane)
+    await johns_dog.save(db=db)
+    jane_dog = await Node.init(schema="TestDog", db=db)
+    await jane_dog.new(db=db, name="Jane-dog", breed="mixed", owner=jane, best_friend=jane)
+    await jane_dog.save(db=db)
+
+    branch = await create_branch(db=db, branch_name="branch")
+    joe = await Node.init(schema="TestPerson", db=db, branch=branch)
+    await joe.new(db=db, name="Joe", height=175)
+    await joe.save(db=db)
+    joes_dog = await Node.init(schema="TestDog", db=db, branch=branch)
+    await joes_dog.new(db=db, name="Joe-dog", breed="mixed", owner=joe, best_friend=jane)
+    await joes_dog.save(db=db)
+
+    expected_best_friend_result_dicts = [
+        {
+            "attr_name": "id",
+            "node_id": johns_dog.id,
+            "node_count": 3,
+            "attr_value": jane.id,
+            "relationship_identifier": "person__animal_friend",
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "id",
+            "node_id": jane_dog.id,
+            "node_count": 3,
+            "attr_value": jane.id,
+            "relationship_identifier": "person__animal_friend",
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "id",
+            "node_id": joes_dog.id,
+            "node_count": 3,
+            "attr_value": jane.id,
+            "relationship_identifier": "person__animal_friend",
+            "deepest_branch_name": branch.name,
+        },
+    ]
+
+    owner_query = await NodeUniqueAttributeConstraintQuery.init(
+        db=db,
+        branch=branch,
+        query_request=NodeUniquenessQueryRequest(
+            kind="TestDog", relationship_attribute_paths=[{"identifier": "person__animal", "value": jane.id}]
+        ),
+    )
+    owner_query_result = await owner_query.execute(db=db)
+    assert len(owner_query_result.results) == 0
+
+    best_friend_query = await NodeUniqueAttributeConstraintQuery.init(
+        db=db,
+        branch=branch,
+        query_request=NodeUniquenessQueryRequest(
+            kind="TestDog", relationship_attribute_paths=[{"identifier": "person__animal_friend", "value": jane.id}]
+        ),
+    )
+    best_friend_query_result = await best_friend_query.execute(db=db)
+    assert len(best_friend_query_result.results) == 3
+    for result in best_friend_query_result.results:
+        serial_result = dict(result.data)
+        assert serial_result in expected_best_friend_result_dicts
 
 
 async def test_query_response_min_count_0_attribute_paths(
