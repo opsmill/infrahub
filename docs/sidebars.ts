@@ -216,28 +216,6 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Integrations',
-      link: {
-        type: 'doc',
-        id: 'integrations/readme'
-      },
-      items: [
-        {
-          type: 'category',
-          label: 'Infrahub Ansible Collection',
-          link: {
-            type: 'doc',
-            id: 'integrations/infrahub-ansible/readme'
-          },
-          items: [
-            {
-            },
-          ],
-        },
-      ]
-    },
-    {
-      type: 'category',
       label: 'Development',
       link: {
         type: 'generated-index',
