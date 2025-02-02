@@ -81,7 +81,7 @@ const Homepage = () => {
           title="Nornir"
           description="Nornir plugin for Infrahub"
           docLabel="About Nornir plugin"
-          docTo="https://pypi.org/project/nornir-infrahub/"
+          docTo="https://docs.infrahub.app/nornir/nornir/"
         />
 
         <HelperCard
@@ -97,7 +97,7 @@ const Homepage = () => {
           title="Infrahub Ansible Collection"
           description="Infrahub Collection for Ansible Galaxy"
           docLabel="About Infrahub Ansible collection"
-          docTo="https://infrahub-ansible.readthedocs.io/en/latest/"
+          docTo="https://docs.infrahub.app/ansible/ansible/"
         />
       </div>
     </Content>

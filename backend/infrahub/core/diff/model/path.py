@@ -740,6 +740,10 @@ class DatabasePath:
         return str(self.node_node.get("uuid"))
 
     @property
+    def node_db_id(self) -> str:
+        return self.node_node.element_id
+
+    @property
     def node_kind(self) -> str:
         return str(self.node_node.get("kind"))
 

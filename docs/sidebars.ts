@@ -216,67 +216,6 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Integrations',
-      link: {
-        type: 'doc',
-        id: 'integrations/readme'
-      },
-      items: [
-        {
-          type: 'category',
-          label: 'Infrahub Ansible Collection',
-          link: {
-            type: 'doc',
-            id: 'integrations/infrahub-ansible/readme'
-          },
-          items: [
-            {
-            },
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Infrahub Sync',
-          link: {
-            type: 'doc',
-            id: 'integrations/sync/readme'
-          },
-          items: [
-            {
-              type: 'category',
-              label: 'Guides',
-              items: [
-                'integrations/sync/guides/installation',
-                'integrations/sync/guides/creation',
-                'integrations/sync/guides/run',
-              ],
-            },
-            {
-              type: 'category',
-              label: 'Reference',
-              items: [
-                'integrations/sync/reference/config',
-                'integrations/sync/reference/cli',
-              ],
-            },
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Nornir plugin for Infrahub',
-          link: {
-            type: 'doc',
-            id: 'integrations/nornir-infrahub/readme'
-          },
-          items: [
-            {
-            },
-          ],
-        },
-      ]
-    },
-    {
-      type: 'category',
       label: 'Development',
       link: {
         type: 'generated-index',
@@ -315,6 +254,7 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_1_6',
             'release-notes/infrahub/release-1_1_5',
             'release-notes/infrahub/release-1_1_4',
             'release-notes/infrahub/release-1_1_3',

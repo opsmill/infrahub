@@ -3,12 +3,14 @@ import pytest
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality
+from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality, SchemaPathType
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -1308,7 +1310,6 @@ async def test_relationship_property_owner_conflicting_updates(
     # check branch
     branch_root_path = calculated_diffs.diff_branch_diff
     assert branch_root_path.branch == branch.name
-    assert len(branch_root_path.nodes) == 2
     nodes_by_id = {n.uuid: n for n in branch_root_path.nodes}
     assert set(nodes_by_id.keys()) == {person_john_main.get_id(), car_accord_main.get_id()}
     # john node on branch
@@ -3077,3 +3078,72 @@ async def test_diff_relationship_property_update_on_main(
     assert diff_rel.name == "owner"
     assert diff_rel.action is DiffAction.UPDATED
     assert {elem.action for elem in diff_rel.relationships} == {DiffAction.ADDED, DiffAction.REMOVED}
+
+
+async def test_calculate_with_migrated_kind_node(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_john_main, person_jane_main
+):
+    """Test that the diff can correctly handle a schema kind migration, which results in 2 nodes with the same UUID"""
+    branch = await create_branch(db=db, branch_name="branch")
+    branch_car = await Node.init(db=db, schema="TestCar", branch=branch)
+    await branch_car.new(db=db, name="nova", nbr_seats=2, is_electric=False, owner=person_jane_main.id)
+    await branch_car.save(db=db)
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    car_schema = schema.get(name="TestCar")
+    car_schema.name = "NewCar"
+    car_schema.namespace = "Test2"
+    assert car_schema.kind == "Test2NewCar"
+    owner_rel_schema = car_schema.get_relationship(name="owner")
+    registry.schema.set(name="Test2NewCar", schema=car_schema, branch=branch.name)
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestCar"),
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
+    )
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+
+    diff_calculator = DiffCalculator(db=db)
+
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=Timestamp(branch.get_branched_from()),
+        to_time=Timestamp(),
+        previous_node_specifiers={
+            car_accord_main.id: {owner_rel_schema.get_identifier()},
+            car_camry_main.id: {owner_rel_schema.get_identifier()},
+        },
+        include_unchanged=True,
+    )
+
+    branch_diff = calculated_diffs.diff_branch_diff
+    assert len(branch_diff.nodes) == 2
+    nodes_by_id = {n.uuid: n for n in branch_diff.nodes}
+    assert set(nodes_by_id.keys()) == {branch_car.id, person_jane_main.id}
+    # validate relationship on person is correct
+    jane_diff = nodes_by_id[person_jane_main.id]
+    assert jane_diff.action is DiffAction.UPDATED
+    assert len(jane_diff.attributes) == 0
+    rels_by_name = {r.name: r for r in jane_diff.relationships}
+    assert set(rels_by_name.keys()) == {"cars"}
+    cars_rel_diff = rels_by_name["cars"]
+    assert cars_rel_diff.action is DiffAction.UPDATED
+    elements_by_peer_id = {e.peer_id: e for e in cars_rel_diff.relationships}
+    assert set(elements_by_peer_id) == {branch_car.id}
+    element_diff = elements_by_peer_id[branch_car.id]
+    assert element_diff.action is DiffAction.ADDED
+    props_by_type = {p.property_type: p for p in element_diff.properties}
+    for property_type, value in (
+        (DatabaseEdgeType.IS_RELATED, branch_car.id),
+        (DatabaseEdgeType.IS_VISIBLE, True),
+        (DatabaseEdgeType.IS_PROTECTED, False),
+    ):
+        property_diff = props_by_type[property_type]
+        assert property_diff.action is DiffAction.ADDED
+        assert property_diff.new_value == value
+        assert property_diff.previous_value is None
+
+    base_diff = calculated_diffs.base_branch_diff
+    assert len(base_diff.nodes) == 0

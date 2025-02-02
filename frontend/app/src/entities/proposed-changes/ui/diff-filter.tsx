@@ -128,6 +128,7 @@ const FilterButton = ({ status, count, currentFilter, onFilter, ...props }: Filt
       className={classNames("relative rounded-full p-0 h-auto", isMuted && "opacity-60")}
       onClick={() => onFilter(status)}
       disabled={isDisabled}
+      data-testid={`diff-filters-button-${status.toLowerCase()}`}
     >
       <DiffBadge status={status}>{count}</DiffBadge>
       {currentFilter === status && CloseBadge && <CloseBadge />}
