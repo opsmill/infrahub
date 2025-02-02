@@ -683,7 +683,7 @@ class DiffQueryParser:
                 identifier=relationship_schema.get_identifier(),
                 from_time=from_time,
             )
-            diff_node.relationships_by_identifier[relationship_schema.identifier] = diff_relationship
+            diff_node.relationships_by_identifier[relationship_schema.get_identifier()] = diff_relationship
         return diff_relationship
 
     def _apply_base_branch_previous_values(self) -> None:
