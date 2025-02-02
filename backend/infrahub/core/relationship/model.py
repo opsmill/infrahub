@@ -141,6 +141,12 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         return self.peer_id
 
+    def get_peer_kind(self) -> str:
+        if not self._peer or isinstance(self._peer, str):
+            return self.schema.peer
+
+        return self._peer.get_kind()
+
     @property
     def node_id(self) -> str:
         if self._node_id:
@@ -1142,6 +1148,7 @@ class RelationshipManager:
         save_at = Timestamp(at)
         details = await self.fetch_relationship_ids(db=db, force_refresh=True)
         relationship_mapper = ChangelogRelationshipMapper(schema=self.schema)
+
         # If we have previously fetched the relationships from the database
         # Update the one in the database that shouldn't be here.
         if self.has_fetched_relationships:
@@ -1166,6 +1173,11 @@ class RelationshipManager:
                         properties_to_update=properties_not_matching,
                         data=details.peers_database[rel.peer_id],
                         db=db,
+                    )
+                    relationship_mapper.add_updated_relationship(
+                        relationship=rel,
+                        old_data=details.peers_database[rel.peer_id],
+                        properties_to_update=properties_not_matching,
                     )
 
         return relationship_mapper.changelog

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Self, cast
+from uuid import UUID
 
 from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 
@@ -118,6 +119,10 @@ class RelationshipCardinalityOneChangelog(BaseModel):
     def add_property(self, name: str, value_current: bool | str | None, value_previous: bool | str | None) -> None:
         self.properties[name] = PropertyChangelog(name=name, value=value_current, value_previous=value_previous)
 
+    @property
+    def is_empty(self) -> bool:
+        return self.peer_status == DiffAction.UNCHANGED and not self.properties
+
 
 class RelationshipPeerChangelog(BaseModel):
     peer_id: str = Field(..., description="The ID of the peer")
@@ -138,6 +143,32 @@ class RelationshipCardinalityManyChangelog(BaseModel):
     def cardinality(self) -> str:
         return "many"
 
+    def add_new_peer(self, relationship: Relationship) -> None:
+        properties: dict[str, PropertyChangelog] = {}
+        properties["is_protected"] = PropertyChangelog(
+            name="is_protected", value=relationship.is_protected, value_previous=None
+        )
+        properties["is_visible"] = PropertyChangelog(
+            name="is_visible", value=relationship.is_protected, value_previous=None
+        )
+        if owner := getattr(relationship, "owner_id", None):
+            properties["owner"] = PropertyChangelog(name="owner", value=owner, value_previous=None)
+        if source := getattr(relationship, "source_id", None):
+            properties["source"] = PropertyChangelog(name="source_id", value=source, value_previous=None)
+
+        self.peers.append(
+            RelationshipPeerChangelog(
+                peer_id=relationship.get_peer_id(),
+                peer_kind=relationship.get_peer_kind(),
+                peer_status=DiffAction.ADDED,
+                properties=properties,
+            )
+        )
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.peers
+
 
 class NodeChangelog(BaseModel):
     """Emitted when a node is updated"""
@@ -153,15 +184,10 @@ class NodeChangelog(BaseModel):
 
     def create_relationship(self, relationship: Relationship) -> None:
         if relationship.schema.cardinality == RelationshipCardinality.ONE:
-            peer_kind_current = relationship.schema.peer
-            if not isinstance(relationship._peer, str | None):
-                # This check is to check if the peer is a `Node` and avoid a circular import
-                peer_kind_current = relationship._peer.get_kind()
-
             changelog_relationship = RelationshipCardinalityOneChangelog(
                 name=relationship.schema.name,
-                peer_id=relationship.peer_id,
-                peer_kind=peer_kind_current,
+                peer_id=relationship.get_peer_id(),
+                peer_kind=relationship.get_peer_kind(),
             )
             if source_id := getattr(relationship, "source_id", None):
                 changelog_relationship.add_property(name="source", value_current=source_id, value_previous=None)
@@ -174,8 +200,16 @@ class NodeChangelog(BaseModel):
                 name="is_visible", value_current=relationship.is_visible, value_previous=None
             )
             self.relationships[changelog_relationship.name] = changelog_relationship
+        elif relationship.schema.cardinality == RelationshipCardinality.MANY:
+            if relationship.schema.name not in self.relationships:
+                self.relationships[relationship.schema.name] = RelationshipCardinalityManyChangelog(
+                    name=relationship.schema.name
+                )
+            relationship_container = cast(
+                RelationshipCardinalityManyChangelog, self.relationships[relationship.schema.name]
+            )
 
-        # TODO: Fix Cardinality many relationships
+            relationship_container.add_new_peer(relationship=relationship)
 
     def add_attribute(self, attribute: AttributeChangelog) -> None:
         self.attributes[attribute.name] = attribute
@@ -183,6 +217,9 @@ class NodeChangelog(BaseModel):
     def add_relationship(
         self, relationship: RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog
     ) -> None:
+        if relationship.is_empty:
+            return
+
         self.relationships[relationship.name] = relationship
 
     def create_attribute(self, attribute: BaseAttribute) -> None:
@@ -223,14 +260,37 @@ class ChangelogRelationshipMapper:
             self.cardinality_one_relationship.peer_id_previous = str(peer_data.peer_id)
             self.cardinality_one_relationship.peer_kind_previous = peer_data.peer_kind
 
+    def _set_cardinality_one_peer(self, relationship: Relationship) -> None:
+        self.cardinality_one_relationship.peer_id = relationship.peer_id
+        self.cardinality_one_relationship.peer_kind = relationship.get_peer_kind()
+
     def add_peer_from_relationship(self, relationship: Relationship) -> None:
-        peer_kind = relationship.schema.peer
         if self.schema.cardinality == RelationshipCardinality.ONE:
-            self.cardinality_one_relationship.peer_id = relationship.peer_id
-            if not isinstance(relationship._peer, str | None):
-                # This check is to check if the peer is a `Node` and avoid a circular import
-                peer_kind = relationship._peer.get_kind()
-            self.cardinality_one_relationship.peer_kind = peer_kind
+            self._set_cardinality_one_peer(relationship=relationship)
+
+    def add_updated_relationship(
+        self, relationship: Relationship, old_data: RelationshipPeerData, properties_to_update: list[str]
+    ) -> None:
+        if self.schema.cardinality == RelationshipCardinality.ONE:
+            self._set_cardinality_one_peer(relationship=relationship)
+            self.cardinality_one_relationship.peer_id_previous = self.cardinality_one_relationship.peer_id
+            self.cardinality_one_relationship.peer_kind_previous = self.cardinality_one_relationship.peer_kind
+            for property_to_update in properties_to_update:
+                previous_property = old_data.properties.get(property_to_update)
+                previous_value: str | bool | None = None
+                if previous_property:
+                    if isinstance(previous_property.value, UUID):
+                        previous_value = str(previous_property.value)
+                    else:
+                        previous_value = previous_property.value
+                property_name = (
+                    property_to_update if property_to_update not in ["source", "owner"] else f"{property_to_update}_id"
+                )
+                self.cardinality_one_relationship.add_property(
+                    name=property_to_update,
+                    value_current=getattr(relationship, property_name),
+                    value_previous=previous_value,
+                )
 
     @property
     def changelog(self) -> RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog:
