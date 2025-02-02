@@ -6,7 +6,7 @@ import { Avatar } from "@/shared/components/display/avatar";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { Tabs } from "@/shared/components/tabs";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { gql, useQuery } from "@apollo/client";
@@ -79,7 +79,7 @@ export function UserProfilePage() {
   }
 
   if (loading || !schema) {
-    return <LoadingScreen />;
+    return <LoadingScreen className="h-full" />;
   }
 
   if (!profile) {

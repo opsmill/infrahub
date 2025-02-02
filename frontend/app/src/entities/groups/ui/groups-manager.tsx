@@ -8,7 +8,7 @@ import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { classNames } from "@/shared/utils/common";
 import { gql } from "@apollo/client";
@@ -36,7 +36,7 @@ export const GroupsManager = ({ className, schema, objectId }: GroupsManagerProp
   );
 
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingScreen className="p-4" />;
   }
 
   if (error) {

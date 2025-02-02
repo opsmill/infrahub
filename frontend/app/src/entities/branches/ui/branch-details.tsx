@@ -12,7 +12,7 @@ import { Badge } from "@/shared/components/display/badge";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { List } from "@/shared/components/table/list";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -71,7 +71,7 @@ export const BranchDetails = () => {
   const { loading, error, data } = useQuery(getBranchDetailsQuery, { variables: { branchName } });
 
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingScreen className="h-[239px]" />;
   }
 
   if (error) {

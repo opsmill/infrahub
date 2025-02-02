@@ -14,7 +14,7 @@ import useQuery from "@/shared/api/graphql/useQuery";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
@@ -78,7 +78,9 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
     notifyOnNetworkStatusChange: true,
   });
 
-  if (networkStatus === NetworkStatus.loading) return <LoadingScreen message="Loading diff..." />;
+  if (networkStatus === NetworkStatus.loading) {
+    return <LoadingScreen className="p-4" />;
+  }
 
   if (error) {
     return <ErrorScreen message={error?.message} className="max-w-lg m-auto" />;
@@ -132,10 +134,9 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
   if (!diffTreeData) {
     return (
       <div className="flex flex-col items-center mt-10 gap-5">
-        <LoadingScreen hideText />
-
-        <h1 className="font-semibold">
-          We are computing the diff between{" "}
+        <h1 className="font-semibold flex gap-1.5">
+          <LoadingScreen message="" />
+          We are computing the diff between
           <Badge variant="blue">
             <Icon icon={"mdi:layers-triple"} className="mr-1" />{" "}
             {proposedChangesDetails.source_branch?.value}
@@ -205,8 +206,6 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
         <ProposedChangeDiffFilter branch={branch} filters={filters} />
 
         <div className="flex flex-1 items-center gap-2 justify-end pr-2">
-          {isLoadingUpdate && <LoadingScreen size={22} hideText />}
-
           <div className="flex items-center">
             <div className="flex items-center text-xs mr-2">
               <span className="mr-1">Updated</span>
@@ -218,6 +217,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
               variant="primary"
               onClick={handleRefresh}
               disabled={!isAuthenticated || isLoadingUpdate}
+              isLoading={isLoadingUpdate}
             >
               Refresh diff
             </Button>

@@ -11,7 +11,7 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Filters } from "@/shared/components/filters/filters";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { Id } from "@/shared/components/ui/id";
 import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
 import useFilters, { Filter } from "@/shared/hooks/useFilters";
@@ -189,7 +189,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
           <Filters kind={TASK_OBJECT} />
         </div>
 
-        {loading && !rows && <LoadingScreen message="Loading tasks" />}
+        {loading && !rows && <LoadingScreen className="p-4" />}
 
         {rows && (
           <div>

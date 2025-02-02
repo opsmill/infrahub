@@ -5,10 +5,10 @@ import Accordion from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/display/badge";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import LoadingScreen from "@/shared/components/loading-screen";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import "react-diff-view/style/index.css";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { ArtifactContentDiff } from "./artifact-content-diff";
 
 export const ArtifactRepoDiff = (props: any) => {
@@ -33,7 +33,7 @@ export const ArtifactRepoDiff = (props: any) => {
   const { loading, error, data } = useQuery(query, { skip: !schemaData });
 
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingScreen className="h-10 m-4" />;
   }
 
   if (error) {

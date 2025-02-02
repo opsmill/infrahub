@@ -17,6 +17,7 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link as StyledLink } from "@/shared/components/ui/link";
@@ -29,7 +30,6 @@ import { useAtom, useAtomValue } from "jotai";
 import { Fragment, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
-import LoadingScreen from "../../../shared/components/loading-screen";
 import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";
 import { ObjectAttributeRow } from "./object-attribute-row";
 
@@ -97,7 +97,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   }
 
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingScreen className="h-12" />;
   }
 
   if (relationshipsData && relationshipsData?.properties?.is_visible === false) {

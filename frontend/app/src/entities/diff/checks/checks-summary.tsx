@@ -12,7 +12,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Retry } from "@/shared/components/buttons/retry";
 import { PieChart } from "@/shared/components/display/pie-chart";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 import { gql } from "@apollo/client";
@@ -95,7 +95,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
         </div>
 
         <div className="flex">
-          {!Object.entries(validatorsCount).length && <LoadingScreen hideText />}
+          {!Object.entries(validatorsCount).length && <LoadingScreen />}
 
           {Object.entries(validatorsCount).map(([kind, data]: [string, any]) => (
             <div key={kind} className="flex items-center justify-center gap-2 p-2">

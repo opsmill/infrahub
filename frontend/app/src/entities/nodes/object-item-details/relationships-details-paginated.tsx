@@ -5,7 +5,7 @@ import { REMOVE_RELATIONSHIP } from "@/entities/nodes/relationships/api/removeRe
 import { genericsState, iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
 import useQuery, { useMutation } from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { gql } from "@apollo/client";
@@ -77,7 +77,7 @@ export const RelationshipsDetails = forwardRef((props: RelationshipsDetailsProps
   };
 
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingScreen className="p-4" />;
   }
 
   if (error) {

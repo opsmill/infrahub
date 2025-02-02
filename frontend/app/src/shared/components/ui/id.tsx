@@ -3,7 +3,7 @@ import { getObjectDisplayLabel } from "@/entities/nodes/api/getObjectDisplayLabe
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Clipboard } from "@/shared/components/buttons/clipboard";
 import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/shared/components/display/badge-circle";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { gql } from "@apollo/client";
 
 type tId = {
@@ -26,7 +26,7 @@ export const Id = (props: tId) => {
   const object = data?.[kind]?.edges?.[0]?.node ?? {};
 
   if (loading) {
-    return <LoadingScreen hideText size={24} />;
+    return <LoadingScreen />;
   }
 
   if (error || !object?.display_label) {

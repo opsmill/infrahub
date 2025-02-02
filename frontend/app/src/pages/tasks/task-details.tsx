@@ -5,7 +5,7 @@ import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { Link } from "@/shared/components/ui/link";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { gql } from "@apollo/client";
@@ -29,7 +29,7 @@ const TaskDetailsPage = () => {
   }
 
   if (loading) {
-    return <LoadingScreen hideText />;
+    return <LoadingScreen className="h-full" />;
   }
 
   const taskData = data?.[TASK_OBJECT]?.edges?.[0]?.node;

@@ -15,7 +15,6 @@ import { ProfileData } from "@/shared/components/form/object-form";
 import { DynamicFieldProps, FormFieldValue, NumberPoolData } from "@/shared/components/form/type";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
-import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import useFilters from "@/shared/hooks/useFilters";
 import { datetimeAtom } from "@/shared/stores/time.atom";
@@ -24,6 +23,7 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
+import { LoadingScreen } from "../loading/loading-screen";
 
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;
@@ -60,7 +60,7 @@ export const NodeForm = ({
 
   const { data, loading } = useQuery(GET_FORM_REQUIREMENTS, { variables: { kind: schema.kind } });
 
-  if (loading) return <LoadingScreen hideText className="mt-4" />;
+  if (loading) return <LoadingScreen className="mt-4" />;
 
   const numberPools: Array<NumberPoolData> = data?.[NUMBER_POOL_KIND].edges.map(
     ({ node }: { node: CoreNumberPool }): NumberPoolData => ({

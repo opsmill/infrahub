@@ -6,7 +6,7 @@ import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import Content from "@/shared/components/layout/content";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { Card } from "@/shared/components/ui/card";
 import { gql } from "@apollo/client";
 
@@ -18,7 +18,7 @@ function ProposedChangeCreatePage() {
   const permission = getPermission(data?.[PROPOSED_CHANGES_OBJECT]?.permissions?.edges);
 
   if (loading) {
-    return <LoadingScreen message="Loading permissions..." />;
+    return <LoadingScreen className="h-full" message="checking permissions..." />;
   }
 
   if (error) {

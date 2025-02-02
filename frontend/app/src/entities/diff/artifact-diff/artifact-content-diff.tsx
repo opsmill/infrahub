@@ -17,7 +17,6 @@ import { Button } from "@/shared/components/buttons/button";
 import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Thread } from "@/shared/components/conversations/thread";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
@@ -29,6 +28,7 @@ import { useAtomValue } from "jotai/index";
 import { useCallback, useEffect, useState } from "react";
 import { Diff, Hunk, getChangeKey, parseDiff } from "react-diff-view";
 import "react-diff-view/style/index.css";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import sha from "sha1";
@@ -370,7 +370,7 @@ export const ArtifactContentDiff = (props: any) => {
   };
 
   if (loading || isLoading) {
-    return <LoadingScreen />;
+    return <LoadingScreen className="p-4" />;
   }
 
   if (error) {

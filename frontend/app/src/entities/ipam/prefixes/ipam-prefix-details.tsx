@@ -13,7 +13,7 @@ import useQuery from "@/shared/api/graphql/useQuery";
 import { ColorDisplay } from "@/shared/components/display/color-display";
 import SlideOver from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
 import { Table } from "@/shared/components/table/table";
@@ -54,7 +54,7 @@ const IpamIPPrefixDetails = forwardRef((_, ref) => {
   }
 
   if (loading) {
-    return <LoadingScreen hideText />;
+    return <LoadingScreen />;
   }
 
   const prefixData = data && data[IP_PREFIX_GENERIC]?.edges[0]?.node;

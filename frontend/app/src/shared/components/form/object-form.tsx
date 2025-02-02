@@ -24,7 +24,7 @@ import { DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
 import { NodeForm, NodeFormSubmitParams } from "@/shared/components/form/node-form";
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { Suspense, lazy } from "react";
 
 export type ProfileData = {
@@ -58,7 +58,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
 
   if ([REPOSITORY_KIND, READONLY_REPOSITORY_KIND].includes(kind)) {
     return (
-      <Suspense fallback={<LoadingScreen hideText className="mt-4" />}>
+      <Suspense fallback={<LoadingScreen className="mt-4" />}>
         <RepositoryForm schema={schema} {...props} />
       </Suspense>
     );

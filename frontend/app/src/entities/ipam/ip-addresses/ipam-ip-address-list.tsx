@@ -18,7 +18,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import SlideOver from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { Table } from "@/shared/components/table/table";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -165,7 +165,7 @@ const IpamIPAddressesList = forwardRef((_, ref) => {
         </div>
       )}
 
-      {(loading || !defaultIpNamespace) && <LoadingScreen hideText />}
+      {(loading || !defaultIpNamespace) && <LoadingScreen />}
 
       {data && (
         <Table

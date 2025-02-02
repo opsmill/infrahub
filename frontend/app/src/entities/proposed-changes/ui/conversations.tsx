@@ -14,7 +14,7 @@ import useQuery from "@/shared/api/graphql/useQuery";
 import { AddComment } from "@/shared/components/conversations/add-comment";
 import { Thread } from "@/shared/components/conversations/thread";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { Card } from "@/shared/components/ui/card";
 import { FormRef } from "@/shared/components/ui/form";
 import { datetimeAtom } from "@/shared/stores/time.atom";

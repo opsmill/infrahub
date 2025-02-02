@@ -3,9 +3,9 @@ import ObjectItems from "@/entities/nodes/object-items/object-items-paginated";
 import { schemaState } from "@/entities/schema/stores/schema.atom";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
-import LoadingScreen from "../../../shared/components/loading-screen";
 
 import { TokenInput } from "@/shared/components/display/token-input";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import ModalSuccess from "@/shared/components/modals/modal-success";
 
 export default function TabTokens() {
@@ -14,7 +14,7 @@ export default function TabTokens() {
   const schemaList = useAtomValue(schemaState);
   const schema = schemaList.find((schema) => schema.kind === ACCOUNT_TOKEN_OBJECT);
 
-  if (!schema) return <LoadingScreen />;
+  if (!schema) return <LoadingScreen className="h-[244px]" />;
 
   const handleSuccess = (result: any) => {
     setOpen(true);

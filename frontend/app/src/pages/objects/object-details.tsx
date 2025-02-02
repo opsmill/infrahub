@@ -7,7 +7,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingScreen } from "@/shared/components/loading/loading-screen";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { Navigate, useParams } from "react-router";
@@ -27,7 +27,7 @@ export function ObjectDetailsPage() {
   const { data, networkStatus, error, permission } = useObjectDetails(schema, objectid as string);
 
   if (networkStatus === NetworkStatus.loading) {
-    return <LoadingScreen />;
+    return <LoadingScreen className="h-[calc(100vh-10.5rem)]" />;
   }
 
   if (!permission.view.isAllowed) {
