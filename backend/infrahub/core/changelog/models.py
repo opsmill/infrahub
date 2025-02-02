@@ -47,8 +47,8 @@ class PropertyChangelog(BaseModel):
 
 class AttributeChangelog(BaseModel):
     name: str = Field(..., description="The name of the attribute")
-    value: Any = Field(..., description="The current value of the attribute")
-    value_previous: Any = Field(..., description="The previous value of the attribute")
+    value: Any = Field(default=None, description="The current value of the attribute")
+    value_previous: Any = Field(default=None, description="The previous value of the attribute")
     properties: dict[str, PropertyChangelog] = Field(
         default_factory=dict, description="The properties that were updated during this update"
     )
@@ -154,6 +154,9 @@ class RelationshipPeerChangelog(BaseModel):
     properties: dict[str, PropertyChangelog] = Field(
         default_factory=dict, description="Changes to properties of this relationship if any were made"
     )
+
+    def add_property(self, name: str, value_current: bool | str | None, value_previous: bool | str | None) -> None:
+        self.properties[name] = PropertyChangelog(name=name, value=value_current, value_previous=value_previous)
 
 
 class RelationshipCardinalityManyChangelog(BaseModel):
