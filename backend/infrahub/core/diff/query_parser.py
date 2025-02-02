@@ -28,7 +28,6 @@ from .model.path import (
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.query import QueryResult
-    from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.relationship_schema import RelationshipSchema
 
@@ -401,7 +400,7 @@ class DiffNodeIntermediate(TrackedStatusUpdates):
     from_time: Timestamp
     status: RelationshipStatus
     attributes_by_name: dict[str, DiffAttributeIntermediate] = field(default_factory=dict)
-    relationships_by_name: dict[str, DiffRelationshipIntermediate] = field(default_factory=dict)
+    relationships_by_identifier: dict[str, DiffRelationshipIntermediate] = field(default_factory=dict)
 
     def to_diff_node(self, from_time: Timestamp, include_unchanged: bool) -> DiffNode:
         attributes = []
@@ -411,7 +410,7 @@ class DiffNodeIntermediate(TrackedStatusUpdates):
                 attributes.append(diff_attr)
         action, changed_at = self.get_action_and_timestamp(from_time=from_time)
         relationships = []
-        for rel in self.relationships_by_name.values():
+        for rel in self.relationships_by_identifier.values():
             diff_rel = rel.to_diff_relationship(include_unchanged=include_unchanged)
             if include_unchanged or diff_rel.action is not DiffAction.UNCHANGED:
                 relationships.append(diff_rel)
@@ -434,7 +433,7 @@ class DiffNodeIntermediate(TrackedStatusUpdates):
 
     @property
     def is_empty(self) -> bool:
-        return len(self.attributes_by_name) == 0 and len(self.relationships_by_name) == 0
+        return len(self.attributes_by_name) == 0 and len(self.relationships_by_identifier) == 0
 
 
 @dataclass
@@ -498,7 +497,7 @@ class DiffQueryParser:
         for node in diff_root.nodes_by_id.values():
             for attribute_name in node.attributes_by_name:
                 node_field_specifiers_map[node.uuid].add(attribute_name)
-            for relationship_diff in node.relationships_by_name.values():
+            for relationship_diff in node.relationships_by_identifier.values():
                 node_field_specifiers_map[node.uuid].add(relationship_diff.identifier)
         return node_field_specifiers_map
 
@@ -594,27 +593,29 @@ class DiffQueryParser:
         diff_node.track_database_path(database_path=database_path)
         return diff_node
 
-    def _get_relationship_schema(
-        self, database_path: DatabasePath, node_schema: MainSchemaTypes
-    ) -> RelationshipSchema | None:
-        relationship_schemas = node_schema.get_relationships_by_identifier(id=database_path.attribute_name)
-        if len(relationship_schemas) == 1:
-            return relationship_schemas[0]
-        possible_path_directions = database_path.possible_relationship_directions
-        for rel_schema in relationship_schemas:
-            if rel_schema.direction in possible_path_directions:
-                return rel_schema
+    def _get_relationship_schema(self, database_path: DatabasePath) -> RelationshipSchema | None:
+        branches_to_check = [database_path.deepest_branch]
+        if database_path.deepest_branch == self.diff_branch_name:
+            branches_to_check.append(self.base_branch_name)
+        for schema_branch_name in branches_to_check:
+            node_schema = self.schema_manager.get(
+                name=database_path.node_kind, branch=schema_branch_name, duplicate=False
+            )
+            relationship_schemas = node_schema.get_relationships_by_identifier(id=database_path.attribute_name)
+            if len(relationship_schemas) == 1:
+                return relationship_schemas[0]
+            possible_path_directions = database_path.possible_relationship_directions
+            for rel_schema in relationship_schemas:
+                if rel_schema.direction in possible_path_directions:
+                    return rel_schema
         return None
 
     def _update_attribute_level(self, database_path: DatabasePath, diff_node: DiffNodeIntermediate) -> None:
-        node_schema = self.schema_manager.get(
-            name=database_path.node_kind, branch=database_path.deepest_branch, duplicate=False
-        )
         if "Attribute" in database_path.attribute_node.labels:
             diff_attribute = self._get_diff_attribute(database_path=database_path, diff_node=diff_node)
             self._update_attribute_property(database_path=database_path, diff_attribute=diff_attribute)
             return
-        relationship_schema = self._get_relationship_schema(database_path=database_path, node_schema=node_schema)
+        relationship_schema = self._get_relationship_schema(database_path=database_path)
         if not relationship_schema:
             return
         diff_relationship = self._get_diff_relationship(
@@ -668,7 +669,7 @@ class DiffQueryParser:
         relationship_schema: RelationshipSchema,
         database_path: DatabasePath,
     ) -> DiffRelationshipIntermediate:
-        diff_relationship = diff_node.relationships_by_name.get(relationship_schema.name)
+        diff_relationship = diff_node.relationships_by_identifier.get(relationship_schema.get_identifier())
         if not diff_relationship:
             branch_name = database_path.deepest_branch
             from_time = self.from_time
@@ -682,7 +683,7 @@ class DiffQueryParser:
                 identifier=relationship_schema.get_identifier(),
                 from_time=from_time,
             )
-            diff_node.relationships_by_name[relationship_schema.name] = diff_relationship
+            diff_node.relationships_by_identifier[relationship_schema.identifier] = diff_relationship
         return diff_relationship
 
     def _apply_base_branch_previous_values(self) -> None:
@@ -719,8 +720,8 @@ class DiffQueryParser:
     def _apply_relationship_previous_values(
         self, diff_node: DiffNodeIntermediate, base_diff_node: DiffNodeIntermediate
     ) -> None:
-        for relationship_name, diff_relationship in diff_node.relationships_by_name.items():
-            base_diff_relationship = base_diff_node.relationships_by_name.get(relationship_name)
+        for relationship_identifier, diff_relationship in diff_node.relationships_by_identifier.items():
+            base_diff_relationship = base_diff_node.relationships_by_identifier.get(relationship_identifier)
             if not base_diff_relationship:
                 continue
             for db_id, property_set in diff_relationship.properties_by_db_id.items():
@@ -773,7 +774,7 @@ class DiffQueryParser:
                         continue
                     if ordered_diff_values[-1].changed_at >= self.diff_branched_from_time:
                         return
-            for relationship_diff in node_diff.relationships_by_name.values():
+            for relationship_diff in node_diff.relationships_by_identifier.values():
                 for diff_relationship_property_list in relationship_diff.properties_by_db_id.values():
                     for diff_relationship_property in diff_relationship_property_list:
                         if diff_relationship_property.changed_at >= self.diff_branched_from_time:
