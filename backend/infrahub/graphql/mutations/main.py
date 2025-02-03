@@ -97,7 +97,7 @@ class InfrahubMutationMixin:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
-            graphql_payload = await obj.to_graphql(db=context.db, filter_sensitive=True)
+            graphql_payload = await obj.to_graphql(db=context.db, filter_sensitive=True, include_properties=False)
             event = NodeMutatedEvent(
                 branch=context.branch.name,
                 kind=obj._schema.kind,

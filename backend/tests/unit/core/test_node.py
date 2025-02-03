@@ -420,6 +420,46 @@ async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch
     assert await c1.to_graphql(db=db) == expected_data
 
 
+async def test_to_graphql_without_properties(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+    car = registry.schema.get(name="TestCar")
+    person = registry.schema.get(name="TestPerson")
+
+    p1 = await Node.init(db=db, schema=person)
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
+
+    c1 = await Node.init(db=db, schema=car)
+    await c1.new(db=db, name="volt", nbr_seats=4, is_electric=True, owner=p1)
+    await c1.save(db=db)
+
+    graphql_data_properties = await c1.to_graphql(db=db, include_properties=True)
+    graphql_data_no_properties = await c1.to_graphql(db=db, include_properties=False)
+    top_level_keys = [
+        "__kind__",
+        "__typename",
+        "color",
+        "display_label",
+        "id",
+        "is_electric",
+        "name",
+        "nbr_seats",
+        "transmission",
+    ]
+
+    assert sorted(graphql_data_properties.keys()) == top_level_keys
+    assert sorted(graphql_data_no_properties.keys()) == top_level_keys
+    assert sorted(graphql_data_properties["name"].keys()) == [
+        "__typename",
+        "id",
+        "is_protected",
+        "is_visible",
+        "owner",
+        "source",
+        "value",
+    ]
+    assert sorted(graphql_data_no_properties["name"].keys()) == ["__typename", "id", "value"]
+
+
 # --------------------------------------------------------------------------
 # Create
 # --------------------------------------------------------------------------
