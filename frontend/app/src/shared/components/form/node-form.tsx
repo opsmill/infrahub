@@ -91,7 +91,8 @@ export const NodeForm = ({
         const result = await graphqlClient.mutate({
           mutation: CREATE_ACCOUNT_TOKEN,
           variables: {
-            name: data.name.value,
+            name: data.name?.value,
+            expiration: data.expiration?.value,
           },
           context: {
             branch: branch?.name,
