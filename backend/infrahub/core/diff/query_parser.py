@@ -400,7 +400,8 @@ class DiffNodeIntermediate(TrackedStatusUpdates):
     from_time: Timestamp
     status: RelationshipStatus
     attributes_by_name: dict[str, DiffAttributeIntermediate] = field(default_factory=dict)
-    relationships_by_identifier: dict[str, DiffRelationshipIntermediate] = field(default_factory=dict)
+    # {(name, identifier): DiffRelationshipIntermediate}
+    relationships_by_identifier: dict[tuple[str, str], DiffRelationshipIntermediate] = field(default_factory=dict)
 
     def to_diff_node(self, from_time: Timestamp, include_unchanged: bool) -> DiffNode:
         attributes = []
@@ -669,7 +670,9 @@ class DiffQueryParser:
         relationship_schema: RelationshipSchema,
         database_path: DatabasePath,
     ) -> DiffRelationshipIntermediate:
-        diff_relationship = diff_node.relationships_by_identifier.get(relationship_schema.get_identifier())
+        diff_relationship = diff_node.relationships_by_identifier.get(
+            (relationship_schema.name, relationship_schema.get_identifier())
+        )
         if not diff_relationship:
             branch_name = database_path.deepest_branch
             from_time = self.from_time
@@ -683,7 +686,9 @@ class DiffQueryParser:
                 identifier=relationship_schema.get_identifier(),
                 from_time=from_time,
             )
-            diff_node.relationships_by_identifier[relationship_schema.get_identifier()] = diff_relationship
+            diff_node.relationships_by_identifier[relationship_schema.name, relationship_schema.get_identifier()] = (
+                diff_relationship
+            )
         return diff_relationship
 
     def _apply_base_branch_previous_values(self) -> None:
@@ -720,8 +725,8 @@ class DiffQueryParser:
     def _apply_relationship_previous_values(
         self, diff_node: DiffNodeIntermediate, base_diff_node: DiffNodeIntermediate
     ) -> None:
-        for relationship_identifier, diff_relationship in diff_node.relationships_by_identifier.items():
-            base_diff_relationship = base_diff_node.relationships_by_identifier.get(relationship_identifier)
+        for relationship_key, diff_relationship in diff_node.relationships_by_identifier.items():
+            base_diff_relationship = base_diff_node.relationships_by_identifier.get(relationship_key)
             if not base_diff_relationship:
                 continue
             for db_id, property_set in diff_relationship.properties_by_db_id.items():

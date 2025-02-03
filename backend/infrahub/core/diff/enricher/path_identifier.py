@@ -44,12 +44,10 @@ class DiffPathIdentifierEnricher(DiffEnricherInterface):
                     attribute_property.path_identifier = property_path.get_path()
             if not node.relationships:
                 continue
-            node_schema = self.db.schema.get(name=node.kind, branch=self.diff_branch_name, duplicate=False)
             for relationship in node.relationships:
-                relationship_schema = node_schema.get_relationship(name=relationship.name)
                 path_type = (
                     PathType.RELATIONSHIP_ONE
-                    if relationship_schema.cardinality is RelationshipCardinality.ONE
+                    if relationship.cardinality is RelationshipCardinality.ONE
                     else PathType.RELATIONSHIP_MANY
                 )
                 relationship_path = DataPath(
