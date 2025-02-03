@@ -21,7 +21,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
-import { LoadingScreen } from "@/shared/components/loading/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Badge } from "@/shared/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
@@ -114,7 +114,7 @@ export function Component() {
   });
 
   if (loading) {
-    return <LoadingScreen className="h-full" />;
+    return <LoadingIndicator className="h-full" />;
   }
 
   const proposedChangesData = data?.[PROPOSED_CHANGES_OBJECT]?.edges?.[0]?.node;

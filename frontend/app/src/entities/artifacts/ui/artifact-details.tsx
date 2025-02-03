@@ -16,7 +16,7 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { File } from "@/shared/components/file";
 import Content from "@/shared/components/layout/content";
-import { LoadingScreen } from "@/shared/components/loading/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Link } from "@/shared/components/ui/link";
 import { useTitle } from "@/shared/hooks/useTitle";
@@ -73,7 +73,7 @@ function ArtifactsDetails() {
   }
 
   if (loading || !schemaData) {
-    return <LoadingScreen className="h-full" />;
+    return <LoadingIndicator className="h-full" />;
   }
 
   if (!data || (data && !data[schemaData.kind]?.edges?.length)) {

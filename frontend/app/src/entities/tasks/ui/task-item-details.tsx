@@ -6,7 +6,7 @@ import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { LoadingScreen } from "@/shared/components/loading/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { List } from "@/shared/components/table/list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
@@ -46,7 +46,7 @@ export const TaskItemDetails = forwardRef((_, ref) => {
   }
 
   if (loading) {
-    return <LoadingScreen message="Loading task..." className="h-[400px]" />;
+    return <LoadingIndicator message="Loading task..." className="h-[400px]" />;
   }
 
   const result = data ? (data[TASK_OBJECT] ?? {}) : {};

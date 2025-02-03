@@ -8,7 +8,7 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import "react-diff-view/style/index.css";
-import { LoadingScreen } from "@/shared/components/loading/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ArtifactContentDiff } from "./artifact-content-diff";
 
 export const ArtifactRepoDiff = (props: any) => {
@@ -33,7 +33,7 @@ export const ArtifactRepoDiff = (props: any) => {
   const { loading, error, data } = useQuery(query, { skip: !schemaData });
 
   if (loading) {
-    return <LoadingScreen className="h-10 m-4" />;
+    return <LoadingIndicator className="h-10 m-4" />;
   }
 
   if (error) {

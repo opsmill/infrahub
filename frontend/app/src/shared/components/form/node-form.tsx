@@ -23,7 +23,7 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
-import { LoadingScreen } from "../loading/loading-screen";
+import { LoadingIndicator } from "../loading/loading-indicator";
 
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;
@@ -60,7 +60,7 @@ export const NodeForm = ({
 
   const { data, loading } = useQuery(GET_FORM_REQUIREMENTS, { variables: { kind: schema.kind } });
 
-  if (loading) return <LoadingScreen className="mt-4" />;
+  if (loading) return <LoadingIndicator className="mt-4" />;
 
   const numberPools: Array<NumberPoolData> = data?.[NUMBER_POOL_KIND].edges.map(
     ({ node }: { node: CoreNumberPool }): NumberPoolData => ({

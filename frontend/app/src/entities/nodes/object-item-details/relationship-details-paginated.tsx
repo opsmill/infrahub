@@ -17,7 +17,7 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
-import { LoadingScreen } from "@/shared/components/loading/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link as StyledLink } from "@/shared/components/ui/link";
@@ -97,7 +97,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   }
 
   if (loading) {
-    return <LoadingScreen className="h-12" />;
+    return <LoadingIndicator className="h-12" />;
   }
 
   if (relationshipsData && relationshipsData?.properties?.is_visible === false) {

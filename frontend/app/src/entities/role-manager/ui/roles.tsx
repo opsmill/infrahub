@@ -16,7 +16,7 @@ import { InlineDisplay } from "@/shared/components/display/inline-display";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import ObjectForm from "@/shared/components/form/object-form";
-import { LoadingScreen } from "@/shared/components/loading/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
@@ -107,7 +107,7 @@ function Roles() {
   }
 
   if (networkStatus === NetworkStatus.loading) {
-    return <LoadingScreen message="Retrieving roles..." className="h-[calc(100vh-13rem)]" />;
+    return <LoadingIndicator message="Retrieving roles..." className="h-[calc(100vh-13rem)]" />;
   }
 
   if (!permission?.view.isAllowed) {

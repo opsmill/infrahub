@@ -9,7 +9,7 @@ import { queryClient } from "@/shared/api/rest/client";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
-import { LoadingScreen } from "@/shared/components/loading/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import useFilters from "@/shared/hooks/useFilters";
 
@@ -21,7 +21,7 @@ export function ObjectsTableManager({ schema }: ObjectsTableManagerProps) {
   const [filters] = useFilters();
   const { isPending, error, data: permission } = useGetObjectPermissions(schema.kind as string);
 
-  if (isPending) return <LoadingScreen className="h-[calc(100vh-10.5rem)]" />;
+  if (isPending) return <LoadingIndicator className="h-[calc(100vh-10.5rem)]" />;
 
   if (error) return <ErrorScreen message={error.message} />;
 

@@ -10,7 +10,7 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import ObjectForm from "@/shared/components/form/object-form";
-import { LoadingScreen } from "@/shared/components/loading/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 import { Table, tRowValue } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
@@ -116,7 +116,7 @@ function Groups() {
   }
 
   if (networkStatus === NetworkStatus.loading) {
-    return <LoadingScreen message="Retrieving groups..." className="h-[calc(100vh-13rem)]" />;
+    return <LoadingIndicator message="Retrieving groups..." className="h-[calc(100vh-13rem)]" />;
   }
 
   if (!permission?.view.isAllowed) {

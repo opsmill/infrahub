@@ -14,7 +14,7 @@ import useQuery from "@/shared/api/graphql/useQuery";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { LoadingScreen } from "@/shared/components/loading/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
@@ -79,7 +79,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
   });
 
   if (networkStatus === NetworkStatus.loading) {
-    return <LoadingScreen className="p-4" />;
+    return <LoadingIndicator className="p-4" />;
   }
 
   if (error) {
@@ -135,7 +135,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
     return (
       <div className="flex flex-col items-center mt-10 gap-5">
         <h1 className="font-semibold flex gap-1.5">
-          <LoadingScreen message="" />
+          <LoadingIndicator message="" />
           We are computing the diff between
           <Badge variant="blue">
             <Icon icon={"mdi:layers-triple"} className="mr-1" />{" "}

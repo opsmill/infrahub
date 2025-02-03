@@ -7,7 +7,7 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import { useAtom } from "jotai";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 import "react-diff-view/style/index.css";
-import { LoadingScreen } from "@/shared/components/loading/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import { FileRepoDiff } from "./file-repo-diff";
@@ -65,7 +65,7 @@ export const FilesDiff = forwardRef((_, ref) => {
   }, []);
 
   if (isLoading) {
-    return <LoadingScreen className="p-4" />;
+    return <LoadingIndicator className="p-4" />;
   }
 
   if (error) {

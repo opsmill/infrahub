@@ -4,7 +4,7 @@ import useQuery from "@/shared/api/graphql/useQuery";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { LoadingScreen } from "@/shared/components/loading/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 import { getSeverityBadge, tLog } from "./logs";
@@ -95,7 +95,7 @@ export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps)
   }
 
   if (loading) {
-    return <LoadingScreen className="p-4" />;
+    return <LoadingIndicator className="p-4" />;
   }
 
   return (

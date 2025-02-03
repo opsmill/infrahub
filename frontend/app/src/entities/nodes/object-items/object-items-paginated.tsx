@@ -17,7 +17,7 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { Filters } from "@/shared/components/filters/filters";
 import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
-import { LoadingScreen } from "@/shared/components/loading/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
@@ -143,7 +143,7 @@ export default function ObjectItems({
           />
         </div>
 
-        {loading && !rows && <LoadingScreen className="h-[244px]" />}
+        {loading && !rows && <LoadingIndicator className="h-[244px]" />}
 
         {/* TODO: use new Table component for list */}
         {!loading && rows && (

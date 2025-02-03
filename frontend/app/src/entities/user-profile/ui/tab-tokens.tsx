@@ -5,7 +5,7 @@ import { useAtomValue } from "jotai";
 import { useState } from "react";
 
 import { TokenInput } from "@/shared/components/display/token-input";
-import { LoadingScreen } from "@/shared/components/loading/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalSuccess from "@/shared/components/modals/modal-success";
 
 export default function TabTokens() {
@@ -14,7 +14,7 @@ export default function TabTokens() {
   const schemaList = useAtomValue(schemaState);
   const schema = schemaList.find((schema) => schema.kind === ACCOUNT_TOKEN_OBJECT);
 
-  if (!schema) return <LoadingScreen className="h-[244px]" />;
+  if (!schema) return <LoadingIndicator className="h-[244px]" />;
 
   const handleSuccess = (result: any) => {
     setOpen(true);
