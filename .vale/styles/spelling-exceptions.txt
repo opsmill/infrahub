@@ -42,8 +42,10 @@ eslint
 excalidraw
 fanout
 file_path
+generate_artifacts
 generator_definition
 generator_definitions
+get_artifact
 github
 graphene
 graphiql
@@ -101,6 +103,7 @@ query_peers
 rebase
 rebased
 Redoc
+regenerate_host_artifact
 repo
 REST
 resources
