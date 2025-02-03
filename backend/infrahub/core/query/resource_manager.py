@@ -123,6 +123,7 @@ class NumberPoolGetAllocated(Query):
         self.params["node_attribute"] = self.pool.node_attribute.value
         self.params["start_range"] = self.pool.start_range.value
         self.params["end_range"] = self.pool.end_range.value
+        self.params["pool_id"] = self.pool.get_id()
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at.to_string(), branch_agnostic=self.branch_agnostic
@@ -133,7 +134,8 @@ class NumberPoolGetAllocated(Query):
         MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]-(a:Attribute {name: $node_attribute})-[hv:HAS_VALUE]-(av:AttributeValue)
         MATCH (a)-[hs:HAS_SOURCE]-(pool:%(number_pool_kind)s)
         WHERE
-            av.value >= $start_range and av.value <= $end_range
+            pool.uuid = $pool_id
+            AND av.value >= $start_range and av.value <= $end_range
             AND all(r in [ha, hv, hs] WHERE (%(branch_filter)s))
             AND ha.status = "active"
             AND hv.status = "active"

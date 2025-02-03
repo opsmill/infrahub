@@ -21,8 +21,10 @@ from infrahub.pools.number import NumberUtilizationGetter
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.protocols import CoreNode
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
 
@@ -184,7 +186,7 @@ class PoolUtilization(ObjectType):
         pool: CoreNode | None = await NodeManager.get_one(id=pool_id, db=db, branch=context.branch)
         pool = _validate_pool_type(pool_id=pool_id, pool=pool)
         if pool.get_kind() == "CoreNumberPool":
-            return await resolve_number_pool_utilization(db=db, context=context, pool=pool)
+            return await resolve_number_pool_utilization(db=db, at=context.at, pool=pool, branch=context.branch)
 
         resources_map: dict[str, Node] = {}
 
@@ -290,8 +292,10 @@ async def resolve_number_pool_allocation(
     return response
 
 
-async def resolve_number_pool_utilization(db: InfrahubDatabase, context: GraphqlContext, pool: CoreNode) -> dict:
-    number_pool = NumberUtilizationGetter(db=db, pool=pool, at=context.at, branch=context.branch)
+async def resolve_number_pool_utilization(
+    db: InfrahubDatabase, pool: CoreNode, at: Timestamp | str | None, branch: Branch
+) -> dict:
+    number_pool = NumberUtilizationGetter(db=db, pool=pool, at=at, branch=branch)
     await number_pool.load_data()
 
     return {
