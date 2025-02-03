@@ -20,7 +20,7 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import LoadingScreen from "../../../shared/components/loading-screen";
@@ -31,7 +31,7 @@ import { TaskDisplay } from "../../tasks/ui/task-display";
 
 export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
   const { proposedChangeId } = useParams();
-  const [proposedChangesDetails] = useAtom(proposedChangedState);
+  const proposedChangesDetails = useAtomValue(proposedChangedState);
 
   const navigate = useNavigate();
 
