@@ -64,6 +64,38 @@ export const DiffRow = ({
   iconClassName,
   status,
 }: DiffRowProps) => {
+  if (!children) {
+    return (
+      <div className={classNames("min-h-9 relative", hasConflicts && "bg-yellow-50")}>
+        {hasConflicts && <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-yellow-400" />}
+
+        <div className={classNames("grid grid-cols-3 text-xs font-normal group pl-8", className)}>
+          {title}
+
+          <div className="bg-custom-white">
+            <div className={classNames("bg-gray-50 p-2 flex items-center h-full", leftClassName)}>
+              {left}
+            </div>
+          </div>
+
+          <div className="bg-custom-white">
+            <div
+              className={classNames(
+                "p-2 flex items-center h-full font-medium",
+                status === "ADDED" && "bg-green-100 text-green-900",
+                status === "REMOVED" && "bg-red-100 text-red-900",
+                status === "UPDATED" && "bg-blue-100 text-blue-900",
+                rightClassName
+              )}
+            >
+              {right}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={classNames("min-h-9 relative", hasConflicts && "bg-yellow-50")}>
       {hasConflicts && <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-yellow-400" />}
