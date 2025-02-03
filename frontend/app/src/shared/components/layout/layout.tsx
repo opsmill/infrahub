@@ -5,7 +5,7 @@ import { findSelectedBranch } from "@/entities/branches/utils";
 import { SchemaContext, withSchemaContext } from "@/entities/schema/decorators/withSchemaContext";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import Sidebar from "@/shared/components/layout/sidebar";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { NetworkStatus, useQuery } from "@apollo/client";
 import { useSetAtom } from "jotai";
@@ -69,11 +69,7 @@ function Layout() {
   }, [branches.length, branchInQueryString]);
 
   if (networkStatus === NetworkStatus.loading) {
-    return (
-      <div className="w-screen h-screen flex items-center justify-center">
-        <LoadingScreen message="Loading branches..." />
-      </div>
-    );
+    return <InfrahubLoading>Loading config...</InfrahubLoading>;
   }
 
   return (

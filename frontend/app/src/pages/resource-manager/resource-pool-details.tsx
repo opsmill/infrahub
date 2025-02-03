@@ -18,7 +18,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
 import Content from "@/shared/components/layout/content";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
@@ -36,7 +36,7 @@ const ResourcePoolDetailsPage = () => {
     variables: { ids: [resourcePoolId] },
   });
 
-  if (loading) return <LoadingScreen />;
+  if (loading) return <LoadingIndicator className="h-full" />;
 
   const resourcePoolData = data[RESOURCE_GENERIC_KIND].edges[0];
   if (!resourcePoolData) return <NoDataFound />;
@@ -62,9 +62,13 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
     },
   });
 
-  if (loading || getResourcePoolUtilizationQuery.loading) return <LoadingScreen />;
-  if (error || getResourcePoolUtilizationQuery.error)
+  if (loading || getResourcePoolUtilizationQuery.loading) {
+    return <LoadingIndicator className="h-full" />;
+  }
+
+  if (error || getResourcePoolUtilizationQuery.error) {
     return <ErrorScreen message="Error when fetching the resource pool details" />;
+  }
 
   const resourcePoolData = data[schema.kind!].edges[0];
   if (!resourcePoolData) return <NoDataFound />;

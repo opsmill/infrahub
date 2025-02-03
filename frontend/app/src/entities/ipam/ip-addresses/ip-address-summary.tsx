@@ -10,7 +10,7 @@ import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom
 import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Link } from "@/shared/components/ui/link";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
@@ -42,7 +42,7 @@ export default function IpAddressSummary() {
         <span>{ipAddressData.display_label}</span>
       </div>
 
-      {loading && <LoadingScreen hideText />}
+      {loading && <LoadingIndicator />}
 
       <IpAddressSummaryContent
         ipAddressId={ipAddressData.id}

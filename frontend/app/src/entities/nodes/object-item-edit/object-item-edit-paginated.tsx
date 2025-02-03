@@ -9,7 +9,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
 import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mutations/getUpdateMutationFromFormData";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { areObjectArraysEqualById } from "@/shared/utils/array";
@@ -52,7 +52,7 @@ export default function ObjectItemEditComponent(props: Props) {
   }
 
   if (loading || !schema) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="p-4" />;
   }
 
   if (!data) {

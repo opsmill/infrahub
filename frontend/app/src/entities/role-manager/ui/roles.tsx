@@ -7,7 +7,6 @@ import { Table, tRowValue } from "@/shared/components/table/table";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
-import LoadingScreen from "../../../shared/components/loading-screen";
 
 import { useSchema } from "@/entities/schema/hooks/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -17,6 +16,7 @@ import { InlineDisplay } from "@/shared/components/display/inline-display";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import ObjectForm from "@/shared/components/form/object-form";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
 import { SearchInput } from "@/shared/components/ui/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
@@ -107,7 +107,7 @@ function Roles() {
   }
 
   if (networkStatus === NetworkStatus.loading) {
-    return <LoadingScreen message="Retrieving roles..." />;
+    return <LoadingIndicator message="Retrieving roles..." className="h-[calc(100vh-13rem)]" />;
   }
 
   if (!permission?.view.isAllowed) {

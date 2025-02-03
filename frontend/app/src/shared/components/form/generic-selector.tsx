@@ -5,7 +5,7 @@ import { getPermission } from "@/entities/permission/utils";
 import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
@@ -41,7 +41,8 @@ export const GenericSelector = ({
   const [open, setOpen] = useState(false);
   const { data, loading } = useQuery(gql(getObjectPermissionsQuery(currentKind)));
 
-  if (loading) return <LoadingScreen />;
+  if (loading) return <LoadingIndicator className="p-4" />;
+
   const permissionsData: Array<{ node: PermissionData }> = data?.[currentKind]?.permissions?.edges;
 
   const items = kindInheritingFromGeneric

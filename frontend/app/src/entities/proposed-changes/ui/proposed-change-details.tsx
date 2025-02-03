@@ -23,7 +23,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
-import LoadingScreen from "../../../shared/components/loading-screen";
 import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";
 import { getPermission } from "../../permission/utils";
 import { PROPOSED_CHANGE_MERGE_WORKFLOW } from "../../tasks/constants";
@@ -142,8 +141,6 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
 
   return (
     <div className="bg-stone-50 p-2.5 flex flex-col flex-grow gap-2.5">
-      {loadingCheck && <LoadingScreen hideText />}
-
       {!loadingCheck && checkData && !!checkData[TASK_OBJECT].count && (
         <Card>
           <Accordion title={<div className="font-normal text-xs">Actions in progress</div>}>

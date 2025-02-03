@@ -12,7 +12,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import SlideOver from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
 import { Table } from "@/shared/components/table/table";
@@ -145,7 +145,7 @@ const IpamIPPrefixesSummaryList = forwardRef((_, ref) => {
 
   return (
     <div className="w-full">
-      {(loading || !defaultIpNamespace) && <LoadingScreen hideText />}
+      {(loading || !defaultIpNamespace) && <LoadingIndicator />}
 
       {data && (
         <Table

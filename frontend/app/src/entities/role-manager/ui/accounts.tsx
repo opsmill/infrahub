@@ -11,6 +11,7 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import ObjectForm from "@/shared/components/form/object-form";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 import { Table, tRowValue } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
@@ -20,7 +21,6 @@ import { useDebounce } from "@/shared/hooks/useDebounce";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
-import LoadingScreen from "../../../shared/components/loading-screen";
 import { getPermission } from "../../permission/utils";
 
 function Accounts() {
@@ -119,7 +119,7 @@ function Accounts() {
   }
 
   if (networkStatus === NetworkStatus.loading) {
-    return <LoadingScreen message="Retrieving accounts..." />;
+    return <LoadingIndicator message="Retrieving accounts..." className="h-[calc(100vh-13rem)]" />;
   }
 
   if (!permission?.view.isAllowed) {

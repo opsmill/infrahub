@@ -21,7 +21,7 @@ import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { TabsButtons } from "@/shared/components/buttons/tabs-buttons";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -79,7 +79,7 @@ export const ProposedChangesPage = () => {
   }
 
   if (networkStatus === NetworkStatus.loading && !data) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="h-full" />;
   }
 
   const proposedChangesData = data?.[PROPOSED_CHANGES_OBJECT];

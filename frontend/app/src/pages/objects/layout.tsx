@@ -3,7 +3,7 @@ import ObjectHeader from "@/entities/nodes/object-header";
 import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -24,11 +24,7 @@ const ObjectPageLayout = () => {
   const schema = [...nodes, ...generics, ...profiles].find(({ kind }) => kind === objectKind);
 
   if (!state.isReady) {
-    return (
-      <Content.Card className="flex justify-center items-center p-5 min-h-[400px]">
-        <LoadingScreen message="Loading schema..." />
-      </Content.Card>
-    );
+    return <InfrahubLoading>Loading config...</InfrahubLoading>;
   }
 
   if (!schema) return <NoDataFound message="No schema found for this kind." />;
