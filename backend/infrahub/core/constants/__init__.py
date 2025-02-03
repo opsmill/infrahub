@@ -225,6 +225,7 @@ class RelationshipKind(InfrahubStringEnum):
     GROUP = "Group"
     HIERARCHY = "Hierarchy"
     PROFILE = "Profile"
+    TEMPLATE = "Template"
 
 
 class RelationshipStatus(InfrahubStringEnum):
