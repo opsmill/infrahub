@@ -41,6 +41,7 @@ export const DiffBadge = ({
 };
 
 type DiffRowProps = {
+  className?: string;
   title: ReactNode;
   left?: ReactNode;
   leftClassName?: string;
@@ -52,6 +53,7 @@ type DiffRowProps = {
   status?: DiffStatus;
 };
 export const DiffRow = ({
+  className,
   children,
   hasConflicts,
   title,
@@ -71,7 +73,7 @@ export const DiffRow = ({
         iconClassName={classNames("absolute", iconClassName)}
         hideChevron={!children}
         title={
-          <div className={classNames("grid grid-cols-3 text-xs font-normal group pl-8")}>
+          <div className={classNames("grid grid-cols-3 text-xs font-normal group pl-8", className)}>
             {title}
 
             <div className="bg-custom-white">
