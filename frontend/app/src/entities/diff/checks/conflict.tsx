@@ -1,11 +1,20 @@
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+
+import { QSP } from "@/config/qsp";
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
+import { Link } from "react-router-dom";
 import { BadgeConflict } from "../diff-badge";
 import { DiffRow } from "../node-diff/utils";
 
-export const Conflict = ({ changes, kind, name, node_id }: any) => {
+export const Conflict = ({ id, changes, kind, name, node_id }: any) => {
+  const proposedChangesDetails = useAtomValue(proposedChangedState);
+
+  const url = `/proposed-changes/${proposedChangesDetails.id}?${QSP.PROPOSED_CHANGES_TAB}=data#${id}`;
+
   const mainChange = changes.find((change) => {
     return change.branch === "main";
   });
@@ -22,39 +31,41 @@ export const Conflict = ({ changes, kind, name, node_id }: any) => {
         <Id id={node_id} kind={kind} />
       </div>
 
-      <DiffRow
-        className="pl-0"
-        iconClassName="left-4"
-        hasConflicts
-        title={
-          <div className={classNames("flex items-center justify-between pl-4 pr-2")}>
-            <div className="flex items-center py-3 gap-2 font-semibold">
-              {name}
-              <BadgeConflict>Conflict</BadgeConflict>
+      <Link to={url}>
+        <DiffRow
+          className="group pl-0 rounded overflow-hidden hover:bg-yellow-100 transition-all"
+          iconClassName="left-4"
+          hasConflicts
+          title={
+            <div className={classNames("flex items-center justify-between pl-4 pr-2")}>
+              <div className="flex items-center py-3 gap-2 font-semibold">
+                {name}
+                <BadgeConflict>Conflict</BadgeConflict>
+              </div>
             </div>
-          </div>
-        }
-        left={
-          <div className="flex items-center gap-2">
-            {mainChange.previous}
-            <Icon icon="mdi:chevron-right" />
-            <Badge variant="yellow" className="font-medium">
-              {mainChange.new}
-            </Badge>
-          </div>
-        }
-        leftClassName="font-normal"
-        right={
-          <div className="flex items-center gap-2">
-            {branchChange.previous}
-            <Icon icon="mdi:chevron-right" />
-            <Badge variant="yellow" className="font-medium">
-              {branchChange.new}
-            </Badge>
-          </div>
-        }
-        rightClassName="font-normal"
-      />
+          }
+          left={
+            <div className="flex items-center gap-2">
+              {mainChange.previous}
+              <Icon icon="mdi:chevron-right" />
+              <Badge variant="yellow" className="font-medium">
+                {mainChange.new}
+              </Badge>
+            </div>
+          }
+          leftClassName={classNames("font-normal group-hover:bg-gray-100 transition-all")}
+          right={
+            <div className="flex items-center gap-2">
+              {branchChange.previous}
+              <Icon icon="mdi:chevron-right" />
+              <Badge variant="yellow" className="font-medium">
+                {branchChange.new}
+              </Badge>
+            </div>
+          }
+          rightClassName={classNames("font-normal group-hover:bg-gray-50 transition-all")}
+        />
+      </Link>
     </div>
   );
 };
