@@ -278,10 +278,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if not object_template_field:
             return fields
 
-        # FIXME: This is ugly
-        from infrahub.core.manager import NodeManager
-
-        template: CoreObjectTemplate = await NodeManager.find_object(
+        template: CoreObjectTemplate = await registry.manager.find_object(
             db=db,
             kind=self._schema.get_relationship(name="object_template").peer,
             id=object_template_field.get("id"),
