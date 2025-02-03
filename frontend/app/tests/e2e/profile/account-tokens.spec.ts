@@ -21,7 +21,7 @@ test.describe("/profile?tab=tokens", () => {
   test.describe("when logged in as admin account", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-    test("should access and manage profile tokens", async ({ page }) => {
+    test("should create and delete a account without expiration date", async ({ page }) => {
       await test.step("go to profile page and access tokens", async () => {
         await page.goto("/");
         await page.getByTestId("authenticated-menu-trigger").click();
@@ -44,19 +44,18 @@ test.describe("/profile?tab=tokens", () => {
         await expect(page.getByRole("button", { name: "Confirm" })).not.toBeVisible();
       });
 
+      const accountTokenCard = page.getByTestId("account-token-test token");
+
       await test.step("verify the new token", async () => {
-        await expect(page.getByText("test token")).toBeVisible();
+        await expect(accountTokenCard).toContainText("test token");
+        await expect(accountTokenCard).toContainText("This token has no expiration date");
       });
 
       await test.step("delete the new token", async () => {
-        await page
-          .getByRole("row", { name: "test token" })
-          .getByTestId("delete-row-button")
-          .click();
-        await expect(page.getByText("Are you sure you want to")).toBeVisible();
+        await accountTokenCard.getByRole("button", { name: "Delete token test token" }).click();
         await page.getByTestId("modal-delete-confirm").click();
         await expect(page.getByText("Are you sure you want to")).not.toBeVisible();
-        await expect(page.getByRole("cell", { name: "test token" })).not.toBeVisible();
+        await expect(accountTokenCard).not.toBeVisible();
       });
     });
   });

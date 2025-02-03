@@ -1,5 +1,4 @@
 import { currentBranchAtom } from "@/entities/branches/stores";
-import { HIDE_AUTO_GENERATED_FILTER } from "@/entities/groups/ui/groups-auto-generated-filter-button";
 import { TREE_ROOT_ID } from "@/entities/ipam/constants";
 import { EMPTY_TREE, PrefixNode, updateTreeData } from "@/entities/ipam/ipam-tree/utils";
 import {
@@ -12,7 +11,7 @@ import { IModelSchema, genericsState, schemaState } from "@/entities/schema/stor
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
-import useFilters from "@/shared/hooks/useFilters";
+import useFilters, { Filter } from "@/shared/hooks/useFilters";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
@@ -20,6 +19,8 @@ import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
 import { Link, useNavigate } from "react-router";
+
+export const HIDE_AUTO_GENERATED_FILTER: Filter = { name: "group_type__value", value: "default" };
 
 export type HierarchicalTreeProps = {
   schema: IModelSchema;
