@@ -44,7 +44,7 @@ export const NoExpirationDataWarning = () => {
   return (
     <p className="flex items-center gap-1 text-yellow-800">
       <Icon icon="mdi:alert-circle" className="text-amber-500 text-base shrink-0" />
-      <span>This token has no expiration date.</span>
+      <span>This token has no expiration date</span>
     </p>
   );
 };

@@ -48,7 +48,7 @@ test.describe("/profile?tab=tokens", () => {
 
       await test.step("verify the new token", async () => {
         await expect(accountTokenCard).toContainText("test token");
-        await expect(accountTokenCard).toContainText("This token has no expiration date.");
+        await expect(accountTokenCard).toContainText("This token has no expiration date");
       });
 
       await test.step("delete the new token", async () => {
