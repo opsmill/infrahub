@@ -23,6 +23,7 @@ export const Conflict = ({ changes, kind, name, node_id }: any) => {
       </div>
 
       <DiffRow
+        className="pl-0"
         iconClassName="left-4"
         hasConflicts
         title={
