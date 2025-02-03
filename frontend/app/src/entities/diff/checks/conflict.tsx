@@ -1,25 +1,13 @@
-import { DATA_CHECK_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { currentBranchAtom } from "@/entities/branches/stores";
 import { diffContent, getBadgeType } from "@/entities/diff/diff";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { ToggleButtons } from "@/shared/components/buttons/toggle-buttons";
 import { Badge } from "@/shared/components/display/badge";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Id } from "@/shared/components/ui/id";
 import { Link } from "@/shared/components/ui/link";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { gql } from "@apollo/client";
 import { ArrowTopRightOnSquareIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
-import { useAtomValue } from "jotai/index";
-import { useState } from "react";
-import { toast } from "react-toastify";
 
 const renderConflict = {
   attribute_value: (name: string) => {
@@ -56,66 +44,6 @@ export const Conflict = (props: any) => {
   const { check, id, changes, kind, name, node_id, property_name, change_type, refetch } = props;
 
   const { keep_branch } = check;
-
-  const currentBranch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleAccept = async (conflictValue: string) => {
-    try {
-      setIsLoading(true);
-
-      const newValue = conflictValue === keep_branch?.value ? null : conflictValue;
-
-      const newData = {
-        id,
-        keep_branch: {
-          value: newValue,
-        },
-      };
-
-      const mustationString = updateObjectWithId({
-        kind: DATA_CHECK_OBJECT,
-        data: stringifyWithoutQuotes(newData),
-      });
-
-      const mutation = gql`
-        ${mustationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: currentBranch?.name,
-          date,
-        },
-      });
-
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Conflict marked as resolved" />);
-
-      setIsLoading(false);
-
-      if (refetch) {
-        refetch();
-      }
-    } catch (error) {
-      console.error("Error while updateing the conflict: ", error);
-      setIsLoading(false);
-    }
-  };
-
-  const tabs = [
-    {
-      label: "target",
-      isActive: keep_branch?.value === "target",
-      onClick: () => handleAccept("target"),
-    },
-    {
-      label: "source",
-      isActive: keep_branch?.value === "source",
-      onClick: () => handleAccept("source"),
-    },
-  ];
 
   return (
     <div>
@@ -175,12 +103,6 @@ export const Conflict = (props: any) => {
             );
           })}
       </div>
-
-      {keep_branch && (
-        <div className="flex items-center">
-          Accept: <ToggleButtons tabs={tabs} isLoading={isLoading} />
-        </div>
-      )}
     </div>
   );
 };
