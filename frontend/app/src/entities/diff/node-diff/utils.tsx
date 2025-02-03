@@ -49,7 +49,7 @@ type DiffRowProps = {
   hasConflicts?: boolean;
   children?: ReactNode;
   iconClassName?: string;
-  status: DiffStatus;
+  status?: DiffStatus;
 };
 export const DiffRow = ({
   children,
