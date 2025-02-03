@@ -9,6 +9,7 @@ import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Skeleton } from "@/shared/components/skeleton";
 import { List } from "@/shared/components/table/list";
+import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
@@ -78,7 +79,17 @@ const getCheckData = (check: any, refetch: Function) => {
       if (!conflicts?.value?.length) return null;
 
       return (
-        <div>
+        <div className="bg-white p-2 rounded-md border border-gray-100">
+          <div className="grid grid-cols-3 pl-8">
+            <Badge variant="green" className="bg-transparent col-start-2 col-end-3">
+              <Icon icon="mdi:layers-triple" className="mr-1" /> main
+            </Badge>
+
+            <Badge variant="blue" className="bg-transparent">
+              <Icon icon="mdi:layers-triple" className="mr-1" /> destination
+            </Badge>
+          </div>
+
           <div>
             {conflicts?.value?.map((conflict: any, index: number) => (
               <Conflict key={index} {...conflict} check={check} id={id} refetch={refetch} />
@@ -188,7 +199,7 @@ export const Check = ({ id }: tCheckProps) => {
 
       {content && (
         <div>
-          <div className="border-t-2 border-gray-100 mb-2 rounded-md" />
+          <div className="border-gray-100 mb-2 rounded-md" />
 
           {content}
         </div>
