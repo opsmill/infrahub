@@ -157,7 +157,9 @@ class DiffLabelsEnricher(DiffEnricherInterface):
 
             node_schema = self.db.schema.get(name=node.kind, branch=enriched_diff.diff_branch_name, duplicate=False)
             alternate_node_schema = None
-            if enriched_diff.diff_branch_name != enriched_diff.base_branch_name:
+            if enriched_diff.diff_branch_name != enriched_diff.base_branch_name and self.db.schema.has(
+                name=node.kind, branch=enriched_diff.base_branch_name
+            ):
                 alternate_node_schema = self.db.schema.get(
                     name=node.kind, branch=enriched_diff.base_branch_name, duplicate=False
                 )
