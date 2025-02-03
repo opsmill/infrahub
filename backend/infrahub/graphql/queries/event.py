@@ -22,17 +22,20 @@ class Events(ObjectType):
         info: GraphQLResolveInfo,
         limit: int = 10,
         offset: int = 0,
+        account: str | None = None,
         ids: list[str] | None = None,
         branch: str | None = None,
         q: str | None = None,
+        related_node__ids: list[str] | None = None,
     ) -> dict[str, Any]:
-        # related_nodes = related_node__ids or []
         ids = ids or []
         return await Events.query(
             info=info,
             branch=branch,
+            account=account,
             limit=limit,
             offset=offset,
+            related_node__ids=related_node__ids,
             q=q,
             ids=ids,
         )
@@ -43,7 +46,9 @@ class Events(ObjectType):
         info: GraphQLResolveInfo,
         q: str | None = None,
         ids: list[str] | None = None,
+        related_node__ids: list[str] | None = None,
         branch: str | None = None,
+        account: str | None = None,
         limit: int | None = None,
         offset: int | None = None,
     ) -> dict[str, Any]:
@@ -53,7 +58,9 @@ class Events(ObjectType):
             fields=fields,
             q=q,
             ids=ids,
+            related_node__ids=related_node__ids,
             branch=branch,
+            account=account,
             limit=limit,
             offset=offset,
         )
@@ -69,6 +76,7 @@ Event = Field(
     offset=Int(required=False),
     related_node__ids=List(String),
     branch=String(required=False),
+    account=String(required=False),
     ids=List(String),
     q=String(required=False),
     resolver=Events.resolve,

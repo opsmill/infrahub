@@ -38,6 +38,7 @@ from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositorySyncStatus
+from infrahub.core.registry import registry
 from infrahub.events.models import EventMeta
 from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.exceptions import CheckError, RepositoryInvalidFileSystemError, TransformError
@@ -200,12 +201,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if error:
             raise error
 
+        infrahub_branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
         await self.service.event.send(
             CommitUpdatedEvent(
                 commit=commit,
                 repository_name=self.name,
                 repository_id=str(self.id),
-                meta=EventMeta(branch=infrahub_branch_name),
+                meta=EventMeta(branch=infrahub_branch),
             )
         )
 

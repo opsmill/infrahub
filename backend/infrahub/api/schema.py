@@ -379,7 +379,7 @@ async def load_schema(
             initiator_id=WORKER_IDENTITY,
             request_id=request_id,
             account_id=account_session.account_id,
-            branch=branch.name,
+            branch=branch,
         ),
     )
     await service.event.send(event=event)

@@ -6,16 +6,20 @@ from graphql import ExecutionResult
 from prefect.client.orchestration import PrefectClient, get_client
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import MutationAction
+from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.events.branch_action import BranchCreatedEvent, BranchRebasedEvent
-from infrahub.events.models import InfrahubEvent
+from infrahub.events.models import EventMeta, InfrahubEvent
+from infrahub.events.node_action import NodeMutatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.events import send_events
 from tests.helpers.graphql import graphql
 
 QUERY_EVENT = """
-query {
-  InfrahubEvent {
+query($branch: String) {
+  InfrahubEvent(branch: $branch) {
     count
     edges {
       node {
@@ -28,38 +32,119 @@ query {
 }
 """
 
+QUERY_SIMPLE_COUNT_EVENT = """
+query($branch: String) {
+  InfrahubEvent(branch: $branch) {
+    count
+  }
+}
+"""
 
-@pytest.fixture(scope="module")
-async def branch1_id() -> str:
-    return str(uuid.uuid4())
+QUERY_MUTATED_NODES = """
+query MutatedNodes($id: [String]) {
+  InfrahubEvent(related_node__ids: $id) {
+    count
+    edges {
+      node {
+        id
+        ... on NodeMutatedEvent {
+          __typename
+          branch
+          event
+          payload
+          attributes {
+            action
+            kind
+            name
+            value
+            value_previous
+          }
+        }
+      }
+    }
+  }
+}
+"""
 
 
-@pytest.fixture(scope="module")
-async def branch2_id() -> str:
-    return str(uuid.uuid4())
+@pytest.fixture
+async def branch1_id() -> uuid.UUID:
+    return uuid.uuid4()
 
 
-@pytest.fixture(scope="module")
-async def events_data(prefect_client: PrefectClient, branch1_id, branch2_id) -> dict[str, InfrahubEvent]:
+@pytest.fixture
+async def branch2_id() -> uuid.UUID:
+    return uuid.uuid4()
+
+
+@pytest.fixture
+async def events_data(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    prefect_client: PrefectClient,
+    branch1_id,
+    branch2_id,
+) -> dict[str, InfrahubEvent]:
+    tag1 = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    await tag1.new(db=db, name="red", description="The red tag")
+    await tag1.save(db=db)
+
+    tag1_update = await NodeManager.get_one(id=tag1.id, db=db, branch=default_branch)
+    tag1_update.description.value = "This is an important tag"
+    await tag1_update.save(db=db)
+
     items: dict[str, InfrahubEvent] = {
-        "branch1_created": BranchCreatedEvent(branch_name="branch1", branch_id=branch1_id, sync_with_git=True),
-        "branch1_rebased": BranchRebasedEvent(branch_name="branch1", branch_id=branch1_id),
-        "branch2_created": BranchCreatedEvent(branch_name="branch2", branch_id=branch2_id, sync_with_git=False),
-        "branch2_rebased": BranchRebasedEvent(branch_name="branch2", branch_id=branch2_id),
+        "branch1_created": BranchCreatedEvent(
+            branch_name="branch1",
+            branch_id=str(branch1_id),
+            sync_with_git=True,
+            meta=EventMeta(branch=Branch(uuid=branch1_id, name="branch1")),
+        ),
+        "branch1_rebased": BranchRebasedEvent(
+            branch_name="branch1",
+            branch_id=str(branch1_id),
+            meta=EventMeta(branch=Branch(uuid=branch1_id, name="branch1")),
+        ),
+        "branch2_created": BranchCreatedEvent(
+            branch_name="branch2",
+            branch_id=str(branch2_id),
+            sync_with_git=False,
+            meta=EventMeta(branch=Branch(uuid=branch2_id, name="branch2")),
+        ),
+        "branch2_rebased": BranchRebasedEvent(
+            branch_name="branch2",
+            branch_id=str(branch2_id),
+            meta=EventMeta(branch=Branch(uuid=branch2_id, name="branch2")),
+        ),
+        "branch1_mutated1": NodeMutatedEvent(
+            kind="BuiltinTag",
+            node_id=tag1.get_id(),
+            action=MutationAction.CREATED,
+            data=tag1.node_changelog,
+            meta=EventMeta(branch=Branch(uuid=branch1_id, name="branch1")),
+        ),
+        "branch1_mutated2": NodeMutatedEvent(
+            kind="BuiltinTag",
+            node_id=tag1_update.get_id(),
+            action=MutationAction.UPDATED,
+            data=tag1_update.node_changelog,
+            meta=EventMeta(branch=Branch(uuid=branch1_id, name="branch1")),
+        ),
     }
 
     await send_events(client=prefect_client, events=items.values())
     return items
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 async def event_ids_inscope(events_data: dict[str, InfrahubEvent]) -> list[str]:
     return [str(event.id) for event in events_data.values()]
 
 
 def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]):
     """
-    Because we can't garantee that Prefect is empty at the start of the test easily
+    Because we can't guarantee that Prefect is empty at the start of the test easily
     we need to exclude all events not created by this test suite.
     """
     filtered_events = [event for event in result_data["InfrahubEvent"]["edges"] if event["node"]["id"] in in_scope_ids]
@@ -84,7 +169,11 @@ async def run_query(db: InfrahubDatabase, branch: Branch, query: str, variables:
 
 
 async def test_event_query_prefect(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None, events_data, event_ids_inscope
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    events_data,
+    event_ids_inscope,
 ):
     result = await run_query(
         db=db,
@@ -96,4 +185,63 @@ async def test_event_query_prefect(
     assert result.data
 
     clean_result = filter_outofscope_events(result.data, event_ids_inscope)
+    assert clean_result["InfrahubEvent"]["count"] == 6
+
+    result_branch1 = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"branch": "branch1"},
+    )
+    assert result_branch1.errors is None
+    assert result_branch1.data
+
+    clean_result = filter_outofscope_events(result_branch1.data, event_ids_inscope)
     assert clean_result["InfrahubEvent"]["count"] == 4
+
+    result_count_branch1 = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_SIMPLE_COUNT_EVENT,
+        variables={"branch": "branch1"},
+    )
+    assert result_count_branch1.errors is None
+    assert result_count_branch1.data
+
+    # Validate that the count query works even if there are no edges requested
+    # Due to the workings of `filter_outofscope_events()` we can't use that here
+    # we just want to ensure that the query itself is valid.
+    assert result_count_branch1.data["InfrahubEvent"]["count"] > 0
+
+    mutated_nodes = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_MUTATED_NODES,
+        variables={"id": events_data["branch1_mutated1"].node_id},
+    )
+    assert mutated_nodes.errors is None
+    assert mutated_nodes.data
+    clean_result = filter_outofscope_events(mutated_nodes.data, event_ids_inscope)
+
+    assert len(clean_result["InfrahubEvent"]["edges"]) == 2
+    created = [
+        entry for entry in clean_result["InfrahubEvent"]["edges"] if entry["node"]["event"] == "infrahub.node.created"
+    ][0]
+    updated = [
+        entry for entry in clean_result["InfrahubEvent"]["edges"] if entry["node"]["event"] == "infrahub.node.updated"
+    ][0]
+
+    assert created["node"]["attributes"] == [
+        {"action": "ADDED", "kind": "Text", "name": "name", "value": "red", "value_previous": None},
+        {"action": "ADDED", "kind": "Text", "name": "description", "value": "The red tag", "value_previous": None},
+    ]
+
+    assert updated["node"]["attributes"] == [
+        {
+            "action": "UPDATED",
+            "kind": "Text",
+            "name": "description",
+            "value": "This is an important tag",
+            "value_previous": "The red tag",
+        }
+    ]

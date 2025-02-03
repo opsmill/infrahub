@@ -1,4 +1,5 @@
 from pathlib import Path
+from uuid import uuid4
 
 import anyio
 import pytest
@@ -9,7 +10,9 @@ from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx._httpx_mock import HTTPXMock
 
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
@@ -457,7 +460,9 @@ async def test_sync_new_branch(
 
     await repo.fetch()
     # Mock update_commit_value query
-    commit = repo.get_commit_value(branch_name="branch01", remote=True)
+    branch = Branch(name="branch01", uuid=uuid4())
+    registry.branch[branch.name] = branch
+    commit = repo.get_commit_value(branch_name=branch.name, remote=True)
 
     commit_response = {"data": {"repository_update": {"ok": True, "object": {"commit": {"value": str(commit)}}}}}
     httpx_mock.add_response(
@@ -474,12 +479,15 @@ async def test_sync_new_branch(
     await repo.sync()
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name="branch01") == "92700512b5b16c0144f7fd2869669273577f1bd8"
+    assert repo.get_commit_value(branch_name=branch.name) == "92700512b5b16c0144f7fd2869669273577f1bd8"
     assert len(worktrees) == 4
 
 
 async def test_sync_updated_branch(prefect_test_fixture, git_repo_04: InfrahubRepository):
     repo = git_repo_04
+
+    branch = Branch(name="branch01", uuid=uuid4())
+    registry.branch[branch.name] = branch
 
     # Mock update_commit_value query
     commit = repo.get_commit_value(branch_name="branch01", remote=True)

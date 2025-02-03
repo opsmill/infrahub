@@ -1,17 +1,20 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import Any, cast
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
+from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.message_bus import InfrahubMessage, Meta
 
 from .constants import EVENT_NAMESPACE
 
 
 class EventMeta(BaseModel):
-    branch: str = ""
+    branch: Branch | None = Field(default=None)
     request_id: str = ""
-    account_id: str = ""
+    account_id: str | None = Field(default=None, description="The ID of the account triggering this event")
     initiator_id: str | None = Field(
         default=None, description="The worker identity of the initial sender of this message"
     )
@@ -23,17 +26,18 @@ class EventMeta(BaseModel):
             related.append(
                 {
                     "prefect.resource.id": f"infrahub.account.{self.account_id}",
+                    "prefect.resource.role": "infrahub.account",
                     "infrahub.resource.id": self.account_id,
-                    "prefect.resource.role": "account",
                 }
             )
 
         if self.branch:
             related.append(
                 {
-                    "prefect.resource.id": "infrahub.branch",
-                    "prefect.resource.name": self.branch,
-                    "prefect.resource.role": "branch",
+                    "prefect.resource.id": f"infrahub.branch.{self.branch.get_uuid()}",
+                    "prefect.resource.role": "infrahub.branch",
+                    "infrahub.resource.id": str(self.branch.get_uuid()),
+                    "infrahub.resource.label": self.branch.name,
                 }
             )
 
@@ -48,8 +52,6 @@ class InfrahubEvent(BaseModel):
         description="UUID of the event",
     )
 
-    event_name: str
-
     def get_id(self) -> str:
         return str(self.id)
 
@@ -57,7 +59,8 @@ class InfrahubEvent(BaseModel):
         return EVENT_NAMESPACE
 
     def get_name(self) -> str:
-        return self.event_name
+        # Convince linters that @computed_field is a property and not a method...
+        return cast(str, self.event_name)
 
     def get_resource(self) -> dict[str, str]:
         raise NotImplementedError
@@ -84,3 +87,7 @@ class InfrahubEvent(BaseModel):
             meta.initiator_id = self.meta.request_id
 
         return meta
+
+    @computed_field
+    def event_name(self) -> str:
+        raise NotImplementedError("The event name has not been defined")
