@@ -1,6 +1,7 @@
 import json
 import time
 import uuid
+from copy import deepcopy
 from typing import Any
 
 import httpx
@@ -32,6 +33,36 @@ async def test_get_id_token_groups_for_oidc() -> None:
 
     groups = await _get_id_token_groups(
         oidc_config=OIDC_CONFIG,
+        service=service,
+        payload=token_response,
+        client_id=client_id,
+    )
+
+    assert groups == ["operators"]
+
+
+async def test_get_id_token_groups_for_oidc_invalid_issuer() -> None:
+    memory_http = MemoryHTTP()
+    service = await InfrahubServices.new(http=memory_http)
+    client_id = "testing-oicd-1234"
+
+    helper = OIDCTestHelper()
+    token_response = helper.generate_token_response(
+        username="testuser",
+        groups=["operators"],
+        client_id=client_id,
+        issuer=str(OIDC_CONFIG.issuer),
+    )
+
+    memory_http.add_get_response(
+        url=str(OIDC_CONFIG.jwks_uri),
+        response=httpx.Response(status_code=200, content=json.dumps(helper.jwks_payload)),
+    )
+    config = deepcopy(OIDC_CONFIG)
+    config.issuer = Url("https://something-incorrect.example.com")
+
+    groups = await _get_id_token_groups(
+        oidc_config=config,
         service=service,
         payload=token_response,
         client_id=client_id,

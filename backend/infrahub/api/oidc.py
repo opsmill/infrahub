@@ -209,6 +209,7 @@ async def _get_id_token_groups(
         algorithms=oidc_config.id_token_signing_alg_values_supported,
         audience=client_id,
         issuer=str(oidc_config.issuer),
+        options={"verify_signature": False, "verify_aud": False, "verify_iss": False},
     )
 
     return decoded_token.get("groups", [])
