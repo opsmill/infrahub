@@ -178,9 +178,9 @@ export const Check = ({ id }: tCheckProps) => {
           </div>
 
           <div>
-            {conflicts?.value?.map((conflict: any) => (
-              <Conflict key={id} {...conflict} check={check} id={id} />
-            ))}
+            {conflicts?.value?.map((conflict: any) => {
+              return <Conflict key={id} {...conflict} check={check} />;
+            })}
           </div>
         </div>
       )}
