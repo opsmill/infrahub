@@ -1,4 +1,5 @@
 import random
+from collections import defaultdict
 from dataclasses import replace
 from datetime import UTC
 from typing import Generator
@@ -46,7 +47,9 @@ class TestDiffRepositorySaveAndLoad:
         original_size = config.SETTINGS.database.query_size_limit
         config.SETTINGS.database.max_depth_search_hierarchy = 10
         config.SETTINGS.database.query_size_limit = 50
-        yield DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
+        diff_repository = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
+        diff_repository.MAX_SAVE_BATCH_SIZE = 3
+        yield diff_repository
         config.SETTINGS.database.max_depth_search_hierarchy = original_depth
         config.SETTINGS.database.query_size_limit = original_size
 
@@ -651,3 +654,99 @@ class TestDiffRepositorySaveAndLoad:
             diff_branch_name=tracking_id_diff_1.diff_branch_name, diff_id=tracking_id_diff_1.uuid
         )
         assert diff_1.tracking_id is None
+
+    async def test_limit_and_offset(self, diff_repository: DiffRepository, reset_database):
+        nodes_by_kind = defaultdict(list)
+        all_nodes = set()
+        for kind in ("KindOne", "KindTwo", "KindThree"):
+            for _ in range(8):
+                node = EnrichedNodeFactory.build(kind=kind, relationships=set())
+                nodes_by_kind[kind].append(node)
+                all_nodes.add(node)
+        sorted_uuids = sorted(all_nodes, key=lambda i: i.uuid)
+        enriched_branch_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            nodes=all_nodes,
+            tracking_id=NameTrackingId(name="the-best-diff"),
+        )
+        enriched_base_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.base_branch_name,
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            nodes=set(),
+            tracking_id=NameTrackingId(name="the-best-diff"),
+        )
+        enriched_base_diff.partner_uuid = enriched_branch_diff.uuid
+        enriched_branch_diff.partner_uuid = enriched_base_diff.uuid
+        enriched_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            base_branch_diff=enriched_base_diff,
+            diff_branch_diff=enriched_branch_diff,
+        )
+
+        await diff_repository.save(enriched_diffs=enriched_diffs)
+
+        # validate limit
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            limit=7,
+        )
+        assert len(retrieved) == 1
+        retrieved_diff = retrieved[0]
+        assert len(retrieved_diff.nodes) == 7
+        assert {n.uuid for n in retrieved_diff.nodes} == {n.uuid for n in sorted_uuids[:7]}
+
+        # validate limit with offset
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            limit=7,
+            offset=7,
+        )
+        assert len(retrieved) == 1
+        retrieved_diff = retrieved[0]
+        assert len(retrieved_diff.nodes) == 7
+        assert {n.uuid for n in retrieved_diff.nodes} == {n.uuid for n in sorted_uuids[7:14]}
+
+        # validate limit with filter
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            limit=7,
+            filters={"kind": {"includes": ["KindOne"]}},
+        )
+        assert len(retrieved) == 1
+        retrieved_diff = retrieved[0]
+        assert len(retrieved_diff.nodes) == 7
+        assert {n.uuid for n in retrieved_diff.nodes} == {
+            n.uuid for n in sorted(nodes_by_kind["KindOne"], key=lambda x: x.uuid)[:7]
+        }
+
+        # validate limit with offset and filter
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            limit=7,
+            offset=7,
+            filters={"kind": {"includes": ["KindOne"]}},
+        )
+        assert len(retrieved) == 1
+        retrieved_diff = retrieved[0]
+        assert len(retrieved_diff.nodes) == 1
+        assert {n.uuid for n in retrieved_diff.nodes} == {
+            n.uuid for n in sorted(nodes_by_kind["KindOne"], key=lambda x: x.uuid)[7:]
+        }
