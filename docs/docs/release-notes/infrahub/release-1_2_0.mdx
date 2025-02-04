@@ -1,0 +1,138 @@
+---
+title: Release 1.2.0
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.2.0</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>February 28th, 2025</td>
+    </tr>
+    <tr>
+      <th>Release Codename</th>
+      <td>Chicago</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.2.0](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.2.0)</td>
+    </tr>
+  </tbody>
+</table>
+
+# Release 1.2.0
+
+This release contains both new features and bug-fixes to resolve issues found in Infrahub v1.1.6 and prior.
+
+## Main changes
+
+Infrahub 1.2 brings several highly anticipated features, such as the ability to define an Object Template, as well as a new detailed Activity Log.
+
+See the detailed changelog in the following sections for more information.
+
+### Object templates
+
+**Description to come.**
+
+#### Documentation
+
+For more information on either style of computed attribute, please see the below documentation.
+
+- https://docs.infrahub.app/
+
+### Activity log
+
+**Description to come.**
+
+### Webhook refactor
+
+**Description to come.**
+
+### Menu reorganization
+
+**Description to come.**
+
+## Changelog
+
+The complete list of changes can always be found in the `CHANGELOG.md` file in the Infrahub Git repository.
+
+### Added
+
+- Added Containerlab to the codespace base image. ([#458](https://github.com/opsmill/infrahub/issues/458))
+
+### Changed
+
+- Replace PrefixPool with `netaddr.IPSet`. ([#3547](https://github.com/opsmill/infrahub/issues/3547))
+- Modified query analyzer to not list all potential meta data models when only querying for "source" or "owner" ID.
+  The full models will still show up if a fragment is used under the meta data properties.
+  This change makes it easier to setup fine grained permissions and also speeds up the permission lookup as it doesn't require as many checks. ([#4644](https://github.com/opsmill/infrahub/issues/4644))
+- Modified node mutation events to not send metadata properties as part of the mutation payload.
+  The reason is that the property lookup was time consuming.
+  This information will return again in Infrahub 1.2 with a completely updated format. ([#5664](https://github.com/opsmill/infrahub/issues/5664))
+- Improve typing of GraphQL schema by defining list as non-nullable and ensure that top level item are mandatory.
+- Updated Infrahub account tokens view:
+  - Redesigned for a faster, cleaner experience
+  - Improved clarity and formatting of expiration dates.
+  - Resolved an issue where expiration data was not being sent to the API.
+
+### Fixed
+
+- Fixed issue causing a gap in menu sidebar when text is too long.
+- Prevent avatar from being cut off in menu sidebar.
+
+### Housekeeping
+
+- Activate ruff B rules. ([#2193](https://github.com/opsmill/infrahub/issues/2193))
+- Activate ruff C4 rule. ([#2194](https://github.com/opsmill/infrahub/issues/2194))
+
+## Migration guide
+
+The process to migrate your instance of Infrahub to the latest version may vary depending on your deployment of Infrahub.
+However, at a high-level, it will involve getting the latest version of the Infrahub code, and then performing any needed Database Migrations and Schema updates.
+
+Please ensure you have a **backup of your Infrahub environment** prior to attempting any migration or upgrade activities.
+
+### Migration of an Infrahub instance
+
+**First**, update the Infrahub version running in your environment.
+
+Below are some example ways to get the latest version of Infrahub in your environment.
+
+- For deployments via Docker Compose, update your container version by updating the `VERSION` environment variable and relaunch:
+  - `export VERSION="1.2.0"; docker compose pull && docker compose up -d`
+- For deployments via Kubernetes, utilize the latest version of the Helm chart supplied with this release
+
+**Second**, once you have gotten the desired version of Infrahub in your environment, please run the following commands.
+
+> Note: If you are running Infrahub in Docker/K8s, these commands need to run from a container where Infrahub is installed.
+
+```shell
+infrahub db migrate
+infrahub db update-core-schema
+```
+
+**Finally**, restart all instances of Infrahub.
+
+### Migration of a dev or demo instance
+
+If you are using the `dev` or `demo` environments, we have provided `invoke` commands to aid in the migration to the latest version.
+The below examples provide the `demo` version of the commands, however similar commands can be used for `dev` as well.
+
+```shell
+invoke demo.stop
+invoke demo.build
+invoke demo.migrate
+invoke demo.start
+```
+
+If you don't want to keep your data, you can start a clean instance with the following command.
+
+> **Warning: All data will be lost, please make sure to backup everything you need before running this command.**
+
+```shell
+invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
+```
+
+The repository https://github.com/opsmill/infrahub-demo-edge has also been updated, it's recommended to pull the latest changes into your fork.

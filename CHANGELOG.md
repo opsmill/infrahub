@@ -11,6 +11,37 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.2.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.0) - 2025-02-28
+
+### Added
+
+- Added Containerlab to the codespace base image. ([#458](https://github.com/opsmill/infrahub/issues/458))
+
+### Changed
+
+- Replace PrefixPool with `netaddr.IPSet`. ([#3547](https://github.com/opsmill/infrahub/issues/3547))
+- Modified query analyzer to not list all potential meta data models when only querying for "source" or "owner" ID.
+  The full models will still show up if a fragment is used under the meta data properties.
+  This change makes it easier to setup fine grained permissions and also speeds up the permission lookup as it doesn't require as many checks. ([#4644](https://github.com/opsmill/infrahub/issues/4644))
+- Modified node mutation events to not send metadata properties as part of the mutation payload.
+  The reason is that the property lookup was time consuming.
+  This information will return again in Infrahub 1.2 with a completely updated format. ([#5664](https://github.com/opsmill/infrahub/issues/5664))
+- Improve typing of GraphQL schema by defining list as non-nullable and ensure that top level item are mandatory.
+- Updated Infrahub account tokens view:
+  - Redesigned for a faster, cleaner experience
+  - Improved clarity and formatting of expiration dates.
+  - Resolved an issue where expiration data was not being sent to the API.
+
+### Fixed
+
+- Fixed issue causing a gap in menu sidebar when text is too long.
+- Prevent avatar from being cut off in menu sidebar.
+
+### Housekeeping
+
+- Activate ruff B rules. ([#2193](https://github.com/opsmill/infrahub/issues/2193))
+- Activate ruff C4 rule. ([#2194](https://github.com/opsmill/infrahub/issues/2194))
+
 ## [Infrahub - v1.1.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.6) - 2025-01-30
 
 ### Artifact improvements
