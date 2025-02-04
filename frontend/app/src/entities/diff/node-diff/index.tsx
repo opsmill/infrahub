@@ -3,11 +3,11 @@ import { QSP } from "@/config/qsp";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { BRANCH_REBASE } from "@/entities/branches/api/rebaseBranch";
 import { DIFF_UPDATE } from "@/entities/diff/api/diff-update";
-import DiffTree from "@/entities/diff/diff-tree";
 import { DIFF_STATUS, DiffNode as DiffNodeType } from "@/entities/diff/node-diff/types";
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
 import { DiffComputing } from "@/entities/diff/ui/diff-computing";
 import { DiffEmpty } from "@/entities/diff/ui/diff-empty";
+import { DiffNoFound } from "@/entities/diff/ui/diff-no-found";
+import DiffTree from "@/entities/diff/ui/diff-tree";
 import { getProposedChangesDiffTree } from "@/entities/proposed-changes/api/getProposedChangesDiffTree";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { schemaState } from "@/entities/schema/stores/schema.atom";
@@ -20,7 +20,6 @@ import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { NetworkStatus, useMutation } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { createContext, useState } from "react";
 import { toast } from "react-toastify";
@@ -189,22 +188,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
         </div>
 
         <div className="space-y-4 p-4 col-start-2 col-end-5 overflow-auto bg-stone-100">
-          {nodes.length === 0 && qspStatus && (
-            <div className="flex flex-col items-center mt-10 gap-5">
-              <div className="p-3 rounded-full bg-white inline-flex">
-                <Icon icon="mdi:circle-off-outline" className="text-2xl text-custom-blue-800" />
-              </div>
-
-              <div className="text-center">
-                <h1 className="font-semibold">
-                  No matches found for the status <DiffBadge status={qspStatus} />
-                </h1>
-                <p>Try adjusting the filter settings to include more results.</p>
-              </div>
-            </div>
-          )}
-
-          {!!nodes.length &&
+          {nodes.length ? (
             nodes
               .filter(({ status }) => status !== "UNCHANGED")
               .map((node) => (
@@ -214,7 +198,10 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
                   sourceBranch={diffTreeData?.base_branch}
                   destinationBranch={diffTreeData?.diff_branch}
                 />
-              ))}
+              ))
+          ) : (
+            <DiffNoFound diffStatus={qspStatus as string} />
+          )}
         </div>
       </div>
     </div>

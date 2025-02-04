@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatDiffNodesToDiffTree } from "../../../../src/entities/diff/diff-tree";
 import { DiffNode } from "../../../../src/entities/diff/node-diff/types";
+import { formatDiffNodesToDiffTree } from "../../../../src/entities/diff/ui/diff-tree";
 import { TREE_ROOT_ID } from "../../../../src/entities/ipam/constants";
 
 describe("Format diff nodes to diff tree", () => {
