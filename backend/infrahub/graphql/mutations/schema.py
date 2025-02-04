@@ -305,7 +305,7 @@ async def update_registry(
                 branch_name=branch.name,
                 schema_hash=branch.active_schema_hash.main,
                 meta=EventMeta(
-                    initiator_id=WORKER_IDENTITY, request_id=request_id, account_id=account_id, branch=branch.name
+                    initiator_id=WORKER_IDENTITY, request_id=request_id, account_id=account_id, branch=branch
                 ),
             )
             await service.event.send(event=event)

@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import Field
+from pydantic import Field, computed_field
 
 from infrahub.message_bus import InfrahubMessage
 from infrahub.message_bus.messages.refresh_registry_branches import RefreshRegistryBranches
@@ -11,8 +11,6 @@ from .models import InfrahubEvent
 
 class SchemaUpdatedEvent(InfrahubEvent):
     """Event generated when the schema within a branch has been updated."""
-
-    event_name: str = f"{EVENT_NAMESPACE}.schema.update"
 
     branch_name: str = Field(..., description="The name of the branch")
     schema_hash: str = Field(..., description="Schema hash after the update")
@@ -45,3 +43,7 @@ class SchemaUpdatedEvent(InfrahubEvent):
             #     meta=self.get_message_meta(),
             # )
         ]
+
+    @computed_field
+    def event_name(self) -> str:
+        return f"{EVENT_NAMESPACE}.schema.update"

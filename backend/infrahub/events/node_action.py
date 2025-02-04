@@ -1,7 +1,8 @@
 from typing import Any
 
-from pydantic import Field, ValidationInfo, field_validator
+from pydantic import Field, computed_field
 
+from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import MutationAction
 from infrahub.message_bus import InfrahubMessage
 
@@ -12,19 +13,35 @@ from .models import InfrahubEvent
 class NodeMutatedEvent(InfrahubEvent):
     """Event generated when a node has been mutated"""
 
-    event_name: str = Field(default="infrahub.node.unknown", description="The name of the event")
-
     kind: str = Field(..., description="The type of object modified")
     node_id: str = Field(..., description="The ID of the mutated node")
     action: MutationAction = Field(..., description="The action taken on the node")
-    data: dict[str, Any] = Field(..., description="Data on modified object")
+    data: NodeChangelog = Field(..., description="Data on modified object")
     fields: list[str] = Field(default_factory=list, description="Fields provided in the mutation")
 
-    @field_validator("event_name", mode="after")
-    @classmethod
-    def updaate_event_name(cls, value: str, info: ValidationInfo) -> str:  # noqa: ARG003
-        action: MutationAction = info.data["action"]
-        return f"{EVENT_NAMESPACE}.node.{action.value}"
+    def get_related(self) -> list[dict[str, str]]:
+        related = super().get_related()
+        for attribute in self.data.attributes.values():
+            related.append(
+                {
+                    "prefect.resource.id": f"infrahub.node.{self.node_id}",
+                    "prefect.resource.role": "infrahub.node.field_update",
+                    "infrahub.attribute.name": attribute.name,
+                    "infrahub.attribute.value": "NULL" if attribute.value is None else str(attribute.value),
+                    "infrahub.attribute.kind": attribute.kind,
+                    "infrahub.attribute.value_previous": "NULL"
+                    if attribute.value_previous is None
+                    else str(attribute.value_previous),
+                    # Mypy doesn't understand that .value_update_status is a @computed_attribute
+                    "infrahub.attribute.action": attribute.value_update_status.value,  # type: ignore[attr-defined]
+                }
+            )
+
+        return related
+
+    @computed_field
+    def event_name(self) -> str:
+        return f"{EVENT_NAMESPACE}.node.{self.action.value}"
 
     def get_resource(self) -> dict[str, str]:
         return {
@@ -35,7 +52,7 @@ class NodeMutatedEvent(InfrahubEvent):
         }
 
     def get_payload(self) -> dict[str, Any]:
-        return {"data": self.data, "fields": self.fields}
+        return {"data": self.data.model_dump(), "fields": self.fields}
 
     def get_messages(self) -> list[InfrahubMessage]:
         return [

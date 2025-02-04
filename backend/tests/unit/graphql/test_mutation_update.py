@@ -3,6 +3,7 @@ import pytest
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.changelog.models import RelationshipCardinalityOneChangelog
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -293,9 +294,9 @@ async def test_update_all_attributes(
     assert len(memory_event.events) == 1
     event = memory_event.events[0]
     assert isinstance(event, NodeMutatedEvent)
-    assert sorted(event.data["attributes"].keys()) == ["ipaddress", "mybool", "myint", "mylist", "mystring", "prefix"]
-    assert event.data["attributes"]["ipaddress"]["value"] == "10.3.4.254/24"
-    assert event.data["attributes"]["ipaddress"]["value_previous"] == "10.5.0.1/27"
+    assert sorted(event.data.attributes.keys()) == ["ipaddress", "mybool", "myint", "mylist", "mystring", "prefix"]
+    assert event.data.attributes["ipaddress"].value == "10.3.4.254/24"
+    assert event.data.attributes["ipaddress"].value_previous == "10.5.0.1/27"
 
 
 @pytest.fixture
@@ -456,8 +457,9 @@ async def test_update_single_relationship(
     assert len(memory_event.events) == 1
     event = memory_event.events[0]
     assert isinstance(event, NodeMutatedEvent)
-    assert event.data["relationships"]["owner"]["peer_id"] == person_jim_main.id
-    assert event.data["relationships"]["owner"]["peer_kind"] == "TestPerson"
+    assert isinstance(event.data.relationships["owner"], RelationshipCardinalityOneChangelog)
+    assert event.data.relationships["owner"].peer_id == person_jim_main.id
+    assert event.data.relationships["owner"].peer_kind == "TestPerson"
 
 
 async def test_update_default_value(

@@ -96,13 +96,22 @@ class InfrahubMutationMixin:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
+            account_id: str | None = None
+            if graphql_context.account_session:
+                account_id = graphql_context.account_session.account_id
+
             event = NodeMutatedEvent(
                 kind=obj._schema.kind,
                 node_id=obj.id,
-                data=obj.node_changelog.model_dump(),
+                data=obj.node_changelog,
                 action=action,
                 fields=_get_data_fields(data),
-                meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id, branch=graphql_context.branch.name),
+                meta=EventMeta(
+                    account_id=account_id,
+                    initiator_id=WORKER_IDENTITY,
+                    request_id=request_id,
+                    branch=graphql_context.branch,
+                ),
             )
 
             graphql_context.background.add_task(graphql_context.active_service.event.send, event)

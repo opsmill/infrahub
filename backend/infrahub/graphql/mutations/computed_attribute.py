@@ -100,7 +100,7 @@ class UpdateComputedAttribute(Mutation):
                     initiator_id=WORKER_IDENTITY,
                     request_id=request_id,
                     account_id=graphql_context.active_account_session.account_id,
-                    branch=graphql_context.branch.name,
+                    branch=graphql_context.branch,
                 ),
             )
             await graphql_context.active_service.event.send(event=event)

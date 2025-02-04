@@ -147,7 +147,7 @@ async def rebase_branch(branch: str, service: InfrahubServices) -> None:
     # -------------------------------------------------------------
     # TODO Add account information
     await service.event.send(
-        event=BranchRebasedEvent(branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj.name))
+        event=BranchRebasedEvent(branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj))
     )
 
 
@@ -241,7 +241,7 @@ async def delete_branch(branch: str, service: InfrahubServices) -> None:
         await obj.delete(db=db)
 
         event = BranchDeletedEvent(
-            branch_name=branch, branch_id=str(obj.uuid), sync_with_git=obj.sync_with_git, meta=EventMeta(branch=branch)
+            branch_name=branch, branch_id=str(obj.uuid), sync_with_git=obj.sync_with_git, meta=EventMeta(branch=obj)
         )
 
         await service.workflow.submit_workflow(
@@ -309,7 +309,7 @@ async def create_branch(model: BranchCreateModel, service: InfrahubServices) -> 
             branch_name=obj.name,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta(branch=obj.name),
+            meta=EventMeta(branch=obj),
         )
         await service.event.send(event=event)
 
