@@ -38,3 +38,5 @@ RUN pip install toml invoke
 
 RUN curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.5 python3 - \
     && echo "export PATH=\"$HOME/.local/bin:$PATH\"" >> $HOME/.bashrc
+
+RUN bash -c "$(curl -sL https://get.containerlab.dev)"
