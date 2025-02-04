@@ -1,4 +1,4 @@
-from infrahub.core.constants import PathType, RelationshipCardinality
+from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath
 from infrahub.database import InfrahubDatabase
 
@@ -45,11 +45,7 @@ class DiffPathIdentifierEnricher(DiffEnricherInterface):
             if not node.relationships:
                 continue
             for relationship in node.relationships:
-                path_type = (
-                    PathType.RELATIONSHIP_ONE
-                    if relationship.cardinality is RelationshipCardinality.ONE
-                    else PathType.RELATIONSHIP_MANY
-                )
+                path_type = PathType.from_relationship(relationship.cardinality)
                 relationship_path = DataPath(
                     branch=enriched_diff_root.diff_branch_name,
                     path_type=path_type,
