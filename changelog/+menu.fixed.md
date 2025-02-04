@@ -1,0 +1,2 @@
+- Fixed issue causing a gap in menu sidebar when text is too long.
+- Prevent avatar from being cut off in menu sidebar.

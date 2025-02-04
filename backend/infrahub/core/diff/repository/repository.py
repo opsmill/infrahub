@@ -51,7 +51,8 @@ class DiffRepository:
         self,
         base_branch_name: str,
         diff_branch_names: list[str],
-        limit: int,
+        batch_size_limit: int,
+        limit: int | None = None,
         from_time: Timestamp | None = None,
         to_time: Timestamp | None = None,
         filters: EnrichedDiffQueryFilters | None = None,
@@ -62,8 +63,13 @@ class DiffRepository:
         diff_ids: list[str] | None = None,
     ) -> list[EnrichedDiffRoot]:
         self.deserializer.initialize()
+        final_row_number = None
+        if limit:
+            final_row_number = offset + limit
         has_more_data = True
-        while has_more_data:
+        while has_more_data and (final_row_number is None or offset < final_row_number):
+            if final_row_number is not None and offset + batch_size_limit > final_row_number:
+                batch_size_limit = final_row_number - offset
             get_query = await EnrichedDiffGetQuery.init(
                 db=self.db,
                 base_branch_name=base_branch_name,
@@ -72,12 +78,12 @@ class DiffRepository:
                 to_time=to_time,
                 filters=filters,
                 max_depth=max_depth,
-                limit=limit,
+                limit=batch_size_limit,
                 offset=offset,
                 tracking_id=tracking_id,
                 diff_ids=diff_ids,
             )
-            log.info(f"Beginning enriched diff get query {limit=}, {offset=}")
+            log.info(f"Beginning enriched diff get query {batch_size_limit=}, {offset=}")
             await get_query.execute(db=self.db)
             log.info("Enriched diff get query complete")
             last_result = None
@@ -87,7 +93,7 @@ class DiffRepository:
             has_more_data = False
             if last_result:
                 has_more_data = last_result.get_as_type("has_more_data", bool)
-            offset += limit
+            offset += batch_size_limit
         return await self.deserializer.deserialize()
 
     async def get(
@@ -105,16 +111,17 @@ class DiffRepository:
         include_empty: bool = False,
     ) -> list[EnrichedDiffRoot]:
         final_max_depth = config.SETTINGS.database.max_depth_search_hierarchy
-        limit = limit or int(config.SETTINGS.database.query_size_limit / 10)
+        batch_size_limit = int(config.SETTINGS.database.query_size_limit / 10)
         diff_roots = await self._run_get_diff_query(
             base_branch_name=base_branch_name,
             diff_branch_names=diff_branch_names,
+            batch_size_limit=batch_size_limit,
+            limit=limit,
             from_time=from_time,
             to_time=to_time,
             filters=EnrichedDiffQueryFilters(**dict(filters or {})),
             include_parents=include_parents,
             max_depth=final_max_depth,
-            limit=limit,
             offset=offset or 0,
             tracking_id=tracking_id,
             diff_ids=diff_ids,
@@ -131,21 +138,21 @@ class DiffRepository:
         to_time: Timestamp,
     ) -> list[EnrichedDiffs]:
         max_depth = config.SETTINGS.database.max_depth_search_hierarchy
-        limit = int(config.SETTINGS.database.query_size_limit / 10)
+        batch_size_limit = int(config.SETTINGS.database.query_size_limit / 10)
         diff_branch_roots = await self._run_get_diff_query(
             base_branch_name=base_branch_name,
             diff_branch_names=[diff_branch_name],
             from_time=from_time,
             to_time=to_time,
             max_depth=max_depth,
-            limit=limit,
+            batch_size_limit=batch_size_limit,
         )
         diffs_by_uuid = {dbr.uuid: dbr for dbr in diff_branch_roots}
         base_branch_roots = await self._run_get_diff_query(
             base_branch_name=base_branch_name,
             diff_branch_names=[base_branch_name],
             max_depth=max_depth,
-            limit=limit,
+            batch_size_limit=batch_size_limit,
             diff_ids=[d.partner_uuid for d in diffs_by_uuid.values()],
         )
         diffs_by_uuid.update({bbr.uuid: bbr for bbr in base_branch_roots})

@@ -204,7 +204,7 @@ async def test_update_by_id_to_nonunique_value_raises_error(
         variable_values={},
     )
 
-    expected_error = "An object already exist with this value: name: Jim at name"
+    expected_error = "Violates uniqueness constraint 'name' at name"
     assert any(expected_error in error.message for error in result.errors)
 
 
