@@ -1,12 +1,12 @@
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { BRANCH_REBASE } from "@/entities/branches/api/rebaseBranch";
-import { DIFF_UPDATE } from "@/entities/diff/api/diff-update";
+import { useUpdateDiffMutation } from "@/entities/diff/domain/update-diff.mutation";
 import { DIFF_STATUS, DiffNode as DiffNodeType } from "@/entities/diff/node-diff/types";
 import { DiffComputing } from "@/entities/diff/ui/diff-computing";
 import { DiffEmpty } from "@/entities/diff/ui/diff-empty";
 import { DiffNoFound } from "@/entities/diff/ui/diff-no-found";
+import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
 import DiffTree from "@/entities/diff/ui/diff-tree";
 import { getProposedChangesDiffTree } from "@/entities/proposed-changes/api/getProposedChangesDiffTree";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
@@ -19,7 +19,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { datetimeAtom } from "@/shared/stores/time.atom";
-import { NetworkStatus, useMutation } from "@apollo/client";
+import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 import { createContext, useState } from "react";
 import { toast } from "react-toastify";
@@ -51,7 +51,6 @@ const buildFilters = (filters: DiffFilter, qsp?: string | null) => {
 };
 
 export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
-  const { isAuthenticated } = useAuth();
   const [qspStatus] = useQueryParam(QSP.STATUS, StringParam);
   const date = useAtomValue(datetimeAtom);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
@@ -60,9 +59,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
 
   const branch = proposedChangesDetails?.source_branch?.value || branchName; // Used in proposed changes view and branch view
 
-  const [scheduleDiffTreeUpdate] = useMutation(DIFF_UPDATE, {
-    variables: { branchName: branch, wait: true },
-  });
+  const updateDiffMutation = useUpdateDiffMutation();
 
   const schemaData = nodeSchemas.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 
@@ -84,7 +81,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
   const handleRefresh = async () => {
     setIsLoadingUpdate(true);
     try {
-      await scheduleDiffTreeUpdate();
+      await updateDiffMutation.mutateAsync(branch);
 
       await graphqlClient.refetchQueries({
         include: ["GET_PROPOSED_CHANGES_DIFF_TREE", "GET_PROPOSED_CHANGES_DIFF_SUMMARY"],
@@ -136,7 +133,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
   }
 
   if (!qspStatus && diffTreeData.nodes.length === 0) {
-    return <DiffEmpty branchName={branchName} lastRefreshedAt={diffTreeData.to_time} />;
+    return <DiffEmpty branchName={branch} lastRefreshedAt={diffTreeData.to_time} />;
   }
 
   // Manually filter conflicts items since it's not available yet in the backend filters
@@ -161,14 +158,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
               <DateDisplay date={diffTreeData?.to_time} />
             </div>
 
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={handleRefresh}
-              disabled={!isAuthenticated || isLoadingUpdate}
-            >
-              Refresh diff
-            </Button>
+            <DiffRefreshButton size="sm" variant="primary" branchName={branch} />
           </div>
 
           <Button

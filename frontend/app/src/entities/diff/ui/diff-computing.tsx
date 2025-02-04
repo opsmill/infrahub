@@ -31,7 +31,7 @@ export function DiffComputing({ sourceBranch, destinationBranch }: DiffComputing
         <p>Once completed, you&apos;ll be able to view the detailed changes.</p>
       </div>
 
-      <DiffRefreshButton branchName={destinationBranch} />
+      <DiffRefreshButton branchName={sourceBranch} />
     </div>
   );
 }
