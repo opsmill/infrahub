@@ -35,7 +35,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         self.branch = branch
         self.schema_branch = registry.schema.get_schema_branch(branch.name)
 
-    def _build_query_request(
+    async def _build_query_request(
         self,
         updated_node: Node,
         node_schema: MainSchemaTypes,
@@ -51,9 +51,16 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                 if attribute_path.related_schema and attribute_path.relationship_schema:
                     if filters and attribute_path.relationship_schema.name in filters:
                         include_in_query = True
+
+                    relationship_manager: RelationshipManager = getattr(
+                        updated_node, attribute_path.relationship_schema.name
+                    )
+                    related_node = await relationship_manager.get_peer(db=self.db)
+                    related_node_id = related_node.get_id() if related_node else None
                     query_relationship_paths.add(
                         QueryRelationshipAttributePath(
                             identifier=attribute_path.relationship_schema.get_identifier(),
+                            value=related_node_id,
                         )
                     )
                     continue
@@ -158,7 +165,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
     ) -> None:
         schema_branch = self.db.schema.get_schema_branch(name=self.branch.name)
         path_groups = node_schema.get_unique_constraint_schema_attribute_paths(schema_branch=schema_branch)
-        query_request = self._build_query_request(
+        query_request = await self._build_query_request(
             updated_node=node, node_schema=node_schema, path_groups=path_groups, filters=filters
         )
         if not query_request:

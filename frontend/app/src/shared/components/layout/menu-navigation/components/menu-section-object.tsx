@@ -87,7 +87,10 @@ const TopLevelMenuItem: React.FC<{
 }> = ({ item, isCollapsed }) => {
   if (!item.children?.length) {
     return (
-      <Link to={constructPath(item.path)} className={menuNavigationItemStyle}>
+      <Link
+        to={constructPath(item.path)}
+        className={classNames(menuNavigationItemStyle, "w-[224px]")}
+      >
         <MenuItemIcon item={item} />
         <span className={classNames("text-sm", isCollapsed && "hidden")}>{item.label}</span>
       </Link>
@@ -96,7 +99,9 @@ const TopLevelMenuItem: React.FC<{
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className={classNames(menuNavigationItemStyle, isCollapsed && "p-2")}>
+      <DropdownMenuTrigger
+        className={classNames(menuNavigationItemStyle, isCollapsed ? "p-2" : "w-[224px]")}
+      >
         <Tooltip enabled={isCollapsed} content={item.label} side="right">
           <span className="flex">
             <MenuItemIcon item={item} />
@@ -123,10 +128,8 @@ const TopLevelMenuItem: React.FC<{
   );
 };
 
-export const MenuSectionObject: React.FC<MenuSectionObjectsProps> = ({ isCollapsed, items }) => (
-  <div className="flex flex-col w-full overflow-auto">
-    {items.map((item) => (
-      <TopLevelMenuItem key={item.identifier} item={item} isCollapsed={isCollapsed} />
-    ))}
-  </div>
-);
+export const MenuSectionObject: React.FC<MenuSectionObjectsProps> = ({ isCollapsed, items }) => {
+  return items.map((item) => (
+    <TopLevelMenuItem key={item.identifier} item={item} isCollapsed={isCollapsed} />
+  ));
+};

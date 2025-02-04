@@ -2,6 +2,8 @@
 title: Generator
 ---
 
+import ReactPlayer from 'react-player/youtube'
+
 # Generator
 
 A `Generator` is a generic plugin that queries data and creates new nodes and relationships based on the result.
@@ -29,6 +31,30 @@ The targets point to a group that will consist of objects that are impacted by t
 The [GraphQL query](graphql) defines the data that will be collected when running the generator. Any object identified in this step is added as a member to a GraphQL query group. The membership in these groups are then used to determine which generators need to be executed as part of a proposed change during the pipeline run.
 
 The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like [transforms](transformation) and [checks](check), the Generators are user defined.
+
+## Video guides
+
+In this video series we’re diving into the concept of generators and services, exploring their significance, structure, and how they can streamline processes for teams. Whether you’re a developer or just curious about automation in IT, this guide will provide you with a comprehensive understanding of generators and their applications.
+
+The first video will highlight what generators are and how they can be used to deliver services.
+
+<center>
+  <ReactPlayer url='https://www.youtube.com/watch?v=TSqY0caGb0A' light />
+    <br />
+</center>
+
+In the second video we will will look at how to plan a generator from coming up with a use case and then finally what the workflow may look like in pseudocode.
+
+<center>
+  <ReactPlayer url='https://www.youtube.com/watch?v=7oM2W8Kn2-U' light />
+  <br />
+</center>
+
+In the third video we will look at how a generator can be created and run in Infrahub. Looking at the `.infrahub.yml` file the GraphQL query the generator will run against and finally the logic that will be run against Infrahub to create objects and bring the service to life.
+
+<center>
+  <ReactPlayer url='https://www.youtube.com/watch?v=HSUVWm3Se28' light />
+</center>
 
 ## Known limitations
 

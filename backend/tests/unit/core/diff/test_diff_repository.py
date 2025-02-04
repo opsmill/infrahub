@@ -1,4 +1,5 @@
 import random
+from collections import defaultdict
 from dataclasses import replace
 from datetime import UTC
 from typing import Generator
@@ -27,6 +28,7 @@ from infrahub.exceptions import ResourceNotFoundError
 
 from .factories import (
     EnrichedAttributeFactory,
+    EnrichedConflictFactory,
     EnrichedNodeFactory,
     EnrichedPropertyFactory,
     EnrichedRelationshipElementFactory,
@@ -46,7 +48,9 @@ class TestDiffRepositorySaveAndLoad:
         original_size = config.SETTINGS.database.query_size_limit
         config.SETTINGS.database.max_depth_search_hierarchy = 10
         config.SETTINGS.database.query_size_limit = 50
-        yield DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
+        diff_repository = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
+        diff_repository.MAX_SAVE_BATCH_SIZE = 3
+        yield diff_repository
         config.SETTINGS.database.max_depth_search_hierarchy = original_depth
         config.SETTINGS.database.query_size_limit = original_size
 
@@ -651,3 +655,370 @@ class TestDiffRepositorySaveAndLoad:
             diff_branch_name=tracking_id_diff_1.diff_branch_name, diff_id=tracking_id_diff_1.uuid
         )
         assert diff_1.tracking_id is None
+
+    async def test_limit_and_offset(self, diff_repository: DiffRepository, reset_database):
+        nodes_by_kind = defaultdict(list)
+        all_nodes = set()
+        for kind in ("KindOne", "KindTwo", "KindThree"):
+            for _ in range(8):
+                node = EnrichedNodeFactory.build(kind=kind, relationships=set())
+                nodes_by_kind[kind].append(node)
+                all_nodes.add(node)
+        sorted_uuids = sorted(all_nodes, key=lambda i: i.uuid)
+        enriched_branch_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            nodes=all_nodes,
+            tracking_id=NameTrackingId(name="the-best-diff"),
+        )
+        enriched_base_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.base_branch_name,
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            nodes=set(),
+            tracking_id=NameTrackingId(name="the-best-diff"),
+        )
+        enriched_base_diff.partner_uuid = enriched_branch_diff.uuid
+        enriched_branch_diff.partner_uuid = enriched_base_diff.uuid
+        enriched_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            base_branch_diff=enriched_base_diff,
+            diff_branch_diff=enriched_branch_diff,
+        )
+
+        await diff_repository.save(enriched_diffs=enriched_diffs)
+
+        # validate limit
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            limit=7,
+        )
+        assert len(retrieved) == 1
+        retrieved_diff = retrieved[0]
+        assert len(retrieved_diff.nodes) == 7
+        assert {n.uuid for n in retrieved_diff.nodes} == {n.uuid for n in sorted_uuids[:7]}
+
+        # validate limit with offset
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            limit=7,
+            offset=7,
+        )
+        assert len(retrieved) == 1
+        retrieved_diff = retrieved[0]
+        assert len(retrieved_diff.nodes) == 7
+        assert {n.uuid for n in retrieved_diff.nodes} == {n.uuid for n in sorted_uuids[7:14]}
+
+        # validate limit with filter
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            limit=7,
+            filters={"kind": {"includes": ["KindOne"]}},
+        )
+        assert len(retrieved) == 1
+        retrieved_diff = retrieved[0]
+        assert len(retrieved_diff.nodes) == 7
+        assert {n.uuid for n in retrieved_diff.nodes} == {
+            n.uuid for n in sorted(nodes_by_kind["KindOne"], key=lambda x: x.uuid)[:7]
+        }
+
+        # validate limit with offset and filter
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            limit=7,
+            offset=7,
+            filters={"kind": {"includes": ["KindOne"]}},
+        )
+        assert len(retrieved) == 1
+        retrieved_diff = retrieved[0]
+        assert len(retrieved_diff.nodes) == 1
+        assert {n.uuid for n in retrieved_diff.nodes} == {
+            n.uuid for n in sorted(nodes_by_kind["KindOne"], key=lambda x: x.uuid)[7:]
+        }
+
+    async def test_update_existing(self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database):
+        node_with_removes = self.build_diff_node(no_recurse=True, num_sub_fields=3)
+        node_with_updates = self.build_diff_node(no_recurse=True, num_sub_fields=3)
+        # there are no conflicts by default
+        node_with_adds = self.build_diff_node(no_recurse=True, num_sub_fields=3)
+        # set conflicts on every node/rel/prop in update and remove nodes
+        for node in (node_with_removes, node_with_updates):
+            node.conflict = EnrichedConflictFactory.build()
+            for attr in node.attributes:
+                for prop in attr.properties:
+                    prop.conflict = EnrichedConflictFactory.build()
+            for rel_group in node.relationships:
+                for rel_elem in rel_group.relationships:
+                    rel_elem.conflict = EnrichedConflictFactory.build()
+                    for prop in rel_elem.properties:
+                        prop.conflict = EnrichedConflictFactory.build()
+        enriched_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            nodes={node_with_removes, node_with_updates, node_with_adds},
+            tracking_id=NameTrackingId(name="the-best-diff"),
+        )
+        base_diff = EnrichedRootFactory.build(
+            base_branch_name=enriched_diff.base_branch_name,
+            diff_branch_name=enriched_diff.base_branch_name,
+            from_time=enriched_diff.from_time,
+            to_time=enriched_diff.to_time,
+            nodes=set(),
+            tracking_id=enriched_diff.tracking_id,
+            partner_uuid=enriched_diff.uuid,
+        )
+        enriched_diff.partner_uuid = base_diff.uuid
+        enriched_diffs = EnrichedDiffs(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            diff_branch_diff=enriched_diff,
+            base_branch_diff=base_diff,
+        )
+        await diff_repository.save(enriched_diffs=enriched_diffs)
+
+        # removed node conflict
+        node_with_removes.conflict = None
+        # add node conflict
+        node_with_adds.conflict = EnrichedConflictFactory.build()
+
+        # remove attribute
+        removed_attr = node_with_removes.attributes.pop()
+        # remove attribute property
+        attr_with_removed_prop = next(iter(node_with_removes.attributes))
+        removed_prop_from_attr = attr_with_removed_prop.properties.pop()
+        # remove attribute property conflict
+        attr_prop_with_removed_conflict = next(iter(attr_with_removed_prop.properties))
+        attr_prop_with_removed_conflict.conflict = None
+        # add attribute
+        added_attr = EnrichedAttributeFactory.build()
+        node_with_adds.attributes.add(added_attr)
+        # add attribute property conflict
+        attr_with_added_prop = next(iter(node_with_adds.attributes))
+        attr_prop_with_added_conflict = next(iter(attr_with_added_prop.properties))
+        attr_prop_with_added_conflict.conflict = EnrichedConflictFactory.build()
+        # add attribute property
+        added_prop_type = [
+            d for d in DatabaseEdgeType if d not in [p.property_type for p in attr_with_added_prop.properties]
+        ][0]
+        added_prop_to_attr = EnrichedPropertyFactory.build(property_type=added_prop_type)
+        attr_with_added_prop.properties.add(added_prop_to_attr)
+        # update attribute and property
+        attr_to_update = node_with_updates.attributes.pop()
+        attr_with_property_updates = next(iter(node_with_updates.attributes))
+        updated_attr = EnrichedAttributeFactory.build(name=attr_to_update.name)
+        node_with_updates.attributes.add(updated_attr)
+        attr_prop_to_update = attr_with_property_updates.properties.pop()
+        updated_attr_prop = EnrichedPropertyFactory.build(property_type=attr_prop_to_update.property_type)
+        attr_with_property_updates.properties.add(updated_attr_prop)
+
+        # remove relationship
+        removed_relationship = node_with_removes.relationships.pop()
+        # remove relationship element
+        relationship_with_removes = next(iter(node_with_removes.relationships))
+        removed_element = relationship_with_removes.relationships.pop()
+        # remove relationship element conflict
+        element_with_removes = next(iter(relationship_with_removes.relationships))
+        element_with_removes.conflict = None
+        # remove relationship element property
+        removed_element_property = element_with_removes.properties.pop()
+        # remove relationship element property conflict
+        element_property_with_removes = next(iter(element_with_removes.properties))
+        element_property_with_removes.conflict = None
+        # add relationship
+        relationship_with_adds = next(iter(node_with_adds.relationships))
+        added_relationship = EnrichedRelationshipGroupFactory.build()
+        node_with_adds.relationships.add(added_relationship)
+        # add relationship element
+        element_with_adds = next(iter(relationship_with_adds.relationships))
+        added_element = EnrichedRelationshipElementFactory.build()
+        relationship_with_adds.relationships.add(added_element)
+        # add relationship element conflict
+        added_element_conflict = EnrichedConflictFactory.build()
+        element_with_adds.conflict = added_element_conflict
+        # add relationship element property
+        element_property_with_adds = next(iter(element_with_adds.properties))
+        added_prop_type = [
+            d for d in DatabaseEdgeType if d not in [p.property_type for p in element_with_adds.properties]
+        ][0]
+        added_element_property = EnrichedPropertyFactory.build(property_type=added_prop_type)
+        element_with_adds.properties.add(added_element_property)
+        # add relationship element property conflict
+        added_element_property_conflict = EnrichedConflictFactory.build()
+        element_property_with_adds.conflict = added_element_property_conflict
+        # update relationship
+        updated_relationship = next(iter(node_with_updates.relationships))
+        updated_relationship.label += "_new"
+        # update relationship element
+        updated_relationship_element = next(iter(updated_relationship.relationships))
+        updated_relationship_element.peer_label = "fresh_label"
+        # update relationship element conflict
+        updated_relationship_element.conflict.base_branch_value = "BASE SOMETHING"
+        # update relationship element property
+        updated_element_property = next(iter(updated_relationship_element.properties))
+        updated_element_property.previous_value = "PREVIOUS SOMETHING"
+        # update relationship element property conflict
+        updated_element_property.conflict.diff_branch_value = "DIFF SOMETHING"
+
+        await diff_repository.save(enriched_diffs=enriched_diffs)
+
+        retrieved = await diff_repository.get(
+            base_branch_name=self.base_branch_name,
+            diff_branch_names=[self.diff_branch_name],
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+        )
+        assert len(retrieved) == 1
+        retrieved_diff_root = retrieved[0]
+        assert len(retrieved_diff_root.nodes) == 3
+        nodes_by_uuid = {n.uuid: n for n in retrieved_diff_root.nodes}
+        # verify removed conflict
+        retrieved_node_with_removes = nodes_by_uuid[node_with_removes.uuid]
+        assert retrieved_node_with_removes.conflict is None
+        # verify added conflict
+        retrieved_node_with_adds = nodes_by_uuid[node_with_adds.uuid]
+        assert retrieved_node_with_adds.conflict == node_with_adds.conflict
+
+        # verify removed attribute
+        assert len(retrieved_node_with_removes.attributes) == 2
+        attrs_by_name = {a.name: a for a in retrieved_node_with_removes.attributes}
+        assert removed_attr.name not in attrs_by_name
+        # verify removed attribute property
+        retrieved_attr_with_removed_prop = attrs_by_name[attr_with_removed_prop.name]
+        props_by_type = {p.property_type: p for p in retrieved_attr_with_removed_prop.properties}
+        assert removed_prop_from_attr.property_type not in props_by_type
+        # verify removed attribute property conflict
+        attr_prop_with_removed_conflict = props_by_type[attr_prop_with_removed_conflict.property_type]
+        assert attr_prop_with_removed_conflict.conflict is None
+        # verify added attr
+        assert len(retrieved_node_with_adds.attributes) == 4
+        attrs_by_name = {a.name: a for a in retrieved_node_with_adds.attributes}
+        assert added_attr.name in attrs_by_name
+        assert added_attr == attrs_by_name[added_attr.name]
+        # verify added property to attribute
+        retrieved_attr_with_added_prop = attrs_by_name[attr_with_added_prop.name]
+        props_by_type = {p.property_type: p for p in retrieved_attr_with_added_prop.properties}
+        retrieved_added_prop_to_attr = props_by_type[added_prop_to_attr.property_type]
+        assert retrieved_added_prop_to_attr == added_prop_to_attr
+        # verify added conflict to attribute property
+        retrieved_attr_prop_with_added_conflict = props_by_type[attr_prop_with_added_conflict.property_type]
+        assert retrieved_attr_prop_with_added_conflict.conflict == attr_prop_with_added_conflict.conflict
+        # verify updated attr
+        retrieved_node_with_updates = nodes_by_uuid[node_with_updates.uuid]
+        assert len(retrieved_node_with_updates.attributes) == 3
+        attrs_by_name = {a.name: a for a in retrieved_node_with_updates.attributes}
+        assert updated_attr.name in attrs_by_name
+        assert updated_attr == attrs_by_name[updated_attr.name]
+        # verify updated attr property
+        retrieved_attr_with_property_update = attrs_by_name[attr_with_property_updates.name]
+        props_by_type = {p.property_type: p for p in retrieved_attr_with_property_update.properties}
+        assert updated_attr_prop == props_by_type[updated_attr_prop.property_type]
+
+        # verify relationship removed
+        rels_by_name = {r.name: r for r in retrieved_node_with_removes.relationships}
+        assert removed_relationship.name not in rels_by_name
+        # verify relationship element removed
+        retrieved_rel_with_removes = rels_by_name[relationship_with_removes.name]
+        elements_by_peer_id = {e.peer_id: e for e in retrieved_rel_with_removes.relationships}
+        assert removed_element.peer_id not in elements_by_peer_id
+        # verify relationship element conflict removed
+        retrieved_element_with_removes = elements_by_peer_id[element_with_removes.peer_id]
+        assert retrieved_element_with_removes.conflict is None
+        # verify relationship element property removed
+        props_by_type = {p.property_type: p for p in retrieved_element_with_removes.properties}
+        assert removed_element_property.property_type not in props_by_type
+        # verify relationship element property conflict removed
+        retrieved_element_property_with_removes = props_by_type[element_property_with_removes.property_type]
+        assert retrieved_element_property_with_removes.conflict is None
+        # verify relationship added
+        rels_by_name = {r.name: r for r in retrieved_node_with_adds.relationships}
+        assert added_relationship == rels_by_name[added_relationship.name]
+        # verify relationship element added
+        retrieved_rel_with_adds = rels_by_name[relationship_with_adds.name]
+        elements_by_peer_id = {e.peer_id: e for e in retrieved_rel_with_adds.relationships}
+        assert added_element == elements_by_peer_id[added_element.peer_id]
+        # verify relationship element conflict added
+        retrieved_element_with_adds = elements_by_peer_id[element_with_adds.peer_id]
+        assert retrieved_element_with_adds.conflict == added_element_conflict
+        # verify relationship element property added
+        props_by_type = {p.property_type: p for p in retrieved_element_with_adds.properties}
+        assert added_element_property == props_by_type[added_element_property.property_type]
+        # verify relationship element property conflict added
+        retrieved_element_property_with_adds = props_by_type[element_property_with_adds.property_type]
+        assert retrieved_element_property_with_adds.conflict == element_property_with_adds.conflict
+        # verify relationship updated
+        rels_by_name = {r.name: r for r in retrieved_node_with_updates.relationships}
+        retrieved_updated_relationship = rels_by_name[updated_relationship.name]
+        assert retrieved_updated_relationship == updated_relationship
+        # verify relationship element updated
+        elements_by_peer_id = {e.peer_id: e for e in retrieved_updated_relationship.relationships}
+        retrieved_updated_element = elements_by_peer_id[updated_relationship_element.peer_id]
+        assert retrieved_updated_element == updated_relationship_element
+        # verify relationship element conflict updated
+        assert retrieved_updated_element.conflict == updated_relationship_element.conflict
+        # verify relationship element property updated
+        props_by_type = {p.property_type: p for p in retrieved_updated_element.properties}
+        retrieved_updated_element_property = props_by_type[updated_element_property.property_type]
+        assert retrieved_updated_element_property == updated_element_property
+        # verify relationship element property conflict updated
+        assert retrieved_updated_element_property.conflict == updated_element_property.conflict
+
+        assert retrieved_diff_root == enriched_diff
+        await verify_no_orphaned_nodes(db=db)
+
+
+async def verify_no_orphaned_nodes(db: InfrahubDatabase) -> None:
+    """Verify that no diff elements have been orphaned"""
+    query = """
+CALL {
+    MATCH (d:DiffNode)
+    WHERE not exists((:DiffRoot)-[]->(d))
+    RETURN d
+    UNION
+    MATCH (d:DiffAttribute)
+    WHERE not exists((:DiffNode)-[]->(d))
+    RETURN d
+    UNION
+    MATCH (d:DiffRelationship)
+    WHERE not exists((:DiffNode)-[]->(d))
+    RETURN d
+    UNION
+    MATCH (d:DiffRelationshipElement)
+    WHERE not exists((:DiffRelationship)-[]->(d))
+    RETURN d
+    UNION
+    MATCH (d:DiffProperty)
+    WHERE not exists(()-[]->(d))
+    RETURN d
+    UNION
+    MATCH (d:DiffConflict)
+    WHERE not exists(()-[]->(d))
+    RETURN d
+}
+RETURN labels(d)[0] AS node_label, %(id_func)s(d) AS database_id
+    """ % {"id_func": db.get_id_function_name()}
+    records = await db.execute_query(query=query)
+    orphaned_nodes = []
+    for record in records:
+        node_label = record.get("node_label")
+        database_id = record.get("database_id")
+        orphaned_nodes.append(f"{node_label}({database_id})")
+    if orphaned_nodes:
+        raise ValueError(f"The following nodes are orphaned: {orphaned_nodes}")
