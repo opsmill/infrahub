@@ -61,7 +61,7 @@ async def build_subquery_filter(
     where_str = " AND ".join(field_where)
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
     froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
-    to_return = f"{node_alias} AS {prefix}"
+    to_return = f"{prefix}"
     with_extra = ""
     final_with_extra = ""
     is_isnull = filter_name == "isnull"
@@ -82,7 +82,6 @@ async def build_subquery_filter(
         elif field is not None and field.is_attribute:
             is_active_filter = "(latest_node_details[2]).value = 'NULL'"
     query = f"""
-    WITH {node_alias}
     {match} path = {filter_str}
     WHERE {where_str}
     WITH
@@ -94,7 +93,7 @@ async def build_subquery_filter(
     ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
     WITH head(collect([is_active, {node_alias}{with_extra}])) AS latest_node_details
     WHERE {is_active_filter}
-    WITH latest_node_details[1] AS {node_alias}{final_with_extra}
+    WITH latest_node_details[1] AS {prefix}{final_with_extra}
     RETURN {to_return}
     """
     return query, params, prefix
@@ -174,7 +173,6 @@ async def build_subquery_order(
         to_return_str_parts.append(f"CASE WHEN is_active = TRUE THEN {expression} ELSE NULL END AS {alias}")
     to_return_str = ", ".join(to_return_str_parts)
     query = f"""
-    WITH {node_alias}
     OPTIONAL MATCH path = {filter_str}
     WHERE {where_str}
     WITH {with_str_to_alias}

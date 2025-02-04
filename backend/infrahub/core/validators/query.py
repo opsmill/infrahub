@@ -20,8 +20,7 @@ class NodeNotPresentValidatorQuery(SchemaValidatorQuery):
 
         query = """
         MATCH (n:%(node_kind)s)
-        CALL {
-            WITH n
+        CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)
             WHERE all(
                 r in relationships(path)

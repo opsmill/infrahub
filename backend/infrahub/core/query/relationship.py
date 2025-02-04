@@ -450,8 +450,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         CREATE (s)%(r1)s(rl)
         CREATE (rl)%(r2)s(d)
         WITH rl
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH (rl)-[edge:IS_VISIBLE]->(visible)
             WHERE %(rel_filter)s AND edge.status = "active"
             WITH rl, edge, visible
@@ -462,8 +461,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
             WHERE edge.branch = $branch
             SET edge.to = $at
         }
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH (rl)-[edge:IS_PROTECTED]->(protected)
             WHERE %(rel_filter)s AND edge.status = "active"
             WITH rl, edge, protected
@@ -474,8 +472,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
             WHERE edge.branch = $branch
             SET edge.to = $at
         }
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH (rl)-[edge:HAS_OWNER]->(owner_node)
             WHERE %(rel_filter)s AND edge.status = "active"
             WITH rl, edge, owner_node
@@ -486,8 +483,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
             WHERE edge.branch = $branch
             SET edge.to = $at
         }
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH (rl)-[edge:HAS_SOURCE]->(source_node)
             WHERE %(rel_filter)s AND edge.status = "active"
             WITH rl, edge, source_node
@@ -581,8 +577,7 @@ class RelationshipGetPeerQuery(Query):
         query = """
         MATCH (source_node:Node)%(arrow_left_start)s[:IS_RELATED]%(arrow_left_end)s(rl:Relationship { name: $rel_identifier })
         WHERE source_node.uuid IN $source_ids
-        CALL {
-            WITH rl, source_node
+        CALL (rl, source_node) {
             MATCH path = (source_node)%(path)s(peer:Node)
             WHERE
                 $source_kind IN LABELS(source_node) AND
@@ -651,7 +646,7 @@ class RelationshipGetPeerQuery(Query):
             with_str = ", ".join(
                 [f"{subquery_result_name} as {label}" if label == "peer" else label for label in self.return_labels]
             )
-            self.add_subquery(subquery=subquery, with_clause=with_str)
+            self.add_subquery(subquery=subquery, node_alias="peer", with_clause=with_str)
 
         # ----------------------------------------------------------------------------
         # QUERY Properties
@@ -708,7 +703,7 @@ class RelationshipGetPeerQuery(Query):
                 self.order_by.append(subquery_result_name)
                 self.params.update(subquery_params)
 
-                self.add_subquery(subquery=subquery)
+                self.add_subquery(subquery=subquery, node_alias="peer")
 
                 order_cnt += 1
 
@@ -841,8 +836,7 @@ class RelationshipGetByIdentifierQuery(Query):
         query = """
         MATCH (rl:Relationship)
         WHERE rl.name IN $identifiers
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH (src:Node)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(dst:Node)
             WHERE (size($full_identifiers) = 0 OR [src.kind, rl.name, dst.kind] in $full_identifiers)
             AND NOT src.namespace IN $excluded_namespaces
@@ -905,8 +899,7 @@ class RelationshipCountPerNodeQuery(Query):
         query = """
         MATCH (peer_node:Node)%(path)s(rl:Relationship { name: $rel_identifier })
         WHERE peer_node.uuid IN $peer_ids AND %(branch_filter)s
-        CALL {
-            WITH rl
+        CALL (rl) {
             MATCH path = (peer_node:Node)%(path)s(rl)
             WHERE peer_node.uuid IN $peer_ids AND %(branch_filter)s
             RETURN peer_node as peer, r as r1
