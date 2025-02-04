@@ -1182,15 +1182,21 @@ class RelationshipManager:
 
         return relationship_mapper.changelog
 
-    async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
+    async def delete(
+        self, db: InfrahubDatabase, at: Optional[Timestamp] = None
+    ) -> RelationshipCardinalityManyChangelog | RelationshipCardinalityOneChangelog:
         """Delete all the relationships."""
 
         delete_at = Timestamp(at)
+        relationship_mapper = ChangelogRelationshipMapper(schema=self.schema)
 
         await self._fetch_relationships(at=delete_at, db=db, force_refresh=True)
 
         for rel in await self.get_relationships(db=db):
+            relationship_mapper.delete_relationship(relationship=rel)
             await rel.delete(at=delete_at, db=db)
+
+        return relationship_mapper.changelog
 
     async def to_graphql(
         self, db: InfrahubDatabase, fields: Optional[dict] = None, related_node_ids: Optional[set] = None

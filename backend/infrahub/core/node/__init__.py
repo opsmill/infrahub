@@ -607,16 +607,21 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         delete_at = Timestamp(at)
 
-        changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
+        node_changelog = NodeChangelog(
+            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.render_display_label(db=db)
+        )
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
-            await attr.delete(at=delete_at, db=db)
+            deleted_attribute = await attr.delete(at=delete_at, db=db)
+            if deleted_attribute:
+                node_changelog.add_attribute(attribute=deleted_attribute)
 
         # Go over the list of relationships and update them one by one
         for name in self._relationships:
             rel: RelationshipManager = getattr(self, name)
-            await rel.delete(at=delete_at, db=db)
+            updated_relationship = await rel.delete(at=delete_at, db=db)
+            node_changelog.add_relationship(relationship=updated_relationship)
 
         # Need to check if there are some unidirectional relationship as well
         # For example, if we delete a tag, we must check the permissions and update all the relationships pointing at it
@@ -639,7 +644,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at)
         await query.execute(db=db)
-        self._node_changelog = changelog
+        self._node_changelog = node_changelog
 
     async def to_graphql(
         self,

@@ -228,3 +228,50 @@ async def test_node_changelog_update_with_cardinality_many_relationship(
         )
         in group1.node_changelog.relationships["members"].peers
     )
+
+
+async def test_node_changelog_delete_with_cardinality_one_relationship(
+    db: InfrahubDatabase, default_branch, animal_person_schema
+):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name={"value": "Rocky", "owner": person1.id}, breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+
+    dog1_update = await NodeManager.get_one(id=dog1.id, db=db)
+    await dog1_update.delete(db=db)
+    assert dog1_update.node_changelog.attributes["breed"].value_update_status == DiffAction.REMOVED
+    assert list(dog1_update.node_changelog.relationships.keys()) == ["owner"]
+    assert dog1_update.node_changelog.relationships["owner"].peer_status == DiffAction.REMOVED
+
+
+async def test_node_changelog_delete_with_cardinality_many_relationship(
+    db: InfrahubDatabase, default_branch, animal_person_schema
+):
+    person_schema = animal_person_schema.get(name="TestPerson")
+    dog_schema = animal_person_schema.get(name="TestDog")
+
+    person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog1.new(db=db, name={"value": "Rocky", "owner": person1.id}, breed="Labrador", owner=person1)
+    await dog1.save(db=db)
+
+    dog2 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
+    await dog2.new(db=db, name={"value": "Lassie", "owner": person1.id}, breed="Collie", owner=person1)
+    await dog2.save(db=db)
+
+    person1_update = await NodeManager.get_one(id=person1.id, db=db)
+    await person1_update.delete(db=db)
+
+    animals = person1_update.node_changelog.relationships["animals"].peers
+    assert RelationshipPeerChangelog(peer_id=dog1.id, peer_kind="TestAnimal", peer_status=DiffAction.REMOVED) in animals
+    assert RelationshipPeerChangelog(peer_id=dog2.id, peer_kind="TestAnimal", peer_status=DiffAction.REMOVED) in animals

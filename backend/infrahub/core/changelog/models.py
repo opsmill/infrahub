@@ -165,6 +165,15 @@ class RelationshipCardinalityManyChangelog(BaseModel):
             )
         )
 
+    def remove_peer(self, peer_id: str, peer_kind: str) -> None:
+        self.peers.append(
+            RelationshipPeerChangelog(
+                peer_id=peer_id,
+                peer_kind=peer_kind,
+                peer_status=DiffAction.REMOVED,
+            )
+        )
+
     @property
     def is_empty(self) -> bool:
         return not self.peers
@@ -259,6 +268,10 @@ class ChangelogRelationshipMapper:
         if self.schema.cardinality == RelationshipCardinality.ONE:
             self.cardinality_one_relationship.peer_id_previous = str(peer_data.peer_id)
             self.cardinality_one_relationship.peer_kind_previous = peer_data.peer_kind
+        elif self.schema.cardinality == RelationshipCardinality.MANY:
+            self.cardinality_many_relationship.remove_peer(
+                peer_id=str(peer_data.peer_id), peer_kind=peer_data.peer_kind
+            )
 
     def _set_cardinality_one_peer(self, relationship: Relationship) -> None:
         self.cardinality_one_relationship.peer_id = relationship.peer_id
@@ -267,6 +280,8 @@ class ChangelogRelationshipMapper:
     def add_peer_from_relationship(self, relationship: Relationship) -> None:
         if self.schema.cardinality == RelationshipCardinality.ONE:
             self._set_cardinality_one_peer(relationship=relationship)
+        elif self.schema.cardinality == RelationshipCardinality.MANY:
+            self.cardinality_many_relationship.add_new_peer(relationship=relationship)
 
     def add_updated_relationship(
         self, relationship: Relationship, old_data: RelationshipPeerData, properties_to_update: list[str]
@@ -291,6 +306,15 @@ class ChangelogRelationshipMapper:
                     value_current=getattr(relationship, property_name),
                     value_previous=previous_value,
                 )
+
+    def delete_relationship(self, relationship: Relationship) -> None:
+        if self.schema.cardinality == RelationshipCardinality.ONE:
+            self.cardinality_one_relationship.peer_id_previous = relationship.get_peer_id()
+            self.cardinality_one_relationship.peer_kind_previous = relationship.get_peer_kind()
+        elif self.schema.cardinality == RelationshipCardinality.MANY:
+            self.cardinality_many_relationship.remove_peer(
+                peer_id=relationship.get_peer_id(), peer_kind=relationship.get_peer_kind()
+            )
 
     @property
     def changelog(self) -> RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog:

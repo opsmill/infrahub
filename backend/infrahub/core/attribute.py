@@ -327,9 +327,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return await self._update(at=save_at, db=db)
 
-    async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
+    async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> AttributeChangelog | None:
         if not self.db_id:
-            return False
+            return None
 
         delete_at = Timestamp(at)
 
@@ -338,7 +338,14 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         results = query.get_results()
 
         if not results:
-            return False
+            return None
+
+        changelog = AttributeChangelog(
+            name=self.name,
+            value=None,
+            value_previous=None,
+            kind=self.schema.kind,
+        )
 
         properties_to_delete = []
         branch = self.get_branch_based_on_support_type()
@@ -346,6 +353,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         # Check all the relationship and update the one that are in the same branch
         rel_ids_to_update = set()
         for result in results:
+            if result.get_rel("r2").type == "HAS_VALUE":
+                changelog.value_previous = result.get_node("ap").get("value")
             properties_to_delete.append((result.get_rel("r2").type, result.get_node("ap").element_id))
 
             await add_relationship(
@@ -377,7 +386,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             db=db,
         )
 
-        return True
+        return changelog
 
     async def _update(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> AttributeChangelog | None:
         """Update the attribute in the database.
