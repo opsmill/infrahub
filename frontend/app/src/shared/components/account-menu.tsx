@@ -172,7 +172,7 @@ const AuthenticatedAccountMenu = ({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-auto w-full justify-start gap-2 hover:bg-indigo-50 rounded-lg p-2 overflow-hidden text-left"
+          className="h-auto w-full justify-start gap-2 hover:bg-indigo-50 rounded-lg p-2 overflow-hidden text-left shrink-0"
           data-testid="authenticated-menu-trigger"
         >
           <Avatar name={profile?.name?.value} className="h-10 w-10 shrink-0" />
