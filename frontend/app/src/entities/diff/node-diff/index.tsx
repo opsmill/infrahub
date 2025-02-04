@@ -6,21 +6,19 @@ import { DIFF_UPDATE } from "@/entities/diff/api/diff-update";
 import DiffTree from "@/entities/diff/diff-tree";
 import { DIFF_STATUS, DiffNode as DiffNodeType } from "@/entities/diff/node-diff/types";
 import { DiffBadge } from "@/entities/diff/node-diff/utils";
+import { DiffComputing } from "@/entities/diff/ui/diff-computing";
+import { DiffEmpty } from "@/entities/diff/ui/diff-empty";
 import { getProposedChangesDiffTree } from "@/entities/proposed-changes/api/getProposedChangesDiffTree";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { schemaState } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Badge } from "@/shared/components/ui/badge";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { datetimeAtom } from "@/shared/stores/time.atom";
-import { classNames } from "@/shared/utils/common";
-import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
 import { NetworkStatus, useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
@@ -131,64 +129,15 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
   // If DiffTree is null, it means that diff is still being computed.
   if (!diffTreeData) {
     return (
-      <div className="flex flex-col items-center mt-10 gap-5">
-        <LoadingScreen hideText />
-
-        <h1 className="font-semibold">
-          We are computing the diff between{" "}
-          <Badge variant="blue">
-            <Icon icon={"mdi:layers-triple"} className="mr-1" />{" "}
-            {proposedChangesDetails.source_branch?.value}
-          </Badge>{" "}
-          and{" "}
-          <Badge variant="green">
-            <Icon icon={"mdi:layers-triple"} className="mr-1" />{" "}
-            {proposedChangesDetails.destination_branch?.value}
-          </Badge>
-        </h1>
-
-        <div className="text-center">
-          <p>This process may take a few seconds to a few minutes.</p>
-          <p>Once completed, you&apos;ll be able to view the detailed changes.</p>
-        </div>
-
-        <RefreshButton
-          onClick={handleRefresh}
-          disabled={!isAuthenticated || isLoadingUpdate}
-          isLoading={isLoadingUpdate}
-        />
-      </div>
+      <DiffComputing
+        sourceBranch={proposedChangesDetails.source_branch?.value}
+        destinationBranch={proposedChangesDetails.destination_branch?.value}
+      />
     );
   }
 
   if (!qspStatus && diffTreeData.nodes.length === 0) {
-    return (
-      <div className="flex flex-col items-center mt-10 gap-5">
-        <div className="p-3 rounded-full bg-white inline-flex">
-          <Icon icon="mdi:circle-off-outline" className="text-2xl text-custom-blue-800" />
-        </div>
-
-        <h1 className="font-semibold text-lg">No changes detected</h1>
-        <div className="text-center">
-          <p>
-            The last comparison was made{" "}
-            <Tooltip enabled content={formatFullDate(diffTreeData.to_time)}>
-              <span className="font-semibold">
-                {formatRelativeTimeFromNow(diffTreeData.to_time)}
-              </span>
-            </Tooltip>
-            .
-          </p>
-          <p>If you have made any changes, please refresh the diff:</p>
-        </div>
-
-        <RefreshButton
-          onClick={handleRefresh}
-          disabled={!isAuthenticated || isLoadingUpdate}
-          isLoading={isLoadingUpdate}
-        />
-      </div>
-    );
+    return <DiffEmpty branchName={branchName} lastRefreshedAt={diffTreeData.to_time} />;
   }
 
   // Manually filter conflicts items since it's not available yet in the backend filters
@@ -269,14 +218,5 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
         </div>
       </div>
     </div>
-  );
-};
-
-const RefreshButton = ({ isLoading, ...props }: ButtonProps) => {
-  return (
-    <Button variant="primary-outline" {...props}>
-      <Icon icon="mdi:reload" className={classNames("mr-1", isLoading && "animate-spin")} />
-      {isLoading ? "Refreshing..." : "Refresh"}
-    </Button>
   );
 };
