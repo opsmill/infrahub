@@ -492,6 +492,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         related_node_ids: Optional[set] = None,
         filter_sensitive: bool = False,
         permissions: Optional[dict] = None,
+        include_properties: bool = True,
     ) -> dict:
         """Generate GraphQL Payload for this attribute."""
 
@@ -501,7 +502,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             field_names = fields.keys()
         else:
             # REMOVED updated_at for now, need to investigate further how it's being used today
-            field_names = ["__typename", "value"] + self._node_properties + self._flag_properties
+            field_names = ["__typename", "value"]
+            if include_properties:
+                field_names += self._node_properties + self._flag_properties
 
         for field_name in field_names:
             if field_name == "updated_at":

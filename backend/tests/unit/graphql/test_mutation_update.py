@@ -177,7 +177,7 @@ async def test_update_check_unique(db: InfrahubDatabase, person_john_main: Node,
 
     assert result.errors
     assert len(result.errors) == 1
-    assert "An object already exist" in result.errors[0].message
+    assert "Violates uniqueness constraint" in result.errors[0].message
 
 
 async def test_update_object_with_flag_property(db: InfrahubDatabase, person_john_main: Node, branch: Branch):

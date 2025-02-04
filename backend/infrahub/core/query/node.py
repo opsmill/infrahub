@@ -477,11 +477,17 @@ class NodeListGetAttributeQuery(Query):
         self.return_labels = ["n", "a", "av", "r1", "r2"]
 
         # Add Is_Protected and Is_visible
+        rel_isv_branch_filter, _ = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic, variable_name="rel_isv"
+        )
+        rel_isp_branch_filter, _ = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic, variable_name="rel_isp"
+        )
         query = """
         MATCH (a)-[rel_isv:IS_VISIBLE]-(isv:Boolean)
         MATCH (a)-[rel_isp:IS_PROTECTED]-(isp:Boolean)
-        WHERE all(r IN [rel_isv, rel_isp] WHERE ( %(branch_filter)s ))
-        """ % {"branch_filter": branch_filter}
+        WHERE (%(rel_isv_branch_filter)s) AND (%(rel_isp_branch_filter)s)
+        """ % {"rel_isv_branch_filter": rel_isv_branch_filter, "rel_isp_branch_filter": rel_isp_branch_filter}
         self.add_to_query(query)
 
         self.return_labels.extend(["isv", "isp", "rel_isv", "rel_isp"])
