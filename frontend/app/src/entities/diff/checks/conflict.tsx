@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 import { BadgeConflict } from "../diff-badge";
 import { DiffRow } from "../node-diff/utils";
 
-export const Conflict = ({ id, changes, kind, name, node_id }: any) => {
+export const Conflict = ({ id, changes, kind, name }: any) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
 
   const url = `/proposed-changes/${proposedChangesDetails.id}?${QSP.PROPOSED_CHANGES_TAB}=data#${id}`;
@@ -28,7 +28,7 @@ export const Conflict = ({ id, changes, kind, name, node_id }: any) => {
       <div className="flex items-center mb-2">
         <Badge className="mr-2">{kind}</Badge>
 
-        <Id id={node_id} kind={kind} />
+        <Id id={id} kind={kind} />
       </div>
 
       <Link to={url}>
