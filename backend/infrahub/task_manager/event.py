@@ -116,19 +116,15 @@ class PrefectEvent:
                 labels=ResourceSpecification({"infrahub.node.id": related_node__ids})
             )
 
+        related_filter: dict[str, str | list[str]] = {}
         if branch:
-            filters.related = EventRelatedFilter(
-                labels=ResourceSpecification(
-                    {"prefect.resource.role": "infrahub.branch", "infrahub.resource.label": branch}
-                )
-            )
+            related_filter["infrahub.branch.label"] = branch
 
         if account:
-            filters.related = EventRelatedFilter(
-                labels=ResourceSpecification(
-                    {"prefect.resource.role": "infrahub.account", "infrahub.resource.id": account}
-                )
-            )
+            related_filter["infrahub.account.id"] = account
+
+        if related_filter:
+            filters.related = EventRelatedFilter(labels=ResourceSpecification(related_filter))
 
         return filters
 

@@ -18,8 +18,8 @@ from tests.helpers.events import send_events
 from tests.helpers.graphql import graphql
 
 QUERY_EVENT = """
-query($branch: String) {
-  InfrahubEvent(branch: $branch) {
+query($branch: String, $account: String) {
+  InfrahubEvent(branch: $branch, account: $account) {
     count
     edges {
       node {
@@ -66,6 +66,9 @@ query MutatedNodes($id: [String]) {
 }
 """
 
+ACCOUNT1_ID = "33b15615-649e-4e9e-89b0-85e187251f1f"
+ACCOUNT2_ID = "518b434f-40bf-4b65-b700-04696535ca8e"
+
 
 @pytest.fixture
 async def branch1_id() -> uuid.UUID:
@@ -94,42 +97,100 @@ async def events_data(
     tag1_update.description.value = "This is an important tag"
     await tag1_update.save(db=db)
 
+    tag2 = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    await tag2.new(db=db, name="green", description="The green tag")
+    await tag2.save(db=db)
+
+    tag3 = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    await tag3.new(db=db, name="blue", description="The blue tag")
+    await tag3.save(db=db)
+
+    tag4 = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    await tag4.new(db=db, name="yellow", description="The yellow tag")
+    await tag4.save(db=db)
+
+    tag5 = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    await tag5.new(db=db, name="black", description="The black tag")
+    await tag5.save(db=db)
+
+    tag6 = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    await tag6.new(db=db, name="brown", description="The brown tag")
+    await tag6.save(db=db)
+
+    branch1 = Branch(uuid=branch1_id, name="branch1")
+    branch2 = Branch(uuid=branch2_id, name="branch2")
+
     items: dict[str, InfrahubEvent] = {
         "branch1_created": BranchCreatedEvent(
             branch_name="branch1",
             branch_id=str(branch1_id),
             sync_with_git=True,
-            meta=EventMeta(branch=Branch(uuid=branch1_id, name="branch1")),
+            meta=EventMeta(branch=branch1),
         ),
         "branch1_rebased": BranchRebasedEvent(
             branch_name="branch1",
             branch_id=str(branch1_id),
-            meta=EventMeta(branch=Branch(uuid=branch1_id, name="branch1")),
+            meta=EventMeta(branch=branch1),
         ),
         "branch2_created": BranchCreatedEvent(
             branch_name="branch2",
             branch_id=str(branch2_id),
             sync_with_git=False,
-            meta=EventMeta(branch=Branch(uuid=branch2_id, name="branch2")),
+            meta=EventMeta(branch=branch2),
         ),
         "branch2_rebased": BranchRebasedEvent(
             branch_name="branch2",
             branch_id=str(branch2_id),
-            meta=EventMeta(branch=Branch(uuid=branch2_id, name="branch2")),
+            meta=EventMeta(branch=branch2),
         ),
         "branch1_mutated1": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag1.get_id(),
             action=MutationAction.CREATED,
             data=tag1.node_changelog,
-            meta=EventMeta(branch=Branch(uuid=branch1_id, name="branch1")),
+            meta=EventMeta(branch=branch1, account_id=ACCOUNT1_ID),
         ),
         "branch1_mutated2": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag1_update.get_id(),
             action=MutationAction.UPDATED,
             data=tag1_update.node_changelog,
-            meta=EventMeta(branch=Branch(uuid=branch1_id, name="branch1")),
+            meta=EventMeta(branch=branch1, account_id=ACCOUNT1_ID),
+        ),
+        "branch1_mutated3": NodeMutatedEvent(
+            kind="BuiltinTag",
+            node_id=tag2.get_id(),
+            action=MutationAction.CREATED,
+            data=tag2.node_changelog,
+            meta=EventMeta(branch=branch1, account_id=ACCOUNT1_ID),
+        ),
+        "branch1_mutated4": NodeMutatedEvent(
+            kind="BuiltinTag",
+            node_id=tag3.get_id(),
+            action=MutationAction.CREATED,
+            data=tag3.node_changelog,
+            meta=EventMeta(branch=branch1, account_id=ACCOUNT2_ID),
+        ),
+        "branch2_mutated1": NodeMutatedEvent(
+            kind="BuiltinTag",
+            node_id=tag4.get_id(),
+            action=MutationAction.CREATED,
+            data=tag4.node_changelog,
+            meta=EventMeta(branch=branch2, account_id=ACCOUNT1_ID),
+        ),
+        "branch2_mutated2": NodeMutatedEvent(
+            kind="BuiltinTag",
+            node_id=tag5.get_id(),
+            action=MutationAction.CREATED,
+            data=tag5.node_changelog,
+            meta=EventMeta(branch=branch2, account_id=ACCOUNT2_ID),
+        ),
+        "branch2_mutated3": NodeMutatedEvent(
+            kind="BuiltinTag",
+            node_id=tag6.get_id(),
+            action=MutationAction.CREATED,
+            data=tag6.node_changelog,
+            meta=EventMeta(branch=branch2, account_id=ACCOUNT2_ID),
         ),
     }
 
@@ -185,7 +246,7 @@ async def test_event_query_prefect(
     assert result.data
 
     clean_result = filter_outofscope_events(result.data, event_ids_inscope)
-    assert clean_result["InfrahubEvent"]["count"] == 6
+    assert clean_result["InfrahubEvent"]["count"] == 10
 
     result_branch1 = await run_query(
         db=db,
@@ -197,7 +258,7 @@ async def test_event_query_prefect(
     assert result_branch1.data
 
     clean_result = filter_outofscope_events(result_branch1.data, event_ids_inscope)
-    assert clean_result["InfrahubEvent"]["count"] == 4
+    assert clean_result["InfrahubEvent"]["count"] == 6
 
     result_count_branch1 = await run_query(
         db=db,
@@ -245,3 +306,43 @@ async def test_event_query_prefect(
             "value_previous": "The red tag",
         }
     ]
+
+    branch1_account1 = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"branch": "branch1", "account": ACCOUNT1_ID},
+    )
+    assert branch1_account1.errors is None
+    assert branch1_account1.data
+    assert branch1_account1.data["InfrahubEvent"]["count"] == 3
+
+    branch1_account2 = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"branch": "branch1", "account": ACCOUNT2_ID},
+    )
+    assert branch1_account2.errors is None
+    assert branch1_account2.data
+    assert branch1_account2.data["InfrahubEvent"]["count"] == 1
+
+    branch2_account1 = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"branch": "branch2", "account": ACCOUNT1_ID},
+    )
+    assert branch2_account1.errors is None
+    assert branch2_account1.data
+    assert branch2_account1.data["InfrahubEvent"]["count"] == 1
+
+    branch2_account2 = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"branch": "branch2", "account": ACCOUNT2_ID},
+    )
+    assert branch2_account2.errors is None
+    assert branch2_account2.data
+    assert branch2_account2.data["InfrahubEvent"]["count"] == 2
