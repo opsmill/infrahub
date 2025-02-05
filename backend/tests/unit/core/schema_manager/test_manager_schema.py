@@ -13,6 +13,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     HashableModelState,
     InfrahubKind,
+    RelationshipCardinality,
     RelationshipDeleteBehavior,
     RelationshipKind,
     SchemaPathType,
@@ -2832,42 +2833,170 @@ async def test_hierarchical_validate_parent_children(
 
 
 async def test_manage_object_templates():
-    schema = {
-        "name": "Device",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "generate_template": True,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "manufacturer", "kind": "Text", "optional": False},
-            {"name": "height", "kind": "Number", "default_value": 1},
-            {"name": "weight", "kind": "Number"},
-            {
-                "name": "airflow",
-                "kind": "Text",
-                "enum": [
-                    "Front to rear",
-                    "Rear to front",
-                    "Left to right",
-                    "Right to left",
-                    "Side to rear",
-                    "Rear to side",
-                    "Bottom to top",
-                    "Top to bottom",
-                    "Passive",
-                    "Mixed",
-                ],
-            },
-            {"name": "part_number", "kind": "Text"},
-        ],
-    }
+    schema = [
+        {
+            "name": "SmallFormfactorPluggable",
+            "namespace": "Test",
+            "human_friendly_id": ["phys_type__value", "serial_number__value"],
+            "attributes": [
+                {
+                    "name": "phys_type",
+                    "kind": "Text",
+                    "enum": [
+                        "1000BASE-T (1GE)",
+                        "10GBASE-T (20GE)",
+                        "SFP (1GE)",
+                        "SFP+ (10GE)",
+                        "XFP (10GE)",
+                        "SFP28 (25GE)",
+                        "SFP56 (50GE)",
+                        "QSFP+ (40 GE)",
+                        "QSFP28 (100GE)",
+                    ],
+                    "optional": False,
+                },
+                {"name": "serial_number", "kind": "Text", "optional": False},
+                {"name": "part_number", "kind": "Text", "optional": True},
+            ],
+            "relationships": [
+                {
+                    "name": "interface",
+                    "kind": RelationshipKind.PARENT,
+                    "peer": "TestInterface",
+                    "optional": True,
+                    "cardinality": RelationshipCardinality.ONE,
+                    "identifier": "interface__sfp",
+                }
+            ],
+        },
+        {
+            "name": "Interface",
+            "namespace": "Test",
+            "uniqueness_constraints": [["device", "name__value"]],
+            "human_friendly_id": ["device__name__value", "name__value"],
+            "attributes": [
+                {"name": "name", "kind": "Text", "optional": False},
+                {
+                    "name": "phys_type",
+                    "kind": "Text",
+                    "enum": [
+                        "1000BASE-T (1GE)",
+                        "10GBASE-T (20GE)",
+                        "SFP (1GE)",
+                        "SFP+ (10GE)",
+                        "XFP (10GE)",
+                        "SFP28 (25GE)",
+                        "SFP56 (50GE)",
+                        "QSFP+ (40 GE)",
+                        "QSFP28 (100GE)",
+                        "Virtual",
+                    ],
+                    "optional": False,
+                },
+                {"name": "enabled", "kind": "Boolean", "optional": False, "default_value": True},
+            ],
+            "relationships": [
+                {
+                    "name": "device",
+                    "kind": RelationshipKind.PARENT,
+                    "peer": "TestDevice",
+                    "optional": False,
+                    "cardinality": RelationshipCardinality.ONE,
+                    "identifier": "device__interfaces",
+                },
+                {
+                    "name": "sfp",
+                    "kind": RelationshipKind.COMPONENT,
+                    "peer": "TestSmallFormfactorPluggable",
+                    "optional": True,
+                    "cardinality": RelationshipCardinality.ONE,
+                    "identifier": "interface__sfp",
+                },
+            ],
+        },
+        {
+            "name": "Device",
+            "namespace": "Test",
+            "default_filter": "name__value",
+            "branch": BranchSupportType.AWARE.value,
+            "generate_template": True,
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "manufacturer", "kind": "Text", "optional": False},
+                {"name": "height", "kind": "Number", "default_value": 1},
+                {"name": "weight", "kind": "Number"},
+                {
+                    "name": "airflow",
+                    "kind": "Text",
+                    "enum": [
+                        "Front to rear",
+                        "Rear to front",
+                        "Left to right",
+                        "Right to left",
+                        "Side to rear",
+                        "Rear to side",
+                        "Bottom to top",
+                        "Top to bottom",
+                        "Passive",
+                        "Mixed",
+                    ],
+                },
+                {"name": "part_number", "kind": "Text"},
+            ],
+            "relationships": [
+                {
+                    "name": "interfaces",
+                    "kind": RelationshipKind.COMPONENT,
+                    "peer": "TestInterface",
+                    "optional": True,
+                    "cardinality": RelationshipCardinality.MANY,
+                    "identifier": "device__interfaces",
+                }
+            ],
+        },
+        {
+            "name": "Device",
+            "namespace": "Test",
+            "default_filter": "name__value",
+            "branch": BranchSupportType.AWARE.value,
+            "generate_template": True,
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "manufacturer", "kind": "Text", "optional": False},
+                {"name": "height", "kind": "Number", "default_value": 1},
+                {"name": "weight", "kind": "Number"},
+                {
+                    "name": "airflow",
+                    "kind": "Text",
+                    "enum": [
+                        "Front to rear",
+                        "Rear to front",
+                        "Left to right",
+                        "Right to left",
+                        "Side to rear",
+                        "Rear to side",
+                        "Bottom to top",
+                        "Top to bottom",
+                        "Passive",
+                        "Mixed",
+                    ],
+                },
+                {"name": "part_number", "kind": "Text"},
+            ],
+        },
+    ]
 
     copy_core_models = copy.deepcopy(core_models)
-    copy_core_models["nodes"].append(schema)
+    copy_core_models["nodes"].extend(schema)
 
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**copy_core_models))
+
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name="TestDevice", duplicate=False), identified=set()
+    )
+    assert {n.kind for n in identified} == {"TestDevice", "TestInterface", "TestSmallFormfactorPluggable"}
+
     schema_branch.manage_object_template_schemas()
     schema_branch.manage_object_template_relationships()
 
@@ -2875,7 +3004,7 @@ async def test_manage_object_templates():
     test_object_template_device = schema_branch.get_node("TemplateTestDevice", duplicate=False)
     assert not test_object_template_device.generate_template
 
-    for attr in schema["attributes"]:
+    for attr in schema[2]["attributes"]:
         if attr.get("unique", False):
             with pytest.raises(ValueError, match=r"Unable to find the attribute"):
                 test_object_template_device.get_attribute(name=attr["name"])
@@ -2887,3 +3016,6 @@ async def test_manage_object_templates():
     test_device = schema_branch.get_node(name="TestDevice", duplicate=False)
     assert test_device.generate_template
     assert test_device.get_relationship(name="object_template").peer == test_object_template_device.kind
+
+    # Make sure interfaces relationship is converted tp interface templates
+    assert test_object_template_device.get_relationship("interfaces").peer == "TemplateTestInterface"

@@ -75,12 +75,14 @@ class SchemaBranch:
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
         self.profiles: dict[str, str] = {}
+        self.templates: dict[str, str] = {}
         self.computed_attributes = computed_attributes or ComputedAttributes()
 
         if data:
             self.nodes = data.get("nodes", {})
             self.generics = data.get("generics", {})
             self.profiles = data.get("profiles", {})
+            self.templates = data.get("templates", {})
 
     @classmethod
     def __get_validators__(cls) -> Iterator[Callable[..., Any]]:  # noqa: PLW3201
@@ -106,6 +108,10 @@ class SchemaBranch:
     def profile_names(self) -> list[str]:
         return list(self.profiles.keys())
 
+    @property
+    def template_names(self) -> list[str]:
+        return list(self.templates.keys())
+
     def get_all_kind_id_map(self, exclude_profiles: bool = False) -> dict[str, str]:
         kind_id_map = {}
         if exclude_profiles:
@@ -121,7 +127,7 @@ class SchemaBranch:
 
     @property
     def all_names(self) -> list[str]:
-        return self.node_names + self.generic_names + self.profile_names
+        return self.node_names + self.generic_names + self.profile_names + self.template_names
 
     def get_hash(self) -> str:
         """Calculate the hash for this objects based on the content of nodes and generics.
@@ -139,13 +145,14 @@ class SchemaBranch:
         return SchemaBranchHash(main=self.get_hash(), nodes=self.nodes, generics=self.generics)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"nodes": self.nodes, "generics": self.generics, "profiles": self.profiles}
+        return {"nodes": self.nodes, "generics": self.generics, "profiles": self.profiles, "templates": self.templates}
 
     def to_dict_schema_object(self, duplicate: bool = False) -> dict[str, dict[str, MainSchemaTypes]]:
         return {
             "nodes": {name: self.get(name, duplicate=duplicate) for name in self.nodes},
             "profiles": {name: self.get(name, duplicate=duplicate) for name in self.profiles},
             "generics": {name: self.get(name, duplicate=duplicate) for name in self.generics},
+            "templates": {name: self.get(name, duplicate=duplicate) for name in self.templates},
         }
 
     @classmethod
@@ -278,6 +285,8 @@ class SchemaBranch:
             self.generics[name] = schema_hash
         elif "Profile" in schema.__class__.__name__:
             self.profiles[name] = schema_hash
+        elif "Template" in schema.__class__.__name__:
+            self.templates[name] = schema_hash
 
         return schema_hash
 
@@ -296,6 +305,8 @@ class SchemaBranch:
             key = self.generics[name]
         elif name in self.profiles:
             key = self.profiles[name]
+        elif name in self.templates:
+            key = self.templates[name]
 
         if key and duplicate:
             return self._cache[key].duplicate()
@@ -334,6 +345,8 @@ class SchemaBranch:
             del self.generics[name]
         elif name in self.profiles:
             del self.profiles[name]
+        elif name in self.templates:
+            del self.templates[name]
         else:
             raise SchemaNotFoundError(
                 branch_name=self.name, identifier=name, message=f"Unable to find the schema {name!r} in the registry"
@@ -1791,6 +1804,29 @@ class SchemaBranch:
 
                 self.set(name=node_name, schema=node_schema)
 
+    def add_relationships_to_template(self, node: NodeSchema) -> None:
+        template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=False)
+
+        for relationship in node.relationships:
+            if relationship.peer in [
+                InfrahubKind.GENERICGROUP,
+                InfrahubKind.PROFILE,
+            ] or relationship.kind not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]:
+                continue
+
+            rel_template_peer = self._get_object_template_kind(node_kind=relationship.peer)
+            template_schema.relationships.append(
+                RelationshipSchema(
+                    name=relationship.name,
+                    peer=rel_template_peer,
+                    kind=RelationshipKind.ATTRIBUTE,
+                    optional=True,
+                    cardinality=relationship.cardinality,
+                    branch=relationship.branch,
+                    identifier="__".join(sorted([template_schema.kind.lower(), rel_template_peer.lower()])),
+                )
+            )
+
     def generate_object_template_from_node(self, node: NodeSchema) -> NodeSchema:
         core_template_schema = self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
         core_name_attr = core_template_schema.get_attribute(name="template_name")
@@ -1828,15 +1864,38 @@ class SchemaBranch:
                 continue
 
             attr = AttributeSchema(
-                optional=True,
-                **node_attr.model_dump(exclude=["id", "unique", "optional", "read_only", "inherited"]),
+                optional=True, **node_attr.model_dump(exclude=["id", "unique", "optional", "read_only", "inherited"])
             )
             template.attributes.append(attr)
 
         return template
 
+    def identify_required_object_templates(
+        self, node_schema: NodeSchema, identified: set[NodeSchema]
+    ) -> set[NodeSchema]:
+        """Identify all templates required to turn a given node into a template."""
+        if node_schema not in identified:
+            identified.add(node_schema)
+
+        for relationship in node_schema.relationships:
+            if relationship.peer in [
+                InfrahubKind.GENERICGROUP,
+                InfrahubKind.PROFILE,
+            ] or relationship.kind not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]:
+                continue
+
+            rel_schema = self.get(name=relationship.peer, duplicate=False)
+            if not isinstance(rel_schema, NodeSchema) or rel_schema in identified:
+                continue
+
+            identified |= self.identify_required_object_templates(node_schema=rel_schema, identified=identified)
+
+        return identified
+
     def manage_object_template_schemas(self) -> None:
-        template_schema_kinds = set()
+        need_templates: set[NodeSchema] = set()
+        template_schema_kinds: set[str] = set()
+
         for node_name in self.node_names + self.generic_names:
             node = self.get(name=node_name, duplicate=False)
 
@@ -1852,11 +1911,19 @@ class SchemaBranch:
                     ...
                 continue
 
+            need_templates |= self.identify_required_object_templates(node_schema=node, identified=need_templates)
+
+        # Generate templates with their attributes
+        for node in need_templates:
             template = self.generate_object_template_from_node(node=node)
             self.set(name=template.kind, schema=template)
             template_schema_kinds.add(template.kind)
 
-        for previous_template in list(self.profiles.keys()):
+        # Go back on templates and add relationships to them
+        for node in need_templates:
+            self.add_relationships_to_template(node=node)
+
+        for previous_template in list(self.templates.keys()):
             # Ensure that we remove previous object template schemas if a node has been renamed
             if previous_template not in template_schema_kinds:
                 self.delete(name=previous_template)
