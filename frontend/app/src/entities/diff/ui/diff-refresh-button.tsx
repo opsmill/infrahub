@@ -2,6 +2,7 @@ import {
   UPDATE_DIFF_KEY,
   useUpdateDiffMutation,
 } from "@/entities/diff/domain/update-diff.mutation";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
@@ -23,14 +24,17 @@ export function DiffRefreshButton({ branchName, ...props }: DiffRefreshButtonPro
   const isLoading = allUpdatingDiffs.includes(branchName);
 
   const handleRefreshDiff = async () => {
-    try {
-      await updateDiffMutation.mutateAsync(branchName);
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Diff updated!" />);
-    } catch (error: unknown) {
-      if (error instanceof Error) {
+    updateDiffMutation.mutate(branchName, {
+      onSuccess: async () => {
+        await graphqlClient.refetchQueries({
+          include: ["GET_PROPOSED_CHANGES_DIFF_TREE", "GET_PROPOSED_CHANGES_DIFF_SUMMARY"],
+        });
+        toast(<Alert type={ALERT_TYPES.SUCCESS} message="Diff updated!" />);
+      },
+      onError: (error) => {
         toast(<Alert type={ALERT_TYPES.ERROR} message={error.message} />);
-      }
-    }
+      },
+    });
   };
 
   return (
