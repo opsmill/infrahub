@@ -1,14 +1,14 @@
 import { QSP } from "@/config/qsp";
 import { BRANCH_CREATE } from "@/entities/branches/api/createBranch";
-import { branchesState } from "@/entities/branches/stores";
+import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { useMutation } from "@/shared/api/graphql/useQuery";
+import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import InputField from "@/shared/components/form/fields/input.field";
 import { isMinLength, isRequired } from "@/shared/components/form/utils/validation";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
-import { useAtom } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
 
 type BranchFormData = {
@@ -24,7 +24,6 @@ type BranchCreateFormProps = {
 };
 
 const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCreateFormProps) => {
-  const [branches, setBranches] = useAtom(branchesState);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const [createBranch] = useMutation(BRANCH_CREATE);
 
@@ -37,7 +36,9 @@ const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCrea
       const branchCreated: Branch | null = data?.BranchCreate?.object;
       if (!branchCreated) return;
 
-      setBranches([...branches, branchCreated]);
+      const { queryKey } = getBranchesQueryOptions();
+      queryClient.setQueryData(queryKey, (oldBranches) => [...(oldBranches ?? []), branchCreated]);
+      await queryClient.invalidateQueries({ queryKey });
       setBranchInQueryString(branchCreated.is_default ? undefined : branchCreated.name);
 
       if (onSuccess) onSuccess(branchCreated);
