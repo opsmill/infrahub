@@ -1,4 +1,6 @@
-import { DiffProperty, DiffStatus } from "@/entities/diff/node-diff/types";
+import { DIFF_STATUS, DiffProperty, DiffStatus } from "@/entities/diff/node-diff/types";
+import { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
+import { DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
 import Accordion from "@/shared/components/display/accordion";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 import { capitalizeFirstLetter } from "@/shared/utils/string";
@@ -127,4 +129,20 @@ export const formatPropertyName = (name: DiffProperty["property_type"]) => {
       return name;
     }
   }
+};
+
+// Handle QSP to filter from the status
+export const buildFilters = (filters: DiffFilter, qsp?: string | null): DiffTreeQueryFilters => {
+  const statusFilter = {
+    ...filters?.status,
+    includes: Array.from(
+      // CONFLICT should not be part of the status filters
+      new Set([...(filters?.status?.includes ?? []), qsp !== DIFF_STATUS.CONFLICT && qsp])
+    ).filter((value) => !!value),
+  };
+
+  return {
+    ...filters,
+    status: statusFilter,
+  } as DiffTreeQueryFilters;
 };
