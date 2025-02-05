@@ -1,31 +1,22 @@
-import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
+import { DEFAULT_BRANCH_NAME, PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { BRANCH_REBASE } from "@/entities/branches/api/rebaseBranch";
-import { DIFF_UPDATE } from "@/entities/diff/api/diff-update";
-import DiffTree from "@/entities/diff/diff-tree";
 import { DIFF_STATUS, DiffNode as DiffNodeType } from "@/entities/diff/node-diff/types";
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
+import { DiffComputing } from "@/entities/diff/ui/diff-computing";
+import { DiffEmpty } from "@/entities/diff/ui/diff-empty";
+import { DiffNoFound } from "@/entities/diff/ui/diff-no-found";
+import { DiffRebaseButton } from "@/entities/diff/ui/diff-rebase-button";
+import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
+import DiffTree from "@/entities/diff/ui/diff-tree";
 import { getProposedChangesDiffTree } from "@/entities/proposed-changes/api/getProposedChangesDiffTree";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { schemaState } from "@/entities/schema/stores/schema.atom";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
-import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Badge } from "@/shared/components/ui/badge";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { datetimeAtom } from "@/shared/stores/time.atom";
-import { classNames } from "@/shared/utils/common";
-import { formatFullDate, formatRelativeTimeFromNow } from "@/shared/utils/date";
-import { NetworkStatus, useMutation } from "@apollo/client";
-import { Icon } from "@iconify-icon/react";
+import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { createContext, useState } from "react";
-import { toast } from "react-toastify";
+import { createContext } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { DiffFilter, ProposedChangeDiffFilter } from "../../proposed-changes/ui/diff-filter";
 import { DiffNode } from "./node";
@@ -54,18 +45,11 @@ const buildFilters = (filters: DiffFilter, qsp?: string | null) => {
 };
 
 export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
-  const { isAuthenticated } = useAuth();
   const [qspStatus] = useQueryParam(QSP.STATUS, StringParam);
-  const date = useAtomValue(datetimeAtom);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
   const nodeSchemas = useAtomValue(schemaState);
-  const [isLoadingUpdate, setIsLoadingUpdate] = useState(false);
 
   const branch = proposedChangesDetails?.source_branch?.value || branchName; // Used in proposed changes view and branch view
-
-  const [scheduleDiffTreeUpdate] = useMutation(DIFF_UPDATE, {
-    variables: { branchName: branch, wait: true },
-  });
 
   const schemaData = nodeSchemas.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 
@@ -84,111 +68,21 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
     return <ErrorScreen message={error?.message} className="max-w-lg m-auto" />;
   }
 
-  const handleRefresh = async () => {
-    setIsLoadingUpdate(true);
-    try {
-      await scheduleDiffTreeUpdate();
-
-      await graphqlClient.refetchQueries({
-        include: ["GET_PROPOSED_CHANGES_DIFF_TREE", "GET_PROPOSED_CHANGES_DIFF_SUMMARY"],
-      });
-
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Diff updated!" />);
-    } catch (error: any) {
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={error?.message} />);
-    }
-    setIsLoadingUpdate(false);
-  };
-
-  const handleRebase = async () => {
-    setIsLoadingUpdate(true);
-
-    try {
-      await graphqlClient.mutate({
-        mutation: BRANCH_REBASE,
-        variables: {
-          name: branch,
-        },
-        context: {
-          branch: branchName,
-          date,
-        },
-      });
-
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Branch rebased!" />);
-
-      await handleRefresh();
-    } catch (error: any) {
-      toast(<Alert type={ALERT_TYPES.ERROR} message={error?.message} />);
-    }
-
-    setIsLoadingUpdate(false);
-  };
-
   const diffTreeData = (data || previousData)?.DiffTree;
 
   // When a proposed change is created, there is also a job that compute the diff that is triggered.
   // If DiffTree is null, it means that diff is still being computed.
   if (!diffTreeData) {
     return (
-      <div className="flex flex-col items-center mt-10 gap-5">
-        <LoadingScreen hideText />
-
-        <h1 className="font-semibold">
-          We are computing the diff between{" "}
-          <Badge variant="blue">
-            <Icon icon={"mdi:layers-triple"} className="mr-1" />{" "}
-            {proposedChangesDetails.source_branch?.value}
-          </Badge>{" "}
-          and{" "}
-          <Badge variant="green">
-            <Icon icon={"mdi:layers-triple"} className="mr-1" />{" "}
-            {proposedChangesDetails.destination_branch?.value}
-          </Badge>
-        </h1>
-
-        <div className="text-center">
-          <p>This process may take a few seconds to a few minutes.</p>
-          <p>Once completed, you&apos;ll be able to view the detailed changes.</p>
-        </div>
-
-        <RefreshButton
-          onClick={handleRefresh}
-          disabled={!isAuthenticated || isLoadingUpdate}
-          isLoading={isLoadingUpdate}
-        />
-      </div>
+      <DiffComputing
+        sourceBranch={branch}
+        destinationBranch={proposedChangesDetails.destination_branch?.value ?? DEFAULT_BRANCH_NAME}
+      />
     );
   }
 
   if (!qspStatus && diffTreeData.nodes.length === 0) {
-    return (
-      <div className="flex flex-col items-center mt-10 gap-5">
-        <div className="p-3 rounded-full bg-white inline-flex">
-          <Icon icon="mdi:circle-off-outline" className="text-2xl text-custom-blue-800" />
-        </div>
-
-        <h1 className="font-semibold text-lg">No changes detected</h1>
-        <div className="text-center">
-          <p>
-            The last comparison was made{" "}
-            <Tooltip enabled content={formatFullDate(diffTreeData.to_time)}>
-              <span className="font-semibold">
-                {formatRelativeTimeFromNow(diffTreeData.to_time)}
-              </span>
-            </Tooltip>
-            .
-          </p>
-          <p>If you have made any changes, please refresh the diff:</p>
-        </div>
-
-        <RefreshButton
-          onClick={handleRefresh}
-          disabled={!isAuthenticated || isLoadingUpdate}
-          isLoading={isLoadingUpdate}
-        />
-      </div>
-    );
+    return <DiffEmpty branchName={branch} lastRefreshedAt={diffTreeData.to_time} />;
   }
 
   // Manually filter conflicts items since it's not available yet in the backend filters
@@ -201,61 +95,22 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
 
   return (
     <div className="h-full overflow-hidden flex flex-col">
-      <div className="flex items-center p-2 bg-custom-white border-b">
+      <header className="flex items-center px-4 py-2 border-b gap-2">
         <ProposedChangeDiffFilter branch={branch} filters={filters} />
-
-        <div className="flex flex-1 items-center gap-2 justify-end pr-2">
-          {isLoadingUpdate && <LoadingScreen size={22} hideText />}
-
-          <div className="flex items-center">
-            <div className="flex items-center text-xs mr-2">
-              <span className="mr-1">Updated</span>
-              <DateDisplay date={diffTreeData?.to_time} />
-            </div>
-
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={handleRefresh}
-              disabled={!isAuthenticated || isLoadingUpdate}
-            >
-              Refresh diff
-            </Button>
-          </div>
-
-          <Button
-            size="sm"
-            variant="primary-outline"
-            onClick={handleRebase}
-            disabled={isLoadingUpdate}
-          >
-            Rebase
-          </Button>
-        </div>
-      </div>
+        <span className="text-xs inline-flex gap-1 ml-auto">
+          Updated <DateDisplay date={diffTreeData?.to_time} />
+        </span>
+        <DiffRefreshButton size="sm" variant="primary" branchName={branch} />
+        <DiffRebaseButton branchName={branch} />
+      </header>
 
       <div className="flex-grow grid grid-cols-4 overflow-hidden">
-        <div className="p-4 col-span-1 overflow-auto border-r">
+        <nav className="p-4 col-span-1 overflow-auto border-r">
           <DiffTree nodes={nodes} className="w-full" />
-        </div>
+        </nav>
 
-        <div className="space-y-4 p-4 col-start-2 col-end-5 overflow-auto bg-stone-100">
-          {nodes.length === 0 && qspStatus && (
-            <div className="flex flex-col items-center mt-10 gap-5">
-              <div className="p-3 rounded-full bg-white inline-flex">
-                <Icon icon="mdi:circle-off-outline" className="text-2xl text-custom-blue-800" />
-              </div>
-
-              <div className="text-center">
-                <h1 className="font-semibold">
-                  No matches found for the status <DiffBadge status={qspStatus} />
-                </h1>
-                <p>Try adjusting the filter settings to include more results.</p>
-              </div>
-            </div>
-          )}
-
-          {!!nodes.length &&
+        <main className="space-y-4 p-4 col-start-2 col-end-5 overflow-auto bg-stone-100">
+          {nodes.length ? (
             nodes
               .filter(({ status }) => status !== "UNCHANGED")
               .map((node) => (
@@ -265,18 +120,12 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
                   sourceBranch={diffTreeData?.base_branch}
                   destinationBranch={diffTreeData?.diff_branch}
                 />
-              ))}
-        </div>
+              ))
+          ) : (
+            <DiffNoFound diffStatus={qspStatus as string} />
+          )}
+        </main>
       </div>
     </div>
-  );
-};
-
-const RefreshButton = ({ isLoading, ...props }: ButtonProps) => {
-  return (
-    <Button variant="primary-outline" {...props}>
-      <Icon icon="mdi:reload" className={classNames("mr-1", isLoading && "animate-spin")} />
-      {isLoading ? "Refreshing..." : "Refresh"}
-    </Button>
   );
 };

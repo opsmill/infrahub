@@ -11,7 +11,7 @@ import {
   BadgeUnchanged,
   BadgeUpdated,
   DiffBadgeProps,
-} from "../diff-badge";
+} from "../ui/diff-badge";
 
 export const diffBadges: { [key: string]: BadgeType } = {
   ADDED: BadgeAdded,

@@ -1,7 +1,7 @@
-import { BadgeConflict } from "@/entities/diff/diff-badge";
 import { DiffThread } from "@/entities/diff/node-diff/thread";
 import { DiffRelationshipElement, DiffStatus } from "@/entities/diff/node-diff/types";
 import { DiffBadge, DiffRow } from "@/entities/diff/node-diff/utils";
+import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
 import { useParams } from "react-router-dom";
 import { DiffNodeProperty } from "./node-property";
 
