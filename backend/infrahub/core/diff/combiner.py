@@ -1,7 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from typing import Iterable
-from uuid import uuid4
 
 from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
@@ -418,10 +417,16 @@ class DiffCombiner:
             filtered_node_pairs = self._filter_nodes_to_keep(earlier_diff=earlier, later_diff=later)
             combined_nodes = self._combine_nodes(node_pairs=filtered_node_pairs)
             self._link_child_nodes(nodes=combined_nodes)
+            if earlier.exists_on_database:
+                diff_uuid = earlier.uuid
+                partner_uuid = earlier.partner_uuid
+            else:
+                diff_uuid = later.uuid
+                partner_uuid = later.partner_uuid
             combined_diffs.append(
                 EnrichedDiffRoot(
-                    uuid=str(uuid4()),
-                    partner_uuid=later.partner_uuid,
+                    uuid=diff_uuid,
+                    partner_uuid=partner_uuid,
                     base_branch_name=later.base_branch_name,
                     diff_branch_name=later.diff_branch_name,
                     from_time=earlier.from_time,
