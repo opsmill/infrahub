@@ -1,7 +1,7 @@
-import { gql } from "@/shared/api/graphql/generated";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { gql } from "@apollo/client";
 
-const GET_BRANCHES = gql(/* GraphQL */ `
+const GET_BRANCHES = gql`
   query GetBranches {
     Branch {
       id
@@ -15,7 +15,7 @@ const GET_BRANCHES = gql(/* GraphQL */ `
       has_schema_changes
     }
   }
-`);
+`;
 
 export const getBranchesFromApi = async () => {
   return graphqlClient.query({
