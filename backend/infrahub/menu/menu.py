@@ -184,7 +184,7 @@ default_menu = [
         icon="mdi:rocket-launch",
         protected=True,
         section=MenuSection.INTERNAL,
-        order_weight=25000,
+        order_weight=2500,
         children=[
             MenuItemDefinition(
                 namespace="Builtin",
