@@ -16,12 +16,12 @@ export function DiffComputing({ sourceBranch, destinationBranch }: DiffComputing
       <h1 className="font-semibold inline-flex gap-1.5">
         We are computing the diff between
         <Badge variant="blue">
-          <Icon icon={"mdi:layers-triple"} className="mr-1" />
+          <Icon icon="mdi:layers-triple" className="mr-1" />
           {sourceBranch}
         </Badge>
         and
         <Badge variant="green">
-          <Icon icon={"mdi:layers-triple"} className="mr-1" />
+          <Icon icon="mdi:layers-triple" className="mr-1" />
           {destinationBranch}
         </Badge>
       </h1>
