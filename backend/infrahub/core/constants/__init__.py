@@ -302,6 +302,7 @@ RESTRICTED_NAMESPACES: list[str] = [
     "Lineage",
     "Schema",
     "Profile",
+    "Template",
 ]
 
 NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
