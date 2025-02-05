@@ -13,7 +13,7 @@ export function DiffComputing({ sourceBranch, destinationBranch }: DiffComputing
     <div className="flex flex-col items-center mt-10 gap-5">
       <LoadingScreen hideText />
 
-      <h1 className="font-semibold">
+      <h1 className="font-semibold inline-flex gap-1.5">
         We are computing the diff between
         <Badge variant="blue">
           <Icon icon={"mdi:layers-triple"} className="mr-1" />
