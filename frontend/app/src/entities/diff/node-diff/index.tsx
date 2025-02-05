@@ -1,4 +1,4 @@
-import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
+import { DEFAULT_BRANCH_NAME, PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { DIFF_STATUS, DiffNode as DiffNodeType } from "@/entities/diff/node-diff/types";
 import { DiffComputing } from "@/entities/diff/ui/diff-computing";
@@ -75,8 +75,8 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
   if (!diffTreeData) {
     return (
       <DiffComputing
-        sourceBranch={proposedChangesDetails.source_branch?.value}
-        destinationBranch={proposedChangesDetails.destination_branch?.value}
+        sourceBranch={branch}
+        destinationBranch={proposedChangesDetails.destination_branch?.value ?? DEFAULT_BRANCH_NAME}
       />
     );
   }
