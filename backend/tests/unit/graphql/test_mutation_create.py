@@ -1245,7 +1245,7 @@ async def test_create_with_object_template(
     )
     assert device
     assert device.name.value == "th2.par.asbr01"
-    # Validate object in linked to object template
+    # Validate object is linked to object template
     device_template_node = await device.object_template.get_peer(db=db)
     assert device_template_node.id == device_template.id
     # No interfaces as there are none on the object template
@@ -1276,7 +1276,7 @@ async def test_create_with_object_template(
     )
     assert device
     assert device.name.value == "th2.par.asbr02"
-    # Validate object in linked to object template
+    # Validate object is linked to object template
     device_template_node = await device.object_template.get_peer(db=db)
     assert device_template_node.id == device_template.id
     # Validate that interfaces relationship has been populated according to object template
@@ -1312,7 +1312,7 @@ async def test_create_with_object_template(
     )
     assert device
     assert device.name.value == "th2.par.asbr03"
-    # Validate object in linked to object template
+    # Validate object is linked to object template
     device_template_node = await device.object_template.get_peer(db=db)
     assert device_template_node.id == device_template.id
     # Validate that interfaces relationship has been populated according to object template
@@ -1321,9 +1321,9 @@ async def test_create_with_object_template(
     assert sorted([interface.name.value for interface in device_interfaces.values()]) == if_names
     # FIXME: need to make rleationship population recursive
     # Validate that one SFP is attached to each interface
-    # device_sfps = [await interface.sfp.get_peer(db=db) for interface in device_interfaces.values()]
-    # assert all(device_sfps)
-    # assert len(device_sfps) == len(if_names)
+    device_sfps = [await interface.sfp.get_peer(db=db) for interface in device_interfaces.values()]
+    assert all(device_sfps)
+    assert len(device_sfps) == len(if_names)
 
 
 # These tests have been moved at the end of the file to avoid colliding with other and breaking them
