@@ -26,7 +26,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import LoadingScreen from "../../../shared/components/loading-screen";
 import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";
 import { getPermission } from "../../permission/utils";
-import { PROPOSED_CHANGE_MERGE_WORKFLOW } from "../../tasks/constants";
+import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "../../tasks/constants";
 import { TaskDisplay } from "../../tasks/ui/task-display";
 
 export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => {
@@ -42,6 +42,7 @@ export const ProposedChangeDetails = ({ className, ...props }: HTMLAttributes<HT
   const { loading: loadingCheck, data: checkData } = useQuery(TASK_DETAILS_CHECK, {
     variables: {
       workflow: [PROPOSED_CHANGE_MERGE_WORKFLOW],
+      state: TASK_ONGOING_STATES,
       relatedNodes: proposedChangeId ? [proposedChangeId] : undefined,
     },
     pollInterval: 2000,

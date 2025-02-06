@@ -44,7 +44,9 @@ export const Conflict = ({ conflict }: any) => {
         },
       });
 
-      await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES_DIFF_TREE"] });
+      await graphqlClient.refetchQueries({
+        include: ["GET_PROPOSED_CHANGES_DIFF_TREE", "TASK_DETAILS_CHECK"],
+      });
 
       const message = newValue ? "Conflict marked as resolved" : "Conflict marked as not resolved";
 
