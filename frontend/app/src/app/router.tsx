@@ -1,5 +1,6 @@
 import { ARTIFACT_OBJECT, NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { RequireAuth } from "@/entities/authentication/ui/useAuth";
+import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
@@ -28,7 +29,9 @@ export const router = createBrowserRouter([
         path: "",
         element: (
           <RequireAuth>
-            <Outlet />
+            <BranchesProvider>
+              <Outlet />
+            </BranchesProvider>
           </RequireAuth>
         ),
         children: [
