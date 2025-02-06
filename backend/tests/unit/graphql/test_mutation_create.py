@@ -1450,8 +1450,8 @@ async def test_create_with_object_template(
     device_interfaces = await device.interfaces.get_peers(db=db)
     assert len(device_interfaces) == len(if_names)
     assert sorted([interface.name.value for interface in device_interfaces.values()]) == if_names
-    # Validate that one SFP is attached to each interface
-    device_sfps = [await interface.sfp.get_peer(db=db) for interface in device_interfaces.values()]
     # FIXME: need to make rleationship population recursive
+    # Validate that one SFP is attached to each interface
+    # device_sfps = [await interface.sfp.get_peer(db=db) for interface in device_interfaces.values()]
     # assert all(device_sfps)
     # assert len(device_sfps) == len(if_names)
