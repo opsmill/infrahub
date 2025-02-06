@@ -163,7 +163,7 @@ export const Check = ({ id }: tCheckProps) => {
         </div>
       </div>
 
-      {conflicts?.value?.length && (
+      {!!conflicts?.value?.length && (
         <div className="bg-white p-2 rounded-md border border-gray-100">
           <div className="grid grid-cols-3">
             <Badge variant="green" className="bg-transparent col-start-2 col-end-3">
