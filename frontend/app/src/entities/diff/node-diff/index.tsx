@@ -13,7 +13,6 @@ import { proposedChangedState } from "@/entities/proposed-changes/stores/propose
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import LoadingScreen from "@/shared/components/loading-screen";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { useAtomValue } from "jotai";
 import { createContext, useEffect } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -110,8 +109,6 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
           ) : (
             <DiffNoFound diffStatus={qspStatus as string} />
           )}
-
-          {isFetchingNextPage && <Spinner className="flex justify-center" />}
         </main>
       </div>
     </div>
