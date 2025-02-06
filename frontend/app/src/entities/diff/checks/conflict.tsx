@@ -1,6 +1,5 @@
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
-
 import { QSP } from "@/config/qsp";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
 import { classNames } from "@/shared/utils/common";
