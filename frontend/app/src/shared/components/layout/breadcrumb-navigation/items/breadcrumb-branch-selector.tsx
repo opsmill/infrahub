@@ -1,5 +1,6 @@
+import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
 import { branchesState } from "@/entities/branches/stores";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { breadcrumbItemStyle } from "@/shared/components/layout/breadcrumb-navigation/style";
 import {
@@ -27,7 +28,7 @@ export default function BreadcrumbBranchSelector({
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    if (isOpen) graphqlClient.refetchQueries({ include: ["GetBranches"] });
+    if (isOpen) queryClient.invalidateQueries(getBranchesQueryOptions());
   }, [isOpen]);
 
   return (

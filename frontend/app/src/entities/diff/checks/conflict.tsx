@@ -1,7 +1,7 @@
 import { DATA_CHECK_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import { diffContent, getBadgeType } from "@/entities/diff/diff";
+import { diffContent, getBadgeType } from "@/entities/diff/utils";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
