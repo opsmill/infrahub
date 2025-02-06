@@ -3,14 +3,14 @@ import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 
 import { QSP } from "@/config/qsp";
+import { DIFF_STATUS } from "@/entities/diff/node-diff/types";
+import { DiffBadge } from "@/entities/diff/node-diff/utils";
 import {
   CloseBadgeAdded,
   CloseBadgeConflict,
   CloseBadgeRemoved,
   CloseBadgeUpdated,
-} from "@/entities/diff/diff-badge";
-import { DIFF_STATUS } from "@/entities/diff/node-diff/types";
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
+} from "@/entities/diff/ui/diff-badge";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";

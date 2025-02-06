@@ -1,3 +1,4 @@
+from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.enricher.path_identifier import DiffPathIdentifierEnricher
 from infrahub.core.diff.model.diff import ModifiedPathType
@@ -28,7 +29,7 @@ class TestPathIdentifierEnricher:
             properties={diff_relationship_property, diff_relationship_value_property}
         )
         diff_relationship = EnrichedRelationshipGroupFactory.build(
-            relationships={diff_relationship_element}, name="cars"
+            relationships={diff_relationship_element}, name="cars", cardinality=RelationshipCardinality.MANY
         )
         diff_node = EnrichedNodeFactory.build(
             relationships={diff_relationship}, attributes={diff_attribute}, kind="TestPerson"

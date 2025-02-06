@@ -1,42 +1,38 @@
-import GET_BRANCHES from "@/entities/branches/api/getBranches";
-import { branchesState } from "@/entities/branches/stores";
-import { useLazyQuery } from "@/shared/api/graphql/useQuery";
+import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
+import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { useTitle } from "@/shared/hooks/useTitle";
+import { sortByName } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
-import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
 
 const BranchesItems = () => {
-  const [storedBranches, setBranches] = useAtom(branchesState);
   const navigate = useNavigate();
   useTitle("Branches list");
+  const { data: storedBranches, refetch, isPending, error, isRefetching } = useGetBranches();
 
-  // TODO: refactor with index query
-  const [fetchBranches, { loading }] = useLazyQuery(GET_BRANCHES);
+  if (isPending) {
+    return <InfrahubLoading>loading branches...</InfrahubLoading>;
+  }
 
-  const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
+  if (error) {
+    return <ErrorScreen message={error.message} />;
+  }
 
   const sortedBranches = sortByName(storedBranches.filter((b) => b.name !== "main"));
-
   const branches = [...storedBranches.filter((b) => b.name === "main"), ...sortedBranches];
-
-  const handleRefresh = async () => {
-    const { data } = await fetchBranches();
-    setBranches(data?.Branch ?? []);
-  };
 
   return (
     <Content.Card>
       <Content.CardTitle
         title="Branches"
         badgeContent={branches.length}
-        isReloadLoading={loading}
-        reload={handleRefresh}
+        isReloadLoading={isRefetching}
+        reload={() => refetch()}
       />
 
       <ul

@@ -1,13 +1,17 @@
+from uuid import uuid4
+
 import pytest
 
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality, SchemaPathType
+from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind, RelationshipCardinality, SchemaPathType
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.query.relationship_duplicate import RelationshipDuplicateQuery, SchemaRelationshipInfo
+from infrahub.core.migrations.schema.attribute_name_update import AttributeNameUpdateMigration
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
@@ -3144,6 +3148,252 @@ async def test_calculate_with_migrated_kind_node(
         assert property_diff.action is DiffAction.ADDED
         assert property_diff.new_value == value
         assert property_diff.previous_value is None
+
+    base_diff = calculated_diffs.base_branch_diff
+    assert len(base_diff.nodes) == 0
+
+
+async def test_calculate_with_migrated_attr_name(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_john_main, person_jane_main
+):
+    """Test that the diff can correctly handle an attribute name migration"""
+    branch = await create_branch(db=db, branch_name="branch")
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    prev_car_schema = schema.get(name="TestCar")
+    prev_attr = prev_car_schema.get_attribute(name="color")
+    prev_attr.id = str(uuid4())
+    candidate_schema = schema.duplicate()
+    new_car_schema = candidate_schema.get(name="TestCar")
+    new_attr = new_car_schema.get_attribute(name="color")
+    new_attr.name = "new-color"
+    new_attr.id = prev_attr.id
+    registry.schema.set(name=new_car_schema.kind, schema=new_car_schema, branch=branch.name)
+
+    migration = AttributeNameUpdateMigration(
+        previous_node_schema=prev_car_schema,
+        new_node_schema=new_car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="new-color"),
+    )
+
+    execution_result = await migration.execute(db=db, branch=branch)
+    assert not execution_result.errors
+
+    diff_calculator = DiffCalculator(db=db)
+
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=Timestamp(branch.get_branched_from()),
+        to_time=Timestamp(),
+        previous_node_specifiers=None,
+        include_unchanged=True,
+    )
+
+    branch_diff = calculated_diffs.diff_branch_diff
+    assert len(branch_diff.nodes) == 2
+    nodes_by_id = {n.uuid: n for n in branch_diff.nodes}
+    assert set(nodes_by_id.keys()) == {car_accord_main.id, car_camry_main.id}
+    for diff_node in branch_diff.nodes:
+        assert diff_node.action is DiffAction.UPDATED
+        assert len(diff_node.relationships) == 0
+        attrs_by_name = {a.name: a for a in diff_node.attributes}
+        assert set(attrs_by_name.keys()) == {"color", "new-color"}
+        old_attr_diff = attrs_by_name["color"]
+        assert old_attr_diff.action is DiffAction.REMOVED
+        props_by_type = {p.property_type: p for p in old_attr_diff.properties}
+        assert set(props_by_type.keys()) == {
+            DatabaseEdgeType.HAS_VALUE,
+            DatabaseEdgeType.IS_VISIBLE,
+            DatabaseEdgeType.IS_PROTECTED,
+        }
+        for property_type, value in (
+            (DatabaseEdgeType.HAS_VALUE, car_accord_main.color.value),
+            (DatabaseEdgeType.IS_VISIBLE, True),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ):
+            diff_prop = props_by_type[property_type]
+            assert diff_prop.action is DiffAction.REMOVED
+            assert diff_prop.new_value is None
+            assert diff_prop.previous_value == value
+
+        new_attr_diff = attrs_by_name["new-color"]
+        assert new_attr_diff.action is DiffAction.ADDED
+        props_by_type = {p.property_type: p for p in new_attr_diff.properties}
+        assert set(props_by_type.keys()) == {
+            DatabaseEdgeType.HAS_VALUE,
+            DatabaseEdgeType.IS_VISIBLE,
+            DatabaseEdgeType.IS_PROTECTED,
+        }
+        for property_type, value in (
+            (DatabaseEdgeType.HAS_VALUE, car_accord_main.color.value),
+            (DatabaseEdgeType.IS_VISIBLE, True),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ):
+            diff_prop = props_by_type[property_type]
+            assert diff_prop.action is DiffAction.ADDED
+            assert diff_prop.new_value == value
+            assert diff_prop.previous_value is None
+
+    base_diff = calculated_diffs.base_branch_diff
+    assert len(base_diff.nodes) == 0
+
+
+async def test_calculate_with_renamed_relationships(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_john_main, person_jane_main
+):
+    """Test that the diff can correctly handle an attribute name migration"""
+    branch = await create_branch(db=db, branch_name="branch")
+    new_rel_identifier = "brand_new_identifier"
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate_schema = schema.duplicate()
+    new_car_schema = candidate_schema.get(name="TestCar")
+    new_owner_rel = new_car_schema.get_relationship(name="owner")
+    previous_rel_identifier = new_owner_rel.identifier
+    new_owner_rel.identifier = new_rel_identifier
+    new_person_schema = candidate_schema.get(name="TestPerson")
+    new_cars_rel = new_person_schema.get_relationship(name="cars")
+    new_cars_rel.identifier = new_rel_identifier
+    registry.schema.set(name=new_car_schema.kind, schema=new_car_schema, branch=branch.name)
+    registry.schema.set(name=new_person_schema.kind, schema=new_person_schema, branch=branch.name)
+
+    migration_query = await RelationshipDuplicateQuery.init(
+        db=db,
+        branch=branch,
+        previous_rel=SchemaRelationshipInfo(
+            name=previous_rel_identifier,
+            branch_support=BranchSupportType.AWARE.value,
+            src_peer="TestCar",
+            dst_peer="TestPerson",
+        ),
+        new_rel=SchemaRelationshipInfo(
+            name=new_rel_identifier,
+            branch_support=BranchSupportType.AWARE.value,
+            src_peer="TestCar",
+            dst_peer="TestPerson",
+        ),
+    )
+    await migration_query.execute(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=Timestamp(branch.get_branched_from()),
+        to_time=Timestamp(),
+        previous_node_specifiers=None,
+        include_unchanged=True,
+    )
+
+    branch_diff = calculated_diffs.diff_branch_diff
+    assert len(branch_diff.nodes) == 4
+    nodes_by_id = {n.uuid: n for n in branch_diff.nodes}
+    assert set(nodes_by_id.keys()) == {car_accord_main.id, car_camry_main.id, person_jane_main.id, person_john_main.id}
+    for car_id, peer_id in ((car_accord_main.id, person_john_main.id), (car_camry_main.id, person_jane_main.id)):
+        car_diff = nodes_by_id[car_id]
+        assert car_diff.action is DiffAction.UPDATED
+        assert len(car_diff.attributes) == 0
+        rels_by_identifier = {r.identifier: r for r in car_diff.relationships}
+        assert set(rels_by_identifier.keys()) == {previous_rel_identifier, new_rel_identifier}
+        # validate removed relationship
+        removed_rel = rels_by_identifier[previous_rel_identifier]
+        assert removed_rel.name == "owner"
+        assert removed_rel.action is DiffAction.REMOVED
+        elements_by_peer_id = {e.peer_id: e for e in removed_rel.relationships}
+        assert set(elements_by_peer_id.keys()) == {peer_id}
+        element_diff = elements_by_peer_id[peer_id]
+        assert element_diff.action is DiffAction.REMOVED
+        props_by_type = {p.property_type: p for p in element_diff.properties}
+        assert set(props_by_type.keys()) == {
+            DatabaseEdgeType.IS_RELATED,
+            DatabaseEdgeType.IS_VISIBLE,
+            DatabaseEdgeType.IS_PROTECTED,
+        }
+        for property_type, value in (
+            (DatabaseEdgeType.IS_RELATED, peer_id),
+            (DatabaseEdgeType.IS_VISIBLE, True),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ):
+            diff_prop = props_by_type[property_type]
+            assert diff_prop.action is DiffAction.REMOVED
+            assert diff_prop.new_value is None
+            assert diff_prop.previous_value == value
+        # validate added relationship
+        added_rel = rels_by_identifier[new_rel_identifier]
+        assert added_rel.name == "owner"
+        assert added_rel.action is DiffAction.ADDED
+        elements_by_peer_id = {e.peer_id: e for e in added_rel.relationships}
+        assert set(elements_by_peer_id.keys()) == {peer_id}
+        element_diff = elements_by_peer_id[peer_id]
+        assert element_diff.action is DiffAction.ADDED
+        props_by_type = {p.property_type: p for p in element_diff.properties}
+        assert set(props_by_type.keys()) == {
+            DatabaseEdgeType.IS_RELATED,
+            DatabaseEdgeType.IS_VISIBLE,
+            DatabaseEdgeType.IS_PROTECTED,
+        }
+        for property_type, value in (
+            (DatabaseEdgeType.IS_RELATED, peer_id),
+            (DatabaseEdgeType.IS_VISIBLE, True),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ):
+            diff_prop = props_by_type[property_type]
+            assert diff_prop.action is DiffAction.ADDED
+            assert diff_prop.new_value == value
+            assert diff_prop.previous_value is None
+
+    for person_id, peer_id in ((person_john_main.id, car_accord_main.id), (person_jane_main.id, car_camry_main.id)):
+        person_diff = nodes_by_id[person_id]
+        assert person_diff.action is DiffAction.UPDATED
+        assert len(person_diff.attributes) == 0
+        rels_by_identifier = {r.identifier: r for r in person_diff.relationships}
+        assert set(rels_by_identifier.keys()) == {previous_rel_identifier, new_rel_identifier}
+        # validate removed relationship
+        removed_rel = rels_by_identifier[previous_rel_identifier]
+        assert removed_rel.name == "cars"
+        assert removed_rel.action is DiffAction.UPDATED
+        elements_by_peer_id = {e.peer_id: e for e in removed_rel.relationships}
+        assert set(elements_by_peer_id.keys()) == {peer_id}
+        element_diff = elements_by_peer_id[peer_id]
+        assert element_diff.action is DiffAction.REMOVED
+        props_by_type = {p.property_type: p for p in element_diff.properties}
+        assert set(props_by_type.keys()) == {
+            DatabaseEdgeType.IS_RELATED,
+            DatabaseEdgeType.IS_VISIBLE,
+            DatabaseEdgeType.IS_PROTECTED,
+        }
+        for property_type, value in (
+            (DatabaseEdgeType.IS_RELATED, peer_id),
+            (DatabaseEdgeType.IS_VISIBLE, True),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ):
+            diff_prop = props_by_type[property_type]
+            assert diff_prop.action is DiffAction.REMOVED
+            assert diff_prop.new_value is None
+            assert diff_prop.previous_value == value
+        # validate added relationship
+        added_rel = rels_by_identifier[new_rel_identifier]
+        assert added_rel.name == "cars"
+        assert added_rel.action is DiffAction.UPDATED
+        elements_by_peer_id = {e.peer_id: e for e in added_rel.relationships}
+        assert set(elements_by_peer_id.keys()) == {peer_id}
+        element_diff = elements_by_peer_id[peer_id]
+        assert element_diff.action is DiffAction.ADDED
+        props_by_type = {p.property_type: p for p in element_diff.properties}
+        assert set(props_by_type.keys()) == {
+            DatabaseEdgeType.IS_RELATED,
+            DatabaseEdgeType.IS_VISIBLE,
+            DatabaseEdgeType.IS_PROTECTED,
+        }
+        for property_type, value in (
+            (DatabaseEdgeType.IS_RELATED, peer_id),
+            (DatabaseEdgeType.IS_VISIBLE, True),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ):
+            diff_prop = props_by_type[property_type]
+            assert diff_prop.action is DiffAction.ADDED
+            assert diff_prop.new_value == value
+            assert diff_prop.previous_value is None
 
     base_diff = calculated_diffs.base_branch_diff
     assert len(base_diff.nodes) == 0

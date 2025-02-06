@@ -1,5 +1,5 @@
 import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/config/constants";
-import { getThreadLabel, getThreadTitle } from "@/entities/diff/diff";
+import { getThreadLabel, getThreadTitle } from "@/entities/diff/utils";
 import { getProposedChangesObjectThreads } from "@/entities/proposed-changes/api/getProposedChangesObjectThreads";
 import { schemaState } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";

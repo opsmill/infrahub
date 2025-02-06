@@ -154,10 +154,20 @@ class DiffLabelsEnricher(DiffEnricherInterface):
         for node in enriched_diff.nodes:
             if not node.relationships:
                 continue
-            node_schema = self.db.schema.get(name=node.kind, branch=self.diff_branch_name, duplicate=False)
+
+            node_schema = self.db.schema.get(name=node.kind, branch=enriched_diff.diff_branch_name, duplicate=False)
+            alternate_node_schema = None
+            if enriched_diff.diff_branch_name != enriched_diff.base_branch_name and self.db.schema.has(
+                name=node.kind, branch=enriched_diff.base_branch_name
+            ):
+                alternate_node_schema = self.db.schema.get(
+                    name=node.kind, branch=enriched_diff.base_branch_name, duplicate=False
+                )
             for relationship_diff in node.relationships:
-                relationship_schema = node_schema.get_relationship(name=relationship_diff.name)
-                relationship_diff.label = relationship_schema.label or ""
+                relationship_schema = node_schema.get_relationship_or_none(name=relationship_diff.name)
+                if not relationship_schema and alternate_node_schema:
+                    relationship_schema = alternate_node_schema.get_relationship_or_none(name=relationship_diff.name)
+                relationship_diff.label = relationship_schema.label or "" if relationship_schema else ""
 
     async def _get_display_label_map(
         self, display_label_requests: set[DisplayLabelRequest]

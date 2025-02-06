@@ -7,7 +7,6 @@ import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Link } from "react-router-dom";
-import { BadgeConflict } from "../diff-badge";
 import { DiffRow } from "../node-diff/utils";
 
 export const Conflict = ({ id, changes, kind, name }: any) => {

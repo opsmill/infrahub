@@ -4,7 +4,7 @@ import {
 } from "@/config/constants";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import { getThreadLabel } from "@/entities/diff/diff";
+import { getThreadLabel } from "@/entities/diff/utils";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { deleteObject } from "@/entities/nodes/api/deleteObject";
 import { getProposedChangesObjectThreadComments } from "@/entities/proposed-changes/api/getProposedChangesObjectThreadComments";

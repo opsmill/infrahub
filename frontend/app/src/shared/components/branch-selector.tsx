@@ -9,7 +9,8 @@ import { useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
+import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
 import {
@@ -34,7 +35,7 @@ export default function BranchSelector() {
   const [displayForm, setDisplayForm] = useState<DisplayForm>({ open: false });
 
   useEffect(() => {
-    if (isOpen) graphqlClient.refetchQueries({ include: ["GetBranches"] });
+    if (isOpen) queryClient.invalidateQueries(getBranchesQueryOptions());
   }, [isOpen]);
 
   return (
