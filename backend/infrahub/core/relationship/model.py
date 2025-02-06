@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
-from infrahub.core.constants import BranchSupportType, InfrahubKind
+from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipKind
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -1179,6 +1179,8 @@ class RelationshipManager:
                         old_data=details.peers_database[rel.peer_id],
                         properties_to_update=properties_not_matching,
                     )
+            elif rel.schema.kind == RelationshipKind.PARENT:
+                relationship_mapper.add_parent_from_relationship(relationship=rel)
 
         return relationship_mapper.changelog
 
