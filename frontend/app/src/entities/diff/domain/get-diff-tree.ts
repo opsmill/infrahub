@@ -2,7 +2,7 @@ import { getDiffTreeFromApi } from "@/entities/diff/api/get-diff-tree-from-api";
 import { DiffTree, DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 
-export const DIFF_TREE_PER_PAGE = 30;
+export const DIFF_TREE_PER_PAGE = 300;
 
 export type GetDiffTreeParams = {
   branchName: string;
