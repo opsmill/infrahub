@@ -7,6 +7,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { Link } from "react-router-dom";
 import { DiffRow } from "../node-diff/utils";
+import { BadgeConflict } from "../ui/diff-badge";
 
 export const Conflict = ({ id, changes, kind, name }: any) => {
   const proposedChangesDetails = useAtomValue(proposedChangedState);
