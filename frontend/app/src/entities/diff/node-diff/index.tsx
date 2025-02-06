@@ -81,7 +81,7 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
       }) ?? [];
 
   return (
-    <div className="h-full overflow-hidden flex flex-col">
+    <div className="h-[calc(100vh-14rem)] overflow-hidden flex flex-col">
       <header className="flex items-center px-4 py-2 border-b gap-2">
         <ProposedChangeDiffFilter branch={branch} filters={filters} />
         <span className="text-xs inline-flex gap-1 ml-auto">
