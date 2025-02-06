@@ -286,11 +286,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             branch=self.get_branch_based_on_support_type(),
         )
 
+        # Handle attributes, copy values from template
         for attribute in template._attributes:
             if attribute in list(fields.values()) + ["template_name"]:
                 continue
-
             fields[attribute] = {"value": getattr(template, attribute).value}
+
+        # Relationships handling in performed in GraphQL mutation to create nodes for relationships
 
         return fields
 
