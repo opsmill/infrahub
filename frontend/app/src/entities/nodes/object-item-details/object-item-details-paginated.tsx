@@ -21,6 +21,7 @@ import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive"
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import SlideOver from "@/shared/components/display/slide-over";
 import { Tabs } from "@/shared/components/tabs";
+import { Card } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
@@ -30,6 +31,7 @@ import { useAtomValue } from "jotai/index";
 import { useRef } from "react";
 import { Navigate, useLocation } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
+import { Activities } from "../activities/ui/activities";
 import { ActionButtons } from "./action-buttons";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
@@ -120,87 +122,93 @@ export default function ObjectItemDetails({
       )}
 
       {!qspTab && (
-        <dl className="bg-custom-white divide-y">
-          {attributes.map((attribute) => {
-            if (!objectDetailsData[attribute.name]) {
-              return null;
-            }
+        <div className="flex gap-4 p-4">
+          <Card className="flex-1 divide-y">
+            {attributes.map((attribute) => {
+              if (!objectDetailsData[attribute.name]) {
+                return null;
+              }
 
-            return (
-              <ObjectAttributeRow
-                key={attribute.name}
-                name={attribute.label as string}
-                value={
-                  <>
-                    <ObjectAttributeValue
-                      attributeSchema={attribute}
-                      attributeValue={objectDetailsData[attribute.name]}
-                    />
-
-                    {objectDetailsData[attribute.name] && (
-                      <MetaDetailsTooltip
-                        updatedAt={objectDetailsData[attribute.name].updated_at}
-                        source={objectDetailsData[attribute.name].source}
-                        owner={objectDetailsData[attribute.name].owner}
-                        isFromProfile={objectDetailsData[attribute.name].is_from_profile}
-                        isProtected={objectDetailsData[attribute.name].is_protected}
-                        header={
-                          <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
-                            <div className="font-semibold">{attribute.label}</div>
-                            <ButtonWithTooltip
-                              disabled={!permission.update.isAllowed}
-                              tooltipEnabled={!permission.update.isAllowed}
-                              tooltipContent={permission.update.message}
-                              onClick={() => {
-                                setMetaEditFieldDetails({
-                                  type: "attribute",
-                                  attributeOrRelationshipName: attribute.name,
-                                  label: attribute.label || attribute.name,
-                                });
-                                setShowMetaEditModal(true);
-                              }}
-                              variant="ghost"
-                              size="icon"
-                              data-testid="edit-metadata-button"
-                              data-cy="metadata-edit-button"
-                            >
-                              <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                            </ButtonWithTooltip>
-                          </div>
-                        }
+              return (
+                <ObjectAttributeRow
+                  key={attribute.name}
+                  name={attribute.label as string}
+                  value={
+                    <>
+                      <ObjectAttributeValue
+                        attributeSchema={attribute}
+                        attributeValue={objectDetailsData[attribute.name]}
                       />
-                    )}
 
-                    {objectDetailsData[attribute.name].is_protected && (
-                      <LockClosedIcon className="w-4 h-4" />
-                    )}
-                  </>
-                }
-              />
-            );
-          })}
+                      {objectDetailsData[attribute.name] && (
+                        <MetaDetailsTooltip
+                          updatedAt={objectDetailsData[attribute.name].updated_at}
+                          source={objectDetailsData[attribute.name].source}
+                          owner={objectDetailsData[attribute.name].owner}
+                          isFromProfile={objectDetailsData[attribute.name].is_from_profile}
+                          isProtected={objectDetailsData[attribute.name].is_protected}
+                          header={
+                            <div className="flex justify-between items-center pl-2 p-1 pt-0 border-b">
+                              <div className="font-semibold">{attribute.label}</div>
+                              <ButtonWithTooltip
+                                disabled={!permission.update.isAllowed}
+                                tooltipEnabled={!permission.update.isAllowed}
+                                tooltipContent={permission.update.message}
+                                onClick={() => {
+                                  setMetaEditFieldDetails({
+                                    type: "attribute",
+                                    attributeOrRelationshipName: attribute.name,
+                                    label: attribute.label || attribute.name,
+                                  });
+                                  setShowMetaEditModal(true);
+                                }}
+                                variant="ghost"
+                                size="icon"
+                                data-testid="edit-metadata-button"
+                                data-cy="metadata-edit-button"
+                              >
+                                <Icon icon="mdi:pencil" className="text-custom-blue-500" />
+                              </ButtonWithTooltip>
+                            </div>
+                          }
+                        />
+                      )}
 
-          {relationships?.map((relationship: any) => {
-            const relationshipSchema = schema?.relationships?.find(
-              (relation) => relation?.name === relationship?.name
-            );
+                      {objectDetailsData[attribute.name].is_protected && (
+                        <LockClosedIcon className="w-4 h-4" />
+                      )}
+                    </>
+                  }
+                />
+              );
+            })}
 
-            const relationshipData = relationship?.paginated
-              ? objectDetailsData[relationship.name]?.edges
-              : objectDetailsData[relationship.name];
+            {relationships?.map((relationship: any) => {
+              const relationshipSchema = schema?.relationships?.find(
+                (relation) => relation?.name === relationship?.name
+              );
 
-            return (
-              <RelationshipDetails
-                parentNode={objectDetailsData}
-                mode="DESCRIPTION-LIST"
-                parentSchema={schema}
-                key={relationship.name}
-                relationshipsData={relationshipData}
-                relationshipSchema={relationshipSchema}
-              />
-            );
-          })}
-        </dl>
+              const relationshipData = relationship?.paginated
+                ? objectDetailsData[relationship.name]?.edges
+                : objectDetailsData[relationship.name];
+
+              return (
+                <RelationshipDetails
+                  parentNode={objectDetailsData}
+                  mode="DESCRIPTION-LIST"
+                  parentSchema={schema}
+                  key={relationship.name}
+                  relationshipsData={relationshipData}
+                  relationshipSchema={relationshipSchema}
+                />
+              );
+            })}
+          </Card>
+
+          <Card className="flex-1">
+            <Activities />
+          </Card>
+        </div>
       )}
 
       {qspTab && qspTab !== TASK_TAB && (
