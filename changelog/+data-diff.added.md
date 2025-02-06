@@ -1,0 +1,2 @@
+- Data diffs are loaded in sequential batches for faster performance with large changes.
+- The diff tree and diff list can now be scrolled independently.

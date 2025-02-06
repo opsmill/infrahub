@@ -1,7 +1,7 @@
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/config/constants";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import { getThreadTitle } from "@/entities/diff/diff";
+import { getThreadTitle } from "@/entities/diff/utils";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
