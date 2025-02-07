@@ -1162,7 +1162,7 @@ async def test_create_with_object_template(
                         "Mixed",
                     ],
                 },
-                {"name": "part_number", "kind": "Text"},
+                {"name": "part_number", "kind": "Text", "optional": True},
             ],
             "relationships": [
                 {
@@ -1173,36 +1173,6 @@ async def test_create_with_object_template(
                     "cardinality": RelationshipCardinality.MANY,
                     "identifier": "device__interfaces",
                 }
-            ],
-        },
-        {
-            "name": "Device",
-            "namespace": "Test",
-            "default_filter": "name__value",
-            "branch": BranchSupportType.AWARE.value,
-            "generate_template": True,
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "manufacturer", "kind": "Text", "optional": False},
-                {"name": "height", "kind": "Number", "default_value": 1},
-                {"name": "weight", "kind": "Number"},
-                {
-                    "name": "airflow",
-                    "kind": "Text",
-                    "enum": [
-                        "Front to rear",
-                        "Rear to front",
-                        "Left to right",
-                        "Right to left",
-                        "Side to rear",
-                        "Rear to side",
-                        "Bottom to top",
-                        "Top to bottom",
-                        "Passive",
-                        "Mixed",
-                    ],
-                },
-                {"name": "part_number", "kind": "Text", "optional": True},
             ],
         },
     ]
