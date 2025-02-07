@@ -114,7 +114,9 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             )
             if graphql_context.service:
                 await graphql_context.service.workflow.submit_workflow(
-                    workflow=GIT_REPOSITORY_ADD_READ_ONLY, parameters={"model": model}
+                    workflow=GIT_REPOSITORY_ADD_READ_ONLY,
+                    context=graphql_context.get_context(),
+                    parameters={"model": model},
                 )
 
         else:
@@ -132,7 +134,9 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
 
             if graphql_context.service:
                 await graphql_context.service.workflow.submit_workflow(
-                    workflow=GIT_REPOSITORY_ADD, parameters={"model": git_repo_add_model}
+                    workflow=GIT_REPOSITORY_ADD,
+                    context=graphql_context.get_context(),
+                    parameters={"model": git_repo_add_model},
                 )
 
         # TODO Validate that the creation of the repository went as expected
@@ -198,7 +202,9 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         )
         if graphql_context.service:
             await graphql_context.service.workflow.submit_workflow(
-                workflow=GIT_REPOSITORIES_PULL_READ_ONLY, parameters={"model": model}
+                workflow=GIT_REPOSITORIES_PULL_READ_ONLY,
+                context=graphql_context.get_context(),
+                parameters={"model": model},
             )
         return obj, result
 
@@ -248,7 +254,7 @@ class ProcessRepository(Mutation):
             infrahub_branch_name=branch.name,
         )
         workflow = await graphql_context.active_service.workflow.submit_workflow(
-            workflow=GIT_REPOSITORIES_IMPORT_OBJECTS, parameters={"model": model}
+            workflow=GIT_REPOSITORIES_IMPORT_OBJECTS, context=graphql_context.get_context(), parameters={"model": model}
         )
         task = {"id": workflow.id}
         return cls(ok=True, task=task)

@@ -128,6 +128,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         if updated_state == ProposedChangeState.MERGED:
             await graphql_context.service.workflow.execute_workflow(
                 workflow=PROPOSED_CHANGE_MERGE,
+                context=graphql_context.get_context(),
                 parameters={
                     "proposed_change_id": proposed_change.id,
                     "proposed_change_name": proposed_change.name.value,
@@ -220,6 +221,7 @@ class ProposedChangeMerge(Mutation):
         if wait_until_completion:
             await graphql_context.service.workflow.execute_workflow(
                 workflow=PROPOSED_CHANGE_MERGE,
+                context=graphql_context.get_context(),
                 parameters={
                     "proposed_change_id": proposed_change.id,
                     "proposed_change_name": proposed_change.name.value,
@@ -228,6 +230,7 @@ class ProposedChangeMerge(Mutation):
         else:
             workflow = await graphql_context.service.workflow.submit_workflow(
                 workflow=PROPOSED_CHANGE_MERGE,
+                context=graphql_context.get_context(),
                 parameters={
                     "proposed_change_id": proposed_change.id,
                     "proposed_change_name": proposed_change.name.value,

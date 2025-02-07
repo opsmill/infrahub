@@ -74,7 +74,7 @@ class BranchCreate(Mutation):
             return cls(ok=True, task=task)
 
         await graphql_context.active_service.workflow.execute_workflow(
-            workflow=BRANCH_CREATE, parameters={"model": model}
+            workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model}
         )
 
         # Retrieve created branch
@@ -114,12 +114,12 @@ class BranchDelete(Mutation):
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_DELETE, parameters={"branch": obj.name}
+                workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters={"branch": obj.name}
             )
             return cls(ok=True)
 
         workflow = await graphql_context.active_service.workflow.submit_workflow(
-            workflow=BRANCH_DELETE, parameters={"branch": obj.name}
+            workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters={"branch": obj.name}
         )
         return cls(ok=True, task={"id": str(workflow.id)})
 
@@ -172,14 +172,14 @@ class BranchRebase(Mutation):
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_REBASE, parameters={"branch": obj.name}
+                workflow=BRANCH_REBASE, context=graphql_context.get_context(), parameters={"branch": obj.name}
             )
 
             # Pull the latest information about the branch from the database directly
             obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
         else:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
-                workflow=BRANCH_REBASE, parameters={"branch": obj.name}
+                workflow=BRANCH_REBASE, context=graphql_context.get_context(), parameters={"branch": obj.name}
             )
             task = {"id": workflow.id}
 
@@ -215,11 +215,11 @@ class BranchValidate(Mutation):
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_VALIDATE, parameters={"branch": obj.name}
+                workflow=BRANCH_VALIDATE, context=graphql_context.get_context(), parameters={"branch": obj.name}
             )
         else:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
-                workflow=BRANCH_VALIDATE, parameters={"branch": obj.name}
+                workflow=BRANCH_VALIDATE, context=graphql_context.get_context(), parameters={"branch": obj.name}
             )
             task = {"id": workflow.id}
 
@@ -251,11 +251,15 @@ class BranchMerge(Mutation):
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_MERGE_MUTATION, parameters={"branch": branch_name}
+                workflow=BRANCH_MERGE_MUTATION,
+                context=graphql_context.get_context(),
+                parameters={"branch": branch_name},
             )
         else:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
-                workflow=BRANCH_MERGE_MUTATION, parameters={"branch": branch_name}
+                workflow=BRANCH_MERGE_MUTATION,
+                context=graphql_context.get_context(),
+                parameters={"branch": branch_name},
             )
             task = {"id": workflow.id}
 

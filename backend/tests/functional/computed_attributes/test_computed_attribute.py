@@ -4,7 +4,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.auth import AccountSession, AuthType
 from infrahub.computed_attribute.tasks import process_jinja2, process_transform, query_transform_targets
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
@@ -24,6 +26,14 @@ if TYPE_CHECKING:
 
 
 class TestComputedAttribute(TestInfrahubApp):
+    @pytest.fixture(scope="class")
+    async def context(self, client: InfrahubClient, default_branch: Branch) -> InfrahubContext:
+        """Placeholder context for now, would be good to implement some auth and permissions here"""
+        return InfrahubContext(
+            account=AccountSession(authenticated=False, account_id="placeholder", auth_type=AuthType.NONE),
+            branch=BranchContext(name=default_branch.name, id=str(default_branch.uuid)),
+        )
+
     @pytest.fixture(scope="class")
     async def data(
         self,
@@ -72,7 +82,12 @@ class TestComputedAttribute(TestInfrahubApp):
         return {"c1": c1, "c2": c2, "c3": c3, "t1": t1, "t2": t2}
 
     async def test_description_after_color_change_jinja2(
-        self, data: dict[str, Node], client: InfrahubClient, default_branch: Branch, service: InfrahubServices
+        self,
+        data: dict[str, Node],
+        client: InfrahubClient,
+        default_branch: Branch,
+        context: InfrahubContext,
+        service: InfrahubServices,
     ) -> None:
         tshirt_1 = await client.get(kind="TestingTShirt", id=data["t1"].id)
         assert (
@@ -106,6 +121,7 @@ class TestComputedAttribute(TestInfrahubApp):
         data: dict[str, Node],
         client: InfrahubClient,
         default_branch: Branch,
+        context: InfrahubContext,
         service: InfrahubServices,
     ) -> None:
         # As we currently don't have a way to trigger on events within these tests we fire the automated workflow
@@ -131,7 +147,11 @@ class TestComputedAttribute(TestInfrahubApp):
         await color.save()
 
         await query_transform_targets(
-            branch_name=default_branch.name, node_kind="TestingColor", object_id=color_obj.id, service=service
+            branch_name=default_branch.name,
+            node_kind="TestingColor",
+            object_id=color_obj.id,
+            context=context,
+            service=service,
         )
 
         tshirt_altered_pitch_allocation = await client.get(kind="TestingTShirt", id=tshirt_obj.id)

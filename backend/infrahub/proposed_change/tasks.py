@@ -17,6 +17,7 @@ from prefect.logging import get_run_logger
 from prefect.states import Completed, Failed
 
 from infrahub import config
+from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import merge_branch
@@ -96,7 +97,12 @@ async def _proposed_change_transition_state(
     # on_crashed=[proposed_change_transition_open],  # type: ignore
     # on_cancellation=[proposed_change_transition_open],  # type: ignore
 )
-async def merge_proposed_change(proposed_change_id: str, proposed_change_name: str, service: InfrahubServices) -> State:  # noqa: ARG001
+async def merge_proposed_change(
+    proposed_change_id: str,
+    proposed_change_name: str,  # noqa: ARG001
+    context: InfrahubContext,
+    service: InfrahubServices,
+) -> State:
     log = get_run_logger()
 
     await add_tags(nodes=[proposed_change_id])
@@ -134,7 +140,7 @@ async def merge_proposed_change(proposed_change_id: str, proposed_change_name: s
 
         log.info("Proposed change is eligible to be merged")
         try:
-            await merge_branch(branch=source_branch.name, service=service)
+            await merge_branch(branch=source_branch.name, context=context, service=service)
         except MergeFailedError as exc:
             await _proposed_change_transition_state(
                 proposed_change=proposed_change, state=ProposedChangeState.OPEN, service=service
@@ -209,7 +215,9 @@ async def run_proposed_change_data_integrity_check(
     name="proposed-changed-run-generator",
     flow_run_name="Run generators",
 )
-async def run_generators(model: RequestProposedChangeRunGenerators, service: InfrahubServices) -> None:
+async def run_generators(
+    model: RequestProposedChangeRunGenerators, context: InfrahubContext, service: InfrahubServices
+) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
     generators = await service.client.filters(
@@ -288,7 +296,9 @@ async def run_generators(model: RequestProposedChangeRunGenerators, service: Inf
             branch_diff=model.branch_diff,
         )
         await service.workflow.submit_workflow(
-            workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS, parameters={"model": model_proposed_change_repo_checks}
+            workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
+            context=context,
+            parameters={"model": model_proposed_change_repo_checks},
         )
 
     for next_msg in next_messages:

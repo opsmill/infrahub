@@ -3,6 +3,8 @@ from uuid import uuid4
 
 import pytest
 
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot
 from infrahub.core.diff.models import RequestDiffUpdate
@@ -30,7 +32,15 @@ async def init_service():
     return service
 
 
-async def test_merged(default_branch: Branch, prefect_test_fixture, init_service):
+@pytest.fixture
+def context():
+    return InfrahubContext(
+        account=AccountSession(account_id="123", auth_type=AuthType.NONE),
+        branch=BranchContext(name="main", id="placeholder"),
+    )
+
+
+async def test_merged(default_branch: Branch, prefect_test_fixture, context: InfrahubContext, init_service):
     """
     Test that merge flow triggers corrects events/workflows. It does not actually test these events/workflows behaviors
     as they are mocked.
@@ -40,7 +50,7 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, init_service
     target_branch_name = "main"
     right_now = Timestamp()
     message = messages.EventBranchMerge(
-        source_branch=source_branch_name, target_branch=target_branch_name, ipam_node_details=[]
+        source_branch=source_branch_name, target_branch=target_branch_name, context=context, ipam_node_details=[]
     )
 
     tracked_diff_roots = [
