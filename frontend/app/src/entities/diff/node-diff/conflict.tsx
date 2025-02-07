@@ -3,6 +3,7 @@ import { currentBranchAtom } from "@/entities/branches/stores";
 import { resolveConflict } from "@/entities/diff/api/resolveConflict";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -44,7 +45,10 @@ export const Conflict = ({ conflict }: any) => {
         },
       });
 
-      await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES_DIFF_TREE"] });
+      await queryClient.invalidateQueries({ queryKey: ["diff-tree"] });
+      await graphqlClient.refetchQueries({
+        include: ["TASK_DETAILS_CHECK"],
+      });
 
       const message = newValue ? "Conflict marked as resolved" : "Conflict marked as not resolved";
 
