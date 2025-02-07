@@ -8,7 +8,7 @@ import SlideOver from "@/shared/components/display/slide-over";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
-import { useContext, useState } from "react";
+import { use, useState } from "react";
 import { useParams } from "react-router";
 
 import { getPermission } from "@/entities/permission/utils";
@@ -24,7 +24,7 @@ type tDiffThread = {
 export const DiffThread = ({ path }: tDiffThread) => {
   const { proposedChangeId } = useParams();
   const [schemaList] = useAtom(schemaState);
-  const { node, currentBranch } = useContext(DiffContext);
+  const { node, currentBranch } = use(DiffContext);
   const [showThread, setShowThread] = useState(false);
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
