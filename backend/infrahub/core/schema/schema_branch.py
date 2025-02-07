@@ -1819,11 +1819,13 @@ class SchemaBranch:
                 RelationshipSchema(
                     name=relationship.name,
                     peer=rel_template_peer,
-                    kind=RelationshipKind.ATTRIBUTE,
-                    optional=True,
+                    kind=relationship.kind,
+                    optional=relationship.kind == RelationshipKind.COMPONENT,
                     cardinality=relationship.cardinality,
                     branch=relationship.branch,
                     identifier="__".join(sorted([template_schema.kind.lower(), rel_template_peer.lower()])),
+                    min_count=relationship.min_count,
+                    max_count=relationship.max_count,
                 )
             )
 
