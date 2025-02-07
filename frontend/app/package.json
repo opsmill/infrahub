@@ -75,7 +75,7 @@
     "react": "^18.2.0",
     "react-accessible-treeview": "^2.11.0",
     "react-aria-components": "^1.6.0",
-    "react-datepicker": "^7.6.0",
+    "react-datepicker": "^8.0.0",
     "react-diff-view": "^3.2.0",
     "react-dom": "^18.2.0",
     "react-error-boundary": "^5.0.0",
@@ -96,7 +96,7 @@
     "tailwindcss-animate": "^1.0.7",
     "unidiff": "^1.0.4",
     "use-query-params": "^2.2.1",
-    "vite": "^6.0.11",
+    "vite": "^6.1.0",
     "vite-plugin-svgr": "^4.3.0",
     "vite-tsconfig-paths": "^5.1.4"
   },
