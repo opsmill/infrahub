@@ -8,7 +8,13 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.changelog.models import NodeChangelog
-from infrahub.core.constants import BranchSupportType, ComputedAttributeKind, InfrahubKind, RelationshipCardinality
+from infrahub.core.constants import (
+    BranchSupportType,
+    ComputedAttributeKind,
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipKind,
+)
 from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
@@ -581,11 +587,21 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     node_changelog.add_attribute(attribute=updated_attribute)
 
         # Go over the list of relationships and update them one by one
+        processed_relationships: list[str] = []
         for name in self._relationships:
             if (fields and name in fields) or not fields:
+                processed_relationships.append(name)
                 rel: RelationshipManager = getattr(self, name)
                 updated_relationship = await rel.save(at=update_at, db=db)
                 node_changelog.add_relationship(relationship=updated_relationship)
+
+        if len(processed_relationships) != len(self._relationships):
+            # Analyze if the node has a parent and add it to the changelog if missing
+            if parent_relationship := self._get_parent_relationship_name():
+                if parent_relationship not in processed_relationships:
+                    rel: RelationshipManager = getattr(self, parent_relationship)
+                    if parent := await rel.get_parent(db=db):
+                        node_changelog.add_parent_from_relationship(parent=parent)
 
         node_changelog.display_label = await self.render_display_label(db=db)
         return node_changelog
@@ -782,3 +798,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if not display_label.strip():
             return repr(self)
         return display_label.strip()
+
+    def _get_parent_relationship_name(self) -> str | None:
+        """Return the name of the parent relationship is one is present"""
+        for relationship in self._schema.relationships:
+            if relationship.kind == RelationshipKind.PARENT:
+                return relationship.name

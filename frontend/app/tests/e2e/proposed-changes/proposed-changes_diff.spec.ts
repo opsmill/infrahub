@@ -86,7 +86,7 @@ test.describe("/proposed-changes diff data", () => {
   test("should comment a proposed changes", async ({ page }) => {
     await test.step("access proposed change diff tab", async () => {
       await page.goto("/proposed-changes");
-      await page.getByRole("link", { name: "conflict-test" }).click();
+      await page.getByRole("link", { name: "conflict-test" }).first().click();
       await expect(
         page.locator("header").filter({ hasText: "Proposed changesconflict-test" })
       ).toBeVisible();

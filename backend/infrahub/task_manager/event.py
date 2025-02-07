@@ -1,11 +1,11 @@
 import uuid
-from typing import Any
+from typing import Any, Self
 
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.events.filters import EventFilter, EventIDFilter, EventNameFilter, EventRelatedFilter, EventResourceFilter
 from prefect.events.schemas.events import Event as PrefectEventModel
 from prefect.events.schemas.events import ResourceSpecification
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field, TypeAdapter, model_validator
 
 from infrahub.log import get_logger
 from infrahub.utils import get_nested_dict
@@ -75,7 +75,24 @@ class PrefectEventData(PrefectEventModel):
 
 class PrefectEventResponse(BaseModel):
     count: int = Field(..., description="Number of matching events")
+    next_token: str | None = Field(default=None, description="The token to use for the next query to InfrahubEventNext")
     events: list[PrefectEventData] = Field(..., description="Returned events")
+
+    @model_validator(mode="after")
+    def convert_next_page_token(self) -> Self:
+        """Converts the next_page token to strip out the url
+
+        The original format if present will look something like this:
+        http://localhost:4200/api/events/filter/next?page-token=ZXlKb...
+        """
+        if self.next_token:
+            token_parts = self.next_token.split("token=")
+            if len(token_parts) == 2:
+                self.next_token = token_parts[1]
+            else:
+                self.next_token = None
+
+        return self
 
 
 class PrefectEvent:
@@ -92,10 +109,24 @@ class PrefectEvent:
 
         response = await client._client.post("/events/filter", json=body)
         response.raise_for_status()
-        # TODO need to implement pagination :(
+        data: dict[str, Any] = response.json()
+
         return PrefectEventResponse(
-            count=response.json().get("total", 0),
-            events=TypeAdapter(list[PrefectEventData]).validate_python(response.json().get("events")),
+            count=data.get("total", 0),
+            events=TypeAdapter(list[PrefectEventData]).validate_python(data.get("events")),
+            next_token=data.get("next_page"),
+        )
+
+    @classmethod
+    async def query_next_events(cls, client: PrefectClient, next_token: str) -> PrefectEventResponse:
+        response = await client._client.get(f"/events/filter/next?page-token={next_token}")
+        response.raise_for_status()
+        data: dict[str, Any] = response.json()
+
+        return PrefectEventResponse(
+            count=data.get("total", 0),
+            events=TypeAdapter(list[PrefectEventData]).validate_python(data.get("events")),
+            next_token=data.get("next_page"),
         )
 
     @classmethod
@@ -116,19 +147,15 @@ class PrefectEvent:
                 labels=ResourceSpecification({"infrahub.node.id": related_node__ids})
             )
 
+        related_filter: dict[str, str | list[str]] = {}
         if branch:
-            filters.related = EventRelatedFilter(
-                labels=ResourceSpecification(
-                    {"prefect.resource.role": "infrahub.branch", "infrahub.resource.label": branch}
-                )
-            )
+            related_filter["infrahub.branch.label"] = branch
 
         if account:
-            filters.related = EventRelatedFilter(
-                labels=ResourceSpecification(
-                    {"prefect.resource.role": "infrahub.account", "infrahub.resource.id": account}
-                )
-            )
+            related_filter["infrahub.account.id"] = account
+
+        if related_filter:
+            filters.related = EventRelatedFilter(labels=ResourceSpecification(related_filter))
 
         return filters
 
@@ -142,7 +169,6 @@ class PrefectEvent:
         account: str | None = None,
         limit: int | None = None,
         related_node__ids: list[str] | None = None,
-        offset: int | None = None,  # noqa: ARG003
     ) -> dict[str, Any]:
         nodes: list[dict] = []
 
@@ -158,4 +184,18 @@ class PrefectEvent:
             response = await cls.query_events(client=client, filters=filters, limit=limit)
             nodes = [{"node": event.to_graphql()} for event in response.events]
 
-        return {"count": response.count, "edges": nodes}
+        return {"count": response.count, "edges": nodes, "next_token": response.next_token}
+
+    @classmethod
+    async def query_next(
+        cls,
+        fields: dict[str, Any],  # noqa: ARG003
+        next_token: str,
+    ) -> dict[str, Any]:
+        nodes: list[dict] = []
+
+        async with get_client(sync_client=False) as client:
+            response = await cls.query_next_events(client=client, next_token=next_token)
+            nodes = [{"node": event.to_graphql()} for event in response.events]
+
+        return {"count": response.count, "edges": nodes, "next_token": response.next_token}
