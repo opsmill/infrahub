@@ -600,8 +600,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if parent_relationship := self._get_parent_relationship_name():
                 if parent_relationship not in processed_relationships:
                     rel: RelationshipManager = getattr(self, parent_relationship)
-                    for peer in await rel.get_relationships(db=db):
-                        node_changelog.add_parent_from_relationship(parent=peer)
+                    if parent := await rel.get_parent(db=db):
+                        node_changelog.add_parent_from_relationship(parent=parent)
 
         node_changelog.display_label = await self.render_display_label(db=db)
         return node_changelog

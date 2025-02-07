@@ -979,6 +979,19 @@ class RelationshipManager:
 
         return rels
 
+    async def get_parent(
+        self, db: InfrahubDatabase, branch_agnostic: bool = False, force_refresh: bool = False
+    ) -> Relationship | None:
+        if self.schema.kind == RelationshipKind.PARENT:
+            for relationship in await self.get_relationships(
+                db=db, branch_agnostic=branch_agnostic, force_refresh=force_refresh
+            ):
+                # As parent relationships requires cardinality=one there will always only be one relationship
+                # here even though it's within a loop
+                return relationship
+
+        return None
+
     async def get_relationships(
         self, db: InfrahubDatabase, branch_agnostic: bool = False, force_refresh: bool = False
     ) -> list[Relationship]:
