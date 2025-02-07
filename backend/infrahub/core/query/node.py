@@ -201,15 +201,14 @@ class NodeCreateAllQuery(NodeQuery):
         }
         ipnetwork_prop_list = [f"{key}: {value}" for key, value in ipnetwork_prop.items()]
 
-        query = """
-        MATCH (root:Root)
-        CREATE (n:Node:%(labels)s $node_prop )
-        CREATE (n)-[r:IS_PART_OF $node_branch_prop ]->(root)
+        attrs_query = """
         WITH distinct n
-        FOREACH ( attr IN $attrs |
+        UNWIND $attrs AS attr
+        CALL (n, attr) {
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
             MERGE (av:AttributeValue { value: attr.content.value, is_default: attr.content.is_default })
+            LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
             MERGE (iv:Boolean { value: attr.is_visible })
@@ -223,11 +222,17 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
             )
-        )
-        FOREACH ( attr IN $attrs_iphost |
+        }"""
+
+        attrs_iphost_query = """
+        WITH distinct n
+        UNWIND $attrs_iphost AS attr_iphost
+        CALL (n, attr_iphost) {
+            WITH attr_iphost AS attr
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
             MERGE (av:AttributeValue:AttributeIPHost { %(iphost_prop)s })
+            LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
             MERGE (iv:Boolean { value: attr.is_visible })
@@ -241,11 +246,18 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
             )
-        )
-        FOREACH ( attr IN $attrs_ipnetwork |
+        }
+        """ % {"iphost_prop": ", ".join(iphost_prop_list)}
+
+        attrs_ipnetwork_query = """
+        WITH distinct n
+        UNWIND $attrs_ipnetwork AS attr_ipnetwork
+        CALL (n, attr_ipnetwork) {
+            WITH attr_ipnetwork AS attr
             CREATE (a:Attribute { uuid: attr.uuid, name: attr.name, branch_support: attr.branch_support })
             CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(a)
             MERGE (av:AttributeValue:AttributeIPNetwork { %(ipnetwork_prop)s })
+            LIMIT 1
             CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(av)
             MERGE (ip:Boolean { value: attr.is_protected })
             MERGE (iv:Boolean { value: attr.is_visible })
@@ -259,8 +271,13 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at }]->(peer)
             )
-        )
-        FOREACH ( rel IN $rels_bidir |
+        }
+        """ % {"ipnetwork_prop": ", ".join(ipnetwork_prop_list)}
+
+        rels_bidir_query = """
+        WITH distinct n
+        UNWIND $rels_bidir AS rel
+        CALL (n, rel) {
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
@@ -277,8 +294,14 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
             )
-        )
-        FOREACH ( rel IN $rels_out |
+        }
+        """ % {"rel_prop": rel_prop_str}
+
+        rels_out_query = """
+        WITH distinct n
+        UNWIND $rels_out AS rel_out
+        CALL (n, rel_out) {
+            WITH rel_out AS rel
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
@@ -295,8 +318,14 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
             )
-        )
-        FOREACH ( rel IN $rels_in |
+        }
+        """ % {"rel_prop": rel_prop_str}
+
+        rels_in_query = """
+        WITH distinct n
+        UNWIND $rels_in AS rel_in
+        CALL (n, rel_in) {
+            WITH rel_in AS rel
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)<-[:IS_RELATED %(rel_prop)s ]-(rl)
@@ -313,14 +342,23 @@ class NodeCreateAllQuery(NodeQuery):
                 MERGE (peer:Node { uuid: prop.peer_id })
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at }]->(peer)
             )
-        )
+        }
+        """ % {"rel_prop": rel_prop_str}
+
+        query = f"""
+        MATCH (root:Root)
+        CREATE (n:Node:%(labels)s $node_prop )
+        CREATE (n)-[r:IS_PART_OF $node_branch_prop ]->(root)
+        {attrs_query if self.params["attrs"] else ""}
+        {attrs_iphost_query if self.params["attrs_iphost"] else ""}
+        {attrs_ipnetwork_query if self.params["attrs_ipnetwork"] else ""}
+        {rels_bidir_query if self.params["rels_bidir"] else ""}
+        {rels_out_query if self.params["rels_out"] else ""}
+        {rels_in_query if self.params["rels_in"] else ""}
         WITH distinct n
         MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(rn)-[:HAS_VALUE|IS_RELATED]-(rv)
         """ % {
             "labels": ":".join(self.node.get_labels()),
-            "rel_prop": rel_prop_str,
-            "iphost_prop": ", ".join(iphost_prop_list),
-            "ipnetwork_prop": ", ".join(ipnetwork_prop_list),
         }
 
         self.params["at"] = at.to_string()
