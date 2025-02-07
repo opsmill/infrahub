@@ -17,6 +17,6 @@ test.describe("/objects/CoreArtifactDefinition - Artifact Definition page", () =
     await page.getByRole("link", { name: "Startup Config for Edge devices" }).click();
     await expect(page.getByRole("button", { name: "Generate" })).not.toBeDisabled();
     await page.getByRole("button", { name: "Generate" }).click();
-    await expect(page.getByRole("alert")).toContainText("Artifacts generated");
+    await expect(page.getByText("Artifacts generated")).toBeVisible();
   });
 });
