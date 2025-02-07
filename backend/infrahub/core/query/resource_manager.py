@@ -276,6 +276,8 @@ class NumberPoolSetReserved(Query):
         query = """
         MATCH (pool:%(number_pool)s { uuid: $pool_id })
         MERGE (value:AttributeValue { value: $reserved, is_default: false })
+        WITH value, pool
+        LIMIT 1
         CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(value)
         """ % {"number_pool": InfrahubKind.NUMBERPOOL}
 
