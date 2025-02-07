@@ -2,7 +2,7 @@ import { EventNodeInterface, NodeMutatedEvent } from "@/shared/api/graphql/gener
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Badge } from "@/shared/components/ui/badge";
 
-import { DisplayLabel } from "@/shared/components/ui/display-label";
+import { DisplayLabel } from "@/entities/nodes/object/ui/display-label";
 import { Icon } from "@iconify-icon/react";
 
 export type ActivityType = EventNodeInterface | NodeMutatedEvent;
