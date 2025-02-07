@@ -48,7 +48,7 @@ from .queries import (
     Relationship,
 )
 from .queries.diff.tree import DiffTreeQuery, DiffTreeSummaryQuery
-from .queries.event import Event
+from .queries.event import Event, EventNext
 from .queries.task import Task, TaskBranchStatus
 
 
@@ -69,6 +69,7 @@ class InfrahubBaseQuery(ObjectType):
 
     InfrahubTask = Task
     InfrahubEvent = Event
+    InfrahubEventNext = EventNext
     InfrahubTaskBranchStatus = TaskBranchStatus
 
     IPAddressGetNextAvailable = InfrahubIPAddressGetNextAvailable

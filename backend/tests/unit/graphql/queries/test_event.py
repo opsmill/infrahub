@@ -18,9 +18,10 @@ from tests.helpers.events import send_events
 from tests.helpers.graphql import graphql
 
 QUERY_EVENT = """
-query($branch: String, $account: String) {
-  InfrahubEvent(branch: $branch, account: $account) {
+query($branch: String, $account: String, $limit: Int) {
+  InfrahubEvent(branch: $branch, account: $account, limit: $limit) {
     count
+    next_token
     edges {
       node {
         id
@@ -31,6 +32,23 @@ query($branch: String, $account: String) {
   }
 }
 """
+
+QUERY_EVENT_NEXT = """
+query($next_token: String!) {
+  InfrahubEventNext(next_token: $next_token) {
+    count
+    next_token
+    edges {
+      node {
+        id
+        event
+        branch
+      }
+    }
+  }
+}
+"""
+
 
 QUERY_SIMPLE_COUNT_EVENT = """
 query($branch: String) {
@@ -346,3 +364,26 @@ async def test_event_query_prefect(
     assert branch2_account2.errors is None
     assert branch2_account2.data
     assert branch2_account2.data["InfrahubEvent"]["count"] == 2
+
+    paginated_account1_page1 = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"account": ACCOUNT1_ID, "limit": 3},
+    )
+    assert paginated_account1_page1.errors is None
+    assert paginated_account1_page1.data
+    assert paginated_account1_page1.data["InfrahubEvent"]["count"] == 4
+    assert paginated_account1_page1.data["InfrahubEvent"]["next_token"]
+    next_token = paginated_account1_page1.data["InfrahubEvent"]["next_token"]
+
+    paginated_account1_page2 = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT_NEXT,
+        variables={"next_token": next_token},
+    )
+    assert paginated_account1_page2.errors is None
+    assert paginated_account1_page2.data
+    assert paginated_account1_page2.data["InfrahubEventNext"]["count"] == 4
+    assert not paginated_account1_page2.data["InfrahubEventNext"]["next_token"]
