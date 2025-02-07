@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Self, cast
 from uuid import UUID
 
-from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, computed_field, field_validator, model_validator
 
-from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
+from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality, RelationshipKind
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
@@ -100,6 +100,11 @@ class RelationshipCardinalityOneChangelog(BaseModel):
     properties: dict[str, PropertyChangelog] = Field(
         default_factory=dict, description="Changes to properties of this relationship if any were made"
     )
+    _parent: ChangelogNodeParent | None = PrivateAttr(default=None)
+
+    @property
+    def parent(self) -> ChangelogNodeParent | None:
+        return self._parent
 
     @computed_field
     def cardinality(self) -> str:
@@ -118,6 +123,20 @@ class RelationshipCardinalityOneChangelog(BaseModel):
 
     def add_property(self, name: str, value_current: bool | str | None, value_previous: bool | str | None) -> None:
         self.properties[name] = PropertyChangelog(name=name, value=value_current, value_previous=value_previous)
+
+    def set_parent(self, parent_id: str, parent_kind: str) -> None:
+        self._parent = ChangelogNodeParent(node_id=parent_id, node_kind=parent_kind)
+
+    def set_parent_from_relationship(self, relationship: Relationship) -> None:
+        if relationship.schema.kind == RelationshipKind.PARENT:
+            if (
+                self.peer_status in [DiffAction.ADDED, DiffAction.UNCHANGED, DiffAction.UPDATED]
+                and self.peer_id
+                and self.peer_kind
+            ):
+                self._parent = ChangelogNodeParent(node_id=self.peer_id, node_kind=self.peer_kind)
+            elif self.peer_id_previous and self.peer_kind_previous:
+                self._parent = ChangelogNodeParent(node_id=self.peer_id_previous, node_kind=self.peer_kind_previous)
 
     @property
     def is_empty(self) -> bool:
@@ -179,6 +198,11 @@ class RelationshipCardinalityManyChangelog(BaseModel):
         return not self.peers
 
 
+class ChangelogNodeParent(BaseModel):
+    node_id: str
+    node_kind: str
+
+
 class NodeChangelog(BaseModel):
     """Emitted when a node is updated"""
 
@@ -191,12 +215,35 @@ class NodeChangelog(BaseModel):
         default_factory=dict
     )
 
+    _parent: ChangelogNodeParent | None = PrivateAttr(default=None)
+
+    @property
+    def parent(self) -> ChangelogNodeParent | None:
+        return self._parent
+
+    @property
+    def root_node_id(self) -> str:
+        """Return the top level node_id"""
+        if self.parent:
+            return self.parent.node_id
+        return self.node_id
+
+    def add_parent(self, parent: ChangelogNodeParent) -> None:
+        self._parent = parent
+
+    def add_parent_from_relationship(self, parent: Relationship) -> None:
+        self._parent = ChangelogNodeParent(node_id=parent.get_peer_id(), node_kind=parent.get_peer_kind())
+
     def create_relationship(self, relationship: Relationship) -> None:
         if relationship.schema.cardinality == RelationshipCardinality.ONE:
+            peer_id = relationship.get_peer_id()
+            peer_kind = relationship.get_peer_kind()
+            if relationship.schema.kind == RelationshipKind.PARENT:
+                self._parent = ChangelogNodeParent(node_id=peer_id, node_kind=peer_kind)
             changelog_relationship = RelationshipCardinalityOneChangelog(
                 name=relationship.schema.name,
-                peer_id=relationship.get_peer_id(),
-                peer_kind=relationship.get_peer_kind(),
+                peer_id=peer_id,
+                peer_kind=peer_kind,
             )
             if source_id := getattr(relationship, "source_id", None):
                 changelog_relationship.add_property(name="source", value_current=source_id, value_previous=None)
@@ -226,6 +273,8 @@ class NodeChangelog(BaseModel):
     def add_relationship(
         self, relationship: RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog
     ) -> None:
+        if isinstance(relationship, RelationshipCardinalityOneChangelog) and relationship.parent:
+            self.add_parent(parent=relationship.parent)
         if relationship.is_empty:
             return
 
@@ -276,6 +325,13 @@ class ChangelogRelationshipMapper:
     def _set_cardinality_one_peer(self, relationship: Relationship) -> None:
         self.cardinality_one_relationship.peer_id = relationship.peer_id
         self.cardinality_one_relationship.peer_kind = relationship.get_peer_kind()
+        self.cardinality_one_relationship.set_parent_from_relationship(relationship=relationship)
+
+    def add_parent_from_relationship(self, relationship: Relationship) -> None:
+        if self.schema.cardinality == RelationshipCardinality.ONE:
+            self.cardinality_one_relationship.set_parent(
+                parent_id=relationship.get_peer_id(), parent_kind=relationship.get_peer_kind()
+            )
 
     def add_peer_from_relationship(self, relationship: Relationship) -> None:
         if self.schema.cardinality == RelationshipCardinality.ONE:
@@ -306,11 +362,14 @@ class ChangelogRelationshipMapper:
                     value_current=getattr(relationship, property_name),
                     value_previous=previous_value,
                 )
+            self.cardinality_one_relationship.set_parent_from_relationship(relationship=relationship)
 
     def delete_relationship(self, relationship: Relationship) -> None:
         if self.schema.cardinality == RelationshipCardinality.ONE:
             self.cardinality_one_relationship.peer_id_previous = relationship.get_peer_id()
             self.cardinality_one_relationship.peer_kind_previous = relationship.get_peer_kind()
+            self.cardinality_one_relationship.set_parent_from_relationship(relationship=relationship)
+
         elif self.schema.cardinality == RelationshipCardinality.MANY:
             self.cardinality_many_relationship.remove_peer(
                 peer_id=relationship.get_peer_id(), peer_kind=relationship.get_peer_kind()

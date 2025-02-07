@@ -130,6 +130,7 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
         },
         relationships=owner,
     )
+    assert not dog1.node_changelog.parent
 
 
 async def test_node_changelog_update_with_cardinality_one_relationship(
@@ -182,6 +183,7 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
             )
         },
     )
+    assert not dog1_update.node_changelog.parent
 
 
 async def test_node_changelog_update_with_cardinality_many_relationship(
@@ -228,6 +230,7 @@ async def test_node_changelog_update_with_cardinality_many_relationship(
         )
         in group1.node_changelog.relationships["members"].peers
     )
+    assert not group1.node_changelog.parent
 
 
 async def test_node_changelog_delete_with_cardinality_one_relationship(
@@ -249,6 +252,7 @@ async def test_node_changelog_delete_with_cardinality_one_relationship(
     assert dog1_update.node_changelog.attributes["breed"].value_update_status == DiffAction.REMOVED
     assert list(dog1_update.node_changelog.relationships.keys()) == ["owner"]
     assert dog1_update.node_changelog.relationships["owner"].peer_status == DiffAction.REMOVED
+    assert not dog1_update.node_changelog.parent
 
 
 async def test_node_changelog_delete_with_cardinality_many_relationship(
@@ -268,6 +272,7 @@ async def test_node_changelog_delete_with_cardinality_many_relationship(
     dog2 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
     await dog2.new(db=db, name={"value": "Lassie", "owner": person1.id}, breed="Collie", owner=person1)
     await dog2.save(db=db)
+    assert not dog2.node_changelog.parent
 
     person1_update = await NodeManager.get_one(id=person1.id, db=db)
     await person1_update.delete(db=db)
@@ -275,3 +280,60 @@ async def test_node_changelog_delete_with_cardinality_many_relationship(
     animals = person1_update.node_changelog.relationships["animals"].peers
     assert RelationshipPeerChangelog(peer_id=dog1.id, peer_kind="TestAnimal", peer_status=DiffAction.REMOVED) in animals
     assert RelationshipPeerChangelog(peer_id=dog2.id, peer_kind="TestAnimal", peer_status=DiffAction.REMOVED) in animals
+
+
+async def test_node_changelog_parent(db: InfrahubDatabase, default_branch, car_person_schema: None) -> None:
+    """Validate that parents are registrered in the node_changelog for parent/component relationships."""
+    person1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person1.new(db=db, name="Jack")
+    await person1.save(db=db)
+
+    person2 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person2.new(db=db, name="Jill")
+    await person2.save(db=db)
+
+    # Person 1 should be identified as the parent on creation
+    car1 = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car1.new(db=db, name="Volvo", owner=person1)
+    await car1.save(db=db)
+    assert car1.node_changelog.parent
+    assert car1.node_changelog.parent.node_id == person1.id
+    assert car1.node_changelog.parent.node_kind == "TestPerson"
+
+    # Person 1 should be identified as the parent on update even though the relationship wasn't modified
+    car1_update1 = await NodeManager.get_one(id=car1.id, db=db)
+    car1_update1.color.value = "Blue"
+    await car1_update1.save(db=db)
+    assert sorted(car1_update1.node_changelog.attributes.keys()) == ["color"]
+    assert not car1_update1.node_changelog.relationships
+    assert car1_update1.node_changelog.parent
+    assert car1_update1.node_changelog.parent.node_id == person1.id
+    assert car1_update1.node_changelog.parent.node_kind == "TestPerson"
+
+    # Person 1 should be identified as the parent on update even though the relationship wasn't modified and the .save()
+    # method was called with a fields filter
+    car1_update2 = await NodeManager.get_one(id=car1.id, db=db)
+    car1_update2.nbr_seats.value = 5
+    await car1_update2.save(db=db, fields=["nbr_seats"])
+    assert sorted(car1_update2.node_changelog.attributes.keys()) == ["nbr_seats"]
+    assert not car1_update2.node_changelog.relationships
+    assert car1_update2.node_changelog.parent
+    assert car1_update2.node_changelog.parent.node_id == person1.id
+    assert car1_update2.node_changelog.parent.node_kind == "TestPerson"
+
+    # Person 2 should be identified as the parent on update even after the owner is changed
+    # method was called with a fields filter
+    car1_update3 = await NodeManager.get_one(id=car1.id, db=db)
+    await car1_update3.owner.update(data=person2, db=db)
+    await car1_update3.save(db=db, fields=["owner"])
+    assert not car1_update3.node_changelog.attributes
+    assert sorted(car1_update3.node_changelog.relationships.keys()) == ["owner"]
+    assert car1_update3.node_changelog.parent
+    assert car1_update3.node_changelog.parent.node_id == person2.id
+    assert car1_update3.node_changelog.parent.node_kind == "TestPerson"
+
+    # Person 2 is still identified as the owner when the node is deleted
+    car1_delete1 = await NodeManager.get_one(id=car1.id, db=db)
+    await car1_delete1.delete(db=db)
+    assert car1_delete1.node_changelog.parent.node_id == person2.id
+    assert car1_delete1.node_changelog.parent.node_kind == "TestPerson"

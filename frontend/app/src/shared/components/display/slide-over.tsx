@@ -45,7 +45,7 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
   };
 
   return (
-    <SlideOverContext.Provider value={context}>
+    <SlideOverContext value={context}>
       <Transition.Root show={isOpen} as={Fragment}>
         <Dialog
           as="div"
@@ -112,7 +112,7 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
         setOpen={() => setPreventClose(false)}
         confirmLabel="Close"
       />
-    </SlideOverContext.Provider>
+    </SlideOverContext>
   );
 }
 

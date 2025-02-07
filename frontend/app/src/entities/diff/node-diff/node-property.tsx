@@ -1,6 +1,6 @@
-import { BadgeConflict } from "@/entities/diff/diff-badge";
 import { DiffProperty, DiffStatus } from "@/entities/diff/node-diff/types";
 import { DiffRow, formatPropertyName, formatValue } from "@/entities/diff/node-diff/utils";
+import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
