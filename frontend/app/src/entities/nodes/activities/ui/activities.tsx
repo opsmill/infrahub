@@ -1,12 +1,30 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { getActivitiesInfiniteQueryOptions } from "../api/get-activities.query";
+import { EventNodeInterface } from "@/shared/api/graphql/generated/graphql";
+import ErrorFallback from "@/shared/components/errors/error-fallback";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { useActivities } from "../api/get-activities.query";
+import { INFRAHUB_EVENT } from "../utils/constants";
+import { Activity } from "./activity";
 
 export const Activities = () => {
-  const { isPending, data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(
-    getActivitiesInfiniteQueryOptions()
-  );
-  console.log("isPending: ", isPending);
-  console.log("data: ", data);
+  const { isLoading, data, error } = useActivities();
 
-  return <div>OK</div>;
+  if (isLoading) {
+    return <Spinner />;
+  }
+
+  if (error) {
+    return <ErrorFallback error={error} />;
+  }
+
+  const activities: EventNodeInterface[] = data?.data?.[INFRAHUB_EVENT]?.edges?.map((edge) => {
+    return edge.node;
+  });
+
+  return (
+    <div>
+      {activities?.map((activity) => (
+        <Activity key={activity.id} {...activity} />
+      ))}
+    </div>
+  );
 };
