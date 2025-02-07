@@ -1,4 +1,5 @@
 import { GET_CHECKS } from "@/entities/diff/api/getCheckDetails";
+import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { MoreButton } from "@/shared/components/buttons/more-button";
@@ -9,6 +10,7 @@ import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Skeleton } from "@/shared/components/skeleton";
 import { List } from "@/shared/components/table/list";
+import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
@@ -68,35 +70,11 @@ const getCheckBorderColor = (severity?: string) => {
   }
 };
 
-const getCheckData = (check: any, refetch: Function) => {
-  const { __typename } = check;
-
-  switch (__typename) {
-    case "CoreDataCheck": {
-      const { id, conflicts } = check;
-
-      if (!conflicts?.value?.length) return null;
-
-      return (
-        <div>
-          <div>
-            {conflicts?.value?.map((conflict: any, index: number) => (
-              <Conflict key={index} {...conflict} check={check} id={id} refetch={refetch} />
-            ))}
-          </div>
-        </div>
-      );
-    }
-    default: {
-      return null;
-    }
-  }
-};
-
 export const Check = ({ id }: tCheckProps) => {
+  const proposedChangesDetails = useAtomValue(proposedChangedState);
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
-  const { loading, error, data, refetch } = useQuery(GET_CHECKS, { variables: { ids: [id] } });
+  const { loading, error, data } = useQuery(GET_CHECKS, { variables: { ids: [id] } });
 
   const check = data?.CoreCheck?.edges?.[0]?.node ?? {};
 
@@ -110,6 +88,7 @@ export const Check = ({ id }: tCheckProps) => {
     message,
     severity,
     conclusion,
+    conflicts,
   } = check;
 
   if (error) {
@@ -119,8 +98,6 @@ export const Check = ({ id }: tCheckProps) => {
       </div>
     );
   }
-
-  const content = getCheckData(check, refetch);
 
   const columns = [
     {
@@ -167,7 +144,7 @@ export const Check = ({ id }: tCheckProps) => {
               {loading ? (
                 <Skeleton className="h-3 w-24" />
               ) : (
-                <DateDisplay date={created_at?.value} />
+                created_at?.value && <DateDisplay date={created_at?.value} />
               )}
 
               <PopOver buttonComponent={MoreButton}>
@@ -186,11 +163,25 @@ export const Check = ({ id }: tCheckProps) => {
         </div>
       </div>
 
-      {content && (
-        <div>
-          <div className="border-t-2 border-gray-100 mb-2 rounded-md" />
+      {!!conflicts?.value?.length && (
+        <div className="bg-white p-2 rounded-md border border-gray-100">
+          <div className="grid grid-cols-3">
+            <Badge variant="green" className="bg-transparent col-start-2 col-end-3">
+              <Icon icon="mdi:layers-triple" className="mr-1" />{" "}
+              {proposedChangesDetails.destination_branch?.value}
+            </Badge>
 
-          {content}
+            <Badge variant="blue" className="bg-transparent">
+              <Icon icon="mdi:layers-triple" className="mr-1" />{" "}
+              {proposedChangesDetails.source_branch?.value}
+            </Badge>
+          </div>
+
+          <div>
+            {conflicts?.value?.map((conflict: any) => {
+              return <Conflict key={id} {...conflict} check={check} />;
+            })}
+          </div>
         </div>
       )}
     </div>
