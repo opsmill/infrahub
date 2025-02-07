@@ -3,7 +3,7 @@ import { branchesState } from "@/entities/branches/stores";
 import { SchemaContext, withSchemaContext } from "@/entities/schema/decorators/withSchemaContext";
 import Sidebar from "@/shared/components/layout/sidebar";
 import { useAtomValue } from "jotai/index";
-import { useContext, useEffect } from "react";
+import { use, useEffect } from "react";
 import { Outlet } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import Header from "./header";
@@ -11,7 +11,7 @@ import Header from "./header";
 function Layout() {
   const branches = useAtomValue(branchesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
-  const { checkSchemaUpdate } = useContext(SchemaContext);
+  const { checkSchemaUpdate } = use(SchemaContext);
 
   useEffect(() => {
     if (branches.length === 0) return;

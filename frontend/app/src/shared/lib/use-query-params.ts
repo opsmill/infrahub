@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { use } from "react";
 import {
   UNSAFE_DataRouterContext,
   UNSAFE_NavigationContext,
@@ -18,9 +18,9 @@ export const ReactRouter7Adapter = ({
   // but we will limit our usage of it and have a backup to just use
   // useLocation() output in case of some kind of breaking change we miss.
   // see: https://github.com/remix-run/react-router/blob/f3d87dcc91fbd6fd646064b88b4be52c15114603/packages/react-router-dom/index.tsx#L113-L131
-  const { navigator } = useContext(UNSAFE_NavigationContext);
+  const { navigator } = use(UNSAFE_NavigationContext);
   const navigate = useNavigate();
-  const router = useContext(UNSAFE_DataRouterContext)?.router;
+  const router = use(UNSAFE_DataRouterContext)?.router;
   const location = useLocation();
 
   const adapter: QueryParamAdapter = {
