@@ -21,7 +21,7 @@ export const Activities = () => {
   });
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       {activities?.map((activity) => (
         <Activity key={activity.id} {...activity} />
       ))}
