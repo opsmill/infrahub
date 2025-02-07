@@ -1,6 +1,5 @@
 import { getBranchesFromApi } from "@/entities/branches/api/get-branches-from-api";
-import { branchesState, currentBranchAtom } from "@/entities/branches/stores";
-import { findSelectedBranch } from "@/entities/branches/utils";
+import { branchesState } from "@/entities/branches/stores";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { store } from "@/shared/stores";
 
@@ -12,11 +11,7 @@ export const getBranches: GetBranches = async () => {
   if (error) throw error;
 
   const branches = data?.Branch ?? [];
-
-  const params = new URLSearchParams(window.location.search);
-  const currentBranch = findSelectedBranch(branches, params.get("branch"));
   store.set(branchesState, branches);
-  store.set(currentBranchAtom, currentBranch);
 
   return branches;
 };
