@@ -1207,7 +1207,6 @@ async def test_create_with_object_template(
         root_value=None,
         variable_values={"device_name": "th2.par.asbr01", "template_id": device_template.id},
     )
-
     assert not result.errors
 
     device = await NodeManager.get_one(
@@ -1224,12 +1223,17 @@ async def test_create_with_object_template(
 
     # Create interfaces on object template
     if_names = ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"]
+    interface_templates: list[Node] = []
     for if_name in if_names:
         interface_template: Node = await Node.init(schema="TemplateTestInterface", db=db, branch=default_branch)
         await interface_template.new(
-            db=db, template_name=f"MX204 {if_name}", device=device_template.id, name=if_name, phys_type="QSFP28 (100GE)"
+            db=db, template_name=f"MX204 {if_name}", device=device_template, name=if_name, phys_type="QSFP28 (100GE)"
         )
         await interface_template.save(db=db)
+        interface_templates.append(interface_template)
+
+    await device_template.interfaces.update(db=db, data=interface_templates)
+    await device_template.save(db=db)
 
     result = await graphql(
         schema=gql_params.schema,
@@ -1238,7 +1242,6 @@ async def test_create_with_object_template(
         root_value=None,
         variable_values={"device_name": "th2.par.asbr02", "template_id": device_template.id},
     )
-
     assert not result.errors
 
     device = await NodeManager.get_one(
@@ -1261,7 +1264,7 @@ async def test_create_with_object_template(
         await sfp_template.new(
             db=db,
             template_name=f"QSFP {interface.name.value}",
-            interface=interface.id,
+            interface=interface,
             phys_type="QSFP28 (100GE)",
             serial_number=f"QSFP-{interface.name.value}",
         )
@@ -1274,7 +1277,6 @@ async def test_create_with_object_template(
         root_value=None,
         variable_values={"device_name": "th2.par.asbr03", "template_id": device_template.id},
     )
-
     assert not result.errors
 
     device = await NodeManager.get_one(
@@ -1289,11 +1291,10 @@ async def test_create_with_object_template(
     device_interfaces = await device.interfaces.get_peers(db=db)
     assert len(device_interfaces) == len(if_names)
     assert sorted([interface.name.value for interface in device_interfaces.values()]) == if_names
-    # FIXME: need to make rleationship population recursive
     # Validate that one SFP is attached to each interface
-    # device_sfps = [await interface.sfp.get_peer(db=db) for interface in device_interfaces.values()]
-    # assert all(device_sfps)
-    # assert len(device_sfps) == len(if_names)
+    device_sfps = [await interface.sfp.get_peer(db=db) for interface in device_interfaces.values()]
+    assert len(device_sfps) == len(if_names)
+    assert sorted([(await sfp.interface.get_peer(db=db)).name.value for sfp in device_sfps]) == if_names
 
 
 # These tests have been moved at the end of the file to avoid colliding with other and breaking them
