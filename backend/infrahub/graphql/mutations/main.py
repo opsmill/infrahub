@@ -175,20 +175,28 @@ class InfrahubMutationMixin:
         branch: Branch,
     ) -> Node:
         component_registry = get_component_registry()
-        node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
         node_class = Node
         if cls._meta.schema.kind in registry.node:
             node_class = registry.node[cls._meta.schema.kind]
 
+        fields_to_validate = list(data)
         try:
-            obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch)
-            await obj.new(db=db, **data)
-            fields_to_validate = list(data)
-            await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
             if db.is_transaction:
+                obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch)
+                await obj.new(db=db, **data)
+                node_constraint_runner = await component_registry.get_component(
+                    NodeConstraintRunner, db=db, branch=branch
+                )
+                await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
                 await obj.save(db=db)
             else:
                 async with db.start_transaction() as dbt:
+                    obj = await node_class.init(db=dbt, schema=cls._meta.schema, branch=branch)
+                    await obj.new(db=dbt, **data)
+                    node_constraint_runner = await component_registry.get_component(
+                        NodeConstraintRunner, db=dbt, branch=branch
+                    )
+                    await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
                     await obj.save(db=dbt)
 
         except ValidationError as exc:
