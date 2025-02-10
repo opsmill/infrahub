@@ -7,6 +7,7 @@ from prefect.events.schemas.events import Event as PrefectEventModel
 from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field, TypeAdapter, model_validator
 
+from infrahub.core.constants import EventLevel
 from infrahub.log import get_logger
 from infrahub.utils import get_nested_dict
 
@@ -21,6 +22,23 @@ class PrefectEventData(PrefectEventModel):
             if "infrahub.resource.label" not in resource:
                 continue
             return resource.get("infrahub.resource.label")
+        return None
+
+    def get_level(self) -> int:
+        for resource in self.related:
+            level = resource.get("infrahub.event.level")
+            if level is None:
+                continue
+            return EventLevel(level).to_int()
+
+        return 0
+
+    def get_primary_node(self) -> dict[str, str] | None:
+        node_id = self.resource.get("infrahub.node.id")
+        node_kind = self.resource.get("infrahub.node.kind")
+        if node_id and node_kind:
+            return {"id": node_id, "kind": node_kind}
+
         return None
 
     def get_account_id(self) -> str | None:
@@ -68,6 +86,8 @@ class PrefectEventData(PrefectEventModel):
             "account_id": self.get_account_id(),
             "occurred_at": self.occurred.to_iso8601_string(),
             "payload": self.payload,
+            "level": self.get_level(),
+            "primary_node": self.get_primary_node(),
         }
         response.update(self._return_event_specifics())
         return response

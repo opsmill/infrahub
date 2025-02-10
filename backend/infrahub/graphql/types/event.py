@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Field, Interface, List, NonNull, ObjectType, String
+from graphene import Field, Int, Interface, List, NonNull, ObjectType, String
 from graphene.types.generic import GenericScalar
 
+from .common import RelatedNode
 from .enums import DiffAction
 
 if TYPE_CHECKING:
@@ -25,6 +26,8 @@ class EventNodeInterface(Interface):
     branch = String(required=False)
     account_id = String(required=False)
     occurred_at = String(required=True)
+    level = Int(required=True)
+    primary_node = Field(RelatedNode, required=False)
 
     @classmethod
     def resolve_type(

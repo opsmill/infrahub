@@ -5,8 +5,11 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, computed_field
 
+from infrahub import __version__
 from infrahub.core.branch import Branch  # noqa: TC001
+from infrahub.core.constants import EventLevel
 from infrahub.message_bus import InfrahubMessage, Meta
+from infrahub.worker import WORKER_IDENTITY
 
 from .constants import EVENT_NAMESPACE
 
@@ -15,14 +18,15 @@ class EventMeta(BaseModel):
     branch: Branch | None = Field(default=None)
     request_id: str = ""
     account_id: str | None = Field(default=None, description="The ID of the account triggering this event")
-    initiator_id: str | None = Field(
-        default=None, description="The worker identity of the initial sender of this message"
+    initiator_id: str = Field(
+        default=WORKER_IDENTITY, description="The worker identity of the initial sender of this message"
     )
     context: list[dict] = Field(default_factory=list)
+    level: EventLevel = Field(default=EventLevel.ZERO)
 
     def get_related(self) -> list[dict[str, str]]:
         related: list[dict[str, str]] = []
-        event_resource = {}
+        event_resource = {"infrahub.event.level": self.level.value}
         if self.account_id:
             event_resource["infrahub.account.id"] = self.account_id
             related.append(
@@ -44,18 +48,23 @@ class EventMeta(BaseModel):
                 }
             )
 
-        if event_resource:
-            # This is currently required to let us filter events with the InfrahubEvent query when matching
-            # against multiple components such as both branch and account
-            event_resource["prefect.resource.id"] = str(uuid4())
-            event_resource["prefect.resource.role"] = "infrahub.eventlog"
-            related.append(event_resource)
+        # This is currently required to let us filter events with the InfrahubEvent query when matching
+        # against multiple components such as both branch and account
+        event_resource["prefect.resource.id"] = str(uuid4())
+        event_resource["prefect.resource.role"] = "infrahub.eventlog"
+        related.append(event_resource)
+
+        related.append({"prefect.resource.id": __version__, "prefect.resource.role": "infrahub.version"})
 
         return related
 
+    @classmethod
+    def default(cls) -> EventMeta:
+        return cls()
+
 
 class InfrahubEvent(BaseModel):
-    meta: EventMeta | None = None
+    meta: EventMeta = Field(default_factory=EventMeta.default)
 
     id: UUID = Field(
         default_factory=uuid4,
@@ -88,11 +97,8 @@ class InfrahubEvent(BaseModel):
 
     def get_message_meta(self) -> Meta:
         meta = Meta()
-        if not self.meta:
-            return meta
 
-        if self.meta.initiator_id:
-            meta.initiator_id = self.meta.initiator_id
+        meta.initiator_id = self.meta.initiator_id
         if self.meta.request_id:
             meta.initiator_id = self.meta.request_id
 
