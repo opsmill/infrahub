@@ -63,7 +63,7 @@ const AcitivityAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attributes"
       {attributes.map(({ action, name, value, value_previous }) => {
         return (
           <div className="grid grid-cols-2 gap-2" key={`${action}_${name}`}>
-            <div>{name}</div>
+            <div className="font-normal">{name}</div>
 
             <div className="flex items-center gap-4">
               <div className="text-gray-400">{value_previous ?? "Ø"}</div>
@@ -129,9 +129,6 @@ const NodeActivity = (props: NodeMutatedEvent) => {
             <DisplayLabel id={props.payload.data.node_id} />
           </Link>
         </div>
-        <div className="text-xs font-medium text-gray-500 dark:text-neutral-400">
-          <DateDisplay date={occurred_at} />
-        </div>
       </div>
 
       <AcitivityAttributes attributes={props.attributes} />
@@ -169,7 +166,11 @@ export const Activity = ({ __typename, ...props }: ActivityType) => {
 
           {BRANCH_EVENTS.includes(__typename) && <BranchActivity {...props} />}
 
-          <div>
+          <div className="flex justify-between">
+            <div className="text-xs font-medium text-gray-500 dark:text-neutral-400">
+              <DateDisplay date={props.occurred_at} />
+            </div>
+
             <Popover>
               <PopoverTrigger>
                 <div className="flex flex-grow justify-end">
