@@ -9,7 +9,7 @@ from typing_extensions import Self
 from infrahub.core.account import GlobalPermission
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreMenuItem
-from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema
+from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, TemplateSchema
 
 from .constants import MenuSection
 
@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-def get_full_name(obj: CoreMenuItem | NodeSchema | GenericSchema | ProfileSchema) -> str:
-    if isinstance(obj, NodeSchema | GenericSchema | ProfileSchema):
+def get_full_name(obj: CoreMenuItem | NodeSchema | GenericSchema | ProfileSchema | TemplateSchema) -> str:
+    if isinstance(obj, NodeSchema | GenericSchema | ProfileSchema | TemplateSchema):
         return _get_full_name_schema(obj)
     return _get_full_name_node(obj)
 

@@ -15,6 +15,7 @@ from infrahub.core.schema import (
     NodeSchema,
     ProfileSchema,
     RelationshipSchema,
+    TemplateSchema,
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
@@ -390,7 +391,7 @@ class GraphQLSchemaManager:
 
         # Generate all GraphQL ObjectType, Nested, Paginated & NestedPaginated and store them in the registry
         for node_schema in full_schema.values():
-            if isinstance(node_schema, NodeSchema | ProfileSchema):
+            if isinstance(node_schema, NodeSchema | ProfileSchema | TemplateSchema):
                 node_type = self.generate_graphql_object(schema=node_schema, populate_cache=True)
                 node_type_edged = self.generate_graphql_edged_object(
                     schema=node_schema, node=node_type, populate_cache=True
@@ -520,7 +521,7 @@ class GraphQLSchemaManager:
             else:
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 
-            if isinstance(node_schema, NodeSchema | ProfileSchema):
+            if isinstance(node_schema, NodeSchema | ProfileSchema | TemplateSchema):
                 mutations = self.generate_graphql_mutations(schema=node_schema, base_class=base_class)
 
                 class_attrs[f"{node_schema.kind}Create"] = mutations.create.Field()
@@ -546,7 +547,7 @@ class GraphQLSchemaManager:
 
         interfaces: set[type[InfrahubObject]] = set()
 
-        if isinstance(schema, NodeSchema | ProfileSchema) and schema.inherit_from:
+        if isinstance(schema, NodeSchema | ProfileSchema | TemplateSchema) and schema.inherit_from:
             for generic_name in schema.inherit_from:
                 generic = self.get_type(name=generic_name)
                 interfaces.add(generic)
@@ -640,7 +641,7 @@ class GraphQLSchemaManager:
         self.set_type(name=type_name, graphql_type=relationship_property)
 
     def generate_graphql_mutations(
-        self, schema: Union[NodeSchema, ProfileSchema], base_class: type[InfrahubMutation]
+        self, schema: NodeSchema | ProfileSchema | TemplateSchema, base_class: type[InfrahubMutation]
     ) -> GraphqlMutations:
         graphql_mutation_create_input = self.generate_graphql_mutation_create_input(schema)
         graphql_mutation_update_input = self.generate_graphql_mutation_update_input(schema)
@@ -668,7 +669,7 @@ class GraphQLSchemaManager:
         return GraphqlMutations(create=create, update=update, upsert=upsert, delete=delete)
 
     def generate_graphql_mutation_create_input(
-        self, schema: Union[NodeSchema, ProfileSchema]
+        self, schema: NodeSchema | ProfileSchema | TemplateSchema
     ) -> type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
 
@@ -744,7 +745,7 @@ class GraphQLSchemaManager:
         return type(f"{schema.kind}UpdateInput", (graphene.InputObjectType,), attrs)
 
     def generate_graphql_mutation_upsert_input(
-        self, schema: Union[NodeSchema, ProfileSchema]
+        self, schema: NodeSchema | ProfileSchema | TemplateSchema
     ) -> type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
 
@@ -792,7 +793,7 @@ class GraphQLSchemaManager:
 
     def generate_graphql_mutation_create(
         self,
-        schema: Union[NodeSchema, ProfileSchema],
+        schema: NodeSchema | ProfileSchema | TemplateSchema,
         input_type: type[graphene.InputObjectType],
         base_class: type[InfrahubMutation] = InfrahubMutation,
         mutation_type: str = "Create",
@@ -839,7 +840,7 @@ class GraphQLSchemaManager:
 
     @staticmethod
     def generate_graphql_mutation_delete(
-        schema: Union[NodeSchema, ProfileSchema], base_class: type[InfrahubMutation] = InfrahubMutation
+        schema: NodeSchema | ProfileSchema | TemplateSchema, base_class: type[InfrahubMutation] = InfrahubMutation
     ) -> type[InfrahubMutation]:
         """Generate a GraphQL Mutation to DELETE an object based on the specified NodeSchema."""
         name = f"{schema.kind}Delete"

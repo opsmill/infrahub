@@ -19,6 +19,7 @@ from infrahub.core.schema import (
     ProfileSchema,
     RelationshipSchema,
     SchemaRoot,
+    TemplateSchema,
 )
 from infrahub.core.utils import parse_node_kind
 from infrahub.exceptions import SchemaNotFoundError
@@ -102,6 +103,15 @@ class SchemaManager(NodeManager):
             return schema
 
         raise ValueError("The selected node is not of type ProfileSchema")
+
+    def get_template_schema(
+        self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> TemplateSchema:
+        schema = self.get(name=name, branch=branch, duplicate=duplicate)
+        if isinstance(schema, TemplateSchema):
+            return schema
+
+        raise ValueError("The selected node is not of type TemplateSchema")
 
     def get_full(
         self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True

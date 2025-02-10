@@ -18,7 +18,7 @@ from infrahub.core.constants import (
 from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
-from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema
+from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema, TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.support.macro import MacroDefinition
@@ -59,7 +59,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         _meta.default_filter = default_filter
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
-    def get_schema(self) -> Union[NodeSchema, ProfileSchema]:
+    def get_schema(self) -> Union[NodeSchema, ProfileSchema, TemplateSchema]:
         return self._schema
 
     def get_kind(self) -> str:
@@ -133,7 +133,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 labels.append(InfrahubKind.NODE)
             return labels
 
-        if isinstance(self._schema, ProfileSchema):
+        if isinstance(self._schema, ProfileSchema | TemplateSchema):
             labels = [self.get_kind()] + self._schema.inherit_from
             return labels
 
@@ -156,8 +156,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return f"{self.get_kind()}(ID: {str(self.id)})"
 
-    def __init__(self, schema: Union[NodeSchema, ProfileSchema], branch: Branch, at: Timestamp):
-        self._schema: Union[NodeSchema, ProfileSchema] = schema
+    def __init__(self, schema: Union[NodeSchema, ProfileSchema, TemplateSchema], branch: Branch, at: Timestamp):
+        self._schema: Union[NodeSchema, ProfileSchema, TemplateSchema] = schema
         self._branch: Branch = branch
         self._at: Timestamp = at
         self._existing: bool = False
@@ -187,7 +187,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
     async def init(
         cls,
-        schema: Union[NodeSchema, ProfileSchema, str],
+        schema: Union[NodeSchema, ProfileSchema, TemplateSchema, str],
         db: InfrahubDatabase,
         branch: Optional[Union[Branch, str]] = ...,
         at: Optional[Union[Timestamp, str]] = ...,
@@ -206,7 +206,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
     async def init(
         cls,
-        schema: Union[NodeSchema, ProfileSchema, str, type[SchemaProtocol]],
+        schema: Union[NodeSchema, ProfileSchema, TemplateSchema, str, type[SchemaProtocol]],
         db: InfrahubDatabase,
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
@@ -215,7 +215,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         branch = await registry.get_branch(branch=branch, db=db)
 
-        if isinstance(schema, NodeSchema | ProfileSchema):
+        if isinstance(schema, NodeSchema | ProfileSchema | TemplateSchema):
             attrs["schema"] = schema
         elif isinstance(schema, str):
             # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
@@ -223,7 +223,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         elif hasattr(schema, "_is_runtime_protocol") and schema._is_runtime_protocol:
             attrs["schema"] = db.schema.get(name=schema.__name__, branch=branch)
         else:
-            raise ValueError(f"Invalid schema provided {type(schema)}, expected NodeSchema or ProfileSchema")
+            raise ValueError(
+                f"Invalid schema provided {type(schema)}, expected NodeSchema, ProfileSchema or TemplateSchema"
+            )
 
         attrs["branch"] = branch
         attrs["at"] = Timestamp(at)
@@ -276,7 +278,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         """Fill the `fields` parameters with values from an object template if one is in use."""
         object_template_field = fields.get("object_template")
         if not object_template_field:
-            return fields
+            return
 
         template: CoreObjectTemplate = await registry.manager.find_object(
             db=db,
@@ -287,14 +289,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         )
 
         # Handle attributes, copy values from template
+        # Relationships handling in performed in GraphQL mutation to create nodes for relationships
         for attribute in template._attributes:
             if attribute in list(fields.values()) + ["template_name"]:
                 continue
             fields[attribute] = {"value": getattr(template, attribute).value}
-
-        # Relationships handling in performed in GraphQL mutation to create nodes for relationships
-
-        return fields
 
     async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
         errors = []

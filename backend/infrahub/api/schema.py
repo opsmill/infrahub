@@ -25,7 +25,7 @@ from infrahub.core.models import (  # noqa: TC001
     SchemaDiff,
     SchemaUpdateValidationResult,
 )
-from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, SchemaRoot
+from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, SchemaRoot, TemplateSchema
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
 from infrahub.core.validators.models.validate_migration import (
     SchemaValidateMigrationData,
@@ -87,11 +87,17 @@ class APIProfileSchema(ProfileSchema, APISchemaMixin):
     hash: str
 
 
+class APITemplateSchema(TemplateSchema, APISchemaMixin):
+    api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
+    hash: str
+
+
 class SchemaReadAPI(BaseModel):
     main: str = Field(description="Main hash for the entire schema")
     nodes: list[APINodeSchema] = Field(default_factory=list)
     generics: list[APIGenericSchema] = Field(default_factory=list)
     profiles: list[APIProfileSchema] = Field(default_factory=list)
+    templates: list[APITemplateSchema] = Field(default_factory=list)
     namespaces: list[SchemaNamespace] = Field(default_factory=list)
 
 
@@ -191,6 +197,11 @@ async def get_schema(
             for value in all_schemas
             if isinstance(value, ProfileSchema) and value.namespace != "Internal"
         ],
+        templates=[
+            APITemplateSchema.from_schema(value)
+            for value in all_schemas
+            if isinstance(value, TemplateSchema) and value.namespace != "Internal"
+        ],
         namespaces=schema_branch.get_namespaces(),
     )
 
@@ -207,15 +218,16 @@ async def get_schema_summary(
 @router.get("/{schema_kind}")
 async def get_schema_by_kind(
     schema_kind: str, branch: Branch = Depends(get_branch_dep), _: AccountSession = Depends(get_current_user)
-) -> APIProfileSchema | APINodeSchema | APIGenericSchema:
+) -> APIProfileSchema | APINodeSchema | APIGenericSchema | APITemplateSchema:
     log.debug("schema_kind_request", branch=branch.name)
 
     schema = registry.schema.get(name=schema_kind, branch=branch, duplicate=False)
 
-    api_schema: dict[str, type[APIProfileSchema | APINodeSchema | APIGenericSchema]] = {
+    api_schema: dict[str, type[APIProfileSchema | APINodeSchema | APIGenericSchema | APITemplateSchema]] = {
         "profile": APIProfileSchema,
         "node": APINodeSchema,
         "generic": APIGenericSchema,
+        "template": APITemplateSchema,
     }
     key = ""
 
@@ -225,6 +237,8 @@ async def get_schema_by_kind(
         key = "node"
     if isinstance(schema, GenericSchema):
         key = "generic"
+    if isinstance(schema, TemplateSchema):
+        key = "template"
 
     return api_schema[key].from_schema(schema=schema)
 

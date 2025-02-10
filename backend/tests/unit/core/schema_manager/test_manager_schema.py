@@ -2971,9 +2971,7 @@ async def test_manage_object_templates():
     schema_branch.manage_object_template_relationships()
 
     # Verify the generated template
-    test_object_template_device = schema_branch.get_node("TemplateTestDevice", duplicate=False)
-    assert not test_object_template_device.generate_template
-
+    test_object_template_device = schema_branch.get_template("TemplateTestDevice", duplicate=False)
     for attr in schema[2]["attributes"]:
         if attr.get("unique", False):
             with pytest.raises(ValueError, match=r"Unable to find the attribute"):

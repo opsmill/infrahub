@@ -43,6 +43,7 @@ from infrahub.core.schema import (
     RelationshipSchema,
     SchemaAttributePath,
     SchemaRoot,
+    TemplateSchema,
 )
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
@@ -161,10 +162,11 @@ class SchemaBranch:
             "nodes": NodeSchema,
             "generics": GenericSchema,
             "profiles": ProfileSchema,
+            "templates": TemplateSchema,
         }
 
         cache: dict[str, MainSchemaTypes] = {}
-        nodes: dict[str, dict[str, str]] = {"nodes": {}, "generics": {}, "profiles": {}}
+        nodes: dict[str, dict[str, str]] = {"nodes": {}, "generics": {}, "profiles": {}, "templates": {}}
 
         for node_type, node_class in type_mapping.items():
             for node_name, node_data in data[node_type].items():
@@ -298,6 +300,7 @@ class SchemaBranch:
 
         If duplicate is set to false, the real object will be returned.
         """
+
         key = None
         if name in self.nodes:
             key = self.nodes[name]
@@ -336,6 +339,13 @@ class SchemaBranch:
         item = self.get(name=name, duplicate=duplicate)
         if not isinstance(item, ProfileSchema):
             raise ValueError(f"{name!r} is not of type ProfileSchema")
+        return item
+
+    def get_template(self, name: str, duplicate: bool = True) -> TemplateSchema:
+        """Access a specific TemplateSchema, defined by its kind."""
+        item = self.get(name=name, duplicate=duplicate)
+        if not isinstance(item, TemplateSchema):
+            raise ValueError(f"{name!r} is not of type TemplateSchema")
         return item
 
     def delete(self, name: str) -> None:
@@ -441,7 +451,7 @@ class SchemaBranch:
 
     def generate_fields_for_display_label(self, name: str) -> Optional[dict]:
         node = self.get(name=name, duplicate=False)
-        if isinstance(node, NodeSchema | ProfileSchema):
+        if isinstance(node, NodeSchema | ProfileSchema | TemplateSchema):
             return node.generate_fields_for_display_label()
 
         fields: dict[str, Union[str, None, dict[str, None]]] = {}
@@ -1829,7 +1839,7 @@ class SchemaBranch:
                 )
             )
 
-    def generate_object_template_from_node(self, node: NodeSchema) -> NodeSchema:
+    def generate_object_template_from_node(self, node: NodeSchema) -> TemplateSchema:
         core_template_schema = self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
         core_name_attr = core_template_schema.get_attribute(name="template_name")
         template_name_attr = AttributeSchema(
@@ -1837,7 +1847,7 @@ class SchemaBranch:
         )
         template_name_attr.branch = node.branch
 
-        template = NodeSchema(
+        template = TemplateSchema(
             name=node.kind,
             namespace="Template",
             label=f"Object template {node.label}",

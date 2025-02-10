@@ -31,12 +31,13 @@ if TYPE_CHECKING:
     from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema.profile_schema import ProfileSchema
     from infrahub.core.schema.relationship_schema import RelationshipSchema
+    from infrahub.core.schema.template_schema import TemplateSchema
     from infrahub.database import InfrahubDatabase
 
 
 @dataclass
 class NodeToProcess:
-    schema: Optional[Union[NodeSchema, ProfileSchema]]
+    schema: Optional[Union[NodeSchema, ProfileSchema, TemplateSchema]]
 
     node_id: str
     node_uuid: str

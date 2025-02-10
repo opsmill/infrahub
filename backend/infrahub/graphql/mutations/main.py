@@ -17,6 +17,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import MainSchemaTypes, NodeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.profile_schema import ProfileSchema
+from infrahub.core.schema.template_schema import TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
@@ -500,10 +501,13 @@ class InfrahubMutationMixin:
 class InfrahubMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     def __init_subclass_with_meta__(
-        cls, schema: Optional[Union[NodeSchema, GenericSchema, ProfileSchema]] = None, _meta=None, **options
+        cls,
+        schema: Optional[Union[NodeSchema, GenericSchema, ProfileSchema, TemplateSchema]] = None,
+        _meta=None,
+        **options,
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
-        if not isinstance(schema, NodeSchema | GenericSchema | ProfileSchema):
+        if not isinstance(schema, NodeSchema | GenericSchema | ProfileSchema | TemplateSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
 
         if not _meta:
