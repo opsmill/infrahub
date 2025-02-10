@@ -97,7 +97,7 @@ class MenuItem(BaseModel):
         )
 
     @classmethod
-    def from_schema(cls, model: NodeSchema | GenericSchema | ProfileSchema) -> Self:
+    def from_schema(cls, model: NodeSchema | GenericSchema | ProfileSchema | TemplateSchema) -> Self:
         return cls(
             identifier=get_full_name(model),
             label=model.label or model.kind,
