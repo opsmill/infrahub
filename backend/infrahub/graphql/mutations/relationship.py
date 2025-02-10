@@ -52,8 +52,8 @@ class RelationshipMixin:
                 db=graphql_context.db,
                 id=input_id,
                 branch=graphql_context.branch,
-                include_owner=True,
-                include_source=True,
+                include_owner=False,
+                include_source=False,
             )
         ):
             raise NodeNotFoundError(graphql_context.branch, None, input_id)
