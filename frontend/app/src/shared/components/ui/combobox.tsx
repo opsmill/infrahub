@@ -47,6 +47,7 @@ export const ComboboxContent = React.forwardRef<
     <PopoverContent
       ref={ref}
       className={classNames("p-0", className)}
+      align="start"
       portal={false}
       style={{
         ...(fitTriggerWidth
