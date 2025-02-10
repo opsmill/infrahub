@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 
     from infrahub_sdk.branch import BranchData
 
+    from infrahub.context import InfrahubContext
     from tests.conftest import TestHelper
 
 
@@ -115,7 +116,11 @@ class TestAddRepository:
 
 
 async def test_git_rpc_merge(
-    prefect_test_fixture, git_repo_01: InfrahubRepository, branch01: BranchData, helper: TestHelper
+    prefect_test_fixture,
+    git_repo_01: InfrahubRepository,
+    branch01: BranchData,
+    context: InfrahubContext,
+    helper: TestHelper,
 ):
     repo = git_repo_01
 
@@ -139,7 +144,9 @@ async def test_git_rpc_merge(
         client=InfrahubClient(config=client_config), message_bus=bus_simulator, workflow=WorkflowLocalExecution()
     )
 
-    await service.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
+    await service.workflow.submit_workflow(
+        workflow=GIT_REPOSITORIES_MERGE, context=context, parameters={"model": model}
+    )
 
     commit_main_after = repo.get_commit_value(branch_name="main")
 

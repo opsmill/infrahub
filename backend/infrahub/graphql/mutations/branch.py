@@ -68,7 +68,7 @@ class BranchCreate(Mutation):
 
         if background_execution or not wait_until_completion:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
-                workflow=BRANCH_CREATE, parameters={"model": model}
+                workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model}
             )
             task = {"id": workflow.id}
             return cls(ok=True, task=task)

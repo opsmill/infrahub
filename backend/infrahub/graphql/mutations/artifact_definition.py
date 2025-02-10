@@ -61,7 +61,9 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
                 artifact_definition_name=artifact_definition.name.value,  # type: ignore[attr-defined]
             )
             await graphql_context.service.workflow.submit_workflow(
-                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
+                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+                context=graphql_context.get_context(),
+                parameters={"model": model},
             )
 
         return artifact_definition, result
@@ -86,7 +88,9 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
                 artifact_definition_name=artifact_definition.name.value,  # type: ignore[attr-defined]
             )
             await graphql_context.service.workflow.submit_workflow(
-                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
+                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+                context=graphql_context.get_context(),
+                parameters={"model": model},
             )
 
         return artifact_definition, result

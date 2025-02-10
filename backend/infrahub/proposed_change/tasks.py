@@ -152,7 +152,7 @@ async def merge_proposed_change(
         await _proposed_change_transition_state(
             proposed_change=proposed_change, state=ProposedChangeState.MERGED, service=service
         )
-        await service.workflow.submit_workflow(workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON)
+        await service.workflow.submit_workflow(workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON, context=context)
         return Completed(message="proposed change merged successfully")
 
 
