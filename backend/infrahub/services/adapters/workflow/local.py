@@ -35,7 +35,6 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         inject_context_parameter(func=flow_func, parameters=parameters, context=context)
 
         parameters = flow_func.validate_parameters(parameters=parameters)
-
         return await flow_func(**parameters)
 
     async def submit_workflow(

@@ -30,7 +30,7 @@ def inject_service_parameter(func: Flow, parameters: dict[str, Any], service: In
 
 
 def inject_context_parameter(func: Flow, parameters: dict[str, Any], context: InfrahubContext | None = None) -> None:
-    service_parameter_name = get_parameter_name(func=func, types=[InfrahubContext])
+    service_parameter_name = get_parameter_name(func=func, types=[InfrahubContext.__name__, InfrahubContext])
     if service_parameter_name and context:
         parameters[service_parameter_name] = context
         return

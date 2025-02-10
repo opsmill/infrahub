@@ -71,6 +71,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     source_branch=source_branch.name,
                     source_branch_sync_with_git=source_branch.sync_with_git,
                     destination_branch=destination_branch,
+                    context=graphql_context.get_context(),
                 ),
             ]
 
@@ -176,6 +177,7 @@ class ProposedChangeRequestRunCheck(Mutation):
             source_branch_sync_with_git=source_branch.sync_with_git,
             destination_branch=destination_branch,
             check_type=check_type,
+            context=graphql_context.get_context(),
         )
         if graphql_context.service:
             await graphql_context.service.message_bus.send(message=message)
