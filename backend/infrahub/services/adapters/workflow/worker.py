@@ -53,10 +53,9 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> Any:
-        if context:
-            flow_func = workflow.load_function()
-            parameters = dict(parameters) if parameters is not None else {}
-            inject_context_parameter(func=flow_func, parameters=parameters, context=context)
+        flow_func = workflow.load_function()
+        parameters = dict(parameters) if parameters is not None else {}
+        inject_context_parameter(func=flow_func, parameters=parameters, context=context)
 
         response: FlowRun = await run_deployment(
             name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags
@@ -76,10 +75,9 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> WorkflowInfo:
-        if context:
-            flow_func = workflow.load_function()
-            parameters = dict(parameters) if parameters is not None else {}
-            inject_context_parameter(func=flow_func, parameters=parameters, context=context)
+        flow_func = workflow.load_function()
+        parameters = dict(parameters) if parameters is not None else {}
+        inject_context_parameter(func=flow_func, parameters=parameters, context=context)
 
         flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {}, tags=tags)  # type: ignore[return-value, misc]
         return WorkflowInfo.from_flow(flow_run=flow_run)

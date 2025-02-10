@@ -32,8 +32,7 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         flow_func = workflow.load_function()
         parameters = dict(parameters) if parameters is not None else {}  # avoid mutating input parameters
         inject_service_parameter(func=flow_func, parameters=parameters, service=self.service)
-        if context:
-            inject_context_parameter(func=flow_func, parameters=parameters, context=context)
+        inject_context_parameter(func=flow_func, parameters=parameters, context=context)
 
         parameters = flow_func.validate_parameters(parameters=parameters)
 

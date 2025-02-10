@@ -107,6 +107,7 @@ class TestComputedAttribute(TestInfrahubApp):
             computed_attribute_kind="TestingTShirt",
             computed_attribute_name="description",
             updated_fields='"color"',
+            context=context,
             service=service,
         )
 
@@ -137,6 +138,7 @@ class TestComputedAttribute(TestInfrahubApp):
             node_kind="TestingTShirt",
             computed_attribute_name="pitch",
             computed_attribute_kind="TestingTShirt",
+            context=context,
             service=service,
         )
 
