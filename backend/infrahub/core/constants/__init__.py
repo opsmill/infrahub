@@ -289,6 +289,18 @@ class AttributeDBNodeType(InfrahubStringEnum):
     IPNETWORK = "ipnetwork"
 
 
+class EventLevel(InfrahubStringEnum):
+    ZERO = "zero"
+    ONE = "one"
+
+    def to_int(self) -> int:
+        match self:
+            case EventLevel.ZERO:
+                return 0
+            case EventLevel.ONE:
+                return 1
+
+
 RESTRICTED_NAMESPACES: list[str] = [
     "Account",
     "Branch",

@@ -7,7 +7,7 @@ import React, {
   createContext,
   FormHTMLAttributes,
   HTMLAttributes,
-  useContext,
+  use,
   useEffect,
   useId,
   useImperativeHandle,
@@ -34,7 +34,7 @@ export const Form = React.forwardRef<FormRef, FormProps>(
   ({ form, defaultValues, className, children, onSubmit, ...props }: FormProps, ref) => {
     const currentForm = form ?? useForm({ defaultValues });
 
-    const slideOverContext = useContext(SlideOverContext);
+    const slideOverContext = use(SlideOverContext);
 
     useImperativeHandle(ref, () => currentForm);
 
@@ -83,14 +83,14 @@ export const FormField = (props: ControllerProps) => {
   const id = useId();
 
   return (
-    <FormFieldContext.Provider value={{ id, name: props.name }}>
+    <FormFieldContext value={{ id, name: props.name }}>
       <Controller control={control} {...props} shouldUnregister />
-    </FormFieldContext.Provider>
+    </FormFieldContext>
   );
 };
 
 export const FormLabel = ({ ...props }: LabelProps) => {
-  const { id } = useContext(FormFieldContext);
+  const { id } = use(FormFieldContext);
 
   return <Label htmlFor={id} {...props} />;
 };
@@ -100,7 +100,7 @@ export const FormInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof Slot>
 >(({ className, ...props }, ref) => {
   const { getFieldState, formState } = useFormContext();
-  const { id, name } = useContext(FormFieldContext);
+  const { id, name } = use(FormFieldContext);
   const { error } = getFieldState(name, formState);
 
   return (
@@ -124,7 +124,7 @@ export const FormMessage = ({
   ...props
 }: HTMLAttributes<HTMLParagraphElement>) => {
   const { getFieldState, formState } = useFormContext();
-  const { name } = useContext(FormFieldContext);
+  const { name } = use(FormFieldContext);
 
   const { error } = getFieldState(name, formState);
 

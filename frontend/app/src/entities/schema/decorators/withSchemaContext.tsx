@@ -140,8 +140,8 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
   };
 
   return (
-    <SchemaContext.Provider value={schemaContext}>
+    <SchemaContext value={schemaContext}>
       <AppComponent {...props} />
-    </SchemaContext.Provider>
+    </SchemaContext>
   );
 };
