@@ -1886,8 +1886,10 @@ class SchemaBranch:
         self, node_schema: NodeSchema, identified: set[NodeSchema]
     ) -> set[NodeSchema]:
         """Identify all templates required to turn a given node into a template."""
-        if node_schema not in identified:
-            identified.add(node_schema)
+        if node_schema in identified:
+            return identified
+
+        identified.add(node_schema)
 
         for relationship in node_schema.relationships:
             if relationship.peer in [

@@ -211,9 +211,6 @@ class InfrahubMutationMixin:
                 .get_peer_schema(db=db, branch=branch)
             )
 
-            node_relationship_manager: RelationshipManager = getattr(obj, relationship.name)
-            created_peers: list[Node] = []
-
             for template_relationship_peer in template_relationship_peers.values():
                 obj_peer_data: dict[str, Any] = {}
 
@@ -248,11 +245,6 @@ class InfrahubMutationMixin:
                 await cls._handle_relationships(
                     db=db, branch=branch, obj=obj_peer, template=template_relationship_peer, data=data
                 )
-
-                created_peers.append(obj_peer)
-
-            await node_relationship_manager.update(db=db, data=created_peers)
-            await node_relationship_manager.save(db=db)
 
     @classmethod
     async def _handle_object_template(
