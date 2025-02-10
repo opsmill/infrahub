@@ -29,6 +29,10 @@ export function TableColumnHeader({ schema, columnSchema }: TableColumnHeaderPro
   const filtersAsObjectData = getObjectFromFilters(schema, filters);
   const currentColumnFilters = filtersAsObjectData[columnSchema.name];
 
+  const closePopover = () => {
+    setShowFilters(false);
+  };
+
   const handleSubmit = (formData: Record<string, FormFieldValue>) => {
     const newFilters = getFiltersFromFormData(formData);
 
@@ -73,7 +77,7 @@ export function TableColumnHeader({ schema, columnSchema }: TableColumnHeaderPro
           Filter by {columnSchema.label ?? columnSchema.name}
         </div>
         {"peer" in columnSchema ? (
-          <RelationshipFilterForm relationshipSchema={columnSchema} />
+          <RelationshipFilterForm relationshipSchema={columnSchema} onSuccess={closePopover} />
         ) : (
           <div className="p-2">
             <DynamicForm

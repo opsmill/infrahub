@@ -9,9 +9,10 @@ import { pluralize } from "@/shared/utils/string";
 
 export interface RelationshipFilterFormProps {
   relationshipSchema: RelationshipSchema;
+  onSuccess?: () => void;
 }
 
-export function RelationshipFilterForm({ relationshipSchema }: RelationshipFilterFormProps) {
+export function RelationshipFilterForm({ relationshipSchema, onSuccess }: RelationshipFilterFormProps) {
   const [filters, setFilters] = useFilters();
 
   const currentFilterKey = `${relationshipSchema.name}__ids` as const;
@@ -23,6 +24,7 @@ export function RelationshipFilterForm({ relationshipSchema }: RelationshipFilte
     if (!relationships?.length) {
       // Remove filter if empty
       setFilters(filters.filter((f) => f.name !== currentFilterKey));
+      onSuccess?.();
       return;
     }
 
@@ -36,6 +38,8 @@ export function RelationshipFilterForm({ relationshipSchema }: RelationshipFilte
     } else {
       setFilters([...filters, newFilter]);
     }
+    
+    onSuccess?.();
   };
 
   return (
