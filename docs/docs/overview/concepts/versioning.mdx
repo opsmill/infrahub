@@ -1,0 +1,36 @@
+---
+title: Version control, CI and checks
+---
+import ReferenceLink from "../../src/components/Card";
+
+# Version control, CI and checks
+
+![Infrahub Version Control](../media/overview-versioning.excalidraw.svg)
+
+Infrahub integrates version control directly into its graph database, providing robust capabilities for managing changes to infrastructure data. These features collectively enhance the ability to manage and control changes to infrastructure data, making Infrahub a powerful tool for infrastructure management and automation.
+
+## Branching and merging
+
+Infrahub allows you to create branches from the main data state. Each branch can contain modifications and is isolated from the main branch until changes are reviewed and merged. Branches can be created through the UI, CLI (`infrahubctl`), or GraphQL mutations.
+
+Changes from branches can be merged back into the main branch after review. Infrahub provides tools for viewing differences (diffs) between branches, running tests, and resolving conflicts before merging.
+
+## Proposed changes
+
+A proposed change is similar to a pull request in Git. It allows users to review and discuss changes between branches. Reviewers can leave comments, request changes, and approve the proposed change before merging. This process ensures that changes are thoroughly vetted before integration into the main branch.
+
+## Immutable graph and historical data
+
+Infrahub’s storage engine is immutable, meaning past states of the data graph are preserved. Users can query historical data to view the state of the infrastructure at any point in time. This feature is crucial for auditing and understanding the evolution of infrastructure over time.
+
+## Integration with Git
+
+Infrahub combines its graph database with Git for version control. This integration allows for synchronization between Infrahub branches and Git repositories. Users can perform typical Git operations such as commit, push, and pull within Infrahub, ensuring that data and code are versioned together.
+
+## Continuous integration (CI)
+
+Infrahub supports CI processes by running checks on proposed changes during the review process. These checks ensure data integrity and help identify potential issues before merging. Custom checks can be implemented to enforce specific business logic or operational requirements.
+
+## More information
+
+For more detailed information, you can refer to the [Immutability and version control](../topics/version-control.mdx) topic.

@@ -1,0 +1,59 @@
+---
+title: Ways to interface with Infrahub
+---
+
+# Ways to interface with Infrahub
+
+![Infrahub interfaces](./../media/overview-interfaces.excalidraw.svg)
+
+Managing infrastructure at scale often means many people, teams, workflows and other systems must interact with the Infrahub infrastructure management platform. Infrahub provides multiple methods to interact:
+
+## WebUI
+
+- By default, exposed on TCP port `8000`
+- Built-in documentation
+- Global search, including searching data and documentation
+- A GraphQL sandbox
+- Swagger documentation for the REST API
+
+## GraphQL API
+
+GraphQL is the primary API to interact with data, and allows access to everything defined by the schema. The [Python SDK](../python-sdk/) is built on top of the GraphQL API.
+
+- By default, exposed on TCP port `8000` at the endpoint: `http://<API_SERVER_IP>:8000/graphql`
+- The Frontend utilizes the GraphQL API for most tasks
+- More information can be found in the [GraphQL topic](../topics/graphql)
+
+## REST API
+
+GraphQL can only accept a query in string format and returns JSON, so there are certain workflows that are available via the REST API.
+
+- Loading the schema
+- Retrieving artifacts
+- Accessing the object store
+- Executing a saved GraphQL query
+
+The REST API has the following properties:
+
+- By default, exposed on TCP port `8000` at the endpoint: `http://<API_SERVER_IP>:8000/api`
+- Swagger docs can be found at: `http://<API_SERVER_IP>:8000/api/docs`
+
+## infrahubctl
+
+`infrahubctl` is a command line utility designed to help with the day to day management of an Infrahub installation. It's meant to run on any laptop or server and it communicates with a remote Infrahub server over the network.
+
+More information can be found in the [infrahubctl](../infrahubctl/) documentation section.
+
+## Python SDK
+
+The Infrahub Python SDK greatly simplifies how you can interact with Infrahub programmatically.
+
+More information can be found in the [Python SDK](../python-sdk/) documentation section.
+
+## Git
+
+One of the three pillars Infrahub is built on is the idea of having unified storage for data and files. The data is stored in the graph database and the files are stored in Git.
+
+When integrating a Git repository with Infrahub, the Task worker will ensure that both systems stay in sync at any time. Changes to branches or files in a Git repository will be synced to Infrahub automatically.
+
+More information can be found in the [external repositories guide](../guides/repository)

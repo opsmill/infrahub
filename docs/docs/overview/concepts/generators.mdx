@@ -1,0 +1,36 @@
+---
+title: Infrahub generators
+---
+import ReferenceLink from "../../src/components/Card";
+
+# Infrahub generators
+
+Generators in Infrahub are tools that automatically create infrastructure objects based on predefined templates and user inputs. They serve as a way to streamline the process of setting up complex infrastructure stacks while allowing for customization.
+
+Key aspects of generators include:
+
+1. Template-based: Generators use templates as a starting point for creating infrastructure configurations.
+
+2. User input: They prompt users for specific information needed to customize the generated objects.
+
+3. Automation: Generators automate repetitive tasks in infrastructure setup, reducing manual effort and potential errors.
+
+4. Consistency: By using generators, teams can ensure consistent infrastructure setups across different projects or environments.
+
+5. Customization: While based on templates, generators allow for significant customization to meet specific project requirements.
+
+6. Versioning: Infrahub supports versioning of generator outputs, enabling users to track changes over time.
+
+7. Integration: Generators can be integrated into workflows and CI/CD pipelines for automated infrastructure provisioning.
+
+8. Extensibility: Advanced users can create custom generators to suit their organization's specific needs.
+
+## Design-driven automation
+
+Having a flexible schema opens up new possibilities not previously available. Infrahub allows a business workflow or service to be implemented in the [schema](../topics/schema.mdx) and instantiated by a generator.
+
+Downstream objects are linked to the generator. If a business service needs updating or expansion, all needed changes can be generated to keep the infrastructure consistent and validated.
+
+## More information
+
+For more details, you can refer to the [generator topic](../topics/generator.mdx).
