@@ -20,6 +20,6 @@ export function getActivitiesQueryOptions({ ids }: { ids?: Array<string> }) {
   });
 }
 
-export const useActivities = ({ ids }: { ids?: Array<string> }) => {
+export const useActivities = ({ ids = [] }: { ids?: Array<string> }) => {
   return useQuery(getActivitiesQueryOptions({ ids }));
 };
