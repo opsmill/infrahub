@@ -1,21 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from prefect import flow
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.models import RequestDiffUpdate  # noqa: TC001  needed for prefect flow
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.log import get_logger
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.catalogue import DIFF_REFRESH
 from infrahub.workflows.utils import add_branch_tag
-
-if TYPE_CHECKING:
-    from infrahub.core.diff.models import RequestDiffUpdate
 
 log = get_logger()
 
