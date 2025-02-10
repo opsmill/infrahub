@@ -3,11 +3,14 @@ import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { INFRAHUB_EVENT, NODE_MUTATED_EVENT } from "../utils/constants";
 
-const getActivitiesQuery = () => {
+const getActivitiesQuery = ({ ids }: { ids?: Array<string> }) => {
   const request = {
     query: {
       __name: "GET_ACTIVITIES",
       [INFRAHUB_EVENT]: {
+        __args: {
+          related_node__ids: ids,
+        },
         count: true,
         edges: {
           node: {
@@ -37,11 +40,12 @@ const getActivitiesQuery = () => {
 };
 
 export function getActivitiesFromApi({
+  ids,
   branchName,
   atDate,
-}: { branchName: string; atDate: Date | null }) {
+}: { ids?: Array<string>; branchName: string; atDate: Date | null }) {
   return graphqlClient.query({
-    query: gql(getActivitiesQuery()),
+    query: gql(getActivitiesQuery({ ids })),
     context: {
       branch: branchName,
       date: atDate,

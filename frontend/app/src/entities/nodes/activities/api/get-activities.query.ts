@@ -4,7 +4,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { getActivitiesFromApi } from "./get-activities";
 
-export function getActivitiesQueryOptions() {
+export function getActivitiesQueryOptions({ ids }: { ids?: Array<string> }) {
   const currentBranchName = getCurrentBranchName();
   const timeMachineDate = store.get(datetimeAtom);
 
@@ -12,6 +12,7 @@ export function getActivitiesQueryOptions() {
     queryKey: ["activities"],
     queryFn: () => {
       return getActivitiesFromApi({
+        ids,
         branchName: currentBranchName,
         atDate: timeMachineDate,
       });
@@ -19,6 +20,6 @@ export function getActivitiesQueryOptions() {
   });
 }
 
-export const useActivities = () => {
-  return useQuery(getActivitiesQueryOptions());
+export const useActivities = ({ ids }: { ids?: Array<string> }) => {
+  return useQuery(getActivitiesQueryOptions({ ids }));
 };
