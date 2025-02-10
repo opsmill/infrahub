@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from graphene import Boolean, InputField, InputObjectType, List, Mutation, String
 from infrahub_sdk.utils import compare_lists
 
-from infrahub.core.constants import InfrahubKind, RelationshipCardinality
+from infrahub import config
+from infrahub.core.changelog.models import NodeChangelog
+from infrahub.core.constants import InfrahubKind, MutationAction, RelationshipCardinality
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.relationship import (
     RelationshipGetPeerQuery,
@@ -13,6 +15,9 @@ from infrahub.core.query.relationship import (
 )
 from infrahub.core.relationship import Relationship
 from infrahub.database import retry_db_transaction
+from infrahub.events import EventMeta, NodeMutatedEvent
+from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
+from infrahub.events.models import EventNode
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 
 from ..types import RelatedNodeInput
@@ -38,14 +43,15 @@ class RelationshipNodesInput(InputObjectType):
 
 class RelationshipMixin:
     @classmethod
-    async def mutate(
+    async def mutate(  # noqa: PLR0915
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: RelationshipNodesInput,
-    ):
+    ) -> Self:
         graphql_context: GraphqlContext = info.context
         input_id = str(data.id)
+        relationship_name = str(data.name)
 
         if not (
             source := await NodeManager.get_one(
@@ -56,17 +62,19 @@ class RelationshipMixin:
                 include_source=False,
             )
         ):
-            raise NodeNotFoundError(graphql_context.branch, None, input_id)
+            raise NodeNotFoundError(node_type="node", identifier=input_id, branch_name=graphql_context.branch.name)
 
         # Check if the name of the relationship provided exist for this node and is of cardinality Many
-        if data.get("name") not in source._schema.relationship_names:
+        if relationship_name not in source._schema.relationship_names:
             raise ValidationError(
-                {"name": f"'{data.get('name')}' is not a valid relationship for '{source.get_kind()}'"}
+                {"name": f"'{relationship_name}' is not a valid relationship for '{source.get_kind()}'"}
             )
 
-        rel_schema = source._schema.get_relationship(name=data.get("name"))
+        rel_schema = source._schema.get_relationship(name=relationship_name)
         if rel_schema.cardinality != RelationshipCardinality.MANY:
-            raise ValidationError({"name": f"'{data.get('name')}' must be a relationship of cardinality Many"})
+            raise ValidationError({"name": f"'{relationship_name}' must be a relationship of cardinality Many"})
+
+        is_group_event = rel_schema.identifier == "group_member" and "CoreGroup" in source._schema.inherit_from
 
         # Query the node in the database and validate that all of them exist and are if the correct kind
         node_ids: list[str] = [node_data["id"] for node_data in data.get("nodes") if "id" in node_data]
@@ -98,6 +106,11 @@ class RelationshipMixin:
                             f"{node_id!r} {node.get_kind()!r} is already related to another peer on '{peer_relationships[0].name}'"
                         )
 
+        display_label: str = await source.render_display_label(db=graphql_context.db)
+        node_changelog = NodeChangelog(
+            node_id=source.get_id(), node_kind=source.get_kind(), display_label=display_label
+        )
+
         # The nodes that are already present in the db
         query = await RelationshipGetPeerQuery.init(
             db=graphql_context.db,
@@ -105,9 +118,9 @@ class RelationshipMixin:
             rel=Relationship(schema=rel_schema, branch=graphql_context.branch, node=source),
         )
         await query.execute(db=graphql_context.db)
-        existing_peers: dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query.get_peers()}
-
+        existing_peers: dict[str, RelationshipPeerData] = {str(peer.peer_id): peer for peer in query.get_peers()}
         async with graphql_context.db.start_transaction() as db:
+            members = []
             if cls.__name__ == "RelationshipAdd":
                 for node_data in data.get("nodes"):
                     # Instantiate and resolve a relationship
@@ -117,6 +130,8 @@ class RelationshipMixin:
                     await rel.resolve(db=db)
                     # Save it only if it does not exist
                     if rel.get_peer_id() not in existing_peers.keys():
+                        members.append(EventNode(id=rel.get_peer_id(), kind=rel.get_peer_kind()))
+                        node_changelog.create_relationship(relationship=rel)
                         await rel.save(db=db)
 
             elif cls.__name__ == "RelationshipRemove":
@@ -127,9 +142,35 @@ class RelationshipMixin:
                         # it would be more query efficient
                         rel = Relationship(schema=rel_schema, branch=graphql_context.branch, node=source)
                         await rel.load(db=db, data=existing_peers[node_data.get("id")])
+                        members.append(EventNode(id=rel.get_peer_id(), kind=rel.get_peer_kind()))
+                        node_changelog.delete_relationship(relationship=rel)
                         await rel.delete(db=db)
 
-        return cls(ok=True)
+        if config.SETTINGS.broker.enable and graphql_context.background:
+            event = NodeMutatedEvent(
+                kind=source._schema.kind,
+                node_id=source.id,
+                data=node_changelog,
+                action=MutationAction.UPDATED,
+                fields=[relationship_name],
+                meta=EventMeta(
+                    branch=graphql_context.branch,
+                ),
+            )
+            graphql_context.background.add_task(graphql_context.active_service.event.send, event)
+            if is_group_event:
+                if cls.__name__ == "RelationshipAdd":
+                    group_add_event = GroupMemberAddedEvent(
+                        node_id=source.id, kind=source._schema.kind, members=members
+                    )
+                    graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
+                elif cls.__name__ == "RelationshipRemove":
+                    group_remove_event = GroupMemberRemovedEvent(
+                        node_id=source.id, kind=source._schema.kind, members=members
+                    )
+                    graphql_context.background.add_task(graphql_context.active_service.event.send, group_remove_event)
+
+        return cls(ok=True)  # type: ignore[call-arg]
 
 
 class RelationshipAdd(RelationshipMixin, Mutation):
@@ -145,7 +186,7 @@ class RelationshipAdd(RelationshipMixin, Mutation):
         root: dict,
         info: GraphQLResolveInfo,
         data: RelationshipNodesInput,
-    ):
+    ) -> Self:
         return await super().mutate(root=root, info=info, data=data)
 
 
@@ -162,5 +203,5 @@ class RelationshipRemove(RelationshipMixin, Mutation):
         root: dict,
         info: GraphQLResolveInfo,
         data: RelationshipNodesInput,
-    ):
+    ) -> Self:
         return await super().mutate(root=root, info=info, data=data)
