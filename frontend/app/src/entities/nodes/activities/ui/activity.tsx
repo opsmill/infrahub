@@ -104,7 +104,7 @@ const ActivityDetails = ({ id, event, occurred_at, account_id, ...props }: Activ
 };
 
 const NodeActivity = (props: NodeMutatedEvent) => {
-  const { event, occurred_at, account_id } = props;
+  const { event, account_id } = props;
   const schemaLabels = useAtomValue(schemaKindLabelState);
 
   return (
