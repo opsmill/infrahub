@@ -36,6 +36,8 @@ If you just want to try Infrahub out, you can use our [Always-On Sandbox](https:
 
 **Inventory Management** - Infrahub serves as a centralized inventory system for your infrastructure, allowing you to manage your inventory and track changes to your infrastructure. It provides a WebUI and API for other teams to self-service the information needed to allow the organization to operate.
 
+**DCIM and IPAM** - Infrahub provides centralized DCIM and IPAM systems for your infrastructure, capable of handling complex cases such as overlapping IP addresses and VLANs, automation-friendly, branch-aware allocation of resources via Infrahub's [Resource Manager](https://docs.infrahub.app/python-sdk/guides/resource-manager), and more.
+
 ## Quick Start
 
 [Always-On Sandbox](https://demo.infrahub.app/) - Instantly login to the UI of a demo environment of Infrahub with sample data pre-loaded.
