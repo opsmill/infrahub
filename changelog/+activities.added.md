@@ -1,0 +1,1 @@
+Add activities logs in the nodes details view
