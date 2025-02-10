@@ -16,7 +16,6 @@ The goal of this guide is to develop a Jinja Transform and add it to Infrahub, w
 6. Add the repository to Infrahub as an external repository
 7. Validate that the transform works by using the render API endpoint
 
-
 ## 1. Loading a schema
 
 In this guide we are going to work with a very simplistic network device model. I won't provide a rendered template that is very useful, the goal is instead to show how the Jinja Rendering works. Once you have mastered the basics you will be ready to go on to create more advanced template.
@@ -139,7 +138,6 @@ mkdir device_config_render
 ```
 
 Then save the below query as a text file named `device_config.gql`.
-
 
 ```graphql
 query DeviceQuery($name: String!) {
