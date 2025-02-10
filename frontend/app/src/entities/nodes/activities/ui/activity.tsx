@@ -140,7 +140,6 @@ const NodeActivity = (props: NodeMutatedEvent) => {
 };
 
 const BranchActivity = (props: EventNodeInterface) => {
-  console.log("props: ", props);
   const { event, occurred_at, branch } = props;
 
   return (

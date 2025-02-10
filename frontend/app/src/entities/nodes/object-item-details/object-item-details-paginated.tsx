@@ -122,8 +122,8 @@ export default function ObjectItemDetails({
       )}
 
       {!qspTab && (
-        <div className="grid grid-cols-3 gap-2 p-2 ">
-          <CardWithBorder className="col-span-2 divide-y p-0">
+        <div className="flex flex-col lg:grid lg:grid-cols-3 gap-2 p-2 ">
+          <CardWithBorder className="md:col-span-2 divide-y p-0">
             <CardWithBorder.Title>Details</CardWithBorder.Title>
 
             <div className="divide-y">
