@@ -59,11 +59,11 @@ export const ObjectsTable = ({
 
   return (
     <div
-      className="grid content-start h-[calc(100vh-14rem)] overflow-auto"
+      className="grid content-start h-[calc(100vh-14rem)] overflow-auto min-w-full"
       onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
       ref={tableContainerRef}
       style={{
-        gridTemplateColumns: `repeat(${allHeaders.length - 1}, minmax(auto, 20rem)) 2.5rem`,
+        gridTemplateColumns: `repeat(${allHeaders.length - 1}, minmax(auto, 1fr)) 2.5rem`,
       }}
       data-testid="object-items"
     >

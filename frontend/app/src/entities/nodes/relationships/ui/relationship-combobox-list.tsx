@@ -1,6 +1,5 @@
 import { relationshipsInfiniteQueryOptions } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import { useSchema } from "@/entities/schema/hooks/useSchema";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ComboboxEmpty, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
@@ -28,49 +27,45 @@ export const RelationshipComboboxList = forwardRef<HTMLDivElement, RelationshipC
     const setSearchDebounced = debounce(setSearch, 300);
 
     return (
-      <>
-        <ComboboxList
-          ref={ref}
-          onValueChange={(newValue) => setSearchDebounced(newValue)}
-          shouldFilter={false}
-        >
-          {isPending ? (
-            <Spinner className="flex justify-center m-2" />
-          ) : (
-            <>
-              <ComboboxEmpty>No {schema?.label ?? "results"} found</ComboboxEmpty>
+      <ComboboxList
+        ref={ref}
+        onValueChange={(newValue) => setSearchDebounced(newValue)}
+        shouldFilter={false}
+      >
+        {isPending ? (
+          <Spinner className="flex justify-center m-2" />
+        ) : (
+          <>
+            <ComboboxEmpty>No {schema?.label ?? "results"} found</ComboboxEmpty>
 
-              {data.pages.map((page) => {
-                const filteredNodes = filterItem ? page.filter(filterItem) : page;
+            {data.pages.map((page) => {
+              const filteredNodes = filterItem ? page.filter(filterItem) : page;
 
-                return filteredNodes.map((node) => (
-                  <ComboboxItem
-                    key={node.id}
-                    value={node.id}
-                    selectedValue={value?.id}
-                    onSelect={() => onSelect(node)}
-                  >
-                    <span className="truncate">{node.display_label}</span>
-                  </ComboboxItem>
-                ));
-              })}
-            </>
-          )}
+              return filteredNodes.map((node) => (
+                <ComboboxItem
+                  key={node.id}
+                  value={node.id}
+                  selectedValue={value?.id}
+                  onSelect={() => onSelect(node)}
+                >
+                  <span className="truncate">{node.display_label}</span>
+                </ComboboxItem>
+              ));
+            })}
+          </>
+        )}
 
-          {hasNextPage && (
-            <ComboboxItem
-              value="Load more"
-              onSelect={() => fetchNextPage()}
-              disabled={!hasNextPage || isFetchingNextPage}
-              className="justify-center text-custom-blue-700"
-            >
-              {isFetchingNextPage ? "Loading more..." : "Load more"}
-            </ComboboxItem>
-          )}
-        </ComboboxList>
-
-        <AddRelationshipAction peer={peer} onSuccess={onSelect} />
-      </>
+        {hasNextPage && (
+          <ComboboxItem
+            value="Load more"
+            onSelect={() => fetchNextPage()}
+            disabled={!hasNextPage || isFetchingNextPage}
+            className="justify-center text-custom-blue-700"
+          >
+            {isFetchingNextPage ? "Loading more..." : "Load more"}
+          </ComboboxItem>
+        )}
+      </ComboboxList>
     );
   }
 );

@@ -1,5 +1,6 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
 import { cellHeaderStyle, cellsStyle } from "@/entities/nodes/object/ui/objects-table/cells/style";
 import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/objects-table/cells/table-column-header-icon";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
@@ -67,13 +68,22 @@ export function TableColumnHeader({ schema, columnSchema }: TableColumnHeaderPro
         />
       </PopoverTrigger>
 
-      <PopoverContent className="min-w-[19rem]">
-        <DynamicForm
-          fields={[field]}
-          onSubmit={handleSubmit}
-          onCancel={() => setShowFilters(false)}
-          submitLabel="Filter"
-        />
+      <PopoverContent className="min-w-[19rem] p-0 relative rounded-tl-none" align="start">
+        <div className="absolute font-semibold -top-[1.8rem] bg-white border px-2 py-1 rounded-t-md border-b-0 -left-px">
+          Filter by {columnSchema.label ?? columnSchema.name}
+        </div>
+        {"peer" in columnSchema ? (
+          <RelationshipFilterForm relationshipSchema={columnSchema} />
+        ) : (
+          <div className="p-2">
+            <DynamicForm
+              fields={[field]}
+              onSubmit={handleSubmit}
+              onCancel={() => setShowFilters(false)}
+              submitLabel="Filter"
+            />
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
