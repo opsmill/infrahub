@@ -3,15 +3,15 @@ import pytest
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
+from tests.helpers.schema import DEVICE_SCHEMA
 
 
 async def test_create_simple_object(db: InfrahubDatabase, default_branch, car_person_schema):
@@ -1054,134 +1054,11 @@ async def test_create_valid_datetime_failure(db: InfrahubDatabase, default_branc
 async def test_create_with_object_template(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ):
-    schema = [
-        {
-            "name": "Sfp",
-            "namespace": "Test",
-            "human_friendly_id": ["phys_type__value", "serial_number__value"],
-            "attributes": [
-                {
-                    "name": "phys_type",
-                    "kind": "Text",
-                    "enum": [
-                        "1000BASE-T (1GE)",
-                        "10GBASE-T (20GE)",
-                        "SFP (1GE)",
-                        "SFP+ (10GE)",
-                        "XFP (10GE)",
-                        "SFP28 (25GE)",
-                        "SFP56 (50GE)",
-                        "QSFP+ (40 GE)",
-                        "QSFP28 (100GE)",
-                    ],
-                    "optional": False,
-                },
-                {"name": "serial_number", "kind": "Text", "optional": False},
-                {"name": "part_number", "kind": "Text", "optional": True},
-            ],
-            "relationships": [
-                {
-                    "name": "interface",
-                    "kind": RelationshipKind.PARENT,
-                    "peer": "TestInterface",
-                    "optional": False,
-                    "cardinality": RelationshipCardinality.ONE,
-                    "identifier": "interface__sfp",
-                }
-            ],
-        },
-        {
-            "name": "Interface",
-            "namespace": "Test",
-            "uniqueness_constraints": [["device", "name__value"]],
-            "human_friendly_id": ["device__name__value", "name__value"],
-            "attributes": [
-                {"name": "name", "kind": "Text", "optional": False},
-                {
-                    "name": "phys_type",
-                    "kind": "Text",
-                    "enum": [
-                        "1000BASE-T (1GE)",
-                        "10GBASE-T (20GE)",
-                        "SFP (1GE)",
-                        "SFP+ (10GE)",
-                        "XFP (10GE)",
-                        "SFP28 (25GE)",
-                        "SFP56 (50GE)",
-                        "QSFP+ (40 GE)",
-                        "QSFP28 (100GE)",
-                        "Virtual",
-                    ],
-                    "optional": False,
-                },
-                {"name": "enabled", "kind": "Boolean", "optional": False, "default_value": True},
-            ],
-            "relationships": [
-                {
-                    "name": "device",
-                    "kind": RelationshipKind.PARENT,
-                    "peer": "TestDevice",
-                    "optional": False,
-                    "cardinality": RelationshipCardinality.ONE,
-                    "identifier": "device__interfaces",
-                },
-                {
-                    "name": "sfp",
-                    "kind": RelationshipKind.COMPONENT,
-                    "peer": "TestSfp",
-                    "optional": True,
-                    "cardinality": RelationshipCardinality.ONE,
-                    "identifier": "interface__sfp",
-                },
-            ],
-        },
-        {
-            "name": "Device",
-            "namespace": "Test",
-            "default_filter": "name__value",
-            "branch": BranchSupportType.AWARE.value,
-            "generate_template": True,
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "manufacturer", "kind": "Text", "optional": False},
-                {"name": "height", "kind": "Number", "default_value": 1},
-                {"name": "weight", "kind": "Number"},
-                {
-                    "name": "airflow",
-                    "kind": "Text",
-                    "enum": [
-                        "Front to rear",
-                        "Rear to front",
-                        "Left to right",
-                        "Right to left",
-                        "Side to rear",
-                        "Rear to side",
-                        "Bottom to top",
-                        "Top to bottom",
-                        "Passive",
-                        "Mixed",
-                    ],
-                },
-                {"name": "part_number", "kind": "Text", "optional": True},
-            ],
-            "relationships": [
-                {
-                    "name": "interfaces",
-                    "kind": RelationshipKind.COMPONENT,
-                    "peer": "TestInterface",
-                    "optional": True,
-                    "cardinality": RelationshipCardinality.MANY,
-                    "identifier": "device__interfaces",
-                }
-            ],
-        },
-    ]
-
-    registry.schema.register_schema(schema=SchemaRoot(nodes=schema), branch=default_branch.name)
+    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=default_branch.name)
 
     query = """
     mutation NewDevice($device_name: String!, $template_id: String!) {
-      TestDeviceCreate(data: {
+      TestingDeviceCreate(data: {
         object_template: {id: $template_id}
         name: {value: $device_name}
       }) {
@@ -1194,7 +1071,7 @@ async def test_create_with_object_template(
     """
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
-    device_template: Node = await Node.init(schema="TemplateTestDevice", db=db, branch=default_branch)
+    device_template: Node = await Node.init(schema="TemplateTestingDevice", db=db, branch=default_branch)
     await device_template.new(
         db=db, template_name="MX204 Router", manufacturer="Juniper", height=1, weight=6, airflow="Front to rear"
     )
@@ -1210,7 +1087,7 @@ async def test_create_with_object_template(
     assert not result.errors
 
     device = await NodeManager.get_one(
-        db=db, kind="TestDevice", branch=default_branch, id=result.data["TestDeviceCreate"]["object"]["id"]
+        db=db, kind="TestingDevice", branch=default_branch, id=result.data["TestingDeviceCreate"]["object"]["id"]
     )
     assert device
     assert device.name.value == "th2.par.asbr01"
@@ -1225,7 +1102,7 @@ async def test_create_with_object_template(
     if_names = ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"]
     interface_templates: list[Node] = []
     for if_name in if_names:
-        interface_template: Node = await Node.init(schema="TemplateTestInterface", db=db, branch=default_branch)
+        interface_template: Node = await Node.init(schema="TemplateTestingInterface", db=db, branch=default_branch)
         await interface_template.new(
             db=db, template_name=f"MX204 {if_name}", device=device_template, name=if_name, phys_type="QSFP28 (100GE)"
         )
@@ -1245,7 +1122,7 @@ async def test_create_with_object_template(
     assert not result.errors
 
     device = await NodeManager.get_one(
-        db=db, kind="TestDevice", branch=default_branch, id=result.data["TestDeviceCreate"]["object"]["id"]
+        db=db, kind="TestingDevice", branch=default_branch, id=result.data["TestingDeviceCreate"]["object"]["id"]
     )
     assert device
     assert device.name.value == "th2.par.asbr02"
@@ -1260,7 +1137,7 @@ async def test_create_with_object_template(
     # Add a SFP to each interface of the object template
     template_interfaces = await device_template.interfaces.get_peers(db=db)
     for interface in template_interfaces.values():
-        sfp_template: Node = await Node.init(schema="TemplateTestSfp", db=db, branch=default_branch)
+        sfp_template: Node = await Node.init(schema="TemplateTestingSfp", db=db, branch=default_branch)
         await sfp_template.new(
             db=db,
             template_name=f"QSFP {interface.name.value}",
@@ -1280,7 +1157,7 @@ async def test_create_with_object_template(
     assert not result.errors
 
     device = await NodeManager.get_one(
-        db=db, kind="TestDevice", branch=default_branch, id=result.data["TestDeviceCreate"]["object"]["id"]
+        db=db, kind="TestingDevice", branch=default_branch, id=result.data["TestingDeviceCreate"]["object"]["id"]
     )
     assert device
     assert device.name.value == "th2.par.asbr03"
