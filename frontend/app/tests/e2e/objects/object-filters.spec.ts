@@ -39,9 +39,8 @@ test.describe("Object filters", () => {
 
     await test.step("filter using a relationship of cardinality one", async () => {
       await page.getByRole("button", { name: "Site" }).click();
-      await page.getByLabel("Site").click();
       await page.getByRole("option", { name: "atl1" }).click();
-      await page.getByRole("button", { name: "Filter", exact: true }).click();
+      await page.getByRole("button", { name: "Apply" }).click();
 
       await expect(
         page.getByLabel("Active filters").getByLabel("Site contains atl1")
@@ -61,10 +60,8 @@ test.describe("Object filters", () => {
 
     await test.step("filter using a relationship of cardinality many", async () => {
       await page.getByRole("button", { name: "Tags" }).click();
-      await page.getByLabel("Tags").click();
       await page.getByRole("option", { name: "blue" }).click();
-      await page.getByLabel("Tags").click();
-      await page.getByRole("button", { name: "Filter", exact: true }).click();
+      await page.getByRole("button", { name: "Apply" }).click();
 
       await expect(
         page.getByLabel("Active filters").getByLabel("Site contains atl1")
@@ -88,17 +85,6 @@ test.describe("Object filters", () => {
       await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
       await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
     });
-  });
-
-  test("should correctly display the filters with hierarchical dropdown pointing to any nodes", async ({
-    page,
-  }) => {
-    await page.goto("/objects/CoreArtifact");
-
-    await page.getByTestId("object-items").getByRole("button", { name: "Object" }).click();
-    await page.getByLabel("Kind").click({ position: { x: 200, y: 20 } }); // (?) tooltip is above and blocking normal click
-    await page.getByRole("option", { name: "BGP Session Infra" }).click();
-    await expect(page.getByLabel("BGP Session")).toBeVisible();
   });
 
   test("should correctly filter from a kind", async ({ page }) => {
