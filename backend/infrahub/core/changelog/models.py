@@ -267,6 +267,28 @@ class NodeChangelog(BaseModel):
 
             relationship_container.add_new_peer(relationship=relationship)
 
+    def delete_relationship(self, relationship: Relationship) -> None:
+        if relationship.schema.cardinality == RelationshipCardinality.ONE:
+            peer_id = relationship.get_peer_id()
+            peer_kind = relationship.get_peer_kind()
+            changelog_relationship = RelationshipCardinalityOneChangelog(
+                name=relationship.schema.name,
+                peer_id_previous=peer_id,
+                peer_kind_previous=peer_kind,
+            )
+            self.relationships[changelog_relationship.name] = changelog_relationship
+        elif relationship.schema.cardinality == RelationshipCardinality.MANY:
+            if relationship.schema.name not in self.relationships:
+                self.relationships[relationship.schema.name] = RelationshipCardinalityManyChangelog(
+                    name=relationship.schema.name
+                )
+            relationship_container = cast(
+                RelationshipCardinalityManyChangelog, self.relationships[relationship.schema.name]
+            )
+            relationship_container.remove_peer(
+                peer_id=relationship.get_peer_id(), peer_kind=relationship.get_peer_kind()
+            )
+
     def add_attribute(self, attribute: AttributeChangelog) -> None:
         self.attributes[attribute.name] = attribute
 

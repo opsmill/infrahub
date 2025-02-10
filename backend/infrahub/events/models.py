@@ -14,6 +14,11 @@ from infrahub.worker import WORKER_IDENTITY
 from .constants import EVENT_NAMESPACE
 
 
+class EventNode(BaseModel):
+    id: str
+    kind: str
+
+
 class EventMeta(BaseModel):
     branch: Branch | None = Field(default=None)
     request_id: str = ""
