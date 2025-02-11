@@ -45,7 +45,7 @@ export const getObjects: GetObjects = async ({ schema, offset, branchName, atDat
 
                   if (!fieldName || !fieldKey) return acc;
 
-                  if (fieldKey === "value" || fieldKey === "values") {
+                  if (fieldKey === "value" || fieldKey === "values" || fieldKey === "isnull") {
                     acc[filter.name] = filter.value;
                     return acc;
                   }

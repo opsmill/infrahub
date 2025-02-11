@@ -30,15 +30,18 @@ export function ObjectsTableManager({ schema }: ObjectsTableManagerProps) {
   }
 
   return (
-    <div>
+    <>
       <div className="flex items-center h-14 px-3">
         <FilterSearchInput schema={schema} />
 
-        <ScrollArea scrollX>
-          <ActiveFilterTags schema={schema} className="mx-2" />
-        </ScrollArea>
-
-        {filters.length > 0 && <FilterResetButton />}
+        {filters.length > 0 && (
+          <>
+            <ScrollArea scrollX>
+              <ActiveFilterTags schema={schema} className="mx-2" />
+            </ScrollArea>
+            <FilterResetButton />
+          </>
+        )}
 
         <ObjectCreateFormTrigger
           schema={schema}
@@ -51,6 +54,6 @@ export function ObjectsTableManager({ schema }: ObjectsTableManagerProps) {
       </div>
 
       <ObjectsTable schema={schema} permission={permission} />
-    </div>
+    </>
   );
 }

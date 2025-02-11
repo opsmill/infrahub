@@ -35,7 +35,7 @@ export const getObjectTableColumns = (
       id: "id",
       accessorFn: (row) => row.hfid ?? row.display_label ?? row.id,
       header: () => (
-        <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10")}>
+        <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white")}>
           {schema.icon && <Icon icon={schema.icon} className="text-stone-400" />}
           <span className="truncate">{schema.label}</span>
         </div>
@@ -89,7 +89,7 @@ export const getObjectTableColumns = (
           className={classNames(
             cellsStyle,
             cellHeaderStyle,
-            "right-0 z-10 border-l size-10 -ml-px"
+            "right-0 z-10 border-l size-10 -ml-px hover:bg-white"
           )}
         />
       ),

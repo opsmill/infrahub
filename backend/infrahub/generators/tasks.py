@@ -8,6 +8,7 @@ from prefect import flow, task
 from prefect.cache_policies import NONE
 
 from infrahub import lock
+from infrahub.context import InfrahubContext  # noqa: TC001 needed for prefect flow
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
 from infrahub.generators.models import (
     ProposedChangeGeneratorDefinition,
@@ -117,7 +118,7 @@ async def _define_instance(model: RequestGeneratorRun, service: InfrahubServices
 
 
 @flow(name="generator-definition-run", flow_run_name="Run all generators")
-async def run_generator_definition(branch: str, service: InfrahubServices) -> None:
+async def run_generator_definition(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
     await add_tags(branches=[branch])
 
     generators = await service.client.filters(
@@ -142,14 +143,18 @@ async def run_generator_definition(branch: str, service: InfrahubServices) -> No
 
     for generator_definition in generator_definitions:
         model = RequestGeneratorDefinitionRun(branch=branch, generator_definition=generator_definition)
-        await service.workflow.submit_workflow(workflow=REQUEST_GENERATOR_DEFINITION_RUN, parameters={"model": model})
+        await service.workflow.submit_workflow(
+            workflow=REQUEST_GENERATOR_DEFINITION_RUN, context=context, parameters={"model": model}
+        )
 
 
 @flow(
     name="request-generator-definition-run",
     flow_run_name="Execute generator {model.generator_definition.definition_name}",
 )
-async def request_generator_definition_run(model: RequestGeneratorDefinitionRun, service: InfrahubServices) -> None:
+async def request_generator_definition_run(
+    model: RequestGeneratorDefinitionRun, context: InfrahubContext, service: InfrahubServices
+) -> None:
     await add_tags(branches=[model.branch], nodes=[model.generator_definition.definition_id])
 
     group = await service.client.get(
@@ -202,5 +207,5 @@ async def request_generator_definition_run(model: RequestGeneratorDefinitionRun,
             target_name=member.display_label,
         )
         await service.workflow.submit_workflow(
-            workflow=REQUEST_GENERATOR_RUN, parameters={"model": request_generator_run_model}
+            workflow=REQUEST_GENERATOR_RUN, context=context, parameters={"model": request_generator_run_model}
         )

@@ -8,6 +8,7 @@ from prefect.client.schemas.objects import State  # noqa: TC002
 from prefect.states import Completed, Failed
 
 from infrahub import lock
+from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -36,14 +37,14 @@ from infrahub.workflows.catalogue import (
     GIT_REPOSITORIES_CREATE_BRANCH,
     IPAM_RECONCILIATION,
 )
-from infrahub.workflows.utils import add_branch_tag
+from infrahub.workflows.utils import add_tags
 
 
 @flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
-async def rebase_branch(branch: str, service: InfrahubServices) -> None:
+async def rebase_branch(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
     async with service.database.start_session() as db:
         log = get_run_logger()
-        await add_branch_tag(branch_name=branch)
+        await add_tags(branches=[branch])
         obj = await Branch.get_by_name(db=db, name=branch)
         base_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
         component_registry = get_component_registry()
@@ -137,10 +138,14 @@ async def rebase_branch(branch: str, service: InfrahubServices) -> None:
         )
         if ipam_node_details:
             await service.workflow.submit_workflow(
-                workflow=IPAM_RECONCILIATION, parameters={"branch": obj.name, "ipam_node_details": ipam_node_details}
+                workflow=IPAM_RECONCILIATION,
+                context=context,
+                parameters={"branch": obj.name, "ipam_node_details": ipam_node_details},
             )
 
-    await service.workflow.submit_workflow(workflow=DIFF_REFRESH_ALL, parameters={"branch_name": obj.name})
+    await service.workflow.submit_workflow(
+        workflow=DIFF_REFRESH_ALL, context=context, parameters={"branch_name": obj.name}
+    )
 
     # -------------------------------------------------------------
     # Generate an event to indicate that a branch has been rebased
@@ -152,12 +157,11 @@ async def rebase_branch(branch: str, service: InfrahubServices) -> None:
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
-async def merge_branch(branch: str, service: InfrahubServices) -> None:
+async def merge_branch(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
     async with service.database.start_session() as db:
         log = get_run_logger()
 
-        await add_branch_tag(branch_name=branch)
-        await add_branch_tag(branch_name=registry.default_branch)
+        await add_tags(branches=[branch, registry.default_branch])
 
         obj = await Branch.get_by_name(db=db, name=branch)
         component_registry = get_component_registry()
@@ -209,6 +213,7 @@ async def merge_branch(branch: str, service: InfrahubServices) -> None:
         if ipam_node_details:
             await service.workflow.submit_workflow(
                 workflow=IPAM_RECONCILIATION,
+                context=context,
                 parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
             )
         # -------------------------------------------------------------
@@ -227,14 +232,15 @@ async def merge_branch(branch: str, service: InfrahubServices) -> None:
         message = messages.EventBranchMerge(
             source_branch=obj.name,
             target_branch=registry.default_branch,
+            context=context,
             meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
         )
         await service.message_bus.send(message=message)
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")
-async def delete_branch(branch: str, service: InfrahubServices) -> None:
-    await add_branch_tag(branch_name=branch)
+async def delete_branch(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
+    await add_tags(branches=[branch])
 
     async with service.database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=str(branch))
@@ -245,7 +251,7 @@ async def delete_branch(branch: str, service: InfrahubServices) -> None:
         )
 
         await service.workflow.submit_workflow(
-            workflow=BRANCH_CANCEL_PROPOSED_CHANGES, parameters={"branch_name": branch}
+            workflow=BRANCH_CANCEL_PROPOSED_CHANGES, context=context, parameters={"branch_name": branch}
         )
 
         await service.event.send(event=event)
@@ -258,7 +264,7 @@ async def delete_branch(branch: str, service: InfrahubServices) -> None:
     persist_result=True,
 )
 async def validate_branch(branch: str, service: InfrahubServices) -> State:
-    await add_branch_tag(branch_name=branch)
+    await add_tags(branches=[branch])
 
     async with service.database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=branch)
@@ -274,8 +280,8 @@ async def validate_branch(branch: str, service: InfrahubServices) -> State:
 
 
 @flow(name="create-branch", flow_run_name="Create branch {model.name}")
-async def create_branch(model: BranchCreateModel, service: InfrahubServices) -> None:
-    await add_branch_tag(model.name)
+async def create_branch(model: BranchCreateModel, context: InfrahubContext, service: InfrahubServices) -> None:
+    await add_tags(branches=[model.name])
 
     async with service.database.start_session() as db:
         try:
@@ -309,12 +315,13 @@ async def create_branch(model: BranchCreateModel, service: InfrahubServices) -> 
             branch_name=obj.name,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta(branch=obj),
+            meta=EventMeta(branch=obj, account_id=context.account.account_id, initiator_id=WORKER_IDENTITY),
         )
         await service.event.send(event=event)
 
         if obj.sync_with_git:
             await service.workflow.submit_workflow(
                 workflow=GIT_REPOSITORIES_CREATE_BRANCH,
+                context=context,
                 parameters={"branch": obj.name, "branch_id": str(obj.uuid)},
             )

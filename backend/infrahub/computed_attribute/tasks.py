@@ -19,6 +19,7 @@ from prefect.events.schemas.automations import EventTrigger, Posture
 from prefect.events.schemas.events import ResourceSpecification
 from prefect.logging import get_run_logger
 
+from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.git.repository import get_initialized_repo
@@ -73,6 +74,7 @@ async def process_transform(
     object_id: str,
     computed_attribute_name: str,  # noqa: ARG001
     computed_attribute_kind: str,  # noqa: ARG001
+    context: InfrahubContext,  # noqa: ARG001
     service: InfrahubServices,
     updated_fields: list[str] | None = None,  # noqa: ARG001
 ) -> None:
@@ -151,6 +153,7 @@ async def trigger_update_python_computed_attributes(
     branch_name: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
+    context: InfrahubContext,
     service: InfrahubServices,
 ) -> None:
     await add_tags(branches=[branch_name])
@@ -160,6 +163,7 @@ async def trigger_update_python_computed_attributes(
     for node in nodes:
         await service.workflow.submit_workflow(
             workflow=UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
+            context=context,
             parameters={
                 "branch_name": branch_name,
                 "node_kind": computed_attribute_kind,
@@ -230,6 +234,7 @@ async def process_jinja2(
     object_id: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
+    context: InfrahubContext,  # noqa: ARG001
     service: InfrahubServices,
     updated_fields: str | None = None,
 ) -> None:
@@ -293,6 +298,7 @@ async def trigger_update_jinja2_computed_attributes(
     branch_name: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
+    context: InfrahubContext,
     service: InfrahubServices,
 ) -> None:
     await add_tags(branches=[branch_name])
@@ -302,6 +308,7 @@ async def trigger_update_jinja2_computed_attributes(
     for node in nodes:
         await service.workflow.submit_workflow(
             workflow=PROCESS_COMPUTED_MACRO,
+            context=context,
             parameters={
                 "branch_name": branch_name,
                 "computed_attribute_name": computed_attribute_name,
@@ -313,7 +320,9 @@ async def trigger_update_jinja2_computed_attributes(
 
 
 @flow(name="computed-attribute-setup", flow_run_name="Setup computed attributes in task-manager")
-async def computed_attribute_setup(service: InfrahubServices, branch_name: str | None = None) -> None:
+async def computed_attribute_setup(
+    service: InfrahubServices, context: InfrahubContext, branch_name: str | None = None
+) -> None:
     branch_name = branch_name or registry.default_branch
 
     await add_tags(branches=[branch_name])
@@ -393,6 +402,7 @@ async def computed_attribute_setup(service: InfrahubServices, branch_name: str |
             if branch_name == registry.default_branch:
                 await service.workflow.submit_workflow(
                     workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
+                    context=context,
                     parameters={
                         "branch_name": registry.default_branch,
                         "computed_attribute_name": computed_attribute.attribute.name,
@@ -459,6 +469,7 @@ async def computed_attribute_setup(service: InfrahubServices, branch_name: str |
                 if branch_name == diff_branch:
                     await service.workflow.submit_workflow(
                         workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
+                        context=context,
                         parameters={
                             "branch_name": branch_name,
                             "computed_attribute_name": computed_attribute.attribute.name,
@@ -477,6 +488,7 @@ async def computed_attribute_setup(service: InfrahubServices, branch_name: str |
 )
 async def computed_attribute_setup_python(
     service: InfrahubServices,
+    context: InfrahubContext,
     branch_name: str | None = None,
     commit: str | None = None,  # noqa: ARG001
     trigger_updates: bool = True,
@@ -624,6 +636,7 @@ async def computed_attribute_setup_python(
             if trigger_updates:
                 await service.workflow.submit_workflow(
                     workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+                    context=context,
                     parameters={
                         "branch_name": branch_name,
                         "computed_attribute_name": computed_attribute.computed_attribute.attribute.name,
@@ -671,6 +684,7 @@ async def query_transform_targets(
     branch_name: str,
     node_kind: str,  # noqa: ARG001
     object_id: str,
+    context: InfrahubContext,
     service: InfrahubServices,
 ) -> None:
     await add_tags(branches=[branch_name])
@@ -693,6 +707,7 @@ async def query_transform_targets(
             for computed_attribute in nodes_with_computed_attributes[subscriber.kind]:
                 await service.workflow.submit_workflow(
                     workflow=UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
+                    context=context,
                     parameters={
                         "branch_name": branch_name,
                         "node_kind": subscriber.kind,

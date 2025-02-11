@@ -5,6 +5,8 @@ from unittest.mock import call, patch
 
 import pytest
 
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
@@ -24,12 +26,14 @@ if TYPE_CHECKING:
 
 
 async def test_trigger_repository_import(
-    db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
-):
+    db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch, create_test_admin: Node
+) -> None:
     repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
     recorder = BusRecorder()
     service = await InfrahubServices.new(database=db, message_bus=recorder, workflow=WorkflowLocalExecution())
-
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+    )
     # TODO: Removing this mock triggers issue: `Invalid file system for test-edge-demo, local directory ... missing`
     with (
         patch(
@@ -49,15 +53,17 @@ async def test_trigger_repository_import(
         await repo.new(db=db, name="test-edge-demo", location="/tmp/edge", commit=commit_id)
         await repo.save(db=db)
         result = await graphql_mutation(
-            query=RUN_REIMPORT,
-            db=db,
-            variables={"id": repo.id},
-            service=service,
+            query=RUN_REIMPORT, db=db, variables={"id": repo.id}, service=service, account_session=account_session
         )
 
         assert not result.errors
         assert result.data
-
+        context = InfrahubContext(
+            branch=BranchContext(name=default_branch.name, id=str(default_branch.get_uuid())),
+            account=AccountSession(
+                authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+            ),
+        )
         expected_calls = [
             call(
                 workflow=GIT_REPOSITORIES_IMPORT_OBJECTS,
@@ -70,6 +76,7 @@ async def test_trigger_repository_import(
                         infrahub_branch_name=default_branch.name,
                     )
                 },
+                context=context,
             ),
         ]
         mock_submit_workflow.assert_has_calls(expected_calls)

@@ -47,6 +47,7 @@ export const ComboboxContent = React.forwardRef<
     <PopoverContent
       ref={ref}
       className={classNames("p-0", className)}
+      align="start"
       portal={false}
       style={{
         ...(fitTriggerWidth
@@ -59,12 +60,14 @@ export const ComboboxContent = React.forwardRef<
   );
 });
 
+export interface ComboboxListProps extends React.ComponentPropsWithoutRef<typeof CommandList> {
+  shouldFilter?: boolean;
+  onValueChange?: (search: string) => void;
+}
+
 export const ComboboxList = React.forwardRef<
   React.ElementRef<typeof CommandList>,
-  React.ComponentPropsWithoutRef<typeof CommandList> & {
-    shouldFilter?: boolean;
-    onValueChange?: (search: string) => void;
-  }
+  ComboboxListProps
 >(({ shouldFilter, autoFocus, onValueChange, ...props }, ref) => {
   return (
     <Command shouldFilter={shouldFilter}>
