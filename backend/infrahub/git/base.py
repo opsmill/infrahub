@@ -340,7 +340,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             repo = Repo.clone_from(self.location, self.directory_default)
             repo.git.checkout(checkout_ref or self.default_branch)
         except GitCommandError as exc:
-            self._raise_enriched_error(error=exc)
+            self._raise_enriched_error(error=exc, branch_name=checkout_ref or self.default_branch)
 
         self.has_origin = True
 
