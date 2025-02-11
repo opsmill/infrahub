@@ -38,8 +38,6 @@ export function RelationshipFilterForm({
   );
 
   const handleSubmit = (data: FormData) => {
-    const { relationships } = data;
-
     if (condition === FILTER_CONDITION.IS_EMPTY) {
       return setFilters([
         ...filters.filter((f) => f.name !== currentFilter?.name),
@@ -61,6 +59,8 @@ export function RelationshipFilterForm({
     }
 
     if (condition === FILTER_CONDITION.IS_ANY_OF) {
+      const { relationships } = data;
+
       if (!relationships?.length) {
         return setFilters(filters.filter((f) => !f.name.startsWith(relationshipSchema.name)));
       }
@@ -71,11 +71,11 @@ export function RelationshipFilterForm({
       };
 
       if (currentFilter) {
-        setFilters(
+        return setFilters(
           filters.map((f) => (f.name.startsWith(relationshipSchema.name) ? newFilter : f))
         );
       } else {
-        setFilters([...filters, newFilter]);
+        return setFilters([...filters, newFilter]);
       }
     }
   };
@@ -85,6 +85,7 @@ export function RelationshipFilterForm({
       <div className="h-10 inline-flex items-center">Where</div>
 
       <FilterConditionSelect
+        filterType="relationship"
         selectedKey={condition}
         onSelectionChange={(key) => setCondition(key as FilterCondition)}
       />
