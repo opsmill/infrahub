@@ -173,6 +173,19 @@ class InfrahubDatabase:
         elif self.db_type == DatabaseType.MEMGRAPH:
             self.manager = DatabaseManagerMemgraph(db=self)
 
+    def __del__(self):
+        if not self._session or not self._is_session_local or self._session.closed():
+            return
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop and loop.is_running():
+            loop.create_task(self._session.close())
+        else:
+            asyncio.run(self._session.close())
+
     @property
     def is_session(self) -> bool:
         if self._mode == InfrahubDatabaseMode.SESSION:
