@@ -11,7 +11,7 @@ export interface TableRowIdentifierProps {
 export function TableRowIdentifier({ objectKind, objectId, identifier }: TableRowIdentifierProps) {
   const display = Array.isArray(identifier) ? identifier.join(", ") : identifier;
   return (
-    <TableCell className="sticky left-0">
+    <TableCell className="sticky left-0 bg-white">
       <LinkButton
         variant="ghost"
         size="sm"
