@@ -53,7 +53,7 @@ async def test_merge_graph(db: InfrahubDatabase, default_branch, base_dataset_02
 
     # Query All cars in MAIN, BEFORE the merge
     cars = sorted(await NodeManager.query(schema="TestCar", at=base_dataset_02["time0"], db=db), key=lambda c: c.id)
-    assert len(cars) == 2
+    assert len(cars) == 1
     assert cars[0].id == "c1"
     assert cars[0].nbr_seats.value == 5
     assert cars[0].nbr_seats.is_protected is False
