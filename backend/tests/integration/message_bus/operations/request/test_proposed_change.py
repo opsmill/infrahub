@@ -84,6 +84,7 @@ class TestProposedChange(TestInfrahubApp):
         init_db_base,
         client: InfrahubClient,
         redis,
+        context: InfrahubContext,
     ) -> str:
         source_dir = tmp_path_module_scope / "sources"
         source_dir.mkdir()
@@ -115,6 +116,7 @@ class TestProposedChange(TestInfrahubApp):
             variables={"name": "first", "source_branch": "change1", "destination_branch": "main"},
             db=db,
             service=service,
+            account_session=context.account,
         )
         assert not result.errors
         assert result.data

@@ -2616,8 +2616,8 @@ async def authentication_base(
     register_core_models_schema,
     register_builtin_models_schema,
     register_organization_schema,
-):
-    pass
+) -> Node:
+    return create_test_admin
 
 
 @pytest.fixture

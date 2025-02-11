@@ -91,18 +91,25 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, context: Inf
         await merge.fn(message=message, service=init_service)
 
         expected_calls = [
-            call(workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE, parameters={"branch": message.target_branch}),
+            call(
+                workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+                parameters={"branch": message.target_branch},
+                context=context,
+            ),
             call(
                 workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
                 parameters={"branch": target_branch_name},
+                context=context,
             ),
             call(
                 workflow=DIFF_UPDATE,
                 parameters={"model": RequestDiffUpdate(branch_name=tracked_diff_roots[0].diff_branch_name)},
+                context=context,
             ),
             call(
                 workflow=DIFF_UPDATE,
                 parameters={"model": RequestDiffUpdate(branch_name=tracked_diff_roots[1].diff_branch_name)},
+                context=context,
             ),
         ]
         mock_submit_workflow.assert_has_calls(expected_calls)
