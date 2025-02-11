@@ -1,5 +1,5 @@
 import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
-import { SelectOption } from "@/shared/components/inputs/select";
+import { SelectOption } from "@/shared/components/inputs/select-old";
 import { RegisterOptions } from "react-hook-form";
 import { FormFieldError } from "./form";
 
