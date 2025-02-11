@@ -415,3 +415,19 @@ class DiffRepository:
                 break
             offset += limit
         return specifiers
+
+    async def add_summary_counts(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+        node_uuids: list[str] | None = None,
+    ) -> None:
+        query = await DiffSummaryCountsEnricherQuery.init(
+            db=self.db,
+            diff_branch_name=diff_branch_name,
+            tracking_id=tracking_id,
+            diff_id=diff_id,
+            node_uuids=node_uuids,
+        )
+        await query.execute(db=self.db)

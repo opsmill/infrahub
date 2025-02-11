@@ -174,10 +174,10 @@ class EnrichedDiffDeserializer:
             uuid=str(root_node.get("uuid")),
             partner_uuid=str(root_node.get("partner_uuid")),
             tracking_id=tracking_id,
-            num_added=int(root_node.get("num_added")),
-            num_updated=int(root_node.get("num_updated")),
-            num_removed=int(root_node.get("num_removed")),
-            num_conflicts=int(root_node.get("num_conflicts")),
+            num_added=int(root_node.get("num_added", 0)),
+            num_updated=int(root_node.get("num_updated", 0)),
+            num_removed=int(root_node.get("num_removed", 0)),
+            num_conflicts=int(root_node.get("num_conflicts", 0)),
             contains_conflict=str(root_node.get("contains_conflict")).lower() == "true",
         )
 

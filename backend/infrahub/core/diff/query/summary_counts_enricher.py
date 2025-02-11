@@ -6,11 +6,12 @@ from infrahub.database import InfrahubDatabase
 from ..model.path import TrackingId
 
 
-class SummaryCountsEnricherQuery(Query):
+class DiffSummaryCountsEnricherQuery(Query):
     """Update summary counters for a given diff"""
 
     name = "diff_summary_count_enricher"
     type = QueryType.WRITE
+    insert_return = False
 
     def __init__(
         self,
@@ -89,7 +90,7 @@ CALL {
             OPTIONAL MATCH (dre)-[*..4]->(dc:DiffConflict)
             WITH dre, count(dc) AS num_conflicts
             SET dre.num_conflicts = num_conflicts
-            SET dre.contains_conflict = (num_conflicts > 0)            
+            SET dre.contains_conflict = (num_conflicts > 0)
         }
         CALL {
             WITH dre
@@ -114,7 +115,7 @@ CALL {
     // handle relationship count updates
     // ----------------------
     OPTIONAL MATCH (dr)-[:DIFF_HAS_ELEMENT]->(conflict_dre:DiffRelationshipElement {contains_conflict: TRUE})
-    WITH dr, count(conflict_dre) AS num_conflicts
+    WITH dr, sum(conflict_dre.num_conflicts) AS num_conflicts
     SET dr.num_conflicts = num_conflicts
     SET dr.contains_conflict = (num_conflicts > 0)
     WITH dr
@@ -140,30 +141,42 @@ CALL {
 // ----------------------
 // handle node count updates
 // ----------------------
+WITH root, dn, coalesce(dn.num_conflicts, 0) AS previous_num_conflicts
 CALL {
+    // ----------------------
+    // handle node num_conflicts update
+    // ----------------------
     WITH dn
     OPTIONAL MATCH (dn)-[:DIFF_HAS_ATTRIBUTE]->(da:DiffAttribute {contains_conflict: TRUE})
-    RETURN count(da) AS num_conflicts
-    UNION
+    RETURN sum(da.num_conflicts) AS num_conflicts
+    UNION ALL
+    WITH dn
     OPTIONAL MATCH (dn)-[:DIFF_HAS_RELATIONSHIP]->(dr:DiffRelationship {contains_conflict: TRUE})
-    RETURN count(dr) AS num_conflicts
+    RETURN sum(dr.num_conflicts) AS num_conflicts
+    UNION ALL
+    WITH dn
+    OPTIONAL MATCH (dn)-[:DIFF_HAS_CONFLICT]->(dc:DiffConflict)
+    RETURN count(dc) AS num_conflicts
 }
-WITH root, dn, sum(num_conflicts) AS num_conflicts
-SET dn.num_conflicts = num_conflicts
-SET dn.contains_conflict = (num_conflicts > 0)
-WITH root, dn
+WITH root, dn, previous_num_conflicts, sum(num_conflicts) AS updated_num_conflicts
+SET dn.num_conflicts = updated_num_conflicts
+SET dn.contains_conflict = (updated_num_conflicts > 0)
+WITH root, dn, updated_num_conflicts - previous_num_conflicts AS num_conflicts_delta
 CALL {
+    // ----------------------
+    // handle node added/updated/removed updates
+    // ----------------------
     WITH dn
     OPTIONAL MATCH (dn)-[:DIFF_HAS_ATTRIBUTE]->(da:DiffAttribute)
     WITH dn, collect(da.action) AS attr_actions
     OPTIONAL MATCH (dn)-[:DIFF_HAS_RELATIONSHIP]->(dr:DiffRelationship)
     WITH dn, attr_actions, collect(dr.action) AS rel_actions
     WITH dn, attr_actions + rel_actions AS actions
-    WITH dn, reduce(counts = [0,0,0], a IN actions | 
+    WITH dn, reduce(counts = [0,0,0], a IN actions |
         CASE
-            WHEN a = "added" THEN [counts[0] + 1, counts[1], counts[2]] 
-            WHEN a = "updated" THEN [counts[0], counts[1] + 1, counts[2]] 
-            WHEN a = "removed" THEN [counts[0], counts[1], counts[2] + 1] 
+            WHEN a = "added" THEN [counts[0] + 1, counts[1], counts[2]]
+            WHEN a = "updated" THEN [counts[0], counts[1] + 1, counts[2]]
+            WHEN a = "removed" THEN [counts[0], counts[1], counts[2] + 1]
             ELSE counts
         END
     ) AS action_counts
@@ -173,33 +186,23 @@ CALL {
     SET dn.num_removed = num_removed
 }
 // ----------------------
-// handle contains_conflict update for relationships with linked nodes
+// handle conflict updates for parent nodes
 // ----------------------
-WITH root, dn
+WITH root, dn, num_conflicts_delta
 CALL {
-    WITH dn
-    MATCH (dr:DiffRelationship)-[:DIFF_HAS_NODE]->(dn:DiffNode)
-    MATCH (dr)-[:DIFF_HAS_NODE]->(child_node:DiffNode {contains_conflict: TRUE})
-    WITH dr, count(child_node) AS num_child_conflicts
-    SET dr.num_conflict = dr.num_conflicts + num_child_conflicts
-    WITH dr, num_child_conflicts
-    MATCH (dn:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(dr)
-    SET dn.num_conflicts = dn.num_conflicts + num_child_conflicts
-    SET dn.contains_conflict = CASE
-        WHEN dn.contains_conflict THEN TRUE
-        WHEN dn.num_conflicts THEN TRUE
-        ELSE FALSE
-    END
+    WITH dn, num_conflicts_delta
+    OPTIONAL MATCH (dn)-[:DIFF_HAS_RELATIONSHIP|DIFF_HAS_NODE*1..]->(parent_node:DiffNode)
+    SET parent_node.num_conflicts = parent_node.num_conflicts + num_conflicts_delta
+    SET parent_node.contains_conflict = (parent_node.num_conflicts > 0)
 }
 // ----------------------
 // handle root count updates
 // ----------------------
+WITH root, sum(num_conflicts_delta) AS total_conflicts_delta
 CALL {
-    WITH root
-    OPTIONAL MATCH (root)-[:DIFF_HAS_NODE]->(dn:DiffNode {contains_conflict: TRUE})
-    WITH root, count(dn) AS num_conflicts
-    SET root.num_conflicts = num_conflicts
-    SET root.contains_conflict = num_conflicts > 0
+    WITH root, total_conflicts_delta
+    SET root.num_conflicts = coalesce(root.num_conflicts, 0) + total_conflicts_delta
+    SET root.contains_conflict = root.num_conflicts > 0
     WITH root
     OPTIONAL MATCH (root)-[:DIFF_HAS_NODE]->(dn:DiffNode {action: "added"})
     WITH root, count(dn.action) AS num_added
@@ -214,3 +217,4 @@ CALL {
     SET root.num_removed = num_removed
 }
         """
+        self.add_to_query(query)

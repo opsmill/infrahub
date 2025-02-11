@@ -9,6 +9,7 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffs,
 )
 from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.initialization import initialize_registry
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 
@@ -23,6 +24,13 @@ from ..factories import (
 
 
 class DiffRepositoryTestBase:
+    base_branch_name = "main"
+    diff_branch_name = "branch"
+
+    @pytest.fixture(scope="class", autouse=True)
+    async def _initialize_registry(self, db: InfrahubDatabase):
+        await initialize_registry(db=db, initialize=True)
+
     @pytest.fixture
     async def reset_database(self, db: InfrahubDatabase, default_branch):
         await delete_all_nodes(db=db)
