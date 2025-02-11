@@ -28,6 +28,7 @@ export function ActionsCell({ objectKind, objectId, objectLabel, permission }: A
   return (
     <>
       <TableCell className="sticky right-0 border-l size-10 items-center justify-center  -ml-px">
+        <div className="absolute -left-4 top-0 bottom-0 w-4 bg-gradient-to-r from-transparent to-gray-300/30 pointer-events-none" />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

@@ -20,6 +20,8 @@ export function TableRowIdentifier({ objectKind, objectId, identifier }: TableRo
       >
         {display}
       </LinkButton>
+
+      <div className="absolute -right-4 top-0 bottom-0 w-4 bg-gradient-to-r from-gray-500/10 pointer-events-none" />
     </TableCell>
   );
 }
