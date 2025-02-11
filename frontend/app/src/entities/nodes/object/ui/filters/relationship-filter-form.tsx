@@ -1,4 +1,5 @@
 import {
+  FILTER_CONDITION,
   FilterCondition,
   FilterConditionSelect,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
@@ -39,7 +40,7 @@ export function RelationshipFilterForm({
   const handleSubmit = (data: FormData) => {
     const { relationships } = data;
 
-    if (condition === "is empty") {
+    if (condition === FILTER_CONDITION.IS_EMPTY) {
       return setFilters([
         ...filters.filter((f) => f.name !== currentFilter?.name),
         {
@@ -49,7 +50,7 @@ export function RelationshipFilterForm({
       ]);
     }
 
-    if (condition === "is not empty") {
+    if (condition === FILTER_CONDITION.IS_NOT_EMPTY) {
       return setFilters([
         ...filters.filter((f) => f.name !== currentFilter?.name),
         {
@@ -59,7 +60,7 @@ export function RelationshipFilterForm({
       ]);
     }
 
-    if (condition === "is any of") {
+    if (condition === FILTER_CONDITION.IS_ANY_OF) {
       if (!relationships?.length) {
         return setFilters(filters.filter((f) => !f.name.startsWith(relationshipSchema.name)));
       }
