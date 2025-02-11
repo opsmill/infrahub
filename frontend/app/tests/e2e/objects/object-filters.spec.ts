@@ -23,9 +23,8 @@ test.describe("Object filters", () => {
 
     await test.step("filter using an attribute", async () => {
       await page.getByRole("button", { name: "Role" }).click();
-      await page.getByLabel("Role").click();
       await page.getByRole("option", { name: "Edge Router" }).click();
-      await page.getByRole("button", { name: "Filter", exact: true }).click();
+      await page.getByRole("button", { name: "Apply" }).click();
 
       await expect(
         page.getByLabel("Active filters").getByLabel("Role contains edge")
@@ -94,7 +93,7 @@ test.describe("Object filters", () => {
 
     await test.step("filter using kind", async () => {
       await page.getByRole("button", { name: "Kind", exact: true }).click();
-      await page.getByLabel("Kind").click();
+      await page.getByRole("combobox", { name: "kind" }).click();
       await page.getByRole("option", { name: "Interface L3 Infra", exact: true }).click();
       await page.getByRole("button", { name: "Filter" }).click();
 

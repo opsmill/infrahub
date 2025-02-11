@@ -15,7 +15,10 @@ import useFilters from "@/shared/hooks/useFilters";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 
-export const FilterKindSelector = ({ genericSchema }: { genericSchema: iGenericSchema }) => {
+export const FilterKindSelector = ({
+  genericSchema,
+  showLabel = true,
+}: { genericSchema: iGenericSchema; showLabel?: boolean }) => {
   const [activeFilters] = useFilters();
   const availableNodes = useAtomValue(schemaState);
   const availableProfiles = useAtomValue(profilesAtom);
@@ -47,11 +50,11 @@ export const FilterKindSelector = ({ genericSchema }: { genericSchema: iGenericS
 
         return (
           <div className="flex flex-col gap-2">
-            <LabelFormField label="Kind" fieldData={currentFieldValue} />
+            {showLabel && <LabelFormField label="Kind" fieldData={currentFieldValue} />}
 
             <Combobox open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
               <FormInput>
-                <ComboboxTrigger>
+                <ComboboxTrigger aria-label="kind">
                   {selectedSchema && (
                     <div className="w-full flex justify-between">
                       {selectedSchema.label} <Badge>{selectedSchema.namespace}</Badge>
