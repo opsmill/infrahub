@@ -72,7 +72,7 @@ export function TableColumnHeader({ schema, columnSchema }: TableColumnHeaderPro
         />
       </PopoverTrigger>
 
-      <PopoverContent className="min-w-[19rem] p-0 relative rounded-tl-none" align="start">
+      <PopoverContent className="p-0 relative rounded-tl-none" align="start">
         <div className="absolute font-semibold -top-[1.8rem] bg-white border px-2 py-1 rounded-t-md border-b-0 -left-px">
           Filter by {columnSchema.label ?? columnSchema.name}
         </div>
