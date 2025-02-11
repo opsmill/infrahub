@@ -173,7 +173,7 @@ class InfrahubDatabase:
         elif self.db_type == DatabaseType.MEMGRAPH:
             self.manager = DatabaseManagerMemgraph(db=self)
 
-    def __del__(self):
+    def __del__(self) -> None:
         if not self._session or not self._is_session_local or self._session.closed():
             return
 
