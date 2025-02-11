@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, ParamSpec, TypeVar, overload
 
 if TYPE_CHECKING:
+    from infrahub.context import InfrahubContext
     from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
-
 Return = TypeVar("Return")
 Params = ParamSpec("Params")
 
@@ -18,6 +18,7 @@ class InfrahubWorkflow(ABC):
         self,
         workflow: WorkflowDefinition,
         expected_return: type[Return],
+        context: InfrahubContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
     ) -> Return: ...
@@ -27,6 +28,7 @@ class InfrahubWorkflow(ABC):
         self,
         workflow: WorkflowDefinition,
         expected_return: None = ...,
+        context: InfrahubContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
     ) -> Any: ...
@@ -36,6 +38,7 @@ class InfrahubWorkflow(ABC):
         self,
         workflow: WorkflowDefinition,
         expected_return: type[Return] | None = None,
+        context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> Any:
@@ -45,6 +48,7 @@ class InfrahubWorkflow(ABC):
     async def submit_workflow(
         self,
         workflow: WorkflowDefinition,
+        context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> WorkflowInfo:

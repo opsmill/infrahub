@@ -65,6 +65,8 @@ class DiffUpdateMutation(Mutation):
             to_time=to_timestamp_str,
         )
         if graphql_context.service:
-            await graphql_context.service.workflow.submit_workflow(workflow=DIFF_UPDATE, parameters={"model": model})
+            await graphql_context.service.workflow.submit_workflow(
+                workflow=DIFF_UPDATE, context=graphql_context.get_context(), parameters={"model": model}
+            )
 
         return {"ok": True}

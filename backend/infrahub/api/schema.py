@@ -13,7 +13,7 @@ from pydantic import (
 from starlette.responses import JSONResponse
 
 from infrahub import lock
-from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db, get_permission_manager
+from infrahub.api.dependencies import get_branch_dep, get_context, get_current_user, get_db, get_permission_manager
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.auth import AccountSession
+    from infrahub.context import InfrahubContext
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.permissions import PermissionManager
     from infrahub.services import InfrahubServices
@@ -269,6 +270,7 @@ async def load_schema(
     branch: Branch = Depends(get_branch_dep),
     account_session: AccountSession = Depends(get_current_user),
     permission_manager: PermissionManager = Depends(get_permission_manager),
+    context: InfrahubContext = Depends(get_context),
 ) -> SchemaUpdate:
     permission_manager.raise_for_permission(
         permission=GlobalPermission(
@@ -317,6 +319,7 @@ async def load_schema(
         )
         responses = await service.workflow.execute_workflow(
             workflow=SCHEMA_VALIDATE_MIGRATION,
+            context=context,
             expected_return=list[SchemaValidatorPathResponseData],
             parameters={"message": validate_migration_data},
         )
@@ -361,6 +364,7 @@ async def load_schema(
         )
         migration_error_msgs = await service.workflow.execute_workflow(
             workflow=SCHEMA_APPLY_MIGRATION,
+            context=context,
             expected_return=list[str],
             parameters={"message": apply_migration_data},
         )
@@ -392,6 +396,7 @@ async def check_schema(
     request: Request,
     schemas: SchemasLoadAPI,
     branch: Branch = Depends(get_branch_dep),
+    context: InfrahubContext = Depends(get_context),
     _: AccountSession = Depends(get_current_user),
 ) -> JSONResponse:
     service: InfrahubServices = request.app.state.service
@@ -418,6 +423,7 @@ async def check_schema(
     )
     responses = await service.workflow.execute_workflow(
         workflow=SCHEMA_VALIDATE_MIGRATION,
+        context=context,
         expected_return=list[SchemaValidatorPathResponseData],
         parameters={"message": validate_migration_data},
     )

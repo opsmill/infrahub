@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
@@ -66,6 +68,14 @@ mutation ProposedChange(
 
 class TestProposedChange(TestInfrahubApp):
     @pytest.fixture(scope="class")
+    async def context(self) -> InfrahubContext:
+        """Placeholder context for now, would be good to implement some auth and permissions here"""
+        return InfrahubContext(
+            account=AccountSession(authenticated=False, account_id="placeholder", auth_type=AuthType.NONE),
+            branch=BranchContext(name="main", id="placeholder"),
+        )
+
+    @pytest.fixture(scope="class")
     async def prepare_proposed_change(
         self,
         db: InfrahubDatabase,
@@ -74,6 +84,7 @@ class TestProposedChange(TestInfrahubApp):
         init_db_base,
         client: InfrahubClient,
         redis,
+        context: InfrahubContext,
     ) -> str:
         source_dir = tmp_path_module_scope / "sources"
         source_dir.mkdir()
@@ -105,6 +116,7 @@ class TestProposedChange(TestInfrahubApp):
             variables={"name": "first", "source_branch": "change1", "destination_branch": "main"},
             db=db,
             service=service,
+            account_session=context.account,
         )
         assert not result.errors
         assert result.data
@@ -116,12 +128,14 @@ class TestProposedChange(TestInfrahubApp):
         db: InfrahubDatabase,
         test_client: InfrahubTestClient,
         client: InfrahubClient,
+        context: InfrahubContext,
     ):
         message = messages.RequestProposedChangePipeline(
             source_branch="change1",
             source_branch_sync_with_git=True,
             destination_branch="main",
             proposed_change=prepare_proposed_change,
+            context=context,
         )
         bus_pre_data_changes = BusRecorder()
         fake_log = FakeLogger()
@@ -161,6 +175,7 @@ class TestProposedChange(TestInfrahubApp):
         db: InfrahubDatabase,
         test_client: InfrahubTestClient,
         client: InfrahubClient,
+        context: InfrahubContext,
     ):
         model = RequestProposedChangeRunGenerators(
             source_branch="change1",
@@ -178,7 +193,7 @@ class TestProposedChange(TestInfrahubApp):
             log=FakeLogger(),
             workflow=WorkflowLocalExecution(),
         )
-        await run_generators(model=model, service=service)
+        await run_generators(model=model, context=context, service=service)
 
         assert sorted(bus.seen_routing_keys) == [
             "request.proposed_change.refresh_artifacts",

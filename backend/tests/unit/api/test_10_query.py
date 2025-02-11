@@ -6,6 +6,8 @@ from unittest.mock import call, patch
 import pytest
 
 from infrahub import config
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.initialization import create_branch
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.workflows.catalogue import GRAPHQL_QUERY_GROUP_UPDATE
@@ -29,10 +31,10 @@ async def test_query_endpoint_group_no_params(
     db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
-    create_test_admin,
-    default_branch,
+    create_test_admin: Node,
+    default_branch: Branch,
     car_person_data,
-):
+) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with (
         client,
@@ -42,6 +44,13 @@ async def test_query_endpoint_group_no_params(
     ):
         response = client.get(
             "/api/query/query01?update_group=true&subscribers=AAAAAA&subscribers=BBBBBB", headers=admin_headers
+        )
+
+        context = InfrahubContext(
+            branch=BranchContext(name=default_branch.name, id=str(default_branch.get_uuid())),
+            account=AccountSession(
+                authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+            ),
         )
 
         assert "errors" not in response.json()
@@ -71,17 +80,19 @@ async def test_query_endpoint_group_no_params(
         )
 
         expected_calls = [
-            call(
-                workflow=GRAPHQL_QUERY_GROUP_UPDATE,
-                parameters={"model": model},
-            ),
+            call(workflow=GRAPHQL_QUERY_GROUP_UPDATE, parameters={"model": model}, context=context),
         ]
         mock_submit_workflow.assert_has_calls(expected_calls)
 
 
 async def test_query_endpoint_group_params(
-    db: InfrahubDatabase, client: TestClient, admin_headers, default_branch, create_test_admin, car_person_data
-):
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers,
+    default_branch: Branch,
+    create_test_admin: Node,
+    car_person_data,
+) -> None:
     # Must execute in a with block to execute the startup/shutdown events
     with (
         client,
@@ -111,11 +122,14 @@ async def test_query_endpoint_group_params(
             params={"person": "John"},
         )
 
-        expected_calls = [
-            call(
-                workflow=GRAPHQL_QUERY_GROUP_UPDATE,
-                parameters={"model": model},
+        context = InfrahubContext(
+            branch=BranchContext(name=default_branch.name, id=str(default_branch.get_uuid())),
+            account=AccountSession(
+                authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
             ),
+        )
+        expected_calls = [
+            call(workflow=GRAPHQL_QUERY_GROUP_UPDATE, parameters={"model": model}, context=context),
         ]
         mock_submit_workflow.assert_has_calls(expected_calls)
 

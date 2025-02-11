@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 from prefect import flow
 
+from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.models import RequestDiffUpdate
+from infrahub.core.diff.models import RequestDiffUpdate  # noqa: TC001  needed for prefect flow
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.log import get_logger
-from infrahub.services import InfrahubServices
+from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.catalogue import DIFF_REFRESH
 from infrahub.workflows.utils import add_branch_tag
 
@@ -47,7 +50,7 @@ async def refresh_diff(branch_name: str, diff_id: str, service: InfrahubServices
 
 
 @flow(name="diff-refresh-all", flow_run_name="Recreate all diffs for branch {branch_name}")
-async def refresh_diff_all(branch_name: str, service: InfrahubServices) -> None:
+async def refresh_diff_all(branch_name: str, context: InfrahubContext, service: InfrahubServices) -> None:
     await add_branch_tag(branch_name=branch_name)
 
     async with service.database.start_session() as db:
@@ -60,5 +63,6 @@ async def refresh_diff_all(branch_name: str, service: InfrahubServices) -> None:
             if diff_root.base_branch_name != diff_root.diff_branch_name:
                 await service.workflow.submit_workflow(
                     workflow=DIFF_REFRESH,
+                    context=context,
                     parameters={"branch_name": diff_root.diff_branch_name, "diff_id": diff_root.uuid},
                 )
