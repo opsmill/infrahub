@@ -258,7 +258,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
   test("should verify profile values after creation", async ({ page }) => {
     await page.goto("/objects/CoreProfile");
     await page.getByRole("link", { name: PROFILE_NAME }).click();
-    await expect(page.locator("dl").getByText(PROFILE_NAME)).toBeVisible();
+    await expect(page.getByText(PROFILE_NAME)).toBeVisible();
     await expect(page.getByText("Profile Priority2000")).toBeVisible();
     await expect(page.getByText("MTU256")).toBeVisible();
     await expect(
