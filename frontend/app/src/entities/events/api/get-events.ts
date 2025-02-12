@@ -43,7 +43,7 @@ export function getEventsFromApi({
   ids,
   branchName,
   atDate,
-}: { ids?: Array<string>; branchName: string; atDate: Date | null }) {
+}: { ids?: Array<string | undefined>; branchName: string; atDate: Date | null }) {
   return graphqlClient.query({
     query: gql(getActivitiesQuery({ ids })),
     context: {
