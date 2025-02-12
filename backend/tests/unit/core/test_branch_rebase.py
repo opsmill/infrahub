@@ -21,7 +21,7 @@ async def test_rebase_graph(db: InfrahubDatabase, base_dataset_02, register_core
 
     # Query all cars in MAIN, AFTER the rebase
     cars = sorted(await NodeManager.query(schema="TestCar", db=db), key=lambda c: c.id)
-    assert len(cars) == 1
+    assert len(cars) == 2
     assert cars[0].id == "c1"
     assert cars[0].nbr_seats.value == 5
     assert cars[0].nbr_seats.is_protected is False
