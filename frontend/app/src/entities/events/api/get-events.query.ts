@@ -9,7 +9,7 @@ export function getEventsQueryOptions({ ids }: { ids?: Array<string | undefined>
   const timeMachineDate = store.get(datetimeAtom);
 
   return queryOptions({
-    queryKey: ["events"],
+    queryKey: ["events", ids],
     queryFn: () => {
       return getEventsFromApi({
         ids,
