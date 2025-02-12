@@ -103,14 +103,9 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
                 )
             )
         if consolidated_properties:
-            element_timestamps = {element.changed_at for element in diff_relationship.relationships}
             element_actions = {element.action for element in diff_relationship.relationships}
             # check if this is a simultaneous update
-            if (
-                len(diff_relationship.relationships) > 1
-                and len(element_timestamps) == 1
-                and {DiffAction.REMOVED, DiffAction.ADDED} <= element_actions
-            ):
+            if len(diff_relationship.relationships) > 1 and {DiffAction.REMOVED, DiffAction.ADDED} <= element_actions:
                 latest_element = [
                     element for element in diff_relationship.relationships if element.action is DiffAction.ADDED
                 ][0]

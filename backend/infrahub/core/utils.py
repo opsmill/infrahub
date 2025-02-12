@@ -72,6 +72,7 @@ async def update_relationships_to(ids: list[str], db: InfrahubDatabase, to: Time
     query = """
     MATCH ()-[r]->()
     WHERE %(id_func)s(r) IN $ids
+    AND r.to IS NULL
     SET r.to = $to
     RETURN %(id_func)s(r)
     """ % {"id_func": db.get_id_function_name()}
