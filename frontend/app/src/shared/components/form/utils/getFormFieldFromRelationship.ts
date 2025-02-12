@@ -2,11 +2,15 @@ import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { RelationshipSchema } from "@/entities/schema/types";
-import { DynamicRelationshipFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import {
+  DynamicRelationshipFieldProps,
+  FormRelationshipValue,
+} from "@/shared/components/form/type";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { getRelationshipParent } from "@/shared/components/form/utils/getRelationshipParent";
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isRequired } from "@/shared/components/form/utils/validation";
+import { pluralize } from "@/shared/utils/string";
 
 export const getFormFieldFromRelationship = ({
   relationshipSchema,
@@ -42,10 +46,32 @@ export const getFormFieldFromRelationship = ({
     rules: {
       required: !isFilterForm && !relationshipSchema.optional,
       validate: {
-        required: (formFieldValue: FormFieldValue) => {
+        required: (formFieldValue: FormRelationshipValue) => {
           if (isFilterForm || relationshipSchema.optional) return true;
 
-          return isRequired(formFieldValue);
+          return isRequired(formFieldValue) || "Required";
+        },
+        maxCount: (formFieldValue: FormRelationshipValue) => {
+          const { max_count } = relationshipSchema;
+          if (isFilterForm || max_count === 0 || !Array.isArray(formFieldValue.value)) {
+            return true;
+          }
+
+          return (
+            formFieldValue.value.length <= max_count ||
+            `Maximum ${pluralize(max_count, "node")} allowed`
+          );
+        },
+        minCount: (formFieldValue: FormRelationshipValue) => {
+          const { min_count } = relationshipSchema;
+          if (isFilterForm || !Array.isArray(formFieldValue.value)) {
+            return true;
+          }
+
+          return (
+            formFieldValue.value.length >= min_count ||
+            `Minimum  ${pluralize(min_count, "node")} required`
+          );
         },
       },
     },
