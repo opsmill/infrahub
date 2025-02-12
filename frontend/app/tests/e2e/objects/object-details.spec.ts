@@ -36,23 +36,23 @@ test.describe("/objects/:objectKind/:objectid", () => {
       await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       // Attribute
-      await expect(page.locator("dl")).toContainText("Type");
-      await expect(page.locator("dl")).toContainText("Description");
-      await expect(page.locator("dl")).toContainText("Import Policies");
-      await expect(page.locator("dl")).toContainText("Export Policies");
-      await expect(page.locator("dl")).toContainText("Status");
-      await expect(page.locator("dl")).toContainText("Role");
+      await expect(page.locator("dt")).toContainText("Type");
+      await expect(page.locator("dt")).toContainText("Description");
+      await expect(page.locator("dt")).toContainText("Import Policies");
+      await expect(page.locator("dt")).toContainText("Export Policies");
+      await expect(page.locator("dt")).toContainText("Status");
+      await expect(page.locator("dt")).toContainText("Role");
 
       // Relationships Attributes
-      await expect(page.locator("dl")).toContainText("Local As");
-      await expect(page.locator("dl")).toContainText("Remote As");
-      await expect(page.locator("dl")).toContainText("Local Ip");
-      await expect(page.locator("dl")).toContainText("Remote Ip");
-      await expect(page.locator("dl")).toContainText("Peer Group");
-      await expect(page.locator("dl")).toContainText("Peer Session");
+      await expect(page.locator("dt")).toContainText("Local As");
+      await expect(page.locator("dt")).toContainText("Remote As");
+      await expect(page.locator("dt")).toContainText("Local Ip");
+      await expect(page.locator("dt")).toContainText("Remote Ip");
+      await expect(page.locator("dt")).toContainText("Peer Group");
+      await expect(page.locator("dt")).toContainText("Peer Session");
 
       // Relationships Generics
-      await expect(page.locator("dl")).toContainText("Device");
+      await expect(page.locator("dt")).toContainText("Device");
     });
 
     test("should display the select 2 steps correctly", async ({ page }) => {
