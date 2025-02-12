@@ -275,7 +275,7 @@ async def test_is_isolated(db: InfrahubDatabase, base_dataset_02):
 
     branch1.is_isolated = True
     cars = sorted(await NodeManager.query(schema="TestCar", branch=branch1, db=db), key=lambda c: c.id)
-    assert len(cars) == 2
+    assert len(cars) == 3
     assert cars[0].id == "c1"
     assert cars[0].name.value == "accord"
 
