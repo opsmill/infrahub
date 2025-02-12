@@ -60,7 +60,7 @@ test.describe("/objects/:objectKind", () => {
     test("clicking on a relationship value redirects to its details page", async ({ page }) => {
       await page.goto("/objects/InfraDevice");
       await page.getByRole("link", { name: "Juniper JunOS" }).first().click();
-      await expect(page.getByText("NameJuniper JunOS")).toBeVisible();
+      await expect(page.getByText("NameJuniper JunOS", { exact: true })).toBeVisible();
       expect(page.url()).toContain("/objects/InfraPlatform/");
     });
 
