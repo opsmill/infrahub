@@ -25,7 +25,7 @@ services:
   task-manager:
     profiles: [demo, dev]
     image: "${IMAGE_NAME}:${IMAGE_VER}"
-    command: prefect server start --host 0.0.0.0 --ui
+    command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     environment:
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
       PREFECT_LOCAL_STORAGE_PATH: ${PREFECT_LOCAL_STORAGE_PATH:-/opt/prefect/}
