@@ -268,7 +268,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .locator("svg")
         .first()
     ).toBeVisible();
-    await expect(page.getByText("Provisioning")).toBeVisible();
+    await expect(page.getByText("Provisioning", { exact: true })).toBeVisible();
   });
 
   test("should verify the available profiles in the object form", async ({ page }) => {
