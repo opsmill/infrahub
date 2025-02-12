@@ -9,7 +9,7 @@ import {
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { getRelationshipParent } from "@/shared/components/form/utils/getRelationshipParent";
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
-import { isMinCount, isRequired } from "@/shared/components/form/utils/validation";
+import { isMaxCount, isMinCount, isRequired } from "@/shared/components/form/utils/validation";
 
 export const getFormFieldFromRelationship = ({
   relationshipSchema,
@@ -52,12 +52,8 @@ export const getFormFieldFromRelationship = ({
           return isRequired(formFieldValue) || "Required";
         },
         maxCount: (formFieldValue: FormRelationshipValue) => {
-          const { max_count } = relationshipSchema;
-          if (isFilterForm || max_count === 0 || !Array.isArray(formFieldValue.value)) {
-            return true;
-          }
-
-          return formFieldValue.value.length <= max_count || `Maximum ${max_count} allowed`;
+          if (isFilterForm) return true;
+          return isMaxCount(relationshipSchema.max_count)(formFieldValue);
         },
         minCount: (formFieldValue: FormRelationshipValue) => {
           if (isFilterForm) return true;

@@ -21,3 +21,12 @@ export const isMinCount = (minCount: number) => {
     return value.length >= minCount || `Minimum ${minCount} required`;
   };
 };
+
+export const isMaxCount = (maxCount: number) => {
+  return ({ value }: FormRelationshipValue) => {
+    if (!value) return true;
+    if (!Array.isArray(value)) return true;
+    if (maxCount === 0) return true; // maxCount of 0 means no limit
+    return value.length <= maxCount || `Maximum ${maxCount} allowed`;
+  };
+};
