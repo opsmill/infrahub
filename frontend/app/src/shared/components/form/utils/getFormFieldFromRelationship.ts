@@ -10,7 +10,6 @@ import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getR
 import { getRelationshipParent } from "@/shared/components/form/utils/getRelationshipParent";
 import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
 import { isRequired } from "@/shared/components/form/utils/validation";
-import { pluralize } from "@/shared/utils/string";
 
 export const getFormFieldFromRelationship = ({
   relationshipSchema,
