@@ -31,14 +31,17 @@ async def merge_branch_mutation(branch: str) -> None:
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
         diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(base_branch=base_branch, diff_branch=obj)
-        if enriched_diff.get_all_conflicts():
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
+        async for _ in diff_repository.get_all_conflicts_for_diff(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
+        ):
+            # if there are any conflicts, raise the error
             raise ValidationError(
                 f"Branch {obj.name} contains conflicts with the default branch."
                 " Please create a Proposed Change to resolve the conflicts or manually update them before merging."
             )
         node_diff_field_summaries = await diff_repository.get_node_field_summaries(
-            diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
 
         merger = BranchMerger(

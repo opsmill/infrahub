@@ -8,6 +8,7 @@ from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.exceptions import ValidationError
 from infrahub.workflows.catalogue import DIFF_UPDATE
 
 if TYPE_CHECKING:
@@ -40,6 +41,8 @@ class DiffUpdateMutation(Mutation):
 
         from_timestamp_str = DateTime.serialize(data.from_time) if data.from_time else None
         to_timestamp_str = DateTime.serialize(data.to_time) if data.to_time else None
+        if (data.from_time or data.to_time) and not data.name:
+            raise ValidationError("diff with specified time range requires a name")
         if data.wait_for_completion is True:
             component_registry = get_component_registry()
             base_branch = await registry.get_branch(db=context.db, branch=registry.default_branch)

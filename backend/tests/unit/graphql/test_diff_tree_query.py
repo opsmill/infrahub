@@ -214,11 +214,11 @@ async def test_diff_tree_no_changes(
     diff_coordinator: DiffCoordinator,
     diff_branch: Branch,
 ):
-    enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+    enriched_diff_metadata = await diff_coordinator.update_branch_diff(
         base_branch=default_branch, diff_branch=diff_branch
     )
     from_time = datetime.fromisoformat(diff_branch.branched_from)
-    to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
+    to_time = datetime.fromisoformat(enriched_diff_metadata.to_time.to_string())
 
     params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
@@ -299,9 +299,13 @@ async def test_diff_tree_one_attr_change(
     await branch_crit.save(db=db)
     after_change_datetime = datetime.now(tz=UTC)
 
-    enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+    enriched_diff_metadata = await diff_coordinator.update_branch_diff(
         base_branch=default_branch, diff_branch=diff_branch
     )
+    enriched_diff = await diff_repository.get_one(
+        diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
+    )
+
     enriched_conflict_map = enriched_diff.get_all_conflicts()
     enriched_conflict = list(enriched_conflict_map.values())[0]
     await diff_repository.update_conflict_by_id(
@@ -326,7 +330,7 @@ async def test_diff_tree_one_attr_change(
         variable_values={"branch": diff_branch.name},
     )
     from_time = datetime.fromisoformat(diff_branch.branched_from)
-    to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
+    to_time = datetime.fromisoformat(enriched_diff_metadata.to_time.to_string())
 
     assert result.errors is None
 
@@ -429,7 +433,7 @@ async def test_diff_tree_one_relationship_change(
     john_label = await person_john_main.render_display_label(db=db)
     jane_label = await person_jane_main.render_display_label(db=db)
 
-    enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+    enriched_diff_metadata = await diff_coordinator.update_branch_diff(
         base_branch=default_branch, diff_branch=diff_branch
     )
     params = await prepare_graphql_params(
@@ -443,7 +447,7 @@ async def test_diff_tree_one_relationship_change(
         variable_values={"branch": diff_branch.name},
     )
     from_time = datetime.fromisoformat(diff_branch.branched_from)
-    to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
+    to_time = datetime.fromisoformat(enriched_diff_metadata.to_time.to_string())
 
     assert result.errors is None
 
@@ -738,11 +742,11 @@ async def test_diff_tree_summary_no_changes(
     diff_coordinator: DiffCoordinator,
     diff_branch: Branch,
 ):
-    enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+    enriched_diff_metadata = await diff_coordinator.update_branch_diff(
         base_branch=default_branch, diff_branch=diff_branch
     )
     from_time = datetime.fromisoformat(diff_branch.branched_from)
-    to_time = datetime.fromisoformat(enriched_diff.to_time.to_string())
+    to_time = datetime.fromisoformat(enriched_diff_metadata.to_time.to_string())
 
     params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
@@ -826,7 +830,7 @@ async def test_diff_summary_filters(
     # ----------------------------
     component_registry = get_component_registry()
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
-    enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+    enriched_diff_metadata = await diff_coordinator.update_branch_diff(
         base_branch=default_branch, diff_branch=diff_branch
     )
     params = await prepare_graphql_params(
@@ -842,8 +846,8 @@ async def test_diff_summary_filters(
     )
 
     assert result.errors is None
-    counters.from_time = enriched_diff.from_time
-    counters.to_time = enriched_diff.to_time
+    counters.from_time = enriched_diff_metadata.from_time
+    counters.to_time = enriched_diff_metadata.to_time
     diff: dict = result.data["DiffTreeSummary"]
     from_timestamp = Timestamp(result.data["DiffTreeSummary"]["from_time"])
     to_timestamp = Timestamp(result.data["DiffTreeSummary"]["to_time"])

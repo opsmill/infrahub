@@ -17,9 +17,11 @@ class EnrichedDiffFieldSpecifiersQuery(Query):
         query = """
 CALL {
     MATCH (root:DiffRoot {uuid: $diff_id})-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_ATTRIBUTE]->(attr:DiffAttribute)
+    WHERE (root.is_merged IS NULL OR root.is_merged <> TRUE)
     RETURN node.uuid AS node_uuid, attr.name AS field_name
     UNION
     MATCH (root:DiffRoot {uuid: $diff_id})-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_RELATIONSHIP]->(rel:DiffRelationship)
+    WHERE (root.is_merged IS NULL OR root.is_merged <> TRUE)
     RETURN node.uuid AS node_uuid, rel.identifier AS field_name
 }
         """
