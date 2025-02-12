@@ -25,10 +25,11 @@ export const getFormFieldFromRelationship = ({
   relationshipData: RelationshipType | undefined;
   schema: IModelSchema;
 }): DynamicRelationshipFieldProps => {
+  const label = relationshipSchema.label ?? relationshipSchema.name;
   return {
     type: "relationship",
     name: relationshipSchema.name,
-    label: relationshipSchema.label ?? undefined,
+    label,
     defaultValue: getRelationshipDefaultValue({
       relationshipData,
       isFilterForm,
@@ -57,10 +58,7 @@ export const getFormFieldFromRelationship = ({
             return true;
           }
 
-          return (
-            formFieldValue.value.length <= max_count ||
-            `Maximum ${pluralize(max_count, "node")} allowed`
-          );
+          return formFieldValue.value.length <= max_count || `Maximum ${max_count} allowed`;
         },
         minCount: (formFieldValue: FormRelationshipValue) => {
           const { min_count } = relationshipSchema;
@@ -68,10 +66,7 @@ export const getFormFieldFromRelationship = ({
             return true;
           }
 
-          return (
-            formFieldValue.value.length >= min_count ||
-            `Minimum  ${pluralize(min_count, "node")} required`
-          );
+          return formFieldValue.value.length >= min_count || `Minimum  ${min_count} required`;
         },
       },
     },
