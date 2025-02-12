@@ -3,10 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.protocols import CoreMenuItem
 from infrahub.log import get_logger
 
-from .constants import FULL_DEFAULT_MENU
+from .constants import FULL_DEFAULT_MENU, TEMPLATE_MENU
 from .models import MenuDict, MenuItemDict
 
 if TYPE_CHECKING:
@@ -81,6 +82,11 @@ async def generate_menu(db: InfrahubDatabase, branch: Branch, menu_items: list[C
 
     items_to_add = {schema.kind: False for schema in full_schema.values() if schema.include_in_menu is True}
 
+    # Object templates should go into a dedicated menu item
+    object_templates_menu = MenuItemDict(
+        identifier=InfrahubKind.OBJECTTEMPLATE, label=TEMPLATE_MENU.title(), icon="mdi:pencil-ruler", order_weight=20000
+    )
+
     nbr_remaining_items_last_round = len(items_to_add.values())
     nbr_remaining_items = len([value for value in items_to_add.values() if value is False])
     while not all(items_to_add.values()):
@@ -95,7 +101,9 @@ async def generate_menu(db: InfrahubDatabase, branch: Branch, menu_items: list[C
                 items_to_add[item_name] = True
                 continue
 
-            if not schema.menu_placement:
+            if schema.namespace == "Template":
+                object_templates_menu.children[menu_item.identifier] = menu_item
+            elif not schema.menu_placement:
                 first_element = MenuItemDict.from_schema(model=schema)
                 first_element.identifier = f"{first_element.identifier}Sub"
                 first_element.order_weight = 1
@@ -111,6 +119,9 @@ async def generate_menu(db: InfrahubDatabase, branch: Branch, menu_items: list[C
         if nbr_remaining_items_last_round == nbr_remaining_items:
             break
         nbr_remaining_items_last_round = nbr_remaining_items
+
+    if object_templates_menu.children:
+        structure.data[object_templates_menu.identifier] = object_templates_menu
 
     # ----------------------------------------------------------------------------
     # Assign the remaining items for which we couldn't find the menu_placement to the default menu
