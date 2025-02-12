@@ -3,7 +3,7 @@ import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { INFRAHUB_EVENT, NODE_MUTATED_EVENT } from "../utils/constants";
 
-const getActivitiesQuery = ({ ids }: { ids?: Array<string> }) => {
+const getActivitiesQuery = ({ ids }: { ids?: Array<string | undefined> }) => {
   const request = {
     query: {
       __name: "GET_ACTIVITIES",
@@ -39,7 +39,7 @@ const getActivitiesQuery = ({ ids }: { ids?: Array<string> }) => {
   return jsonToGraphQLQuery(request);
 };
 
-export function getActivitiesFromApi({
+export function getEventsFromApi({
   ids,
   branchName,
   atDate,

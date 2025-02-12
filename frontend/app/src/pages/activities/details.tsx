@@ -1,5 +1,5 @@
-import { ActivityDetails } from "@/entities/nodes/activities/ui/activity-details";
+import { EventDetails } from "@/entities/events/ui/event-details";
 
 export function Component() {
-  return <ActivityDetails />;
+  return <EventDetails />;
 }

@@ -1,5 +1,5 @@
-import { GlobalActivities } from "@/entities/nodes/activities/ui/global-activities";
+import { GlobalEvents } from "@/entities/events/ui/global-events";
 
 export function Component() {
-  return <GlobalActivities />;
+  return <GlobalEvents />;
 }

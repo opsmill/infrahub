@@ -1,9 +1,9 @@
 import { ARTIFACT_OBJECT, NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { RequireAuth } from "@/entities/authentication/ui/useAuth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
+import { INFRAHUB_EVENT } from "@/entities/events/utils/constants";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { INFRAHUB_EVENT } from "@/entities/nodes/activities/utils/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ReactRouter7Adapter } from "@/shared/lib/use-query-params";

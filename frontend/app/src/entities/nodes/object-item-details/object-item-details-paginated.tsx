@@ -31,7 +31,7 @@ import { useAtomValue } from "jotai/index";
 import { useRef } from "react";
 import { Navigate, useLocation } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Activities } from "../activities/ui/activities";
+import { NodeEvents } from "../../events/ui/node-events";
 import { ActionButtons } from "./action-buttons";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
@@ -211,7 +211,7 @@ export default function ObjectItemDetails({
 
           <CardWithBorder className="p-0">
             <CardWithBorder.Title>Activity Logs</CardWithBorder.Title>
-            <Activities />
+            <NodeEvents />
           </CardWithBorder>
         </div>
       )}

@@ -20,18 +20,18 @@ import {
   NODE_MUTATED_EVENT,
 } from "../utils/constants";
 
-export type BranchActivityType = EventNodeInterface & {
+export type BranchEventType = EventNodeInterface & {
   __typename:
     | typeof BRANCH_DELETED_EVENT
     | typeof BRANCH_CREATED_EVENT
     | typeof BRANCH_REBASEDED_EVENT;
 };
 
-export type NodeActivityType = NodeMutatedEvent & {
+export type NodeEventType = NodeMutatedEvent & {
   __typename: typeof NODE_MUTATED_EVENT;
 };
 
-export type ActivityType = BranchActivityType | NodeActivityType;
+export type EventType = BranchEventType | NodeEventType;
 
 export const NODE_EVENTS_MAPPING: Record<string, string> = {
   "infrahub.node.created": "created",
@@ -57,7 +57,7 @@ export const BRANCH_EVENTS_MAPPING: Record<string, (param: string) => ReactEleme
   ),
 };
 
-const AcitivityAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attributes">) => {
+const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attributes">) => {
   return (
     <div className="pl-8 text-sm">
       {attributes.map(({ action, name, value, value_previous }) => {
@@ -79,7 +79,7 @@ const AcitivityAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attributes"
   );
 };
 
-const ActivityDetails = ({ id, event, occurred_at, account_id, ...props }: ActivityType) => {
+const EventDetails = ({ id, event, occurred_at, account_id, ...props }: EventType) => {
   return (
     <div className="divide-y">
       <PropertyRow
@@ -94,16 +94,13 @@ const ActivityDetails = ({ id, event, occurred_at, account_id, ...props }: Activ
       <PropertyRow title="Occured at" value={<DateDisplay date={occurred_at} />} />
       {account_id && <PropertyRow title="Account" value={<DisplayLabel id={account_id} />} />}
       {"attributes" in props && (
-        <PropertyRow
-          title="Changes"
-          value={<AcitivityAttributes attributes={props.attributes} />}
-        />
+        <PropertyRow title="Changes" value={<EventAttributes attributes={props.attributes} />} />
       )}
     </div>
   );
 };
 
-const NodeActivity = (props: NodeMutatedEvent) => {
+const NodeEvent = (props: NodeMutatedEvent) => {
   const { event, account_id } = props;
   const schemaLabels = useAtomValue(schemaKindLabelState);
 
@@ -131,12 +128,12 @@ const NodeActivity = (props: NodeMutatedEvent) => {
         </div>
       </div>
 
-      <AcitivityAttributes attributes={props.attributes} />
+      <EventAttributes attributes={props.attributes} />
     </>
   );
 };
 
-const BranchActivity = (props: EventNodeInterface) => {
+const BranchEvent = (props: EventNodeInterface) => {
   const { event, occurred_at, branch } = props;
 
   return (
@@ -155,16 +152,16 @@ const BranchActivity = (props: EventNodeInterface) => {
   );
 };
 
-export const Activity = ({ __typename, ...props }: ActivityType) => {
+export const Event = ({ __typename, ...props }: EventType) => {
   return (
     <div className="flex gap-2">
       <TimelineBorder />
 
       <div className="flex flex-grow gap-3 p-2 rounded-md shadow-sm border">
         <div className="flex flex-col gap-2 grow">
-          {__typename === NODE_MUTATED_EVENT && <NodeActivity {...props} />}
+          {__typename === NODE_MUTATED_EVENT && <NodeEvent {...props} />}
 
-          {BRANCH_EVENTS.includes(__typename) && <BranchActivity {...props} />}
+          {BRANCH_EVENTS.includes(__typename) && <BranchEvent {...props} />}
 
           <div className="flex justify-between">
             <div className="text-xs font-medium text-gray-500 dark:text-neutral-400">
@@ -180,7 +177,7 @@ export const Activity = ({ __typename, ...props }: ActivityType) => {
                 </div>
               </PopoverTrigger>
               <PopoverContent className="w-full">
-                <ActivityDetails {...props} />
+                <EventDetails {...props} />
               </PopoverContent>
             </Popover>
           </div>
