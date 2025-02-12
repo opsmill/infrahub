@@ -14,11 +14,11 @@ export const NODE_EVENTS_MAPPING: Record<string, string> = {
 
 export const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attributes">) => {
   return (
-    <div className="pl-8 text-sm">
+    <div className="flex flex-col gap-2 text-xs">
       {attributes.map(({ action, name, value, value_previous }) => {
         return (
-          <div className="grid grid-cols-2 gap-2" key={`${action}_${name}`}>
-            <div className="font-normal">{name}</div>
+          <div className="grid grid-cols-2 gap-2 items-center" key={`${action}_${name}`}>
+            <div className="font-medium text-gray-500 flex items-center h-8">{name}</div>
 
             <div className="flex items-center gap-4">
               <div className="text-gray-400">{value_previous ?? "Ø"}</div>
