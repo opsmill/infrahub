@@ -1784,7 +1784,7 @@ class SchemaBranch:
                 "name": "object_template",
                 "identifier": "node__objecttemplate",
                 "peer": self._get_object_template_kind(node.kind),
-                "kind": RelationshipKind.TEMPLATE,
+                "kind": RelationshipKind.ATTRIBUTE,
                 "cardinality": RelationshipCardinality.ONE,
                 "branch": BranchSupportType.AWARE,
                 "order_weight": 1,
