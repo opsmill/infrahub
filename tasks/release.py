@@ -96,7 +96,11 @@ def ship(context: Context) -> None:
 
 
 @task
-def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yaml") -> None:  # noqa: ARG001
+def update_helm_chart(
+    context: Context,  # noqa: ARG001
+    chart_file: str | None = "helm/Chart.yaml",
+    values_file: str | None = "helm/values.yaml",
+) -> None:
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     print(" - [release] Update Helm chart")
 
@@ -147,6 +151,23 @@ def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yam
     yaml.dump(chart_yaml, chart_path)
 
     print(f"{chart_file} updated with Helm `version`: {new_helm_version} and `appVersion`: {app_version}")
+
+    values_path = Path(values_file)
+    values_yaml = yaml.load(values_path)
+
+    if (
+        "prefect-server" not in values_yaml
+        or "server" not in values_yaml["prefect-server"]
+        or "image" not in values_yaml["prefect-server"]["server"]
+        or "prefectTag" not in values_yaml["prefect-server"]["server"]["image"]
+    ):
+        raise ValueError(f"prefect-server image tag not found in {values_file}; no updates made.")
+
+    values_yaml["prefect-server"]["server"]["image"]["prefectTag"] = app_version
+
+    yaml.dump(values_yaml, values_path)
+
+    print(f"{values_file} updated with `prefectTag`: {app_version}")
 
 
 @task

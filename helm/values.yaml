@@ -171,9 +171,24 @@ nats:
 # ------------- Prefect -------------
 prefect-server:
   enabled: true
+  global:
+    prefect:
+      image:
+        repository: registry.opsmill.io/opsmill/infrahub
+        prefectTag: 1.1.6
   server:
-    image:
-      prefectTag: 3.1.14-python3.12-kubernetes
+    command:
+      - /usr/bin/tini
+      - -g
+      - --
+    args:
+      - uvicorn
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "4200"
+      - --factory
+      - infrahub.prefect_server.app:create_infrahub_prefect
     env:
       - name: PREFECT_UI_SERVE_BASE
         value: /
