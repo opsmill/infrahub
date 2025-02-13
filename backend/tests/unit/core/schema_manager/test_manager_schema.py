@@ -2833,6 +2833,28 @@ async def test_hierarchical_validate_parent_children(
 
 async def test_manage_object_templates():
     schema_branch = SchemaBranch(cache={}, name="test")
+    THING_WITH_TEMPLATE = copy.deepcopy(THING)
+    THING_WITH_TEMPLATE.generate_template = True
+    schema_branch.load_schema(
+        schema=SchemaRoot(**core_models).merge(schema=SchemaRoot(nodes=[THING_WITH_TEMPLATE, CHILD]))
+    )
+
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name="TestingThing", duplicate=False), identified=set()
+    )
+    assert {n.kind for n in identified} == {"TestingThing"}
+
+    schema_branch.manage_object_template_schemas()
+    schema_branch.manage_object_template_relationships()
+
+    # Verify the generated template
+    test_object_template_thing = schema_branch.get_template("TemplateTestingThing", duplicate=False)
+    for attr in THING_WITH_TEMPLATE.attributes:
+        assert test_object_template_thing.get_attribute(name=attr.name)
+
+
+async def test_manage_object_templates_with_component_relationships():
+    schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=DEVICE_SCHEMA))
 
     identified = schema_branch.identify_required_object_templates(
