@@ -23,7 +23,7 @@ export const NodeEvents = () => {
     return edge.node;
   });
 
-  if (!activities.length) {
+  if (!activities?.length) {
     return <NoDataFound message="No activity found for this object." />;
   }
 
