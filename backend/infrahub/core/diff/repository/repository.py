@@ -240,6 +240,9 @@ class DiffRepository:
         link_query = await EnrichedNodesLinkQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await link_query.execute(db=self.db)
         log.info("Diff saved.")
+        await self.add_summary_counts(
+            diff_branch_name=enriched_diffs.diff_branch_name, diff_id=enriched_diffs.diff_branch_diff.uuid
+        )
 
     async def summary(
         self,
@@ -424,6 +427,7 @@ class DiffRepository:
         diff_id: str | None = None,
         node_uuids: list[str] | None = None,
     ) -> None:
+        log.info("Updating summary counts...")
         query = await DiffSummaryCountsEnricherQuery.init(
             db=self.db,
             diff_branch_name=diff_branch_name,
@@ -432,3 +436,4 @@ class DiffRepository:
             node_uuids=node_uuids,
         )
         await query.execute(db=self.db)
+        log.info("Summary counts updated...")

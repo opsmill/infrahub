@@ -57,7 +57,7 @@ class TestDiffCoordinatorLocks:
             diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
         )
         assert len(results) == 2
-        assert results[0] == results[1]
+        assert results[0].uuid == results[1].uuid
         assert len(diff_coordinator.diff_calculator.calculate_diff.call_args_list) == 1
         # called instead of calculating the diff again
         diff_coordinator.diff_repo.get_one.assert_awaited_once()
