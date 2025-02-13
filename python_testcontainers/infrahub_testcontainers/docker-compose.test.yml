@@ -28,6 +28,22 @@ services:
       timeout: 5s
       retries: 3
 
+  infrahub-server-lb:
+    image: haproxy:3.1-alpine
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
+    depends_on:
+      infrahub-server:
+        condition: service_started
+    healthcheck:
+      test: wget -O /dev/null http://127.0.0.1:8000/api/config || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    ports:
+      - ${INFRAHUB_TESTING_SERVER_PORT:-0}:8000
+
   database:
     image: ${NEO4J_DOCKER_IMAGE:-neo4j:5.20.0-community}
     restart: unless-stopped
@@ -82,6 +98,9 @@ services:
       retries: 5
 
   infrahub-server:
+    deploy:
+      mode: replicated
+      replicas: ${INFRAHUB_TESTING_API_SERVER_COUNT}
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -108,8 +127,6 @@ services:
         condition: service_healthy
       task-manager:
         condition: service_healthy
-    ports:
-      - ${INFRAHUB_TESTING_SERVER_PORT:-0}:8000
     volumes:
       - "storage_data:/opt/infrahub/storage"
     tty: true
@@ -123,7 +140,7 @@ services:
   task-worker:
     deploy:
       mode: replicated
-      replicas: 2
+      replicas: ${INFRAHUB_TESTING_TASK_WORKER_COUNT}
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     environment:
