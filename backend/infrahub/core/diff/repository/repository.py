@@ -4,6 +4,7 @@ from typing import AsyncGenerator, Generator
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.diff.query.field_summary import EnrichedDiffNodeFieldSummaryQuery
+from infrahub.core.diff.query.summary_counts_enricher import DiffSummaryCountsEnricherQuery
 from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
