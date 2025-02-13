@@ -7,6 +7,7 @@ from prefect.logging import get_run_logger
 from pydantic import BaseModel
 
 from infrahub import lock
+from infrahub.core.checks.models import RequestArtifactDefinitionCheck
 from infrahub.core.constants import CheckType, InfrahubKind, RepositoryInternalStatus
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.registry import registry
@@ -28,6 +29,7 @@ from infrahub.proposed_change.models import (
 )
 from infrahub.services import InfrahubServices  # noqa: TC001
 from infrahub.workflows.catalogue import (
+    REQUEST_ARTIFACT_DEFINITION_CHECK,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
     REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
@@ -240,7 +242,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
 
         if select:
             log.info(f"Trigger processing of {artifact_definition.definition_name}")
-            msg = messages.RequestArtifactDefinitionCheck(
+            model = RequestArtifactDefinitionCheck(
                 artifact_definition=artifact_definition,
                 branch_diff=message.branch_diff,
                 proposed_change=message.proposed_change,
@@ -249,8 +251,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
                 destination_branch=message.destination_branch,
             )
 
-            msg.assign_meta(parent=message)
-            await service.message_bus.send(message=msg)
+            await service.workflow.submit_workflow(REQUEST_ARTIFACT_DEFINITION_CHECK, parameters={"model": model})
 
 
 GATHER_ARTIFACT_DEFINITIONS = """
