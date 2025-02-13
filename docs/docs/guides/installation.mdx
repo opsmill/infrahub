@@ -47,14 +47,14 @@ For a list of versions, check our [release notes on GitHub](https://github.com/o
 <TabItem value="MacOS" default>
 
 ```shell
-curl https://infrahub.opsmill.io | docker compose -f - up -d
+curl https://infrahub.opsmill.io | docker compose -p infrahub -f - up -d
 ```
 
 </TabItem>
 <TabItem value="Ubuntu">
 
 ```shell
-curl https://infrahub.opsmill.io | sudo docker compose -f - up -d
+curl https://infrahub.opsmill.io | sudo docker compose -p infrahub -f - up -d
 ```
 
 </TabItem>
@@ -66,14 +66,14 @@ curl https://infrahub.opsmill.io | sudo docker compose -f - up -d
 <TabItem value="MacOS" default>
 
 ```shell
-curl https://infrahub.opsmill.io | docker compose -f - down -v
+curl https://infrahub.opsmill.io | docker compose -p infrahub -f - down -v
 ```
 
 </TabItem>
 <TabItem value="Ubuntu">
 
 ```shell
-curl https://infrahub.opsmill.io | sudo docker compose -f - down -v
+curl https://infrahub.opsmill.io | sudo docker compose -p infrahub -f - down -v
 ```
 
 </TabItem>

@@ -38,7 +38,8 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
         }
         query = """
         MATCH (diff_root:DiffRoot)
-        WHERE diff_root.diff_branch = $diff_branch
+        WHERE (diff_root.is_merged IS NULL OR diff_root.is_merged <> TRUE)
+        AND diff_root.diff_branch = $diff_branch
         AND (diff_root.tracking_id = $tracking_id OR $tracking_id IS NULL)
         AND (diff_root.uuid = $diff_id OR $diff_id IS NULL)
         OPTIONAL MATCH (diff_root)-[:DIFF_HAS_NODE]->(n:DiffNode)
