@@ -163,15 +163,15 @@ class TestDiffReadQuery(TestInfrahub):
         diff_coordinator.data_check_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
         diff_coordinator.data_check_synchronizer.synchronize.return_value = []
 
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch,
             diff_branch=diff_branch,
         )
 
         return {
             "diff_branch": diff_branch,
-            "from_time": enriched_diff.from_time,
-            "to_time": enriched_diff.to_time,
+            "from_time": enriched_diff_metadata.from_time,
+            "to_time": enriched_diff_metadata.to_time,
         }
 
     @pytest.mark.parametrize(

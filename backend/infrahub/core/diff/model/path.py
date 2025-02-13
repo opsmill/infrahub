@@ -404,7 +404,7 @@ class EnrichedDiffRootMetadata(BaseSummary):
     to_time: Timestamp
     uuid: str
     partner_uuid: str
-    tracking_id: TrackingId | None = field(default=None, kw_only=True)
+    tracking_id: TrackingId
 
     def __hash__(self) -> int:
         return hash(self.uuid)
@@ -426,7 +426,7 @@ class EnrichedDiffRootMetadata(BaseSummary):
         if to_time and self.to_time != to_time:
             self.to_time = to_time
             is_changed = True
-        if self.tracking_id != tracking_id:
+        if self.tracking_id != tracking_id and tracking_id is not None:
             self.tracking_id = tracking_id
             is_changed = True
         return is_changed
@@ -475,7 +475,11 @@ class EnrichedDiffRoot(EnrichedDiffRootMetadata):
 
     @classmethod
     def from_calculated_diff(
-        cls, calculated_diff: DiffRoot, base_branch_name: str, partner_uuid: str
+        cls,
+        calculated_diff: DiffRoot,
+        base_branch_name: str,
+        partner_uuid: str,
+        tracking_id: TrackingId,
     ) -> EnrichedDiffRoot:
         return EnrichedDiffRoot(
             base_branch_name=base_branch_name,
@@ -484,6 +488,7 @@ class EnrichedDiffRoot(EnrichedDiffRootMetadata):
             to_time=calculated_diff.to_time,
             uuid=calculated_diff.uuid,
             partner_uuid=partner_uuid,
+            tracking_id=tracking_id,
             nodes={EnrichedDiffNode.from_calculated_node(calculated_node=n) for n in calculated_diff.nodes},
         )
 
@@ -591,16 +596,18 @@ class EnrichedDiffs(EnrichedDiffsMetadata):
         )
 
     @classmethod
-    def from_calculated_diffs(cls, calculated_diffs: CalculatedDiffs) -> EnrichedDiffs:
+    def from_calculated_diffs(cls, calculated_diffs: CalculatedDiffs, tracking_id: TrackingId) -> EnrichedDiffs:
         base_branch_diff = EnrichedDiffRoot.from_calculated_diff(
             calculated_diff=calculated_diffs.base_branch_diff,
             base_branch_name=calculated_diffs.base_branch_name,
             partner_uuid=calculated_diffs.diff_branch_diff.uuid,
+            tracking_id=tracking_id,
         )
         diff_branch_diff = EnrichedDiffRoot.from_calculated_diff(
             calculated_diff=calculated_diffs.diff_branch_diff,
             base_branch_name=calculated_diffs.base_branch_name,
             partner_uuid=calculated_diffs.base_branch_diff.uuid,
+            tracking_id=tracking_id,
         )
         return EnrichedDiffs(
             base_branch_name=calculated_diffs.base_branch_name,

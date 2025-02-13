@@ -41,7 +41,8 @@ class EnrichedDiffTimeRangeQuery(Query):
         query = """
         // get the roots of all diffs in the query
         MATCH (diff_root:DiffRoot)
-        WHERE diff_root.base_branch = $base_branch
+        WHERE (diff_root.is_merged IS NULL OR diff_root.is_merged <> TRUE)
+        AND diff_root.base_branch = $base_branch
         AND diff_root.diff_branch = $diff_branch
         AND diff_root.from_time >= $from_time
         AND diff_root.to_time <= $to_time

@@ -157,8 +157,11 @@ class TestDiffAndMerge:
 
         at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
+        )
+        enriched_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 1
@@ -202,8 +205,11 @@ class TestDiffAndMerge:
 
         at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
+        )
+        enriched_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 1
@@ -251,8 +257,11 @@ class TestDiffAndMerge:
 
         at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
+        )
+        enriched_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 1
@@ -302,8 +311,11 @@ class TestDiffAndMerge:
 
         at = Timestamp()
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
+        )
+        enriched_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         conflicts_map = enriched_diff.get_all_conflicts()
         # conflict on both sides of the relationship
@@ -331,7 +343,13 @@ class TestDiffAndMerge:
 
     @pytest.mark.parametrize("new_height", (0, 1000, None))
     async def test_single_attribute_update(
-        self, db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main, new_height
+        self,
+        db: InfrahubDatabase,
+        diff_repository: DiffRepository,
+        default_branch: Branch,
+        person_john_main,
+        person_jane_main,
+        new_height,
     ):
         branch2 = await create_branch(db=db, branch_name="branch2")
         person_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_jane_main.id)
@@ -339,8 +357,11 @@ class TestDiffAndMerge:
         await person_branch.save(db=db)
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
+        )
+        enriched_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         node = enriched_diff.get_node(node_uuid=person_jane_main.id)
         assert node.action is DiffAction.UPDATED
@@ -353,7 +374,13 @@ class TestDiffAndMerge:
         await verify_no_duplicate_paths(db=db)
 
     async def test_one_many_relationship_added(
-        self, db: InfrahubDatabase, default_branch: Branch, person_john_main, person_jane_main, car_camry_main
+        self,
+        db: InfrahubDatabase,
+        diff_repository: DiffRepository,
+        default_branch: Branch,
+        person_john_main,
+        person_jane_main,
+        car_camry_main,
     ):
         branch2 = await create_branch(db=db, branch_name="branch2")
         branch_car = await Node.init(db=db, schema="TestCar", branch=branch2)
@@ -361,8 +388,11 @@ class TestDiffAndMerge:
         await branch_car.save(db=db)
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
+        )
+        enriched_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         car_node = enriched_diff.get_node(node_uuid=branch_car.id)
         assert car_node.action is DiffAction.ADDED
@@ -380,7 +410,9 @@ class TestDiffAndMerge:
         assert owner_rel.peer_id == person_jane_main.id
         await verify_no_duplicate_paths(db=db)
 
-    async def test_relationship_set_to_null(self, db: InfrahubDatabase, default_branch: Branch, animal_person_schema):
+    async def test_relationship_set_to_null(
+        self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, animal_person_schema
+    ):
         person_main = await Node.init(db=db, schema="TestPerson")
         await person_main.new(db=db, name="Dude")
         await person_main.save(db=db)
@@ -397,8 +429,11 @@ class TestDiffAndMerge:
         await dog_branch.save(db=db)
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
+        )
+        enriched_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         dog_node = enriched_diff.get_node(node_uuid=dog_main.id)
         assert dog_node.action is DiffAction.UPDATED
@@ -417,7 +452,11 @@ class TestDiffAndMerge:
         await verify_no_duplicate_paths(db=db)
 
     async def test_local_and_aware_nodes_added_on_branch(
-        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local: SchemaBranch
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        car_person_schema_branch_local: SchemaBranch,
     ):
         branch2 = await create_branch(db=db, branch_name="branch2")
         person = await Node.init(db=db, schema="TestPerson", branch=branch2)
@@ -428,8 +467,11 @@ class TestDiffAndMerge:
         await car.save(db=db)
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
+        )
+        enriched_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         diff_person = enriched_diff.get_node(node_uuid=person.id)
         assert diff_person.action is DiffAction.ADDED
@@ -485,7 +527,7 @@ class TestDiffAndMerge:
         await verify_no_duplicate_paths(db=db)
 
     async def test_agnostic_and_aware_nodes_added_on_branch(
-        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_global
+        self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, car_person_schema_global
     ):
         branch2 = await create_branch(db=db, branch_name="branch2")
         person = await Node.init(db=db, schema="TestPerson", branch=branch2)
@@ -496,8 +538,11 @@ class TestDiffAndMerge:
         await car.save(db=db)
 
         diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
+        )
+        enriched_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         diff_person = enriched_diff.get_node(node_uuid=person.id)
         assert diff_person.action is DiffAction.UPDATED
@@ -609,6 +654,7 @@ class TestDiffAndMerge:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
+        diff_repository: DiffRepository,
         person_john_main,
         person_jane_main,
         person_alfred_main,
@@ -638,8 +684,11 @@ class TestDiffAndMerge:
         await car_main.save(db=db)
 
         # check that the conflict is removed
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch2
+        )
+        enriched_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 0

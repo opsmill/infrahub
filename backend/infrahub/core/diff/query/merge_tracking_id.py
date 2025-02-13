@@ -6,8 +6,8 @@ from infrahub.database import InfrahubDatabase
 from ..model.path import TrackingId
 
 
-class EnrichedDiffDropTrackingIdQuery(Query):
-    name = "enriched_diff_drop_tracking_id"
+class EnrichedDiffMergedTrackingIdQuery(Query):
+    name = "enriched_diff_merge_tracking_id"
     type = QueryType.WRITE
     insert_return = False
 
@@ -20,6 +20,6 @@ class EnrichedDiffDropTrackingIdQuery(Query):
         query = """
         MATCH (d_root:DiffRoot)
         WHERE d_root.tracking_id IN $tracking_ids
-        SET d_root.tracking_id = NULL
+        SET d_root.is_merged = TRUE
         """
         self.add_to_query(query=query)

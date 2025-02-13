@@ -428,6 +428,7 @@ class DiffCombiner:
                     diff_branch_name=later.diff_branch_name,
                     from_time=earlier.from_time,
                     to_time=later.to_time,
+                    tracking_id=later.tracking_id,
                     nodes=combined_nodes,
                 )
             )

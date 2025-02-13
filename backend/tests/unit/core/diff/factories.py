@@ -1,6 +1,9 @@
+from uuid import uuid4
+
 from polyfactory.factories import DataclassFactory
 
 from infrahub.core.diff.model.path import (
+    BranchTrackingId,
     CalculatedDiffs,
     DiffAttribute,
     DiffNode,
@@ -70,8 +73,12 @@ class EnrichedNodeFactory(DataclassFactory[EnrichedDiffNode]):
     conflict = None
 
 
+def get_tracking_id() -> BranchTrackingId:
+    return BranchTrackingId(name=str(uuid4()))
+
+
 class EnrichedRootFactory(DataclassFactory[EnrichedDiffRoot]):
-    tracking_id = None
+    tracking_id = get_tracking_id
     num_added = 0
     num_updated = 0
     num_removed = 0
