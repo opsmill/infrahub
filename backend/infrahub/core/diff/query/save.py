@@ -11,16 +11,17 @@ from ..model.path import (
     EnrichedDiffRelationship,
     EnrichedDiffs,
     EnrichedDiffSingleRelationship,
+    EnrichedDiffsMetadata,
     EnrichedNodeCreateRequest,
 )
 
 
-class EnrichedDiffRootsCreateQuery(Query):
+class EnrichedDiffRootsUpsertQuery(Query):
     name = "enriched_roots_create"
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, enriched_diffs: EnrichedDiffs, **kwargs: Any) -> None:
+    def __init__(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.enriched_diffs = enriched_diffs
 
@@ -56,7 +57,7 @@ CALL {
         """
         self.add_to_query(query)
 
-    def _build_diff_root_params(self, enriched_diffs: EnrichedDiffs) -> dict[str, Any]:
+    def _build_diff_root_params(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata) -> dict[str, Any]:
         diff_root_list: list[dict[str, Any]] = []
         for enriched_diff in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
             diff_root_list.append(

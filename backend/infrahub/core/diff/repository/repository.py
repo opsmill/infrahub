@@ -26,13 +26,13 @@ from ..query.all_conflicts import EnrichedDiffAllConflictsQuery
 from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
-from ..query.drop_tracking_id import EnrichedDiffDropTrackingIdQuery
 from ..query.field_specifiers import EnrichedDiffFieldSpecifiersQuery
 from ..query.filters import EnrichedDiffQueryFilters
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
 from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
+from ..query.merge_tracking_id import EnrichedDiffMergedTrackingIdQuery
 from ..query.roots_metadata import EnrichedDiffRootsMetadataQuery
-from ..query.save import EnrichedDiffRootsCreateQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
+from ..query.save import EnrichedDiffRootsUpsertQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
 from .deserializer import EnrichedDiffDeserializer
@@ -224,11 +224,15 @@ class DiffRepository:
             yield node_requests
 
     @retry_db_transaction(name="enriched_diff_save")
-    async def save(self, enriched_diffs: EnrichedDiffs) -> None:
+    async def save(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata) -> None:
+        log.info("Updating diff metadata...")
+        root_query = await EnrichedDiffRootsUpsertQuery.init(db=self.db, enriched_diffs=enriched_diffs)
+        await root_query.execute(db=self.db)
+        log.info("Diff metadata updated.")
+        if not isinstance(enriched_diffs, EnrichedDiffs):
+            return
         num_nodes = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
         log.info(f"Saving diff (num_nodes={num_nodes})...")
-        root_query = await EnrichedDiffRootsCreateQuery.init(db=self.db, enriched_diffs=enriched_diffs)
-        await root_query.execute(db=self.db)
         for node_create_batch in self._get_node_create_request_batch(enriched_diffs=enriched_diffs):
             node_query = await EnrichedNodeBatchCreateQuery.init(db=self.db, node_create_batch=node_create_batch)
             await node_query.execute(db=self.db)
@@ -284,6 +288,7 @@ class DiffRepository:
         base_branch_names: list[str] | None = None,
         from_time: Timestamp | None = None,
         to_time: Timestamp | None = None,
+        tracking_id: TrackingId | None = None,
     ) -> list[EnrichedDiffsMetadata]:
         if diff_branch_names and base_branch_names:
             diff_branch_names += base_branch_names
@@ -292,6 +297,7 @@ class DiffRepository:
             base_branch_names=base_branch_names,
             from_time=from_time,
             to_time=to_time,
+            tracking_id=tracking_id,
         )
         roots_by_id = {root.uuid: root for root in empty_roots}
         pairs: list[EnrichedDiffsMetadata] = []
@@ -315,6 +321,7 @@ class DiffRepository:
         base_branch_names: list[str] | None = None,
         from_time: Timestamp | None = None,
         to_time: Timestamp | None = None,
+        tracking_id: TrackingId | None = None,
     ) -> list[EnrichedDiffRootMetadata]:
         query = await EnrichedDiffRootsMetadataQuery.init(
             db=self.db,
@@ -322,6 +329,7 @@ class DiffRepository:
             base_branch_names=base_branch_names,
             from_time=from_time,
             to_time=to_time,
+            tracking_id=tracking_id,
         )
         await query.execute(db=self.db)
         diff_roots = []
@@ -381,8 +389,8 @@ class DiffRepository:
         await query.execute(db=self.db)
         return await query.get_field_summaries()
 
-    async def drop_tracking_ids(self, tracking_ids: list[TrackingId]) -> None:
-        query = await EnrichedDiffDropTrackingIdQuery.init(db=self.db, tracking_ids=tracking_ids)
+    async def mark_tracking_ids_merged(self, tracking_ids: list[TrackingId]) -> None:
+        query = await EnrichedDiffMergedTrackingIdQuery.init(db=self.db, tracking_ids=tracking_ids)
         await query.execute(db=self.db)
 
     async def get_num_changes_in_time_range_by_branch(
