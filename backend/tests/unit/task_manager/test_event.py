@@ -26,7 +26,7 @@ query {
 
 def filter_outofscope_events(events: dict, in_scope_ids: list[str]):
     """
-    Because we can't garantee that Prefect is empty at the start of the test easily
+    Because we can't guarantee that Prefect is empty at the start of the test easily
     we need to exclude all events not created by this test suite.
     """
     filtered_events = [event for event in events["edges"] if event["node"]["id"] in in_scope_ids]
@@ -58,13 +58,13 @@ async def events_data(prefect_client: PrefectClient, branch1_id, branch2_id) -> 
         "branch2_rebased": BranchRebasedEvent(branch_name="branch2", branch_id=branch2_id),
     }
 
-    await send_events(client=prefect_client, events=items.values())
+    await send_events(client=prefect_client, events=list(items.values()))
     return items
 
 
 @pytest.fixture(scope="module")
 async def event_ids_inscope(events_data: dict[str, InfrahubEvent]) -> list[str]:
-    return [str(event.id) for event in events_data.values()]
+    return [str(event.meta.id) for event in events_data.values()]
 
 
 async def test_query_no_filters(event_ids_inscope):
