@@ -50,7 +50,9 @@ class DiffUpdateMutation(Mutation):
         component_registry = get_component_registry()
         base_branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
         diff_branch = await registry.get_branch(db=graphql_context.db, branch=data.branch)
-        diff_repository = await component_registry.get_component(DiffRepository, db=graphql_context.db, branch=diff_branch)
+        diff_repository = await component_registry.get_component(
+            DiffRepository, db=graphql_context.db, branch=diff_branch
+        )
 
         tracking_id = NameTrackingId(name=data.name)
         existing_diffs_metatdatas = await diff_repository.get_roots_metadata(
