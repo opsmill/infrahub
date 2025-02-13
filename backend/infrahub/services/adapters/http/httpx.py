@@ -15,6 +15,15 @@ log = get_logger()
 
 
 class HttpxAdapter(InfrahubHTTP):
+    """The HttpxAdapter is a generic interface for InfrahubHTTP
+
+    The class provides a way to send HTTP requests from Infrahub for example
+    when sending webhooks, telemetry data or when communicating with SSO
+    providers. The main purpose is to have a single location to manage
+    configuration and error handling with regards to HTTP traffic and
+    allow users to define configurations such as timeout, TLS options
+    and eventually proxy settings in one location."""
+
     _settings: config.HTTPSettings | None = None
 
     @property
