@@ -51,7 +51,7 @@ const TaskDetailsPage = () => {
   }
 
   return (
-    <Content.Card className="overflow-auto">
+    <Content.Card>
       <Content.CardTitle title={title} isReloadLoading={loading} reload={() => refetch()} />
 
       <TaskItemDetails />

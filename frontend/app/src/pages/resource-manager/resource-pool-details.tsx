@@ -121,7 +121,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
   ].filter(({ name }) => name !== "Resources");
 
   return (
-    <Content.Card className="overflow-auto">
+    <Content.Card>
       <Content.CardTitle
         title={resourcePoolData.node.display_label}
         isReloadLoading={loading}

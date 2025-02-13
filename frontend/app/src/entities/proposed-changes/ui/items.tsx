@@ -264,7 +264,7 @@ export const ProposedChangesPage = () => {
   ];
 
   return (
-    <Content.Card className="overflow-auto">
+    <Content.Card>
       <Content.CardTitle
         title="Proposed changes"
         badgeContent={proposedChangesData?.count ?? "..."}

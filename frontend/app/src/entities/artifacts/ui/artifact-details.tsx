@@ -131,7 +131,7 @@ function ArtifactsDetails() {
   ];
 
   return (
-    <Content.Card className="p-4 overflow-auto">
+    <Content.Card className="p-4">
       <ArtifactHeader
         name={objectDetailsData?.display_label}
         status={objectDetailsData?.status?.value}

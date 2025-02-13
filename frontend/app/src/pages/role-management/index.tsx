@@ -27,7 +27,7 @@ function RoleManagement() {
   }
 
   return (
-    <Content.Card className="overflow-auto">
+    <Content.Card>
       <Content.CardTitle
         title="Users & Permissions"
         description="Accounts, groups, roles and permissions management"

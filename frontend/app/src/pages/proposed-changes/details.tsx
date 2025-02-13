@@ -178,7 +178,7 @@ export function Component() {
   }
 
   return (
-    <Content.Card className="overflow-auto flex flex-col">
+    <Content.Card className="flex flex-col">
       <Content.CardTitle
         title={proposedChangesData.display_label}
         description={

@@ -49,7 +49,7 @@ export const ContentTitle = ({
 };
 
 export const ContentCard = ({ className, ...props }: CardProps) => {
-  return <Card className={classNames("p-0 overflow-hidden", className)} {...props} />;
+  return <Card className={classNames("p-0 overflow-auto", className)} {...props} />;
 };
 
 export type ContentCardTitleProps = {

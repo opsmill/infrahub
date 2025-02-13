@@ -78,7 +78,7 @@ const ObjectPageLayout = () => {
   }
 
   return (
-    <Content.Card className="flex flex-col overflow-auto">
+    <Content.Card className="flex flex-col">
       <ObjectHeader schema={schema} objectId={objectid} />
 
       <Outlet />
