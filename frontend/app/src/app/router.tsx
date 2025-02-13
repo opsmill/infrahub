@@ -1,6 +1,7 @@
 import { ARTIFACT_OBJECT, NODE_OBJECT, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { RequireAuth } from "@/entities/authentication/ui/useAuth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
+import { INFRAHUB_EVENT } from "@/entities/events/utils/constants";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
@@ -67,6 +68,37 @@ export const router = createBrowserRouter([
                         return {
                           type: "branch",
                           value: match.params["*"],
+                        };
+                      },
+                    },
+                  },
+                ],
+              },
+              {
+                path: "/activities",
+                handle: {
+                  breadcrumb: () => {
+                    return {
+                      type: "link",
+                      label: "Activities",
+                      to: constructPath("/activities"),
+                    };
+                  },
+                },
+                children: [
+                  {
+                    index: true,
+                    lazy: () => import("@/pages/activities"),
+                  },
+                  {
+                    path: ":activityid",
+                    lazy: () => import("@/pages/activities/details"),
+                    handle: {
+                      breadcrumb: (match: UIMatch) => {
+                        return {
+                          type: "select",
+                          value: match.params.activityid,
+                          kind: INFRAHUB_EVENT,
                         };
                       },
                     },
