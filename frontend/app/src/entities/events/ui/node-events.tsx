@@ -12,7 +12,11 @@ export const NodeEvents = () => {
   const { isLoading, data, error } = useEvents({ ids: [objectid] });
 
   if (isLoading) {
-    return <Spinner />;
+    return (
+      <div className="flex items-center justify-center flex-grow">
+        <Spinner />
+      </div>
+    );
   }
 
   if (error) {
