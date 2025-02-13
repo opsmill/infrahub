@@ -83,15 +83,6 @@ export const ObjectsTable = ({
         });
       })}
 
-      {allRows.map((row) => {
-        return row.getAllCells().map((cell) => {
-          return flexRender(cell.column.columnDef.cell, {
-            ...cell.getContext(),
-            key: cell.id,
-          });
-        });
-      })}
-
       {!(isPending || isFetchingNextPage) && allRows.length === 0 && (
         <ObjectTableNoResults schema={schema} />
       )}
