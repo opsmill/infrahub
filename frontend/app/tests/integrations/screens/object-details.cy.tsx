@@ -2,9 +2,11 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
+import { ErrorBoundary } from "react-error-boundary";
 import { Route, Routes } from "react-router";
 import { schemaState } from "../../../src/entities/schema/stores/schema.atom";
 import { ObjectDetailsPage } from "../../../src/pages/objects/object-details";
+import ErrorFallback from "../../../src/shared/components/errors/error-fallback";
 import {
   deviceDetailsMocksASNName,
   deviceDetailsMocksData,
@@ -26,6 +28,17 @@ const graphqlQueryItemsPath = "/objects/:objectKind/:objectid";
 
 // Mock the apollo query and data
 const mocks: any[] = [
+  {
+    request: {
+      query: gql`
+        ${deviceDetailsMocksQuery}
+      `,
+      variables: { offset: 0, limit: 10 },
+    },
+    result: {
+      data: deviceDetailsMocksData,
+    },
+  },
   {
     request: {
       query: gql`
@@ -70,9 +83,11 @@ describe("List screen", () => {
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
-        <Routes>
-          <Route element={<ObjectDetailsProvider />} path={graphqlQueryItemsPath} />
-        </Routes>
+        <ErrorBoundary FallbackComponent={ErrorFallback}>
+          <Routes>
+            <Route element={<ObjectDetailsProvider />} path={graphqlQueryItemsPath} />
+          </Routes>
+        </ErrorBoundary>
       </MockedProvider>,
       {
         // Add iniital route for the app router, to display the current items view
