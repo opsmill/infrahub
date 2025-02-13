@@ -133,7 +133,7 @@ async def search_resolver(
             )
             results.extend(objs)
 
-    if "edges" in fields and len(results) > 0:
+    if "edges" in fields:
         response["edges"] = [{"node": {"id": obj.id, "kind": obj.get_kind()}} for obj in results]
 
     if "count" in fields:

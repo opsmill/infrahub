@@ -1,5 +1,6 @@
 from pydantic import Field
 
+from infrahub.context import InfrahubContext
 from infrahub.core.constants import CheckType
 from infrahub.message_bus import InfrahubMessage
 
@@ -14,3 +15,4 @@ class RequestProposedChangePipeline(InfrahubMessage):
     check_type: CheckType = Field(
         default=CheckType.ALL, description="Can be used to restrict the pipeline to a specific type of job"
     )
+    context: InfrahubContext = Field(..., description="The context of the task")

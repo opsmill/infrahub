@@ -14,6 +14,11 @@ from infrahub.worker import WORKER_IDENTITY
 from .constants import EVENT_NAMESPACE
 
 
+class EventNode(BaseModel):
+    id: str
+    kind: str
+
+
 class EventMeta(BaseModel):
     branch: Branch | None = Field(default=None)
     request_id: str = ""
@@ -26,9 +31,7 @@ class EventMeta(BaseModel):
 
     def get_related(self) -> list[dict[str, str]]:
         related: list[dict[str, str]] = []
-        event_resource = {"infrahub.event.level": self.level.value}
         if self.account_id:
-            event_resource["infrahub.account.id"] = self.account_id
             related.append(
                 {
                     "prefect.resource.id": f"infrahub.account.{self.account_id}",
@@ -38,7 +41,6 @@ class EventMeta(BaseModel):
             )
 
         if self.branch:
-            event_resource["infrahub.branch.label"] = self.branch.name
             related.append(
                 {
                     "prefect.resource.id": f"infrahub.branch.{self.branch.get_uuid()}",
@@ -47,12 +49,6 @@ class EventMeta(BaseModel):
                     "infrahub.resource.label": self.branch.name,
                 }
             )
-
-        # This is currently required to let us filter events with the InfrahubEvent query when matching
-        # against multiple components such as both branch and account
-        event_resource["prefect.resource.id"] = str(uuid4())
-        event_resource["prefect.resource.role"] = "infrahub.eventlog"
-        related.append(event_resource)
 
         related.append({"prefect.resource.id": __version__, "prefect.resource.role": "infrahub.version"})
 

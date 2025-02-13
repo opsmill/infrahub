@@ -1,5 +1,9 @@
+from uuid import uuid4
+
 import pytest
 
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import InfrahubKind
@@ -104,4 +108,11 @@ async def test_branch_rebase_diff_conflict(
     service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
 
     with pytest.raises(ValidationError, match="contains conflicts with the default branch that must be addressed"):
-        await rebase_branch(branch=branch2.name, service=service)
+        await rebase_branch(
+            branch=branch2.name,
+            service=service,
+            context=InfrahubContext.init(
+                branch=default_branch,
+                account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+            ),
+        )

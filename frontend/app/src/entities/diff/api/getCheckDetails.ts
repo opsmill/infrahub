@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 
 export const GET_CHECKS = gql`
-  query getCoreCheck($ids: [ID]!) {
+  query GET_CORE_CHECKS($ids: [ID]!) {
     CoreCheck(ids: $ids) {
       edges {
         node {

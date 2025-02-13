@@ -175,7 +175,7 @@ services:
 
   task-manager:
     image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.1.4}"
-    command: prefect server start --host 0.0.0.0 --ui
+    command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
       task-manager-db:

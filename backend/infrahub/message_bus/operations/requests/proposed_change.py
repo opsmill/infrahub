@@ -122,7 +122,9 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             do_repository_checks=message.check_type is CheckType.ALL,
         )
         await service.workflow.submit_workflow(
-            workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS, parameters={"model": model_proposed_change_run_generator}
+            workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
+            context=message.context,
+            parameters={"model": model_proposed_change_run_generator},
         )
 
     if message.check_type in [CheckType.ALL, CheckType.DATA] and branch_diff.has_node_changes(
@@ -136,7 +138,9 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             branch_diff=branch_diff,
         )
         await service.workflow.submit_workflow(
-            workflow=REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY, parameters={"model": model_proposed_change_data_integrity}
+            workflow=REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
+            context=message.context,
+            parameters={"model": model_proposed_change_data_integrity},
         )
 
     if message.check_type in [CheckType.REPOSITORY, CheckType.USER]:
@@ -148,7 +152,9 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             branch_diff=branch_diff,
         )
         await service.workflow.submit_workflow(
-            workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS, parameters={"model": model_proposed_change_repo_checks}
+            workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
+            context=message.context,
+            parameters={"model": model_proposed_change_repo_checks},
         )
 
     if message.check_type in [CheckType.ALL, CheckType.SCHEMA] and branch_diff.has_data_changes(
@@ -156,6 +162,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
     ):
         await service.workflow.submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
+            context=message.context,
             parameters={
                 "model": RequestProposedChangeSchemaIntegrity(
                     proposed_change=message.proposed_change,
@@ -170,6 +177,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
     if message.check_type in [CheckType.ALL, CheckType.TEST]:
         await service.workflow.submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_USER_TESTS,
+            context=message.context,
             parameters={
                 "model": RequestProposedChangeUserTests(
                     proposed_change=message.proposed_change,

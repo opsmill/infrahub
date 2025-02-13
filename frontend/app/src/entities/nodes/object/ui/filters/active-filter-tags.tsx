@@ -124,6 +124,24 @@ export function ActiveFilterTags({ schema, ...props }: ObjectsFilterTagsProps) {
             );
           }
 
+          if (fieldKey === "isnull") {
+            const fieldSchema = [
+              ...(schema.attributes ?? []),
+              ...(schema.relationships ?? []),
+            ].find(({ name }) => name === fieldName);
+
+            if (!fieldSchema) return null;
+
+            return (
+              <FilterTag
+                key={filter.name}
+                id={filter.name}
+                label={fieldSchema.label ?? fieldSchema.name}
+                value={filter.value ? "empty" : "not empty"}
+              />
+            );
+          }
+
           return null;
         })}
       </TagList>
