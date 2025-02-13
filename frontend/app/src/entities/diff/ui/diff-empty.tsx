@@ -10,7 +10,7 @@ export interface DiffEmptyProps {
 
 export function DiffEmpty({ branchName, lastRefreshedAt }: DiffEmptyProps) {
   return (
-    <div className="flex flex-col items-center mt-10 gap-5">
+    <div className="flex flex-col items-center my-10 gap-5">
       <div className="p-3 rounded-full bg-white inline-flex">
         <Icon icon="mdi:circle-off-outline" className="text-2xl text-custom-blue-800" />
       </div>

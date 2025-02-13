@@ -121,7 +121,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
   ].filter(({ name }) => name !== "Resources");
 
   return (
-    <Content.Card>
+    <Content.Card className="overflow-auto">
       <Content.CardTitle
         title={resourcePoolData.node.display_label}
         isReloadLoading={loading}
@@ -138,7 +138,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         }
       />
 
-      <div className="p-2 flex items-start h-[calc(100%-64px)] overflow-hidden">
+      <div className="p-2 flex items-start overflow-hidden">
         <aside className="inline-flex flex-col gap-2 shrink-0 mr-1">
           <Card className="shrink-0">
             <CardWithBorder.Title className="flex items-center justify-between gap-1">

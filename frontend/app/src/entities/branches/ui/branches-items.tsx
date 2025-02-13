@@ -27,7 +27,7 @@ const BranchesItems = () => {
   const branches = [...storedBranches.filter((b) => b.name === "main"), ...sortedBranches];
 
   return (
-    <Content.Card>
+    <Content.Card className="overflow-auto">
       <Content.CardTitle
         title="Branches"
         badgeContent={branches.length}

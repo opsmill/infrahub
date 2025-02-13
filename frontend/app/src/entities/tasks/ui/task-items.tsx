@@ -172,7 +172,7 @@ export const TaskItems = forwardRef(({ hideRelatedNode }: TaskItemsProps, ref) =
   });
 
   return (
-    <Content.Card>
+    <Content.Card className="overflow-auto">
       <Content.CardTitle title="Task Overview" badgeContent={count} />
 
       <div className="bg-custom-white flex-1 flex flex-col">

@@ -59,7 +59,7 @@ export const ObjectsTable = ({
 
   return (
     <div
-      className="grid content-start h-[calc(100vh-14rem)] overflow-auto min-w-full"
+      className="grid content-start overflow-auto"
       onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
       ref={tableContainerRef}
       style={{
@@ -83,13 +83,22 @@ export const ObjectsTable = ({
         });
       })}
 
+      {allRows.map((row) => {
+        return row.getAllCells().map((cell) => {
+          return flexRender(cell.column.columnDef.cell, {
+            ...cell.getContext(),
+            key: cell.id,
+          });
+        });
+      })}
+
       {!(isPending || isFetchingNextPage) && allRows.length === 0 && (
         <ObjectTableNoResults schema={schema} />
       )}
 
       {(isPending || isFetchingNextPage) && (
         <>
-          {[...Array(15)].map((_, rowIndex) => (
+          {[...Array(20)].map((_, rowIndex) => (
             <React.Fragment key={`skeleton-row-${rowIndex}`}>
               {[...Array(allHeaders.length)].map((_, colIndex) => (
                 <TableCell

@@ -17,7 +17,7 @@ export default function Sidebar() {
       data-collapsed={booleanCollapsed}
       className={classNames(
         "flex flex-col gap-3 shrink-0",
-        "relative -top-px",
+        "relative",
         "w-[256px] border rounded-lg py-5 px-4 bg-white",
         "group/sidebar transition-all",
         booleanCollapsed && "w-[72px] px-2 items-center"

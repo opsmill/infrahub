@@ -1,4 +1,5 @@
 import ErrorFallback from "@/shared/components/errors/error-fallback";
+import { ContentCard } from "@/shared/components/layout/content";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { useParams } from "react-router";
 import { useEvents } from "../api/get-events.query";
@@ -23,7 +24,7 @@ export const GlobalEvents = () => {
   });
 
   return (
-    <div className="flex flex-col gap-2 p-2">
+    <div className="flex flex-col gap-2 p-2 overflow-auto">
       {activities?.map((activity) => (
         <Event key={activity.id} {...activity} />
       ))}

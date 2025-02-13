@@ -19,15 +19,15 @@ function Layout() {
   }, [branches.length, branchInQueryString]);
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-stone-100 text-stone-800">
-      <Header />
-
-      <div className="flex items-stretch h-[calc(100vh-57px)]">
+    <div className="h-screen w-screen  text-stone-800 p-px bg-stone-100">
+      <div className="h-full w-full flex gap-px">
         <Sidebar />
 
-        <main className="flex-grow overflow-auto">
+        <div className="flex flex-col gap-px h-full grow overflow-hidden">
+          <Header />
+
           <Outlet />
-        </main>
+        </div>
       </div>
     </div>
   );

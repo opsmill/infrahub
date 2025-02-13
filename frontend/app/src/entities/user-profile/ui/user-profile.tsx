@@ -87,7 +87,7 @@ export function UserProfilePage() {
   }
 
   return (
-    <Content.Card>
+    <Content.Card className="overflow-auto">
       <Content.CardTitle
         title={
           <div className="flex items-center gap-2">

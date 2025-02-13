@@ -8,7 +8,7 @@ import { Link } from "react-router";
 
 export default function Header() {
   return (
-    <header className="px-6 py-3 flex items-center gap-2 border-b bg-white">
+    <header className="px-6 py-3 flex items-center gap-2 border bg-white rounded-lg">
       <Link to={constructPath("/")} className="h-8 w-8">
         <img src={InfrahubLogo} alt="Infrahub logo" />
       </Link>
