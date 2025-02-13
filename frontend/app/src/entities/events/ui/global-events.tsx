@@ -1,5 +1,4 @@
 import ErrorFallback from "@/shared/components/errors/error-fallback";
-import { ContentCard } from "@/shared/components/layout/content";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { useParams } from "react-router";
 import { useEvents } from "../api/get-events.query";
