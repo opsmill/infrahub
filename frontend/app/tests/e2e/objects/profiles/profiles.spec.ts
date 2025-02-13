@@ -277,7 +277,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     await page.getByLabel("Select an object type").click();
     await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
     await page.getByLabel("Select profiles optional").click();
-    await expect(page.locator("span").filter({ hasText: PROFILE_NAME })).toBeVisible();
+    await expect(page.getByText(PROFILE_NAME, { exact: true })).toBeVisible();
     await expect(page.getByText(GENERIC_PROFILE_NAME)).toBeVisible();
   });
 });
