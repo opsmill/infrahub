@@ -2,7 +2,21 @@
 title: Computed attributes
 ---
 
-The computed attributes feature enables the dynamic calculation of attribute values based on user-defined logic. Currently, Infrahub supports two main types of computed attributes: **Jinja2** and **Python**.
+The computed attributes feature enables the dynamic calculation of attribute values based on user-defined logic.
+
+Currently, Infrahub supports two main types of computed attributes:
+
+* **Jinja2** – Lightweight, but limited in relationship handling.
+* **Python** – More flexible and powerful, but requires async execution.
+
+::::info Limitations
+
+Computed attributes have some inherent restrictions due to system constraints and performance considerations. Keep these in mind when designing your schema:
+
+* Computed attributes **can only** be used on nodes, not generics.
+* Only `URL` and `Text` attribute kinds are supported for computed attributes.
+
+::::
 
 ## Jinja2 computed attributes {#jinja-computed-attribute}
 
@@ -10,11 +24,14 @@ Users can input a concise Jinja2 template directly within the schema definition.
 
 See the [guide](../guides/computed-attributes) for instructions on creating Jinja2 computed attribute in Infrahub.
 
-### Limitations
+### Restrictions
 
-- Jinja2 computed attributes cannot reference relationships with cardinality `many`.
-- Only direct relationships can be used (i.e., a relationship of a relationship is not accessible).
-- Only `URL` and `Text` attribute kinds are supported at the moment.
+::::warning
+
+* Jinja2 computed attributes **cannot** reference relationships with cardinality `many`.
+* Only **direct** relationships can be used (i.e., a relationship of a relationship is not accessible).
+
+::::
 
 ## Python computed attributes {#python-computed-attribute}
 
@@ -24,17 +41,20 @@ Python scripts do not have the limitations of Jinja2 computed attributes and can
 
 See the [guide](../guides/computed-attributes) for instructions on creating Python computed attribute in Infrahub.
 
-### Limitations
+### Restrictions
 
-- Python computed attributes cannot be used on mandatory attribute.
-- Complex scripts can impact system performance.
-- Only `URL` and `Text` attribute kinds are supported at the moment.
+::::warning
+
+* Mandatory attributes **cannot** use Python computed attributes.
+* Complex scripts **may impact system performance**.
+
+::::
 
 ## Choosing Between Jinja2 and Python
 
-Computed attribute kind | Mandatory attributes | Relationship limitations                  | Complexity Handling
-------------------------|----------------------|-------------------------------------------|---------------------
-Jinja2                  | Compatible           | No use of `many` cardinality; direct only | Straightforward operations
-Python                  | Not compatible       | No limitations                            | Handles complex logic
+| Computed Attribute Kind | Mandatory Attribute Support | Relationship Constraints                                 | Complexity Handling                   |
+|-------------------------|-----------------------------|----------------------------------------------------------|---------------------------------------|
+| **Jinja2**              | ✅ Supported                | Cannot use `many` cardinality; only direct relationships | Best for straightforward operations   |
+| **Python**              | ❌ Not supported            | No restrictions                                          | Suitable for complex logic            |
 
 See the [guide](../guides/computed-attributes) for instructions on creating computed attribute in Infrahub.
