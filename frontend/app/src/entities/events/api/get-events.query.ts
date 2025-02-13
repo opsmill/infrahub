@@ -4,7 +4,10 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { getEventsFromApi } from "./get-events";
 
-export function getEventsQueryOptions({ ids }: { ids?: Array<string | undefined> }) {
+export function getEventsQueryOptions({
+  ids,
+  limit,
+}: { ids?: Array<string | undefined>; limit?: number }) {
   const currentBranchName = getCurrentBranchName();
   const timeMachineDate = store.get(datetimeAtom);
 
@@ -13,6 +16,7 @@ export function getEventsQueryOptions({ ids }: { ids?: Array<string | undefined>
     queryFn: () => {
       return getEventsFromApi({
         ids,
+        limit,
         branchName: currentBranchName,
         atDate: timeMachineDate,
       });
@@ -20,6 +24,9 @@ export function getEventsQueryOptions({ ids }: { ids?: Array<string | undefined>
   });
 }
 
-export const useEvents = ({ ids = [] }: { ids?: Array<string | undefined> }) => {
-  return useQuery(getEventsQueryOptions({ ids }));
+export const useEvents = ({
+  ids = [],
+  limit,
+}: { ids?: Array<string | undefined>; limit?: number }) => {
+  return useQuery(getEventsQueryOptions({ ids, limit }));
 };

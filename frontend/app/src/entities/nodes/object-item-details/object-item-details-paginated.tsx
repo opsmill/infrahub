@@ -267,7 +267,10 @@ export default function ObjectItemDetails({
       >
         <ObjectItemMetaEdit
           closeDrawer={() => setShowMetaEditModal(false)}
-          onUpdateComplete={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
+          onUpdateComplete={() => {
+            graphqlClient.refetchQueries({ include: [schema.kind!, "GET_EVENTS"] });
+            queryClient.invalidateQueries({ queryKey: ["events"] });
+          }}
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]

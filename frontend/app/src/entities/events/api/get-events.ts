@@ -1,51 +1,45 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
-import { INFRAHUB_EVENT, NODE_MUTATED_EVENT } from "../utils/constants";
 
-const getEventsQuery = ({ ids }: { ids?: Array<string | undefined> }) => {
-  const request = {
-    query: {
-      __name: "GET_EVENTS",
-      [INFRAHUB_EVENT]: {
-        __args: {
-          related_node__ids: ids,
-        },
-        count: true,
-        edges: {
-          node: {
-            id: true,
-            event: true,
-            branch: true,
-            account_id: true,
-            occurred_at: true,
-            __on: {
-              __typeName: NODE_MUTATED_EVENT,
-              attributes: {
-                action: true,
-                kind: true,
-                name: true,
-                value: true,
-                value_previous: true,
-              },
-              payload: true,
-            },
-          },
-        },
-      },
-    },
-  };
-
-  return jsonToGraphQLQuery(request);
-};
+const EVENTS_QUERY = `
+  query GET_ACTIVITIES($ids: [String], $limit: Int) {
+    InfrahubEvent(related_node__ids: $ids, limit: $limit) {
+      count
+      edges {
+        node {
+          id
+          event
+          branch
+          occurred_at
+          __typename
+          ... on NodeMutatedEvent {
+            attributes {
+              action
+              kind
+              name
+              value
+              value_previous
+            }
+            payload
+          }
+        }
+      }
+    }
+  }
+`;
 
 export function getEventsFromApi({
   ids,
+  limit,
   branchName,
   atDate,
-}: { ids?: Array<string | undefined>; branchName: string; atDate: Date | null }) {
+}: { ids?: Array<string | undefined>; limit?: number; branchName: string; atDate: Date | null }) {
   return graphqlClient.query({
-    query: gql(getEventsQuery({ ids })),
+    query: gql(EVENTS_QUERY),
+    variables: {
+      ids,
+      limit,
+    },
     context: {
       branch: branchName,
       date: atDate,
