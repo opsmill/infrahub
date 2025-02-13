@@ -1,9 +1,10 @@
 import { QSP } from "@/config/qsp";
 import Accordion, { AccordionProps } from "@/shared/components/display/accordion";
+import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
-import { Tab } from "@headlessui/react";
 import { ReactElement } from "react";
+import { Tab, TabPanel, TabPanelProps, TabProps } from "react-aria-components";
 import { ArrayParam, useQueryParam } from "use-query-params";
 
 interface AccordionStyleProps extends AccordionProps {
@@ -104,25 +105,30 @@ export const PropertyRow = ({
   );
 };
 
-export const TabStyled = ({ children }: { children: ReactElement | string }) => (
+export const TabStyled = ({ className, ...props }: TabProps) => (
   <Tab
-    className={({ selected }) =>
+    className={({ isSelected }) =>
       classNames(
         "px-4 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100",
-        selected ? "border-b-2 border-b-custom-blue-600 font-semibold" : ""
+        isSelected ? "border-b-2 border-b-custom-blue-600 font-semibold" : "cursor-pointer",
+        className
       )
     }
-  >
-    {children}
-  </Tab>
+    {...props}
+  />
 );
 
-export const TabPanelStyled = ({
-  children,
-}: {
-  children?: ReactElement | ReactElement[] | string;
-}) => {
-  return <Tab.Panel className="space-y-2">{children}</Tab.Panel>;
+export const TabPanelStyled = ({ className, ...props }: TabPanelProps) => {
+  return (
+    <TabPanel
+      className={classNames(
+        "space-y-2 p-2 bg-gray-100 flex-grow min-h-0 overflow-auto outline-none",
+        focusVisibleStyle,
+        className
+      )}
+      {...props}
+    />
+  );
 };
 
 export const NullDisplay = () => <div className="text-xs text-gray-500">null</div>;
