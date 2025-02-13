@@ -23,6 +23,7 @@ from infrahub.core.query.node import (
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship, RelationshipManager
+from infrahub.core.relationship.utils import query_peers_relationships
 from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
@@ -352,25 +353,21 @@ class NodeManager:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
-
-        query = await RelationshipGetPeerQuery.init(
+        rels = await query_peers_relationships(
             db=db,
             source_ids=ids,
             source_kind=source_kind,
-            schema=schema,
+            rel_schema=schema,
             filters=filters,
-            rel=rel,
             offset=offset,
             limit=limit,
             at=at,
+            branch=branch,
             branch_agnostic=branch_agnostic,
         )
-        await query.execute(db=db)
 
-        peers_info = list(query.get_peers())
-        if not peers_info:
-            return []
+        if not fetch_peers:
+            return rels
 
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
@@ -386,26 +383,15 @@ class NodeManager:
             if hfid_fields:
                 fields = deep_merge_dict(dicta=fields, dictb=hfid_fields)
 
-        if fetch_peers:
-            peer_ids = [peer.peer_id for peer in peers_info]
-            peer_nodes = await cls.get_many(
-                db=db, ids=peer_ids, fields=fields, at=at, branch=branch, branch_agnostic=branch_agnostic
-            )
+        peer_ids = [str(rel.data.peer_id) for rel in rels]
+        peer_nodes = await cls.get_many(
+            db=db, ids=peer_ids, fields=fields, at=at, branch=branch, branch_agnostic=branch_agnostic
+        )
 
-        results = []
-        for peer in peers_info:
-            result = await Relationship(schema=schema, branch=branch, at=at, node_id=peer.source_id).load(
-                db=db,
-                id=peer.rel_node_id,
-                db_id=peer.rel_node_db_id,
-                updated_at=peer.updated_at,
-                data=peer,
-            )
-            if fetch_peers:
-                await result.set_peer(value=peer_nodes[peer.peer_id])
-            results.append(result)
+        for rel in rels:
+            await rel.set_peer(value=peer_nodes[str(rel.data.peer_id)])
 
-        return results
+        return rels
 
     @classmethod
     async def count_hierarchy(

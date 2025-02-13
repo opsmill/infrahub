@@ -72,6 +72,7 @@ class SchemaBranch:
         name: str | None = None,
         data: dict[str, dict[str, str]] | None = None,
         computed_attributes: ComputedAttributes | None = None,
+        unidirectional_relationships: dict[str, list[str]] | None = None,
     ):
         self._cache: dict[str, Union[NodeSchema, GenericSchema]] = cache
         self.name: str | None = name
@@ -79,6 +80,11 @@ class SchemaBranch:
         self.generics: dict[str, str] = {}
         self.profiles: dict[str, str] = {}
         self.computed_attributes = computed_attributes or ComputedAttributes()
+
+        # node kind to relationship identifier
+        self.unidirectional_relationships: dict[str, list[str]] = (
+            unidirectional_relationships if unidirectional_relationships is not None else defaultdict(list)
+        )
 
         if data:
             self.nodes = data.get("nodes", {})
@@ -263,6 +269,7 @@ class SchemaBranch:
             data=copy.deepcopy(self.to_dict()),
             cache=self._cache,
             computed_attributes=self.computed_attributes.duplicate(),
+            unidirectional_relationships=self.unidirectional_relationships,
         )
 
     def set(self, name: str, schema: MainSchemaTypes) -> str:
@@ -1105,6 +1112,14 @@ class SchemaBranch:
 
             schema_to_update: Optional[Union[NodeSchema, GenericSchema]] = None
             for relationship in node.relationships:
+                # Fill unidirectional relationships mapping so we can delete them while deleting corresponding nodes.
+                peer_schema = self.get(name=relationship.peer)
+                for peer_rel in peer_schema.relationships:
+                    if peer_rel.identifier == relationship.identifier:
+                        break
+                else:
+                    self.unidirectional_relationships[peer_schema.kind].append(relationship.identifier)
+
                 if relationship.on_delete is not None:
                     continue
                 if not schema_to_update:

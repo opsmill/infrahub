@@ -7,7 +7,13 @@ from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchSupportType, ComputedAttributeKind, InfrahubKind, RelationshipCardinality
+from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
+    BranchSupportType,
+    ComputedAttributeKind,
+    InfrahubKind,
+    RelationshipCardinality,
+)
 from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
@@ -19,7 +25,9 @@ from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
 from ...graphql.models import OrderModel
+from ..query.relationship import RelationshipGetByIdentifierQuery
 from ..relationship import RelationshipManager
+from ..relationship.utils import query_peers_relationships
 from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
 
@@ -601,8 +609,15 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         # Go over the list of relationships and update them one by one
         for name in self._relationships:
-            rel: RelationshipManager = getattr(self, name)
-            await rel.delete(at=delete_at, db=db)
+            rel_manager: RelationshipManager = getattr(self, name)
+            await rel_manager.delete(at=delete_at, db=db)
+
+        schema_branch = registry.schema.get_schema_branch(name=self._branch.name)
+        if (
+            self.get_kind() in schema_branch.unidirectional_relationships
+            and schema_branch.unidirectional_relationships[self.get_kind()]
+        ):
+            await self._delete_unidirectional_relationships(at, db, schema_branch)
 
         # Need to check if there are some unidirectional relationship as well
         # For example, if we delete a tag, we must check the permissions and update all the relationships pointing at it
@@ -620,11 +635,56 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         await query.execute(db=db)
         result = query.get_result()
 
+        # result.get("rb_id") actually only returns root_id, so we update `to` only for root here.
         if result and result.get("rb.branch") == branch.name:
             await update_relationships_to([result.get("rb_id")], to=delete_at, db=db)
 
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at)
         await query.execute(db=db)
+
+    async def _delete_unidirectional_relationships(self, at, db, schema_branch) -> None:
+        """
+        Unidirectional incoming relationships require special handling as they do not belong to the schema node
+        of the object being deleted. Thus, we look for existing ones within SchemaBranch, query for them from the db,
+        and remove them if some exist.
+        """
+
+        query = await RelationshipGetByIdentifierQuery.init(
+            db=db,
+            branch=self._branch,
+            at=at,
+            identifiers=schema_branch.unidirectional_relationships[self.get_kind()],
+            excluded_namespaces=[],
+        )
+        await query.execute(db=db)
+        for peer in query.get_peers():
+            if peer.source_kind == self.get_kind():
+                peer_kind = peer.destination_kind
+                peer_id = peer.destination_id
+            else:
+                peer_kind = peer.source_kind
+                peer_id = peer.source_id
+
+            node_schema = schema_branch.get_node(name=peer_kind)
+            rel_schemas = [
+                rel_schema for rel_schema in node_schema.relationships if rel_schema.identifier == peer.identifier
+            ]
+            if len(rel_schemas) > 1:
+                raise ValueError(f"Relationship {peer.identifier} is duplicated")
+
+            rels = await query_peers_relationships(
+                db=db,
+                source_ids=[str(peer_id)],
+                source_kind=peer_kind,
+                rel_schema=rel_schemas[0],
+                filters={},
+                at=at,
+                branch=self._branch,
+                branch_agnostic=self.get_branch_based_on_support_type().name == GLOBAL_BRANCH_NAME,
+            )
+
+            for rel in rels:
+                await rel.delete(db=db, at=at)
 
     async def to_graphql(
         self,

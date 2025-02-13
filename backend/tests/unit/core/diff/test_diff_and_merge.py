@@ -90,8 +90,14 @@ class TestDiffAndMerge:
         car_person_schema: SchemaBranch,
     ):
         schema_main = registry.schema.get_schema_branch(name=default_branch.name)
+        # As any node has a `group_member` relationship, we need to load CoreGroup to avoid SchemaNotFoundError
+        # when we check for unidirectional relationships. Also add CoreNode as CoreGroup has some CoreNode relationships.
         await registry.schema.update_schema_branch(
-            db=db, branch=default_branch, schema=schema_main, limit=["TestCar", "TestPerson"], update_db=True
+            db=db,
+            branch=default_branch,
+            schema=schema_main,
+            limit=["TestCar", "TestPerson", "CoreGroup", "CoreNode"],
+            update_db=True,
         )
         branch2 = await create_branch(db=db, branch_name="branch2")
         schema_branch = registry.schema.get_schema_branch(name=branch2.name)
@@ -100,10 +106,15 @@ class TestDiffAndMerge:
         car_schema_branch.attributes.append(AttributeSchema(name="num_cupholders", kind="Number", default_value=15))
         car_schema_branch.attributes.append(AttributeSchema(name="is_cool", kind="Boolean", default_value=False))
         car_schema_branch.attributes.append(AttributeSchema(name="nickname", kind="Text", default_value="car"))
+        # car_schema_branch.relationships = [rel for rel in car_schema_branch.relationships if rel != ""]
         schema_branch.set(name="TestCar", schema=car_schema_branch)
         schema_branch.process()
         await registry.schema.update_schema_branch(
-            db=db, branch=branch2, schema=schema_branch, limit=["TestCar", "TestPerson"], update_db=True
+            db=db,
+            branch=branch2,
+            schema=schema_branch,
+            limit=["TestCar", "TestPerson", "CoreGroup", "CoreNode"],
+            update_db=True,
         )
 
         at = Timestamp()
@@ -112,6 +123,11 @@ class TestDiffAndMerge:
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         await diff_merger.merge_graph(at=at)
 
+        # TODO it fails here, loaded schema only has TestCar/Person and corresponding profiles and CoreProfile.
+        # what is happening above with the `limit`? Are we saying we want only TestCar and TestPerson in branch2
+        # then merge in main branch so there are only these schemas?
+        # 1. Is it acceptable considering TestCar/Person have a group_member link to CoreGroup?
+        # 2. Or is it something that can only happen internally while testing? How to solve it except adding every missing schemas (cumbersome)?
         updated_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         car_schema_main = updated_schema.get(name="TestCar", duplicate=False)
         new_int_attr = car_schema_main.get_attribute(name="num_cupholders")
