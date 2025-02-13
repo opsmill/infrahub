@@ -1,14 +1,13 @@
 import ErrorFallback from "@/shared/components/errors/error-fallback";
+import Content from "@/shared/components/layout/content";
 import { Spinner } from "@/shared/components/ui/spinner";
-import { useParams } from "react-router";
-import { useEvents } from "../api/get-events.query";
+import { useGlobalEvents } from "../api/get-global-events.query";
 import { INFRAHUB_EVENT } from "../utils/constants";
-import { Event, EventType } from "./event";
+import { EventType } from "./event";
+import { Event } from "./global-event";
 
 export const GlobalEvents = () => {
-  const { objectid } = useParams();
-
-  const { isLoading, data, error } = useEvents({ ids: [objectid] });
+  const { isLoading, data, error, refetch } = useGlobalEvents();
 
   if (isLoading) {
     return <Spinner />;
@@ -23,10 +22,18 @@ export const GlobalEvents = () => {
   });
 
   return (
-    <div className="flex flex-col gap-2 p-2">
-      {activities?.map((activity) => (
-        <Event key={activity.id} {...activity} />
-      ))}
-    </div>
+    <Content.Card>
+      <Content.CardTitle
+        title="Activities"
+        badgeContent={data?.data?.[INFRAHUB_EVENT]?.count}
+        isReloadLoading={isLoading}
+        reload={() => refetch()}
+      />
+      <div className="flex flex-col gap-2 p-2">
+        {activities?.map((activity) => (
+          <Event key={activity.id} {...activity} />
+        ))}
+      </div>
+    </Content.Card>
   );
 };
