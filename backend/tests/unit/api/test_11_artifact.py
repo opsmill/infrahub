@@ -4,7 +4,10 @@ import pytest
 from starlette.testclient import TestClient
 
 from infrahub import config
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -78,11 +81,11 @@ class TestArtifact11(TestInfrahubApp):
         self,
         db: InfrahubDatabase,
         admin_headers,
-        default_branch,
+        default_branch: Branch,
         register_core_models_schema,
         register_builtin_models_schema,
         car_person_data_generic,
-        authentication_base,
+        authentication_base: Node,
         client,
     ):
         _, _, definition = await self.setup_artifact_definition(
@@ -107,6 +110,14 @@ class TestArtifact11(TestInfrahubApp):
             )
 
             assert response.status_code == 200
+
+            context = InfrahubContext(
+                branch=BranchContext(name=default_branch.name, id=str(default_branch.get_uuid())),
+                account=AccountSession(
+                    authenticated=True, account_id=authentication_base.id, session_id=None, auth_type=AuthType.API
+                ),
+            )
+
             expected_calls = [
                 call(
                     workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
@@ -118,6 +129,7 @@ class TestArtifact11(TestInfrahubApp):
                             limit=[],
                         )
                     },
+                    context=context,
                 ),
             ]
             mock_submit_workflow.assert_has_calls(expected_calls)

@@ -40,9 +40,12 @@ export function KindHeaderCell({ schema }: { schema: iGenericSchema }) {
         />
       </PopoverTrigger>
 
-      <PopoverContent className="min-w-[19rem]">
+      <PopoverContent className="min-w-[19rem] relative rounded-tl-none">
+        <div className="absolute font-semibold -top-[1.8rem] bg-white border px-2 py-1 rounded-t-md border-b-0 -left-px">
+          Filter by kind
+        </div>
         <Form onSubmit={handleSubmit}>
-          <FilterKindSelector genericSchema={schema} />
+          <FilterKindSelector genericSchema={schema} showLabel={false} />
 
           <div className="text-right">
             <Button variant="outline" className="mr-2" onClick={() => setShowFilters(false)}>

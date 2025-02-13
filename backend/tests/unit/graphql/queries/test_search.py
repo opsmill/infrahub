@@ -121,6 +121,8 @@ async def test_search_ipv6_address_extended_format(
         variable_values={"search": "2001:0db8:0000:0000:0000:0000:0000:0000"},
     )
 
+    assert res_extended.data
+    assert res_collapsed.data
     assert (
         res_extended.data["InfrahubSearchAnywhere"]["count"]
         == res_collapsed.data["InfrahubSearchAnywhere"]["count"]
@@ -161,6 +163,8 @@ async def test_search_ipv6_network_extended_format(
         variable_values={"search": "2001:0db8:0000:0000:0000:0000:0000:0000/48"},
     )
 
+    assert res_extended.data
+    assert res_collapsed.data
     assert (
         res_extended.data["InfrahubSearchAnywhere"]["count"]
         == res_collapsed.data["InfrahubSearchAnywhere"]["count"]
@@ -204,6 +208,10 @@ async def test_search_ipv6_partial_address(
         variable_values={"search": "2001:0db8:0000:0"},
     )
 
+    assert res_two_segments.data
+    assert res_partial_segment_1.data
+    assert res_partial_segment_2.data
+
     assert (
         res_two_segments.data["InfrahubSearchAnywhere"]["count"]
         == res_partial_segment_1.data["InfrahubSearchAnywhere"]["count"]
@@ -245,6 +253,8 @@ async def test_search_ipv4(
         variable_values={"search": "10.0.0.0/8"},
     )
 
+    assert result_address.data
+    assert result_network.data
     assert (
         result_address.data["InfrahubSearchAnywhere"]["count"]
         == result_network.data["InfrahubSearchAnywhere"]["count"]
@@ -305,6 +315,30 @@ async def test_search_groups(
         root_value=None,
         variable_values={"search": "group1"},
     )
+    assert result.data
     assert result.data["InfrahubSearchAnywhere"]["count"] == 1
 
     assert result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"] == group1.id
+
+
+async def test_search_anywhere_by_string_no_results(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    register_builtin_models_schema: None,
+) -> None:
+    """Validate that the GraphQL an empty result is returned as an empty array and not a `null` value"""
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "nothing-to-be-found"},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubSearchAnywhere"]["count"] == 0
+    assert result.data["InfrahubSearchAnywhere"]["edges"] == []

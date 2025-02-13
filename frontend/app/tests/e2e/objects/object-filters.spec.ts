@@ -23,9 +23,8 @@ test.describe("Object filters", () => {
 
     await test.step("filter using an attribute", async () => {
       await page.getByRole("button", { name: "Role" }).click();
-      await page.getByLabel("Role").click();
       await page.getByRole("option", { name: "Edge Router" }).click();
-      await page.getByRole("button", { name: "Filter", exact: true }).click();
+      await page.getByRole("button", { name: "Apply" }).click();
 
       await expect(
         page.getByLabel("Active filters").getByLabel("Role contains edge")
@@ -39,9 +38,8 @@ test.describe("Object filters", () => {
 
     await test.step("filter using a relationship of cardinality one", async () => {
       await page.getByRole("button", { name: "Site" }).click();
-      await page.getByLabel("Site").click();
       await page.getByRole("option", { name: "atl1" }).click();
-      await page.getByRole("button", { name: "Filter", exact: true }).click();
+      await page.getByRole("button", { name: "Apply" }).click();
 
       await expect(
         page.getByLabel("Active filters").getByLabel("Site contains atl1")
@@ -61,10 +59,8 @@ test.describe("Object filters", () => {
 
     await test.step("filter using a relationship of cardinality many", async () => {
       await page.getByRole("button", { name: "Tags" }).click();
-      await page.getByLabel("Tags").click();
       await page.getByRole("option", { name: "blue" }).click();
-      await page.getByLabel("Tags").click();
-      await page.getByRole("button", { name: "Filter", exact: true }).click();
+      await page.getByRole("button", { name: "Apply" }).click();
 
       await expect(
         page.getByLabel("Active filters").getByLabel("Site contains atl1")
@@ -90,17 +86,6 @@ test.describe("Object filters", () => {
     });
   });
 
-  test("should correctly display the filters with hierarchical dropdown pointing to any nodes", async ({
-    page,
-  }) => {
-    await page.goto("/objects/CoreArtifact");
-
-    await page.getByTestId("object-items").getByRole("button", { name: "Object" }).click();
-    await page.getByLabel("Kind").click({ position: { x: 200, y: 20 } }); // (?) tooltip is above and blocking normal click
-    await page.getByRole("option", { name: "BGP Session Infra" }).click();
-    await expect(page.getByLabel("BGP Session")).toBeVisible();
-  });
-
   test("should correctly filter from a kind", async ({ page }) => {
     await page.goto("/objects/InfraInterface");
     await expect(page.getByTestId("object-items")).toContainText("Interface L2");
@@ -108,7 +93,7 @@ test.describe("Object filters", () => {
 
     await test.step("filter using kind", async () => {
       await page.getByRole("button", { name: "Kind", exact: true }).click();
-      await page.getByLabel("Kind").click();
+      await page.getByRole("combobox", { name: "kind" }).click();
       await page.getByRole("option", { name: "Interface L3 Infra", exact: true }).click();
       await page.getByRole("button", { name: "Filter" }).click();
 

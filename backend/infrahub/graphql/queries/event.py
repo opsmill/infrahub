@@ -16,13 +16,13 @@ if TYPE_CHECKING:
 class Events(ObjectType):
     edges = List(NonNull(EventNodes), required=True)
     count = Int(required=True)
-    next_token = String(required=False)
 
     @staticmethod
     async def resolve(
         root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         limit: int = 10,
+        offset: int | None = None,
         account: str | None = None,
         ids: list[str] | None = None,
         branch: str | None = None,
@@ -38,36 +38,23 @@ class Events(ObjectType):
             branch=branch,
             account=account,
             limit=limit,
+            offset=offset,
             related_node__ids=related_node__ids,
             q=q,
             ids=ids,
         )
 
-    @staticmethod
-    async def resolve_next(
-        root: dict,  # noqa: ARG004
-        info: GraphQLResolveInfo,
-        next_token: str,
-    ) -> dict[str, Any]:
-        fields = await extract_fields_first_node(info)
-
-        prefect_tasks = await PrefectEvent.query_next(fields=fields, next_token=next_token)
-        return {
-            "count": prefect_tasks.get("count", 0),
-            "next_token": prefect_tasks.get("next_token"),
-            "edges": prefect_tasks.get("edges", []),
-        }
-
     @classmethod
     async def query(
         cls,
         info: GraphQLResolveInfo,
+        limit: int,
+        offset: int | None = None,
         q: str | None = None,
         ids: list[str] | None = None,
         related_node__ids: list[str] | None = None,
         branch: str | None = None,
         account: str | None = None,
-        limit: int | None = None,
     ) -> dict[str, Any]:
         fields = await extract_fields_first_node(info)
 
@@ -79,10 +66,10 @@ class Events(ObjectType):
             branch=branch,
             account=account,
             limit=limit,
+            offset=offset,
         )
         return {
             "count": prefect_tasks.get("count", 0),
-            "next_token": prefect_tasks.get("next_token"),
             "edges": prefect_tasks.get("edges", []),
         }
 
@@ -90,18 +77,12 @@ class Events(ObjectType):
 Event = Field(
     Events,
     limit=Int(required=False),
+    offset=Int(required=False),
     related_node__ids=List(String),
     branch=String(required=False),
     account=String(required=False),
     ids=List(String),
     q=String(required=False),
     resolver=Events.resolve,
-    required=True,
-)
-
-EventNext = Field(
-    Events,
-    next_token=String(required=True),
-    resolver=Events.resolve_next,
     required=True,
 )

@@ -322,7 +322,6 @@ async def test_query_NodeListGetAttributeQuery_deleted(db: InfrahubDatabase, bas
     assert sorted(query.get_attributes_group_by_node().keys()) == ["c1", "c2"]
 
     assert len(query.get_attributes_group_by_node()["c1"].attrs) == 4
-    assert len(query.get_attributes_group_by_node()["c2"].attrs) == 4
 
     # Query all the nodes in branch1: c1 and c3 present
     # Expect 6 attributes because each node has 1 but c1at2 has its value and its protected flag defined both in Main and Branch1

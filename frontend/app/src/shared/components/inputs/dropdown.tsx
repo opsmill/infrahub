@@ -36,6 +36,7 @@ export interface DropdownProps extends Omit<HTMLAttributes<HTMLButtonElement>, "
   onChange: (value: DropdownOption["value"] | null) => void;
   schema?: IModelSchema;
   field?: AttributeSchema;
+  defaultOpen?: boolean;
 }
 
 export interface DropdownItemProps extends React.ComponentPropsWithoutRef<typeof ComboboxItem> {
@@ -217,9 +218,9 @@ export const DropdownAddAction: React.FC<DropdownAddActionProps> = ({
 };
 
 export const Dropdown = forwardRef<HTMLButtonElement, DropdownProps>(
-  ({ items, onChange, value, schema, field, ...props }, ref) => {
+  ({ items, onChange, value, schema, field, defaultOpen, ...props }, ref) => {
     const [localItems, setLocalItems] = useState(items);
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(!!defaultOpen);
 
     const handleAddOption = (newOption: DropdownOption) => {
       setLocalItems([...localItems, newOption]);
@@ -245,7 +246,7 @@ export const Dropdown = forwardRef<HTMLButtonElement, DropdownProps>(
           </div>
         </ComboboxTrigger>
 
-        <ComboboxContent>
+        <ComboboxContent fitTriggerWidth={false}>
           <ComboboxList>
             <ComboboxEmpty>No dropdown found.</ComboboxEmpty>
             {localItems.map((item) => (

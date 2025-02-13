@@ -1,0 +1,100 @@
+import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
+import {
+  FILTER_CONDITION,
+  FilterCondition,
+  FilterConditionSelect,
+} from "@/entities/nodes/object/ui/filters/filter-condition-select";
+import { AttributeSchema } from "@/entities/schema/types";
+import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
+import { FormFieldValue } from "@/shared/components/form/type";
+import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
+import useFilters, { Filter } from "@/shared/hooks/useFilters";
+import { useState } from "react";
+
+export type AttributeFilterFormProps = {
+  attributeSchema: AttributeSchema;
+  onSuccess?: () => void;
+};
+
+export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFilterFormProps) {
+  const [filters, setFilters] = useFilters();
+  const currentFilter = filters.find((filter) => filter.name.startsWith(attributeSchema.name));
+  const [condition, setCondition] = useState<FilterCondition | undefined>(
+    getCurrentFilterCondition(currentFilter) ?? FILTER_CONDITION.CONTAINS
+  );
+
+  const handleSubmit = (formData: Record<string, FormFieldValue>) => {
+    if (condition === FILTER_CONDITION.CONTAINS) {
+      const { attribute } = formData;
+
+      if (attribute === undefined) {
+        return;
+      }
+
+      const newFilter: Filter = {
+        name: `${attributeSchema.name}__value`,
+        value: attribute,
+      };
+
+      if (currentFilter) {
+        return setFilters(
+          filters.map((f) => (f.name.startsWith(attributeSchema.name) ? newFilter : f))
+        );
+      } else {
+        return setFilters([...filters, newFilter]);
+      }
+    }
+
+    if (condition === FILTER_CONDITION.IS_EMPTY) {
+      return setFilters([
+        ...filters.filter((f) => f.name !== currentFilter?.name),
+        {
+          name: `${attributeSchema.name}__isnull`,
+          value: false,
+        },
+      ]);
+    }
+
+    if (condition === FILTER_CONDITION.IS_NOT_EMPTY) {
+      return setFilters([
+        ...filters.filter((f) => f.name !== currentFilter?.name),
+        {
+          name: `${attributeSchema.name}__isnull`,
+          value: false,
+        },
+      ]);
+    }
+  };
+
+  return (
+    <div className="flex gap-2 p-2">
+      <div className="h-10 inline-flex items-center">Where</div>
+
+      <FilterConditionSelect
+        filterType="attribute"
+        selectedKey={condition}
+        onSelectionChange={(key) => setCondition(key as FilterCondition)}
+      />
+
+      <Form
+        className="space-y-0 flex gap-2"
+        onSubmit={(formData) => {
+          handleSubmit(formData);
+          onSuccess?.();
+        }}
+      >
+        {condition === FILTER_CONDITION.CONTAINS && (
+          <FormField
+            name="attribute"
+            defaultValue={currentFilter?.value}
+            render={({ field }) => {
+              return <DynamicFilterInput {...field} fieldSchema={attributeSchema} />;
+            }}
+          />
+        )}
+
+        <FormSubmit>Apply</FormSubmit>
+      </Form>
+    </div>
+  );
+}

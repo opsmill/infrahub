@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 
 export const GET_VALIDATORS = gql`
-  query GetCoreValidator($ids: [ID]!) {
+  query GET_CORE_VALIDATORS($ids: [ID]!) {
     CoreValidator(proposed_change__ids: $ids) {
       edges {
         node {

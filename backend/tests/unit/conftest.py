@@ -1,7 +1,11 @@
+import os
 import shutil
+import subprocess  # noqa: S404
+import sys
 from itertools import islice
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pendulum
 import pytest
@@ -9,6 +13,7 @@ from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
 from prefect.logging.loggers import disable_run_logger
+from prefect.settings import get_current_settings
 from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
 
@@ -91,8 +96,43 @@ def neo4j_factory():
 
 @pytest.fixture(scope="session", autouse=True)
 def prefect_test_fixture():
-    with prefect_test_harness(server_startup_timeout=60):
-        yield
+    def _run_uvicorn_command(self) -> subprocess.Popen[Any]:
+        """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead"""
+        # used to turn off serving the UI
+        server_env = {
+            "PREFECT_UI_ENABLED": "0",
+            "PREFECT__SERVER_EPHEMERAL": "1",
+            "PREFECT__SERVER_FINAL": "1",
+        }
+
+        return subprocess.Popen(
+            args=[
+                sys.executable,
+                "-m",
+                "uvicorn",
+                # "--app-dir",
+                # str(infrahub.__module_path__.parent),
+                "--factory",
+                "infrahub.prefect_server.app:create_infrahub_prefect",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(self.port),
+                "--log-level",
+                "error",
+                "--lifespan",
+                "on",
+            ],
+            env={
+                **os.environ,
+                **server_env,
+                **get_current_settings().to_environment_variables(exclude_unset=True),
+            },
+        )
+
+    with patch("prefect.server.api.server.SubprocessASGIServer._run_uvicorn_command", _run_uvicorn_command):
+        with prefect_test_harness(server_startup_timeout=60):
+            yield
 
 
 @pytest.fixture(scope="session")
@@ -403,10 +443,10 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (r1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
 
     CREATE (r2:Relationship { uuid: "r2", name: "testcar__testperson", branch_support: "aware"})
-    CREATE (p1)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
-    CREATE (c2)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
-    CREATE (r2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
-    CREATE (r2)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_true)
+    CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(r2)
+    CREATE (c2)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(r2)
+    CREATE (r2)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
+    CREATE (r2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
     RETURN c1, c2, c3
     """
@@ -2616,8 +2656,8 @@ async def authentication_base(
     register_core_models_schema,
     register_builtin_models_schema,
     register_organization_schema,
-):
-    pass
+) -> Node:
+    return create_test_admin
 
 
 @pytest.fixture
