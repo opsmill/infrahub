@@ -29,7 +29,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useRef } from "react";
-import { Navigate, useLocation } from "react-router";
+import { Navigate, useLocation, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import { NodeEvents } from "../../events/ui/node-events";
 import { ActionButtons } from "./action-buttons";
@@ -53,6 +53,7 @@ export default function ObjectItemDetails({
   hideHeaders,
 }: ObjectDetailsProps) {
   const location = useLocation();
+  const { objectid } = useParams();
   const { pathname } = location;
 
   const [qspTab, setQspTab] = useQueryParam(QSP.TAB, StringParam);
@@ -269,7 +270,7 @@ export default function ObjectItemDetails({
           closeDrawer={() => setShowMetaEditModal(false)}
           onUpdateComplete={() => {
             graphqlClient.refetchQueries({ include: [schema.kind!, "GET_EVENTS"] });
-            queryClient.invalidateQueries({ queryKey: ["events"] });
+            queryClient.invalidateQueries({ queryKey: ["events", [objectid]] });
           }}
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
