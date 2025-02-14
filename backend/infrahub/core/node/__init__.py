@@ -9,6 +9,8 @@ from infrahub_sdk.uuidt import UUIDT
 from infrahub.core import registry
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
+    OBJECT_TEMPLATE_NAME_ATTR,
+    OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     BranchSupportType,
     ComputedAttributeKind,
     InfrahubKind,
@@ -274,19 +276,32 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 )
             )
 
-    async def handle_object_template(self, fields: dict, db: InfrahubDatabase) -> None:
+    async def handle_object_template(self, fields: dict, db: InfrahubDatabase, errors: list) -> None:
         """Fill the `fields` parameters with values from an object template if one is in use."""
-        object_template_field = fields.get("object_template")
+        object_template_field = fields.get(OBJECT_TEMPLATE_RELATIONSHIP_NAME)
         if not object_template_field:
             return
 
-        template: CoreObjectTemplate = await registry.manager.find_object(
-            db=db,
-            kind=self._schema.get_relationship(name="object_template").peer,
-            id=object_template_field.get("id"),
-            hfid=object_template_field.get("hfid"),
-            branch=self.get_branch_based_on_support_type(),
-        )
+        try:
+            template: CoreObjectTemplate = await registry.manager.find_object(
+                db=db,
+                kind=self._schema.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME).peer,
+                id=object_template_field.get("id"),
+                hfid=object_template_field.get("hfid"),
+                branch=self.get_branch_based_on_support_type(),
+            )
+        except NodeNotFoundError:
+            errors.append(
+                ValidationError(
+                    {
+                        f"{OBJECT_TEMPLATE_RELATIONSHIP_NAME}": (
+                            "Unable to find the object template in the database "
+                            f"'{object_template_field.get('id') or object_template_field.get('hfid')}'"
+                        )
+                    }
+                )
+            )
+            return
 
         # Handle attributes, copy values from template
         # Relationships handling in performed in GraphQL mutation to create nodes for relationships
@@ -314,7 +329,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 errors.append(ValidationError({field_name: f"{field_name} is not a valid input for {self.get_kind()}"}))
 
         # Backfill fields with the ones from the template if there's one
-        await self.handle_object_template(fields=fields, db=db)
+        await self.handle_object_template(fields=fields, db=db, errors=errors)
 
         # If the object is new, we need to ensure that all mandatory attributes and relationships have been provided
         if not self._existing:

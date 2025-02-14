@@ -1071,6 +1071,16 @@ async def test_create_with_object_template(
     """
     gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
 
+    # Random non-existing ID for template
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"device_name": "th2.par.asbr01", "template_id": "b1dd214b-befd-47ef-8af3-675fd28b1ea3"},
+    )
+    assert "Unable to find the object template in the database" in result.errors[0].message
+
     device_template: Node = await Node.init(schema="TemplateTestingDevice", db=db, branch=default_branch)
     await device_template.new(
         db=db, template_name="MX204 Router", manufacturer="Juniper", height=1, weight=6, airflow="Front to rear"
