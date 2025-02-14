@@ -6,7 +6,7 @@ import useFilters from "@/shared/hooks/useFilters";
 import { useEffect, useState } from "react";
 
 interface FilterSearchInputProps extends Omit<SearchInputProps, "onChange" | "value"> {
-  schema: IModelSchema;
+  schema?: IModelSchema;
 }
 
 export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchInputProps) => {
@@ -46,7 +46,7 @@ export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchI
       className="h-8"
       value={inputValue}
       onChange={setInputValue}
-      placeholder={"Search " + (schema.label ?? schema.name)}
+      placeholder={"Search " + (schema?.label ?? schema?.name)}
       data-testid="object-list-search-bar"
       onPressReset={removeSearchFilter}
       {...props}
