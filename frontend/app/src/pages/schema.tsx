@@ -12,7 +12,7 @@ function SchemaPage() {
   const profiles = useAtomValue(profilesAtom);
 
   return (
-    <Content.Card className="h-[calc(100%-1rem)] overflow-auto flex flex-col">
+    <Content.Card className="h-[calc(100%-1rem)] flex flex-col">
       <Content.CardTitle
         title="Schema Visualizer"
         badgeContent={nodes.length + generics.length + profiles.length}

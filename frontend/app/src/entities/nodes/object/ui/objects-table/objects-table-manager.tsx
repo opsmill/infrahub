@@ -31,7 +31,7 @@ export function ObjectsTableManager({ schema }: ObjectsTableManagerProps) {
 
   return (
     <>
-      <div className="flex items-center h-14 px-3">
+      <div className="flex items-center h-14 px-3 shrink-0">
         <FilterSearchInput schema={schema} />
 
         {filters.length > 0 && (

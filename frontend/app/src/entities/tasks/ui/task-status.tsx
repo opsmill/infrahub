@@ -31,7 +31,7 @@ export function TaskStatus() {
   const commonButtonProps: LinkButtonProps = {
     size: "square",
     variant: "ghost",
-    className: "h-8 w-8 bg-neutral-50 border border-neutral-200 rounded-lg relative",
+    className: "h-8 w-8 bg-neutral-50 border border-neutral-200 rounded-lg relative shrink-0",
     to: constructPath("/tasks", [{ name: QSP.FILTER, value: JSON.stringify([filter]) }]),
   };
 

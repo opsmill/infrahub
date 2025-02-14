@@ -58,6 +58,7 @@ export const TimeFrameSelector = () => {
         maxDate={new Date()}
         filterTime={(date) => isPast(date)}
         popperPlacement="bottom-start"
+        popperClassName="!z-50"
       />
 
       <Transition
