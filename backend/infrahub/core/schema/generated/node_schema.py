@@ -23,7 +23,7 @@ class GeneratedNodeSchema(BaseNodeSchema):
     generate_template: bool = Field(
         default=False,
         description="Indicate if an object template schema should be generated for this schema",
-        json_schema_extra={"update": "validate_constraint"},
+        json_schema_extra={"update": "allowed"},
     )
     hierarchy: Optional[str] = Field(
         default=None,

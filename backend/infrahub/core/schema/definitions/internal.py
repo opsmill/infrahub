@@ -400,7 +400,7 @@ node_schema = SchemaNode(
             description="Indicate if an object template schema should be generated for this schema",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="hierarchy",
@@ -872,7 +872,7 @@ generic_schema = SchemaNode(
             description="Indicate if an object template schema should be generated for this schema",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="used_by",
