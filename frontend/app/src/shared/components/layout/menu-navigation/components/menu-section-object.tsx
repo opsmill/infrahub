@@ -113,7 +113,12 @@ const TopLevelMenuItem: React.FC<{
         </span>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent side="left" align="start" sideOffset={isCollapsed ? 6 : 12}>
+      <DropdownMenuContent
+        side="left"
+        align="start"
+        sideOffset={isCollapsed ? 6 : 12}
+        className="min-w-60 max-h-[calc(100vh-7rem)] overflow-auto"
+      >
         {item.children.map((child) => (
           <RecursiveObjectMenuItem key={child.identifier} item={child} isCollapsed={isCollapsed} />
         ))}
