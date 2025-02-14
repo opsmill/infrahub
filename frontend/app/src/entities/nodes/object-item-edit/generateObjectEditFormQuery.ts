@@ -21,8 +21,14 @@ export const generateObjectEditFormQuery = ({
           node: {
             id: true,
             display_label: true,
-            ...addAttributesToRequest(schema.attributes ?? [], { withPermissions: true }),
-            ...addRelationshipsToRequest(getRelationshipsForForm(schema.relationships ?? [], true)),
+            ...addAttributesToRequest(schema.attributes ?? [], {
+              withMetadata: true,
+              withPermissions: true,
+            }),
+            ...addRelationshipsToRequest(
+              getRelationshipsForForm(schema.relationships ?? [], true),
+              { withMetadata: true }
+            ),
             ...("generate_profile" in schema && schema.generate_profile
               ? {
                   profiles: {
