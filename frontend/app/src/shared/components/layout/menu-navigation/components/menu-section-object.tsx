@@ -113,13 +113,7 @@ const TopLevelMenuItem: React.FC<{
         </span>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent
-        side="left"
-        align="start"
-        sideOffset={isCollapsed ? 6 : 12}
-        className="h-[calc(100vh-57px)] mt-[57px] min-w-[275px] px-4 py-5 bg-white border rounded-r-lg rounded-l-none shadow-none relative -top-px overflow-auto data-[side=right]:slide-in-from-left-[100px]"
-      >
-        <h3 className="text-xl font-medium text-neutral-800 mb-5">{item.label}</h3>
+      <DropdownMenuContent side="left" align="start" sideOffset={isCollapsed ? 6 : 12}>
         {item.children.map((child) => (
           <RecursiveObjectMenuItem key={child.identifier} item={child} isCollapsed={isCollapsed} />
         ))}
