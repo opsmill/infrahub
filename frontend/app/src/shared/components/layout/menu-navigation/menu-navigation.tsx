@@ -24,7 +24,7 @@ export default function MenuNavigation({ isCollapsed }: MenuNavigationProps) {
       <ScrollArea>
         <MenuSectionObject items={menu.sections.object} isCollapsed={isCollapsed} />
       </ScrollArea>
-      <Divider className="p-0" />
+      <Divider />
       <MenuSectionInternal items={menu.sections.internal} isCollapsed={isCollapsed} />
     </>
   );

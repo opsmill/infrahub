@@ -1,11 +1,18 @@
+import InfrahubWithTextLogo from "@/assets/Infrahub-SVG-hori.svg";
+import InfrahubLogo from "@/assets/infrahub-logo.svg";
 import { SIDEBAR_COLLAPSED_KEY } from "@/config/localStorage";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { AccountMenu } from "@/shared/components/account-menu";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import MenuNavigation from "@/shared/components/layout/menu-navigation/menu-navigation";
 import { SearchAnywhere } from "@/shared/components/search/search-anywhere";
+import { Divider } from "@/shared/components/ui/divider";
+import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
+import { PanelLeftIcon } from "lucide-react";
+import { Link } from "react-router";
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useLocalStorage(SIDEBAR_COLLAPSED_KEY);
@@ -16,27 +23,47 @@ export default function Sidebar() {
     <nav
       data-collapsed={booleanCollapsed}
       className={classNames(
-        "flex flex-col gap-3 shrink-0",
+        "flex flex-col shrink-0",
         "relative",
-        "w-[256px] border rounded-lg py-5 px-4 bg-white",
+        "w-[256px] border rounded-lg p-3 bg-white",
         "group/sidebar transition-all",
-        booleanCollapsed && "w-[72px] px-2 items-center"
+        booleanCollapsed && "w-auto px-2 items-center"
       )}
       data-testid="sidebar"
     >
-      <Button
-        variant="outline"
-        size="icon"
-        className={classNames(
-          "transition-all absolute -right-3.5 top-6",
-          booleanCollapsed ? "rotate-180" : "hidden group-hover/sidebar:inline-flex"
+      <div className="flex justify-between items-center mb-3">
+        <Link to={constructPath("/")} className={classNames(focusVisibleStyle, "rounded-md")}>
+          <img
+            src={booleanCollapsed ? InfrahubLogo : InfrahubWithTextLogo}
+            alt="Infrahub logo"
+            className={"h-8 px-1 m-0.5"}
+          />
+        </Link>
+
+        {booleanCollapsed ? (
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute -right-3.5 top-3.5 transition-all"
+            onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
+          >
+            <Icon icon="mdi:chevron-right" className="text-xl text-neutral-600" />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-1"
+            onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
+          >
+            <PanelLeftIcon className="text-gray-400 size-5" />
+          </Button>
         )}
-        onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
-      >
-        <Icon icon="mdi:chevron-left" className="text-xl text-neutral-600" />
-      </Button>
+      </div>
 
       <SearchAnywhere isCollapsed={booleanCollapsed} />
+
+      <Divider />
 
       <MenuNavigation isCollapsed={booleanCollapsed} />
 
