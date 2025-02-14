@@ -3,6 +3,7 @@ import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { SearchInput, SearchInputProps } from "@/shared/components/inputs/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import useFilters from "@/shared/hooks/useFilters";
+import useSearch from "@/shared/hooks/useSearch";
 import { useEffect, useState } from "react";
 
 interface FilterSearchInputProps extends Omit<SearchInputProps, "onChange" | "value"> {
@@ -11,16 +12,9 @@ interface FilterSearchInputProps extends Omit<SearchInputProps, "onChange" | "va
 
 export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchInputProps) => {
   const [filters, setFilters] = useFilters();
-  const searchFilter: string | undefined = filters.find((f) => f.name === SEARCH_ANY_FILTER)?.value;
-  const [inputValue, setInputValue] = useState(searchFilter ?? "");
+  const [search, setSearch] = useSearch();
+  const [inputValue, setInputValue] = useState(search ?? "");
   const debouncedInputValue = useDebounce(inputValue, 300);
-
-  const addSearchFilter = (value: string) => {
-    setFilters([
-      ...filters.filter((f) => f.name !== SEARCH_ANY_FILTER),
-      { name: SEARCH_ANY_FILTER, value },
-    ]);
-  };
 
   const removeSearchFilter = () => {
     setFilters(filters.filter((f) => f.name !== SEARCH_ANY_FILTER));
@@ -28,7 +22,7 @@ export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchI
 
   useEffect(() => {
     if (debouncedInputValue) {
-      addSearchFilter(debouncedInputValue);
+      setSearch(debouncedInputValue);
     } else {
       removeSearchFilter();
     }
@@ -36,10 +30,10 @@ export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchI
 
   useEffect(() => {
     // Reset input value when search filter is removed externally
-    if (!searchFilter && inputValue) {
+    if (!search && inputValue) {
       setInputValue("");
     }
-  }, [searchFilter]);
+  }, [search]);
 
   return (
     <SearchInput
