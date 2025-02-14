@@ -9,6 +9,7 @@ from infrahub_sdk.utils import compare_lists
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
+    OBJECT_TEMPLATE_NAME_ATTR,
     AllowOverrideType,
     BranchSupportType,
     HashableModelState,
