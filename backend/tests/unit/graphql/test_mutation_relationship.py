@@ -385,7 +385,9 @@ async def test_relationship_groups_add(
         g1.id,
         g2.id,
     )
-
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch, service=service)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -403,6 +405,18 @@ async def test_relationship_groups_add(
     group2 = await NodeManager.get_one(db=db, id=g2.id, branch=default_branch)
     members = await group2.members.get(db=db)
     assert len(members) == 2
+
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    node_event = memory_event.events[0]
+    group_event = memory_event.events[1]
+    assert isinstance(node_event, NodeMutatedEvent)
+    assert isinstance(group_event, GroupMemberAddedEvent)
+    # While we mutated the relationship for c3 we expect the group member event to reflect that of the g1
+    # group as c3 was already a member of g2 we don't see an event for that entry
+    assert group_event.node_id == g1.id
+    assert [member.id for member in group_event.members] == [c3.id]
 
 
 async def test_relationship_groups_remove(
@@ -479,6 +493,10 @@ async def test_relationship_groups_remove(
         g1.id,
         g2.id,
     )
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch, service=service)
 
     result = await graphql(
         schema=gql_params.schema,
@@ -497,6 +515,17 @@ async def test_relationship_groups_remove(
     group2 = await NodeManager.get_one(db=db, id=g2.id, branch=default_branch)
     members = await group2.members.get(db=db)
     assert len(members) == 1
+
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    node_event = memory_event.events[0]
+    group_event = memory_event.events[1]
+    assert isinstance(node_event, NodeMutatedEvent)
+    assert isinstance(group_event, GroupMemberRemovedEvent)
+    # The c3 node is not member of g1 so we only expect to see a group event for the g2 group
+    assert group_event.node_id == g2.id
+    assert [member.id for member in group_event.members] == [c3.id]
 
 
 async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
