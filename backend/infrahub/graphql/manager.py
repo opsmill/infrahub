@@ -579,7 +579,8 @@ class GraphQLSchemaManager:
         for attr in schema.local_attributes:
             attr_kind = get_attr_kind(schema, attr)
             attr_type = self.get_type(name=get_attribute_type(kind=attr_kind).get_graphql_type_name())
-            main_attrs[attr.name] = graphene.Field(attr_type, description=attr.description)
+            req = "" if attr.optional else " (required)"
+            main_attrs[attr.name] = graphene.Field(attr_type, description=f"{attr.description}{req}")
 
         graphql_object = type(schema.kind, (InfrahubObject,), main_attrs)
 
