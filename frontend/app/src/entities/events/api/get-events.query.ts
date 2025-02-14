@@ -6,16 +6,18 @@ import { getEventsFromApi } from "./get-events";
 
 export function getEventsQueryOptions({
   ids,
+  offset,
   limit,
-}: { ids?: Array<string | undefined>; limit?: number }) {
+}: { ids?: Array<string | undefined>; offset?: number; limit?: number }) {
   const currentBranchName = getCurrentBranchName();
   const timeMachineDate = store.get(datetimeAtom);
 
   return queryOptions({
-    queryKey: ["events", ids],
+    queryKey: ["events", ids, offset, limit],
     queryFn: () => {
       return getEventsFromApi({
         ids,
+        offset,
         limit,
         branchName: currentBranchName,
         atDate: timeMachineDate,
@@ -26,7 +28,8 @@ export function getEventsQueryOptions({
 
 export const useEvents = ({
   ids = [],
+  offset,
   limit,
-}: { ids?: Array<string | undefined>; limit?: number }) => {
-  return useQuery(getEventsQueryOptions({ ids, limit }));
+}: { ids?: Array<string | undefined>; offset?: number; limit?: number }) => {
+  return useQuery(getEventsQueryOptions({ ids, offset, limit }));
 };
