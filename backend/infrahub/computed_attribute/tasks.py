@@ -170,6 +170,7 @@ async def trigger_update_python_computed_attributes(
                 "object_id": node.id,
                 "computed_attribute_name": computed_attribute_name,
                 "computed_attribute_kind": computed_attribute_kind,
+                "context": context,
             },
         )
 
@@ -315,6 +316,7 @@ async def trigger_update_jinja2_computed_attributes(
                 "computed_attribute_kind": computed_attribute_kind,
                 "node_kind": computed_attribute_kind,
                 "object_id": node.id,
+                "context": context,
             },
         )
 
@@ -383,6 +385,13 @@ async def computed_attribute_setup(
                             "computed_attribute_name": computed_attribute.attribute.name,
                             "computed_attribute_kind": computed_attribute.kind,
                             "updated_fields": "{{ event.payload['fields'] | tojson }}",
+                            "context": {
+                                "__prefect_kind": "json",
+                                "value": {
+                                    "__prefect_kind": "jinja",
+                                    "template": "{{ event.payload['context'] | tojson }}",
+                                },
+                            },
                         },
                         job_variables={},
                     )
@@ -407,6 +416,7 @@ async def computed_attribute_setup(
                         "branch_name": registry.default_branch,
                         "computed_attribute_name": computed_attribute.attribute.name,
                         "computed_attribute_kind": computed_attribute.kind,
+                        "context": context,
                     },
                 )
 
@@ -448,6 +458,13 @@ async def computed_attribute_setup(
                                 "computed_attribute_name": computed_attribute.attribute.name,
                                 "computed_attribute_kind": computed_attribute.kind,
                                 "updated_fields": "{{ event.payload['fields'] | tojson }}",
+                                "context": {
+                                    "__prefect_kind": "json",
+                                    "value": {
+                                        "__prefect_kind": "jinja",
+                                        "template": "{{ event.payload['context'] | tojson }}",
+                                    },
+                                },
                             },
                             job_variables={},
                         )
@@ -474,6 +491,7 @@ async def computed_attribute_setup(
                             "branch_name": branch_name,
                             "computed_attribute_name": computed_attribute.attribute.name,
                             "computed_attribute_kind": computed_attribute.kind,
+                            "context": context,
                         },
                     )
 
@@ -565,6 +583,13 @@ async def computed_attribute_setup_python(
                             "object_id": "{{ event.resource['infrahub.node.id'] }}",
                             "computed_attribute_name": computed_attribute.computed_attribute.attribute.name,
                             "computed_attribute_kind": computed_attribute.computed_attribute.kind,
+                            "context": {
+                                "__prefect_kind": "json",
+                                "value": {
+                                    "__prefect_kind": "jinja",
+                                    "template": "{{ event.payload['context'] | tojson }}",
+                                },
+                            },
                         },
                         job_variables={},
                     )
@@ -613,6 +638,13 @@ async def computed_attribute_setup_python(
                             "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
                             "node_kind": "{{ event.resource['infrahub.node.kind'] }}",
                             "object_id": "{{ event.resource['infrahub.node.id'] }}",
+                            "context": {
+                                "__prefect_kind": "json",
+                                "value": {
+                                    "__prefect_kind": "jinja",
+                                    "template": "{{ event.payload['context'] | tojson }}",
+                                },
+                            },
                         },
                         job_variables={},
                     )
@@ -641,6 +673,7 @@ async def computed_attribute_setup_python(
                         "branch_name": branch_name,
                         "computed_attribute_name": computed_attribute.computed_attribute.attribute.name,
                         "computed_attribute_kind": computed_attribute.computed_attribute.kind,
+                        "context": context,
                     },
                 )
 

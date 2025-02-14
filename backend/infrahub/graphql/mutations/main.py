@@ -106,6 +106,7 @@ class InfrahubMutationMixin:
                 initiator_id=WORKER_IDENTITY,
                 request_id=request_id,
                 branch=graphql_context.branch,
+                context=graphql_context.get_context(),
             )
             main_event = NodeMutatedEvent(
                 kind=obj._schema.kind,

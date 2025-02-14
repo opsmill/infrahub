@@ -2669,7 +2669,7 @@ async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, re
 
 
 @pytest.fixture
-async def session_first_account(db: InfrahubDatabase, first_account) -> AccountSession:
+async def session_first_account(db: InfrahubDatabase, first_account: Node) -> AccountSession:
     session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id)
     return session
 

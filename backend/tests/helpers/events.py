@@ -14,7 +14,7 @@ async def send_events(client: PrefectClient, events: list[InfrahubEvent]) -> lis
         Event(
             id=event.meta.id,
             event=event.get_name(),
-            payload=event.get_payload(),
+            payload=event.get_event_payload(),
             related=[RelatedResource(item) for item in event.get_related()],
             resource=Resource(event.get_resource()),
         )

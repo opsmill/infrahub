@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, cast, final
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, computed_field
 
 from infrahub import __version__
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import InfrahubContext  # noqa: TC001
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.message_bus import InfrahubMessage, Meta
 from infrahub.worker import WORKER_IDENTITY
@@ -25,7 +27,7 @@ class EventMeta(BaseModel):
     initiator_id: str = Field(
         default=WORKER_IDENTITY, description="The worker identity of the initial sender of this message"
     )
-    context: list[dict] = Field(default_factory=list)
+    context: InfrahubContext = Field(..., description="The context used when originating this event")
     level: int = Field(default=0)
     has_children: bool = Field(
         default=False, description="Indicates if this event might potentially have child events under it."
@@ -81,8 +83,13 @@ class EventMeta(BaseModel):
         return related
 
     @classmethod
-    def default(cls) -> EventMeta:
-        return cls()
+    def with_dummy_context(cls, branch: Branch) -> EventMeta:
+        return cls(
+            branch=branch,
+            context=InfrahubContext.init(
+                branch=branch, account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id="")
+            ),
+        )
 
     @classmethod
     def from_parent(cls, parent: InfrahubEvent) -> EventMeta:
@@ -98,11 +105,12 @@ class EventMeta(BaseModel):
             initiator_id=parent.meta.initiator_id,
             account_id=parent.meta.account_id,
             level=parent.meta.level + 1,
+            context=parent.meta.context,
         )
 
 
 class InfrahubEvent(BaseModel):
-    meta: EventMeta = Field(default_factory=EventMeta.default)
+    meta: EventMeta = Field(..., description="Metadata for the event")
 
     def get_id(self) -> str:
         return self.meta.get_id()
@@ -126,7 +134,20 @@ class InfrahubEvent(BaseModel):
         return self.meta.get_related()
 
     def get_payload(self) -> dict[str, Any]:
+        """The purpose if this method is to allow subclasses to define their own payload.
+
+        It should not be used to get the complete payload instead .get_event_payload() should
+        be used for that as it will always contain the 'context' key regardless of changes
+        in child classes
+        """
         return {}
+
+    @final
+    def get_event_payload(self) -> dict[str, Any]:
+        """This method should be used when emitting the event to the event broker"""
+        event_payload = self.get_payload()
+        event_payload["context"] = self.meta.context.model_dump(mode="json")
+        return event_payload
 
     def get_message_meta(self) -> Meta:
         meta = Meta()

@@ -5,6 +5,8 @@ import pytest
 from graphql import ExecutionResult
 from prefect.client.orchestration import PrefectClient, get_client
 
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.constants import MutationAction
 from infrahub.core.manager import NodeManager
@@ -75,6 +77,9 @@ query MutatedNodes($id: [String]) {
 ACCOUNT1_ID = "33b15615-649e-4e9e-89b0-85e187251f1f"
 ACCOUNT2_ID = "518b434f-40bf-4b65-b700-04696535ca8e"
 
+ACCOUNT_SESSION_1 = AccountSession(authenticated=True, account_id=ACCOUNT1_ID, auth_type=AuthType.API)
+ACCOUNT_SESSION_2 = AccountSession(authenticated=True, account_id=ACCOUNT2_ID, auth_type=AuthType.API)
+
 
 @pytest.fixture
 async def branch1_id() -> uuid.UUID:
@@ -131,72 +136,100 @@ async def events_data(
             branch_name="branch1",
             branch_id=str(branch1_id),
             sync_with_git=True,
-            meta=EventMeta(branch=branch1),
+            meta=EventMeta.with_dummy_context(branch=branch1),
         ),
         "branch1_rebased": BranchRebasedEvent(
             branch_name="branch1",
             branch_id=str(branch1_id),
-            meta=EventMeta(branch=branch1),
+            meta=EventMeta.with_dummy_context(branch=branch1),
         ),
         "branch2_created": BranchCreatedEvent(
             branch_name="branch2",
             branch_id=str(branch2_id),
             sync_with_git=False,
-            meta=EventMeta(branch=branch2),
+            meta=EventMeta.with_dummy_context(branch=branch2),
         ),
         "branch2_rebased": BranchRebasedEvent(
             branch_name="branch2",
             branch_id=str(branch2_id),
-            meta=EventMeta(branch=branch2),
+            meta=EventMeta.with_dummy_context(branch=branch2),
         ),
         "branch1_mutated1": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag1.get_id(),
             action=MutationAction.CREATED,
             data=tag1.node_changelog,
-            meta=EventMeta(branch=branch1, account_id=ACCOUNT1_ID),
+            meta=EventMeta(
+                branch=branch1,
+                account_id=ACCOUNT1_ID,
+                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_1),
+            ),
         ),
         "branch1_mutated2": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag1_update.get_id(),
             action=MutationAction.UPDATED,
             data=tag1_update.node_changelog,
-            meta=EventMeta(branch=branch1, account_id=ACCOUNT1_ID),
+            meta=EventMeta(
+                branch=branch1,
+                account_id=ACCOUNT1_ID,
+                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_1),
+            ),
         ),
         "branch1_mutated3": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag2.get_id(),
             action=MutationAction.CREATED,
             data=tag2.node_changelog,
-            meta=EventMeta(branch=branch1, account_id=ACCOUNT1_ID),
+            meta=EventMeta(
+                branch=branch1,
+                account_id=ACCOUNT1_ID,
+                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_1),
+            ),
         ),
         "branch1_mutated4": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag3.get_id(),
             action=MutationAction.CREATED,
             data=tag3.node_changelog,
-            meta=EventMeta(branch=branch1, account_id=ACCOUNT2_ID),
+            meta=EventMeta(
+                branch=branch1,
+                account_id=ACCOUNT2_ID,
+                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_2),
+            ),
         ),
         "branch2_mutated1": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag4.get_id(),
             action=MutationAction.CREATED,
             data=tag4.node_changelog,
-            meta=EventMeta(branch=branch2, account_id=ACCOUNT1_ID),
+            meta=EventMeta(
+                branch=branch2,
+                account_id=ACCOUNT1_ID,
+                context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_1),
+            ),
         ),
         "branch2_mutated2": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag5.get_id(),
             action=MutationAction.CREATED,
             data=tag5.node_changelog,
-            meta=EventMeta(branch=branch2, account_id=ACCOUNT2_ID),
+            meta=EventMeta(
+                branch=branch2,
+                account_id=ACCOUNT2_ID,
+                context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_2),
+            ),
         ),
         "branch2_mutated3": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag6.get_id(),
             action=MutationAction.CREATED,
             data=tag6.node_changelog,
-            meta=EventMeta(branch=branch2, account_id=ACCOUNT2_ID),
+            meta=EventMeta(
+                branch=branch2,
+                account_id=ACCOUNT2_ID,
+                context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_2),
+            ),
         ),
     }
 
