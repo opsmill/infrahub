@@ -1,4 +1,5 @@
 import ErrorFallback from "@/shared/components/errors/error-fallback";
+import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { useGlobalEvents } from "../api/get-global-events.query";
@@ -30,6 +31,8 @@ export const GlobalEvents = () => {
         reload={() => refetch()}
       />
       <div className="flex flex-col gap-2 p-2">
+        {!activities?.length && <NoDataFound message="No activity found." />}
+
         {activities?.map((activity) => (
           <Event key={activity.id} {...activity} />
         ))}
