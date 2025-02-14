@@ -2,13 +2,13 @@ import ErrorFallback from "@/shared/components/errors/error-fallback";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { Spinner } from "@/shared/components/ui/spinner";
-import { useGlobalEvents } from "../api/get-global-events.query";
+import { useEvents } from "../api/get-events.query";
 import { INFRAHUB_EVENT } from "../utils/constants";
 import { EventType } from "./event";
 import { Event } from "./global-event";
 
 export const GlobalEvents = () => {
-  const { isLoading, data, error, refetch } = useGlobalEvents();
+  const { isLoading, data, error, refetch } = useEvents({});
 
   if (isLoading) {
     return <Spinner />;
