@@ -8,17 +8,19 @@ export function getEventsQueryOptions({
   ids,
   offset,
   limit,
-}: { ids?: Array<string | undefined>; offset?: number; limit?: number }) {
+  search,
+}: { ids?: Array<string | undefined>; offset?: number; limit?: number; search?: string }) {
   const currentBranchName = getCurrentBranchName();
   const timeMachineDate = store.get(datetimeAtom);
 
   return queryOptions({
-    queryKey: ["events", ids, offset, limit],
+    queryKey: ["events", ids, offset, limit, search],
     queryFn: () => {
       return getEventsFromApi({
         ids,
         offset,
         limit,
+        search,
         branchName: currentBranchName,
         atDate: timeMachineDate,
       });
@@ -30,6 +32,7 @@ export const useEvents = ({
   ids = [],
   offset,
   limit,
-}: { ids?: Array<string | undefined>; offset?: number; limit?: number }) => {
-  return useQuery(getEventsQueryOptions({ ids, offset, limit }));
+  search,
+}: { ids?: Array<string | undefined>; offset?: number; limit?: number; search?: string }) => {
+  return useQuery(getEventsQueryOptions({ ids, offset, limit, search }));
 };

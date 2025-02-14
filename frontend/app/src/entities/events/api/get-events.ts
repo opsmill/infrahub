@@ -2,8 +2,8 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
 
 const EVENTS_QUERY = `
-  query GET_ACTIVITIES($ids: [String], $offset: Int, $limit: Int) {
-    InfrahubEvent(related_node__ids: $ids, offset: $offset, limit: $limit) {
+  query GET_ACTIVITIES($ids: [String], $offset: Int, $limit: Int, $search: String) {
+    InfrahubEvent(related_node__ids: $ids, offset: $offset, limit: $limit, q: $search) {
       count
       edges {
         node {
@@ -38,12 +38,14 @@ export function getEventsFromApi({
   ids,
   offset,
   limit,
+  search,
   branchName,
   atDate,
 }: {
   ids?: Array<string | undefined>;
   offset?: number;
   limit?: number;
+  search?: string;
   branchName: string;
   atDate: Date | null;
 }) {
@@ -53,6 +55,7 @@ export function getEventsFromApi({
       ids,
       offset,
       limit,
+      search,
     },
     context: {
       branch: branchName,

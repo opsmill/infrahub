@@ -1,3 +1,4 @@
+import { SEARCH_ANY_FILTER } from "@/config/constants";
 import { ActiveFilterTags } from "@/entities/nodes/object/ui/filters/active-filter-tags";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
@@ -16,9 +17,10 @@ import { Event } from "./global-event";
 
 export const GlobalEvents = () => {
   const [pagination] = usePagination();
-  const { isLoading, data, error, refetch } = useEvents({ ...pagination });
-
   const [filters] = useFilters();
+  const searchFilter: string | undefined = filters.find((f) => f.name === SEARCH_ANY_FILTER)?.value;
+
+  const { isLoading, data, error, refetch } = useEvents({ ...pagination, search: searchFilter });
 
   if (error) {
     return <ErrorFallback error={error} />;
