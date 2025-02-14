@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Union
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
@@ -14,7 +14,7 @@ from infrahub.core.constants import InfrahubKind, MutationAction, RelationshipCa
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import MainSchemaTypes, NodeSchema
+from infrahub.core.schema import NodeSchema, RelationshipSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.profile_schema import ProfileSchema
 from infrahub.core.schema.template_schema import TemplateSchema
@@ -184,80 +184,93 @@ class InfrahubMutationMixin:
         return await cls.mutate_create_object(data=data, db=db, branch=branch)
 
     @classmethod
-    async def _handle_relationships(
-        cls, db: InfrahubDatabase, branch: Branch, obj: Node, template: CoreObjectTemplate, data: InputObjectType
-    ) -> None:
-        component_registry = get_component_registry()
-        node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
+    async def _get_template_relationship_peers(
+        cls, db: InfrahubDatabase, template: CoreObjectTemplate, relationship: RelationshipSchema
+    ) -> Mapping[str, Node]:
+        """For a given relationship on the template, fetch the related peers."""
+        template_relationship_manager: RelationshipManager = getattr(template, relationship.name)
+        if relationship.cardinality == RelationshipCardinality.MANY:
+            return await template_relationship_manager.get_peers(db=db)
 
-        for relationship in obj.get_schema().relationships:
-            if relationship.name in data or relationship.kind != RelationshipKind.COMPONENT:
+        peers: dict[str, Node] = {}
+        template_relationship_peer = await template_relationship_manager.get_peer(db=db)
+        if template_relationship_peer:
+            peers[template_relationship_peer.id] = template_relationship_peer
+        return peers
+
+    @classmethod
+    async def _extract_peer_data(
+        cls,
+        db: InfrahubDatabase,
+        template_peer: Node,
+        obj_peer_schema,
+        parent_obj: Node,
+        current_template: CoreObjectTemplate,
+    ) -> Mapping[str, Any]:
+        obj_peer_data: dict[str, Any] = {}
+
+        for attr in template_peer.get_schema().attribute_names:
+            if attr not in obj_peer_schema.attribute_names:
+                continue
+            obj_peer_data[attr] = {"value": getattr(template_peer, attr).value}
+
+        for rel in template_peer.get_schema().relationship_names:
+            rel_manager: RelationshipManager = getattr(template_peer, rel)
+            if (
+                rel_manager.schema.kind not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]
+                or rel_manager.schema.name not in obj_peer_schema.relationship_names
+            ):
                 continue
 
-            template_relationship_manager: RelationshipManager = getattr(template, relationship.name)
-            if relationship.cardinality == RelationshipCardinality.MANY:
-                template_relationship_peers = await template_relationship_manager.get_peers(db=db)
-            else:
-                template_relationship_peers = {}
-                if template_relationship_peer := await template_relationship_manager.get_peer(db=db):
-                    template_relationship_peers[template_relationship_peer.id] = template_relationship_peer
+            if list(await rel_manager.get_peers(db=db)) == [current_template.id]:
+                obj_peer_data[rel] = {"id": parent_obj.id}
 
+        return obj_peer_data
+
+    @classmethod
+    async def _handle_template_relationships(
+        cls,
+        db: InfrahubDatabase,
+        branch: Branch,
+        obj: Node,
+        template: CoreObjectTemplate,
+        data: InputObjectType,
+        constraint_runner: NodeConstraintRunner | None = None,
+    ) -> None:
+        if constraint_runner is None:
+            component_registry = get_component_registry()
+            constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
+
+        for relationship in obj.get_relationships(kind=RelationshipKind.COMPONENT, exclude=list(data)):
+            template_relationship_peers = await cls._get_template_relationship_peers(
+                db=db, template=template, relationship=relationship
+            )
             if not template_relationship_peers:
                 continue
 
             obj_peer_schema = relationship.get_peer_schema(db=db, branch=branch)
             for template_relationship_peer in template_relationship_peers.values():
-                obj_peer_data: dict[str, Any] = {}
-
-                for relationship_peer_attr in template_relationship_peer._attributes:
-                    if relationship_peer_attr not in obj_peer_schema.attribute_names:
-                        continue
-                    obj_peer_data[relationship_peer_attr] = {
-                        "value": getattr(template_relationship_peer, relationship_peer_attr).value
-                    }
-
-                for relationship_peer_rel in template_relationship_peer._relationships:
-                    relationship_peer_rel_value: RelationshipManager = getattr(
-                        template_relationship_peer, relationship_peer_rel
-                    )
-                    if (
-                        relationship_peer_rel_value.schema.kind
-                        not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]
-                        or relationship_peer_rel_value.schema.name not in obj_peer_schema.relationship_names
-                    ):
-                        continue
-
-                    if list(await relationship_peer_rel_value.get_peers(db=db)) == [template.id]:
-                        obj_peer_data[relationship_peer_rel] = {"id": obj.id}
-
-                obj_peer = await Node.init(schema=obj_peer_schema, db=db)
-
-                await obj_peer.new(db=db, **obj_peer_data)
-                await node_constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
-                await obj_peer.save(db=db)
-
-                await cls._handle_relationships(
-                    db=db, branch=branch, obj=obj_peer, template=template_relationship_peer, data=data
+                obj_peer_data = await cls._extract_peer_data(
+                    db=db,
+                    template_peer=template_relationship_peer,
+                    obj_peer_schema=obj_peer_schema,
+                    parent_obj=obj,
+                    current_template=template,
                 )
 
-    @classmethod
-    async def _handle_object_template(
-        cls, db: InfrahubDatabase, branch: Branch, obj: Node, data: InputObjectType
-    ) -> None:
-        object_template_field = data.get("object_template")
-        if not object_template_field:
-            return
+                obj_peer = await Node.init(schema=obj_peer_schema, db=db)
+                await obj_peer.new(db=db, **obj_peer_data)
+                await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
+                await obj_peer.save(db=db)
 
-        schema: MainSchemaTypes = cls._meta.schema
-        template: CoreObjectTemplate = await NodeManager.find_object(
-            db=db,
-            kind=schema.get_relationship(name="object_template").get_peer_schema(db=db, branch=branch),
-            branch=branch,
-            id=object_template_field.get("id"),
-            hfid=object_template_field.get("hfid"),
-        )
-
-        await cls._handle_relationships(db=db, branch=branch, obj=obj, template=template, data=data)
+                await cls._handle_template_relationships(
+                    db=db,
+                    branch=branch,
+                    constraint_runner=constraint_runner,
+                    obj=obj_peer,
+                    template=template_relationship_peer,
+                    data=data,
+                )
 
     @classmethod
     async def mutate_create(
@@ -296,14 +309,32 @@ class InfrahubMutationMixin:
                 await obj.new(db=db, **data)
                 await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
                 await obj.save(db=db)
-                await cls._handle_object_template(db=db, branch=branch, obj=obj, data=data)
+
+                object_template = await obj.get_object_template(db=db)
+                if object_template:
+                    await cls._handle_template_relationships(
+                        db=db,
+                        branch=branch,
+                        template=object_template,
+                        obj=obj,
+                        data=data,
+                    )
             else:
                 async with db.start_transaction() as dbt:
                     obj = await node_class.init(db=dbt, schema=cls._meta.schema, branch=branch)
                     await obj.new(db=dbt, **data)
                     await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
                     await obj.save(db=dbt)
-                    await cls._handle_object_template(db=dbt, branch=branch, obj=obj, data=data)
+
+                    object_template = await obj.get_object_template(db=dbt)
+                    if object_template:
+                        await cls._handle_template_relationships(
+                            db=dbt,
+                            branch=branch,
+                            template=object_template,
+                            obj=obj,
+                            data=data,
+                        )
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
 

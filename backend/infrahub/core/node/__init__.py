@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Any, Optional, Sequence, TypeVar, Union, overload
 
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
@@ -845,3 +845,20 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for relationship in self._schema.relationships:
             if relationship.kind == RelationshipKind.PARENT:
                 return relationship.name
+
+    async def get_object_template(self, db: InfrahubDatabase) -> Node | None:
+        object_template: RelationshipManager = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
+        return None if not object_template else await object_template.get_peer(db=db)
+
+    def get_relationships(
+        self, kind: RelationshipKind, exclude: Sequence[str] | None = None
+    ) -> list[RelationshipSchema]:
+        """Return relationships of a given kind with the possiblity to exclude some of them by name."""
+        if exclude is None:
+            exclude = []
+
+        return [
+            relationship
+            for relationship in self.get_schema().relationships
+            if relationship.name not in exclude and relationship.kind == kind
+        ]
