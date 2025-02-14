@@ -464,8 +464,7 @@ class DiffCoordinator:
             meaning multiple diffs (some that may have been freshly calculated) were combined
         """
         previous_diff_pair: EnrichedDiffs | EnrichedDiffsMetadata | None = None
-        updated_base_node_uuids: set[str] = set()
-        updated_branch_node_uuids: set[str] = set()
+        updated_node_uuids: set[str] = set()
         for diff_or_request in diff_or_request_list:
             if isinstance(diff_or_request, EnrichedDiffRequest):
                 if previous_diff_pair:
@@ -479,8 +478,8 @@ class DiffCoordinator:
                 calculated_diff = await self._calculate_enriched_diff(
                     diff_request=diff_or_request, is_incremental_diff=is_incremental_diff
                 )
-                updated_base_node_uuids |= calculated_diff.base_node_uuids
-                updated_branch_node_uuids |= calculated_diff.branch_node_uuids
+                updated_node_uuids |= calculated_diff.base_node_uuids
+                updated_node_uuids |= calculated_diff.branch_node_uuids
                 single_enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata = calculated_diff
 
             elif isinstance(diff_or_request, EnrichedDiffsMetadata):
@@ -496,8 +495,7 @@ class DiffCoordinator:
             previous_diff_pair = await self._combine_diffs(
                 earlier=previous_diff_pair,
                 later=single_enriched_diffs,
-                base_node_uuids=updated_base_node_uuids,
-                branch_node_uuids=updated_branch_node_uuids,
+                node_uuids=updated_node_uuids,
             )
             log.info("Diffs combined.")
 
@@ -507,8 +505,7 @@ class DiffCoordinator:
         self,
         earlier: EnrichedDiffs | EnrichedDiffsMetadata,
         later: EnrichedDiffs | EnrichedDiffsMetadata,
-        base_node_uuids: set[str],
-        branch_node_uuids: set[str],
+        node_uuids: set[str],
     ) -> EnrichedDiffs | EnrichedDiffsMetadata:
         log.info(f"Earlier diff to combine: {earlier!r}")
         log.info(f"Later diff to combine: {later!r}")
@@ -525,15 +522,11 @@ class DiffCoordinator:
         # hydrate the diffs to combine, if necessary
         if not isinstance(earlier, EnrichedDiffs):
             log.info("Hydrating earlier diff...")
-            earlier = await self.diff_repo.hydrate_diff_pair(
-                enriched_diffs_metadata=earlier, base_node_uuids=base_node_uuids, branch_node_uuids=branch_node_uuids
-            )
+            earlier = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=earlier, node_uuids=node_uuids)
             log.info("Earlier diff hydrated.")
         if not isinstance(later, EnrichedDiffs):
             log.info("Hydrating later diff...")
-            later = await self.diff_repo.hydrate_diff_pair(
-                enriched_diffs_metadata=later, base_node_uuids=base_node_uuids, branch_node_uuids=branch_node_uuids
-            )
+            later = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=later, node_uuids=node_uuids)
             log.info("Later diff hydrated.")
 
         return await self.diff_combiner.combine(earlier_diffs=earlier, later_diffs=later)

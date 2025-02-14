@@ -170,24 +170,20 @@ class DiffRepository:
     async def hydrate_diff_pair(
         self,
         enriched_diffs_metadata: EnrichedDiffsMetadata,
-        base_node_uuids: Iterable[str] | None = None,
-        branch_node_uuids: Iterable[str] | None = None,
+        node_uuids: Iterable[str] | None = None,
     ) -> EnrichedDiffs:
-        base_filters = None
-        if base_node_uuids:
-            base_filters = {"ids": list(base_node_uuids) if base_node_uuids is not None else None}
+        filters = None
+        if node_uuids:
+            filters = {"ids": list(node_uuids) if node_uuids is not None else None}
         hydrated_base_diff = await self.get_one(
             diff_branch_name=enriched_diffs_metadata.base_branch_name,
             diff_id=enriched_diffs_metadata.base_branch_diff.uuid,
-            filters=base_filters,
+            filters=filters,
         )
-        branch_filters = None
-        if branch_node_uuids:
-            branch_filters = {"ids": list(branch_node_uuids) if branch_node_uuids is not None else None}
         hydrated_branch_diff = await self.get_one(
             diff_branch_name=enriched_diffs_metadata.diff_branch_name,
             diff_id=enriched_diffs_metadata.diff_branch_diff.uuid,
-            filters=branch_filters,
+            filters=filters,
         )
         return EnrichedDiffs(
             base_branch_name=enriched_diffs_metadata.base_branch_name,
