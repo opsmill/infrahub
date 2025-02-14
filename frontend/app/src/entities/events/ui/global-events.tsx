@@ -1,11 +1,9 @@
-import { ActiveFilterTags } from "@/entities/nodes/object/ui/filters/active-filter-tags";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import ErrorFallback from "@/shared/components/errors/error-fallback";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { Pagination } from "@/shared/components/ui/pagination";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Spinner } from "@/shared/components/ui/spinner";
 import usePagination from "@/shared/hooks/usePagination";
 import useSearch from "@/shared/hooks/useSearch";
@@ -41,15 +39,7 @@ export const GlobalEvents = () => {
         <div className="flex items-center">
           <FilterSearchInput placeholder="Search an activity" />
 
-          {filters.length > 0 && (
-            <>
-              <ScrollArea scrollX>
-                <ActiveFilterTags className="mx-2" />
-              </ScrollArea>
-
-              <FilterResetButton />
-            </>
-          )}
+          {search.length > 0 && <FilterResetButton />}
         </div>
 
         <div className="flex flex-col gap-2">
