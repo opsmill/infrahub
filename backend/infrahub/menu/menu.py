@@ -176,7 +176,7 @@ default_menu = [
                 section=MenuSection.INTERNAL,
                 order_weight=3000,
             ),
-             MenuItemDefinition(
+            MenuItemDefinition(
                 namespace="Builtin",
                 name="ActivityLogs",
                 label="Activity Logs",
