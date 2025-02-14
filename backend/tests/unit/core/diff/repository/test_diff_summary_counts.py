@@ -28,9 +28,6 @@ class TestDiffSummaryCountsQuery(DiffRepositoryTestBase):
         self, diff_repository: DiffRepository, enriched_diff: EnrichedDiffRoot
     ) -> EnrichedDiffRoot:
         await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
-        await diff_repository.add_summary_counts(
-            diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
-        )
         return await diff_repository.get_one(
             diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
         )
@@ -182,7 +179,7 @@ class TestDiffSummaryCountsQuery(DiffRepositoryTestBase):
         self._set_conflicts(diff_node=updated_node, conflict_chance=0.5)
         enriched_diffs.diff_branch_diff.nodes = {updated_node}
         # set the counts again
-        await diff_repository.save(enriched_diffs=enriched_diffs)
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
         await diff_repository.add_summary_counts(
             diff_branch_name=diff_root.diff_branch_name, diff_id=diff_root.uuid, node_uuids=[node_to_update.uuid]
         )
@@ -213,8 +210,6 @@ class TestDiffSummaryCountsQuery(DiffRepositoryTestBase):
             base_branch_name=self.base_branch_name, diff_branch_name=self.diff_branch_name, nodes=diff_nodes
         )
         enriched_diffs = await self._save_single_diff(diff_repository=diff_repository, enriched_diff=diff_root)
-        # set the counts for this diff
-        await diff_repository.add_summary_counts(diff_branch_name=diff_root.diff_branch_name, diff_id=diff_root.uuid)
         # make some changes to nodes with parents
         nodes_to_update = set()
         action_choices = list(DiffAction)
@@ -237,7 +232,7 @@ class TestDiffSummaryCountsQuery(DiffRepositoryTestBase):
 
         enriched_diffs.diff_branch_diff.nodes = nodes_to_update
         # set the counts again
-        await diff_repository.save(enriched_diffs=enriched_diffs)
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
         await diff_repository.add_summary_counts(
             diff_branch_name=diff_root.diff_branch_name,
             diff_id=diff_root.uuid,

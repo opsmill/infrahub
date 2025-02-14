@@ -225,7 +225,7 @@ class DiffRepository:
             yield node_requests
 
     @retry_db_transaction(name="enriched_diff_save")
-    async def save(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata) -> None:
+    async def save(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata, do_summary_counts: bool = True) -> None:
         log.info("Updating diff metadata...")
         root_query = await EnrichedDiffRootsUpsertQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await root_query.execute(db=self.db)
@@ -240,9 +240,10 @@ class DiffRepository:
         link_query = await EnrichedNodesLinkQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await link_query.execute(db=self.db)
         log.info("Diff saved.")
-        await self.add_summary_counts(
-            diff_branch_name=enriched_diffs.diff_branch_name, diff_id=enriched_diffs.diff_branch_diff.uuid
-        )
+        if do_summary_counts:
+            await self.add_summary_counts(
+                diff_branch_name=enriched_diffs.diff_branch_name, diff_id=enriched_diffs.diff_branch_diff.uuid
+            )
 
     async def summary(
         self,

@@ -88,7 +88,7 @@ class DiffRepositoryTestBase:
         return all_nodes
 
     async def _save_single_diff(
-        self, diff_repository: DiffRepository, enriched_diff: EnrichedDiffRoot
+        self, diff_repository: DiffRepository, enriched_diff: EnrichedDiffRoot, do_summary_counts: bool = True
     ) -> EnrichedDiffs:
         base_diff = EnrichedRootFactory.build(
             base_branch_name=enriched_diff.base_branch_name,
@@ -106,5 +106,5 @@ class DiffRepositoryTestBase:
             diff_branch_diff=enriched_diff,
             base_branch_diff=base_diff,
         )
-        await diff_repository.save(enriched_diffs=enriched_diffs)
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=do_summary_counts)
         return enriched_diffs

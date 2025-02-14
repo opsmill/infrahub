@@ -74,7 +74,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             tracking_id=NameTrackingId(name="the-best-diff"),
         )
 
-        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+        )
 
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
@@ -113,7 +115,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             diff_branch_diff=enriched_branch_diff,
         )
 
-        await diff_repository.save(enriched_diffs=enriched_diffs)
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
 
         retrieved = await diff_repository.get_pairs(
             base_branch_name=self.base_branch_name,
@@ -136,7 +138,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
                 uuid=root_uuid,
                 nodes={EnrichedNodeFactory.build(relationships={})},
             )
-            await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
+            await self._save_single_diff(
+                diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+            )
 
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
@@ -166,7 +170,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
                     uuid=root_uuid,
                     nodes={EnrichedNodeFactory.build(relationships={})},
                 )
-                await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
+                await self._save_single_diff(
+                    diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+                )
 
         start_time = DateTime.create(2024, 6, 15, 18, 35, 20, tz=UTC)
         end_time = start_time.add(months=1)
@@ -200,7 +206,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             uuid=root_uuid,
             nodes={EnrichedNodeFactory.build(relationships={})},
         )
-        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+        )
 
         # both before
         retrieved = await diff_repository.get(
@@ -264,7 +272,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
                 nodes=nodes,
             )
             enriched_diffs.append(enriched_diff)
-            await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
+            await self._save_single_diff(
+                diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+            )
 
         parent_node = EnrichedNodeFactory.build()
         middle_parent_rel = EnrichedRelationshipGroupFactory.build(nodes={parent_node})
@@ -281,7 +291,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             to_time=Timestamp(self.diff_to_time),
             nodes=other_nodes | {parent_node, middle_node, leaf_node},
         )
-        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=this_diff)
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=this_diff, do_summary_counts=False)
         diff_branch_names = [e.diff_branch_name for e in enriched_diffs] + ["diff"]
 
         # get parent node
@@ -400,7 +410,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
                 to_time=Timestamp(start_time.add(minutes=(i * 30) + 29)),
                 nodes=nodes,
             )
-            await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
+            await self._save_single_diff(
+                diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+            )
             diffs_to_retrieve.append(enriched_diff)
         for i in range(5):
             nodes = self._build_nodes(num_nodes=3, num_sub_fields=2)
@@ -411,7 +423,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
                 to_time=Timestamp(start_time.add(days=3, minutes=(i * 30) + 29)),
                 nodes=nodes,
             )
-            await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
+            await self._save_single_diff(
+                diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+            )
 
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
@@ -434,7 +448,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
                 to_time=Timestamp(start_time.add(minutes=(i * 30) + 29)),
                 nodes=nodes,
             )
-            await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
+            await self._save_single_diff(
+                diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+            )
             diffs.append(enriched_diff)
 
         diff_to_delete = diffs.pop()
@@ -464,7 +480,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
                 to_time=Timestamp(end_time.add(minutes=(i * 30) + 29)),
                 nodes=nodes,
             )
-            await self._save_single_diff(diff_repository=diff_repository, enriched_diff=enriched_diff)
+            await self._save_single_diff(
+                diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+            )
         nodes = self._build_nodes(num_nodes=2, num_sub_fields=2)
         branch_tracked_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
@@ -474,7 +492,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             nodes=nodes,
             tracking_id=branch_tracking_id,
         )
-        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=branch_tracked_diff)
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=branch_tracked_diff, do_summary_counts=False
+        )
         name_tracked_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
@@ -483,7 +503,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             nodes=nodes,
             tracking_id=name_tracking_id,
         )
-        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=name_tracked_diff)
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=name_tracked_diff, do_summary_counts=False
+        )
 
         retrieved_branch_diff = await diff_repository.get_one(
             tracking_id=branch_tracking_id,
@@ -518,7 +540,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             diff_nodes.add(same_kind_diff_node)
         diff_root = EnrichedRootFactory.build(nodes=diff_nodes)
         diff_root.tracking_id = BranchTrackingId(name=diff_root.diff_branch_name)
-        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=diff_root)
+        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=diff_root, do_summary_counts=False)
 
         expected_map: dict[str, NodeDiffFieldSummary] = {}
         for node in diff_root.nodes:
@@ -550,11 +572,15 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         tracking_id_diff_1 = EnrichedRootFactory.build(base_branch_name=base_branch_name)
         tracking_id_1 = BranchTrackingId(name=tracking_id_diff_1.diff_branch_name)
         tracking_id_diff_1.tracking_id = tracking_id_1
-        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=tracking_id_diff_1)
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=tracking_id_diff_1, do_summary_counts=False
+        )
         tracking_id_diff_2 = EnrichedRootFactory.build(base_branch_name=base_branch_name)
         tracking_id_2 = BranchTrackingId(name=tracking_id_diff_2.diff_branch_name)
         tracking_id_diff_2.tracking_id = tracking_id_2
-        await self._save_single_diff(diff_repository=diff_repository, enriched_diff=tracking_id_diff_2)
+        await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=tracking_id_diff_2, do_summary_counts=False
+        )
 
         await diff_repository.mark_tracking_ids_merged(tracking_ids=[tracking_id_1])
 
@@ -610,7 +636,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             diff_branch_diff=enriched_branch_diff,
         )
 
-        await diff_repository.save(enriched_diffs=enriched_diffs)
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
 
         # validate limit
         retrieved = await diff_repository.get(
@@ -712,7 +738,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             diff_branch_diff=enriched_diff,
             base_branch_diff=base_diff,
         )
-        await diff_repository.save(enriched_diffs=enriched_diffs)
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
 
         # removed node conflict
         node_with_removes.conflict = None
@@ -797,7 +823,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         # update relationship element property conflict
         updated_element_property.conflict.diff_branch_value = "DIFF SOMETHING"
 
-        await diff_repository.save(enriched_diffs=enriched_diffs)
+        await diff_repository.save(enriched_diffs=enriched_diffs, do_summary_counts=False)
 
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
