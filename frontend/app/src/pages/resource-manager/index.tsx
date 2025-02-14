@@ -13,7 +13,7 @@ const ResourceManagerPage = () => {
   if (!resourcePoolSchema) return <LoadingIndicator className="h-full" />;
 
   return (
-    <Content.Card>
+    <Content.Card className="flex flex-col">
       <ObjectHeader schema={resourcePoolSchema} />
 
       <ObjectsTableManager schema={resourcePoolSchema} />

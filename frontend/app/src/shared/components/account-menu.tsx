@@ -9,7 +9,7 @@ import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { IModelSchema, genericsState } from "@/entities/schema/stores/schema.atom";
 import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Avatar } from "@/shared/components/display/avatar";
 import { AppVersion } from "@/shared/components/layout/app-version";
 import { Skeleton } from "@/shared/components/skeleton";
@@ -90,12 +90,13 @@ const UnauthenticatedAccountMenu = () => {
 
   return (
     <DropdownMenu>
-      <Link
-        className="flex items-center h-14 w-full rounded-lg p-2 gap-2 hover:bg-indigo-50 overflow-hidden shrink-0"
+      <LinkButton
+        variant="ghost"
+        className="p-2 h-auto w-full rounded-lg gap-2 hover:bg-indigo-50 overflow-hidden shrink-0"
         to="/login"
         state={{ from: location }}
       >
-        <div className="bg-indigo-50 rounded-full h-10 w-10 flex items-center justify-center overflow-hidden border border-white shrink-0">
+        <div className="bg-indigo-50 rounded-full size-9 flex items-center justify-center overflow-hidden border border-white shrink-0">
           <Icon icon="mdi:user" className="text-5xl relative top-1 text-neutral-600" />
         </div>
 
@@ -119,7 +120,7 @@ const UnauthenticatedAccountMenu = () => {
             <Icon icon="mdi:dots-vertical" className="text-lg" />
           </Button>
         </DropdownMenuTrigger>
-      </Link>
+      </LinkButton>
 
       <DropdownMenuContent align="end" side="right">
         <CommonMenuItems />
@@ -175,7 +176,7 @@ const AuthenticatedAccountMenu = ({
           className="h-auto w-full justify-start gap-2 hover:bg-indigo-50 rounded-lg p-2 overflow-hidden text-left shrink-0"
           data-testid="authenticated-menu-trigger"
         >
-          <Avatar name={profile?.name?.value} className="h-10 w-10 shrink-0" />
+          <Avatar name={profile?.name?.value} className="size-9 shrink-0" />
 
           <div className="group-data-[collapsed=true]/sidebar:hidden overflow-hidden">
             <div className="font-semibold text-sm truncate">{profile?.label?.value}</div>
@@ -211,8 +212,8 @@ const AuthenticatedAccountMenu = ({
 
 const AccountMenuSkeleton = () => {
   return (
-    <div className="flex items-center gap-2 p-2 shrink-0">
-      <Skeleton className="rounded-full h-10 w-10" />
+    <div className="flex items-center gap-2 p-2 shrink-0 border border-transparent">
+      <Skeleton className="rounded-full size-9" />
 
       <div className="flex-grow space-y-2 group-data-[collapsed=true]/sidebar:hidden">
         <Skeleton className="h-4 w-4/5" />

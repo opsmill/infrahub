@@ -78,7 +78,7 @@ const ObjectPageLayout = () => {
   }
 
   return (
-    <Content.Card>
+    <Content.Card className="flex flex-col">
       <ObjectHeader schema={schema} objectId={objectid} />
 
       <Outlet />

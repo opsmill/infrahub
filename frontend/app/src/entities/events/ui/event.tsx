@@ -55,7 +55,7 @@ export const Event = ({ __typename, ...props }: EventType) => {
     <div className="flex gap-2">
       <TimelineBorder />
 
-      <div className="flex flex-grow gap-3 p-2 rounded-md shadow-sm border">
+      <div className="flex flex-grow gap-3 p-2 rounded-md shadow-sm border bg-white">
         <div className="flex flex-col gap-2 grow">
           {"attributes" in props && <NodeEvent {...props} />}
 

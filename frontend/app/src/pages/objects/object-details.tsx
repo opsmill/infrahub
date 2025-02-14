@@ -1,5 +1,4 @@
-import { ARTIFACT_OBJECT, GRAPHQL_QUERY_OBJECT, TASK_OBJECT } from "@/config/constants";
-import ArtifactsDetails from "@/entities/artifacts/ui/artifact-details";
+import { GRAPHQL_QUERY_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
 import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
@@ -69,10 +68,6 @@ export const Component = () => {
 
   if (!objectid) {
     return <Navigate to={constructPath(`/objects/${objectKind}`)} />;
-  }
-
-  if (objectKind === ARTIFACT_OBJECT) {
-    return <ArtifactsDetails artifactId={objectid} />;
   }
 
   if (objectKind === GRAPHQL_QUERY_OBJECT) {
