@@ -1,8 +1,9 @@
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
-import { BRANCH_EVENTS } from "../utils/constants";
+import { BRANCH_EVENTS, GROUP_EVENTS } from "../utils/constants";
 import { EventDetails, EventType } from "./event";
 import { BranchEvent } from "./global-branch-event";
+import { GroupEvent } from "./global-group-event";
 import { NodeEvent } from "./global-node-event";
 
 export const Event = ({ __typename, ...props }: EventType) => {
@@ -13,6 +14,8 @@ export const Event = ({ __typename, ...props }: EventType) => {
           {"attributes" in props && <NodeEvent {...props} />}
 
           {BRANCH_EVENTS.includes(__typename) && <BranchEvent {...props} />}
+
+          {GROUP_EVENTS.includes(__typename) && <GroupEvent {...props} />}
         </div>
 
         <Popover>

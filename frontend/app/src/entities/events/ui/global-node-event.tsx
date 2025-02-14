@@ -41,11 +41,9 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
         <div className="flex items-center gap-2 text-sm">
           <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="text-gray-400" />
 
-          {account_id && (
-            <div className="font-semibold">
-              <DisplayLabel id={account_id} />
-            </div>
-          )}
+          <div className="font-semibold">
+            <DisplayLabel id={account_id} />
+          </div>
 
           <div className="text-gray-500">{NODE_EVENTS_MAPPING[event] ?? "-"}</div>
 

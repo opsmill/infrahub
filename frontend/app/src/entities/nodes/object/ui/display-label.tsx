@@ -4,7 +4,7 @@ import { classNames } from "@/shared/utils/common";
 import { useDisplayLabel } from "../api/get-display-label.query";
 
 type DisplayLabelProps = {
-  id: string;
+  id?: string;
   kind?: string;
   className?: string;
 };
@@ -18,7 +18,7 @@ export const DisplayLabel = ({ id, kind = NODE_OBJECT, className }: DisplayLabel
     return <Skeleton className="h-3 w-14" />;
   }
 
-  if (error || !object?.display_label) {
+  if (error || !id || !object?.display_label) {
     return <div className="italic">Name not found</div>;
   }
 
