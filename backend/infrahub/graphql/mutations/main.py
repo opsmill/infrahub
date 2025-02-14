@@ -205,12 +205,7 @@ class InfrahubMutationMixin:
             if not template_relationship_peers:
                 continue
 
-            obj_peer_schema = (
-                template_relationship_manager.schema.get_peer_schema(db=db, branch=branch)
-                .get_relationship("related_nodes")
-                .get_peer_schema(db=db, branch=branch)
-            )
-
+            obj_peer_schema = relationship.get_peer_schema(db=db, branch=branch)
             for template_relationship_peer in template_relationship_peers.values():
                 obj_peer_data: dict[str, Any] = {}
 
@@ -232,8 +227,7 @@ class InfrahubMutationMixin:
                     ):
                         continue
 
-                    v = await relationship_peer_rel_value.get_peers(db=db)
-                    if list(v) == [template.id]:
+                    if list(await relationship_peer_rel_value.get_peers(db=db)) == [template.id]:
                         obj_peer_data[relationship_peer_rel] = {"id": obj.id}
 
                 obj_peer = await Node.init(schema=obj_peer_schema, db=db)
