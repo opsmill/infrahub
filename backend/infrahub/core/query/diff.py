@@ -154,7 +154,7 @@ CALL {
     relationship_peer_side_query = """
 WITH diff_path, latest_base_path, has_more_data
 UNWIND [diff_path, latest_base_path] AS penultimate_path
-WITH penultimate_path, has_more_data
+WITH DISTINCT penultimate_path, has_more_data
 CALL {
     WITH penultimate_path
     WITH penultimate_path, nodes(penultimate_path) AS d_nodes, relationships(penultimate_path) AS d_rels
@@ -189,7 +189,7 @@ CALL {
     // ------------------------
     AND (n.uuid IS NULL OR peer.uuid IS NULL OR n.uuid <> peer.uuid)
     WITH peer_path, r_peer, r_prop
-    ORDER BY r_peer.branch = r_prop.branch DESC, r_peer.from DESC, r_peer.status ASC
+    ORDER BY r_peer.branch = r_prop.branch DESC, r_peer.status = r_prop.status DESC, r_peer.from DESC, r_peer.status ASC
     LIMIT 1
     RETURN peer_path
 }
@@ -516,6 +516,7 @@ CALL {
     ORDER BY
         type(r_prop),
         mid_r_root.branch = mid_diff_rel.branch DESC,
+        (mid_diff_rel.status = r_prop.status AND mid_diff_rel.branch = r_prop.branch) DESC,
         r_prop.from DESC,
         mid_r_root.from DESC
     WITH prop, type(r_prop) AS type_r_prop, head(collect(path)) AS latest_prop_path

@@ -53,12 +53,14 @@ class TestDiffCombiner:
             diff_branch_name=self.diff_branch,
             from_time=self.diff_from_2,
             to_time=self.diff_to_2,
+            tracking_id=self.diff_root_1.tracking_id,
         )
         self.expected_combined = EnrichedRootFactory.build(
             base_branch_name=self.base_branch,
             diff_branch_name=self.diff_branch,
             from_time=self.diff_from_1,
             to_time=self.diff_to_2,
+            tracking_id=self.diff_root_1.tracking_id,
             nodes=set(),
             num_added=0,
             num_updated=0,

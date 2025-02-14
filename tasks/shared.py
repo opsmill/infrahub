@@ -64,12 +64,13 @@ GITHUB_ACTION = os.getenv("GITHUB_ACTION"), False
 
 SERVICE_SERVER_NAME = "server"
 SERVICE_WORKER_NAME = "task-worker"
+SERVICE_TASK_MANAGER_NAME = "task-manager"
 AVAILABLE_SERVICES = [
     SERVICE_SERVER_NAME,
     SERVICE_WORKER_NAME,
     "database",
     "message-queue",
-    "task-manager",
+    SERVICE_TASK_MANAGER_NAME,
     "cache",
 ]
 

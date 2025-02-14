@@ -34,13 +34,15 @@ class DiffMerger:
         self.serializer = serializer
 
     async def merge_graph(self, at: Timestamp) -> None:
+        tracking_id = BranchTrackingId(name=self.source_branch.name)
         enriched_diffs = await self.diff_repository.get_roots_metadata(
-            diff_branch_names=[self.source_branch.name], base_branch_names=[self.destination_branch.name]
+            diff_branch_names=[self.source_branch.name],
+            base_branch_names=[self.destination_branch.name],
+            tracking_id=tracking_id,
         )
         latest_diff = None
-        tracking_id = BranchTrackingId(name=self.source_branch.name)
         for diff in enriched_diffs:
-            if latest_diff is None or (diff.tracking_id == tracking_id and diff.to_time > latest_diff.to_time):
+            if latest_diff is None or (diff.to_time > latest_diff.to_time):
                 latest_diff = diff
         if latest_diff is None:
             raise RuntimeError(f"Missing diff for branch {self.source_branch.name}")
