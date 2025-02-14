@@ -1,9 +1,11 @@
+import copy
+
 import pytest
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, InfrahubKind
+from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -14,6 +16,7 @@ from infrahub.core.utils import count_relationships, get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.constants import KIND_GRAPHQL_FIELD_NAME
+from tests.helpers.schema.device import DEVICE
 
 
 async def test_node_init(
@@ -717,43 +720,14 @@ async def test_node_create_with_multiple_relationship(db: InfrahubDatabase, defa
 async def test_node_create_with_object_template(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ):
-    schema = {
-        "name": "Device",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "generate_template": True,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "manufacturer", "kind": "Text", "optional": False},
-            {"name": "height", "kind": "Number", "default_value": 1},
-            {"name": "weight", "kind": "Number"},
-            {
-                "name": "airflow",
-                "kind": "Text",
-                "enum": [
-                    "Front to rear",
-                    "Rear to front",
-                    "Left to right",
-                    "Right to left",
-                    "Side to rear",
-                    "Rear to side",
-                    "Bottom to top",
-                    "Top to bottom",
-                    "Passive",
-                    "Mixed",
-                ],
-            },
-            {"name": "part_number", "kind": "Text"},
-        ],
-    }
-    node = NodeSchema(**schema)
+    SIMPLE_DEVICE = copy.deepcopy(DEVICE)
+    SIMPLE_DEVICE.relationships = []
 
-    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
+    registry.schema.set(name=SIMPLE_DEVICE.kind, schema=SIMPLE_DEVICE, branch=default_branch.name)
     registry.schema.process_schema_branch(name=default_branch.name)
 
-    template_schema = registry.schema.get(name="TemplateTestDevice", branch=default_branch.name)
-    node_schema = registry.schema.get(name=node.kind, branch=default_branch.name)
+    template_schema = registry.schema.get(name="TemplateTestingDevice", branch=default_branch.name)
+    node_schema = registry.schema.get(name=SIMPLE_DEVICE.kind, branch=default_branch.name)
 
     template = await Node.init(db=db, schema=template_schema)
     await template.new(
@@ -767,18 +741,24 @@ async def test_node_create_with_object_template(
     )
     await template.save(db=db)
 
-    device = await Node.init(db=db, schema=node_schema)
+    device: Node = await Node.init(db=db, schema=node_schema)
     await device.new(db=db, name="par-th2-br01", object_template={"id": template.id})
     await device.save(db=db)
 
     assert device.id
     assert device.db_id
-    assert device.name.value == "par-th2-br01"
-    assert device.manufacturer.value == "Juniper"
-    assert device.height.value == 1
-    assert device.weight.value == 8
-    assert device.airflow.value.value == "Front to rear"
-    assert device.part_number.value == "MX204"
+    assert device.node_changelog.attributes["name"].value == "par-th2-br01"
+    assert device.node_changelog.attributes["name"].value_update_status == DiffAction.ADDED
+    assert device.node_changelog.attributes["manufacturer"].value == "Juniper"
+    assert device.node_changelog.attributes["manufacturer"].value_update_status == DiffAction.ADDED
+    assert device.node_changelog.attributes["height"].value == 1
+    assert device.node_changelog.attributes["height"].value_update_status == DiffAction.ADDED
+    assert device.node_changelog.attributes["weight"].value == 8
+    assert device.node_changelog.attributes["weight"].value_update_status == DiffAction.ADDED
+    assert device.node_changelog.attributes["airflow"].value.value == "Front to rear"
+    assert device.node_changelog.attributes["airflow"].value_update_status == DiffAction.ADDED
+    assert device.node_changelog.attributes["part_number"].value == "MX204"
+    assert device.node_changelog.attributes["part_number"].value_update_status == DiffAction.ADDED
 
 
 # --------------------------------------------------------------------------
