@@ -12,6 +12,7 @@ from typing_extensions import Self
 
 from infrahub.computed_attribute.constants import VALID_KINDS as VALID_COMPUTED_ATTRIBUTE_KINDS
 from infrahub.core.constants import (
+    OBJECT_TEMPLATE_NAME_ATTR,
     RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
@@ -1841,7 +1842,7 @@ class SchemaBranch:
 
     def generate_object_template_from_node(self, node: NodeSchema) -> TemplateSchema:
         core_template_schema = self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
-        core_name_attr = core_template_schema.get_attribute(name="template_name")
+        core_name_attr = core_template_schema.get_attribute(name=OBJECT_TEMPLATE_NAME_ATTR)
         template_name_attr = AttributeSchema(
             **core_name_attr.model_dump(exclude=["id", "inherited"]),
         )

@@ -2849,8 +2849,9 @@ async def test_manage_object_templates():
 
     # Verify the generated template
     test_object_template_thing = schema_branch.get_template("TemplateTestingThing", duplicate=False)
-    for attr in THING_WITH_TEMPLATE.attributes:
-        assert test_object_template_thing.get_attribute(name=attr.name)
+    assert sorted(
+        [attr.name for attr in test_object_template_thing.attributes if attr.name != OBJECT_TEMPLATE_NAME_ATTR]
+    ) == sorted([attr.name for attr in THING_WITH_TEMPLATE.attributes if not attr.unique])
 
 
 async def test_manage_object_templates_with_component_relationships():

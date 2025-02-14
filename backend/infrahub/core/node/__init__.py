@@ -291,7 +291,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Handle attributes, copy values from template
         # Relationships handling in performed in GraphQL mutation to create nodes for relationships
         for attribute in template._attributes:
-            if attribute in list(fields) + ["template_name"]:
+            if attribute in list(fields) + [OBJECT_TEMPLATE_NAME_ATTR]:
                 continue
             fields[attribute] = {"value": getattr(template, attribute).value}
 
