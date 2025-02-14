@@ -1771,6 +1771,10 @@ class SchemaBranch:
         return f"Template{node_kind}"
 
     def manage_object_template_relationships(self) -> None:
+        """Add an `object_template` relationship to all nodes that can be created from object templates.
+
+        This relationship allows to record from which template an object has been created.
+        """
         for node_name in self.node_names + self.generic_names:
             node = self.get(name=node_name, duplicate=False)
 
