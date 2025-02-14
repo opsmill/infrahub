@@ -543,6 +543,9 @@ class SchemaBranch:
         self.process_relationships()
         self.process_human_friendly_id()
 
+    def _generate_identifier_string(self, node_kind: str, peer_kind: str) -> str:
+        return "__".join(sorted([node_kind, peer_kind])).lower()
+
     def generate_identifiers(self) -> None:
         """Generate the identifier for all relationships if it's not already present."""
         for name in self.all_names:
@@ -555,7 +558,7 @@ class SchemaBranch:
             for rel in node.relationships:
                 if rel.identifier:
                     continue
-                rel.identifier = str("__".join(sorted([node.kind, rel.peer]))).lower()
+                rel.identifier = self._generate_identifier_string(node.kind, rel.peer)
             self.set(name=name, schema=node)
 
     def validate_identifiers(self) -> None:
@@ -1838,7 +1841,7 @@ class SchemaBranch:
                     optional=relationship.kind == RelationshipKind.COMPONENT,
                     cardinality=relationship.cardinality,
                     branch=relationship.branch,
-                    identifier="__".join(sorted([template_schema.kind.lower(), rel_template_peer.lower()])),
+                    identifier=self._generate_identifier_string(template_schema.kind, rel_template_peer),
                     min_count=relationship.min_count,
                     max_count=relationship.max_count,
                 )
