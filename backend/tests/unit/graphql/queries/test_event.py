@@ -11,6 +11,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import MutationAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.events.branch_action import BranchCreatedEvent, BranchRebasedEvent
 from infrahub.events.models import EventMeta, InfrahubEvent
@@ -20,14 +21,42 @@ from tests.helpers.events import send_events
 from tests.helpers.graphql import graphql
 
 QUERY_EVENT = """
-query($branch: String, $account: String, $limit: Int, $offset: Int) {
-  InfrahubEvent(branch: $branch, account: $account, limit: $limit, offset: $offset) {
+query(
+    $branch: [String!],
+    $account: [String!],
+    $parent__ids: [String!],
+    $limit: Int,
+    $offset: Int
+    $level: Int
+    $has_children: Boolean
+    $event_type: [String!]
+    $since: DateTime
+) {
+  InfrahubEvent(
+    branches: $branch,
+    account__ids: $account,
+    limit: $limit,
+    offset: $offset,
+    level: $level
+    has_children: $has_children
+    parent__ids: $parent__ids
+    event_type: $event_type
+    since: $since
+  ) {
     count
     edges {
       node {
         id
         event
         branch
+        has_children
+        parent_id
+        level
+        occurred_at
+        related_nodes {
+            id
+            kind
+        }
       }
     }
   }
@@ -36,16 +65,16 @@ query($branch: String, $account: String, $limit: Int, $offset: Int) {
 
 
 QUERY_SIMPLE_COUNT_EVENT = """
-query($branch: String) {
-  InfrahubEvent(branch: $branch) {
+query($branch: [String!]) {
+  InfrahubEvent(branches: $branch) {
     count
   }
 }
 """
 
 QUERY_MUTATED_NODES = """
-query MutatedNodes($id: [String]) {
-  InfrahubEvent(related_node__ids: $id) {
+query MutatedNodes($id: [String!]) {
+  InfrahubEvent(primary_node__ids: $id) {
     count
     edges {
       node {
@@ -92,13 +121,20 @@ async def branch2_id() -> uuid.UUID:
 
 
 @pytest.fixture
+async def branch3_id() -> uuid.UUID:
+    return uuid.uuid4()
+
+
+@pytest.fixture
 async def events_data(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
+    car_person_schema: SchemaBranch,
     prefect_client: PrefectClient,
-    branch1_id,
-    branch2_id,
+    branch1_id: uuid.UUID,
+    branch2_id: uuid.UUID,
+    branch3_id: uuid.UUID,
 ) -> dict[str, InfrahubEvent]:
     tag1 = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
     await tag1.new(db=db, name="red", description="The red tag")
@@ -128,8 +164,21 @@ async def events_data(
     await tag6.new(db=db, name="brown", description="The brown tag")
     await tag6.save(db=db)
 
+    person1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person1.new(db=db, name="Alfred", height=160)
+    await person1.save(db=db)
+
+    person2 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person2.new(db=db, name="Sarah", height=174)
+    await person2.save(db=db)
+
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="Volvo", nbr_seats=5, is_electric=False, owner=person1.id)
+    await car.save(db=db)
+
     branch1 = Branch(uuid=branch1_id, name="branch1")
     branch2 = Branch(uuid=branch2_id, name="branch2")
+    branch3 = Branch(uuid=branch3_id, name="branch3")
 
     items: dict[str, InfrahubEvent] = {
         "branch1_created": BranchCreatedEvent(
@@ -153,6 +202,12 @@ async def events_data(
             branch_name="branch2",
             branch_id=str(branch2_id),
             meta=EventMeta.with_dummy_context(branch=branch2),
+        ),
+        "branch3_created": BranchCreatedEvent(
+            branch_name="branch3",
+            branch_id=str(branch3_id),
+            sync_with_git=True,
+            meta=EventMeta.with_dummy_context(branch=branch3),
         ),
         "branch1_mutated1": NodeMutatedEvent(
             kind="BuiltinTag",
@@ -231,9 +286,39 @@ async def events_data(
                 context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_2),
             ),
         ),
+        "branch3_mutated1": NodeMutatedEvent(
+            kind="TestPerson",
+            node_id=person1.get_id(),
+            action=MutationAction.CREATED,
+            data=person1.node_changelog,
+            meta=EventMeta(
+                branch=branch3,
+                account_id=ACCOUNT1_ID,
+                context=InfrahubContext.init(branch=branch3, account=ACCOUNT_SESSION_1),
+            ),
+        ),
+        "branch3_mutated2": NodeMutatedEvent(
+            kind="TestPerson",
+            node_id=person2.get_id(),
+            action=MutationAction.CREATED,
+            data=person2.node_changelog,
+            meta=EventMeta(
+                branch=branch3,
+                account_id=ACCOUNT1_ID,
+                context=InfrahubContext.init(branch=branch3, account=ACCOUNT_SESSION_1),
+            ),
+        ),
     }
 
-    await send_events(client=prefect_client, events=items.values())
+    items["branch3_mutated3"] = NodeMutatedEvent(
+        kind="TestCar",
+        node_id=car.get_id(),
+        action=MutationAction.CREATED,
+        data=car.node_changelog,
+        meta=EventMeta.from_parent(items["branch3_mutated1"]),
+    )
+
+    await send_events(client=prefect_client, events=list(items.values()))
     return items
 
 
@@ -395,20 +480,101 @@ async def test_event_query_prefect(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
-        variables={"account": ACCOUNT1_ID, "limit": 3, "offset": 0},
+        variables={"account": ACCOUNT1_ID, "limit": 4, "offset": 0},
     )
     assert paginated_account1_page1.errors is None
     assert paginated_account1_page1.data
-    assert paginated_account1_page1.data["InfrahubEvent"]["count"] == 4
-    assert len(paginated_account1_page1.data["InfrahubEvent"]["edges"]) == 3
+    assert paginated_account1_page1.data["InfrahubEvent"]["count"] == 7
+    assert len(paginated_account1_page1.data["InfrahubEvent"]["edges"]) == 4
 
     paginated_account1_page2 = await run_query(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
-        variables={"account": ACCOUNT1_ID, "limit": 3, "offset": 3},
+        variables={"account": ACCOUNT1_ID, "limit": 4, "offset": 4},
     )
     assert paginated_account1_page2.errors is None
     assert paginated_account1_page2.data
-    assert paginated_account1_page2.data["InfrahubEvent"]["count"] == 4
-    assert len(paginated_account1_page2.data["InfrahubEvent"]["edges"]) == 1
+    assert paginated_account1_page2.data["InfrahubEvent"]["count"] == 7
+    assert len(paginated_account1_page2.data["InfrahubEvent"]["edges"]) == 3
+
+    account1_branch1_branch3 = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"account": ACCOUNT1_ID, "branch": ["branch1", "branch3"]},
+    )
+    assert account1_branch1_branch3.errors is None
+    assert account1_branch1_branch3.data
+    assert account1_branch1_branch3.data["InfrahubEvent"]["count"] == 6
+    assert len(account1_branch1_branch3.data["InfrahubEvent"]["edges"]) == 6
+
+    branch3_level_1 = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"level": 1, "branch": ["branch3"]},
+    )
+    assert branch3_level_1.errors is None
+    assert branch3_level_1.data
+    assert branch3_level_1.data["InfrahubEvent"]["count"] == 1
+    assert len(branch3_level_1.data["InfrahubEvent"]["edges"]) == 1
+    assert len(branch3_level_1.data["InfrahubEvent"]["edges"][0]["node"]["related_nodes"]) == 1
+
+    branch3_has_children_true = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"has_children": True, "branch": ["branch3"]},
+    )
+    assert branch3_has_children_true.errors is None
+    assert branch3_has_children_true.data
+    assert branch3_has_children_true.data["InfrahubEvent"]["count"] == 1
+    assert len(branch3_has_children_true.data["InfrahubEvent"]["edges"]) == 1
+    parent_node_id = branch3_has_children_true.data["InfrahubEvent"]["edges"][0]["node"]["id"]
+
+    find_parent = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"parent__ids": [parent_node_id]},
+    )
+    assert find_parent.errors is None
+    assert find_parent.data
+    assert find_parent.data["InfrahubEvent"]["count"] == 1
+    assert len(find_parent.data["InfrahubEvent"]["edges"]) == 1
+    assert find_parent.data["InfrahubEvent"]["edges"][0]["node"]["parent_id"] == parent_node_id
+
+    created_branch1 = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"event_type": ["infrahub.node.created"]},
+    )
+    assert created_branch1.errors is None
+    assert created_branch1.data
+    assert created_branch1.data["InfrahubEvent"]["count"] == 9
+    assert [node["node"]["event"] for node in created_branch1.data["InfrahubEvent"]["edges"]] == [
+        "infrahub.node.created"
+    ] * 9
+
+    all_branch1 = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"branch": ["branch1"]},
+    )
+    assert all_branch1.errors is None
+    assert all_branch1.data
+    assert all_branch1.data["InfrahubEvent"]["count"] > 2
+    occurred_at = all_branch1.data["InfrahubEvent"]["edges"][1]["node"]["occurred_at"]
+
+    since_timestamp = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"branch": ["branch1"], "since": occurred_at},
+    )
+    assert since_timestamp.errors is None
+    assert since_timestamp.data
+    assert since_timestamp.data["InfrahubEvent"]["count"] == 2

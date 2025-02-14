@@ -40,6 +40,15 @@ class EventMeta(BaseModel):
 
     parent: UUID | None = Field(default=None, description="The UUID of the parent event if applicable")
 
+    def get_branch_id(self) -> str:
+        if self.context.branch.id:
+            return self.context.branch.id
+
+        if self.branch:
+            return str(self.branch.get_uuid())
+
+        return ""
+
     def get_id(self) -> str:
         return str(self.id)
 
@@ -50,26 +59,20 @@ class EventMeta(BaseModel):
                 "prefect.resource.id": self.get_id(),
                 "prefect.resource.role": "infrahub.event",
                 "infrahub.event.has_children": str(self.has_children).lower(),
+                "infrahub.event.level": str(self.level),
+            },
+            {
+                "prefect.resource.id": f"infrahub.account.{self.context.account.account_id}",
+                "prefect.resource.role": "infrahub.account",
+                "infrahub.resource.id": self.context.account.account_id,
+            },
+            {
+                "prefect.resource.id": f"infrahub.branch.{self.get_branch_id()}",
+                "prefect.resource.role": "infrahub.branch",
+                "infrahub.resource.id": self.get_branch_id(),
+                "infrahub.resource.label": self.context.branch.name,
             },
         ]
-        if self.account_id:
-            related.append(
-                {
-                    "prefect.resource.id": f"infrahub.account.{self.account_id}",
-                    "prefect.resource.role": "infrahub.account",
-                    "infrahub.resource.id": self.account_id,
-                }
-            )
-
-        if self.branch:
-            related.append(
-                {
-                    "prefect.resource.id": f"infrahub.branch.{self.branch.get_uuid()}",
-                    "prefect.resource.role": "infrahub.branch",
-                    "infrahub.resource.id": str(self.branch.get_uuid()),
-                    "infrahub.resource.label": self.branch.name,
-                }
-            )
 
         if self.parent:
             related.append(
