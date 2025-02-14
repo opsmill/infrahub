@@ -30,7 +30,6 @@ if TYPE_CHECKING:
     from .data_check_synchronizer import DiffDataCheckSynchronizer
     from .enricher.aggregated import AggregatedDiffEnricher
     from .enricher.labels import DiffLabelsEnricher
-    from .enricher.summary_counts import DiffSummaryCountsEnricher
     from .repository.repository import DiffRepository
 
 
@@ -66,7 +65,6 @@ class DiffCoordinator:
         diff_combiner: DiffCombiner,
         conflicts_enricher: ConflictsEnricher,
         labels_enricher: DiffLabelsEnricher,
-        summary_counts_enricher: DiffSummaryCountsEnricher,
         data_check_synchronizer: DiffDataCheckSynchronizer,
         conflict_transferer: DiffConflictTransferer,
     ) -> None:
@@ -76,7 +74,6 @@ class DiffCoordinator:
         self.diff_combiner = diff_combiner
         self.conflicts_enricher = conflicts_enricher
         self.labels_enricher = labels_enricher
-        self.summary_counts_enricher = summary_counts_enricher
         self.data_check_synchronizer = data_check_synchronizer
         self.conflict_transferer = conflict_transferer
         self.lock_registry = lock.registry
@@ -152,10 +149,6 @@ class DiffCoordinator:
                 tracking_id=tracking_id,
                 force_branch_refresh=False,
             )
-            if isinstance(enriched_diffs, EnrichedDiffs):
-                await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.base_branch_diff)
-                await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff)
-
             await self.diff_repo.save(enriched_diffs=enriched_diffs)
             await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
             log.info(f"Branch diff update complete for {base_branch.name} - {diff_branch.name}")
@@ -183,9 +176,6 @@ class DiffCoordinator:
                 tracking_id=tracking_id,
                 force_branch_refresh=False,
             )
-            if isinstance(enriched_diffs, EnrichedDiffs):
-                await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.base_branch_diff)
-                await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff)
 
             await self.diff_repo.save(enriched_diffs=enriched_diffs)
             await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
@@ -228,8 +218,6 @@ class DiffCoordinator:
                     earlier=current_branch_diff, later=enriched_diffs.diff_branch_diff
                 )
 
-            await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.base_branch_diff)
-            await self.summary_counts_enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff)
             await self.diff_repo.save(enriched_diffs=enriched_diffs)
             await self._update_core_data_checks(enriched_diff=enriched_diffs.diff_branch_diff)
             log.info(f"Diff recalculation complete for {base_branch.name} - {diff_branch.name}")

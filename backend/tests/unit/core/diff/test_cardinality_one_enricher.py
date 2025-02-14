@@ -53,7 +53,9 @@ class TestDiffCardinalityOneEnricher:
             new_value=None,
         )
         diff_rel_element_1 = EnrichedRelationshipElementFactory.build(
-            properties={has_owner_prop_1, is_related_prop_1}, peer_id=peer_id_1
+            properties={has_owner_prop_1, is_related_prop_1},
+            peer_id=peer_id_1,
+            action=DiffAction.UPDATED,
         )
         has_source_prop_2 = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.HAS_SOURCE, action=DiffAction.REMOVED, conflict=None
@@ -70,6 +72,7 @@ class TestDiffCardinalityOneEnricher:
             properties={has_source_prop_2, is_related_prop_2},
             peer_id=peer_id_2,
             changed_at=diff_rel_element_1.changed_at.add_delta(minutes=2),
+            action=DiffAction.UPDATED,
         )
 
         diff_relationship = EnrichedRelationshipGroupFactory.build(
@@ -90,7 +93,7 @@ class TestDiffCardinalityOneEnricher:
         assert len(diff_rel.relationships) == 1
         diff_rel_element = diff_rel.relationships.pop()
         assert diff_rel_element.changed_at == diff_rel_element_2.changed_at
-        assert diff_rel_element.action == diff_rel_element_2.action
+        assert diff_rel_element.action is DiffAction.UPDATED
         assert diff_rel_element.peer_id == peer_id_2
         assert diff_rel_element.peer_label == diff_rel_element_2.peer_label
         assert diff_rel_element.conflict is None
@@ -225,7 +228,7 @@ class TestDiffCardinalityOneEnricher:
             new_value=None,
         )
         diff_rel_element_1 = EnrichedRelationshipElementFactory.build(
-            properties={has_owner_prop_1, is_related_prop_1}, peer_id=peer_id
+            properties={has_owner_prop_1, is_related_prop_1}, peer_id=peer_id, action=DiffAction.UPDATED
         )
         has_source_prop_2 = EnrichedPropertyFactory.build(
             property_type=DatabaseEdgeType.HAS_SOURCE, action=DiffAction.REMOVED, conflict=None
@@ -242,6 +245,7 @@ class TestDiffCardinalityOneEnricher:
             properties={has_source_prop_2, is_related_prop_2},
             peer_id=peer_id,
             changed_at=diff_rel_element_1.changed_at.add_delta(minutes=2),
+            action=DiffAction.UPDATED,
         )
 
         diff_relationship = EnrichedRelationshipGroupFactory.build(
@@ -268,7 +272,7 @@ class TestDiffCardinalityOneEnricher:
         assert len(diff_rel.relationships) == 1
         diff_rel_element = diff_rel.relationships.pop()
         assert diff_rel_element.changed_at == diff_rel_element_2.changed_at
-        assert diff_rel_element.action == diff_rel_element_2.action
+        assert diff_rel_element.action is DiffAction.UPDATED
         assert diff_rel_element.peer_id == peer_id
         assert diff_rel_element.peer_label == diff_rel_element_2.peer_label
         assert diff_rel_element.conflict is None

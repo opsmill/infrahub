@@ -117,20 +117,20 @@ class TestDiffCoordinator:
         tracking_diff = await diff_repository.get_one(
             diff_branch_name=branch.name, tracking_id=BranchTrackingId(name=branch.name)
         )
-        assert tracking_diff == full_diff
+        assert tracking_diff.uuid == full_diff.uuid
         # test that arbitrary diff still exists
         retrieved_arbitrary_diff = await diff_repository.get_one(
             diff_branch_name=branch.name, diff_id=arbitrary_diff.uuid
         )
-        assert retrieved_arbitrary_diff == arbitrary_diff
+        assert retrieved_arbitrary_diff.uuid == arbitrary_diff.uuid
 
         # validate content of the diff
-        assert full_diff.base_branch_name == default_branch.name
-        assert full_diff.diff_branch_name == branch.name
-        assert full_diff.from_time < t0
-        assert full_diff.to_time > t3
-        assert len(full_diff.nodes) == 1
-        diff_node = full_diff.nodes.pop()
+        assert tracking_diff.base_branch_name == default_branch.name
+        assert tracking_diff.diff_branch_name == branch.name
+        assert tracking_diff.from_time < t0
+        assert tracking_diff.to_time > t3
+        assert len(tracking_diff.nodes) == 1
+        diff_node = tracking_diff.nodes.pop()
         assert diff_node.uuid == person_john_main.id
         assert diff_node.action is DiffAction.UPDATED
         assert not diff_node.relationships
