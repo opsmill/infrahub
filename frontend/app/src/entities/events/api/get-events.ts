@@ -11,6 +11,12 @@ const EVENTS_QUERY = `
           event
           branch
           occurred_at
+          level
+          account_id
+          primary_node {
+            id
+            kind
+          }
           __typename
           ... on NodeMutatedEvent {
             attributes {
