@@ -10,8 +10,7 @@ import { Divider } from "@/shared/components/ui/divider";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
-import { PanelLeftCloseIcon, PanelLeftIcon, PanelLeftOpenIcon } from "lucide-react";
+import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { Link } from "react-router";
 
 export default function Sidebar() {
