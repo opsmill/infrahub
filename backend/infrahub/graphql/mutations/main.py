@@ -9,6 +9,7 @@ from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.core import registry
+from infrahub.core.changelog.models import RelationshipChangelogGetter
 from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
@@ -100,21 +101,39 @@ class InfrahubMutationMixin:
             if graphql_context.account_session:
                 account_id = graphql_context.account_session.account_id
 
-            event = NodeMutatedEvent(
+            meta = EventMeta(
+                account_id=account_id,
+                initiator_id=WORKER_IDENTITY,
+                request_id=request_id,
+                branch=graphql_context.branch,
+            )
+            main_event = NodeMutatedEvent(
                 kind=obj._schema.kind,
                 node_id=obj.id,
                 data=obj.node_changelog,
                 action=action,
                 fields=_get_data_fields(data),
-                meta=EventMeta(
-                    account_id=account_id,
-                    initiator_id=WORKER_IDENTITY,
-                    request_id=request_id,
-                    branch=graphql_context.branch,
-                ),
+                meta=meta,
             )
+            relationship_changelogs = RelationshipChangelogGetter(db=graphql_context.db, branch=graphql_context.branch)
+            node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=obj.node_changelog)
 
-            graphql_context.background.add_task(graphql_context.active_service.event.send, event)
+            events = [main_event]
+
+            for node_changelog in node_changelogs:
+                meta = EventMeta.from_parent(parent=main_event)
+                event = NodeMutatedEvent(
+                    kind=node_changelog.node_kind,
+                    node_id=node_changelog.node_id,
+                    data=node_changelog,
+                    action=MutationAction.UPDATED,
+                    fields=node_changelog.updated_fields,
+                    meta=meta,
+                )
+                events.append(event)
+
+            for event in events:
+                graphql_context.background.add_task(graphql_context.active_service.event.send, event)
 
         return mutation
 

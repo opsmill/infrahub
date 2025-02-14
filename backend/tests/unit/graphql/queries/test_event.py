@@ -206,7 +206,7 @@ async def events_data(
 
 @pytest.fixture
 async def event_ids_inscope(events_data: dict[str, InfrahubEvent]) -> list[str]:
-    return [str(event.id) for event in events_data.values()]
+    return [str(event.meta.id) for event in events_data.values()]
 
 
 def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]):

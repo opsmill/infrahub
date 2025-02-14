@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, computed_field
 
 from infrahub import __version__
 from infrahub.core.branch import Branch  # noqa: TC001
-from infrahub.core.constants import EventLevel
 from infrahub.message_bus import InfrahubMessage, Meta
 from infrahub.worker import WORKER_IDENTITY
 
@@ -27,10 +26,30 @@ class EventMeta(BaseModel):
         default=WORKER_IDENTITY, description="The worker identity of the initial sender of this message"
     )
     context: list[dict] = Field(default_factory=list)
-    level: EventLevel = Field(default=EventLevel.ZERO)
+    level: int = Field(default=0)
+    has_children: bool = Field(
+        default=False, description="Indicates if this event might potentially have child events under it."
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        description="UUID of the event",
+    )
+
+    parent: UUID | None = Field(default=None, description="The UUID of the parent event if applicable")
+
+    def get_id(self) -> str:
+        return str(self.id)
 
     def get_related(self) -> list[dict[str, str]]:
-        related: list[dict[str, str]] = []
+        related: list[dict[str, str]] = [
+            {"prefect.resource.id": __version__, "prefect.resource.role": "infrahub.version"},
+            {
+                "prefect.resource.id": self.get_id(),
+                "prefect.resource.role": "infrahub.event",
+                "infrahub.event.has_children": str(self.has_children).lower(),
+            },
+        ]
         if self.account_id:
             related.append(
                 {
@@ -50,7 +69,14 @@ class EventMeta(BaseModel):
                 }
             )
 
-        related.append({"prefect.resource.id": __version__, "prefect.resource.role": "infrahub.version"})
+        if self.parent:
+            related.append(
+                {
+                    "prefect.resource.id": self.get_id(),
+                    "prefect.resource.role": "infrahub.child_event",
+                    "infrahub.event_parent.id": str(self.parent),
+                }
+            )
 
         return related
 
@@ -58,17 +84,28 @@ class EventMeta(BaseModel):
     def default(cls) -> EventMeta:
         return cls()
 
+    @classmethod
+    def from_parent(cls, parent: InfrahubEvent) -> EventMeta:
+        """Create the metadata from an existing event
+
+        Note that this action will modify the existing event to indicate that children might be attached to the event
+        """
+        parent.meta.has_children = True
+        return cls(
+            parent=parent.meta.id,
+            branch=parent.meta.branch,
+            request_id=parent.meta.request_id,
+            initiator_id=parent.meta.initiator_id,
+            account_id=parent.meta.account_id,
+            level=parent.meta.level + 1,
+        )
+
 
 class InfrahubEvent(BaseModel):
     meta: EventMeta = Field(default_factory=EventMeta.default)
 
-    id: UUID = Field(
-        default_factory=uuid4,
-        description="UUID of the event",
-    )
-
     def get_id(self) -> str:
-        return str(self.id)
+        return self.meta.get_id()
 
     def get_event_namespace(self) -> str:
         return EVENT_NAMESPACE
