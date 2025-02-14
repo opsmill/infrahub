@@ -11,7 +11,7 @@ import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { PanelLeftIcon } from "lucide-react";
+import { PanelLeftCloseIcon, PanelLeftIcon, PanelLeftOpenIcon } from "lucide-react";
 import { Link } from "react-router";
 
 export default function Sidebar() {
@@ -44,19 +44,19 @@ export default function Sidebar() {
           <Button
             variant="outline"
             size="icon"
-            className="absolute -right-3.5 top-3.5 transition-all"
+            className="absolute -right-3.5 top-11 transition-all hidden group-hover/sidebar:inline-flex"
             onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
           >
-            <Icon icon="mdi:chevron-right" className="text-xl text-neutral-600" />
+            <PanelLeftOpenIcon className="size-4 text-neutral-600" />
           </Button>
         ) : (
           <Button
             variant="ghost"
             size="sm"
-            className="p-1"
+            className="p-1 text-gray-400 hover:text-neutral-600"
             onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
           >
-            <PanelLeftIcon className="text-gray-400 size-5" />
+            <PanelLeftCloseIcon className="size-5" />
           </Button>
         )}
       </div>
