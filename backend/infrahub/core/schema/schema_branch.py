@@ -1898,11 +1898,11 @@ class SchemaBranch:
             ] or relationship.kind not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]:
                 continue
 
-            rel_schema = self.get(name=relationship.peer, duplicate=False)
-            if not isinstance(rel_schema, NodeSchema) or rel_schema in identified:
+            peer_schema = self.get(name=relationship.peer, duplicate=False)
+            if not isinstance(peer_schema, NodeSchema) or peer_schema in identified:
                 continue
 
-            identified |= self.identify_required_object_templates(node_schema=rel_schema, identified=identified)
+            identified |= self.identify_required_object_templates(node_schema=peer_schema, identified=identified)
 
         return identified
 
