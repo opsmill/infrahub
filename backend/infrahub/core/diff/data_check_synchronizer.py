@@ -10,7 +10,13 @@ from infrahub.proposed_change.constants import ProposedChangeState
 
 from .conflicts_extractor import DiffConflictsExtractor
 from .model.diff import DataConflict
-from .model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot, EnrichedDiffRootMetadata
+from .model.path import (
+    ConflictSelection,
+    EnrichedDiffConflict,
+    EnrichedDiffNode,
+    EnrichedDiffRoot,
+    EnrichedDiffRootMetadata,
+)
 from .repository.repository import DiffRepository
 
 
@@ -117,48 +123,54 @@ class DiffDataCheckSynchronizer:
                 retrieved_diff.nodes.add(updated_node)
                 continue
             retrieved_node.conflict = updated_node.conflict
+            self._update_diff_attr_conflicts(updated_node=updated_node, retrieved_node=retrieved_node)
+            self._update_diff_relationship_conflicts(updated_node=updated_node, retrieved_node=retrieved_node)
 
-            for updated_attr in updated_node.attributes:
+    def _update_diff_attr_conflicts(self, updated_node: EnrichedDiffNode, retrieved_node: EnrichedDiffNode) -> None:
+        for updated_attr in updated_node.attributes:
+            try:
+                retrieved_attr = retrieved_node.get_attribute(name=updated_attr.name)
+            except ValueError:
+                retrieved_attr = None
+            if not retrieved_attr:
+                retrieved_node.attributes.add(updated_attr)
+                continue
+            for updated_prop in updated_attr.properties:
                 try:
-                    retrieved_attr = retrieved_node.get_attribute(name=updated_attr.name)
+                    retrieved_prop = retrieved_attr.get_property(updated_prop.property_type)
                 except ValueError:
-                    retrieved_attr = None
-                if not retrieved_attr:
-                    retrieved_node.attributes.add(updated_attr)
+                    retrieved_prop = None
+                if not retrieved_prop:
+                    retrieved_attr.properties.add(updated_prop)
                     continue
-                for updated_prop in updated_attr.properties:
+                retrieved_prop.conflict = updated_prop.conflict
+
+    def _update_diff_relationship_conflicts(
+        self, updated_node: EnrichedDiffNode, retrieved_node: EnrichedDiffNode
+    ) -> None:
+        for updated_rel in updated_node.relationships:
+            try:
+                retrieved_rel = retrieved_node.get_relationship(name=updated_rel.name)
+            except ValueError:
+                retrieved_rel = None
+            if not retrieved_rel:
+                retrieved_node.relationships.add(updated_rel)
+                continue
+            for updated_element in updated_rel.relationships:
+                try:
+                    retrieved_element = retrieved_rel.get_element(updated_element.peer_id)
+                except ValueError:
+                    retrieved_element = None
+                if not retrieved_element:
+                    retrieved_rel.relationships.add(updated_element)
+                    continue
+                retrieved_element.conflict = updated_element.conflict
+                for updated_prop in updated_element.properties:
                     try:
-                        retrieved_prop = retrieved_attr.get_property(updated_prop.property_type)
+                        retrieved_prop = retrieved_element.get_property(updated_prop.property_type)
                     except ValueError:
                         retrieved_prop = None
                     if not retrieved_prop:
-                        retrieved_attr.properties.add(updated_prop)
+                        retrieved_element.properties.add(updated_prop)
                         continue
                     retrieved_prop.conflict = updated_prop.conflict
-
-            for updated_rel in updated_node.relationships:
-                try:
-                    retrieved_rel = retrieved_node.get_relationship(name=updated_rel.name)
-                except ValueError:
-                    retrieved_rel = None
-                if not retrieved_rel:
-                    retrieved_node.relationships.add(updated_rel)
-                    continue
-                for updated_element in updated_rel.relationships:
-                    try:
-                        retrieved_element = retrieved_rel.get_element(updated_element.peer_id)
-                    except ValueError:
-                        retrieved_element = None
-                    if not retrieved_element:
-                        retrieved_rel.relationships.add(updated_element)
-                        continue
-                    retrieved_element.conflict = updated_element.conflict
-                    for updated_prop in updated_element.properties:
-                        try:
-                            retrieved_prop = retrieved_element.get_property(updated_prop.property_type)
-                        except ValueError:
-                            retrieved_prop = None
-                        if not retrieved_prop:
-                            retrieved_element.properties.add(updated_prop)
-                            continue
-                        retrieved_prop.conflict = updated_prop.conflict

@@ -254,8 +254,13 @@ class DiffRepository:
         await link_query.execute(db=self.db)
         log.info("Diff saved.")
         if do_summary_counts:
+            node_uuids: list[str] | None = None
+            if enriched_diffs.diff_branch_diff.exists_on_database:
+                node_uuids = list(enriched_diffs.branch_node_uuids)
             await self.add_summary_counts(
-                diff_branch_name=enriched_diffs.diff_branch_name, diff_id=enriched_diffs.diff_branch_diff.uuid
+                diff_branch_name=enriched_diffs.diff_branch_name,
+                diff_id=enriched_diffs.diff_branch_diff.uuid,
+                node_uuids=node_uuids,
             )
 
     async def summary(
