@@ -25,14 +25,28 @@ To help with the development process of a schema definition file, you can levera
 
 ## Schema definition
 
-### Namespace, Node, Attributes, Relationships, and Generics
+### Node, Attributes, Relationships, and Generics
 
 The schema is composed of 4 primary types of objects: `Nodes`- that are themselves composed of `Attributes` and `Relationships` and finally `Generics`.
 
-- A `Node` in Infrahub represents a `Model`.
+- A `Node` in Infrahub represents a `Model`. Nodes are instances of a specific object within your infrastructure. Nodes have attributes that define specific values, such as text or numbers, and relationships that link them to other nodes.
 - An `Attribute` represents a direct value associated with a `Node` like a `Text`, a `Number` etc ...
 - A `Relationship` represents a link between 2 `Node`, a `Relationship` can be of cardinality `one` or `many`.
-- A `Generic` can be used to share some attributes between multiple `Node`, if you're familiar with programming concept, it's close to class inheritance.
+- A `Generic` can be used to share attributes and relationships between different types of `Node`s. They can connect multiple types of nodes to the same relationship or define attributes and relationships on a specific list of nodes. Generics are similar to class inheritance in programming languages like Java or Python.
+
+### Nodes vs. Generics
+
+Use a `Node` when you need to represent a concrete object in your infrastructure model with specific attributes and relationships.
+
+Use a `Generic` when you want to share common attributes or relationships across multiple node types. This helps to avoid redundancy and ensures consistency across your schema. For example, if you have different types of network interfaces (physical, logical) that share common attributes like name and description, you can define a `Generic` interface with these attributes and have the specific interface types inherit from it.
+
+`Generic`s can also be used to connect multiple types of Nodes to the same relationship.
+
+When deciding between a `Node` and `Generic`, remember that computed attributes can only be used on `Nodes`, not `Generics`.
+
+If a `Generic`'s properties are updated after the `Node` has been created, these updates will not be propagated to the `Node`; users must manually update `Nodes` if they want to reflect changes made to `Generic`s.
+
+### Node example
 
 In the example below, the node `Person` has 2 attributes (`name` and `description`) and the node `Car` has 1 attribute (`model`) and 1 relationship to `Person`, identified by `owner`.
 
