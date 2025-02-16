@@ -75,7 +75,7 @@ export const ObjectsTable = ({
       })}
 
       {allRows.map((row) => {
-        return row.getAllCells().map((cell) => {
+        return row.getVisibleCells().map((cell) => {
           return flexRender(cell.column.columnDef.cell, {
             ...cell.getContext(),
             key: cell.id,
