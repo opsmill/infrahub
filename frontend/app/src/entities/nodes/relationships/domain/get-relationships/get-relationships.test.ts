@@ -1,5 +1,5 @@
 import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
-import { getRelationshipsFromApi } from "@/entities/nodes/relationships/api/queries";
+import { getRelationshipsFromApi } from "@/entities/nodes/relationships/api/get-relationships-from-api";
 import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import { store } from "@/shared/stores";
 import { datetimeAtom } from "@/shared/stores/time.atom";
