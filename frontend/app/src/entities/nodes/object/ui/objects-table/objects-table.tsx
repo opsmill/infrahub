@@ -1,22 +1,20 @@
 import { getObjectsInfiniteQueryOptions } from "@/entities/nodes/object/domain/get-objects.query";
 import { ObjectTableNoResults } from "@/entities/nodes/object/ui/objects-table/object-table-no-results";
+import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/objects-table/object-table-skeleton";
 import { Permission } from "@/entities/permission/types";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import useFilters from "@/shared/hooks/useFilters";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import {
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
 import { getObjectTableColumns } from "./get-object-table-columns";
 
-export const ObjectsTable = ({
-  schema,
-  permission,
-}: { schema: IModelSchema; permission: Permission }) => {
+export interface ObjectsTableProps {
+  schema: IModelSchema;
+  permission: Permission;
+}
+
+export const ObjectsTable = ({ schema, permission }: ObjectsTableProps) => {
   const tableContainerRef = React.useRef<HTMLTableElement>(null);
   const [filters] = useFilters();
   const { isPending, data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(
@@ -47,7 +45,6 @@ export const ObjectsTable = ({
     columns,
     data: flatData,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     manualSorting: true,
   });
 
