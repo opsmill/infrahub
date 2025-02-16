@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from invoke.tasks import task
@@ -172,8 +173,16 @@ def status(
 
 
 @task(optional=["database"])
-def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = False) -> None:
+def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = False, reload: bool = False) -> None:
     """Start a local instance of Infrahub within docker compose."""
+
+    if reload:
+        # Need to use `uvicorn` instead of `gunicorn` for reload option because of this issue:
+        # https://github.com/benoitc/gunicorn/issues/2339
+        os.environ["INFRAHUB_SERVER_COMMAND"] = (
+            "uvicorn infrahub.server:app --host 0.0.0.0 --port 8000 --workers 4 --timeout-keep-alive 90 --reload"
+        )
+
     start_services(context=context, database=database, namespace=NAMESPACE, wait=wait)
 
 
