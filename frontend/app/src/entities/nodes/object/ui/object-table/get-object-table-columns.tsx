@@ -32,7 +32,11 @@ export const getObjectTableColumns = (
   return [
     {
       id: "id",
-      accessorFn: (row) => row.hfid ?? row.display_label ?? row.id,
+      accessorFn: ({ hfid, display_label, id }): string => {
+        if (schema.human_friendly_id && hfid) return hfid;
+        if (schema.display_labels && display_label) return display_label;
+        return id;
+      },
       header: () => (
         <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white")}>
           {schema.icon && <Icon icon={schema.icon} className="text-stone-400" />}

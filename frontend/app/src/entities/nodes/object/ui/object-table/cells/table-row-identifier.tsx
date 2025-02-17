@@ -11,12 +11,12 @@ export interface TableRowIdentifierProps {
 export function TableRowIdentifier({ objectKind, objectId, identifier }: TableRowIdentifierProps) {
   const display = Array.isArray(identifier) ? identifier.join(", ") : identifier;
   return (
-    <TableCell className="sticky left-0 bg-white">
+    <TableCell className="sticky left-0 bg-white px-1">
       <LinkButton
         variant="ghost"
         size="sm"
         to={getObjectDetailsUrl2(objectKind, objectId)}
-        className="underline truncate rounded-full text-custom-blue-700 hover:bg-custom-blue-700/10"
+        className="truncate px-2.5 rounded-full text-custom-blue-700 hover:underline hover:bg-custom-blue-700/10"
       >
         {display}
       </LinkButton>
