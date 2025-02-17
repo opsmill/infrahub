@@ -6,7 +6,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/entities/branches/domain/get-current-branch");
-vi.mock("@/entities/nodes/relationships/api/queries");
+vi.mock("@/entities/nodes/relationships/api/get-relationships-from-api");
 vi.mock("@/shared/stores");
 
 describe("getRelationships", () => {
