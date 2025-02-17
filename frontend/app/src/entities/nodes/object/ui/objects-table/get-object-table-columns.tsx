@@ -1,7 +1,3 @@
-import { ColumnDef } from "@tanstack/react-table";
-import * as R from "remeda";
-
-import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ActionsCell } from "@/entities/nodes/object/ui/objects-table/cells/actions-cell";
 import { KindBodyCell } from "@/entities/nodes/object/ui/objects-table/cells/generics/kind-body-cell";
 import { KindHeaderCell } from "@/entities/nodes/object/ui/objects-table/cells/generics/kind-header-cell";
@@ -13,16 +9,19 @@ import { TableRelationshipCell } from "@/entities/nodes/object/ui/objects-table/
 import { TableRowIdentifier } from "@/entities/nodes/object/ui/objects-table/cells/table-row-identifier";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
+import { NodeObject } from "@/entities/nodes/types";
 import { Permission } from "@/entities/permission/types";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { isGenericSchema } from "@/entities/schema/utils";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
+import { ColumnDef } from "@tanstack/react-table";
+import * as R from "remeda";
 
 export const getObjectTableColumns = (
   schema: IModelSchema,
   permission: Permission
-): ColumnDef<Record<string, AttributeType | RelationshipType>>[] => {
+): ColumnDef<NodeObject>[] => {
   const attributes = getAttributesVisibleInListView(schema.attributes ?? []);
   const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []);
   const sortedColumns = R.pipe(
