@@ -105,6 +105,10 @@ CALL {
         MERGE (diff_node)-[:DIFF_HAS_CONFLICT]->(diff_node_conflict:DiffConflict)
         SET diff_node_conflict = node_map.conflict_params
     )
+}
+CALL {
+    WITH root_uuid, node_map
+    MATCH (diff_root {uuid: root_uuid})-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_map.node_properties.uuid})
     // -------------------------
     // remove stale attributes for this node
     // -------------------------
