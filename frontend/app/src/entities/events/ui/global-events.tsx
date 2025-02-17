@@ -8,24 +8,16 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import usePagination from "@/shared/hooks/usePagination";
 import useSearch from "@/shared/hooks/useSearch";
 import { useEvents } from "../api/get-events.query";
-import { INFRAHUB_EVENT } from "../utils/constants";
-import { EventType } from "./event";
 import { Event } from "./global-event";
 
 export const GlobalEvents = () => {
   const [pagination] = usePagination();
   const [search] = useSearch();
-  const { isLoading, data, error, refetch } = useEvents({ ...pagination, search });
+  const { isLoading, data, count, error, refetch } = useEvents({ ...pagination, search });
 
   if (error) {
     return <ErrorFallback error={error} />;
   }
-
-  const activities: EventType[] = data?.data?.[INFRAHUB_EVENT]?.edges?.map((edge) => {
-    return edge.node;
-  });
-
-  const count = data?.data?.[INFRAHUB_EVENT]?.count;
 
   return (
     <Content.Card>
@@ -43,9 +35,9 @@ export const GlobalEvents = () => {
         </div>
 
         <div className="flex flex-col gap-2">
-          {!isLoading && !activities?.length && <NoDataFound message="No activity found." />}
+          {!isLoading && !data?.length && <NoDataFound message="No activity found." />}
 
-          {activities?.map((activity) => (
+          {data?.map((activity) => (
             <Event key={activity.id} {...activity} />
           ))}
         </div>
