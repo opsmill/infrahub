@@ -5,7 +5,7 @@ from prefect import task
 from prefect.cache_policies import NONE
 
 from infrahub import lock
-from infrahub.core.checks.models import CheckArtifactCreate
+from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.core.constants import InfrahubKind
 from infrahub.git.models import RequestArtifactGenerate
 from infrahub.services import InfrahubServices

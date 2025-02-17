@@ -7,7 +7,6 @@ from prefect.logging import get_run_logger
 from pydantic import BaseModel
 
 from infrahub import lock
-from infrahub.core.checks.models import RequestArtifactDefinitionCheck
 from infrahub.core.constants import CheckType, InfrahubKind, RepositoryInternalStatus
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.registry import registry
@@ -21,6 +20,7 @@ from infrahub.message_bus.types import (
     ProposedChangeSubscriber,
 )
 from infrahub.proposed_change.models import (
+    RequestArtifactDefinitionCheck,
     RequestProposedChangeDataIntegrity,
     RequestProposedChangeRepositoryChecks,
     RequestProposedChangeRunGenerators,

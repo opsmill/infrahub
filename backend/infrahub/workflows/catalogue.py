@@ -350,10 +350,10 @@ REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS = WorkflowDefinition(
 )
 
 REQUEST_ARTIFACT_DEFINITION_CHECK = WorkflowDefinition(
-    name="artifact-definition-check",
+    name="artifacts-generation-validation",
     type=WorkflowType.INTERNAL,
-    module="infrahub.core.checks.tasks",
-    function="check",
+    module="infrahub.proposed_change.tasks",
+    function="validate_artifacts_generation",
 )
 
 WEBHOOK_CONFIGURE = WorkflowDefinition(
@@ -373,7 +373,7 @@ WEBHOOK_TRIGGER = WorkflowDefinition(
 GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE = WorkflowDefinition(
     name="git-repository-check-artifact-create",
     type=WorkflowType.USER,
-    module="infrahub.core.checks.tasks",
+    module="infrahub.artifacts.tasks",
     function="create",
 )
 
