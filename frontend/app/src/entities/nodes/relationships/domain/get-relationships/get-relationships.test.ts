@@ -1,13 +1,8 @@
-import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
 import { getRelationshipsFromApi } from "@/entities/nodes/relationships/api/get-relationships-from-api";
 import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
-import { store } from "@/shared/stores";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/entities/branches/domain/get-current-branch");
 vi.mock("@/entities/nodes/relationships/api/get-relationships-from-api");
-vi.mock("@/shared/stores");
 
 describe("getRelationships", () => {
   beforeEach(() => {
@@ -20,8 +15,8 @@ describe("getRelationships", () => {
     const offset = 0;
     const search = "search-term";
     const parentId = "parent-123";
-    const mockBranch = "main";
-    const mockDate = "2024-01-01";
+    const branchName = "main";
+    const atDate = new Date("2024-01-01");
     const mockResponse = {
       data: {
         "test-peer": {
@@ -40,23 +35,19 @@ describe("getRelationships", () => {
       networkStatus: 7,
     };
 
-    vi.mocked(getCurrentBranchName).mockReturnValue(mockBranch);
-    vi.mocked(store.get).mockReturnValue(mockDate);
     vi.mocked(getRelationshipsFromApi).mockResolvedValue(mockResponse);
 
     // WHEN
-    const result = await getRelationships({ peer, offset, search, parentId });
+    const result = await getRelationships({ peer, offset, search, parentId, branchName, atDate });
 
     // THEN
-    expect(getCurrentBranchName).toHaveBeenCalledOnce();
-    expect(store.get).toHaveBeenCalledWith(datetimeAtom);
     expect(getRelationshipsFromApi).toHaveBeenCalledWith({
       peer,
+      branchName,
+      atDate,
       limit: 20,
       offset,
       search,
-      branchName: mockBranch,
-      atDate: mockDate,
       parent: { name: "parent", value: parentId },
     });
     expect(result).toEqual([
@@ -71,8 +62,8 @@ describe("getRelationships", () => {
   it("should fetch relationships without optional parameters", async () => {
     // GIVEN
     const peer = "test-peer";
-    const mockBranch = "main";
-    const mockDate = "2024-01-01";
+    const branchName = "main";
+    const atDate = new Date("2024-01-01");
     const mockResponse = {
       data: {
         "test-peer": {
@@ -83,21 +74,19 @@ describe("getRelationships", () => {
       networkStatus: 7,
     };
 
-    vi.mocked(getCurrentBranchName).mockReturnValue(mockBranch);
-    vi.mocked(store.get).mockReturnValue(mockDate);
     vi.mocked(getRelationshipsFromApi).mockResolvedValue(mockResponse);
 
     // WHEN
-    const result = await getRelationships({ peer });
+    const result = await getRelationships({ peer, branchName, atDate });
 
     // THEN
     expect(getRelationshipsFromApi).toHaveBeenCalledWith({
       peer,
+      branchName,
+      atDate,
       limit: 20,
       offset: undefined,
       search: undefined,
-      branchName: mockBranch,
-      atDate: mockDate,
       parent: undefined,
     });
     expect(result).toEqual([]);
