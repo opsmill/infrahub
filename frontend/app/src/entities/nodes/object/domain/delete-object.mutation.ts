@@ -27,7 +27,9 @@ export function useDeleteObject() {
       return { objectKind, objectId };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["objects"] });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes("objects"),
+      });
     },
   });
 }

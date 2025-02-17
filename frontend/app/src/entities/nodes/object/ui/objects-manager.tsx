@@ -45,7 +45,9 @@ export function ObjectsManager({ schema }: ObjectsTableManagerProps) {
         <ObjectCreateFormTrigger
           schema={schema}
           onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ["objects"] });
+            queryClient.invalidateQueries({
+              predicate: (query) => query.queryKey.includes("objects"),
+            });
           }}
           permission={permission}
           className="ml-auto"
