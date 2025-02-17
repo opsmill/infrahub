@@ -6,7 +6,7 @@ import { findSelectedBranch } from "@/entities/branches/utils";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { useSetAtom } from "jotai";
+import { useAtom } from "jotai";
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
@@ -14,7 +14,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 
 export const BranchesProvider = ({ children }: { children?: React.ReactNode }) => {
   const { data: branches, isPending, error } = useGetBranches();
-  const setCurrentBranch = useSetAtom(currentBranchAtom);
+  const [currentBranch, setCurrentBranch] = useAtom(currentBranchAtom);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const navigate = useNavigate();
 
@@ -42,7 +42,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
     setCurrentBranch(selectedBranch);
   }, [branches, branchInQueryString]);
 
-  if (isPending) {
+  if (isPending || !currentBranch) {
     return <InfrahubLoading>loading branches...</InfrahubLoading>;
   }
 
