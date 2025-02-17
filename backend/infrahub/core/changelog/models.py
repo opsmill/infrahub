@@ -229,6 +229,10 @@ class NodeChangelog(BaseModel):
         return list(self.relationships.keys()) + list(self.attributes.keys())
 
     @property
+    def has_changes(self) -> bool:
+        return len(self.updated_fields) > 0
+
+    @property
     def root_node_id(self) -> str:
         """Return the top level node_id"""
         if self.parent:
