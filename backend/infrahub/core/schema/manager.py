@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from infrahub import lock
 from infrahub.core.manager import NodeManager
@@ -19,6 +19,7 @@ from infrahub.core.schema import (
     ProfileSchema,
     RelationshipSchema,
     SchemaRoot,
+    TemplateSchema,
 )
 from infrahub.core.utils import parse_node_kind
 from infrahub.exceptions import SchemaNotFoundError
@@ -43,7 +44,7 @@ class SchemaManager(NodeManager):
     def _get_from_cache(self, key: int) -> Any:
         return self._cache[key]
 
-    def set(self, name: str, schema: Union[NodeSchema, GenericSchema], branch: Optional[str] = None) -> int:
+    def set(self, name: str, schema: NodeSchema | GenericSchema, branch: str | None = None) -> int:
         branch = branch or registry.default_branch
 
         if branch not in self._branches:
@@ -53,7 +54,7 @@ class SchemaManager(NodeManager):
 
         return hash(self._branches[branch])
 
-    def has(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
+    def has(self, name: str, branch: Branch | str | None = None) -> bool:
         try:
             self.get(name=name, branch=branch, duplicate=False)
             return True
@@ -63,7 +64,7 @@ class SchemaManager(NodeManager):
     def get(
         self,
         name: str,
-        branch: Optional[Union[Branch, str]] = None,
+        branch: Branch | str | None = None,
         duplicate: bool = True,
         check_branch_only: bool = False,
     ) -> MainSchemaTypes:
@@ -85,9 +86,7 @@ class SchemaManager(NodeManager):
         default_branch = registry.default_branch
         return self._branches[default_branch].get(name=name, duplicate=duplicate)
 
-    def get_node_schema(
-        self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
-    ) -> NodeSchema:
+    def get_node_schema(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> NodeSchema:
         schema = self.get(name=name, branch=branch, duplicate=duplicate)
         if isinstance(schema, NodeSchema):
             return schema
@@ -95,7 +94,7 @@ class SchemaManager(NodeManager):
         raise ValueError("The selected node is not of type NodeSchema")
 
     def get_profile_schema(
-        self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+        self, name: str, branch: Branch | str | None = None, duplicate: bool = True
     ) -> ProfileSchema:
         schema = self.get(name=name, branch=branch, duplicate=duplicate)
         if isinstance(schema, ProfileSchema):
@@ -103,9 +102,16 @@ class SchemaManager(NodeManager):
 
         raise ValueError("The selected node is not of type ProfileSchema")
 
-    def get_full(
-        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
-    ) -> dict[str, MainSchemaTypes]:
+    def get_template_schema(
+        self, name: str, branch: Branch | str | None = None, duplicate: bool = True
+    ) -> TemplateSchema:
+        schema = self.get(name=name, branch=branch, duplicate=duplicate)
+        if isinstance(schema, TemplateSchema):
+            return schema
+
+        raise ValueError("The selected node is not of type TemplateSchema")
+
+    def get_full(self, branch: Branch | str | None = None, duplicate: bool = True) -> dict[str, MainSchemaTypes]:
         branch = registry.get_branch_from_registry(branch=branch)
 
         branch_name = None
@@ -116,9 +122,7 @@ class SchemaManager(NodeManager):
 
         return self._branches[branch_name].get_all(duplicate=duplicate)
 
-    async def get_full_safe(
-        self, branch: Optional[Union[Branch, str]] = None
-    ) -> dict[str, Union[NodeSchema, GenericSchema]]:
+    async def get_full_safe(self, branch: Branch | str | None = None) -> dict[str, NodeSchema | GenericSchema]:
         await lock.registry.local_schema_wait()
 
         return self.get_full(branch=branch)
@@ -142,9 +146,9 @@ class SchemaManager(NodeManager):
         self,
         schema: SchemaBranch,
         db: InfrahubDatabase,
-        branch: Optional[Union[Branch, str]] = None,
-        diff: Optional[SchemaDiff] = None,
-        limit: Optional[list[str]] = None,
+        branch: Branch | str | None = None,
+        diff: SchemaDiff | None = None,
+        limit: list[str] | None = None,
         update_db: bool = True,
     ) -> None:
         branch = await registry.get_branch(branch=branch, db=db)
@@ -171,7 +175,7 @@ class SchemaManager(NodeManager):
 
         self.set_schema_branch(name=branch.name, schema=updated_schema or schema)
 
-    def register_schema(self, schema: SchemaRoot, branch: Optional[str] = None) -> SchemaBranch:
+    def register_schema(self, schema: SchemaRoot, branch: str | None = None) -> SchemaBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""
 
         branch = branch or registry.default_branch
@@ -185,7 +189,7 @@ class SchemaManager(NodeManager):
         schema: SchemaBranch,
         db: InfrahubDatabase,
         diff: SchemaDiff,
-        branch: Optional[Union[str, Branch]] = None,
+        branch: Branch | str | None = None,
     ) -> SchemaBranchDiff:
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
 
@@ -240,8 +244,8 @@ class SchemaManager(NodeManager):
         self,
         schema: SchemaBranch,
         db: InfrahubDatabase,
-        branch: Optional[Union[str, Branch]] = None,
-        limit: Optional[list[str]] = None,
+        branch: Branch | str | None = None,
+        limit: list[str] | None = None,
     ) -> None:
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
 
@@ -260,10 +264,10 @@ class SchemaManager(NodeManager):
 
     async def load_node_to_db(
         self,
-        node: Union[NodeSchema, GenericSchema],
+        node: NodeSchema | GenericSchema,
         db: InfrahubDatabase,
-        branch: Optional[Union[str, Branch]] = None,
-    ) -> Union[NodeSchema, GenericSchema]:
+        branch: Branch | str | None = None,
+    ) -> NodeSchema | GenericSchema:
         """Load a Node with its attributes and its relationships to the database."""
         branch = await registry.get_branch(branch=branch, db=db)
 
@@ -309,9 +313,9 @@ class SchemaManager(NodeManager):
     async def update_node_in_db(
         self,
         db: InfrahubDatabase,
-        node: Union[NodeSchema, GenericSchema],
-        branch: Optional[Union[str, Branch]] = None,
-    ) -> Union[NodeSchema, GenericSchema]:
+        node: NodeSchema | GenericSchema,
+        branch: Branch | str | None = None,
+    ) -> NodeSchema | GenericSchema:
         """Update a Node with its attributes and its relationships in the database."""
         branch = await registry.get_branch(branch=branch, db=db)
 
@@ -375,9 +379,9 @@ class SchemaManager(NodeManager):
         self,
         db: InfrahubDatabase,
         diff: HashableModelDiff,
-        node: Union[NodeSchema, GenericSchema],
-        branch: Optional[Union[str, Branch]] = None,
-    ) -> Union[NodeSchema, GenericSchema]:
+        node: NodeSchema | GenericSchema,
+        branch: Branch | str | None = None,
+    ) -> NodeSchema | GenericSchema:
         """Update a Node with its attributes and its relationships in the database based on a HashableModelDiff."""
         branch = await registry.get_branch(branch=branch, db=db)
 
@@ -516,8 +520,8 @@ class SchemaManager(NodeManager):
     async def delete_node_in_db(
         self,
         db: InfrahubDatabase,
-        node: Union[NodeSchema, GenericSchema],
-        branch: Optional[Union[str, Branch]] = None,
+        node: NodeSchema | GenericSchema,
+        branch: Branch | str | None = None,
     ) -> None:
         """Delete the node with its attributes and relationships."""
         branch = await registry.get_branch(branch=branch, db=db)
@@ -583,7 +587,7 @@ class SchemaManager(NodeManager):
     async def load_schema(
         self,
         db: InfrahubDatabase,
-        branch: Optional[Union[str, Branch]] = None,
+        branch: Branch | str | None = None,
     ) -> SchemaBranch:
         """Load the schema either from the cache or from the database"""
         branch = await registry.get_branch(branch=branch, db=db)
@@ -609,10 +613,10 @@ class SchemaManager(NodeManager):
     async def load_schema_from_db(
         self,
         db: InfrahubDatabase,
-        branch: Optional[Union[str, Branch]] = None,
-        schema: Optional[SchemaBranch] = None,
-        schema_diff: Optional[SchemaBranchDiff] = None,
-        at: Optional[Timestamp] = None,
+        branch: Branch | str | None = None,
+        schema: SchemaBranch | None = None,
+        schema_diff: SchemaBranchDiff | None = None,
+        at: Timestamp | None = None,
         validate_schema: bool = True,
     ) -> SchemaBranch:
         """Query all the node of type NodeSchema and GenericSchema from the database and convert them to their respective type.

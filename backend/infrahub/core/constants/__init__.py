@@ -225,6 +225,7 @@ class RelationshipKind(InfrahubStringEnum):
     GROUP = "Group"
     HIERARCHY = "Hierarchy"
     PROFILE = "Profile"
+    TEMPLATE = "Template"
 
 
 class RelationshipStatus(InfrahubStringEnum):
@@ -301,6 +302,7 @@ RESTRICTED_NAMESPACES: list[str] = [
     "Lineage",
     "Schema",
     "Profile",
+    "Template",
 ]
 
 NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
@@ -315,3 +317,6 @@ DEFAULT_KIND_MAX_LENGTH = 32
 NAMESPACE_REGEX = r"^[A-Z][a-z0-9]+$"
 NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
 DEFAULT_REL_IDENTIFIER_LENGTH = 128
+
+OBJECT_TEMPLATE_RELATIONSHIP_NAME = "object_template"
+OBJECT_TEMPLATE_NAME_ATTR = "template_name"

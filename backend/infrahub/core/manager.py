@@ -23,7 +23,14 @@ from infrahub.core.query.node import (
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship, RelationshipManager
-from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, RelationshipSchema
+from infrahub.core.schema import (
+    GenericSchema,
+    MainSchemaTypes,
+    NodeSchema,
+    ProfileSchema,
+    RelationshipSchema,
+    TemplateSchema,
+)
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
 from infrahub.graphql.models import OrderModel
@@ -127,7 +134,7 @@ class NodeManager:
     async def query(
         cls,
         db: InfrahubDatabase,
-        schema: Union[NodeSchema, GenericSchema, ProfileSchema, str],
+        schema: Union[NodeSchema, GenericSchema, ProfileSchema, TemplateSchema, str],
         filters: dict | None = ...,
         fields: dict | None = ...,
         offset: int | None = ...,
@@ -265,7 +272,7 @@ class NodeManager:
     async def count(
         cls,
         db: InfrahubDatabase,
-        schema: Union[type[SchemaProtocol], NodeSchema, GenericSchema, ProfileSchema, str],
+        schema: Union[type[SchemaProtocol], NodeSchema, GenericSchema, ProfileSchema, TemplateSchema, str],
         filters: Optional[dict] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
