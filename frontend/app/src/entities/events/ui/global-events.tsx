@@ -5,15 +5,18 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { Spinner } from "@/shared/components/ui/spinner";
+import useFilters from "@/shared/hooks/useFilters";
 import usePagination from "@/shared/hooks/usePagination";
 import useSearch from "@/shared/hooks/useSearch";
 import { useEvents } from "../api/get-events.query";
 import { INFRAHUB_EVENT } from "../utils/constants";
 import { EventType } from "./event";
 import { Event } from "./global-event";
+import { GlobalEventsFilters } from "./global-events-filters";
 
 export const GlobalEvents = () => {
   const [pagination] = usePagination();
+  const [filters] = useFilters();
   const [search] = useSearch();
   const { isLoading, data, error, refetch } = useEvents({ ...pagination, search });
 
@@ -26,6 +29,7 @@ export const GlobalEvents = () => {
   });
 
   const count = data?.data?.[INFRAHUB_EVENT]?.count;
+  console.log("filters: ", filters);
 
   return (
     <Content.Card>
@@ -36,10 +40,12 @@ export const GlobalEvents = () => {
         reload={() => refetch()}
       />
       <div className="flex flex-col flex-grow gap-2 p-2">
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
           <FilterSearchInput placeholder="Search an activity" />
 
-          {search.length > 0 && <FilterResetButton />}
+          <GlobalEventsFilters />
+
+          {(filters.length > 0 || search.length > 0) && <FilterResetButton />}
         </div>
 
         <div className="flex flex-col gap-2">
