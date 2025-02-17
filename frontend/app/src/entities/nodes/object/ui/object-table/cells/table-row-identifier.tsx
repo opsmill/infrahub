@@ -1,6 +1,6 @@
-import { TableCell } from "@/entities/nodes/object/ui/objects-table/cells/table-cell";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
+import { TableCell } from "@/shared/components/table/table-cell";
 
 export interface TableRowIdentifierProps {
   objectKind: string;

@@ -1,5 +1,5 @@
-import { TableCell } from "@/entities/nodes/object/ui/objects-table/cells/table-cell";
 import { Skeleton } from "@/shared/components/skeleton";
+import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
 import React from "react";
 

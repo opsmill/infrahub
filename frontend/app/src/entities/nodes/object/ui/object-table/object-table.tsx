@@ -1,11 +1,10 @@
 import { getObjectsInfiniteQueryOptions } from "@/entities/nodes/object/domain/get-objects.query";
-import { ObjectTableNoResults } from "@/entities/nodes/object/ui/objects-table/object-table-no-results";
-import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/objects-table/object-table-skeleton";
+import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { Permission } from "@/entities/permission/types";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { InfiniteDataTable } from "@/shared/components/table/infinite-data-table";
 import useFilters from "@/shared/hooks/useFilters";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import React from "react";
 import { getObjectTableColumns } from "./get-object-table-columns";
 
@@ -14,7 +13,7 @@ export interface ObjectsTableProps {
   permission: Permission;
 }
 
-export const ObjectsTable = ({ schema, permission }: ObjectsTableProps) => {
+export const ObjectTable = ({ schema, permission }: ObjectsTableProps) => {
   const tableContainerRef = React.useRef<HTMLTableElement>(null);
   const [filters] = useFilters();
   const { isPending, data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(
@@ -41,47 +40,14 @@ export const ObjectsTable = ({ schema, permission }: ObjectsTableProps) => {
     fetchMoreOnBottomReached(tableContainerRef.current);
   }, [fetchMoreOnBottomReached]);
 
-  const table = useReactTable({
-    columns,
-    data: flatData,
-    getCoreRowModel: getCoreRowModel(),
-    manualSorting: true,
-  });
-
-  const allHeaders = table.getFlatHeaders();
-  const allRows = table.getRowModel().rows;
-
   return (
-    <div
-      className="grid content-start overflow-auto"
+    <InfiniteDataTable
+      columns={columns}
+      data={flatData}
+      isLoading={isPending || isFetchingNextPage}
       onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
       ref={tableContainerRef}
-      style={{
-        gridTemplateColumns: `repeat(${allHeaders.length - 1}, minmax(auto, 1fr)) 2.5rem`,
-      }}
-      data-testid="object-items"
-    >
-      {allHeaders.map((header) => {
-        return flexRender(header.column.columnDef.header, {
-          ...header.getContext(),
-          key: header.id,
-        });
-      })}
-
-      {allRows.map((row) => {
-        return row.getVisibleCells().map((cell) => {
-          return flexRender(cell.column.columnDef.cell, {
-            ...cell.getContext(),
-            key: cell.id,
-          });
-        });
-      })}
-
-      {!(isPending || isFetchingNextPage) && allRows.length === 0 && (
-        <ObjectTableNoResults schema={schema} />
-      )}
-
-      {(isPending || isFetchingNextPage) && <ObjectTableSkeleton headerCount={allHeaders.length} />}
-    </div>
+      renderEmpty={() => <ObjectTableEmpty schema={schema} />}
+    />
   );
 };
