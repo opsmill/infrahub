@@ -1,7 +1,7 @@
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { MenuSectionInternal } from "@/shared/components/layout/menu-navigation/components/menu-section-internal";
 import { MenuSectionObject } from "@/shared/components/layout/menu-navigation/components/menu-section-object";
-import { useMenu } from "@/shared/components/layout/menu-navigation/domain/get-menu.query";
+import { useMenu } from "@/shared/components/menu/domain/get-menu.query";
 import { Divider } from "@/shared/components/ui/divider";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Spinner } from "@/shared/components/ui/spinner";

@@ -1,6 +1,6 @@
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import { getMenu } from "@/shared/components/layout/menu-navigation/domain/get-menu";
+import { getMenu } from "@/shared/components/menu/domain/get-menu";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 

@@ -1,7 +1,7 @@
 import { IModelSchema, genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { useMenu } from "@/shared/components/layout/menu-navigation/domain/get-menu.query";
 import { MenuItem } from "@/shared/components/layout/menu-navigation/types";
+import { useMenu } from "@/shared/components/menu/domain/get-menu.query";
 import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";
 import { SearchAnywhereItem } from "@/shared/components/search/search-anywhere-item";
 import { Badge } from "@/shared/components/ui/badge";
