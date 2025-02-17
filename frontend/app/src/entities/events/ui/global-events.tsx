@@ -1,5 +1,4 @@
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
-import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import ErrorFallback from "@/shared/components/errors/error-fallback";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
@@ -7,7 +6,6 @@ import { Pagination } from "@/shared/components/ui/pagination";
 import { Spinner } from "@/shared/components/ui/spinner";
 import useFilters from "@/shared/hooks/useFilters";
 import usePagination from "@/shared/hooks/usePagination";
-import useSearch from "@/shared/hooks/useSearch";
 import { useEvents } from "../api/get-events.query";
 import { INFRAHUB_EVENT } from "../utils/constants";
 import { EventType } from "./event";
@@ -17,8 +15,7 @@ import { GlobalEventsFilters } from "./global-events-filters";
 export const GlobalEvents = () => {
   const [pagination] = usePagination();
   const [filters] = useFilters();
-  const [search] = useSearch();
-  const { isLoading, data, error, refetch } = useEvents({ ...pagination, search });
+  const { isLoading, data, error, refetch } = useEvents({ ...pagination });
 
   if (error) {
     return <ErrorFallback error={error} />;
@@ -29,7 +26,6 @@ export const GlobalEvents = () => {
   });
 
   const count = data?.data?.[INFRAHUB_EVENT]?.count;
-  console.log("filters: ", filters);
 
   return (
     <Content.Card>
@@ -41,11 +37,9 @@ export const GlobalEvents = () => {
       />
       <div className="flex flex-col flex-grow gap-2 p-2">
         <div className="flex items-center gap-2">
-          <FilterSearchInput placeholder="Search an activity" />
-
+          <span className="ml-1 text-xs">Filters:</span>
           <GlobalEventsFilters />
-
-          {(filters.length > 0 || search.length > 0) && <FilterResetButton />}
+          {filters.length > 0 && <FilterResetButton />}
         </div>
 
         <div className="flex flex-col gap-2">
