@@ -37,9 +37,9 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
       const mainBranch = findSelectedBranch(branches, DEFAULT_BRANCH_NAME);
       setCurrentBranch(mainBranch);
       navigate("/");
+    } else {
+      setCurrentBranch(selectedBranch);
     }
-
-    setCurrentBranch(selectedBranch);
   }, [branches, branchInQueryString]);
 
   if (isPending || !currentBranch) {
