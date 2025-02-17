@@ -1,7 +1,7 @@
 import { EventNodeInterface } from "@/shared/api/graphql/generated/graphql";
-import { ReactElement } from "react";
+import { ReactNode } from "react";
 
-export const BRANCH_EVENTS_MAPPING: Record<string, (param: string) => ReactElement> = {
+export const BRANCH_EVENTS_MAPPING: Record<string, (param: string) => ReactNode> = {
   "infrahub.branch.created": (branch) => (
     <div>
       Branch <span className="text-black font-semibold">{branch}</span> created
