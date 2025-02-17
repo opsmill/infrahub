@@ -16,6 +16,10 @@ TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_BRANCH = BuiltinTriggerDefinition(
             parameters={
                 "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
                 "trigger_updates": False,
+                "context": {
+                    "__prefect_kind": "json",
+                    "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['context'] | tojson }}"},
+                },
             },
         )
     ],
@@ -31,6 +35,10 @@ TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_COMMIT = BuiltinTriggerDefinition(
             parameters={
                 "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
                 "commit": "{{ event.payload['commit'] }}",
+                "context": {
+                    "__prefect_kind": "json",
+                    "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['context'] | tojson }}"},
+                },
             },
         )
     ],
@@ -45,6 +53,10 @@ TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_CLEAN_BRANCH = BuiltinTriggerDefinition(
             name=COMPUTED_ATTRIBUTE_REMOVE_PYTHON.name,
             parameters={
                 "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                "context": {
+                    "__prefect_kind": "json",
+                    "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['context'] | tojson }}"},
+                },
             },
         )
     ],
@@ -58,12 +70,20 @@ TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA = BuiltinTriggerDefinition(
             name=COMPUTED_ATTRIBUTE_SETUP.name,
             parameters={
                 "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                "context": {
+                    "__prefect_kind": "json",
+                    "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['context'] | tojson }}"},
+                },
             },
         ),
         ExecuteWorkflow(
             name=COMPUTED_ATTRIBUTE_SETUP_PYTHON.name,
             parameters={
                 "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
+                "context": {
+                    "__prefect_kind": "json",
+                    "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['context'] | tojson }}"},
+                },
             },
         ),
     ],

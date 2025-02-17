@@ -1,6 +1,7 @@
 import pytest
 
 from infrahub import config
+from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipCardinalityOneChangelog
@@ -224,6 +225,7 @@ async def test_update_all_attributes(
     default_branch,
     all_attribute_types_schema,
     enable_broker_config: None,
+    session_first_account: AccountSession,
 ):
     obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
     await obj1.new(
@@ -263,7 +265,9 @@ async def test_update_all_attributes(
 
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch, service=service)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -273,6 +277,7 @@ async def test_update_all_attributes(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestAllAttributeTypesUpdate"]["ok"] is True
 
     objs = await NodeManager.query(db=db, schema="TestAllAttributeTypes")
@@ -412,6 +417,7 @@ async def test_update_single_relationship(
     car_accord_main: Node,
     branch: Branch,
     enable_broker_config: None,
+    session_first_account: AccountSession,
 ):
     query = """
     mutation {
@@ -435,7 +441,9 @@ async def test_update_single_relationship(
     )
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch, service=service)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,

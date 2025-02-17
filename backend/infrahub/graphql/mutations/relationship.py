@@ -171,20 +171,24 @@ class RelationshipMixin:
                 data=node_changelog,
                 action=MutationAction.UPDATED,
                 fields=[relationship_name],
-                meta=EventMeta(
-                    branch=graphql_context.branch,
-                ),
+                meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
             )
             graphql_context.background.add_task(graphql_context.active_service.event.send, event)
             if group_event_type == GroupUpdateType.MEMBERS:
                 if cls.__name__ == "RelationshipAdd":
                     group_add_event = GroupMemberAddedEvent(
-                        node_id=source.id, kind=source.get_schema().kind, members=peers
+                        node_id=source.id,
+                        kind=source.get_schema().kind,
+                        members=peers,
+                        meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
                     )
                     graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
                 elif cls.__name__ == "RelationshipRemove":
                     group_remove_event = GroupMemberRemovedEvent(
-                        node_id=source.id, kind=source.get_schema().kind, members=peers
+                        node_id=source.id,
+                        kind=source.get_schema().kind,
+                        members=peers,
+                        meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
                     )
                     graphql_context.background.add_task(graphql_context.active_service.event.send, group_remove_event)
             elif group_event_type == GroupUpdateType.MEMBER_OF_GROUPS:
@@ -200,6 +204,7 @@ class RelationshipMixin:
                                 node_id=node_id,
                                 kind=node_kind,
                                 members=[EventNode(id=source.get_id(), kind=source.get_kind())],
+                                meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
                             )
                             graphql_context.background.add_task(
                                 graphql_context.active_service.event.send, group_add_event
@@ -209,6 +214,7 @@ class RelationshipMixin:
                                 node_id=node_id,
                                 kind=node_kind,
                                 members=[EventNode(id=source.get_id(), kind=source.get_kind())],
+                                meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
                             )
                             graphql_context.background.add_task(
                                 graphql_context.active_service.event.send, group_remove_event

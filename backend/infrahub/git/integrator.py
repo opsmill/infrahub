@@ -207,7 +207,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 commit=commit,
                 repository_name=self.name,
                 repository_id=str(self.id),
-                meta=EventMeta(branch=infrahub_branch),
+                meta=EventMeta.with_dummy_context(branch=infrahub_branch),
             )
         )
 

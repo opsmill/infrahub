@@ -21,6 +21,7 @@ from ..types import DropdownFields
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.services import InfrahubServices
 
@@ -84,6 +85,7 @@ class SchemaDropdownAdd(Mutation):
             db=graphql_context.db,
             account_id=graphql_context.active_account_session.account_id,
             service=graphql_context.active_service,
+            context=graphql_context.get_context(),
         )
 
         kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
@@ -150,6 +152,7 @@ class SchemaDropdownRemove(Mutation):
             db=graphql_context.db,
             account_id=graphql_context.active_account_session.account_id,
             service=graphql_context.active_service,
+            context=graphql_context.get_context(),
         )
 
         return {"ok": True}
@@ -191,6 +194,7 @@ class SchemaEnumAdd(Mutation):
             db=graphql_context.db,
             account_id=graphql_context.active_account_session.account_id,
             service=graphql_context.active_service,
+            context=graphql_context.get_context(),
         )
 
         return {"ok": True}
@@ -242,6 +246,7 @@ class SchemaEnumRemove(Mutation):
             db=graphql_context.db,
             account_id=graphql_context.active_account_session.account_id,
             service=graphql_context.active_service,
+            context=graphql_context.get_context(),
         )
 
         return {"ok": True}
@@ -274,7 +279,12 @@ def validate_kind(kind: Union[GenericSchema, NodeSchema], attribute: str) -> Non
 
 
 async def update_registry(
-    kind: NodeSchema, db: InfrahubDatabase, branch: Branch, account_id: str, service: InfrahubServices
+    kind: NodeSchema,
+    db: InfrahubDatabase,
+    branch: Branch,
+    account_id: str,
+    service: InfrahubServices,
+    context: InfrahubContext,
 ) -> None:
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
@@ -305,7 +315,11 @@ async def update_registry(
                 branch_name=branch.name,
                 schema_hash=branch.active_schema_hash.main,
                 meta=EventMeta(
-                    initiator_id=WORKER_IDENTITY, request_id=request_id, account_id=account_id, branch=branch
+                    initiator_id=WORKER_IDENTITY,
+                    request_id=request_id,
+                    account_id=account_id,
+                    branch=branch,
+                    context=context,
                 ),
             )
             await service.event.send(event=event)
