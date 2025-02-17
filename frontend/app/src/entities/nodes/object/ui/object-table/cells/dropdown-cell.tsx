@@ -3,7 +3,7 @@ import { Dropdown } from "@/shared/api/graphql/generated/graphql";
 export function DropdownCell({ dropdown }: { dropdown: Dropdown }) {
   return (
     <span
-      className="truncate rounded-full px-2 py-1"
+      className="truncate rounded-full px-2.5 py-1"
       style={
         dropdown.color
           ? {

@@ -3,7 +3,7 @@ import { Button } from "@/shared/components/buttons/button-primitive";
 import useFilters from "@/shared/hooks/useFilters";
 import { Icon } from "@iconify-icon/react";
 
-export function ObjectTableNoResults({ schema }: { schema: IModelSchema }) {
+export function ObjectTableEmpty({ schema }: { schema: IModelSchema }) {
   const [filters, setFilters] = useFilters();
   const schemaLabel = schema.label ?? schema.name;
 

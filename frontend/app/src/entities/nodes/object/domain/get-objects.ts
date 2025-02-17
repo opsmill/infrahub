@@ -1,5 +1,6 @@
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
+import { NodeObject } from "@/entities/nodes/types";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
@@ -19,7 +20,7 @@ export type GetObjects = (args: {
   branchName: string;
   atDate?: Date | null;
   filters?: Array<Filter>;
-}) => Promise<any>;
+}) => Promise<Array<NodeObject>>;
 
 export const getObjects: GetObjects = async ({ schema, offset, branchName, atDate, filters }) => {
   const attributesVisible = getAttributesVisibleInListView(schema.attributes ?? []);

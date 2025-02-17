@@ -1,9 +1,9 @@
-import { cellHeaderStyle, cellsStyle } from "@/entities/nodes/object/ui/objects-table/cells/style";
 import { iGenericSchema } from "@/entities/schema/stores/schema.atom";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { FilterKindSelector } from "@/shared/components/filters/filter-kind-selector";
 import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
 import { FormFieldValue } from "@/shared/components/form/type";
+import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";

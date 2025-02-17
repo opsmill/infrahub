@@ -2,7 +2,7 @@ import { getObjectsInfiniteQueryOptions } from "@/entities/nodes/object/domain/g
 import { ActiveFilterTags } from "@/entities/nodes/object/ui/filters/active-filter-tags";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
-import { ObjectsTable } from "@/entities/nodes/object/ui/objects-table/objects-table";
+import { ObjectTable } from "@/entities/nodes/object/ui/object-table/object-table";
 import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { queryClient } from "@/shared/api/rest/client";
@@ -17,7 +17,7 @@ export interface ObjectsTableManagerProps {
   schema: IModelSchema;
 }
 
-export function ObjectsTableManager({ schema }: ObjectsTableManagerProps) {
+export function ObjectsManager({ schema }: ObjectsTableManagerProps) {
   const [filters] = useFilters();
   const { isPending, error, data: permission } = useGetObjectPermissions(schema.kind as string);
 
@@ -53,7 +53,7 @@ export function ObjectsTableManager({ schema }: ObjectsTableManagerProps) {
         />
       </div>
 
-      <ObjectsTable schema={schema} permission={permission} />
+      <ObjectTable schema={schema} permission={permission} />
     </>
   );
 }
