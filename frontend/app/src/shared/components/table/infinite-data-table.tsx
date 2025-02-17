@@ -6,8 +6,9 @@ export interface InfiniteDataTableProps<T> extends React.HTMLAttributes<HTMLDivE
   columns: ColumnDef<T>[];
   data: Array<T>;
   isLoading?: boolean;
-  ref?: React.Ref<HTMLDivElement>;
   renderEmpty?: () => React.ReactNode;
+  hasNextPage: boolean;
+  fetchNextPage: () => void;
 }
 
 export function InfiniteDataTable<T extends object>({
@@ -15,14 +16,34 @@ export function InfiniteDataTable<T extends object>({
   data,
   isLoading,
   renderEmpty,
+  hasNextPage,
+  fetchNextPage,
   ...props
 }: InfiniteDataTableProps<T>) {
+  const tableContainerRef = React.useRef<HTMLTableElement>(null);
   const table = useReactTable({
     columns,
     data,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
   });
+
+  const fetchMoreOnBottomReached = React.useCallback(
+    (containerRefElement?: HTMLDivElement | null) => {
+      if (containerRefElement) {
+        const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
+        //once the user has scrolled within 250px of the bottom of the table, fetch more data if we can
+        if (scrollHeight - scrollTop - clientHeight < 250 && !isLoading && hasNextPage) {
+          fetchNextPage();
+        }
+      }
+    },
+    [fetchNextPage, isLoading]
+  );
+
+  React.useEffect(() => {
+    fetchMoreOnBottomReached(tableContainerRef.current);
+  }, [fetchMoreOnBottomReached]);
 
   const allHeaders = table.getFlatHeaders();
   const allRows = table.getRowModel().rows;
@@ -37,7 +58,8 @@ export function InfiniteDataTable<T extends object>({
     <div
       className="grid content-start overflow-auto"
       style={style}
-      data-testid="object-items"
+      onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
+      ref={tableContainerRef}
       {...props}
     >
       {allHeaders.map((header) => {

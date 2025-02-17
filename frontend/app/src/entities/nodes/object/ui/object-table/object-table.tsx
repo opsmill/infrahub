@@ -14,7 +14,6 @@ export interface ObjectsTableProps {
 }
 
 export const ObjectTable = ({ schema, permission }: ObjectsTableProps) => {
-  const tableContainerRef = React.useRef<HTMLTableElement>(null);
   const [filters] = useFilters();
   const { isPending, data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(
     getObjectsInfiniteQueryOptions({ schema, filters })
@@ -23,31 +22,15 @@ export const ObjectTable = ({ schema, permission }: ObjectsTableProps) => {
   const columns = React.useMemo(() => getObjectTableColumns(schema, permission), [schema.hash]);
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
-  const fetchMoreOnBottomReached = React.useCallback(
-    (containerRefElement?: HTMLDivElement | null) => {
-      if (containerRefElement) {
-        const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
-        //once the user has scrolled within 250px of the bottom of the table, fetch more data if we can
-        if (scrollHeight - scrollTop - clientHeight < 250 && !isFetchingNextPage && hasNextPage) {
-          fetchNextPage();
-        }
-      }
-    },
-    [fetchNextPage, isFetchingNextPage, hasNextPage]
-  );
-
-  React.useEffect(() => {
-    fetchMoreOnBottomReached(tableContainerRef.current);
-  }, [fetchMoreOnBottomReached]);
-
   return (
     <InfiniteDataTable
       columns={columns}
       data={flatData}
       isLoading={isPending || isFetchingNextPage}
-      onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
-      ref={tableContainerRef}
+      hasNextPage={hasNextPage}
+      fetchNextPage={fetchNextPage}
       renderEmpty={() => <ObjectTableEmpty schema={schema} />}
+      data-testid="object-items"
     />
   );
 };
