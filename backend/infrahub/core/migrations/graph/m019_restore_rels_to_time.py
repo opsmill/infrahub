@@ -27,10 +27,10 @@ class FixBranchAwareEdgesQuery(Query):
         """
 
         query = """
-        MATCH (node:Node)-[global_edge:IS_RELATED {branch: "-global-"}]-(rel:Relationship)
-        WHERE rel.branch_support="aware"
+        MATCH (node:Node)-[global_edge:IS_RELATED {branch: $global_branch}]-(rel:Relationship)
+        WHERE rel.branch_support=$branch_aware
         MATCH (rel)-[non_global_edge:IS_RELATED]-(node_2: Node)
-        WHERE non_global_edge.branch <> "-global-"
+        WHERE non_global_edge.branch <> $global_branch
         SET global_edge.branch = non_global_edge.branch
         """
 
@@ -92,14 +92,13 @@ class DeleteNodesRelsQuery(Query):
         }
 
         // Note that if an AWARE node has been deleted on a branch and relationship is AGNOSTIC, we do not "delete" this relationship
-        // right now as this aware node might exist on another branch. Or, should we check there is no existing active is_part_of
-        // to consider this node completely deleted and so we can also deleted connected agnostic relationships?
+        // right now as this aware node might exist on another branch.
 
         // Set to time if there is an active edge on deleted edge branch
         CALL {
             WITH rel, deleted_edge
             OPTIONAL MATCH (rel)-[peer_active_edge {status: "active"}]-(peer_1)
-            WHERE (peer_active_edge.branch = deleted_edge.branch OR (rel.branch_support = "aware" AND deleted_edge.branch = "-global-"))
+            WHERE (peer_active_edge.branch = deleted_edge.branch OR (rel.branch_support <> $branch_agnostic AND deleted_edge.branch = $global_branch))
             AND peer_active_edge.to IS NULL
             SET peer_active_edge.to = deleted_edge.from
         }
@@ -121,28 +120,33 @@ class DeleteNodesRelsQuery(Query):
         WHERE NOT exists((rel)-[{status: "deleted"}]-(peer_2))
 
 
-        // If res is agnostic, we should delete on global branch (and we do not use deleted_edge_branch)
+        // If res is agnostic and delete node is agnostic, we should delete on global branch
         // If rel is aware and deleted node is aware, we should use deleted edge branch
         // If rel is aware and delete node is agnostic, we need to create deleted edges for every distinct branch on which this relationship exists.
         WITH DISTINCT
-          CASE
-            // Branch on which `deleted` edge should be created depends on rel.branch_support.
-            WHEN rel.branch_support = "agnostic" AND deleted_node_branch_support = "agnostic" THEN ["-global-"]
-            WHEN rel.branch_support = "aware" THEN
-                CASE
-                  // in following case, if no active edge on this branch exists it means this relationship node is dedicated for another branch
-                  WHEN deleted_node_branch_support = "aware" AND exists((rel)-[{status: "active", branch: deleted_edge_branch}]-(peer_2))
-                    THEN [deleted_edge_branch]
-                  WHEN deleted_node_branch_support = "agnostic"
-                    THEN COLLECT {
-                            WITH rel
-                            MATCH (rel)-[active_edge {status: "active"}]-(peer_2)
-                            RETURN DISTINCT active_edge.branch
-                         }
-                  ELSE []  // deleted_node.branch_support = -local-
+            CASE
+                // Branch on which `deleted` edge should be created depends on rel.branch_support.
+                WHEN rel.branch_support = $branch_agnostic
+                THEN CASE
+                    WHEN deleted_node_branch_support = $branch_agnostic THEN [$global_branch]
+                    ELSE []
                 END
-            ELSE []  // rel.branch_support = -local-
-          END AS branches,
+                ELSE
+                CASE
+                    WHEN deleted_node_branch_support = $branch_agnostic
+                    THEN COLLECT {
+                        WITH rel
+                        MATCH (rel)-[active_edge {status: "active"}]-(peer_2)
+                        RETURN DISTINCT active_edge.branch
+                    }
+                    ELSE
+                    CASE
+                        // if no active edge on this branch exists it means this relationship node is dedicated for another branch
+                        WHEN exists((rel)-[{status: "active", branch: deleted_edge_branch}]-(peer_2)) THEN [deleted_edge_branch]
+                        ELSE []
+                    END
+                END
+            END AS branches,
           branch_level,
           deleted_time,
           peer_2,
@@ -230,8 +234,8 @@ class Migration019(GraphMigration):
     Fix corrupted state introduced by Migration012 when duplicating a CoreAccount (branch Aware)
     being part of a CoreStandardGroup (branch Agnostic). Database is corrupted at multiple points:
     - Old CoreAccount node <> group_member node `active` edge has no `to` time (possibly because of #5590).
-    - Old CoreAccount node <> group_member node `deleted` edge is on `"-global-"` branch instead of `main`.
-    - New CoreAccount node <> group_member node `active` edge is on `"-global-"` branch instead of `main`.
+    - Old CoreAccount node <> group_member node `deleted` edge is on `$global_branch` branch instead of `main`.
+    - New CoreAccount node <> group_member node `active` edge is on `$global_branch` branch instead of `main`.
 
     Also, users having deleted corresponding CoreStandardGroup will also have the following data corruption,
     as deletion did not happen correctly due to above issues:
