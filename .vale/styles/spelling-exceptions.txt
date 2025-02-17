@@ -51,6 +51,7 @@ graphene
 graphiql
 graphql
 greymatter
+healthcheck
 hfid
 hfids
 hostname
@@ -95,6 +96,7 @@ order_weight
 openconfig
 opentelemetry
 order_by
+Postgress
 Prefetch
 profile_name
 pseudocode

@@ -384,6 +384,7 @@ async def load_schema(
             request_id=request_id,
             account_id=account_session.account_id,
             branch=branch,
+            context=context,
         ),
     )
     await service.event.send(event=event)

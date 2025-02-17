@@ -7,7 +7,6 @@ from prefect.events.schemas.events import Event as PrefectEventModel
 from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field, TypeAdapter
 
-from infrahub.core.constants import EventLevel
 from infrahub.log import get_logger
 from infrahub.utils import get_nested_dict
 
@@ -33,9 +32,19 @@ class PrefectEventData(PrefectEventModel):
             level = resource.get("infrahub.event.level")
             if level is None:
                 continue
-            return EventLevel(level).to_int()
+            try:
+                return int(level)
+            except ValueError:
+                return 0
 
         return 0
+
+    def get_parent(self) -> str | None:
+        for resource in self.related:
+            if resource.get("prefect.resource.role") != "infrahub.child_event":
+                continue
+            return resource.get("infrahub.event_parent.id")
+        return None
 
     def get_primary_node(self) -> dict[str, str] | None:
         node_id = self.resource.get("infrahub.node.id")
@@ -51,6 +60,15 @@ class PrefectEventData(PrefectEventModel):
                 continue
             return resource.get("infrahub.resource.id")
         return None
+
+    def has_children(self) -> bool:
+        for resource in self.related:
+            if resource.get("prefect.resource.role") != "infrahub.event":
+                continue
+            if resource.get("infrahub.event.has_children") == "true":
+                return True
+            return False
+        return False
 
     def _return_node_mutation(self) -> dict[str, Any]:
         attributes = []
@@ -89,9 +107,11 @@ class PrefectEventData(PrefectEventModel):
             "branch": self.get_branch(),
             "account_id": self.get_account_id(),
             "occurred_at": self.occurred.to_iso8601_string(),
+            "has_children": self.has_children(),
             "payload": self.payload,
             "level": self.get_level(),
             "primary_node": self.get_primary_node(),
+            "parent_id": self.get_parent(),
         }
         response.update(self._return_event_specifics())
         return response

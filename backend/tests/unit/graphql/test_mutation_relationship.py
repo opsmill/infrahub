@@ -1,5 +1,6 @@
 from infrahub_sdk.uuidt import UUIDT
 
+from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -317,6 +318,7 @@ async def test_relationship_groups_add(
     default_branch: Branch,
     car_person_generics_data,
     enable_broker_config: None,
+    session_first_account: AccountSession,
 ):
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
@@ -345,7 +347,9 @@ async def test_relationship_groups_add(
     )
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch, service=service)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -387,7 +391,9 @@ async def test_relationship_groups_add(
     )
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch, service=service)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -424,6 +430,7 @@ async def test_relationship_groups_remove(
     default_branch: Branch,
     car_person_generics_data,
     enable_broker_config: None,
+    session_first_account: AccountSession,
 ):
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
@@ -454,7 +461,9 @@ async def test_relationship_groups_remove(
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch, service=service)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -496,7 +505,9 @@ async def test_relationship_groups_remove(
     memory_event = MemoryInfrahubEvent()
     service = await InfrahubServices.new(event=memory_event)
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch, service=service)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+    )
 
     result = await graphql(
         schema=gql_params.schema,

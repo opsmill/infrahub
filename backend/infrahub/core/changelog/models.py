@@ -9,9 +9,11 @@ from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinal
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
+    from infrahub.core.branch import Branch
     from infrahub.core.manager import RelationshipSchema
     from infrahub.core.query.relationship import RelationshipPeerData
     from infrahub.core.relationship.model import Relationship
+    from infrahub.database import InfrahubDatabase
 
 
 class PropertyChangelog(BaseModel):
@@ -222,6 +224,11 @@ class NodeChangelog(BaseModel):
         return self._parent
 
     @property
+    def updated_fields(self) -> list[str]:
+        """Return a list of update fields i.e. attributes and relationships"""
+        return list(self.relationships.keys()) + list(self.attributes.keys())
+
+    @property
     def root_node_id(self) -> str:
         """Return the top level node_id"""
         if self.parent:
@@ -404,3 +411,50 @@ class ChangelogRelationshipMapper:
                 return self.cardinality_one_relationship
             case RelationshipCardinality.MANY:
                 return self.cardinality_many_relationship
+
+
+class RelationshipChangelogGetter:
+    def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
+        self._db = db
+        self._branch = branch
+
+    async def get_changelogs(self, primary_changelog: NodeChangelog) -> list[NodeChangelog]:
+        """Return secondary changelogs based on this update
+
+        These will typically include updates to relationships on other nodes.
+        """
+        schema_branch = self._db.schema.get_schema_branch(name=self._branch.name)
+        node_schema = schema_branch.get(name=primary_changelog.node_kind)
+        secondaries: list[NodeChangelog] = []
+
+        for relationship in primary_changelog.relationships.values():
+            rel_schema = node_schema.get_relationship(name=relationship.name)
+            if isinstance(relationship, RelationshipCardinalityOneChangelog):
+                # For now this code only looks at the scenario when a cardinality=one relationship
+                # is added to a node and it has a cardinality=many relationship coming back from
+                # another node, it will be expanded to include all variations.
+                if relationship.peer_status == DiffAction.ADDED:
+                    peer_schema = schema_branch.get(name=str(relationship.peer_kind))
+                    peer_relation = peer_schema.get_relationship_by_identifier(
+                        id=str(rel_schema.identifier), raise_on_error=False
+                    )
+                    if peer_relation:
+                        node_changelog = NodeChangelog(
+                            node_id=str(relationship.peer_id),
+                            node_kind=str(relationship.peer_kind),
+                            display_label="n/a",
+                        )
+                        if peer_relation.cardinality == RelationshipCardinality.MANY:
+                            node_changelog.relationships[peer_relation.name] = RelationshipCardinalityManyChangelog(
+                                name=peer_relation.name,
+                                peers=[
+                                    RelationshipPeerChangelog(
+                                        peer_id=primary_changelog.node_id,
+                                        peer_kind=primary_changelog.node_kind,
+                                        peer_status=DiffAction.ADDED,
+                                    )
+                                ],
+                            )
+                            secondaries.append(node_changelog)
+
+        return secondaries

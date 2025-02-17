@@ -4,6 +4,7 @@ from infrahub.core.changelog.models import (
     PropertyChangelog,
     RelationshipCardinalityManyChangelog,
     RelationshipCardinalityOneChangelog,
+    RelationshipChangelogGetter,
     RelationshipPeerChangelog,
 )
 from infrahub.core.constants import DiffAction
@@ -131,6 +132,26 @@ async def test_node_changelog_creation(db: InfrahubDatabase, default_branch, ani
         relationships=owner,
     )
     assert not dog1.node_changelog.parent
+
+    relationship_changelogs = RelationshipChangelogGetter(db=db, branch=default_branch)
+    secondary_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=dog1.node_changelog)
+    assert len(secondary_changelogs) == 1
+
+    second = secondary_changelogs[0]
+    assert second.node_id == person1.id
+    assert second.node_kind == person1.get_kind()
+    assert list(second.relationships.keys()) == ["animals"]
+    assert second.relationships["animals"] == RelationshipCardinalityManyChangelog(
+        name="animals",
+        peers=[
+            RelationshipPeerChangelog(
+                peer_id=dog1.id,
+                peer_kind=dog1.get_kind(),
+                peer_status=DiffAction.ADDED,
+                properties={},
+            )
+        ],
+    )
 
 
 async def test_node_changelog_update_with_cardinality_one_relationship(

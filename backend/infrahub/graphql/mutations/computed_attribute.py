@@ -97,6 +97,7 @@ class UpdateComputedAttribute(Mutation):
                 fields=[str(data.attribute)],
                 action=MutationAction.UPDATED,
                 meta=EventMeta(
+                    context=graphql_context.get_context(),
                     initiator_id=WORKER_IDENTITY,
                     request_id=request_id,
                     account_id=graphql_context.active_account_session.account_id,
