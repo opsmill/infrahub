@@ -1,7 +1,7 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
 
-const EVENTS_QUERY = `
+const EVENTS_QUERY = gql`
   query GET_ACTIVITIES($ids: [String], $offset: Int, $limit: Int, $search: String) {
     InfrahubEvent(related_node__ids: $ids, offset: $offset, limit: $limit, q: $search) {
       count
@@ -50,7 +50,7 @@ export function getEventsFromApi({
   atDate: Date | null;
 }) {
   return graphqlClient.query({
-    query: gql(EVENTS_QUERY),
+    query: EVENTS_QUERY,
     variables: {
       ids,
       offset,
