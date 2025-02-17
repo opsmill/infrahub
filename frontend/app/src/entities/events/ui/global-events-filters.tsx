@@ -1,0 +1,21 @@
+import { TagGroup, TagList } from "react-aria-components";
+import { GlobalFilter } from "./global-filter";
+
+const FILTERS = [
+  {
+    name: "node",
+    label: "Node",
+  },
+];
+
+export const GlobalEventsFilters = () => {
+  return (
+    <TagGroup className="flex" selectionMode="single">
+      <TagList className="flex items-center gap-2 py-3">
+        {FILTERS.map((filter) => {
+          return <GlobalFilter key={filter.name} {...filter} />;
+        })}
+      </TagList>
+    </TagGroup>
+  );
+};
