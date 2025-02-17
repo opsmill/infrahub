@@ -7,7 +7,7 @@ export type Filter = {
   display_label?: string;
 };
 
-const useSearch = (): [string, (newSearch: string) => void] => {
+export const useSearch = (): [string, (newSearch: string) => void] => {
   const [filters, setFilters] = useFilters();
   const searchFilter: string | undefined = filters.find((f) => f.name === SEARCH_ANY_FILTER)?.value;
 
@@ -20,5 +20,3 @@ const useSearch = (): [string, (newSearch: string) => void] => {
 
   return [searchFilter ?? "", setSearch];
 };
-
-export default useSearch;
