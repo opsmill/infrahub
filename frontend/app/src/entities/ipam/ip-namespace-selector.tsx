@@ -20,8 +20,8 @@ import { constructPathForIpam } from "./common/utils";
 import { IPAM_QSP, IPAM_ROUTE, IPAM_TABS, NAMESPACE_GENERIC } from "./constants";
 
 export default function IpNamespaceSelector() {
-  const currentBranchName = useAtomValue(currentBranchAtom);
-  const { loading, data, error } = useQuery(GET_IP_NAMESPACES, { skip: !currentBranchName });
+  const currentBranch = useAtomValue(currentBranchAtom);
+  const { loading, data, error } = useQuery(GET_IP_NAMESPACES, { skip: !currentBranch });
 
   if (loading) {
     return <Skeleton className="h-10 w-80" />;

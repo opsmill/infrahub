@@ -1,4 +1,3 @@
-import { getObjectsInfiniteQueryOptions } from "@/entities/nodes/object/domain/get-objects.query";
 import { ActiveFilterTags } from "@/entities/nodes/object/ui/filters/active-filter-tags";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
@@ -46,7 +45,7 @@ export function ObjectsManager({ schema }: ObjectsTableManagerProps) {
         <ObjectCreateFormTrigger
           schema={schema}
           onSuccess={() => {
-            queryClient.invalidateQueries(getObjectsInfiniteQueryOptions({ schema, filters }));
+            queryClient.invalidateQueries({ queryKey: ["objects"] });
           }}
           permission={permission}
           className="ml-auto"
