@@ -53,7 +53,7 @@ export const getObjectTableColumns = (
     ...(isGenericSchema(schema)
       ? [
           {
-            id: "kind",
+            id: "__typename",
             accessorFn: (row) => row.__typename,
             header: () => <KindHeaderCell schema={schema} />,
             cell: ({ cell }) => <KindBodyCell schemaKind={cell.getValue() as string} />,
