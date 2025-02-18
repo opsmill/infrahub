@@ -20,6 +20,11 @@ class EventNode(BaseModel):
     kind: str
 
 
+class ParentEvent(BaseModel):
+    id: str
+    name: str
+
+
 class EventMeta(BaseModel):
     branch: Branch | None = Field(default=None)
     request_id: str = ""
@@ -39,6 +44,7 @@ class EventMeta(BaseModel):
     )
 
     parent: UUID | None = Field(default=None, description="The UUID of the parent event if applicable")
+    ancestors: list[ParentEvent] = Field(default_factory=list, description="Any event used to trigger this event")
 
     def get_branch_id(self) -> str:
         if self.context.branch.id:
@@ -83,6 +89,15 @@ class EventMeta(BaseModel):
                 }
             )
 
+        for ancestor in self.ancestors:
+            related.append(
+                {
+                    "prefect.resource.id": ancestor.id,
+                    "prefect.resource.role": "infrahub.ancestor_event",
+                    "infrahub.ancestor_event.name": ancestor.name,
+                }
+            )
+
         return related
 
     @classmethod
@@ -109,6 +124,7 @@ class EventMeta(BaseModel):
             account_id=parent.meta.account_id,
             level=parent.meta.level + 1,
             context=parent.meta.context,
+            ancestors=[ParentEvent(id=parent.get_id(), name=parent.get_name())] + parent.meta.ancestors,
         )
 
 
