@@ -29,7 +29,6 @@ export const GlobalEvents = () => {
       />
       <div className="flex flex-col flex-grow gap-2 p-2">
         <div className="flex items-center gap-2">
-          <span className="ml-1 text-xs">Filters:</span>
           <GlobalEventsFilters />
           {filters.length > 0 && <FilterResetButton />}
         </div>

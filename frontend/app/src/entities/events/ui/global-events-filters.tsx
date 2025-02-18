@@ -1,3 +1,6 @@
+import { branchesState } from "@/entities/branches/stores";
+import { branchesToSelectOptions } from "@/entities/branches/utils";
+import { store } from "@/shared/stores";
 import { TagGroup, TagList } from "react-aria-components";
 import { GlobalFilter } from "./global-filter";
 
@@ -7,6 +10,19 @@ const FILTERS = [
     label: "Has Children",
     fieldSchema: {
       kind: "Boolean",
+    },
+  },
+  {
+    name: "branches",
+    label: "Branch",
+    fieldSchema: {
+      kind: "Dropdown",
+      choices: branchesToSelectOptions(store.get(branchesState)).map((branch) => {
+        return {
+          label: branch.name,
+          name: branch.name,
+        };
+      }),
     },
   },
   {
@@ -27,7 +43,41 @@ const FILTERS = [
     label: "Primary Node",
     fieldSchema: {
       peer: "CoreNode",
-      cardinality: "one",
+    },
+  },
+  {
+    name: "relatedNodeIds",
+    label: "Related Node",
+    fieldSchema: {
+      peer: "CoreNode",
+    },
+  },
+  {
+    name: "accountIds",
+    label: "Account",
+    fieldSchema: {
+      peer: "CoreAccount",
+    },
+  },
+  {
+    name: "accountIds",
+    label: "Account",
+    fieldSchema: {
+      peer: "CoreAccount",
+    },
+  },
+  {
+    name: "since",
+    label: "Start Date",
+    fieldSchema: {
+      kind: "DateTime",
+    },
+  },
+  {
+    name: "until",
+    label: "End Date",
+    fieldSchema: {
+      kind: "DateTime",
     },
   },
 ];
