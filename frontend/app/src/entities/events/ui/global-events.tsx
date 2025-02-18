@@ -13,7 +13,12 @@ import { GlobalEventsFilters } from "./global-events-filters";
 export const GlobalEvents = () => {
   const [pagination] = usePagination();
   const [filters] = useFilters();
-  const { isLoading, data, count, error, refetch } = useEvents({ ...pagination });
+
+  const queryFilters = filters.reduce((acc, filter) => {
+    return { ...acc, [filter.name.split("__")[0]]: filter.value };
+  }, {});
+
+  const { isLoading, data, count, error, refetch } = useEvents({ ...pagination, ...queryFilters });
 
   if (error) {
     return <ErrorFallback error={error} />;
