@@ -30,61 +30,60 @@ class TestMigration019(TestInfrahubApp):
         # but we will override them afterward to reproduce corrupted state.
         await test_group.delete(db=db)
 
-        async with db.start_session() as dbs:
-            async with dbs.start_transaction() as ts:
-                # Make relationship between CoreAccount <> group_member <> CoreStandardGroup active while it should have been deleted.
-                # and make the group_member <> CoreAccount edge part on global branch
+        # Make relationship between CoreAccount <> group_member <> CoreStandardGroup active while it should have been deleted.
+        # and make the group_member <> CoreAccount edge part on global branch
 
-                query = """
-                MATCH (new_core_acc: CoreAccount)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(:AttributeValue {value: "core_acc"})
-                MATCH (new_core_acc)-[r1:IS_RELATED]-(group_member: Relationship)-[r2:IS_RELATED]-(test_group: CoreStandardGroup)
-                MATCH (new_core_acc)-[active_r1]-(group_member)
-                MATCH (new_core_acc)-[deleted_r1]-(group_member)
-                MATCH (test_group)-[active_r2]-(group_member)
-                MATCH (test_group)-[deleted_r2]-(group_member)
+        query = """
+        MATCH (new_core_acc: CoreAccount)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(:AttributeValue {value: "core_acc"})
+        MATCH (new_core_acc)-[r1:IS_RELATED]-(group_member: Relationship)-[r2:IS_RELATED]-(test_group: CoreStandardGroup)
+        MATCH (new_core_acc)-[active_r1]-(group_member)
+        WHERE active_r1.status = 'active'
+        MATCH (new_core_acc)-[deleted_r1]-(group_member)
+        WHERE deleted_r1.status = 'deleted'
+        MATCH (test_group)-[active_r2]-(group_member)
+        WHERE active_r2.status = 'active'
+        MATCH (test_group)-[deleted_r2]-(group_member)
+        WHERE deleted_r2.status = 'deleted'
 
-                WHERE active_r1.status = 'active' AND deleted_r1.status = 'deleted'
-                AND active_r2.status = 'active' AND deleted_r2.status = 'deleted'
+        DELETE deleted_r1
+        REMOVE active_r1.to
+        SET active_r1.branch = '-global-'
 
-                DELETE deleted_r1
-                REMOVE active_r1.to
-                SET active_r1.branch = '-global'
+        DELETE deleted_r2
+        REMOVE active_r2.to
 
-                DELETE deleted_r2
-                REMOVE active_r2.to
+        return new_core_acc, group_member, test_group
+        """
 
-                return new_core_acc, group_member, test_group
-                """
+        await db.execute_query(query=query, name="query_1")
 
-                await ts.execute_query(query=query, name="query_1")
+        # Create the old CoreAccount object - not inheriting from GenericAccount -
+        # sharing same attributes / relationships than above CoreAccount
 
-                # Create the old CoreAccount object - not inheriting from GenericAccount -
-                # sharing same attributes / relationships than above CoreAccount
+        query_2 = """
+        // Match the existing CoreAccount node with the specified attributes
+        MATCH (new_core_acc:CoreAccount)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(:AttributeValue {value: "core_acc"})
 
-                query_2 = """
-                // Match the existing CoreAccount node with the specified attributes
-                MATCH (new_core_acc:CoreAccount)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(:AttributeValue {value: "core_acc"})
+        // Create the new CoreAccount node with the same uuid and additional properties
+        CREATE (new_node:CoreAccount:LineageOwner:LineageSource:Node {uuid: new_core_acc.uuid,
+        branch_support: new_core_acc.branch_support, namespace: new_core_acc.namespace, kind: "CoreAccount"})
 
-                // Create the new CoreAccount node with the same uuid and additional properties
-                CREATE (new_node:CoreAccount:LineageOwner:LineageSource:Node {uuid: new_core_acc.uuid,
-                branch_support: new_core_acc.branch_support, namespace: new_core_acc.namespace, kind: "CoreAccount"})
+        WITH new_node, new_core_acc
 
-                WITH new_node, new_core_acc
+        // Match the relationships of the existing CoreAccount node
+        MATCH (new_core_acc)-[r:IS_RELATED]->(group_member:Relationship {name: "group_member"})
 
-                // Match the relationships of the existing CoreAccount node
-                MATCH (new_core_acc)-[r:IS_RELATED]->(group_member:Relationship {name: "group_member"})
+        // Create active branch with no to time on main branch
+        CREATE (new_node)-[:IS_RELATED {branch: "main", from: "2024-02-05T15:37:07.228145Z", status: "active"}]->(group_member)
 
-                // Create active branch with no to time on main branch
-                CREATE (new_node)-[:IS_RELATED {branch: "main", from: "2024-02-05T15:37:07.228145Z", status: "active"}]->(group_member)
+        // Create deleted branch with no to time on global branch
+        CREATE (new_node)-[:IS_RELATED {branch: $global_branch, from: r.from, status: "deleted"}]->(group_member)
 
-                // Create deleted branch with no to time on global branch
-                CREATE (new_node)-[:IS_RELATED {branch: $global_branch, from: r.from, status: "deleted"}]->(group_member)
+        // Return the new_node
+        RETURN new_node;
+        """
 
-                // Return the new_node
-                RETURN new_node;
-                """
-
-                await ts.execute_query(query=query_2, name="query_2", params={"global_branch": GLOBAL_BRANCH_NAME})
+        await db.execute_query(query=query_2, name="query_2", params={"global_branch": GLOBAL_BRANCH_NAME})
 
         # Make sure migration executes without error, and that we can query accounts afterwards.
         # Note generated corrupted state does not trigger IFC-1204 bug,
@@ -97,3 +96,31 @@ class TestMigration019(TestInfrahubApp):
         # Trigger e2e path to query this account
         core_acc = await client.get(kind="CoreAccount", id=core_acc.id, prefetch_relationships=True)
         assert core_acc.name.value == "core_acc"
+
+        # Verify edges are correct, ie:
+        # - 2 edges on main branch between old CoreAccount and group_member, 1 active with from/to set, 1 deleted
+        # - 2 edges on main branch between new CoreAccount and group_member, 1 active with from/to set, 1 deleted
+        # - 2 edges on main branch between CoreStandardGroup and group_member, 1 active with from/to set, 1 deleted
+
+        check_deleted_edges_query = """
+        MATCH (n {uuid: $uuid})-[r1:IS_RELATED]-(rel:Relationship {name: 'group_member'})
+        WHERE r1.branch = 'main'
+        WITH n, rel, COLLECT(r1) AS edges
+        WITH
+            edges,
+            SIZE(edges) AS edgeCount,
+            [e IN edges WHERE e.status = 'active' AND e.from IS NOT NULL AND e.to IS NOT NULL] AS activeEdges,
+            [e IN edges WHERE e.status = 'deleted'] AS deletedEdges
+        WHERE edgeCount = 2 AND SIZE(activeEdges) = 1 AND SIZE(deletedEdges) = 1 AND activeEdges[0].to = deletedEdges[0].from
+        RETURN 'Old CoreAccount edges are correct' AS result
+        """
+
+        core_accounts_results = await db.execute_query(
+            query=check_deleted_edges_query, name="check_deleted_edges_query", params={"uuid": core_acc.id}
+        )
+        assert len(core_accounts_results) == 2
+
+        group_results = await db.execute_query(
+            query=check_deleted_edges_query, name="check_deleted_edges_query", params={"uuid": test_group.id}
+        )
+        assert len(group_results) == 1

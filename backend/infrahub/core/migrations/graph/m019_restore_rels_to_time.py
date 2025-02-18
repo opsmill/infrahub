@@ -73,9 +73,8 @@ class DeleteNodesRelsQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
         """
-        Some nodes may have been deleted while having corrupted state that are fixed by above migrations.
-        While these nodes edges connected to Root are correctly deleted,
-        edges connected to other `Node` through a `Relationship` node may still be active.
+        Some nodes may have been incorrectly deleted, typically, while these nodes edges connected to Root
+        are correctly deleted, edges connected to other `Node` through a `Relationship` node may still be active.
         Following query correctly deletes these edges by both setting correct to time and creating corresponding deleted edge.
         """
 
