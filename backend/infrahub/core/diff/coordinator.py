@@ -327,11 +327,13 @@ class DiffCoordinator:
             if (
                 diff_pair.base_branch_diff.tracking_id == tracking_id
                 and diff_pair.base_branch_diff.uuid != aggregated_enriched_diffs.base_branch_diff.uuid
+                and diff_pair.base_branch_diff.exists_on_database
             ):
                 diff_uuids_to_delete.append(diff_pair.base_branch_diff.uuid)
             if (
                 diff_pair.diff_branch_diff.tracking_id == tracking_id
                 and diff_pair.diff_branch_diff.uuid != aggregated_enriched_diffs.diff_branch_diff.uuid
+                and diff_pair.diff_branch_diff.exists_on_database
             ):
                 diff_uuids_to_delete.append(diff_pair.diff_branch_diff.uuid)
 
@@ -446,7 +448,6 @@ class DiffCoordinator:
         aggregated_enriched_diffs.update_metadata(
             from_time=diff_request.from_time, to_time=diff_request.to_time, tracking_id=diff_request.tracking_id
         )
-        aggregated_enriched_diffs.set_fresh_uuids()
         return aggregated_enriched_diffs
 
     async def _concatenate_diffs_and_requests(
@@ -463,6 +464,7 @@ class DiffCoordinator:
             meaning multiple diffs (some that may have been freshly calculated) were combined
         """
         previous_diff_pair: EnrichedDiffs | EnrichedDiffsMetadata | None = None
+        updated_node_uuids: set[str] = set()
         for diff_or_request in diff_or_request_list:
             if isinstance(diff_or_request, EnrichedDiffRequest):
                 if previous_diff_pair:
@@ -473,9 +475,12 @@ class DiffCoordinator:
                     log.info(f"Number node field specifiers: {len(node_field_specifiers)}")
                     diff_or_request.node_field_specifiers = node_field_specifiers
                 is_incremental_diff = diff_or_request.from_time != full_diff_request.from_time
-                single_enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata = await self._calculate_enriched_diff(
+                calculated_diff = await self._calculate_enriched_diff(
                     diff_request=diff_or_request, is_incremental_diff=is_incremental_diff
                 )
+                updated_node_uuids |= calculated_diff.base_node_uuids
+                updated_node_uuids |= calculated_diff.branch_node_uuids
+                single_enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata = calculated_diff
 
             elif isinstance(diff_or_request, EnrichedDiffsMetadata):
                 single_enriched_diffs = diff_or_request
@@ -487,13 +492,20 @@ class DiffCoordinator:
                 continue
 
             log.info("Combining diffs...")
-            previous_diff_pair = await self._combine_diffs(earlier=previous_diff_pair, later=single_enriched_diffs)
+            previous_diff_pair = await self._combine_diffs(
+                earlier=previous_diff_pair,
+                later=single_enriched_diffs,
+                node_uuids=updated_node_uuids,
+            )
             log.info("Diffs combined.")
 
         return previous_diff_pair
 
     async def _combine_diffs(
-        self, earlier: EnrichedDiffs | EnrichedDiffsMetadata, later: EnrichedDiffs | EnrichedDiffsMetadata
+        self,
+        earlier: EnrichedDiffs | EnrichedDiffsMetadata,
+        later: EnrichedDiffs | EnrichedDiffsMetadata,
+        node_uuids: set[str],
     ) -> EnrichedDiffs | EnrichedDiffsMetadata:
         log.info(f"Earlier diff to combine: {earlier!r}")
         log.info(f"Later diff to combine: {later!r}")
@@ -510,11 +522,11 @@ class DiffCoordinator:
         # hydrate the diffs to combine, if necessary
         if not isinstance(earlier, EnrichedDiffs):
             log.info("Hydrating earlier diff...")
-            earlier = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=earlier)
+            earlier = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=earlier, node_uuids=node_uuids)
             log.info("Earlier diff hydrated.")
         if not isinstance(later, EnrichedDiffs):
             log.info("Hydrating later diff...")
-            later = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=later)
+            later = await self.diff_repo.hydrate_diff_pair(enriched_diffs_metadata=later, node_uuids=node_uuids)
             log.info("Later diff hydrated.")
 
         return await self.diff_combiner.combine(earlier_diffs=earlier, later_diffs=later)

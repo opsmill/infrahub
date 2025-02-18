@@ -84,6 +84,7 @@ class EnrichedRootFactory(DataclassFactory[EnrichedDiffRoot]):
     num_removed = 0
     num_conflicts = 0
     contains_conflict = False
+    exists_on_database = False
 
 
 class CalculatedDiffsFactory(DataclassFactory[CalculatedDiffs]): ...
