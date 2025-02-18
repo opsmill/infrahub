@@ -1,6 +1,5 @@
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
-from .check_artifact_create import CheckArtifactCreate
 from .check_generator_run import CheckGeneratorRun
 from .check_repository_checkdefinition import CheckRepositoryCheckDefinition
 from .check_repository_mergeconflicts import CheckRepositoryMergeConflicts
@@ -19,7 +18,6 @@ from .proposed_change.request_proposedchange_refreshartifacts import RequestProp
 from .refresh_git_fetch import RefreshGitFetch
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
-from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
 from .request_repository_checks import RequestRepositoryChecks
@@ -27,7 +25,6 @@ from .request_repository_userchecks import RequestRepositoryUserChecks
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
-    "check.artifact.create": CheckArtifactCreate,
     "check.generator.run": CheckGeneratorRun,
     "check.repository.check_definition": CheckRepositoryCheckDefinition,
     "check.repository.merge_conflicts": CheckRepositoryMergeConflicts,
@@ -45,7 +42,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "refresh.git.fetch": RefreshGitFetch,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
-    "request.artifact_definition.check": RequestArtifactDefinitionCheck,
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
     "request.proposed_change.pipeline": RequestProposedChangePipeline,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,

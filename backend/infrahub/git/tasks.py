@@ -257,7 +257,7 @@ async def generate_artifact(model: RequestArtifactGenerate, service: InfrahubSer
         commit=model.commit,
     )
 
-    artifact = await define_artifact(message=model, service=service)
+    artifact = await define_artifact(model=model, service=service)
 
     try:
         result = await repo.render_artifact(artifact=artifact, message=model)
