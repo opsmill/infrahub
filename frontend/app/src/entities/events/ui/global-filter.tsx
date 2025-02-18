@@ -1,3 +1,4 @@
+import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
@@ -10,9 +11,10 @@ import { GlobalFilterForm } from "./global-filter-form";
 interface FilterTagProps extends TagProps {
   label: React.ReactNode;
   name: string;
+  fieldSchema: AttributeSchema | RelationshipSchema;
 }
 
-export function GlobalFilter({ label, name, ...props }: FilterTagProps) {
+export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagProps) {
   const [filters, setFilters] = useFilters();
   const [showFilters, setShowFilters] = useState(false);
 
@@ -72,6 +74,7 @@ export function GlobalFilter({ label, name, ...props }: FilterTagProps) {
 
           <GlobalFilterForm
             name={name}
+            fieldSchema={fieldSchema}
             onSuccess={() => {
               setShowFilters(false);
             }}

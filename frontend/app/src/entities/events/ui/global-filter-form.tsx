@@ -1,14 +1,16 @@
+import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
+import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { FormFieldValue } from "@/shared/components/form/type";
 import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
-import { Input } from "@/shared/components/ui/input";
 import useFilters from "@/shared/hooks/useFilters";
 
 export type GlobalFilterFormProps = {
   name: string;
+  fieldSchema: AttributeSchema | RelationshipSchema;
   onSuccess?: () => void;
 };
 
-export function GlobalFilterForm({ name, onSuccess }: GlobalFilterFormProps) {
+export function GlobalFilterForm({ name, fieldSchema, onSuccess }: GlobalFilterFormProps) {
   const [filters, setFilters] = useFilters();
 
   const currentFilter = filters.find((filter) => filter.name.startsWith(name));
@@ -42,7 +44,7 @@ export function GlobalFilterForm({ name, onSuccess }: GlobalFilterFormProps) {
         name="filter"
         defaultValue={currentFilter?.value}
         render={({ field }) => {
-          return <Input {...field} />;
+          return <DynamicFilterInput {...field} fieldSchema={fieldSchema} />;
         }}
       />
 

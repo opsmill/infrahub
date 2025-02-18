@@ -1,9 +1,46 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
 
+export type GlobalEventsFilters = {
+  hasChildren?: boolean;
+  eventType?: Array<string>;
+  primaryNodeIds?: Array<string>;
+  relatedNodeIds?: Array<string>;
+  parentIds?: Array<string>;
+  accountIds?: Array<string>;
+  since?: Date;
+  until?: Date;
+  offset?: number;
+  limit?: number;
+};
+
 const EVENTS_QUERY = gql`
-  query GET_ACTIVITIES($ids: [String], $offset: Int, $limit: Int, $search: String) {
-    InfrahubEvent(related_node__ids: $ids, offset: $offset, limit: $limit, q: $search) {
+  query GET_ACTIVITIES(
+    $hasChildren: Boolean
+    $branches: [String!]
+    $eventType: [String!]
+    $primaryNodeIds: [String!]
+    $relatedNodeIds: [String!]
+    $parentIds: [String!]
+    $accountIds: [String!]
+    $since: DateTime
+    $until: DateTime
+    $offset: Int
+    $limit: Int
+  ) {
+    InfrahubEvent(
+      has_children: $hasChildren
+      branches: $branches
+      event_type: $eventType
+      primary_node__ids: $primaryNodeIds
+      related_node__ids: $relatedNodeIds
+      parent__ids: $parentIds
+      account__ids: $accountIds
+      since: $since
+      until: $until
+      offset: $offset
+      limit: $limit
+    ) {
       count
       edges {
         node {
@@ -35,27 +72,14 @@ const EVENTS_QUERY = gql`
 `;
 
 export function getEventsFromApi({
-  ids,
-  offset,
-  limit,
-  search,
   branchName,
   atDate,
-}: {
-  ids?: Array<string | undefined>;
-  offset?: number;
-  limit?: number;
-  search?: string;
-  branchName: string;
-  atDate: Date | null;
-}) {
+  ...filters
+}: GlobalEventsFilters & { branchName?: string; atDate?: Date | null }) {
   return graphqlClient.query({
     query: EVENTS_QUERY,
     variables: {
-      ids,
-      offset,
-      limit,
-      search,
+      ...filters,
     },
     context: {
       branch: branchName,
