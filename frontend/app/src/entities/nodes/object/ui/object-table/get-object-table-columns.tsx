@@ -33,7 +33,7 @@ export const getObjectTableColumns = (
     {
       id: "id",
       accessorFn: ({ hfid, display_label, id }): string => {
-        if (schema.human_friendly_id && hfid) return hfid;
+        if (schema.human_friendly_id && hfid) return hfid.join(", ");
         if (schema.display_labels && display_label) return display_label;
         return id;
       },
