@@ -19,12 +19,19 @@ class GroupMutatedEvent(InfrahubEvent):
 
     def get_related(self) -> list[dict[str, str]]:
         related = super().get_related()
+        related.append(
+            {
+                "prefect.resource.id": self.node_id,
+                "prefect.resource.role": "infrahub.related.node",
+                "infrahub.node.kind": self.kind,
+            }
+        )
         for member in self.members:
             related.append(
                 {
                     "prefect.resource.id": member.id,
-                    "prefect.resource.role": "infrahub.group.member",
-                    "infrahub.group.kind": member.kind,
+                    "prefect.resource.role": "infrahub.related.node",
+                    "infrahub.node.kind": member.kind,
                 }
             )
 

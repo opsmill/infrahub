@@ -1,20 +1,135 @@
+from __future__ import annotations
+
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from prefect.client.orchestration import PrefectClient, get_client
-from prefect.events.filters import EventFilter, EventIDFilter, EventRelatedFilter, EventResourceFilter
+from prefect.events.filters import (
+    EventFilter,
+    EventIDFilter,
+    EventNameFilter,
+    EventOccurredFilter,
+    EventRelatedFilter,
+    EventResourceFilter,
+)
 from prefect.events.schemas.events import Event as PrefectEventModel
 from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field, TypeAdapter
 
+from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.utils import get_nested_dict
 
 log = get_logger()
 
+if TYPE_CHECKING:
+    from datetime import datetime
+
 
 class InfrahubEventFilter(EventFilter):
     matching_related: list[EventRelatedFilter] = Field(default_factory=list)
+
+    def add_account_filter(self, account: list[str] | None) -> None:
+        if account:
+            self.matching_related.append(
+                EventRelatedFilter(
+                    labels=ResourceSpecification(
+                        {"prefect.resource.role": "infrahub.account", "infrahub.resource.id": account}
+                    )
+                )
+            )
+
+    def add_branch_filter(self, branch: list[str] | None = None) -> None:
+        if branch:
+            self.matching_related.append(
+                EventRelatedFilter(
+                    labels=ResourceSpecification(
+                        {"prefect.resource.role": "infrahub.branch", "infrahub.resource.label": branch}
+                    )
+                )
+            )
+
+    def add_event_filter(self, level: int | None = None, has_children: bool | None = None) -> None:
+        event_filter: dict[str, list[str] | str] = {}
+        if level is not None:
+            event_filter["infrahub.event.level"] = str(level)
+
+        if has_children is not None:
+            event_filter["infrahub.event.has_children"] = str(has_children).lower()
+
+        if event_filter:
+            event_filter["prefect.resource.role"] = "infrahub.event"
+            self.matching_related.append(EventRelatedFilter(labels=ResourceSpecification(event_filter)))
+
+    def add_event_id_filter(self, ids: list[str] | None = None) -> None:
+        if ids:
+            self.id = EventIDFilter(id=[uuid.UUID(id) for id in ids])
+
+    def add_event_type_filter(self, event_type: list[str] | None = None) -> None:
+        if event_type:
+            self.event = EventNameFilter(name=event_type)
+
+    def add_primary_node_filter(self, primary_node__ids: list[str] | None) -> None:
+        if primary_node__ids:
+            self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.node.id": primary_node__ids}))
+
+    def add_parent_filter(self, parent__ids: list[str] | None) -> None:
+        if parent__ids:
+            self.matching_related.append(
+                EventRelatedFilter(
+                    labels=ResourceSpecification(
+                        {"prefect.resource.role": "infrahub.child_event", "infrahub.event_parent.id": parent__ids}
+                    )
+                )
+            )
+
+    def add_related_node_filter(self, related_node__ids: list[str] | None) -> None:
+        if related_node__ids:
+            self.matching_related.append(
+                EventRelatedFilter(
+                    labels=ResourceSpecification(
+                        {"prefect.resource.role": "infrahub.related.node", "prefect.resource.id": related_node__ids}
+                    )
+                )
+            )
+
+    @classmethod
+    def from_filters(
+        cls,
+        ids: list[str] | None = None,
+        account: list[str] | None = None,
+        related_node__ids: list[str] | None = None,
+        parent__ids: list[str] | None = None,
+        primary_node__ids: list[str] | None = None,
+        event_type: list[str] | None = None,
+        branch: list[str] | None = None,
+        level: int | None = None,
+        has_children: bool | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
+    ) -> InfrahubEventFilter:
+        occurred_filter = {}
+        if since:
+            occurred_filter["since"] = Timestamp(since.isoformat()).obj
+
+        if until:
+            occurred_filter["until"] = Timestamp(until.isoformat()).obj
+
+        if occurred_filter:
+            filters = cls(occurred=EventOccurredFilter(**occurred_filter))
+        else:
+            filters = cls()
+
+        filters.add_event_filter(level=level, has_children=has_children)
+        filters.add_event_id_filter(ids=ids)
+        filters.add_event_type_filter(event_type=event_type)
+        filters.add_branch_filter(branch=branch)
+        filters.add_account_filter(account=account)
+        filters.add_parent_filter(parent__ids=parent__ids)
+        filters.add_primary_node_filter(primary_node__ids=primary_node__ids)
+        filters.add_related_node_filter(related_node__ids=related_node__ids)
+
+        return filters
 
 
 class PrefectEventData(PrefectEventModel):
@@ -53,6 +168,22 @@ class PrefectEventData(PrefectEventModel):
             return {"id": node_id, "kind": node_kind}
 
         return None
+
+    def get_related_nodes(self) -> list[dict[str, str]]:
+        related_nodes = []
+        for resource in self.related:
+            if resource.get("prefect.resource.role") != "infrahub.related.node":
+                continue
+
+            node_id = resource.get("prefect.resource.id")
+            node_kind = resource.get("infrahub.node.kind")
+            if node_id == self.resource.get("infrahub.node.id"):
+                # Don't include the primary node as a related node.
+                continue
+            if node_id and node_kind:
+                related_nodes.append({"id": node_id, "kind": node_kind})
+
+        return related_nodes
 
     def get_account_id(self) -> str | None:
         for resource in self.related:
@@ -106,12 +237,13 @@ class PrefectEventData(PrefectEventModel):
             "event": self.event,
             "branch": self.get_branch(),
             "account_id": self.get_account_id(),
-            "occurred_at": self.occurred.to_iso8601_string(),
+            "occurred_at": self.occurred,
             "has_children": self.has_children(),
             "payload": self.payload,
             "level": self.get_level(),
             "primary_node": self.get_primary_node(),
             "parent_id": self.get_parent(),
+            "related_nodes": self.get_related_nodes(),
         }
         response.update(self._return_event_specifics())
         return response
@@ -143,60 +275,40 @@ class PrefectEvent:
         )
 
     @classmethod
-    def _generate_filters(
-        cls,
-        ids: list[str] | None = None,
-        account: str | None = None,
-        related_node__ids: list[str] | None = None,
-        branch: str | None = None,
-    ) -> InfrahubEventFilter:
-        filters = InfrahubEventFilter()
-
-        if ids:
-            filters.id = EventIDFilter(id=[uuid.UUID(id) for id in ids])
-
-        if related_node__ids:
-            filters.resource = EventResourceFilter(
-                labels=ResourceSpecification({"infrahub.node.id": related_node__ids})
-            )
-
-        if branch:
-            filters.matching_related.append(
-                EventRelatedFilter(
-                    labels=ResourceSpecification(
-                        {"prefect.resource.role": "infrahub.branch", "infrahub.resource.label": branch}
-                    )
-                )
-            )
-
-        if account:
-            filters.matching_related.append(
-                EventRelatedFilter(
-                    labels=ResourceSpecification(
-                        {"prefect.resource.role": "infrahub.account", "infrahub.resource.id": account}
-                    )
-                )
-            )
-
-        return filters
-
-    @classmethod
     async def query(
         cls,
         fields: dict[str, Any],
         limit: int | None = None,
         offset: int | None = None,
-        q: str | None = None,  # noqa: ARG003
+        level: int | None = None,
         ids: list[str] | None = None,
-        branch: str | None = None,
-        account: str | None = None,
+        branch: list[str] | None = None,
+        has_children: bool | None = None,
+        account: list[str] | None = None,
+        event_type: list[str] | None = None,
         related_node__ids: list[str] | None = None,
+        primary_node__ids: list[str] | None = None,
+        parent__ids: list[str] | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
     ) -> dict[str, Any]:
         nodes: list[dict] = []
         limit = limit or 50
 
         node_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node"])
-        filters = cls._generate_filters(ids=ids, branch=branch, account=account, related_node__ids=related_node__ids)
+        filters = InfrahubEventFilter.from_filters(
+            ids=ids,
+            branch=branch,
+            account=account,
+            has_children=has_children,
+            event_type=event_type,
+            related_node__ids=related_node__ids,
+            primary_node__ids=primary_node__ids,
+            parent__ids=parent__ids,
+            since=since,
+            until=until,
+            level=level,
+        )
 
         if not node_fields:
             # This means that it's purely a count query and as such we can override the limit to avoid
