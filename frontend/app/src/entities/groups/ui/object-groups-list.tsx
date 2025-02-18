@@ -1,10 +1,9 @@
 import { QSP } from "@/config/qsp";
 import { GroupDataFromAPI } from "@/entities/groups/api/types";
-import { REMOVE_RELATIONSHIP } from "@/entities/nodes/relationships/api/removeRelationship";
+import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
 import { schemaState } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { useMutation } from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ItemGroup from "@/shared/components/layouts/item-group";
 import ModalDelete from "@/shared/components/modals/modal-delete";
@@ -18,7 +17,7 @@ import { Link } from "react-router";
 
 type ObjectGroupsListProps = {
   className?: string;
-  objectId?: string;
+  objectId: string;
   groups: Array<GroupDataFromAPI>;
 };
 
@@ -37,7 +36,7 @@ export default function ObjectGroupsList({ className, objectId, groups }: Object
 }
 
 type ObjectGroupProps = {
-  objectId?: string;
+  objectId: string;
   group: GroupDataFromAPI;
 };
 
@@ -81,11 +80,24 @@ const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
 };
 
 const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
-  const [removeGroup, { loading }] = useMutation(REMOVE_RELATIONSHIP, {
-    variables: { relationshipName: "member_of_groups" },
-    onCompleted: () => graphqlClient.refetchQueries({ include: ["GET_GROUPS"] }),
-  });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const { mutate: removeRelationships, isPending } = useRemoveRelationships();
+
+  const handleRemoveGroup = () => {
+    removeRelationships(
+      {
+        objectId,
+        relationshipName: "member_of_groups",
+        relationshipIds: [group.id],
+      },
+      {
+        onSuccess: () => {
+          graphqlClient.refetchQueries({ include: ["GET_GROUPS"] });
+          setShowDeleteModal(false);
+        },
+      }
+    );
+  };
 
   return (
     <>
@@ -105,12 +117,10 @@ const RemoveGroupButton = ({ objectId, group }: ObjectGroupProps) => {
         title="Leave Group"
         description={`Are you sure you want to leave group ${group.display_label}?`}
         onCancel={() => setShowDeleteModal(false)}
-        onDelete={() =>
-          removeGroup({ variables: { objectId, relationshipIds: [{ id: group.id }] } })
-        }
+        onDelete={handleRemoveGroup}
         open={showDeleteModal}
         setOpen={() => setShowDeleteModal(false)}
-        isLoading={loading}
+        isLoading={isPending}
       />
     </>
   );

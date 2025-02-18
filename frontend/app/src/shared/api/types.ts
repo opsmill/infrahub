@@ -1,7 +1,10 @@
-export type ContextParams = {
+export type BranchContextParams = {
   branchName: string;
-  atDate?: Date | null;
 };
+
+export interface ContextParams extends BranchContextParams {
+  atDate?: Date | null;
+}
 
 export type PaginationParams = {
   limit?: number;
