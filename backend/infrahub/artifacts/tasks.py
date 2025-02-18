@@ -2,44 +2,38 @@ from typing import Union
 
 from prefect import flow
 
+from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
-from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
-from infrahub.log import get_logger
-from infrahub.message_bus import messages
+from infrahub.git import InfrahubReadOnlyRepository, InfrahubRepository
 from infrahub.services import InfrahubServices
 from infrahub.tasks.artifact import define_artifact
-from infrahub.tasks.check import set_check_status
 from infrahub.workflows.utils import add_tags
-
-log = get_logger()
 
 
 @flow(name="git-repository-check-artifact-create", flow_run_name="Check artifact creation")
-async def create(message: messages.CheckArtifactCreate, service: InfrahubServices) -> None:
-    await add_tags(branches=[message.branch_name], nodes=[message.target_id])
-    validator = await service.client.get(
-        kind=InfrahubKind.ARTIFACTVALIDATOR, id=message.validator_id, include=["checks"]
-    )
+async def create(model: CheckArtifactCreate, service: InfrahubServices) -> ValidatorConclusion:
+    await add_tags(branches=[model.branch_name], nodes=[model.target_id])
+    validator = await service.client.get(kind=InfrahubKind.ARTIFACTVALIDATOR, id=model.validator_id, include=["checks"])
 
+    repo: InfrahubReadOnlyRepository | InfrahubRepository
     if InfrahubKind.READONLYREPOSITORY:
         repo = await InfrahubReadOnlyRepository.init(
-            id=message.repository_id,
-            name=message.repository_name,
+            id=model.repository_id,
+            name=model.repository_name,
             client=service.client,
             service=service,
         )
     else:
         repo = await InfrahubRepository.init(
-            id=message.repository_id,
-            name=message.repository_name,
+            id=model.repository_id,
+            name=model.repository_name,
             client=service.client,
             service=service,
         )
 
-    artifact = await define_artifact(message=message, service=service)
+    artifact = await define_artifact(model=model, service=service)
 
-    conclusion = ValidatorConclusion.SUCCESS.value
     severity = "info"
     artifact_result: dict[str, Union[str, bool, None]] = {
         "changed": None,
@@ -50,22 +44,23 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
     check_message = "Failed to render artifact"
 
     try:
-        result = await repo.render_artifact(artifact=artifact, message=message)
+        result = await repo.render_artifact(artifact=artifact, message=model)
         artifact_result["changed"] = result.changed
         artifact_result["checksum"] = result.checksum
         artifact_result["artifact_id"] = result.artifact_id
         artifact_result["storage_id"] = result.storage_id
         check_message = "Artifact rendered successfully"
+        conclusion = ValidatorConclusion.SUCCESS
 
     except Exception as exc:
-        conclusion = ValidatorConclusion.FAILURE.value
         artifact.status.value = "Error"
-        severity = "critical"
-        check_message += f": {str(exc)}"
         await artifact.save()
+        severity = "critical"
+        conclusion = ValidatorConclusion.FAILURE
+        check_message += f": {str(exc)}"
 
     check = None
-    check_name = f"{message.artifact_name}: {message.target_name}"
+    check_name = f"{model.artifact_name}: {model.target_name}"
     existing_check = await service.client.filters(
         kind=InfrahubKind.ARTIFACTCHECK, validator__ids=validator.id, name__value=check_name
     )
@@ -74,7 +69,7 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
 
     if check:
         check.created_at.value = Timestamp().to_string()
-        check.conclusion.value = conclusion
+        check.conclusion.value = conclusion.value
         check.severity.value = severity
         check.changed.value = artifact_result["changed"]
         check.checksum.value = artifact_result["checksum"]
@@ -86,12 +81,12 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
             kind=InfrahubKind.ARTIFACTCHECK,
             data={
                 "name": check_name,
-                "origin": message.repository_id,
+                "origin": model.repository_id,
                 "kind": "ArtifactDefinition",
-                "validator": message.validator_id,
+                "validator": model.validator_id,
                 "created_at": Timestamp().to_string(),
                 "message": check_message,
-                "conclusion": conclusion,
+                "conclusion": conclusion.value,
                 "severity": severity,
                 "changed": artifact_result["changed"],
                 "checksum": artifact_result["checksum"],
@@ -101,4 +96,4 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
         )
         await check.save()
 
-    await set_check_status(message=message, conclusion=conclusion, service=service)
+    return conclusion

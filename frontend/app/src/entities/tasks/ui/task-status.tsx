@@ -1,6 +1,6 @@
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { QSP } from "@/config/qsp";
-import { useCurrentBranch } from "@/entities/branches/ui/hooks/use-current-branch";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { isTaskRunningOnBranchQueryOptions } from "@/entities/tasks/domain/is-task-running-on-branch.query";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton, LinkButtonProps } from "@/shared/components/buttons/button-primitive";
@@ -11,21 +11,20 @@ import { Icon } from "@iconify-icon/react";
 import { useQuery } from "@tanstack/react-query";
 
 export function TaskStatus() {
-  const branch = useCurrentBranch();
+  const { currentBranch } = useCurrentBranch();
 
   const {
     error,
     isPending,
     data: isTaskRunningOnBranch,
   } = useQuery({
-    ...isTaskRunningOnBranchQueryOptions(branch?.name ?? ""),
-    enabled: !!branch?.name,
+    ...isTaskRunningOnBranchQueryOptions(currentBranch.name),
     refetchInterval: 10_000,
   });
 
   const filter = {
     name: "branch__value",
-    value: branch?.name,
+    value: currentBranch.name,
   };
 
   const commonButtonProps: LinkButtonProps = {

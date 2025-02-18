@@ -102,10 +102,10 @@ class RelationshipCardinalityOneChangelog(BaseModel):
     properties: dict[str, PropertyChangelog] = Field(
         default_factory=dict, description="Changes to properties of this relationship if any were made"
     )
-    _parent: ChangelogNodeParent | None = PrivateAttr(default=None)
+    _parent: ChangelogRelatedNode | None = PrivateAttr(default=None)
 
     @property
-    def parent(self) -> ChangelogNodeParent | None:
+    def parent(self) -> ChangelogRelatedNode | None:
         return self._parent
 
     @computed_field
@@ -127,7 +127,7 @@ class RelationshipCardinalityOneChangelog(BaseModel):
         self.properties[name] = PropertyChangelog(name=name, value=value_current, value_previous=value_previous)
 
     def set_parent(self, parent_id: str, parent_kind: str) -> None:
-        self._parent = ChangelogNodeParent(node_id=parent_id, node_kind=parent_kind)
+        self._parent = ChangelogRelatedNode(node_id=parent_id, node_kind=parent_kind)
 
     def set_parent_from_relationship(self, relationship: Relationship) -> None:
         if relationship.schema.kind == RelationshipKind.PARENT:
@@ -136,9 +136,9 @@ class RelationshipCardinalityOneChangelog(BaseModel):
                 and self.peer_id
                 and self.peer_kind
             ):
-                self._parent = ChangelogNodeParent(node_id=self.peer_id, node_kind=self.peer_kind)
+                self._parent = ChangelogRelatedNode(node_id=self.peer_id, node_kind=self.peer_kind)
             elif self.peer_id_previous and self.peer_kind_previous:
-                self._parent = ChangelogNodeParent(node_id=self.peer_id_previous, node_kind=self.peer_kind_previous)
+                self._parent = ChangelogRelatedNode(node_id=self.peer_id_previous, node_kind=self.peer_kind_previous)
 
     @property
     def is_empty(self) -> bool:
@@ -200,7 +200,7 @@ class RelationshipCardinalityManyChangelog(BaseModel):
         return not self.peers
 
 
-class ChangelogNodeParent(BaseModel):
+class ChangelogRelatedNode(BaseModel):
     node_id: str
     node_kind: str
 
@@ -217,10 +217,10 @@ class NodeChangelog(BaseModel):
         default_factory=dict
     )
 
-    _parent: ChangelogNodeParent | None = PrivateAttr(default=None)
+    _parent: ChangelogRelatedNode | None = PrivateAttr(default=None)
 
     @property
-    def parent(self) -> ChangelogNodeParent | None:
+    def parent(self) -> ChangelogRelatedNode | None:
         return self._parent
 
     @property
@@ -229,24 +229,28 @@ class NodeChangelog(BaseModel):
         return list(self.relationships.keys()) + list(self.attributes.keys())
 
     @property
+    def has_changes(self) -> bool:
+        return len(self.updated_fields) > 0
+
+    @property
     def root_node_id(self) -> str:
         """Return the top level node_id"""
         if self.parent:
             return self.parent.node_id
         return self.node_id
 
-    def add_parent(self, parent: ChangelogNodeParent) -> None:
+    def add_parent(self, parent: ChangelogRelatedNode) -> None:
         self._parent = parent
 
     def add_parent_from_relationship(self, parent: Relationship) -> None:
-        self._parent = ChangelogNodeParent(node_id=parent.get_peer_id(), node_kind=parent.get_peer_kind())
+        self._parent = ChangelogRelatedNode(node_id=parent.get_peer_id(), node_kind=parent.get_peer_kind())
 
     def create_relationship(self, relationship: Relationship) -> None:
         if relationship.schema.cardinality == RelationshipCardinality.ONE:
             peer_id = relationship.get_peer_id()
             peer_kind = relationship.get_peer_kind()
             if relationship.schema.kind == RelationshipKind.PARENT:
-                self._parent = ChangelogNodeParent(node_id=peer_id, node_kind=peer_kind)
+                self._parent = ChangelogRelatedNode(node_id=peer_id, node_kind=peer_kind)
             changelog_relationship = RelationshipCardinalityOneChangelog(
                 name=relationship.schema.name,
                 peer_id=peer_id,
@@ -320,6 +324,27 @@ class NodeChangelog(BaseModel):
         changelog_attribute.add_property(name="is_protected", value_current=attribute.is_protected, value_previous=None)
         changelog_attribute.add_property(name="is_visible", value_current=attribute.is_visible, value_previous=None)
         self.attributes[changelog_attribute.name] = changelog_attribute
+
+    def get_related_nodes(self) -> list[ChangelogRelatedNode]:
+        related_nodes: dict[str, ChangelogRelatedNode] = {}
+        for relationship in self.relationships.values():
+            if isinstance(relationship, RelationshipCardinalityOneChangelog):
+                if relationship.peer_id and relationship.peer_kind:
+                    related_nodes[relationship.peer_id] = ChangelogRelatedNode(
+                        node_id=relationship.peer_id, node_kind=relationship.peer_kind
+                    )
+                if relationship.peer_id_previous and relationship.peer_kind_previous:
+                    related_nodes[relationship.peer_id_previous] = ChangelogRelatedNode(
+                        node_id=relationship.peer_id_previous, node_kind=relationship.peer_kind_previous
+                    )
+            elif isinstance(relationship, RelationshipCardinalityManyChangelog):
+                for peer in relationship.peers:
+                    related_nodes[peer.peer_id] = ChangelogRelatedNode(node_id=peer.peer_id, node_kind=peer.peer_kind)
+
+        if self.parent:
+            related_nodes[self.parent.node_id] = self.parent
+
+        return list(related_nodes.values())
 
 
 class ChangelogRelationshipMapper:

@@ -44,7 +44,7 @@ export function RelationshipNodeDisplay({ node }: { node: Node }) {
       variant="outline"
       size="sm"
       to={getObjectDetailsUrl2(node.__typename, node.id)}
-      className="rounded-full truncate hover:underline hover:border-custom-blue-700"
+      className="rounded-full truncate hover:underline hover:border-custom-blue-700 pr-2.5"
     >
       <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="mr-1 text-custom-blue-800" />
       {node.display_label}

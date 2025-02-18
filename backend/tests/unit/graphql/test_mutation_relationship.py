@@ -2,6 +2,7 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
+from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -22,6 +23,8 @@ async def test_relationship_add(
     tag_red_main: Node,
     tag_black_main: Node,
     branch: Branch,
+    enable_broker_config: None,
+    session_first_account: AccountSession,
 ):
     query = """
     mutation {
@@ -39,7 +42,11 @@ async def test_relationship_add(
         tag_black_main.id,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -49,6 +56,19 @@ async def test_relationship_add(
     )
 
     assert result.errors is None
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    assert len(memory_event.events) == 1
+    node_event = memory_event.events[0]
+    assert isinstance(node_event, NodeMutatedEvent)
+    assert node_event.data.node_id == person_jack_main.id
+    relationship = node_event.data.relationships["tags"]
+    assert isinstance(relationship, RelationshipCardinalityManyChangelog)
+    peers = [peer.peer_id for peer in relationship.peers]
+    assert len(peers) == 2
+    assert tag_blue_main.id in peers
+    assert tag_black_main.id in peers
 
     p1 = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=branch)
 
@@ -79,7 +99,11 @@ async def test_relationship_add(
         tag_red_main.id,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -100,6 +124,19 @@ async def test_relationship_add(
             tag_red_main.id,
         ]
     )
+
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    assert len(memory_event.events) == 1
+    node_event = memory_event.events[0]
+    assert isinstance(node_event, NodeMutatedEvent)
+    assert node_event.data.node_id == person_jack_main.id
+    relationship = node_event.data.relationships["tags"]
+    assert isinstance(relationship, RelationshipCardinalityManyChangelog)
+    peers = [peer.peer_id for peer in relationship.peers]
+    assert len(peers) == 1
+    assert tag_red_main.id in peers
 
 
 async def test_relationship_remove(
@@ -367,9 +404,8 @@ async def test_relationship_groups_add(
     assert gql_params.context.background
     await gql_params.context.background()
 
-    node_event = memory_event.events[0]
-    group_event = memory_event.events[1]
-    assert isinstance(node_event, NodeMutatedEvent)
+    assert len(memory_event.events) == 1
+    group_event = memory_event.events[0]
     assert isinstance(group_event, GroupMemberAddedEvent)
 
     assert [member.id for member in group_event.members] == [c2.id]
@@ -415,9 +451,8 @@ async def test_relationship_groups_add(
     assert gql_params.context.background
     await gql_params.context.background()
 
-    node_event = memory_event.events[0]
-    group_event = memory_event.events[1]
-    assert isinstance(node_event, NodeMutatedEvent)
+    assert len(memory_event.events) == 1
+    group_event = memory_event.events[0]
     assert isinstance(group_event, GroupMemberAddedEvent)
     # While we mutated the relationship for c3 we expect the group member event to reflect that of the g1
     # group as c3 was already a member of g2 we don't see an event for that entry
@@ -481,9 +516,8 @@ async def test_relationship_groups_remove(
     assert gql_params.context.background
     await gql_params.context.background()
 
-    node_event = memory_event.events[0]
-    group_event = memory_event.events[1]
-    assert isinstance(node_event, NodeMutatedEvent)
+    assert len(memory_event.events) == 1
+    group_event = memory_event.events[0]
     assert isinstance(group_event, GroupMemberRemovedEvent)
     assert [member.id for member in group_event.members] == [c1.id]
 
@@ -530,9 +564,8 @@ async def test_relationship_groups_remove(
     assert gql_params.context.background
     await gql_params.context.background()
 
-    node_event = memory_event.events[0]
-    group_event = memory_event.events[1]
-    assert isinstance(node_event, NodeMutatedEvent)
+    assert len(memory_event.events) == 1
+    group_event = memory_event.events[0]
     assert isinstance(group_event, GroupMemberRemovedEvent)
     # The c3 node is not member of g1 so we only expect to see a group event for the g2 group
     assert group_event.node_id == g2.id
@@ -820,4 +853,5 @@ async def test_add_generic_related_node_with_hfid(
         variable_values={},
     )
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["object"]["car"]["node"]["name"]["value"] == "testing-car"

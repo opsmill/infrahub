@@ -1,12 +1,11 @@
 import { IModelSchema, genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { menuQueryOptions } from "@/shared/components/layout/menu-navigation/get-menu";
 import { MenuItem } from "@/shared/components/layout/menu-navigation/types";
+import { useMenu } from "@/shared/components/menu/domain/get-menu.query";
 import { SearchAnywhereGroup } from "@/shared/components/search/search-anywhere-group";
 import { SearchAnywhereItem } from "@/shared/components/search/search-anywhere-item";
 import { Badge } from "@/shared/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
-import { useQuery } from "@tanstack/react-query";
 import { useCommandState } from "cmdk";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
@@ -17,7 +16,7 @@ export const SearchActions = () => {
   const generics = useAtomValue(genericsState);
   const models: IModelSchema[] = [...nodes, ...generics];
 
-  const { data: menuData, isPending, isError } = useQuery(menuQueryOptions());
+  const { data: menuData, isPending, isError } = useMenu();
 
   const menuItems = useMemo(() => {
     if (!menuData) return [];

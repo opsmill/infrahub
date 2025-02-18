@@ -1,16 +1,14 @@
 import { generateRelationshipListQuery } from "@/entities/nodes/api/generateRelationshipListQuery";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 
-export type getRelationshipsFromApiParams = {
-  peer: string;
-  limit?: number;
-  offset?: number;
-  search?: string;
-  branchName: string;
-  atDate: Date | null;
-  parent?: { name: string; value: string };
-};
+export type getRelationshipsFromApiParams = ContextParams &
+  PaginationParams & {
+    peer: string;
+    search?: string;
+    parent?: { name: string; value: string };
+  };
 
 export const getRelationshipsFromApi = async ({
   peer,

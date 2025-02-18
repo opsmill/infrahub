@@ -54,8 +54,8 @@ if TYPE_CHECKING:
     from infrahub_sdk.schema.repository import InfrahubRepositoryArtifactDefinitionConfig
     from infrahub_sdk.transforms import InfrahubTransform
 
+    from infrahub.core.checks.models import CheckArtifactCreate
     from infrahub.git.models import RequestArtifactGenerate
-    from infrahub.message_bus import messages
     from infrahub.services import InfrahubServices
 
 
@@ -1266,7 +1266,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
     async def render_artifact(
-        self, artifact: CoreArtifact, message: Union[messages.CheckArtifactCreate, RequestArtifactGenerate]
+        self, artifact: CoreArtifact, message: Union[CheckArtifactCreate, RequestArtifactGenerate]
     ) -> ArtifactGenerateResult:
         response = await self.sdk.query_gql_query(
             name=message.query,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Field, Int, List, NonNull, ObjectType, String
+from graphene import Boolean, DateTime, Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.exceptions import ValidationError
@@ -10,6 +10,8 @@ from infrahub.graphql.types.event import EventNodes
 from infrahub.task_manager.event import PrefectEvent
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from graphql import GraphQLResolveInfo
 
 
@@ -22,12 +24,18 @@ class Events(ObjectType):
         root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         limit: int = 10,
+        has_children: bool | None = None,
+        level: int | None = None,
         offset: int | None = None,
-        account: str | None = None,
+        account__ids: list[str] | None = None,
         ids: list[str] | None = None,
-        branch: str | None = None,
-        q: str | None = None,
+        branches: list[str] | None = None,
+        event_type: list[str] | None = None,
         related_node__ids: list[str] | None = None,
+        primary_node__ids: list[str] | None = None,
+        parent__ids: list[str] | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
     ) -> dict[str, Any]:
         ids = ids or []
         if limit > 50:
@@ -35,13 +43,19 @@ class Events(ObjectType):
             raise ValidationError(input_value="The parameter 'limit' can't be above 50")
         return await Events.query(
             info=info,
-            branch=branch,
-            account=account,
+            branch=branches,
+            account=account__ids,
             limit=limit,
+            level=level,
+            event_type=event_type,
+            has_children=has_children,
             offset=offset,
             related_node__ids=related_node__ids,
-            q=q,
+            primary_node__ids=primary_node__ids,
+            parent__ids=parent__ids,
             ids=ids,
+            since=since,
+            until=until,
         )
 
     @classmethod
@@ -50,23 +64,35 @@ class Events(ObjectType):
         info: GraphQLResolveInfo,
         limit: int,
         offset: int | None = None,
-        q: str | None = None,
+        level: int | None = None,
+        has_children: bool | None = None,
         ids: list[str] | None = None,
+        event_type: list[str] | None = None,
         related_node__ids: list[str] | None = None,
-        branch: str | None = None,
-        account: str | None = None,
+        primary_node__ids: list[str] | None = None,
+        parent__ids: list[str] | None = None,
+        branch: list[str] | None = None,
+        account: list[str] | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
     ) -> dict[str, Any]:
         fields = await extract_fields_first_node(info)
 
         prefect_tasks = await PrefectEvent.query(
             fields=fields,
-            q=q,
             ids=ids,
             related_node__ids=related_node__ids,
+            primary_node__ids=primary_node__ids,
+            parent__ids=parent__ids,
             branch=branch,
+            event_type=event_type,
+            has_children=has_children,
             account=account,
+            level=level,
             limit=limit,
             offset=offset,
+            since=since,
+            until=until,
         )
         return {
             "count": prefect_tasks.get("count", 0),
@@ -78,11 +104,23 @@ Event = Field(
     Events,
     limit=Int(required=False),
     offset=Int(required=False),
-    related_node__ids=List(String),
-    branch=String(required=False),
-    account=String(required=False),
-    ids=List(String),
-    q=String(required=False),
+    level=Int(required=False),
+    has_children=Boolean(required=False, description="Filter events based on if they can have children or not"),
+    event_type=List(NonNull(String), description="Filter events that match a specific type"),
+    primary_node__ids=List(
+        NonNull(String), description="Filter events where the primary node id is within indicated node ids"
+    ),
+    related_node__ids=List(
+        NonNull(String), description="Filter events where the related node ids are within indicated node ids"
+    ),
+    parent__ids=List(
+        NonNull(String), description="Search events that has any of the indicated event ids listed as parents"
+    ),
+    since=DateTime(required=False, description="Search events since this timestamp, defaults to 180 days back"),
+    until=DateTime(required=False, description="Search events until this timestamp, defaults the current time"),
+    branches=List(NonNull(String), required=False, description="Filter the query to specific branches"),
+    account__ids=List(NonNull(String), required=False, description="Filter the query to specific accounts"),
+    ids=List(NonNull(String)),
     resolver=Events.resolve,
     required=True,
 )

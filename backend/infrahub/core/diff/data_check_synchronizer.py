@@ -10,7 +10,13 @@ from infrahub.proposed_change.constants import ProposedChangeState
 
 from .conflicts_extractor import DiffConflictsExtractor
 from .model.diff import DataConflict
-from .model.path import ConflictSelection, EnrichedDiffConflict, EnrichedDiffRoot, EnrichedDiffRootMetadata
+from .model.path import (
+    ConflictSelection,
+    EnrichedDiffConflict,
+    EnrichedDiffNode,
+    EnrichedDiffRoot,
+    EnrichedDiffRootMetadata,
+)
 from .repository.repository import DiffRepository
 
 
@@ -54,20 +60,31 @@ class DiffDataCheckSynchronizer:
         if not proposed_changes:
             return []
         all_data_checks = []
+        enriched_diff_all_conflicts: EnrichedDiffRoot | None = None
         for pc in proposed_changes:
             # if the enriched_diff is EnrichedDiffRootMetadata, then it has no new data in it
             if not isinstance(enriched_diff, EnrichedDiffRoot):
                 has_validator = bool(await self.conflict_recorder.get_validator(proposed_change=pc))
-                # if this pc does not have a validator, then it is a new ProposedChange
+                # if this pc has a validator, then the conflicts for this diff have already been synchronized and we can be done
                 if has_validator:
                     continue
-                # if this is a new ProposedChange, we need to hydrate then EnrichedDiffRoot so that we can get the conflicts from it
-                enriched_diff = await self.diff_repository.get_one(
-                    diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
-                )
 
-            data_conflicts = await self._get_data_conflicts(enriched_diff=enriched_diff)
-            enriched_conflicts_map = self._get_enriched_conflicts_map(enriched_diff=enriched_diff)
+            # we need to get the conflicts for this diff from the database b/c `enriched_diff` might not include all nodes
+            if not enriched_diff_all_conflicts:
+                retrieved_diff_conflicts_only = await self.diff_repository.get_one(
+                    diff_branch_name=enriched_diff.diff_branch_name,
+                    diff_id=enriched_diff.uuid,
+                    filters={"only_conflicted": True},
+                )
+                enriched_diff_all_conflicts = retrieved_diff_conflicts_only
+                # if `enriched_diff` is an EnrichedDiffRootsMetadata, then there have been no changes to the diff and
+                # we can use `retrieved_diff_conflicts_only`
+                # otherwise, we need to combine the changes to `enriched_diff` with the conflicts from the database
+                if isinstance(enriched_diff, EnrichedDiffRoot):
+                    self._update_diff_conflicts(updated_diff=enriched_diff, retrieved_diff=enriched_diff_all_conflicts)
+
+            data_conflicts = await self._get_data_conflicts(enriched_diff=enriched_diff_all_conflicts)
+            enriched_conflicts_map = self._get_enriched_conflicts_map(enriched_diff=enriched_diff_all_conflicts)
             core_data_checks = await self.conflict_recorder.record_conflicts(
                 proposed_change_id=pc.get_id(), conflicts=data_conflicts
             )
@@ -95,3 +112,65 @@ class DiffDataCheckSynchronizer:
         if enriched_conflict.selected_branch is ConflictSelection.DIFF_BRANCH:
             return BranchConflictKeep.SOURCE
         return None
+
+    def _update_diff_conflicts(self, updated_diff: EnrichedDiffRoot, retrieved_diff: EnrichedDiffRoot) -> None:
+        for updated_node in updated_diff.nodes:
+            try:
+                retrieved_node = retrieved_diff.get_node(node_uuid=updated_node.uuid)
+            except ValueError:
+                retrieved_node = None
+            if not retrieved_node:
+                retrieved_diff.nodes.add(updated_node)
+                continue
+            retrieved_node.conflict = updated_node.conflict
+            self._update_diff_attr_conflicts(updated_node=updated_node, retrieved_node=retrieved_node)
+            self._update_diff_relationship_conflicts(updated_node=updated_node, retrieved_node=retrieved_node)
+
+    def _update_diff_attr_conflicts(self, updated_node: EnrichedDiffNode, retrieved_node: EnrichedDiffNode) -> None:
+        for updated_attr in updated_node.attributes:
+            try:
+                retrieved_attr = retrieved_node.get_attribute(name=updated_attr.name)
+            except ValueError:
+                retrieved_attr = None
+            if not retrieved_attr:
+                retrieved_node.attributes.add(updated_attr)
+                continue
+            for updated_prop in updated_attr.properties:
+                try:
+                    retrieved_prop = retrieved_attr.get_property(updated_prop.property_type)
+                except ValueError:
+                    retrieved_prop = None
+                if not retrieved_prop:
+                    retrieved_attr.properties.add(updated_prop)
+                    continue
+                retrieved_prop.conflict = updated_prop.conflict
+
+    def _update_diff_relationship_conflicts(
+        self, updated_node: EnrichedDiffNode, retrieved_node: EnrichedDiffNode
+    ) -> None:
+        for updated_rel in updated_node.relationships:
+            try:
+                retrieved_rel = retrieved_node.get_relationship(name=updated_rel.name)
+            except ValueError:
+                retrieved_rel = None
+            if not retrieved_rel:
+                retrieved_node.relationships.add(updated_rel)
+                continue
+            for updated_element in updated_rel.relationships:
+                try:
+                    retrieved_element = retrieved_rel.get_element(updated_element.peer_id)
+                except ValueError:
+                    retrieved_element = None
+                if not retrieved_element:
+                    retrieved_rel.relationships.add(updated_element)
+                    continue
+                retrieved_element.conflict = updated_element.conflict
+                for updated_prop in updated_element.properties:
+                    try:
+                        retrieved_prop = retrieved_element.get_property(updated_prop.property_type)
+                    except ValueError:
+                        retrieved_prop = None
+                    if not retrieved_prop:
+                        retrieved_element.properties.add(updated_prop)
+                        continue
+                    retrieved_prop.conflict = updated_prop.conflict

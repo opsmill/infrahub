@@ -164,16 +164,7 @@ class RelationshipMixin:
                         node_changelog.delete_relationship(relationship=rel)
                         await rel.delete(db=db)
 
-        if config.SETTINGS.broker.enable and graphql_context.background:
-            event = NodeMutatedEvent(
-                kind=source.get_schema().kind,
-                node_id=source.id,
-                data=node_changelog,
-                action=MutationAction.UPDATED,
-                fields=[relationship_name],
-                meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
-            )
-            graphql_context.background.add_task(graphql_context.active_service.event.send, event)
+        if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
             if group_event_type == GroupUpdateType.MEMBERS:
                 if cls.__name__ == "RelationshipAdd":
                     group_add_event = GroupMemberAddedEvent(
@@ -219,6 +210,16 @@ class RelationshipMixin:
                             graphql_context.background.add_task(
                                 graphql_context.active_service.event.send, group_remove_event
                             )
+            else:
+                event = NodeMutatedEvent(
+                    kind=source.get_schema().kind,
+                    node_id=source.id,
+                    data=node_changelog,
+                    action=MutationAction.UPDATED,
+                    fields=[relationship_name],
+                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                )
+                graphql_context.background.add_task(graphql_context.active_service.event.send, event)
         return cls(ok=True)  # type: ignore[call-arg]
 
 

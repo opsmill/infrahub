@@ -18,7 +18,6 @@ from infrahub.services import InfrahubServices
 from infrahub.tasks.check import set_check_status
 
 COMMAND_MAP = {
-    "check.artifact.create": check.artifact.create,
     "check.generator.run": check.generator.run,
     "check.repository.check_definition": check.repository.check_definition,
     "check.repository.merge_conflicts": check.repository.merge_conflicts,
@@ -34,7 +33,6 @@ COMMAND_MAP = {
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
     "request.generator_definition.check": requests.generator_definition.check,
-    "request.artifact_definition.check": requests.artifact_definition.check,
     "request.proposed_change.pipeline": requests.proposed_change.pipeline,
     "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
     "request.repository.checks": requests.repository.checks,

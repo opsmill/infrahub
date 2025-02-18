@@ -20,6 +20,11 @@ class EventNode(BaseModel):
     kind: str
 
 
+class ParentEvent(BaseModel):
+    id: str
+    name: str
+
+
 class EventMeta(BaseModel):
     branch: Branch | None = Field(default=None)
     request_id: str = ""
@@ -39,6 +44,16 @@ class EventMeta(BaseModel):
     )
 
     parent: UUID | None = Field(default=None, description="The UUID of the parent event if applicable")
+    ancestors: list[ParentEvent] = Field(default_factory=list, description="Any event used to trigger this event")
+
+    def get_branch_id(self) -> str:
+        if self.context.branch.id:
+            return self.context.branch.id
+
+        if self.branch:
+            return str(self.branch.get_uuid())
+
+        return ""
 
     def get_id(self) -> str:
         return str(self.id)
@@ -50,26 +65,20 @@ class EventMeta(BaseModel):
                 "prefect.resource.id": self.get_id(),
                 "prefect.resource.role": "infrahub.event",
                 "infrahub.event.has_children": str(self.has_children).lower(),
+                "infrahub.event.level": str(self.level),
+            },
+            {
+                "prefect.resource.id": f"infrahub.account.{self.context.account.account_id}",
+                "prefect.resource.role": "infrahub.account",
+                "infrahub.resource.id": self.context.account.account_id,
+            },
+            {
+                "prefect.resource.id": f"infrahub.branch.{self.get_branch_id()}",
+                "prefect.resource.role": "infrahub.branch",
+                "infrahub.resource.id": self.get_branch_id(),
+                "infrahub.resource.label": self.context.branch.name,
             },
         ]
-        if self.account_id:
-            related.append(
-                {
-                    "prefect.resource.id": f"infrahub.account.{self.account_id}",
-                    "prefect.resource.role": "infrahub.account",
-                    "infrahub.resource.id": self.account_id,
-                }
-            )
-
-        if self.branch:
-            related.append(
-                {
-                    "prefect.resource.id": f"infrahub.branch.{self.branch.get_uuid()}",
-                    "prefect.resource.role": "infrahub.branch",
-                    "infrahub.resource.id": str(self.branch.get_uuid()),
-                    "infrahub.resource.label": self.branch.name,
-                }
-            )
 
         if self.parent:
             related.append(
@@ -77,6 +86,15 @@ class EventMeta(BaseModel):
                     "prefect.resource.id": self.get_id(),
                     "prefect.resource.role": "infrahub.child_event",
                     "infrahub.event_parent.id": str(self.parent),
+                }
+            )
+
+        for ancestor in self.ancestors:
+            related.append(
+                {
+                    "prefect.resource.id": ancestor.id,
+                    "prefect.resource.role": "infrahub.ancestor_event",
+                    "infrahub.ancestor_event.name": ancestor.name,
                 }
             )
 
@@ -106,6 +124,7 @@ class EventMeta(BaseModel):
             account_id=parent.meta.account_id,
             level=parent.meta.level + 1,
             context=parent.meta.context,
+            ancestors=[ParentEvent(id=parent.get_id(), name=parent.get_name())] + parent.meta.ancestors,
         )
 
 
