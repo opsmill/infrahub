@@ -349,6 +349,13 @@ REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS = WorkflowDefinition(
     function="repository_checks",
 )
 
+REQUEST_ARTIFACT_DEFINITION_CHECK = WorkflowDefinition(
+    name="artifacts-generation-validation",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="validate_artifacts_generation",
+)
+
 WEBHOOK_CONFIGURE = WorkflowDefinition(
     name="webhook-setup-automations",
     type=WorkflowType.USER,
@@ -361,6 +368,13 @@ WEBHOOK_TRIGGER = WorkflowDefinition(
     type=WorkflowType.USER,
     module="infrahub.webhook.tasks",
     function="trigger_webhooks",
+)
+
+GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE = WorkflowDefinition(
+    name="git-repository-check-artifact-create",
+    type=WorkflowType.USER,
+    module="infrahub.artifacts.tasks",
+    function="create",
 )
 
 worker_pools = [INFRAHUB_WORKER_POOL]
@@ -380,6 +394,7 @@ workflows = [
     DIFF_REFRESH,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
+    GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
     GIT_REPOSITORIES_DIFF_NAMES_ONLY,
     GIT_REPOSITORIES_IMPORT_OBJECTS,
@@ -393,6 +408,7 @@ workflows = [
     PROCESS_COMPUTED_MACRO,
     PROPOSED_CHANGE_MERGE,
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
+    REQUEST_ARTIFACT_DEFINITION_CHECK,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_ARTIFACT_GENERATE,
     REQUEST_GENERATOR_DEFINITION_RUN,

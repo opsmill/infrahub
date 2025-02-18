@@ -86,6 +86,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         )
         assert len(retrieved) == 1
         diff_root = retrieved[0]
+        assert diff_root.exists_on_database is True
+        diff_root.exists_on_database = False
         assert diff_root == enriched_diff
 
     async def test_save_and_retrieve_large_diff(self, diff_repository: DiffRepository, reset_database):
@@ -125,6 +127,10 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         )
         assert len(retrieved) == 1
         retrieved_pair = retrieved[0]
+        assert retrieved_pair.diff_branch_diff.exists_on_database is True
+        assert retrieved_pair.base_branch_diff.exists_on_database is True
+        retrieved_pair.diff_branch_diff.exists_on_database = False
+        retrieved_pair.base_branch_diff.exists_on_database = False
         assert retrieved_pair == enriched_diffs
 
     async def test_base_branch_name_filter(self, diff_repository: DiffRepository, reset_database):
@@ -303,6 +309,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             filters={"ids": [parent_node.uuid]},
         )
         assert len(retrieved) == 1
+        assert retrieved[0].exists_on_database is True
+        retrieved[0].exists_on_database = False
         assert retrieved[0] == replace(this_diff, nodes={parent_node})
 
         # get middle node
@@ -325,6 +333,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             filters={"ids": [middle_node.uuid]},
         )
         assert len(retrieved) == 1
+        assert retrieved[0].exists_on_database is True
+        retrieved[0].exists_on_database = False
         assert retrieved[0] == replace(this_diff, nodes={thin_parent_node, expected_middle_node})
 
         # get leaf node
@@ -355,6 +365,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             filters={"ids": [leaf_node.uuid]},
         )
         assert len(retrieved) == 1
+        assert retrieved[0].exists_on_database is True
+        retrieved[0].exists_on_database = False
         assert retrieved[0] == replace(this_diff, nodes={thin_parent_node, thin_middle_node, expected_leaf_node})
 
         # get middle and parent nodes
@@ -366,6 +378,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             filters={"ids": [parent_node.uuid, middle_node.uuid]},
         )
         assert len(retrieved) == 1
+        assert retrieved[0].exists_on_database is True
+        retrieved[0].exists_on_database = False
         assert retrieved[0] == replace(this_diff, nodes={parent_node, middle_node})
 
         # get leaf and parent nodes
@@ -396,6 +410,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             filters={"ids": [parent_node.uuid, leaf_node.uuid]},
         )
         assert len(retrieved) == 1
+        assert retrieved[0].exists_on_database is True
+        retrieved[0].exists_on_database = False
         assert retrieved[0] == replace(this_diff, nodes={parent_node, thin_middle_node, expected_leaf_node})
 
     async def test_save_and_retrieve_many_diffs(self, diff_repository: DiffRepository, reset_database):
@@ -434,6 +450,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             to_time=Timestamp(start_time.add(minutes=150)),
         )
         assert len(retrieved) == 5
+        for r in retrieved:
+            assert r.exists_on_database is True
+            r.exists_on_database = False
         assert set(retrieved) == set(diffs_to_retrieve)
 
     async def test_delete_diff_by_uuid(self, diff_repository: DiffRepository, reset_database):
@@ -465,6 +484,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             to_time=Timestamp(self.diff_from_time.add(minutes=(4 * 30) + 29)),
         )
         assert len(retrieved) == len(diffs)
+        for r in retrieved:
+            assert r.exists_on_database is True
+            r.exists_on_database = False
         assert set(retrieved) == set(diffs)
 
     async def test_get_by_tracking_id(self, diff_repository: DiffRepository, reset_database):
@@ -511,11 +533,15 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             tracking_id=branch_tracking_id,
             diff_branch_name=self.diff_branch_name,
         )
+        assert retrieved_branch_diff.exists_on_database is True
+        retrieved_branch_diff.exists_on_database = False
         assert retrieved_branch_diff == branch_tracked_diff
         retrieved_name_diff = await diff_repository.get_one(
             tracking_id=name_tracking_id,
             diff_branch_name=self.diff_branch_name,
         )
+        assert retrieved_name_diff.exists_on_database is True
+        retrieved_name_diff.exists_on_database = False
         assert retrieved_name_diff == name_tracked_diff
 
         with pytest.raises(ResourceNotFoundError):
@@ -926,6 +952,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         # verify relationship element property conflict updated
         assert retrieved_updated_element_property.conflict == updated_element_property.conflict
 
+        assert retrieved_diff_root.exists_on_database is True
+        retrieved_diff_root.exists_on_database = False
         assert retrieved_diff_root == enriched_diff
         await verify_no_orphaned_nodes(db=db)
 

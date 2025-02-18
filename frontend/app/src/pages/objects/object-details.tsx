@@ -1,25 +1,19 @@
 import { GRAPHQL_QUERY_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
+import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { NetworkStatus } from "@apollo/client";
-import { useAtomValue } from "jotai";
 import { Navigate, useParams } from "react-router";
 import GraphqlQueryDetailsPage from "./CoreGraphQLQuery/graphql-query-details";
 
 export function ObjectDetailsPage() {
   const { objectKind, objectid } = useParams();
-
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
-  const profiles = useAtomValue(profilesAtom);
-
-  const schema = [...nodes, ...generics, ...profiles].find(({ kind }) => kind === objectKind);
+  const { schema } = useSchema(objectKind);
 
   if (!schema) return <ErrorScreen message={`Object ${objectKind} not found.`} />;
 

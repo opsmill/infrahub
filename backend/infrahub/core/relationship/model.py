@@ -1228,7 +1228,7 @@ class RelationshipManager:
 
     async def _validate_hierarchy(self) -> None:
         schema = self.node.get_schema()
-        if schema.is_profile_schema or not schema.hierarchy:  # type: ignore[union-attr]
+        if schema.is_profile_schema or schema.is_template_schema or not schema.hierarchy:  # type: ignore[union-attr]
             return
 
         if self.name == "parent" and not schema.parent:  # type: ignore[union-attr]

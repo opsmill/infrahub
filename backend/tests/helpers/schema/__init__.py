@@ -9,6 +9,7 @@ from infrahub.graphql.manager import GraphQLSchemaManager
 from .car import CAR
 from .child import CHILD
 from .color import COLOR
+from .device import DEVICE, INTERFACE, SFP
 from .location import CONTINENT, COUNTRY, LOCATION, SITE
 from .manufacturer import MANUFACTURER
 from .person import PERSON
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
 
 
 CAR_SCHEMA = SchemaRoot(nodes=[CAR, MANUFACTURER, PERSON])
+DEVICE_SCHEMA = SchemaRoot(nodes=[DEVICE, INTERFACE, SFP])
 LOCATION_SCHEMA = SchemaRoot(generics=[LOCATION], nodes=[CONTINENT, COUNTRY, SITE])
 
 
@@ -47,10 +49,14 @@ __all__ = [
     "COLOR",
     "CONTINENT",
     "COUNTRY",
+    "DEVICE",
+    "DEVICE_SCHEMA",
+    "INTERFACE",
     "LOCATION",
     "LOCATION_SCHEMA",
     "MANUFACTURER",
     "PERSON",
+    "SFP",
     "SITE",
     "THING",
     "TICKET",

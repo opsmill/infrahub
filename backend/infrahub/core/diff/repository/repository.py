@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator, Generator, Iterable
 
 from infrahub import config
 from infrahub.core import registry
@@ -167,14 +167,23 @@ class DiffRepository:
             for dbr in diff_branch_roots
         ]
 
-    async def hydrate_diff_pair(self, enriched_diffs_metadata: EnrichedDiffsMetadata) -> EnrichedDiffs:
+    async def hydrate_diff_pair(
+        self,
+        enriched_diffs_metadata: EnrichedDiffsMetadata,
+        node_uuids: Iterable[str] | None = None,
+    ) -> EnrichedDiffs:
+        filters = None
+        if node_uuids:
+            filters = {"ids": list(node_uuids) if node_uuids is not None else None}
         hydrated_base_diff = await self.get_one(
             diff_branch_name=enriched_diffs_metadata.base_branch_name,
             diff_id=enriched_diffs_metadata.base_branch_diff.uuid,
+            filters=filters,
         )
         hydrated_branch_diff = await self.get_one(
             diff_branch_name=enriched_diffs_metadata.diff_branch_name,
             diff_id=enriched_diffs_metadata.diff_branch_diff.uuid,
+            filters=filters,
         )
         return EnrichedDiffs(
             base_branch_name=enriched_diffs_metadata.base_branch_name,
@@ -234,15 +243,24 @@ class DiffRepository:
             return
         num_nodes = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
         log.info(f"Saving diff (num_nodes={num_nodes})...")
-        for node_create_batch in self._get_node_create_request_batch(enriched_diffs=enriched_diffs):
+        for batch_num, node_create_batch in enumerate(
+            self._get_node_create_request_batch(enriched_diffs=enriched_diffs)
+        ):
+            log.info(f"Saving node batch #{batch_num}...")
             node_query = await EnrichedNodeBatchCreateQuery.init(db=self.db, node_create_batch=node_create_batch)
             await node_query.execute(db=self.db)
+            log.info(f"Batch #{batch_num} saved")
         link_query = await EnrichedNodesLinkQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await link_query.execute(db=self.db)
         log.info("Diff saved.")
         if do_summary_counts:
+            node_uuids: list[str] | None = None
+            if enriched_diffs.diff_branch_diff.exists_on_database:
+                node_uuids = list(enriched_diffs.branch_node_uuids)
             await self.add_summary_counts(
-                diff_branch_name=enriched_diffs.diff_branch_name, diff_id=enriched_diffs.diff_branch_diff.uuid
+                diff_branch_name=enriched_diffs.diff_branch_name,
+                diff_id=enriched_diffs.diff_branch_diff.uuid,
+                node_uuids=node_uuids,
             )
 
     async def summary(

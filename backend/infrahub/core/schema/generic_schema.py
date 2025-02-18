@@ -24,6 +24,10 @@ class GenericSchema(GeneratedGenericSchema):
     def is_profile_schema(self) -> bool:
         return False
 
+    @property
+    def is_template_schema(self) -> bool:
+        return False
+
     def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # noqa: ARG002
         if self.hierarchical:
             return self

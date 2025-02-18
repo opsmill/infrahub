@@ -1,3 +1,4 @@
+import { PaginationParams } from "@/shared/api/types";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 export const generateRelationshipListQuery = ({
@@ -7,11 +8,9 @@ export const generateRelationshipListQuery = ({
   offset = 0,
   search = "",
   peerField,
-}: {
+}: PaginationParams & {
   peer: string;
   parent?: { name?: string; value?: string };
-  limit?: number;
-  offset?: number;
   search?: string;
   peerField?: string;
 }): string => {

@@ -2,10 +2,10 @@ import {
   DeleteObjectModal,
   DeleteObjectModalProps,
 } from "@/entities/nodes/object/ui/delete-object-modal";
-import { TableCell } from "@/entities/nodes/object/ui/objects-table/cells/table-cell";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
 import { Button } from "@/shared/components/buttons/button-primitive";
+import { TableCell } from "@/shared/components/table/table-cell";
 import {
   DropdownMenu,
   DropdownMenuContent,
