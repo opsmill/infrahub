@@ -1,9 +1,9 @@
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import {
-  Node,
-  RelationshipManyType,
-  RelationshipOneType,
-  RelationshipType,
-} from "@/entities/nodes/getObjectItemDisplayValue";
+  NodeRelationship,
+  NodeRelationshipMany,
+  NodeRelationshipOne,
+} from "@/entities/nodes/types";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { RelationshipSchema } from "@/entities/schema/types";
@@ -12,7 +12,7 @@ import { Icon } from "@iconify-icon/react";
 
 export interface TableRelationshipCellProps {
   relationshipSchema: RelationshipSchema;
-  relationshipData: RelationshipType;
+  relationshipData: NodeRelationship;
 }
 
 export function TableRelationshipCell({
@@ -20,14 +20,14 @@ export function TableRelationshipCell({
   relationshipData,
 }: TableRelationshipCellProps) {
   if (relationshipSchema.cardinality === "one") {
-    const { node } = relationshipData as RelationshipOneType;
+    const { node } = relationshipData as NodeRelationshipOne;
 
     if (!node) return "-";
 
     return <RelationshipNodeDisplay node={node} />;
   }
 
-  const nodes = (relationshipData as RelationshipManyType).edges
+  const nodes = (relationshipData as NodeRelationshipMany).edges
     .map(({ node }) => node)
     .filter((node) => !!node);
 
@@ -36,8 +36,10 @@ export function TableRelationshipCell({
   return nodes.map((node) => <RelationshipNodeDisplay key={node.id} node={node} />);
 }
 
-export function RelationshipNodeDisplay({ node }: { node: Node }) {
+export function RelationshipNodeDisplay({ node }: NodeRelationshipOne) {
   const { schema } = useSchema(node.__typename);
+
+  if (!schema) return "Unknown schema";
 
   return (
     <LinkButton
@@ -46,8 +48,8 @@ export function RelationshipNodeDisplay({ node }: { node: Node }) {
       to={getObjectDetailsUrl2(node.__typename, node.id)}
       className="rounded-full truncate hover:underline hover:border-custom-blue-700 pr-2.5"
     >
-      <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="mr-1 text-custom-blue-800" />
-      {node.display_label}
+      <Icon icon={schema.icon ?? "mdi:cube-outline"} className="mr-1 text-custom-blue-800" />
+      {getNodeLabel({ node, schema })}
     </LinkButton>
   );
 }

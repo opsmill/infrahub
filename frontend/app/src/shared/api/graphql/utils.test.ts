@@ -152,6 +152,7 @@ describe("addRelationshipsToRequest", () => {
       test: {
         node: {
           id: true,
+          hfid: true,
           display_label: true,
         },
       },
@@ -173,6 +174,7 @@ describe("addRelationshipsToRequest", () => {
         edges: {
           node: {
             id: true,
+            hfid: true,
             display_label: true,
           },
         },
@@ -194,6 +196,7 @@ describe("addRelationshipsToRequest", () => {
       test: {
         node: {
           id: true,
+          hfid: true,
           display_label: true,
         },
         properties: {
@@ -230,6 +233,7 @@ describe("addRelationshipsToRequest", () => {
       one: {
         node: {
           id: true,
+          hfid: true,
           display_label: true,
         },
       },
@@ -237,6 +241,7 @@ describe("addRelationshipsToRequest", () => {
         edges: {
           node: {
             id: true,
+            hfid: true,
             display_label: true,
           },
         },

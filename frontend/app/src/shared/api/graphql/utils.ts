@@ -68,6 +68,7 @@ export const addRelationshipsToRequest = (
   const baseFragment = {
     node: {
       id: true,
+      hfid: true,
       display_label: true,
     },
     ...(withMetadata && {
