@@ -18,12 +18,12 @@ type BranchContext = {
   setCurrentBranch: (branch: Branch) => void;
 };
 
-const BranchContext = React.createContext<BranchContext | null>(null);
+export const BranchContext = React.createContext<BranchContext | null>(null);
 
 export function useCurrentBranch() {
   const context = React.use(BranchContext);
   if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider.");
+    throw new Error("useCurrentBranch must be used within a BranchesProvider.");
   }
 
   return context;
