@@ -1,1 +1,0 @@
-Enhance the data integrity checks UI to enable navigation from the check to the diff view.
