@@ -1,10 +1,11 @@
-import {
-  DeleteObjectModal,
-  DeleteObjectModalProps,
-} from "@/entities/nodes/object/ui/delete-object-modal";
+import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
+import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
+import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { TableCell } from "@/shared/components/table/table-cell";
 import {
   DropdownMenu,
@@ -17,12 +18,18 @@ import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { Link } from "react-router";
 
-export interface ActionsCellProps extends Omit<DeleteObjectModalProps, "open" | "setOpen"> {
+export interface ActionsCellProps {
   permission: Permission;
+  objectId: string;
+  objectKind: string;
+  objectLabel: string;
 }
 
 export function ActionsCell({ objectKind, objectId, objectLabel, permission }: ActionsCellProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const { schema } = useSchema(objectKind);
+  const isEditAllowed = permission.update.isAllowed;
   const isDeleteAllowed = permission.delete.isAllowed;
 
   return (
@@ -49,6 +56,18 @@ export function ActionsCell({ objectKind, objectId, objectLabel, permission }: A
               </Link>
             </DropdownMenuItem>
 
+            <Tooltip enabled={!isEditAllowed} content={permission.update.message} side="left">
+              <div>
+                <DropdownMenuItem
+                  disabled={!isEditAllowed}
+                  onClick={() => isEditAllowed && setShowEditForm(true)}
+                >
+                  <Icon icon="mdi:edit-outline" className="text-base" />
+                  Edit
+                </DropdownMenuItem>
+              </div>
+            </Tooltip>
+
             <Tooltip enabled={!isDeleteAllowed} content={permission.delete.message} side="left">
               <div>
                 <DropdownMenuItem
@@ -63,6 +82,31 @@ export function ActionsCell({ objectKind, objectId, objectLabel, permission }: A
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
+
+      {showEditForm && (
+        <SlideOver
+          title={
+            <SlideOverTitle
+              schema={schema}
+              currentObjectLabel={objectLabel}
+              title={`Edit ${objectLabel}`}
+            />
+          }
+          open={true}
+          setOpen={() => setShowEditForm(false)}
+        >
+          <ObjectItemEditComponent
+            closeDrawer={() => setShowEditForm(false)}
+            onUpdateComplete={async () => {
+              await queryClient.invalidateQueries({
+                predicate: (query) => query.queryKey.includes("objects"),
+              });
+            }}
+            objectid={objectId}
+            objectname={objectKind}
+          />
+        </SlideOver>
+      )}
 
       {showDeleteModal && (
         <DeleteObjectModal
