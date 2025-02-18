@@ -8,17 +8,20 @@ export type RelationshipKind =
   | "Hierarchy"
   | "Profile";
 
+export type NodeCore = {
+  id: string;
+  hfid?: string[] | null;
+  display_label?: string | null;
+  __typename: string;
+};
+
 export type NodeAttribute = {
   id: string;
   value: string | number | boolean | null;
 };
 
 export type NodeRelationshipOne = {
-  node: {
-    id: string;
-    display_label: string;
-    __typename: string;
-  };
+  node: NodeCore;
 };
 
 export type NodeRelationshipMany = {
@@ -27,11 +30,6 @@ export type NodeRelationshipMany = {
 
 export type NodeRelationship = NodeRelationshipOne | NodeRelationshipMany;
 
-export type NodeObject = {
-  id: string;
-  hfid?: string;
-  display_label?: string;
-  __typename: string;
-} & {
+export type NodeObject = NodeCore & {
   [key: string]: NodeAttribute | NodeRelationship;
 };

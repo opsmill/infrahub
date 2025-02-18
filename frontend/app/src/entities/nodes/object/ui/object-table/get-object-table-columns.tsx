@@ -3,9 +3,10 @@ import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/gene
 import { KindHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-header-cell";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
+import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
-import { TableRowIdentifier } from "@/entities/nodes/object/ui/object-table/cells/table-row-identifier";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
 import { NodeObject } from "@/entities/nodes/types";
 import { Permission } from "@/entities/permission/types";
@@ -32,11 +33,7 @@ export const getObjectTableColumns = (
   return [
     {
       id: "id",
-      accessorFn: ({ hfid, display_label, id }): string => {
-        if (schema.human_friendly_id && hfid) return hfid.join(", ");
-        if (schema.display_labels && display_label) return display_label;
-        return id;
-      },
+      accessorFn: (node) => getNodeLabel({ node, schema }),
       header: () => (
         <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white")}>
           {schema.icon && <Icon icon={schema.icon} className="text-stone-400" />}
@@ -46,10 +43,10 @@ export const getObjectTableColumns = (
       cell: ({ row }) => {
         const value = (row.getValue("id") ?? "-") as string;
         return (
-          <TableRowIdentifier
+          <TableIdentifierCell
             objectKind={row.original.__typename as string}
             objectId={row.original.id as string}
-            identifier={value}
+            label={value}
           />
         );
       },
