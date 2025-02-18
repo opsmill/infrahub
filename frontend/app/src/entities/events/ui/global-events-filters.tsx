@@ -10,10 +10,24 @@ const FILTERS = [
     },
   },
   {
-    name: "test",
-    label: "Test",
+    name: "eventType",
+    label: "Event Type",
     fieldSchema: {
-      kind: "Text",
+      kind: "Dropdown",
+      choices: [
+        {
+          label: "Node update",
+          name: "NodeMutatedEvent",
+        },
+      ],
+    },
+  },
+  {
+    name: "primaryNodeIds",
+    label: "Primary Node",
+    fieldSchema: {
+      peer: "CoreNode",
+      cardinality: "one",
     },
   },
 ];

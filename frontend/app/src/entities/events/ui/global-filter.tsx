@@ -24,6 +24,28 @@ export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagPr
     setFilters(filters.filter((f) => f.name !== `${filterName}__value`));
   };
 
+  const getFilterDisplayValue = () => {
+    if (typeof currentFilter?.value === "boolean") {
+      return JSON.stringify(currentFilter?.value);
+    }
+
+    if (fieldSchema.kind === "Dropdown") {
+      return fieldSchema.choices?.find((choice) => {
+        return choice.name === currentFilter?.value;
+      })?.label;
+    }
+
+    if (Array.isArray(currentFilter?.value)) {
+      return currentFilter?.value
+        .map((value) => {
+          return value.display_label;
+        })
+        .join(", ");
+    }
+
+    return currentFilter?.value;
+  };
+
   return (
     <Tag
       className={classNames(
@@ -55,11 +77,9 @@ export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagPr
                 handleRemoveFilter(name);
               }}
             >
-              <span className="text-custom-blue-700 font-medium inline-flex items-center">
-                {typeof currentFilter?.value === "boolean"
-                  ? JSON.stringify(currentFilter?.value)
-                  : currentFilter?.value}
-              </span>
+              <div className="text-custom-blue-700 font-medium inline-flex items-center">
+                {getFilterDisplayValue()}
+              </div>
 
               <Icon
                 icon="mdi:close-circle-outline"
