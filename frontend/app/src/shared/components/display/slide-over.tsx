@@ -1,11 +1,10 @@
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Badge } from "@/shared/components/ui/badge";
 import usePrevious from "@/shared/hooks/usePrevious";
 import { Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai/index";
 import React, { Fragment, useRef, useState } from "react";
 import ModalDelete from "../modals/modal-delete";
 
@@ -129,14 +128,14 @@ export const SlideOverTitle = ({
   title,
   subtitle,
 }: SlideOverTitleProps) => {
-  const currentBranch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
 
   return (
     <div className="space-y-2">
       <div className="flex">
         <Badge variant="blue" className="flex items-center gap-1">
           <Icon icon="mdi:layers-triple" />
-          <span>{currentBranch?.name}</span>
+          <span>{currentBranch.name}</span>
         </Badge>
 
         <ObjectHelpButton

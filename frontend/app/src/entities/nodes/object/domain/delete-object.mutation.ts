@@ -1,5 +1,4 @@
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { queryClient } from "@/shared/api/rest/client";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useMutation } from "@tanstack/react-query";
@@ -12,7 +11,7 @@ export interface DeleteObjectParams {
 }
 
 export function useDeleteObject() {
-  const currentBranch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useMutation({
@@ -20,7 +19,7 @@ export function useDeleteObject() {
       await deleteObject({
         objectKind,
         objectId,
-        branchName: currentBranch?.name ?? DEFAULT_BRANCH_NAME,
+        branchName: currentBranch.name,
         atDate: timeMachineDate,
       });
 

@@ -1,6 +1,5 @@
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getObjectPermissions } from "@/entities/permission/domain/get-object-permissions";
 import { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
@@ -28,14 +27,14 @@ export const getObjectPermissionsQueryOptions = ({
 
 export const useGetObjectPermissions = (kind: string) => {
   const auth = useAuth();
-  const currentBranch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useQuery(
     getObjectPermissionsQueryOptions({
       kind,
       userId: auth.user?.id,
-      branchName: currentBranch?.name ?? DEFAULT_BRANCH_NAME,
+      branchName: currentBranch.name,
       atDate: timeMachineDate,
     })
   );

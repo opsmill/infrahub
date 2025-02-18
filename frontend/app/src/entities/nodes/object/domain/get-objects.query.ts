@@ -1,5 +1,4 @@
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { ContextParams } from "@/shared/api/types";
 import { Filter } from "@/shared/hooks/useFilters";
@@ -41,13 +40,13 @@ export function getObjectsInfiniteQueryOptions({
 }
 
 export function useObjects(params: Omit<GetObjectsQueryParams, "branchName" | "atDate">) {
-  const currentBranch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useInfiniteQuery(
     getObjectsInfiniteQueryOptions({
       ...params,
-      branchName: currentBranch?.name ?? DEFAULT_BRANCH_NAME,
+      branchName: currentBranch.name,
       atDate: timeMachineDate,
     })
   );

@@ -1,5 +1,4 @@
-import { DEFAULT_BRANCH_NAME } from "@/config/constants";
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { ContextParams } from "@/shared/api/types";
 import { getMenu } from "@/shared/components/menu/domain/get-menu";
 import { datetimeAtom } from "@/shared/stores/time.atom";
@@ -14,12 +13,12 @@ export function menuQueryOptions({ branchName, atDate }: ContextParams) {
 }
 
 export function useMenu() {
-  const currentBranch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useQuery(
     menuQueryOptions({
-      branchName: currentBranch?.name ?? DEFAULT_BRANCH_NAME,
+      branchName: currentBranch.name,
       atDate: timeMachineDate,
     })
   );

@@ -1,5 +1,5 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { resolveConflict } from "@/entities/diff/api/resolveConflict";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -16,7 +16,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 
 export const Conflict = ({ conflict }: any) => {
-  const currentBranch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
