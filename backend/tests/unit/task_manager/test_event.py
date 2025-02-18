@@ -8,6 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.events.branch_action import BranchCreatedEvent, BranchRebasedEvent
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.task_manager.event import PrefectEvent
+from infrahub.task_manager.models import InfrahubEventFilter
 
 QUERY_EVENT = """
 query {
@@ -87,7 +88,7 @@ async def event_ids_inscope(events_data: dict[str, InfrahubEvent]) -> list[str]:
 
 async def test_query_no_filters(event_ids_inscope):
     fields = {"count": None, "edges": {"node": {"event": None, "branch": None}}}
-    events = await PrefectEvent.query(fields=fields)
+    events = await PrefectEvent.query(fields=fields, event_filter=InfrahubEventFilter())
     clean_events = filter_outofscope_events(events, event_ids_inscope)
     assert clean_events["count"] == 4
 
@@ -95,8 +96,9 @@ async def test_query_no_filters(event_ids_inscope):
 async def test_query_branch_filter(events_data, event_ids_inscope):
     expected_ids = extract_expected_ids(expected_events=["branch1_created", "branch1_rebased"], data=events_data)
     fields = {"count": None, "edges": {"node": {"event": None, "branch": None}}}
-
-    events = await PrefectEvent.query(fields=fields, branch="branch1")
+    event_filter = InfrahubEventFilter()
+    event_filter.add_branch_filter(branches=["branch1"])
+    events = await PrefectEvent.query(fields=fields, event_filter=event_filter)
     clean_events = filter_outofscope_events(events, event_ids_inscope)
 
     received_ids = sorted([event["node"]["id"] for event in clean_events["edges"]])
@@ -106,8 +108,10 @@ async def test_query_branch_filter(events_data, event_ids_inscope):
 async def test_query_ids_filter(events_data, event_ids_inscope):
     expected_ids = extract_expected_ids(expected_events=["branch1_created", "branch2_created"], data=events_data)
     fields = {"count": None, "edges": {"node": {"event": None, "branch": None}}}
+    event_filter = InfrahubEventFilter()
+    event_filter.add_event_id_filter(ids=expected_ids)
 
-    events = await PrefectEvent.query(fields=fields, ids=expected_ids)
+    events = await PrefectEvent.query(fields=fields, event_filter=event_filter)
     clean_events = filter_outofscope_events(events, event_ids_inscope)
 
     received_ids = sorted([event["node"]["id"] for event in clean_events["edges"]])
