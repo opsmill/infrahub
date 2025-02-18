@@ -3,8 +3,18 @@ import { GlobalFilter } from "./global-filter";
 
 const FILTERS = [
   {
-    name: "node",
-    label: "Node",
+    name: "hasChildren",
+    label: "Has Children",
+    fieldSchema: {
+      kind: "Boolean",
+    },
+  },
+  {
+    name: "test",
+    label: "Test",
+    fieldSchema: {
+      kind: "Text",
+    },
   },
 ];
 

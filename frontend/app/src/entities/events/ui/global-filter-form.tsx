@@ -18,7 +18,7 @@ export function GlobalFilterForm({ name, fieldSchema, onSuccess }: GlobalFilterF
   const handleSubmit = ({ filter }: Record<string, FormFieldValue>) => {
     const otherFilters = filters.filter((f) => f.name !== `${name}__value`);
 
-    if (!filter) {
+    if (filter === undefined || filter === null) {
       setFilters(otherFilters);
     } else {
       setFilters([

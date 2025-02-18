@@ -40,14 +40,14 @@ export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagPr
 
           <div className="w-px bg-gray-300 self-stretch ml-1" />
 
-          {!currentFilter?.value && (
+          {(currentFilter?.value === undefined || currentFilter?.value === null) && (
             <Icon
               icon="mdi:plus-circle-outline"
               className="text-base text-gray-400 group-hover:text-custom-blue-700 transition-all mx-1"
             />
           )}
 
-          {currentFilter?.value && (
+          {currentFilter?.value !== undefined && currentFilter?.value !== null && (
             <div
               className="flex items-center gap-1 h-6 rounded-r-full px-1 hover:bg-gray-300 transition-all"
               onClick={(event) => {
@@ -56,7 +56,9 @@ export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagPr
               }}
             >
               <span className="text-custom-blue-700 font-medium inline-flex items-center">
-                {currentFilter?.value}
+                {typeof currentFilter?.value === "boolean"
+                  ? JSON.stringify(currentFilter?.value)
+                  : currentFilter?.value}
               </span>
 
               <Icon
