@@ -67,6 +67,7 @@ class TestDiffCombiner:
             num_removed=0,
             num_conflicts=0,
             contains_conflict=False,
+            exists_on_database=False,
         )
         self.schema_manager = AsyncMock(spec=SchemaManager)
         registry.schema = self.schema_manager

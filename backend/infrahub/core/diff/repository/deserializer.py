@@ -179,6 +179,7 @@ class EnrichedDiffDeserializer:
             num_removed=int(root_node.get("num_removed", 0)),
             num_conflicts=int(root_node.get("num_conflicts", 0)),
             contains_conflict=str(root_node.get("contains_conflict")).lower() == "true",
+            exists_on_database=True,
         )
 
     def _deserialize_diff_node(self, node_node: Neo4jNode, enriched_root: EnrichedDiffRoot) -> EnrichedDiffNode:
