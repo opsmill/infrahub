@@ -1,15 +1,16 @@
 import { QSP } from "@/config/qsp";
-import { branchesState, currentBranchAtom } from "@/entities/branches/stores";
+import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { getBranchesQueryOptions } from "@/entities/branches/domain/get-branches.query";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
@@ -30,7 +31,7 @@ type DisplayForm = {
 };
 
 export default function BranchSelector() {
-  const currentBranch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const [isOpen, setIsOpen] = useState(false);
   const [displayForm, setDisplayForm] = useState<DisplayForm>({ open: false });
 
@@ -54,7 +55,7 @@ export default function BranchSelector() {
         >
           <div className="inline-flex items-center gap-1.5 px-3 flex-grow border-r h-full truncate">
             <Icon icon="mdi:source-branch" />
-            <span className="truncate">{currentBranch?.name}</span>
+            <span className="truncate">{currentBranch.name}</span>
           </div>
 
           <Icon icon="mdi:chevron-down" className="text-2xl px-3" />
@@ -88,7 +89,7 @@ function BranchSelect({
   setFormOpen: (displayForm: DisplayForm) => void;
 }) {
   const branches = useAtomValue(branchesState);
-  const setCurrentBranch = useSetAtom(currentBranchAtom);
+  const { setCurrentBranch } = useCurrentBranch();
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
   const handleBranchChange = (branch: Branch) => {
@@ -146,12 +147,12 @@ function BranchSelect({
 }
 
 function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => void }) {
-  const currentBranch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
 
   return (
     <ComboboxItem
       className="p-2"
-      selectedValue={currentBranch?.name}
+      selectedValue={currentBranch.name}
       onSelect={onChange}
       value={branch.name}
     >
