@@ -1,1 +1,0 @@
-Improved performance when updating an existing diff
