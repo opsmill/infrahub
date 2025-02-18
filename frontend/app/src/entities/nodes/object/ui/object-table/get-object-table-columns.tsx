@@ -3,8 +3,8 @@ import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/gene
 import { KindHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-header-cell";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
+import { TableIdentifierCell } from "@/entities/nodes/object/ui/object-table/cells/table-identifier-cell";
 import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/cells/table-relationship-cell";
-import { TableRowIdentifier } from "@/entities/nodes/object/ui/object-table/cells/table-row-identifier";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
@@ -43,10 +43,10 @@ export const getObjectTableColumns = (
       cell: ({ row }) => {
         const value = (row.getValue("id") ?? "-") as string;
         return (
-          <TableRowIdentifier
+          <TableIdentifierCell
             objectKind={row.original.__typename as string}
             objectId={row.original.id as string}
-            identifier={value}
+            label={value}
           />
         );
       },
