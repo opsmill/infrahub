@@ -29,7 +29,7 @@ export type NodeEventType = NodeMutatedEvent & {
 
 export type EventType = BranchEventType | NodeEventType;
 
-const EventDetails = ({ id, event, occurred_at, account_id, ...props }: EventType) => {
+export const EventDetails = ({ id, event, occurred_at, account_id, ...props }: EventType) => {
   return (
     <div className="divide-y">
       <PropertyRow
@@ -57,7 +57,9 @@ export const Event = ({ __typename, ...props }: EventType) => {
 
       <div className="flex flex-grow gap-3 p-2 rounded-md shadow-sm border bg-white">
         <div className="flex flex-col gap-2 grow">
-          {__typename === NODE_MUTATED_EVENT && <NodeEvent {...props} />}
+          {"attributes" in props && <NodeEvent {...props} />}
+
+          {"attributes" in props && <EventAttributes attributes={props.attributes} />}
 
           {BRANCH_EVENTS.includes(__typename) && <BranchEvent {...props} />}
 

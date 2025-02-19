@@ -1,16 +1,12 @@
 import { DisplayLabel } from "@/entities/nodes/object/ui/display-label";
+import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-
-export const NODE_EVENTS_MAPPING: Record<string, string> = {
-  "infrahub.node.created": "created",
-  "infrahub.node.updated": "updated",
-  "infrahub.node.deleted": "deleted",
-};
+import { NODE_EVENTS_MAPPING } from "./node-event";
 
 export const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attributes">) => {
   return (
@@ -37,11 +33,14 @@ export const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attribut
 export const NodeEvent = (props: NodeMutatedEvent) => {
   const { event, account_id } = props;
   const schemaLabels = useAtomValue(schemaKindLabelState);
+  const { schema } = useSchema(props.payload.data.node_kind);
 
   return (
     <>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
+          <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="text-gray-400" />
+
           <div className="font-semibold">
             <DisplayLabel id={account_id} />
           </div>

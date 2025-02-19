@@ -16,6 +16,7 @@ import { IModelSchema, genericsState, schemaState } from "@/entities/schema/stor
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
@@ -29,7 +30,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useRef } from "react";
-import { Navigate, useLocation } from "react-router";
+import { Navigate, useLocation, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import { NodeEvents } from "../../events/ui/node-events";
 import { ActionButtons } from "./action-buttons";
@@ -53,6 +54,7 @@ export default function ObjectItemDetails({
   hideHeaders,
 }: ObjectDetailsProps) {
   const location = useLocation();
+  const { objectid } = useParams();
   const { pathname } = location;
 
   const [qspTab, setQspTab] = useQueryParam(QSP.TAB, StringParam);
@@ -122,7 +124,7 @@ export default function ObjectItemDetails({
       )}
 
       {!qspTab && (
-        <div className="flex flex-col lg:grid lg:grid-cols-3 gap-2 p-2 ">
+        <div className="flex flex-col lg:items-start lg:grid lg:grid-cols-3 gap-2 p-2 ">
           <CardWithBorder className="md:col-span-2 divide-y p-0">
             <CardWithBorder.Title>Details</CardWithBorder.Title>
 
@@ -267,7 +269,10 @@ export default function ObjectItemDetails({
       >
         <ObjectItemMetaEdit
           closeDrawer={() => setShowMetaEditModal(false)}
-          onUpdateComplete={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
+          onUpdateComplete={() => {
+            graphqlClient.refetchQueries({ include: [schema.kind!, "GET_EVENTS"] });
+            queryClient.invalidateQueries({ queryKey: ["events", [objectid]] });
+          }}
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
