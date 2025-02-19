@@ -54,6 +54,11 @@ const EVENTS_QUERY = gql`
             id
             kind
           }
+          related_node {
+            id
+            kind
+          }
+          has_children
           __typename
           ... on NodeMutatedEvent {
             attributes {
