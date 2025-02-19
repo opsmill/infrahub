@@ -8,6 +8,7 @@ from infrahub_sdk.utils import extract_fields_first_node
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.types.event import EventNodes
 from infrahub.task_manager.event import PrefectEvent
+from infrahub.task_manager.models import InfrahubEventFilter
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -41,58 +42,43 @@ class Events(ObjectType):
         if limit > 50:
             # Prefect restricts this to 50
             raise ValidationError(input_value="The parameter 'limit' can't be above 50")
-        return await Events.query(
-            info=info,
-            branch=branches,
-            account=account__ids,
-            limit=limit,
-            level=level,
-            event_type=event_type,
+
+        event_filter = InfrahubEventFilter.from_filters(
+            ids=ids,
+            branches=branches,
+            account__ids=account__ids,
             has_children=has_children,
-            offset=offset,
+            event_type=event_type,
             related_node__ids=related_node__ids,
             primary_node__ids=primary_node__ids,
             parent__ids=parent__ids,
-            ids=ids,
             since=since,
             until=until,
+            level=level,
+        )
+
+        return await Events.query(
+            info=info,
+            event_filter=event_filter,
+            limit=limit,
+            offset=offset,
         )
 
     @classmethod
     async def query(
         cls,
         info: GraphQLResolveInfo,
+        event_filter: InfrahubEventFilter,
         limit: int,
         offset: int | None = None,
-        level: int | None = None,
-        has_children: bool | None = None,
-        ids: list[str] | None = None,
-        event_type: list[str] | None = None,
-        related_node__ids: list[str] | None = None,
-        primary_node__ids: list[str] | None = None,
-        parent__ids: list[str] | None = None,
-        branch: list[str] | None = None,
-        account: list[str] | None = None,
-        since: datetime | None = None,
-        until: datetime | None = None,
     ) -> dict[str, Any]:
         fields = await extract_fields_first_node(info)
 
         prefect_tasks = await PrefectEvent.query(
             fields=fields,
-            ids=ids,
-            related_node__ids=related_node__ids,
-            primary_node__ids=primary_node__ids,
-            parent__ids=parent__ids,
-            branch=branch,
-            event_type=event_type,
-            has_children=has_children,
-            account=account,
-            level=level,
+            event_filter=event_filter,
             limit=limit,
             offset=offset,
-            since=since,
-            until=until,
         )
         return {
             "count": prefect_tasks.get("count", 0),
