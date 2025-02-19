@@ -46,6 +46,23 @@ class NodeMutatedEvent(InfrahubEvent):
                 }
             )
 
+        related.append(
+            {
+                "prefect.resource.id": self.node_id,
+                "prefect.resource.role": "infrahub.related.node",
+                "infrahub.node.kind": self.kind,
+            }
+        )
+
+        for related_node in self.data.get_related_nodes():
+            related.append(
+                {
+                    "prefect.resource.id": related_node.node_id,
+                    "prefect.resource.role": "infrahub.related.node",
+                    "infrahub.node.kind": related_node.node_kind,
+                }
+            )
+
         return related
 
     @computed_field

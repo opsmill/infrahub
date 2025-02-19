@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Field, Int, Interface, List, NonNull, ObjectType, String
+from graphene import Boolean, DateTime, Field, Int, Interface, List, NonNull, ObjectType, String
 from graphene.types.generic import GenericScalar
 
 from .common import RelatedNode
@@ -25,9 +25,12 @@ class EventNodeInterface(Interface):
     event = String(required=True)
     branch = String(required=False)
     account_id = String(required=False)
-    occurred_at = String(required=True)
+    occurred_at = DateTime(required=True)
     level = Int(required=True)
     primary_node = Field(RelatedNode, required=False)
+    related_nodes = List(NonNull(RelatedNode), required=True)
+    has_children = Boolean(required=True)
+    parent_id = String(required=False)
 
     @classmethod
     def resolve_type(

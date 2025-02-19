@@ -106,7 +106,10 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
 
     test("should access to the pool selector on relationships add", async ({ page }) => {
       await page.goto("/objects/InfraInterfaceL3/");
-      await page.getByRole("link", { name: "den1-edge2, Ethernet1", exact: true }).click();
+      await page
+        .getByTestId("identifier-cell")
+        .getByRole("link", { name: "den1-edge2, Ethernet1", exact: true })
+        .click();
       await page.getByText("Ip Addresses1").click();
       await page.getByTestId("open-relationship-form-button").click();
       await page.getByTestId("select-open-pool-option-button").click();

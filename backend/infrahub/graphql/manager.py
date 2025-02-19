@@ -7,7 +7,7 @@ import graphene
 
 from infrahub import config
 from infrahub.core.attribute import String
-from infrahub.core.constants import InfrahubKind, RelationshipKind
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipKind
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -15,6 +15,7 @@ from infrahub.core.schema import (
     NodeSchema,
     ProfileSchema,
     RelationshipSchema,
+    TemplateSchema,
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
@@ -390,7 +391,7 @@ class GraphQLSchemaManager:
 
         # Generate all GraphQL ObjectType, Nested, Paginated & NestedPaginated and store them in the registry
         for node_schema in full_schema.values():
-            if isinstance(node_schema, NodeSchema | ProfileSchema):
+            if isinstance(node_schema, NodeSchema | ProfileSchema | TemplateSchema):
                 node_type = self.generate_graphql_object(schema=node_schema, populate_cache=True)
                 node_type_edged = self.generate_graphql_edged_object(
                     schema=node_schema, node=node_type, populate_cache=True
@@ -421,13 +422,13 @@ class GraphQLSchemaManager:
                     continue
                 peer_filters = self.generate_filters(schema=peer_schema, top_level=False)
 
-                if rel.cardinality == "one":
+                if rel.cardinality == RelationshipCardinality.ONE:
                     peer_type = self.get_type(name=f"NestedEdged{peer_schema.kind}")
                     node_type._meta.fields[rel.name] = graphene.Field(
                         peer_type, resolver=single_relationship_resolver, required=True
                     )
 
-                elif rel.cardinality == "many":
+                elif rel.cardinality == RelationshipCardinality.MANY:
                     peer_type = self.get_type(name=f"NestedPaginated{peer_schema.kind}")
 
                     if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
@@ -520,7 +521,7 @@ class GraphQLSchemaManager:
             else:
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 
-            if isinstance(node_schema, NodeSchema | ProfileSchema):
+            if isinstance(node_schema, NodeSchema | ProfileSchema | TemplateSchema):
                 mutations = self.generate_graphql_mutations(schema=node_schema, base_class=base_class)
 
                 class_attrs[f"{node_schema.kind}Create"] = mutations.create.Field()
@@ -546,7 +547,7 @@ class GraphQLSchemaManager:
 
         interfaces: set[type[InfrahubObject]] = set()
 
-        if isinstance(schema, NodeSchema | ProfileSchema) and schema.inherit_from:
+        if isinstance(schema, NodeSchema | ProfileSchema | TemplateSchema) and schema.inherit_from:
             for generic_name in schema.inherit_from:
                 generic = self.get_type(name=generic_name)
                 interfaces.add(generic)
@@ -578,7 +579,8 @@ class GraphQLSchemaManager:
         for attr in schema.local_attributes:
             attr_kind = get_attr_kind(schema, attr)
             attr_type = self.get_type(name=get_attribute_type(kind=attr_kind).get_graphql_type_name())
-            main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
+            req = "" if attr.optional else " (required)"
+            main_attrs[attr.name] = graphene.Field(attr_type, description=f"{attr.description}{req}")
 
         graphql_object = type(schema.kind, (InfrahubObject,), main_attrs)
 
@@ -609,7 +611,7 @@ class GraphQLSchemaManager:
         for attr in schema.attributes:
             attr_kind = get_attr_kind(node_schema=schema, attr_schema=attr)
             attr_type = self.get_type(name=get_attribute_type(kind=attr_kind).get_graphql_type_name())
-            main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
+            main_attrs[attr.name] = graphene.Field(attr_type, description=attr.description)
 
         interface_object = type(schema.kind, (InfrahubInterface,), main_attrs)
 
@@ -640,7 +642,7 @@ class GraphQLSchemaManager:
         self.set_type(name=type_name, graphql_type=relationship_property)
 
     def generate_graphql_mutations(
-        self, schema: Union[NodeSchema, ProfileSchema], base_class: type[InfrahubMutation]
+        self, schema: NodeSchema | ProfileSchema | TemplateSchema, base_class: type[InfrahubMutation]
     ) -> GraphqlMutations:
         graphql_mutation_create_input = self.generate_graphql_mutation_create_input(schema)
         graphql_mutation_update_input = self.generate_graphql_mutation_update_input(schema)
@@ -668,7 +670,7 @@ class GraphQLSchemaManager:
         return GraphqlMutations(create=create, update=update, upsert=upsert, delete=delete)
 
     def generate_graphql_mutation_create_input(
-        self, schema: Union[NodeSchema, ProfileSchema]
+        self, schema: NodeSchema | ProfileSchema | TemplateSchema
     ) -> type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
 
@@ -688,10 +690,7 @@ class GraphQLSchemaManager:
             attr_kind = get_attr_kind(schema, attr)
             attr_type = get_attribute_type(kind=attr_kind).get_graphql_create()
 
-            # A Field is not required if explicitly indicated or if a default value has been provided
-            required = not attr.optional if not attr.default_value else False
-
-            attrs[attr.name] = graphene.InputField(attr_type, required=required, description=attr.description)
+            attrs[attr.name] = graphene.InputField(attr_type, description=attr.description)
 
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
@@ -699,14 +698,11 @@ class GraphQLSchemaManager:
 
             input_type = self._get_related_input_type(relationship=rel)
 
-            required = not rel.optional
-            if rel.cardinality == "one":
-                attrs[rel.name] = graphene.InputField(input_type, required=required, description=rel.description)
+            if rel.cardinality == RelationshipCardinality.ONE:
+                attrs[rel.name] = graphene.InputField(input_type, description=rel.description)
 
-            elif rel.cardinality == "many":
-                attrs[rel.name] = graphene.InputField(
-                    graphene.List(input_type), required=required, description=rel.description
-                )
+            elif rel.cardinality == RelationshipCardinality.MANY:
+                attrs[rel.name] = graphene.InputField(graphene.List(input_type), description=rel.description)
 
         return type(f"{schema.kind}CreateInput", (graphene.InputObjectType,), attrs)
 
@@ -739,10 +735,10 @@ class GraphQLSchemaManager:
 
             input_type = self._get_related_input_type(relationship=rel)
 
-            if rel.cardinality == "one":
+            if rel.cardinality == RelationshipCardinality.ONE:
                 attrs[rel.name] = graphene.InputField(input_type, required=False, description=rel.description)
 
-            elif rel.cardinality == "many":
+            elif rel.cardinality == RelationshipCardinality.MANY:
                 attrs[rel.name] = graphene.InputField(
                     graphene.List(input_type), required=False, description=rel.description
                 )
@@ -750,7 +746,7 @@ class GraphQLSchemaManager:
         return type(f"{schema.kind}UpdateInput", (graphene.InputObjectType,), attrs)
 
     def generate_graphql_mutation_upsert_input(
-        self, schema: Union[NodeSchema, ProfileSchema]
+        self, schema: NodeSchema | ProfileSchema | TemplateSchema
     ) -> type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
 
@@ -786,10 +782,10 @@ class GraphQLSchemaManager:
             input_type = self._get_related_input_type(relationship=rel)
 
             required = not rel.optional
-            if rel.cardinality == "one":
+            if rel.cardinality == RelationshipCardinality.ONE:
                 attrs[rel.name] = graphene.InputField(input_type, required=required, description=rel.description)
 
-            elif rel.cardinality == "many":
+            elif rel.cardinality == RelationshipCardinality.MANY:
                 attrs[rel.name] = graphene.InputField(
                     graphene.List(input_type), required=required, description=rel.description
                 )
@@ -798,7 +794,7 @@ class GraphQLSchemaManager:
 
     def generate_graphql_mutation_create(
         self,
-        schema: Union[NodeSchema, ProfileSchema],
+        schema: NodeSchema | ProfileSchema | TemplateSchema,
         input_type: type[graphene.InputObjectType],
         base_class: type[InfrahubMutation] = InfrahubMutation,
         mutation_type: str = "Create",
@@ -845,7 +841,7 @@ class GraphQLSchemaManager:
 
     @staticmethod
     def generate_graphql_mutation_delete(
-        schema: Union[NodeSchema, ProfileSchema], base_class: type[InfrahubMutation] = InfrahubMutation
+        schema: NodeSchema | ProfileSchema | TemplateSchema, base_class: type[InfrahubMutation] = InfrahubMutation
     ) -> type[InfrahubMutation]:
         """Generate a GraphQL Mutation to DELETE an object based on the specified NodeSchema."""
         name = f"{schema.kind}Delete"

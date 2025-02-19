@@ -11,16 +11,17 @@ from ..model.path import (
     EnrichedDiffRelationship,
     EnrichedDiffs,
     EnrichedDiffSingleRelationship,
+    EnrichedDiffsMetadata,
     EnrichedNodeCreateRequest,
 )
 
 
-class EnrichedDiffRootsCreateQuery(Query):
+class EnrichedDiffRootsUpsertQuery(Query):
     name = "enriched_roots_create"
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, enriched_diffs: EnrichedDiffs, **kwargs: Any) -> None:
+    def __init__(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.enriched_diffs = enriched_diffs
 
@@ -36,11 +37,6 @@ CALL {
     SET diff_root.diff_branch = diff_root_map.diff_branch
     SET diff_root.from_time = diff_root_map.from_time
     SET diff_root.to_time = diff_root_map.to_time
-    SET diff_root.num_added = diff_root_map.num_added
-    SET diff_root.num_updated = diff_root_map.num_updated
-    SET diff_root.num_removed = diff_root_map.num_removed
-    SET diff_root.num_conflicts = diff_root_map.num_conflicts
-    SET diff_root.contains_conflict = diff_root_map.contains_conflict
     SET diff_root.tracking_id = diff_root_map.tracking_id
     RETURN diff_root
 }
@@ -56,7 +52,7 @@ CALL {
         """
         self.add_to_query(query)
 
-    def _build_diff_root_params(self, enriched_diffs: EnrichedDiffs) -> dict[str, Any]:
+    def _build_diff_root_params(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata) -> dict[str, Any]:
         diff_root_list: list[dict[str, Any]] = []
         for enriched_diff in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
             diff_root_list.append(
@@ -67,11 +63,6 @@ CALL {
                     "to_time": enriched_diff.to_time.to_string(),
                     "uuid": enriched_diff.uuid,
                     "tracking_id": enriched_diff.tracking_id.serialize() if enriched_diff.tracking_id else None,
-                    "num_added": enriched_diff.num_added,
-                    "num_updated": enriched_diff.num_updated,
-                    "num_removed": enriched_diff.num_removed,
-                    "num_conflicts": enriched_diff.num_conflicts,
-                    "contains_conflict": enriched_diff.contains_conflict,
                 }
             )
         return {"diff_root_list": diff_root_list}
@@ -95,7 +86,12 @@ CALL {
     WITH root_uuid, node_map
     MATCH (diff_root {uuid: root_uuid})
     MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_map.node_properties.uuid})
-    SET diff_node = node_map.node_properties
+    SET
+        diff_node.kind = node_map.node_properties.kind,
+        diff_node.label = node_map.node_properties.label,
+        diff_node.changed_at = node_map.node_properties.changed_at,
+        diff_node.action = node_map.node_properties.action,
+        diff_node.path_identifier = node_map.node_properties.path_identifier
     // -------------------------
     // add/remove node-level conflict
     // -------------------------
@@ -109,6 +105,10 @@ CALL {
         MERGE (diff_node)-[:DIFF_HAS_CONFLICT]->(diff_node_conflict:DiffConflict)
         SET diff_node_conflict = node_map.conflict_params
     )
+}
+CALL {
+    WITH root_uuid, node_map
+    MATCH (diff_root {uuid: root_uuid})-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_map.node_properties.uuid})
     // -------------------------
     // remove stale attributes for this node
     // -------------------------
@@ -323,11 +323,6 @@ CALL {
                 "changed_at": enriched_attribute.changed_at.to_string(),
                 "action": enriched_attribute.action.value,
                 "path_identifier": enriched_attribute.path_identifier,
-                "num_added": enriched_attribute.num_added,
-                "num_updated": enriched_attribute.num_updated,
-                "num_removed": enriched_attribute.num_removed,
-                "num_conflicts": enriched_attribute.num_conflicts,
-                "contains_conflict": enriched_attribute.contains_conflict,
             },
             "properties": property_props,
         }
@@ -348,11 +343,6 @@ CALL {
                 "peer_id": enriched_single_relationship.peer_id,
                 "peer_label": enriched_single_relationship.peer_label,
                 "path_identifier": enriched_single_relationship.path_identifier,
-                "num_added": enriched_single_relationship.num_added,
-                "num_updated": enriched_single_relationship.num_updated,
-                "num_removed": enriched_single_relationship.num_removed,
-                "num_conflicts": enriched_single_relationship.num_conflicts,
-                "contains_conflict": enriched_single_relationship.contains_conflict,
             },
             "conflict_params": conflict_params,
             "properties": property_props,
@@ -374,11 +364,6 @@ CALL {
                 else None,
                 "action": enriched_relationship.action,
                 "path_identifier": enriched_relationship.path_identifier,
-                "num_added": enriched_relationship.num_added,
-                "num_updated": enriched_relationship.num_updated,
-                "num_removed": enriched_relationship.num_removed,
-                "num_conflicts": enriched_relationship.num_conflicts,
-                "contains_conflict": enriched_relationship.contains_conflict,
             },
             "relationships": single_relationship_props,
         }
@@ -401,11 +386,6 @@ CALL {
                 "changed_at": enriched_node.changed_at.to_string() if enriched_node.changed_at else None,
                 "action": enriched_node.action.value,
                 "path_identifier": enriched_node.path_identifier,
-                "num_added": enriched_node.num_added,
-                "num_updated": enriched_node.num_updated,
-                "num_removed": enriched_node.num_removed,
-                "num_conflicts": enriched_node.num_conflicts,
-                "contains_conflict": enriched_node.contains_conflict,
             },
             "conflict_params": conflict_params,
             "attributes": attribute_props,

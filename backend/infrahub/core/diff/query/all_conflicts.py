@@ -32,8 +32,11 @@ class EnrichedDiffAllConflictsQuery(Query):
         }
         query = """
 MATCH (root:DiffRoot)
-WHERE ($diff_id IS NOT NULL AND root.uuid = $diff_id)
-OR ($tracking_id IS NOT NULL AND root.tracking_id = $tracking_id AND root.diff_branch = $diff_branch_name)
+WHERE (root.is_merged IS NULL OR root.is_merged <> TRUE)
+AND (
+    ($diff_id IS NOT NULL AND root.uuid = $diff_id)
+    OR ($tracking_id IS NOT NULL AND root.tracking_id = $tracking_id AND root.diff_branch = $diff_branch_name)
+)
 CALL {
     WITH root
     MATCH (root)-[:DIFF_HAS_NODE]->(node:DiffNode)-[:DIFF_HAS_CONFLICT]->(node_conflict:DiffConflict)

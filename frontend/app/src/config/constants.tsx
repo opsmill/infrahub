@@ -10,8 +10,6 @@ export const PROFILE_KIND = "CoreProfile";
 
 export const TASK_TARGET = "CoreTaskTarget";
 
-export const DATA_CHECK_OBJECT = "CoreDataCheck";
-
 export const ACCOUNT_GENERIC_OBJECT = "CoreGenericAccount";
 export const ACCOUNT_OBJECT = "CoreAccount";
 

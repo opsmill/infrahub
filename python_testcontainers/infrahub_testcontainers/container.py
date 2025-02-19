@@ -17,7 +17,7 @@ class ContainerService:
 
 
 INFRAHUB_SERVICES: dict[str, ContainerService] = {
-    "server": ContainerService(container="infrahub-server", port=8000),
+    "server": ContainerService(container="infrahub-server-lb", port=8000),
     "task-manager": ContainerService(container="task-manager", port=4200),
 }
 
@@ -32,8 +32,8 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN": "06438eb2-8019-4776-878c-0941b1f1d1ec",
     "INFRAHUB_TESTING_INITIAL_AGENT_TOKEN": "44af444d-3b26-410d-9546-b758657e026c",
     "INFRAHUB_TESTING_SECURITY_SECRET_KEY": "327f747f-efac-42be-9e73-999f08f86b92",
-    "INFRAHUB_TESTING_ADDRESS": "http://infrahub-server:8000",
-    "INFRAHUB_TESTING_INTERNAL_ADDRESS": "http://infrahub-server:8000",
+    "INFRAHUB_TESTING_ADDRESS": "http://infrahub-server-lb:8000",
+    "INFRAHUB_TESTING_INTERNAL_ADDRESS": "http://infrahub-server-lb:8000",
     "INFRAHUB_TESTING_BROKER_ADDRESS": "message-queue",
     "INFRAHUB_TESTING_CACHE_ADDRESS": "cache",
     "INFRAHUB_TESTING_WORKFLOW_ADDRESS": "task-manager",
@@ -42,6 +42,10 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY": "repos",
     "INFRAHUB_TESTING_INTERNAL_REMOTE_GIT_DIRECTORY": "/remote",
     "INFRAHUB_TESTING_WEB_CONCURRENCY": "4",
+    "INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY": "backups",
+    "INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY": "/backups",
+    "INFRAHUB_TESTING_API_SERVER_COUNT": "2",
+    "INFRAHUB_TESTING_TASK_WORKER_COUNT": "2",
 }
 
 
@@ -78,6 +82,11 @@ class InfrahubDockerCompose(DockerCompose):
 
         test_compose_file = directory / "docker-compose.yml"
         test_compose_file.write_bytes(compose_file.read_bytes())
+
+        haproxy_config_file = current_directory / "haproxy.cfg"
+
+        test_haproxy_config_file = directory / "haproxy.cfg"
+        test_haproxy_config_file.write_bytes(haproxy_config_file.read_bytes())
 
         return test_compose_file
 

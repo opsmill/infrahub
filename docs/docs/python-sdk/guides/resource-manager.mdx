@@ -70,8 +70,8 @@ Next we will be creating an IP Prefix object, which the resource manager will us
 
   ```python
   from infrahub_sdk import InfrahubClient
-  
-  client = await InfrahubClientSync.init()
+
+  client = InfrahubClient()
   prefix = await client.create(kind="IpamIPPrefix", prefix="10.0.0.0/24", member_type="address")
   await prefix.save()
   ```
@@ -81,8 +81,8 @@ Next we will be creating an IP Prefix object, which the resource manager will us
 
   ```python
   from infrahub_sdk import InfrahubClientSync
-  
-  client = InfrahubClientSync.init()
+
+  client = InfrahubClientSync()
   prefix = client.create(kind="IpamIPPrefix", prefix="10.0.0.0/24", member_type="address")
   prefix.save()
   ```

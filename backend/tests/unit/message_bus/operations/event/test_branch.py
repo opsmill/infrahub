@@ -6,7 +6,7 @@ import pytest
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.branch import Branch
-from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot
+from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, NameTrackingId
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
@@ -73,6 +73,7 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, context: Inf
             to_time=right_now,
             uuid=str(uuid4()),
             partner_uuid=str(uuid4()),
+            tracking_id=NameTrackingId(name=str(uuid4())),
         )
         for _ in range(2)
     ]

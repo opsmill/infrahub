@@ -1,9 +1,10 @@
 from collections import defaultdict
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator, Generator, Iterable
 
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.diff.query.field_summary import EnrichedDiffNodeFieldSummaryQuery
+from infrahub.core.diff.query.summary_counts_enricher import DiffSummaryCountsEnricherQuery
 from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
@@ -26,13 +27,13 @@ from ..query.all_conflicts import EnrichedDiffAllConflictsQuery
 from ..query.delete_query import EnrichedDiffDeleteQuery
 from ..query.diff_get import EnrichedDiffGetQuery
 from ..query.diff_summary import DiffSummaryCounters, DiffSummaryQuery
-from ..query.drop_tracking_id import EnrichedDiffDropTrackingIdQuery
 from ..query.field_specifiers import EnrichedDiffFieldSpecifiersQuery
 from ..query.filters import EnrichedDiffQueryFilters
 from ..query.get_conflict_query import EnrichedDiffConflictQuery
 from ..query.has_conflicts_query import EnrichedDiffHasConflictQuery
+from ..query.merge_tracking_id import EnrichedDiffMergedTrackingIdQuery
 from ..query.roots_metadata import EnrichedDiffRootsMetadataQuery
-from ..query.save import EnrichedDiffRootsCreateQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
+from ..query.save import EnrichedDiffRootsUpsertQuery, EnrichedNodeBatchCreateQuery, EnrichedNodesLinkQuery
 from ..query.time_range_query import EnrichedDiffTimeRangeQuery
 from ..query.update_conflict_query import EnrichedDiffConflictUpdateQuery
 from .deserializer import EnrichedDiffDeserializer
@@ -166,14 +167,23 @@ class DiffRepository:
             for dbr in diff_branch_roots
         ]
 
-    async def hydrate_diff_pair(self, enriched_diffs_metadata: EnrichedDiffsMetadata) -> EnrichedDiffs:
+    async def hydrate_diff_pair(
+        self,
+        enriched_diffs_metadata: EnrichedDiffsMetadata,
+        node_uuids: Iterable[str] | None = None,
+    ) -> EnrichedDiffs:
+        filters = None
+        if node_uuids:
+            filters = {"ids": list(node_uuids) if node_uuids is not None else None}
         hydrated_base_diff = await self.get_one(
             diff_branch_name=enriched_diffs_metadata.base_branch_name,
             diff_id=enriched_diffs_metadata.base_branch_diff.uuid,
+            filters=filters,
         )
         hydrated_branch_diff = await self.get_one(
             diff_branch_name=enriched_diffs_metadata.diff_branch_name,
             diff_id=enriched_diffs_metadata.diff_branch_diff.uuid,
+            filters=filters,
         )
         return EnrichedDiffs(
             base_branch_name=enriched_diffs_metadata.base_branch_name,
@@ -224,17 +234,34 @@ class DiffRepository:
             yield node_requests
 
     @retry_db_transaction(name="enriched_diff_save")
-    async def save(self, enriched_diffs: EnrichedDiffs) -> None:
+    async def save(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata, do_summary_counts: bool = True) -> None:
+        log.info("Updating diff metadata...")
+        root_query = await EnrichedDiffRootsUpsertQuery.init(db=self.db, enriched_diffs=enriched_diffs)
+        await root_query.execute(db=self.db)
+        log.info("Diff metadata updated.")
+        if not isinstance(enriched_diffs, EnrichedDiffs):
+            return
         num_nodes = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
         log.info(f"Saving diff (num_nodes={num_nodes})...")
-        root_query = await EnrichedDiffRootsCreateQuery.init(db=self.db, enriched_diffs=enriched_diffs)
-        await root_query.execute(db=self.db)
-        for node_create_batch in self._get_node_create_request_batch(enriched_diffs=enriched_diffs):
+        for batch_num, node_create_batch in enumerate(
+            self._get_node_create_request_batch(enriched_diffs=enriched_diffs)
+        ):
+            log.info(f"Saving node batch #{batch_num}...")
             node_query = await EnrichedNodeBatchCreateQuery.init(db=self.db, node_create_batch=node_create_batch)
             await node_query.execute(db=self.db)
+            log.info(f"Batch #{batch_num} saved")
         link_query = await EnrichedNodesLinkQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await link_query.execute(db=self.db)
         log.info("Diff saved.")
+        if do_summary_counts:
+            node_uuids: list[str] | None = None
+            if enriched_diffs.diff_branch_diff.exists_on_database:
+                node_uuids = list(enriched_diffs.branch_node_uuids)
+            await self.add_summary_counts(
+                diff_branch_name=enriched_diffs.diff_branch_name,
+                diff_id=enriched_diffs.diff_branch_diff.uuid,
+                node_uuids=node_uuids,
+            )
 
     async def summary(
         self,
@@ -284,6 +311,7 @@ class DiffRepository:
         base_branch_names: list[str] | None = None,
         from_time: Timestamp | None = None,
         to_time: Timestamp | None = None,
+        tracking_id: TrackingId | None = None,
     ) -> list[EnrichedDiffsMetadata]:
         if diff_branch_names and base_branch_names:
             diff_branch_names += base_branch_names
@@ -292,6 +320,7 @@ class DiffRepository:
             base_branch_names=base_branch_names,
             from_time=from_time,
             to_time=to_time,
+            tracking_id=tracking_id,
         )
         roots_by_id = {root.uuid: root for root in empty_roots}
         pairs: list[EnrichedDiffsMetadata] = []
@@ -315,6 +344,7 @@ class DiffRepository:
         base_branch_names: list[str] | None = None,
         from_time: Timestamp | None = None,
         to_time: Timestamp | None = None,
+        tracking_id: TrackingId | None = None,
     ) -> list[EnrichedDiffRootMetadata]:
         query = await EnrichedDiffRootsMetadataQuery.init(
             db=self.db,
@@ -322,6 +352,7 @@ class DiffRepository:
             base_branch_names=base_branch_names,
             from_time=from_time,
             to_time=to_time,
+            tracking_id=tracking_id,
         )
         await query.execute(db=self.db)
         diff_roots = []
@@ -381,8 +412,8 @@ class DiffRepository:
         await query.execute(db=self.db)
         return await query.get_field_summaries()
 
-    async def drop_tracking_ids(self, tracking_ids: list[TrackingId]) -> None:
-        query = await EnrichedDiffDropTrackingIdQuery.init(db=self.db, tracking_ids=tracking_ids)
+    async def mark_tracking_ids_merged(self, tracking_ids: list[TrackingId]) -> None:
+        query = await EnrichedDiffMergedTrackingIdQuery.init(db=self.db, tracking_ids=tracking_ids)
         await query.execute(db=self.db)
 
     async def get_num_changes_in_time_range_by_branch(
@@ -407,3 +438,21 @@ class DiffRepository:
                 break
             offset += limit
         return specifiers
+
+    async def add_summary_counts(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+        node_uuids: list[str] | None = None,
+    ) -> None:
+        log.info("Updating summary counts...")
+        query = await DiffSummaryCountsEnricherQuery.init(
+            db=self.db,
+            diff_branch_name=diff_branch_name,
+            tracking_id=tracking_id,
+            diff_id=diff_id,
+            node_uuids=node_uuids,
+        )
+        await query.execute(db=self.db)
+        log.info("Summary counts updated...")

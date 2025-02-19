@@ -7,39 +7,47 @@ import { Slide, ToastContainer } from "react-toastify";
 import { QueryParamProvider } from "use-query-params";
 import { render as renderFromVitest } from "vitest-browser-react";
 
+import { BranchContext } from "../../src/entities/branches/ui/branches-provider";
 import { queryClient } from "../../src/shared/api/rest/client";
 import { ReactRouter7Adapter } from "../../src/shared/lib/use-query-params";
 import { store } from "../../src/shared/stores";
+import { generateBranch } from "../fake/branch";
 
 import "/src/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
 
 export const render = (component: React.ReactElement, options = {}) =>
   renderFromVitest(component, {
-    wrapper: ({ children }) => (
-      <Provider store={store}>
-        <QueryClientProvider client={queryClient}>
-          <ToastContainer
-            hideProgressBar={true}
-            transition={Slide}
-            autoClose={5000}
-            closeOnClick={false}
-            newestOnTop
-            position="bottom-right"
-          />
-          <BrowserRouter>
-            <QueryParamProvider
-              adapter={ReactRouter7Adapter}
-              options={{
-                searchStringToObject: queryString.parse,
-                objectToSearchString: queryString.stringify,
-              }}
-            >
-              {children}
-            </QueryParamProvider>
-          </BrowserRouter>
-        </QueryClientProvider>
-      </Provider>
-    ),
+    wrapper: ({ children }) => {
+      const [currentBranch, setCurrentBranch] = React.useState(generateBranch());
+
+      return (
+        <Provider store={store}>
+          <QueryClientProvider client={queryClient}>
+            <ToastContainer
+              hideProgressBar={true}
+              transition={Slide}
+              autoClose={5000}
+              closeOnClick={false}
+              newestOnTop
+              position="bottom-right"
+            />
+            <BrowserRouter>
+              <QueryParamProvider
+                adapter={ReactRouter7Adapter}
+                options={{
+                  searchStringToObject: queryString.parse,
+                  objectToSearchString: queryString.stringify,
+                }}
+              >
+                <BranchContext value={{ currentBranch, setCurrentBranch }}>
+                  {children}
+                </BranchContext>
+              </QueryParamProvider>
+            </BrowserRouter>
+          </QueryClientProvider>
+        </Provider>
+      );
+    },
     ...options,
   });

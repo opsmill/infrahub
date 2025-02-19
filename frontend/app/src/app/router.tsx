@@ -74,6 +74,24 @@ export const router = createBrowserRouter([
                 ],
               },
               {
+                path: "/activities",
+                handle: {
+                  breadcrumb: () => {
+                    return {
+                      type: "link",
+                      label: "Activities",
+                      to: constructPath("/activities"),
+                    };
+                  },
+                },
+                children: [
+                  {
+                    index: true,
+                    lazy: () => import("@/pages/activities"),
+                  },
+                ],
+              },
+              {
                 path: `/objects/${ARTIFACT_OBJECT}/:objectid`,
                 handle: {
                   breadcrumb: () => {

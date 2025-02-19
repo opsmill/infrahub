@@ -135,6 +135,10 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                     "proposed_change_name": proposed_change.name.value,
                 },
             )
+            # When the PROPOSED_CHANGE_MERGE succeeds it will have correctly changed the state
+            # from the overridden "merging" value, so here we change it back to reflect the
+            # correct value for the event that will be generated.
+            proposed_change.node_changelog.attributes["state"].value = ProposedChangeState.MERGED.value
 
         return proposed_change, result
 

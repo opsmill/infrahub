@@ -48,7 +48,7 @@ const ObjectPageLayout = () => {
     const treeSchema = getTreeSchema();
 
     return (
-      <Content.Card>
+      <Content.Card className="flex flex-col">
         <ObjectHeader schema={schema} objectId={objectid} />
 
         <ResizablePanelGroup direction="horizontal">
@@ -67,10 +67,8 @@ const ObjectPageLayout = () => {
             </>
           )}
 
-          <ResizablePanel>
-            <div className="overflow-auto">
-              <Outlet />
-            </div>
+          <ResizablePanel className="flex flex-col">
+            <Outlet />
           </ResizablePanel>
         </ResizablePanelGroup>
       </Content.Card>
@@ -78,7 +76,7 @@ const ObjectPageLayout = () => {
   }
 
   return (
-    <Content.Card>
+    <Content.Card className="flex flex-col">
       <ObjectHeader schema={schema} objectId={objectid} />
 
       <Outlet />

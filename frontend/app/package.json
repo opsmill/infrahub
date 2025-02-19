@@ -68,6 +68,7 @@
     "handlebars": "^4.7.8",
     "jotai": "^2.11.3",
     "json-to-graphql-query": "^2.2.5",
+    "lucide-react": "^0.475.0",
     "openapi-fetch": "^0.13.4",
     "prismjs": "^1.29.0",
     "query-string": "^9.0.0",

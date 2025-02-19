@@ -1,5 +1,5 @@
 import { IProfileSchema, iGenericSchema, iNodeSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema } from "@/entities/schema/types";
+import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export const generateNodeSchema = (
   overrides?: Partial<iNodeSchema>
@@ -761,3 +761,30 @@ export const generateAttributeSchema = (overrides?: Partial<AttributeSchema>): A
     ...overrides,
   };
 };
+
+export const generateRelationshipSchema = (
+  overrides: Partial<RelationshipSchema>
+): RelationshipSchema => ({
+  id: "test-id",
+  state: "present",
+  name: "test_relationship",
+  peer: "TestRelationship",
+  kind: "Attribute",
+  label: "Relationship test",
+  description: null,
+  identifier: "test_relationship__testrelationship",
+  cardinality: "many",
+  min_count: 0,
+  max_count: 0,
+  order_weight: 9000,
+  optional: true,
+  branch: "aware",
+  inherited: false,
+  direction: "bidirectional",
+  hierarchical: null,
+  on_delete: "no-action",
+  allow_override: "any",
+  read_only: false,
+  deprecation: null,
+  ...overrides,
+});

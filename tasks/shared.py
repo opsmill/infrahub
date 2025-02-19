@@ -64,12 +64,13 @@ GITHUB_ACTION = os.getenv("GITHUB_ACTION"), False
 
 SERVICE_SERVER_NAME = "server"
 SERVICE_WORKER_NAME = "task-worker"
+SERVICE_TASK_MANAGER_NAME = "task-manager"
 AVAILABLE_SERVICES = [
     SERVICE_SERVER_NAME,
     SERVICE_WORKER_NAME,
     "database",
     "message-queue",
-    "task-manager",
+    SERVICE_TASK_MANAGER_NAME,
     "cache",
 ]
 
@@ -87,6 +88,7 @@ IMAGE_VER = REQUESTED_IMAGE_VER or "latest"
 OVERRIDE_FILE = Path("development/docker-compose.override.yml")
 DEFAULT_FILE = Path("development/docker-compose.default.yml")
 LOCAL_FILE = Path("development/docker-compose.local-build.yml")
+LOCAL_FILE_DEPS = Path("development/docker-compose.local-build-deps.yml")
 COMPOSE_FILES_MEMGRAPH = [
     COMPOSE_FILES_DEPS[INFRAHUB_USE_NATS],
     Path("development/docker-compose-database-memgraph.yml"),
@@ -267,6 +269,7 @@ def build_compose_files_cmd(database: str, namespace: Namespace = Namespace.DEFA
 
     if "local" in IMAGE_VER or (namespace == Namespace.DEV and not REQUESTED_IMAGE_VER):
         COMPOSE_FILES.append(LOCAL_FILE)
+        COMPOSE_FILES.append(LOCAL_FILE_DEPS)
 
     if os.getenv("CI") is not None:
         COMPOSE_FILES.append(TEST_METRICS_OVERRIDE_FILE)
@@ -286,6 +289,8 @@ def build_dev_compose_files_cmd(database: str) -> str:
     if DEV_OVERRIDE_FILE.exists():
         print("!! Found a dev override file for docker-compose !!")
         DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE)
+
+    DEV_COMPOSE_FILES.append(LOCAL_FILE_DEPS)
 
     return f"-f {' -f '.join(map(str, DEV_COMPOSE_FILES))}"
 

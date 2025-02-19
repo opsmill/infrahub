@@ -9,6 +9,7 @@ from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
@@ -33,14 +34,16 @@ class DiffMerger:
         self.diff_repository = diff_repository
         self.serializer = serializer
 
-    async def merge_graph(self, at: Timestamp) -> None:
+    async def merge_graph(self, at: Timestamp) -> EnrichedDiffRoot:
+        tracking_id = BranchTrackingId(name=self.source_branch.name)
         enriched_diffs = await self.diff_repository.get_roots_metadata(
-            diff_branch_names=[self.source_branch.name], base_branch_names=[self.destination_branch.name]
+            diff_branch_names=[self.source_branch.name],
+            base_branch_names=[self.destination_branch.name],
+            tracking_id=tracking_id,
         )
         latest_diff = None
-        tracking_id = BranchTrackingId(name=self.source_branch.name)
         for diff in enriched_diffs:
-            if latest_diff is None or (diff.tracking_id == tracking_id and diff.to_time > latest_diff.to_time):
+            if latest_diff is None or (diff.to_time > latest_diff.to_time):
                 latest_diff = diff
         if latest_diff is None:
             raise RuntimeError(f"Missing diff for branch {self.source_branch.name}")
@@ -75,6 +78,7 @@ class DiffMerger:
         self.source_branch.branched_from = at.to_string()
         await self.source_branch.save(db=self.db)
         registry.branch[self.source_branch.name] = self.source_branch
+        return enriched_diff
 
     async def rollback(self, at: Timestamp) -> None:
         rollback_query = await DiffMergeRollbackQuery.init(

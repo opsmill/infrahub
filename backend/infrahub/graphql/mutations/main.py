@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Union
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
@@ -9,13 +9,15 @@ from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind, MutationAction
+from infrahub.core.changelog.models import RelationshipChangelogGetter
+from infrahub.core.constants import InfrahubKind, MutationAction, RelationshipCardinality, RelationshipKind
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import NodeSchema, RelationshipSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.profile_schema import ProfileSchema
+from infrahub.core.schema.template_schema import TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
@@ -33,6 +35,8 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
+    from infrahub.core.protocols import CoreObjectTemplate
+    from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
@@ -92,7 +96,7 @@ class InfrahubMutationMixin:
         # Reset the time of the query to guarantee that all resolvers executed after this point will account for the changes
         graphql_context.at = Timestamp()
 
-        if config.SETTINGS.broker.enable and graphql_context.background:
+        if config.SETTINGS.broker.enable and graphql_context.background and obj.node_changelog.has_changes:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
@@ -100,21 +104,40 @@ class InfrahubMutationMixin:
             if graphql_context.account_session:
                 account_id = graphql_context.account_session.account_id
 
-            event = NodeMutatedEvent(
+            meta = EventMeta(
+                account_id=account_id,
+                initiator_id=WORKER_IDENTITY,
+                request_id=request_id,
+                branch=graphql_context.branch,
+                context=graphql_context.get_context(),
+            )
+            main_event = NodeMutatedEvent(
                 kind=obj._schema.kind,
                 node_id=obj.id,
                 data=obj.node_changelog,
                 action=action,
                 fields=_get_data_fields(data),
-                meta=EventMeta(
-                    account_id=account_id,
-                    initiator_id=WORKER_IDENTITY,
-                    request_id=request_id,
-                    branch=graphql_context.branch,
-                ),
+                meta=meta,
             )
+            relationship_changelogs = RelationshipChangelogGetter(db=graphql_context.db, branch=graphql_context.branch)
+            node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=obj.node_changelog)
 
-            graphql_context.background.add_task(graphql_context.active_service.event.send, event)
+            events = [main_event]
+
+            for node_changelog in node_changelogs:
+                meta = EventMeta.from_parent(parent=main_event)
+                event = NodeMutatedEvent(
+                    kind=node_changelog.node_kind,
+                    node_id=node_changelog.node_id,
+                    data=node_changelog,
+                    action=MutationAction.UPDATED,
+                    fields=node_changelog.updated_fields,
+                    meta=meta,
+                )
+                events.append(event)
+
+            for event in events:
+                graphql_context.background.add_task(graphql_context.active_service.event.send, event)
 
         return mutation
 
@@ -161,6 +184,95 @@ class InfrahubMutationMixin:
         return await cls.mutate_create_object(data=data, db=db, branch=branch)
 
     @classmethod
+    async def _get_template_relationship_peers(
+        cls, db: InfrahubDatabase, template: CoreObjectTemplate, relationship: RelationshipSchema
+    ) -> Mapping[str, Node]:
+        """For a given relationship on the template, fetch the related peers."""
+        template_relationship_manager: RelationshipManager = getattr(template, relationship.name)
+        if relationship.cardinality == RelationshipCardinality.MANY:
+            return await template_relationship_manager.get_peers(db=db)
+
+        peers: dict[str, Node] = {}
+        template_relationship_peer = await template_relationship_manager.get_peer(db=db)
+        if template_relationship_peer:
+            peers[template_relationship_peer.id] = template_relationship_peer
+        return peers
+
+    @classmethod
+    async def _extract_peer_data(
+        cls,
+        db: InfrahubDatabase,
+        template_peer: Node,
+        obj_peer_schema,
+        parent_obj: Node,
+        current_template: CoreObjectTemplate,
+    ) -> Mapping[str, Any]:
+        obj_peer_data: dict[str, Any] = {}
+
+        for attr in template_peer.get_schema().attribute_names:
+            if attr not in obj_peer_schema.attribute_names:
+                continue
+            obj_peer_data[attr] = {"value": getattr(template_peer, attr).value}
+
+        for rel in template_peer.get_schema().relationship_names:
+            rel_manager: RelationshipManager = getattr(template_peer, rel)
+            if (
+                rel_manager.schema.kind not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]
+                or rel_manager.schema.name not in obj_peer_schema.relationship_names
+            ):
+                continue
+
+            if list(await rel_manager.get_peers(db=db)) == [current_template.id]:
+                obj_peer_data[rel] = {"id": parent_obj.id}
+
+        return obj_peer_data
+
+    @classmethod
+    async def _handle_template_relationships(
+        cls,
+        db: InfrahubDatabase,
+        branch: Branch,
+        obj: Node,
+        template: CoreObjectTemplate,
+        data: InputObjectType,
+        constraint_runner: NodeConstraintRunner | None = None,
+    ) -> None:
+        if constraint_runner is None:
+            component_registry = get_component_registry()
+            constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
+
+        for relationship in obj.get_relationships(kind=RelationshipKind.COMPONENT, exclude=list(data)):
+            template_relationship_peers = await cls._get_template_relationship_peers(
+                db=db, template=template, relationship=relationship
+            )
+            if not template_relationship_peers:
+                continue
+
+            obj_peer_schema = relationship.get_peer_schema(db=db, branch=branch)
+            for template_relationship_peer in template_relationship_peers.values():
+                obj_peer_data = await cls._extract_peer_data(
+                    db=db,
+                    template_peer=template_relationship_peer,
+                    obj_peer_schema=obj_peer_schema,
+                    parent_obj=obj,
+                    current_template=template,
+                )
+
+                obj_peer = await Node.init(schema=obj_peer_schema, db=db)
+                await obj_peer.new(db=db, **obj_peer_data)
+                await constraint_runner.check(node=obj_peer, field_filters=list(obj_peer_data))
+                await obj_peer.save(db=db)
+
+                await cls._handle_template_relationships(
+                    db=db,
+                    branch=branch,
+                    constraint_runner=constraint_runner,
+                    obj=obj_peer,
+                    template=template_relationship_peer,
+                    data=data,
+                )
+
+    @classmethod
     async def mutate_create(
         cls,
         info: GraphQLResolveInfo,
@@ -183,22 +295,46 @@ class InfrahubMutationMixin:
         branch: Branch,
     ) -> Node:
         component_registry = get_component_registry()
-        node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
+        node_constraint_runner = await component_registry.get_component(
+            NodeConstraintRunner, db=db.start_session(), branch=branch
+        )
         node_class = Node
         if cls._meta.schema.kind in registry.node:
             node_class = registry.node[cls._meta.schema.kind]
 
+        fields_to_validate = list(data)
         try:
-            obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch)
-            await obj.new(db=db, **data)
-            fields_to_validate = list(data)
-            await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
             if db.is_transaction:
+                obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch)
+                await obj.new(db=db, **data)
+                await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
                 await obj.save(db=db)
+
+                object_template = await obj.get_object_template(db=db)
+                if object_template:
+                    await cls._handle_template_relationships(
+                        db=db,
+                        branch=branch,
+                        template=object_template,
+                        obj=obj,
+                        data=data,
+                    )
             else:
                 async with db.start_transaction() as dbt:
+                    obj = await node_class.init(db=dbt, schema=cls._meta.schema, branch=branch)
+                    await obj.new(db=dbt, **data)
+                    await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
                     await obj.save(db=dbt)
 
+                    object_template = await obj.get_object_template(db=dbt)
+                    if object_template:
+                        await cls._handle_template_relationships(
+                            db=dbt,
+                            branch=branch,
+                            template=object_template,
+                            obj=obj,
+                            data=data,
+                        )
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
 
@@ -382,10 +518,13 @@ class InfrahubMutationMixin:
 class InfrahubMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     def __init_subclass_with_meta__(
-        cls, schema: Optional[Union[NodeSchema, GenericSchema, ProfileSchema]] = None, _meta=None, **options
+        cls,
+        schema: Optional[Union[NodeSchema, GenericSchema, ProfileSchema, TemplateSchema]] = None,
+        _meta=None,
+        **options,
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
-        if not isinstance(schema, NodeSchema | GenericSchema | ProfileSchema):
+        if not isinstance(schema, NodeSchema | GenericSchema | ProfileSchema | TemplateSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
 
         if not _meta:

@@ -258,7 +258,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
   test("should verify profile values after creation", async ({ page }) => {
     await page.goto("/objects/CoreProfile");
     await page.getByRole("link", { name: PROFILE_NAME }).click();
-    await expect(page.locator("dl").getByText(PROFILE_NAME)).toBeVisible();
+    await expect(page.locator("span").filter({ hasText: PROFILE_NAME })).toBeVisible();
     await expect(page.getByText("Profile Priority2000")).toBeVisible();
     await expect(page.getByText("MTU256")).toBeVisible();
     await expect(
@@ -268,7 +268,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .locator("svg")
         .first()
     ).toBeVisible();
-    await expect(page.getByText("Provisioning")).toBeVisible();
+    await expect(page.getByText("Provisioning", { exact: true })).toBeVisible();
   });
 
   test("should verify the available profiles in the object form", async ({ page }) => {
@@ -277,7 +277,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     await page.getByLabel("Select an object type").click();
     await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
     await page.getByLabel("Select profiles optional").click();
-    await expect(page.getByText(PROFILE_NAME)).toBeVisible();
+    await expect(page.getByText(PROFILE_NAME, { exact: true })).toBeVisible();
     await expect(page.getByText(GENERIC_PROFILE_NAME)).toBeVisible();
   });
 });

@@ -60,14 +60,17 @@ async def rebase_branch(branch: str, context: InfrahubContext, service: Infrahub
             service=service,
         )
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(base_branch=base_branch, diff_branch=obj)
-        if enriched_diff.get_all_conflicts():
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
+        async for _ in diff_repository.get_all_conflicts_for_diff(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
+        ):
+            # if there are any conflicts, raise the error
             raise ValidationError(
                 f"Branch {obj.name} contains conflicts with the default branch that must be addressed."
                 " Please review the diff for details and manually update the conflicts before rebasing."
             )
         node_diff_field_summaries = await diff_repository.get_node_field_summaries(
-            diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
 
         candidate_schema = merger.get_candidate_schema()
@@ -152,7 +155,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, service: Infrahub
     # -------------------------------------------------------------
     # TODO Add account information
     await service.event.send(
-        event=BranchRebasedEvent(branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj))
+        event=BranchRebasedEvent(
+            branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
+        )
     )
 
 
@@ -220,7 +225,7 @@ async def merge_branch(branch: str, context: InfrahubContext, service: InfrahubS
         # remove tracking ID from the diff because there is no diff after the merge
         # -------------------------------------------------------------
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
-        await diff_repository.drop_tracking_ids(tracking_ids=[BranchTrackingId(name=obj.name)])
+        await diff_repository.mark_tracking_ids_merged(tracking_ids=[BranchTrackingId(name=obj.name)])
 
         # -------------------------------------------------------------
         # Generate an event to indicate that a branch has been merged
@@ -247,7 +252,10 @@ async def delete_branch(branch: str, context: InfrahubContext, service: Infrahub
         await obj.delete(db=db)
 
         event = BranchDeletedEvent(
-            branch_name=branch, branch_id=str(obj.uuid), sync_with_git=obj.sync_with_git, meta=EventMeta(branch=obj)
+            branch_name=branch,
+            branch_id=str(obj.uuid),
+            sync_with_git=obj.sync_with_git,
+            meta=EventMeta(branch=obj, context=context),
         )
 
         await service.workflow.submit_workflow(
@@ -315,7 +323,9 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext, serv
             branch_name=obj.name,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta(branch=obj, account_id=context.account.account_id, initiator_id=WORKER_IDENTITY),
+            meta=EventMeta(
+                branch=obj, account_id=context.account.account_id, initiator_id=WORKER_IDENTITY, context=context
+            ),
         )
         await service.event.send(event=event)
 
