@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import shutil
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
@@ -103,8 +105,9 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         return client_repository.id
 
     @pytest.fixture(scope="class")
-    async def happy_dataset(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> None:
-        branch1 = await client.branch.create(branch_name="conflict_free")
+    async def happy_data_branch(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> str:
+        branch_name = f"conflict_free-{uuid4()}"
+        branch1 = await client.branch.create(branch_name=branch_name)
         richard = await Node.init(schema=TestKind.PERSON, db=db, branch=branch1.name)
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
@@ -114,6 +117,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         )
         john.age.value = 26  # type: ignore[attr-defined]
         await john.save(db=db)
+        return branch_name
 
     @pytest.fixture(scope="class")
     async def failing_branch_dataset(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> None:
@@ -197,10 +201,10 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         # as the branch to keep in the data conflict
         assert john.description.value == "Oh boy"  # type: ignore[attr-defined]
 
-    async def test_happy_pipeline(self, db: InfrahubDatabase, happy_dataset: None, client: InfrahubClient) -> None:
+    async def test_happy_pipeline(self, db: InfrahubDatabase, happy_data_branch: str, client: InfrahubClient) -> None:
         proposed_change_create = await client.create(
             kind=CoreProposedChange,
-            data={"source_branch": "conflict_free", "destination_branch": "main", "name": "happy-test"},
+            data={"source_branch": happy_data_branch, "destination_branch": "main", "name": "happy-test"},
         )
         await proposed_change_create.save()
 
@@ -231,7 +235,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         ][0]
         assert repository_merge_conflict.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
-        tags = await client.all(kind="BuiltinTag", branch="conflict_free")
+        tags = await client.all(kind="BuiltinTag", branch=happy_data_branch)
         # The Generator defined in the repository is expected to have created this tag during the pipeline
         assert "john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
         assert "InfrahubNode-john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
@@ -244,6 +248,38 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         proposed_change_after = await client.get(kind=CoreProposedChange, id=proposed_change_create.id)
         assert proposed_change_after.state.value == ProposedChangeState.MERGED.value
+
+        for _ in range(10):
+            merge_event = await client.execute_graphql(
+                query=QUERY_EVENT, variables={"branch": happy_data_branch, "event_type": "infrahub.branch.merged"}
+            )
+            if merge_event["InfrahubEvent"]["count"] == 1:
+                break
+            await asyncio.sleep(1)
+
+        assert merge_event["InfrahubEvent"]["count"] == 1
+        merge_event_id = merge_event["InfrahubEvent"]["edges"][0]["node"]["id"]
+
+        secondary_events = await client.execute_graphql(query=QUERY_EVENT, variables={"parent__ids": merge_event_id})
+
+        john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="John", kind=TestKind.PERSON)
+        richard = await NodeManager.get_one_by_id_or_default_filter(db=db, id="Richard", kind=TestKind.PERSON)
+        assert secondary_events["InfrahubEvent"]["count"] >= 2
+        johns_events = [
+            event
+            for event in secondary_events["InfrahubEvent"]["edges"]
+            if event["node"]["primary_node"]["id"] == john.id
+        ]
+        richards_events = [
+            event
+            for event in secondary_events["InfrahubEvent"]["edges"]
+            if event["node"]["primary_node"]["id"] == richard.id
+        ]
+        assert len(johns_events) == 1
+        assert len(richards_events) == 1
+
+        assert johns_events[0]["node"]["event"] == "infrahub.node.updated"
+        assert richards_events[0]["node"]["event"] == "infrahub.node.created"
 
     async def test_merge_failure(
         self,
@@ -279,3 +315,39 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         result = await client.execute_graphql(query=query, variables={"id": initial_dataset})
         assert result["InfrahubRepositoryConnectivity"]["ok"]
         assert result["InfrahubRepositoryConnectivity"]["message"] == "Successfully accessed repository"
+
+
+QUERY_EVENT = """
+query(
+    $branch: [String!],
+    $parent__ids: [String!],
+    $event_type: [String!]
+) {
+  InfrahubEvent(
+    branches: $branch,
+    parent__ids: $parent__ids
+    event_type: $event_type
+  ) {
+    count
+    edges {
+      node {
+        id
+        event
+        branch
+        has_children
+        parent_id
+        level
+        occurred_at
+        primary_node {
+          id
+          kind
+        }
+        related_nodes {
+            id
+            kind
+        }
+      }
+    }
+  }
+}
+"""

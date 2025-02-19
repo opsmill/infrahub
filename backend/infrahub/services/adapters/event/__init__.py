@@ -30,6 +30,7 @@ class InfrahubEventService:
 
     async def _send_prefect(self, event: InfrahubEvent) -> None:
         emit_event(
+            id=event.meta.id,
             event=event.get_name(),
             resource=event.get_resource(),
             related=event.get_related(),
