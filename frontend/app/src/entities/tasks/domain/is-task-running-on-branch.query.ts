@@ -3,7 +3,7 @@ import { queryOptions } from "@tanstack/react-query";
 
 export const isTaskRunningOnBranchQueryOptions = (branch: string) => {
   return queryOptions({
-    queryKey: ["is-task-running", branch],
+    queryKey: [branch, "is-task-running"],
     queryFn: () => isTaskRunningOnBranch(branch),
   });
 };

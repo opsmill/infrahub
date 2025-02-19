@@ -31,10 +31,17 @@ class EnrichedDiffQueryFilters(BaseModel):
     kind: IncExclFilterOptions = IncExclFilterOptions()
     namespace: IncExclFilterOptions = IncExclFilterOptions()
     status: IncExclActionFilterOptions = IncExclActionFilterOptions()
+    only_conflicted: bool = Field(default=False)
 
     @property
     def is_empty(self) -> bool:
-        if not self.ids and self.kind.is_empty and self.namespace.is_empty and self.status.is_empty:
+        if (
+            not self.ids
+            and self.only_conflicted is False
+            and self.kind.is_empty
+            and self.namespace.is_empty
+            and self.status.is_empty
+        ):
             return True
         return False
 
@@ -90,5 +97,9 @@ class EnrichedDiffQueryFilters(BaseModel):
                 params["filter_status_excludes"] = [str(item.value).lower() for item in self.status.excludes]
 
             filters_list.append(filter_and(filter_action))
+
+        # ONLY NODES WITH CONFLICTS
+        if self.only_conflicted is True:
+            filters_list.append("diff_node.contains_conflict = TRUE")
 
         return filter_and(filters_list), params

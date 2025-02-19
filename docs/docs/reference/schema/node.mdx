@@ -21,6 +21,7 @@ Below is the list of all available options to define a Node in the schema
 | [**display_labels**](#display_labels) | Attribute | List of attributes to use to generate the display label | False |
 | [**documentation**](#documentation) | Attribute | Link to a documentation associated with this object, can be internal or external. | False |
 | [**generate_profile**](#generate_profile) | Attribute | Indicate if a profile schema should be generated for this schema | False |
+| [**generate_template**](#generate_template) | Attribute | Indicate if an object template schema should be generated for this schema | False |
 | [**hierarchy**](#hierarchy) | Attribute | Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode | False |
 | [**human_friendly_id**](#human_friendly_id) | Attribute | Human friendly and unique identifier for the object. | False |
 | [**icon**](#icon) | Attribute | Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/ | False |
@@ -115,6 +116,17 @@ Below is the list of all available options to define a Node in the schema
 | **Description** | Indicate if a profile schema should be generated for this schema |
 | **Optional**  | True |
 | **Default Value** | True |
+| **Constraints** |  |
+
+### generate_template
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | generate_template |
+| **Kind** | `Boolean` |
+| **Description** | Indicate if an object template schema should be generated for this schema |
+| **Optional**  | True |
+| **Default Value** | False |
 | **Constraints** |  |
 
 ### hierarchy

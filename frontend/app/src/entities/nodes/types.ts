@@ -7,3 +7,29 @@ export type RelationshipKind =
   | "Group"
   | "Hierarchy"
   | "Profile";
+
+export type NodeCore = {
+  id: string;
+  hfid?: string[] | null;
+  display_label?: string | null;
+  __typename: string;
+};
+
+export type NodeAttribute = {
+  id: string;
+  value: string | number | boolean | null;
+};
+
+export type NodeRelationshipOne = {
+  node: NodeCore;
+};
+
+export type NodeRelationshipMany = {
+  edges: Array<NodeRelationshipOne>;
+};
+
+export type NodeRelationship = NodeRelationshipOne | NodeRelationshipMany;
+
+export type NodeObject = NodeCore & {
+  [key: string]: NodeAttribute | NodeRelationship;
+};

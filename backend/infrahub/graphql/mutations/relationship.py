@@ -7,8 +7,15 @@ from graphene import Boolean, InputField, InputObjectType, List, Mutation, Strin
 from infrahub_sdk.utils import compare_lists
 
 from infrahub import config
+from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.changelog.models import NodeChangelog
-from infrahub.core.constants import InfrahubKind, MutationAction, RelationshipCardinality
+from infrahub.core.constants import (
+    InfrahubKind,
+    MutationAction,
+    PermissionAction,
+    PermissionDecision,
+    RelationshipCardinality,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetKindQuery
 from infrahub.core.query.relationship import (
@@ -21,6 +28,7 @@ from infrahub.events import EventMeta, NodeMutatedEvent
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
 from infrahub.events.models import EventNode
 from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.permissions import get_global_permission_for_kind
 
 from ..types import RelatedNodeInput
 
@@ -51,7 +59,7 @@ class RelationshipNodesInput(InputObjectType):
 
 class RelationshipMixin:
     @classmethod
-    async def mutate(  # noqa: PLR0915
+    async def mutate(  # noqa: PLR0915, C901
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
@@ -97,6 +105,32 @@ class RelationshipMixin:
         nodes = await NodeManager.get_many(
             db=graphql_context.db, ids=node_ids, fields={"display_label": None}, branch=graphql_context.branch
         )
+
+        if graphql_context.account_session:
+            impacted_schemas = {node.get_schema() for node in [source] + list(nodes.values())}
+            required_permissions: list[GlobalPermission | ObjectPermission] = []
+            decision = (
+                PermissionDecision.ALLOW_DEFAULT.value
+                if graphql_context.branch.is_default
+                else PermissionDecision.ALLOW_OTHER.value
+            )
+
+            for impacted_schema in impacted_schemas:
+                global_action = get_global_permission_for_kind(schema=impacted_schema)
+
+                if global_action:
+                    required_permissions.append(GlobalPermission(action=global_action, decision=decision))
+                else:
+                    required_permissions.append(
+                        ObjectPermission(
+                            namespace=impacted_schema.namespace,
+                            name=impacted_schema.name,
+                            action=PermissionAction.UPDATE.value,
+                            decision=decision,
+                        )
+                    )
+
+            graphql_context.active_permissions.raise_for_permissions(permissions=required_permissions)
 
         _, _, in_list2 = compare_lists(list1=list(nodes.keys()), list2=node_ids)
         if in_list2:
@@ -164,16 +198,7 @@ class RelationshipMixin:
                         node_changelog.delete_relationship(relationship=rel)
                         await rel.delete(db=db)
 
-        if config.SETTINGS.broker.enable and graphql_context.background:
-            event = NodeMutatedEvent(
-                kind=source.get_schema().kind,
-                node_id=source.id,
-                data=node_changelog,
-                action=MutationAction.UPDATED,
-                fields=[relationship_name],
-                meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
-            )
-            graphql_context.background.add_task(graphql_context.active_service.event.send, event)
+        if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
             if group_event_type == GroupUpdateType.MEMBERS:
                 if cls.__name__ == "RelationshipAdd":
                     group_add_event = GroupMemberAddedEvent(
@@ -219,6 +244,16 @@ class RelationshipMixin:
                             graphql_context.background.add_task(
                                 graphql_context.active_service.event.send, group_remove_event
                             )
+            else:
+                event = NodeMutatedEvent(
+                    kind=source.get_schema().kind,
+                    node_id=source.id,
+                    data=node_changelog,
+                    action=MutationAction.UPDATED,
+                    fields=[relationship_name],
+                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                )
+                graphql_context.background.add_task(graphql_context.active_service.event.send, event)
         return cls(ok=True)  # type: ignore[call-arg]
 
 

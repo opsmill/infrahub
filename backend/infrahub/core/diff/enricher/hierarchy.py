@@ -5,7 +5,7 @@ from infrahub.core.constants import RelationshipHierarchyDirection, Relationship
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.core.query.relationship import RelationshipGetPeerQuery, RelationshipPeerData
-from infrahub.core.schema import ProfileSchema
+from infrahub.core.schema import ProfileSchema, TemplateSchema
 from infrahub.database import InfrahubDatabase
 
 from ..model.path import (
@@ -38,7 +38,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                 name=node.kind, branch=enriched_diff_root.diff_branch_name, duplicate=False
             )
 
-            if isinstance(schema_node, ProfileSchema):
+            if isinstance(schema_node, ProfileSchema | TemplateSchema):
                 continue
 
             if schema_node.has_parent_relationship:

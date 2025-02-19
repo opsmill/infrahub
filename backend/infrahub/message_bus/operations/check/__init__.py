@@ -1,3 +1,3 @@
-from . import artifact, generator, repository
+from . import generator, repository
 
-__all__ = ["artifact", "generator", "repository"]
+__all__ = ["generator", "repository"]

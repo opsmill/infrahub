@@ -5,7 +5,7 @@ from typing import Any, Optional
 from graphene import ObjectType
 from graphene.types.objecttype import ObjectTypeOptions
 
-from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema
+from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, TemplateSchema
 
 
 class InfrahubObjectOptions(ObjectTypeOptions):
@@ -21,7 +21,7 @@ class InfrahubObject(ObjectType):
         _meta: InfrahubObjectOptions | None = None,
         **options: Any,
     ) -> None:
-        if not isinstance(schema, NodeSchema | GenericSchema | ProfileSchema):
+        if not isinstance(schema, NodeSchema | GenericSchema | ProfileSchema | TemplateSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
 
         if not _meta:

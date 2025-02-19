@@ -95,7 +95,10 @@ test.describe("Verifies the object creation", () => {
   test("verifies values in kind and parent selects", async ({ page }) => {
     await test.step("got to the edit form", async () => {
       await page.goto("/objects/InfraInterfaceL3");
-      await page.getByRole("link", { name: "dfw1-edge1, Ethernet1", exact: true }).click();
+      await page
+        .getByTestId("identifier-cell")
+        .getByRole("link", { name: "dfw1-edge1, Ethernet1", exact: true })
+        .click();
       await page.getByTestId("edit-button").click();
     });
 
