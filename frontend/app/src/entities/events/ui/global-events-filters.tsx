@@ -35,8 +35,24 @@ export const GlobalEventsFilters = () => {
         kind: "Dropdown",
         choices: [
           {
-            label: "Node update",
+            label: "Node updated",
             name: "NodeMutatedEvent",
+          },
+          {
+            label: "Branch created",
+            name: "BranchCreatedEvent",
+          },
+          {
+            label: "Branch updated",
+            name: "BranchUpdatedEvent",
+          },
+          {
+            label: "Branch rebased",
+            name: "BranchRebasedEvent",
+          },
+          {
+            label: "Standard event",
+            name: "StandardEvent",
           },
         ],
       },
