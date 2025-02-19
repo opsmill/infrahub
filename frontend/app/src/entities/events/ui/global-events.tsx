@@ -6,7 +6,7 @@ import Content from "@/shared/components/layout/content";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { Spinner } from "@/shared/components/ui/spinner";
 import usePagination from "@/shared/hooks/usePagination";
-import useSearch from "@/shared/hooks/useSearch";
+import { useSearch } from "@/shared/hooks/useSearch";
 import { useEvents } from "../api/get-events.query";
 import { Event } from "./global-event";
 
