@@ -4,7 +4,7 @@ import { Icon } from "@iconify-icon/react";
 import { GROUP_EVENTS_MAPPING } from "./group-event";
 
 export const GroupEvent = (props: EventNodeInterface) => {
-  const { event, account_id, primary_node } = props;
+  const { event, account_id, primary_node, related_nodes } = props;
 
   return (
     <>
@@ -18,7 +18,7 @@ export const GroupEvent = (props: EventNodeInterface) => {
 
           {primary_node?.id &&
             GROUP_EVENTS_MAPPING[event] &&
-            GROUP_EVENTS_MAPPING[event](primary_node?.id)}
+            GROUP_EVENTS_MAPPING[event](related_nodes, primary_node?.id)}
         </div>
       </div>
     </>
