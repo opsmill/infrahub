@@ -1,4 +1,5 @@
 import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
+import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/get-object-actions-column";
 import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { Permission } from "@/entities/permission/types";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
@@ -19,7 +20,9 @@ export const ObjectTable = ({ schema, permission }: ObjectsTableProps) => {
     filters,
   });
 
-  const columns = React.useMemo(() => getObjectTableColumns(schema, permission), [schema.hash]);
+  const columns = React.useMemo(() => {
+    return [...getObjectTableColumns(schema), getObjectActionsColumn(permission)];
+  }, [schema.hash]);
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
   return (
