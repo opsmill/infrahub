@@ -38,7 +38,26 @@ async def test_relationship_add(
     branch: Branch,
     enable_broker_config: None,
     session_first_account: AccountSession,
+    first_account: Node,
 ):
+    await _define_permissions(
+        account=first_account,
+        db=db,
+        object_permissions=[
+            ObjectPermission(
+                namespace="Builtin",
+                name="Tag",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            ),
+            ObjectPermission(
+                namespace="Test",
+                name="Person",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            ),
+        ],
+    )
     query = """
     mutation {
         RelationshipAdd(data: {
@@ -369,7 +388,32 @@ async def test_relationship_groups_add(
     car_person_generics_data,
     enable_broker_config: None,
     session_first_account: AccountSession,
+    first_account: Node,
 ):
+    await _define_permissions(
+        account=first_account,
+        db=db,
+        object_permissions=[
+            ObjectPermission(
+                namespace="Core",
+                name="StandardGroup",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            ),
+            ObjectPermission(
+                namespace="Test",
+                name="ElectricCar",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            ),
+            ObjectPermission(
+                namespace="Test",
+                name="GazCar",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            ),
+        ],
+    )
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
@@ -479,7 +523,32 @@ async def test_relationship_groups_remove(
     car_person_generics_data,
     enable_broker_config: None,
     session_first_account: AccountSession,
+    first_account: Node,
 ):
+    await _define_permissions(
+        account=first_account,
+        db=db,
+        object_permissions=[
+            ObjectPermission(
+                namespace="Core",
+                name="StandardGroup",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            ),
+            ObjectPermission(
+                namespace="Test",
+                name="ElectricCar",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            ),
+            ObjectPermission(
+                namespace="Test",
+                name="GazCar",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            ),
+        ],
+    )
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
@@ -986,3 +1055,31 @@ async def test_without_permissions(
 
     assert result.errors
     assert "You do not have one of the following permissions" in result.errors[0].message
+
+
+async def _define_permissions(account: Node, db: InfrahubDatabase, object_permissions: list[ObjectPermission]) -> None:
+    registry.permission_backends = [LocalPermissionBackend()]
+
+    permissions = []
+    for object_permission in object_permissions:
+        obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+        await obj.new(
+            db=db,
+            namespace=object_permission.namespace,
+            name=object_permission.name,
+            action=object_permission.action,
+            decision=object_permission.decision,
+        )
+        await obj.save(db=db)
+        permissions.append(obj)
+
+    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role.new(db=db, name="chief-people-officer", permissions=permissions)
+    await role.save(db=db)
+
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="hr", roles=[role])
+    await group.save(db=db)
+
+    await group.members.add(db=db, data={"id": account.id})
+    await group.members.save(db=db)
