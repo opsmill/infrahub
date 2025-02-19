@@ -54,7 +54,7 @@ const EVENTS_QUERY = gql`
             id
             kind
           }
-          related_node {
+          related_nodes {
             id
             kind
           }
