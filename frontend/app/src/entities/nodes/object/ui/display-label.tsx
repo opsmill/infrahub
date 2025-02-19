@@ -12,15 +12,13 @@ type DisplayLabelProps = {
 export const DisplayLabel = ({ id, kind = NODE_OBJECT, className }: DisplayLabelProps) => {
   const { isLoading, error, data } = useDisplayLabel({ objectid: id, kind });
 
-  const object = data?.data?.[kind]?.edges?.[0]?.node ?? {};
-
   if (isLoading) {
     return <Skeleton className="h-3 w-14" />;
   }
 
-  if (error || !id || !object?.display_label) {
+  if (error || !id || !data?.display_label) {
     return <div className="italic">Name not found</div>;
   }
 
-  return <div className={classNames(className)}>{object?.display_label}</div>;
+  return <div className={classNames(className)}>{data?.display_label}</div>;
 };

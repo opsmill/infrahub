@@ -12,7 +12,7 @@ export function getDisplayLabelQueryOptions({
   const timeMachineDate = store.get(datetimeAtom);
 
   return queryOptions({
-    queryKey: ["display-label", objectid],
+    queryKey: ["display-label", objectid, kind],
     queryFn: () => {
       return getDisplayLabelFromApi({
         objectid,
@@ -25,5 +25,12 @@ export function getDisplayLabelQueryOptions({
 }
 
 export const useDisplayLabel = ({ objectid, kind }: { objectid: string; kind: string }) => {
-  return useQuery(getDisplayLabelQueryOptions({ objectid, kind }));
+  const { data, ...props } = useQuery(getDisplayLabelQueryOptions({ objectid, kind }));
+
+  const object = data?.data?.[kind]?.edges?.[0]?.node ?? {};
+
+  return {
+    data: object,
+    ...props,
+  };
 };
