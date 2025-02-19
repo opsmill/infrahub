@@ -8,7 +8,7 @@ from prefect.client.orchestration import PrefectClient, get_client
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
-from infrahub.core.constants import MutationAction
+from infrahub.core.constants import DiffAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -212,7 +212,7 @@ async def events_data(
         "branch1_mutated1": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag1.get_id(),
-            action=MutationAction.CREATED,
+            action=DiffAction.CREATED,
             data=tag1.node_changelog,
             meta=EventMeta(
                 branch=branch1,
@@ -223,7 +223,7 @@ async def events_data(
         "branch1_mutated2": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag1_update.get_id(),
-            action=MutationAction.UPDATED,
+            action=DiffAction.UPDATED,
             data=tag1_update.node_changelog,
             meta=EventMeta(
                 branch=branch1,
@@ -234,7 +234,7 @@ async def events_data(
         "branch1_mutated3": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag2.get_id(),
-            action=MutationAction.CREATED,
+            action=DiffAction.CREATED,
             data=tag2.node_changelog,
             meta=EventMeta(
                 branch=branch1,
@@ -245,7 +245,7 @@ async def events_data(
         "branch1_mutated4": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag3.get_id(),
-            action=MutationAction.CREATED,
+            action=DiffAction.CREATED,
             data=tag3.node_changelog,
             meta=EventMeta(
                 branch=branch1,
@@ -256,7 +256,7 @@ async def events_data(
         "branch2_mutated1": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag4.get_id(),
-            action=MutationAction.CREATED,
+            action=DiffAction.CREATED,
             data=tag4.node_changelog,
             meta=EventMeta(
                 branch=branch2,
@@ -267,7 +267,7 @@ async def events_data(
         "branch2_mutated2": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag5.get_id(),
-            action=MutationAction.CREATED,
+            action=DiffAction.CREATED,
             data=tag5.node_changelog,
             meta=EventMeta(
                 branch=branch2,
@@ -278,7 +278,7 @@ async def events_data(
         "branch2_mutated3": NodeMutatedEvent(
             kind="BuiltinTag",
             node_id=tag6.get_id(),
-            action=MutationAction.CREATED,
+            action=DiffAction.CREATED,
             data=tag6.node_changelog,
             meta=EventMeta(
                 branch=branch2,
@@ -289,7 +289,7 @@ async def events_data(
         "branch3_mutated1": NodeMutatedEvent(
             kind="TestPerson",
             node_id=person1.get_id(),
-            action=MutationAction.CREATED,
+            action=DiffAction.CREATED,
             data=person1.node_changelog,
             meta=EventMeta(
                 branch=branch3,
@@ -300,7 +300,7 @@ async def events_data(
         "branch3_mutated2": NodeMutatedEvent(
             kind="TestPerson",
             node_id=person2.get_id(),
-            action=MutationAction.CREATED,
+            action=DiffAction.CREATED,
             data=person2.node_changelog,
             meta=EventMeta(
                 branch=branch3,
@@ -313,7 +313,7 @@ async def events_data(
     items["branch3_mutated3"] = NodeMutatedEvent(
         kind="TestCar",
         node_id=car.get_id(),
-        action=MutationAction.CREATED,
+        action=DiffAction.CREATED,
         data=car.node_changelog,
         meta=EventMeta.from_parent(items["branch3_mutated1"]),
     )

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, InputObjectType, Mutation, String
 
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import ComputedAttributeKind, MutationAction, PermissionAction, PermissionDecision
+from infrahub.core.constants import ComputedAttributeKind, DiffAction, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
@@ -95,7 +95,7 @@ class UpdateComputedAttribute(Mutation):
                 node_id=target_node.get_id(),
                 data=target_node.node_changelog.model_dump(),
                 fields=[str(data.attribute)],
-                action=MutationAction.UPDATED,
+                action=DiffAction.UPDATED,
                 meta=EventMeta(
                     context=graphql_context.get_context(),
                     initiator_id=WORKER_IDENTITY,

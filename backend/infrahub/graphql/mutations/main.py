@@ -10,7 +10,7 @@ from typing_extensions import Self
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.changelog.models import RelationshipChangelogGetter
-from infrahub.core.constants import InfrahubKind, MutationAction, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality, RelationshipKind
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -63,14 +63,14 @@ class InfrahubMutationMixin:
 
         obj = None
         mutation = None
-        action = MutationAction.UNDEFINED
+        action = DiffAction.UNCHANGED
 
         if "Create" in cls.__name__:
             obj, mutation = await cls.mutate_create(info=info, branch=graphql_context.branch, data=data, **kwargs)
-            action = MutationAction.CREATED
+            action = DiffAction.ADDED
         elif "Update" in cls.__name__:
             obj, mutation = await cls.mutate_update(info=info, branch=graphql_context.branch, data=data, **kwargs)
-            action = MutationAction.UPDATED
+            action = DiffAction.UPDATED
         elif "Upsert" in cls.__name__:
             node_manager = NodeManager()
             node_getters = [
@@ -82,12 +82,12 @@ class InfrahubMutationMixin:
                 info=info, branch=graphql_context.branch, data=data, node_getters=node_getters, **kwargs
             )
             if created:
-                action = MutationAction.CREATED
+                action = DiffAction.ADDED
             else:
-                action = MutationAction.UPDATED
+                action = DiffAction.UPDATED
         elif "Delete" in cls.__name__:
             obj, mutation = await cls.mutate_delete(info=info, branch=graphql_context.branch, data=data, **kwargs)
-            action = MutationAction.DELETED
+            action = DiffAction.REMOVED
         else:
             raise ValueError(
                 f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
@@ -130,7 +130,7 @@ class InfrahubMutationMixin:
                     kind=node_changelog.node_kind,
                     node_id=node_changelog.node_id,
                     data=node_changelog,
-                    action=MutationAction.UPDATED,
+                    action=DiffAction.UPDATED,
                     fields=node_changelog.updated_fields,
                     meta=meta,
                 )

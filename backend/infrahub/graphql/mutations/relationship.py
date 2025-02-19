@@ -10,8 +10,8 @@ from infrahub import config
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
+    DiffAction,
     InfrahubKind,
-    MutationAction,
     PermissionAction,
     PermissionDecision,
     RelationshipCardinality,
@@ -137,7 +137,7 @@ class RelationshipAdd(Mutation):
                     kind=source.get_schema().kind,
                     node_id=source.id,
                     data=node_changelog,
-                    action=MutationAction.UPDATED,
+                    action=DiffAction.UPDATED,
                     fields=[relationship_name],
                     meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
                 )
@@ -224,7 +224,7 @@ class RelationshipRemove(Mutation):
                     kind=source.get_schema().kind,
                     node_id=source.id,
                     data=node_changelog,
-                    action=MutationAction.UPDATED,
+                    action=DiffAction.UPDATED,
                     fields=[relationship_name],
                     meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
                 )

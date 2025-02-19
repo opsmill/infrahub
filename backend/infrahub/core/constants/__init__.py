@@ -174,13 +174,6 @@ class GeneratorInstanceStatus(InfrahubStringEnum):
     READY = "Ready"
 
 
-class MutationAction(InfrahubStringEnum):
-    CREATED = "created"
-    DELETED = "deleted"
-    UPDATED = "updated"
-    UNDEFINED = "undefined"
-
-
 class PathResourceType(InfrahubStringEnum):
     SCHEMA = "schema"
     DATA = "data"

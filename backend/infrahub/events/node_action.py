@@ -2,8 +2,9 @@ from typing import Any
 
 from pydantic import Field, computed_field
 
+from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import NodeChangelog
-from infrahub.core.constants import MutationAction
+from infrahub.core.constants import DiffAction
 from infrahub.message_bus import InfrahubMessage
 
 from .constants import EVENT_NAMESPACE
@@ -15,7 +16,7 @@ class NodeMutatedEvent(InfrahubEvent):
 
     kind: str = Field(..., description="The type of object modified")
     node_id: str = Field(..., description="The ID of the mutated node")
-    action: MutationAction = Field(..., description="The action taken on the node")
+    action: DiffAction = Field(..., description="The action taken on the node")
     data: NodeChangelog = Field(..., description="Data on modified object")
     fields: list[str] = Field(default_factory=list, description="Fields provided in the mutation")
 
@@ -93,14 +94,18 @@ class NodeMutatedEvent(InfrahubEvent):
             # )
         ]
 
+    def set_context_branch(self, branch: Branch) -> None:
+        self.meta.context.branch.id = str(branch.get_uuid())
+        self.meta.context.branch.name = branch.name
+
 
 class NodeCreatedEvent(NodeMutatedEvent):
-    action: MutationAction = MutationAction.CREATED
+    action: DiffAction = DiffAction.ADDED
 
 
 class NodeUpdatedEvent(NodeMutatedEvent):
-    action: MutationAction = MutationAction.UPDATED
+    action: DiffAction = DiffAction.UPDATED
 
 
 class NodeDeletedEvent(NodeMutatedEvent):
-    action: MutationAction = MutationAction.DELETED
+    action: DiffAction = DiffAction.REMOVED

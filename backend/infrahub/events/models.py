@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, cast, final
+from typing import Any, Self, cast, final
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, PrivateAttr, computed_field, model_validator
 
 from infrahub import __version__
 from infrahub.auth import AccountSession, AuthType
@@ -45,6 +45,7 @@ class EventMeta(BaseModel):
 
     parent: UUID | None = Field(default=None, description="The UUID of the parent event if applicable")
     ancestors: list[ParentEvent] = Field(default_factory=list, description="Any event used to trigger this event")
+    _created_with_context: bool = PrivateAttr(default=False)
 
     def get_branch_id(self) -> str:
         if self.context.branch.id:
@@ -127,6 +128,12 @@ class EventMeta(BaseModel):
             ancestors=[ParentEvent(id=parent.get_id(), name=parent.get_name())] + parent.meta.ancestors,
         )
 
+    @classmethod
+    def from_context(cls, context: InfrahubContext) -> EventMeta:
+        meta = cls(context=context)
+        meta._created_with_context = True
+        return meta
+
 
 class InfrahubEvent(BaseModel):
     meta: EventMeta = Field(..., description="Metadata for the event")
@@ -180,3 +187,10 @@ class InfrahubEvent(BaseModel):
     @computed_field
     def event_name(self) -> str:
         raise NotImplementedError("The event name has not been defined")
+
+    @model_validator(mode="after")
+    def update_context(self) -> Self:
+        """Update the context object using this event provided that the meta data was created with a context."""
+        if self.meta._created_with_context:
+            self.meta.context.set_event(self.get_name(), id=self.get_id())
+        return self

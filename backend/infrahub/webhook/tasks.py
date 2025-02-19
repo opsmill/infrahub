@@ -12,7 +12,7 @@ from prefect.events.schemas.automations import EventTrigger, Posture
 from prefect.events.schemas.events import ResourceSpecification
 from prefect.logging import get_run_logger
 
-from infrahub.core.constants import MutationAction
+from infrahub.core.constants import DiffAction
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.services import InfrahubServices
 from infrahub.workflows.catalogue import WEBHOOK_SEND, WEBHOOK_TRIGGER
@@ -153,7 +153,7 @@ async def configure_webhooks(service: InfrahubServices) -> None:
                 within=timedelta(0),
                 match=ResourceSpecification(
                     {
-                        "infrahub.node.action": MutationAction.available_types(),
+                        "infrahub.node.action": DiffAction.available_types(),
                     }
                 ),
                 threshold=1,

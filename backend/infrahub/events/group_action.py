@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import Field, computed_field
 
-from infrahub.core.constants import MutationAction
+from infrahub.core.constants import DiffAction
 from infrahub.message_bus import InfrahubMessage
 
 from .constants import EVENT_NAMESPACE
@@ -14,7 +14,7 @@ class GroupMutatedEvent(InfrahubEvent):
 
     kind: str = Field(..., description="The type of updated group")
     node_id: str = Field(..., description="The ID of the updated group")
-    action: MutationAction = Field(..., description="The action taken on the node")
+    action: DiffAction = Field(..., description="The action taken on the node")
     members: list[EventNode] = Field(default_factory=list, description="Updated members during this event.")
 
     def get_related(self) -> list[dict[str, str]]:
@@ -58,7 +58,7 @@ class GroupMutatedEvent(InfrahubEvent):
 
 
 class GroupMemberAddedEvent(GroupMutatedEvent):
-    action: MutationAction = MutationAction.CREATED
+    action: DiffAction = DiffAction.ADDED
 
     @computed_field
     def event_name(self) -> str:
@@ -66,7 +66,7 @@ class GroupMemberAddedEvent(GroupMutatedEvent):
 
 
 class GroupMemberRemovedEvent(GroupMutatedEvent):
-    action: MutationAction = MutationAction.DELETED
+    action: DiffAction = DiffAction.REMOVED
 
     @computed_field
     def event_name(self) -> str:
