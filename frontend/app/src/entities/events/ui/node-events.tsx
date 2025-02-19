@@ -11,17 +11,23 @@ import { Event } from "./event";
 
 const MAX_EVENTS = 5;
 
-export const NodeEvents = () => {
+export const NodeEvents = ({ parentId }: { parentId?: string }) => {
   const { objectKind, objectid } = useParams();
 
-  const { isLoading, data, count, error } = useEvents({ ids: [objectid], limit: MAX_EVENTS });
+  const { isLoading, data, count, error } = useEvents({
+    parentIds: parentId,
+    relatedNodeIds: objectid,
+    limit: parentId ? 0 : MAX_EVENTS,
+  });
+
   const {
     isLoading: isLoadingDisplayLabel,
     error: displayLabelError,
     data: displayLabelData,
   } = useDisplayLabel({
-    objectid,
+    objectid: objectid,
     kind: objectKind,
+    enabled: !parentId,
   });
 
   if (isLoading || isLoadingDisplayLabel) {
@@ -51,7 +57,7 @@ export const NodeEvents = () => {
         <Event key={activity.id} {...activity} />
       ))}
 
-      {count > MAX_EVENTS && (
+      {!parentId && count > MAX_EVENTS && (
         <div className="flex items-center justify-center">
           <Link
             to={constructPath("/activities", [
