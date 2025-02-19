@@ -15,6 +15,15 @@ export const GlobalEvents = () => {
   const [filters] = useFilters();
 
   const queryFilters = filters.reduce((acc, filter) => {
+    if (Array.isArray(filter.value)) {
+      return {
+        ...acc,
+        [filter.name.split("__")[0]]: filter.value.map((value) => {
+          return value.id;
+        }),
+      };
+    }
+
     return { ...acc, [filter.name.split("__")[0]]: filter.value };
   }, {});
 
