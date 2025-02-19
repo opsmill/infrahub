@@ -34,6 +34,9 @@ test.describe("Object filters", () => {
       await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
       await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
       await expect(page.getByRole("link", { name: "atl1-core1" })).not.toBeVisible();
+
+      await page.getByRole("button", { name: "Role" }).click();
+      await expect(page.getByTestId("attribute-filter-form")).toContainText("Edge Router");
     });
 
     await test.step("filter using a relationship of cardinality one", async () => {
@@ -47,6 +50,9 @@ test.describe("Object filters", () => {
       await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
       await expect(page.getByRole("link", { name: "den1-edge1" })).not.toBeVisible();
       await expect(page.getByRole("link", { name: "atl1-core1" })).not.toBeVisible();
+
+      await page.getByRole("button", { name: "Site" }).click();
+      await expect(page.getByTestId("relationship-filter-form")).toContainText("atl1×");
     });
 
     await test.step("remove an attribute filter", async () => {
@@ -72,6 +78,9 @@ test.describe("Object filters", () => {
       await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
       await expect(page.getByRole("link", { name: "atl1-edge1" })).not.toBeVisible();
       await expect(page.getByRole("link", { name: "den1-edge1" })).not.toBeVisible();
+
+      await page.getByRole("button", { name: "Tags" }).click();
+      await expect(page.getByTestId("relationship-filter-form")).toContainText("blue×");
     });
 
     await test.step("clear all filters", async () => {
@@ -100,6 +109,9 @@ test.describe("Object filters", () => {
       await expect(page.getByLabel("Kind contains InfraInterfaceL3")).toBeVisible();
       await expect(page.getByTestId("object-items")).toContainText("Interface L3");
       await expect(page.getByTestId("object-items")).not.toContainText("Interface L2");
+
+      await page.getByRole("button", { name: "Kind", exact: true }).click();
+      await expect(page.getByLabel("kind", { exact: true })).toContainText("Interface L3 Infra");
     });
 
     await test.step("clear kind filter", async () => {

@@ -82,6 +82,7 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
           handleSubmit(formData);
           onSuccess?.();
         }}
+        data-testid="attribute-filter-form"
       >
         {condition === FILTER_CONDITION.CONTAINS && (
           <FormField

@@ -25,10 +25,7 @@ export function KindHeaderCell({ schema }: { schema: iGenericSchema }) {
 
   return (
     <Popover open={showFilters} onOpenChange={setShowFilters}>
-      <PopoverTrigger
-        className={classNames(cellsStyle, cellHeaderStyle)}
-        data-testid="table-header-cell"
-      >
+      <PopoverTrigger className={classNames(cellsStyle, cellHeaderStyle)}>
         <Icon icon="mdi:code-json" className="text-stone-400" />
         <span className="truncate mr-2">Kind</span>
         <Icon
