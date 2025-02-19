@@ -27,7 +27,11 @@ export const GlobalEvents = () => {
     return { ...acc, [filter.name.split("__")[0]]: filter.value };
   }, {});
 
-  const { isLoading, data, count, error, refetch } = useEvents({ ...pagination, ...queryFilters });
+  const { isLoading, data, count, error, refetch } = useEvents({
+    ...pagination,
+    level: 0,
+    ...queryFilters,
+  });
 
   if (error) {
     return <ErrorFallback error={error} />;

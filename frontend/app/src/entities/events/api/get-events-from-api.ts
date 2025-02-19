@@ -8,6 +8,7 @@ export type GlobalEventsFilters = {
   relatedNodeIds?: Array<string>;
   parentIds?: Array<string>;
   accountIds?: Array<string>;
+  level?: number;
   since?: Date;
   until?: Date;
   offset?: number;
@@ -23,6 +24,7 @@ const EVENTS_QUERY = gql`
     $relatedNodeIds: [String!]
     $parentIds: [String!]
     $accountIds: [String!]
+    $level: Int
     $since: DateTime
     $until: DateTime
     $offset: Int
@@ -36,6 +38,7 @@ const EVENTS_QUERY = gql`
       related_node__ids: $relatedNodeIds
       parent__ids: $parentIds
       account__ids: $accountIds
+      level: $level
       since: $since
       until: $until
       offset: $offset
