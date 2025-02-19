@@ -11,9 +11,11 @@ import {
   BRANCH_DELETED_EVENT,
   BRANCH_EVENTS,
   BRANCH_REBASEDED_EVENT,
+  GROUP_EVENTS,
   NODE_MUTATED_EVENT,
 } from "../utils/constants";
 import { BranchEvent } from "./branch-event";
+import { GroupEvent } from "./group-event";
 import { EventAttributes, NodeEvent } from "./node-event";
 
 export type BranchEventType = EventNodeInterface & {
@@ -62,6 +64,8 @@ export const Event = ({ __typename, ...props }: EventType) => {
           {"attributes" in props && <EventAttributes attributes={props.attributes} />}
 
           {BRANCH_EVENTS.includes(__typename) && <BranchEvent {...props} />}
+
+          {GROUP_EVENTS.includes(__typename) && <GroupEvent {...props} />}
 
           <div className="flex justify-between">
             <div className="text-xs font-medium text-gray-500 dark:text-neutral-400">
