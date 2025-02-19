@@ -4,15 +4,13 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, InputObjectType, Mutation, String
 
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreGeneratorDefinition
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_RUN
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
-
-    from infrahub.core.protocols import CoreGeneratorDefinition
 
     from ..initialization import GraphqlContext
 
@@ -37,8 +35,8 @@ class GeneratorDefinitionRequestRun(Mutation):
         graphql_context: GraphqlContext = info.context
         db = graphql_context.db
 
-        generator_definition: CoreGeneratorDefinition = await NodeManager.get_one_by_id_or_default_filter(
-            id=data.get("id", ""), kind=InfrahubKind.GENERATORDEFINITION, db=db, prefetch_relationships=True
+        generator_definition = await NodeManager.get_one_by_id_or_default_filter(
+            id=data.get("id", ""), kind=CoreGeneratorDefinition, db=db, prefetch_relationships=True
         )
         query = await generator_definition.query.get_peer(db=db)
         repository = await generator_definition.repository.get_peer(db=db)
@@ -50,12 +48,12 @@ class GeneratorDefinitionRequestRun(Mutation):
                 definition_name=generator_definition.name.value,
                 class_name=generator_definition.class_name.value,
                 file_path=generator_definition.file_path.value,
-                query_name=query.name.value,
-                query_models=query.models.value,
-                repository_id=repository.id,
-                parameters=generator_definition.parameters.value,
-                group_id=group.id,
-                convert_query_response=generator_definition.convert_query_response.value,
+                query_name=query.name.value,  # type: ignore[union-attr]
+                query_models=query.models.value,  # type: ignore[union-attr]
+                repository_id=repository.id,  # type: ignore[union-attr]
+                parameters=generator_definition.parameters.value,  # type: ignore[arg-type]
+                group_id=group.id,  # type: ignore[union-attr]
+                convert_query_response=generator_definition.convert_query_response.value or False,
             ),
             branch=graphql_context.branch.name,
         )
