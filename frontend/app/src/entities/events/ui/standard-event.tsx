@@ -4,11 +4,11 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
 import { ReactElement } from "react";
 
-export const GROUP_EVENTS_MAPPING: Record<
+export const STANDARD_EVENTS_MAPPING: Record<
   string,
-  (nodes: Array<{ id: string; kind: string }>, groupId: string) => ReactElement
+  (nodes: Array<{ id: string; kind: string }>, primaryNodeId?: string) => ReactElement
 > = {
-  "infrahub.group.member_added": (nodes, groupId) => (
+  "infrahub.group.member_added": (nodes, primaryNodeId) => (
     <div className="flex items-center gap-2">
       added{" "}
       <div className="flex items-center gap-1 text-black">
@@ -22,13 +22,13 @@ export const GROUP_EVENTS_MAPPING: Record<
       </div>{" "}
       in group{" "}
       <span className="text-black font-semibold">
-        <Link key={groupId} to={constructPath(`/objects/CoreGroup/${groupId}`)}>
-          <DisplayLabel key={groupId} id={groupId} kind="CoreGroup" />
+        <Link key={primaryNodeId} to={constructPath(`/objects/CoreGroup/${primaryNodeId}`)}>
+          <DisplayLabel key={primaryNodeId} id={primaryNodeId} kind="CoreGroup" />
         </Link>
       </span>
     </div>
   ),
-  "infrahub.group.member_removed": (nodes, groupId) => (
+  "infrahub.group.member_removed": (nodes, primaryNodeId) => (
     <div className="flex items-center gap-2">
       removed{" "}
       <div className="flex items-center gap-1 text-black">
@@ -42,15 +42,16 @@ export const GROUP_EVENTS_MAPPING: Record<
       </div>{" "}
       from group{" "}
       <span className="text-black">
-        <Link key={groupId} to={constructPath(`/objects/CoreGroup/${groupId}`)}>
-          <DisplayLabel key={groupId} id={groupId} kind="CoreGroup" />
+        <Link key={primaryNodeId} to={constructPath(`/objects/CoreGroup/${primaryNodeId}`)}>
+          <DisplayLabel key={primaryNodeId} id={primaryNodeId} kind="CoreGroup" />
         </Link>
       </span>
     </div>
   ),
+  "infrahub.schema.update": () => <div className="flex items-center gap-2">updated the schema</div>,
 };
 
-export const GroupEvent = (props: EventNodeInterface) => {
+export const StandardEvent = (props: EventNodeInterface) => {
   const { event, account_id, primary_node, related_nodes } = props;
 
   return (
@@ -62,9 +63,8 @@ export const GroupEvent = (props: EventNodeInterface) => {
           </div>
 
           <div className="text-gray-500">
-            {primary_node?.id &&
-              GROUP_EVENTS_MAPPING[event] &&
-              GROUP_EVENTS_MAPPING[event](related_nodes, primary_node?.id)}
+            {STANDARD_EVENTS_MAPPING[event] &&
+              STANDARD_EVENTS_MAPPING[event](related_nodes, primary_node?.id)}
           </div>
         </div>
       </div>
