@@ -4,10 +4,9 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { getDisplayLabelFromApi } from "./get-display-label";
 
-export function getDisplayLabelQueryOptions({
-  objectid,
-  kind,
-}: { objectid: string; kind: string }) {
+type DisplayLabelProps = { objectid: string; kind: string; enabled?: boolean };
+
+export function getDisplayLabelQueryOptions({ objectid, kind, enabled }: DisplayLabelProps) {
   const currentBranchName = getCurrentBranchName();
   const timeMachineDate = store.get(datetimeAtom);
 
@@ -21,11 +20,12 @@ export function getDisplayLabelQueryOptions({
         atDate: timeMachineDate,
       });
     },
+    enabled,
   });
 }
 
-export const useDisplayLabel = ({ objectid, kind }: { objectid: string; kind: string }) => {
-  const { data, ...props } = useQuery(getDisplayLabelQueryOptions({ objectid, kind }));
+export const useDisplayLabel = ({ objectid, kind, enabled }: DisplayLabelProps) => {
+  const { data, ...props } = useQuery(getDisplayLabelQueryOptions({ objectid, kind, enabled }));
 
   const object = data?.data?.[kind]?.edges?.[0]?.node ?? {};
 
