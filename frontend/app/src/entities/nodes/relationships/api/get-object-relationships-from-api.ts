@@ -2,7 +2,11 @@ import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/ge
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
+import {
+  addAttributesToRequest,
+  addFiltersToRequest,
+  addRelationshipsToRequest,
+} from "@/shared/api/graphql/utils";
 import { Filter } from "@/shared/hooks/useFilters";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
@@ -24,6 +28,7 @@ const generateObjectRelationshipsQuery = ({
   relationshipSchema,
   limit,
   offset = 0,
+  filters,
 }: GenerateObjectRelationshipsQueryParams) => {
   const { kind: relationshipKind, attributes = [], relationships = [] } = relationshipSchema;
   const attributesVisible = getAttributesVisibleInListView(attributes);
@@ -39,6 +44,9 @@ const generateObjectRelationshipsQuery = ({
         edges: {
           node: {
             [relationshipName]: {
+              __args: {
+                ...(filters ? addFiltersToRequest(filters) : {}),
+              },
               edges: {
                 node: {
                   __on: {
