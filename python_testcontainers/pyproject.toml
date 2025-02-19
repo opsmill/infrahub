@@ -25,7 +25,11 @@ classifiers = [
 
 include = ["infrahub_testcontainers/docker-compose.test.yml"]
 
+[tool.poetry.plugins."pytest11"]
+"pytest-infrahub-performance-test" = "infrahub_testcontainers.plugin"
+
 [tool.poetry.dependencies]
 python = "^3.9"
 testcontainers = "~4.8"
+psutil = "*"
 pytest = "*"

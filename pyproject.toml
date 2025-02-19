@@ -122,6 +122,7 @@ infrahubctl = "infrahub_sdk.ctl.cli:app"
 
 [tool.poetry.plugins."pytest11"]
 "pytest-infrahub" = "infrahub_sdk.pytest_plugin.plugin"
+"pytest-infrahub-results" = "infrahub_testcontainers.plugin"
 
 [tool.poetry.plugins."prefect.collections"]
 "infrahubasync" = "infrahub.workers.infrahub_async"
