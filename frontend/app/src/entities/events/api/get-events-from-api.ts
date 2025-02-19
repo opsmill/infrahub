@@ -2,7 +2,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
 
 const EVENTS_QUERY = gql`
-  query GET_ACTIVITIES($ids: [String], $offset: Int, $limit: Int) {
+  query GET_ACTIVITIES($ids: [String!], $offset: Int, $limit: Int) {
     InfrahubEvent(related_node__ids: $ids, offset: $offset, limit: $limit) {
       count
       edges {
