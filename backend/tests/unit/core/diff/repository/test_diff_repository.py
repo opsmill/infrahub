@@ -49,7 +49,6 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         config.SETTINGS.database.max_depth_search_hierarchy = 10
         config.SETTINGS.database.query_size_limit = 50
         diff_repository = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
-        diff_repository.MAX_SAVE_BATCH_SIZE = 3
         yield diff_repository
         config.SETTINGS.database.max_depth_search_hierarchy = original_depth
         config.SETTINGS.database.query_size_limit = original_size
@@ -91,7 +90,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         assert diff_root == enriched_diff
 
     async def test_save_and_retrieve_large_diff(self, diff_repository: DiffRepository, reset_database):
-        diff_repository.MAX_SAVE_BATCH_SIZE = 3
+        diff_repository.max_save_batch_size = 50
         enriched_branch_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
@@ -955,6 +954,47 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         assert retrieved_diff_root.exists_on_database is True
         retrieved_diff_root.exists_on_database = False
         assert retrieved_diff_root == enriched_diff
+        await verify_no_orphaned_nodes(db=db)
+
+    async def test_update_existing_hierarchy(
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+    ):
+        nodes = self._build_nodes(num_nodes=2, num_sub_fields=3)
+        for n in nodes:
+            for r in n.relationships:
+                if r.nodes:
+                    child_node, parent_rel = n, r
+                    break
+        enriched_diff = EnrichedRootFactory.build(
+            base_branch_name=self.base_branch_name,
+            diff_branch_name=self.diff_branch_name,
+            from_time=Timestamp(self.diff_from_time),
+            to_time=Timestamp(self.diff_to_time),
+            nodes=set(nodes),
+            tracking_id=NameTrackingId(name="the-best-diff"),
+        )
+        saved_diffs = await self._save_single_diff(
+            diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
+        )
+
+        # replace a parent
+        new_parent = self.build_diff_node(num_sub_fields=2, no_recurse=True)
+        removed_parent = parent_rel.nodes.pop()
+        parent_rel.nodes.add(new_parent)
+        saved_diffs.base_branch_diff.nodes = set()
+        saved_diffs.diff_branch_diff.nodes = {child_node, new_parent, removed_parent}
+        await diff_repository.save(enriched_diffs=saved_diffs, do_summary_counts=False)
+
+        retrieved_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
+        )
+
+        retrieved_child = retrieved_diff.get_node(child_node.uuid)
+        retrieved_parent_rel = retrieved_child.get_relationship(name=parent_rel.name)
+        assert {n.uuid for n in retrieved_parent_rel.nodes} == {n.uuid for n in parent_rel.nodes}
+        retrieved_removed_parent = retrieved_diff.get_node(removed_parent.uuid)
+        assert retrieved_removed_parent == removed_parent
+        assert retrieved_diff == enriched_diff
         await verify_no_orphaned_nodes(db=db)
 
 

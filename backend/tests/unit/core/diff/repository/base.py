@@ -66,9 +66,7 @@ class DiffRepositoryTestBase:
             return enriched_node
         if num_sub_fields > 1 and len(enriched_node.relationships) > 0:
             for relationship_group in enriched_node.relationships:
-                relationship_group.nodes = {
-                    self.build_diff_node(num_sub_fields=num_sub_fields - 1) for _ in range(num_sub_fields - 1)
-                }
+                relationship_group.nodes = {self.build_diff_node(num_sub_fields=num_sub_fields - 1)}
                 break
         return enriched_node
 

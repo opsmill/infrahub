@@ -83,33 +83,47 @@ class EnrichedNodeBatchCreateQuery(Query):
         query = """
 UNWIND $node_details_list AS node_details
 WITH node_details.root_uuid AS root_uuid, node_details.node_map AS node_map
+MATCH (diff_root:DiffRoot {uuid: root_uuid})
+MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_map.node_properties.uuid})
+WITH root_uuid, node_map, diff_node, (node_map.conflict_params IS NOT NULL) AS has_node_conflict
+SET
+    diff_node.kind = node_map.node_properties.kind,
+    diff_node.label = node_map.node_properties.label,
+    diff_node.changed_at = node_map.node_properties.changed_at,
+    diff_node.action = node_map.node_properties.action,
+    diff_node.path_identifier = node_map.node_properties.path_identifier
+WITH root_uuid, node_map, diff_node, has_node_conflict
 CALL {
-    WITH root_uuid, node_map
-    MATCH (diff_root {uuid: root_uuid})
-    MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_map.node_properties.uuid})
-    SET
-        diff_node.kind = node_map.node_properties.kind,
-        diff_node.label = node_map.node_properties.label,
-        diff_node.changed_at = node_map.node_properties.changed_at,
-        diff_node.action = node_map.node_properties.action,
-        diff_node.path_identifier = node_map.node_properties.path_identifier
     // -------------------------
-    // add/remove node-level conflict
+    // delete parent-child relationships for included nodes, they will be added in EnrichedNodesLinkQuery
     // -------------------------
-    WITH diff_node, node_map
-    OPTIONAL MATCH (diff_node)-[:DIFF_HAS_CONFLICT]->(current_diff_node_conflict:DiffConflict)
-    WITH diff_node, node_map, current_diff_node_conflict, (node_map.conflict_params IS NOT NULL) AS has_node_conflict
-    FOREACH (i in CASE WHEN has_node_conflict = FALSE THEN [1] ELSE [] END |
-        DETACH DELETE current_diff_node_conflict
-    )
-    FOREACH (i in CASE WHEN has_node_conflict = TRUE THEN [1] ELSE [] END |
-        MERGE (diff_node)-[:DIFF_HAS_CONFLICT]->(diff_node_conflict:DiffConflict)
-        SET diff_node_conflict = node_map.conflict_params
-    )
+    WITH diff_node
+    MATCH (:DiffRelationship)-[parent_rel:DIFF_HAS_NODE]->(diff_node)
+    DELETE parent_rel
+}
+OPTIONAL MATCH (diff_node)-[:DIFF_HAS_CONFLICT]->(current_node_conflict:DiffConflict)
+CALL {
+    WITH diff_node, current_node_conflict, has_node_conflict
+    WITH diff_node, current_node_conflict, has_node_conflict
+    WHERE current_node_conflict IS NULL AND has_node_conflict = TRUE
+    CREATE (diff_node)-[:DIFF_HAS_CONFLICT]->(:DiffConflict)
 }
 CALL {
-    WITH root_uuid, node_map
-    MATCH (diff_root {uuid: root_uuid})-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_map.node_properties.uuid})
+    WITH current_node_conflict, has_node_conflict
+    WITH current_node_conflict, has_node_conflict
+    WHERE current_node_conflict IS NOT NULL AND has_node_conflict = FALSE
+    DETACH DELETE current_node_conflict
+}
+WITH root_uuid, node_map, diff_node, has_node_conflict,
+    node_map.conflict_params AS node_conflict_params
+CALL {
+    WITH diff_node, has_node_conflict, node_conflict_params
+    WITH diff_node, has_node_conflict, node_conflict_params
+    WHERE has_node_conflict = TRUE
+    OPTIONAL MATCH (diff_node)-[:DIFF_HAS_CONFLICT]->(node_conflict:DiffConflict)
+    SET node_conflict = node_conflict_params
+}
+CALL {
     // -------------------------
     // remove stale attributes for this node
     // -------------------------
