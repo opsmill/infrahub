@@ -9,5 +9,5 @@ export default function BreadcrumbObjectCustomDisplay({
   id: string;
   className?: string;
 }) {
-  return <BreadcrumbLink {...props}>OK</BreadcrumbLink>;
+  return <BreadcrumbLink {...props}>{id}</BreadcrumbLink>;
 }
