@@ -8,7 +8,7 @@ export function DropdownCell({ dropdown }: { dropdown: Dropdown }) {
         dropdown.color
           ? {
               backgroundColor: dropdown.color,
-              color: `lch(from ${dropdown.color} calc((50 - l) * infinity) 0 0)`, // https://x.com/devongovett/status/1863733091409461256
+              color: `lch(from ${dropdown.color} calc((50 - l) * 999) 0 0)`, // https://x.com/devongovett/status/1863733091409461256
             }
           : undefined
       }

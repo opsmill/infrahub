@@ -3,7 +3,11 @@ import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils
 import { NodeObject } from "@/entities/nodes/types";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
+import {
+  addAttributesToRequest,
+  addFiltersToRequest,
+  addRelationshipsToRequest,
+} from "@/shared/api/graphql/utils";
 import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { Filter } from "@/shared/hooks/useFilters";
 import { gql } from "@apollo/client";
@@ -45,29 +49,7 @@ export const getObjects: GetObjects = async ({
         __args: {
           limit,
           offset,
-          ...(filters
-            ? filters.reduce(
-                (acc, filter) => {
-                  if (filter.name === "kind__value") return acc;
-
-                  const [fieldName, fieldKey] = filter.name.split("__");
-
-                  if (!fieldName || !fieldKey) return acc;
-
-                  if (fieldKey === "value" || fieldKey === "values" || fieldKey === "isnull") {
-                    acc[filter.name] = filter.value;
-                    return acc;
-                  }
-
-                  if (fieldKey === "ids") {
-                    acc[filter.name] = filter.value.map(({ id }: { id: string }) => id);
-                  }
-
-                  return acc;
-                },
-                { partial_match: true } as Record<string, string | number | boolean>
-              )
-            : {}),
+          ...(filters ? addFiltersToRequest(filters) : {}),
         },
         edges: {
           node: {

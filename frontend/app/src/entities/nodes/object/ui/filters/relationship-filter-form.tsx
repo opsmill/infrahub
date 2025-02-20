@@ -96,10 +96,12 @@ export function RelationshipFilterForm({
           handleSubmit(formData as FormData);
           onSuccess?.();
         }}
+        data-testid="relationship-filter-form"
       >
         {condition === "is any of" && (
           <FormField
             name="relationships"
+            defaultValue={currentFilter?.value}
             render={({ field }) => {
               const value = field.value as RelationshipNode[] | undefined;
 

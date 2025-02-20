@@ -50,7 +50,7 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
         ...filters.filter((f) => f.name !== currentFilter?.name),
         {
           name: `${attributeSchema.name}__isnull`,
-          value: false,
+          value: true,
         },
       ]);
     }
@@ -82,6 +82,7 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
           handleSubmit(formData);
           onSuccess?.();
         }}
+        data-testid="attribute-filter-form"
       >
         {condition === FILTER_CONDITION.CONTAINS && (
           <FormField

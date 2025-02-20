@@ -7,6 +7,7 @@ import { JsonEditor } from "@/shared/components/editor/json/json-editor";
 import { ColorPicker } from "@/shared/components/inputs/color-picker";
 import { DatePicker } from "@/shared/components/inputs/date-picker";
 import { Dropdown, DropdownOption } from "@/shared/components/inputs/dropdown";
+import { Enum } from "@/shared/components/inputs/enum";
 import { List } from "@/shared/components/list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
@@ -77,8 +78,22 @@ export function DynamicFilterInput({ fieldSchema, value, onChange }: DynamicFilt
 
   const fieldKind = fieldSchema.kind as AttributeKind;
   switch (fieldKind) {
+    case ATTRIBUTE_KIND.TEXT: {
+      if (fieldSchema.enum) {
+        return (
+          <Enum
+            items={fieldSchema.enum as string[]}
+            value={value}
+            onChange={onChange}
+            defaultOpen={true}
+            fitTriggerWidth={false}
+            className="min-w-[132px]"
+          />
+        );
+      }
+      return <Input autoFocus value={value} onChange={onChange} />;
+    }
     case ATTRIBUTE_KIND.ID:
-    case ATTRIBUTE_KIND.TEXT:
     case ATTRIBUTE_KIND.TEXTAREA:
     case ATTRIBUTE_KIND.EMAIL:
     case ATTRIBUTE_KIND.FILE:
