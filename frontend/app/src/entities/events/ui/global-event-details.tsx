@@ -17,7 +17,7 @@ const EventDetailsView = () => {
         {error && <ErrorScreen message="An error occured while retrieving the activity details." />}
 
         {!error && (
-          <div className="flex gap-2">
+          <div className="flex items-start gap-2">
             <CardWithBorder className="p-0 border-0 flex-1">
               <CardWithBorder.Title>Details</CardWithBorder.Title>
               <EventDetails {...data} />
