@@ -1,3 +1,4 @@
+import { QSP } from "@/config/qsp";
 import { NodeLabel } from "@/entities/nodes/object/ui/display-label";
 import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
@@ -51,7 +52,13 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
 
           <Link
             to={constructPath(
-              `/objects/${props.payload.data.node_kind}/${props.payload.data.node_id}`
+              `/objects/${props.payload.data.node_kind}/${props.payload.data.node_id}`,
+              [
+                {
+                  name: QSP.BRANCH,
+                  value: props.branch,
+                },
+              ]
             )}
           >
             <NodeLabel id={props.payload.data.node_id} />
