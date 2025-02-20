@@ -932,3 +932,122 @@ class RelationshipCountPerNodeQuery(Query):
                 data[node_id] = 0
 
         return data
+
+
+class RelationshipDeleteAllQuery(Query):
+    """
+    Delete all relationships linked to a given node on a given branch. So, it will both:
+    - Set `to` time on corresponding active edge.
+    - Create `deleted` edge.
+    """
+
+    name = "node_delete_all_relationships"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, node_id: str, **kwargs):
+        self.node_id = node_id
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+        self.params["source_id"] = kwargs["node_id"]
+        self.params["branch"] = self.branch.name
+
+        self.params["rel_prop"] = {
+            "branch": self.branch.name,
+            "branch_level": self.branch.hierarchy_level,
+            "status": RelationshipStatus.DELETED.value,
+            "from": self.at.to_string(),
+        }
+
+        self.params["at"] = self.at.to_string()
+
+        edge_filter, rel_params = self.branch.get_query_filter_path(at=self.at, variable_name="edge")
+        self.params.update(rel_params)
+
+        r1_active_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string(), variable_name="r1_active")
+        r2_active_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string(), variable_name="r2_active")
+
+        arrows = [("<-", "-", "<-", "-"), ("-", "->", "-", "->"), ("<-", "-", "-", "->"), ("-", "->", "<-", "-")]
+
+        query = ""
+        for arrow_left_start, arrow_left_end, arrow_right_start, arrow_right_end in arrows:
+            query += """
+            CALL {
+                MATCH (s:Node { uuid: $source_id })%(arrow_left_start)s[r1_active:IS_RELATED]%(arrow_left_end)s \
+                (rl:Relationship)%(arrow_right_start)s[r2_active:IS_RELATED]%(arrow_right_end)s(d:Node)
+                WHERE %(r1_active_filter)s AND %(r2_active_filter)s AND r1_active.status = "active" AND r2_active.status = "active"
+
+                WITH s, rl, d, r1_active, r2_active
+                LIMIT 1
+                SET r1_active.to = $at
+                SET r2_active.to = $at
+                CREATE (s)%(arrow_left_start)s[r1:IS_RELATED $rel_prop]%(arrow_left_end)s(rl)
+                SET r1.hierarchical = r1_active.hierarchical
+                CREATE (rl)%(arrow_right_start)s[r2:IS_RELATED $rel_prop]%(arrow_right_end)s(d)
+                SET r2.hierarchical = r2_active.hierarchical
+                WITH rl
+                CALL {
+                    WITH rl
+                    MATCH (rl)-[edge:IS_VISIBLE]->(visible)
+                    WHERE %(rel_filter)s AND edge.status = "active"
+                    WITH rl, edge, visible
+                    ORDER BY edge.branch_level DESC
+                    LIMIT 1
+                    CREATE (rl)-[deleted_edge:IS_VISIBLE $rel_prop]->(visible)
+                    SET deleted_edge.hierarchical = edge.hierarchical
+                    WITH edge
+                    WHERE edge.branch = $branch
+                    SET edge.to = $at
+                }
+                CALL {
+                    WITH rl
+                    MATCH (rl)-[edge:IS_PROTECTED]->(protected)
+                    WHERE %(rel_filter)s AND edge.status = "active"
+                    WITH rl, edge, protected
+                    ORDER BY edge.branch_level DESC
+                    LIMIT 1
+                    CREATE (rl)-[deleted_edge:IS_PROTECTED $rel_prop]->(protected)
+                    SET deleted_edge.hierarchical = edge.hierarchical
+                    WITH edge
+                    WHERE edge.branch = $branch
+                    SET edge.to = $at
+                }
+                CALL {
+                    WITH rl
+                    MATCH (rl)-[edge:HAS_OWNER]->(owner_node)
+                    WHERE %(rel_filter)s AND edge.status = "active"
+                    WITH rl, edge, owner_node
+                    ORDER BY edge.branch_level DESC
+                    LIMIT 1
+                    CREATE (rl)-[deleted_edge:HAS_OWNER $rel_prop]->(owner_node)
+                    SET deleted_edge.hierarchical = edge.hierarchical
+                    WITH edge
+                    WHERE edge.branch = $branch
+                    SET edge.to = $at
+                }
+                CALL {
+                    WITH rl
+                    MATCH (rl)-[edge:HAS_SOURCE]->(source_node)
+                    WHERE %(rel_filter)s AND edge.status = "active"
+                    WITH rl, edge, source_node
+                    ORDER BY edge.branch_level DESC
+                    LIMIT 1
+                    CREATE (rl)-[deleted_edge:HAS_SOURCE $rel_prop]->(source_node)
+                    SET deleted_edge.hierarchical = edge.hierarchical
+                    WITH edge
+                    WHERE edge.branch = $branch
+                    SET edge.to = $at
+                }
+            }
+
+            """ % {
+                "arrow_left_start": arrow_left_start,
+                "arrow_left_end": arrow_left_end,
+                "arrow_right_start": arrow_right_start,
+                "arrow_right_end": arrow_right_end,
+                "rel_filter": edge_filter,
+                "r1_active_filter": r1_active_filter,
+                "r2_active_filter": r2_active_filter,
+            }
+        self.add_to_query(query)

@@ -19,6 +19,7 @@ from infrahub.types import ATTRIBUTE_TYPES
 
 from ...graphql.constants import KIND_GRAPHQL_FIELD_NAME
 from ...graphql.models import OrderModel
+from ..query.relationship import RelationshipDeleteAllQuery
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
@@ -599,14 +600,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             attr: BaseAttribute = getattr(self, name)
             await attr.delete(at=delete_at, db=db)
 
-        # Go over the list of relationships and update them one by one
-        for name in self._relationships:
-            rel: RelationshipManager = getattr(self, name)
-            await rel.delete(at=delete_at, db=db)
-
-        # Need to check if there are some unidirectional relationship as well
-        # For example, if we delete a tag, we must check the permissions and update all the relationships pointing at it
         branch = self.get_branch_based_on_support_type()
+
+        delete_query = await RelationshipDeleteAllQuery.init(db=db, node_id=self.get_id(), branch=branch, at=delete_at)
+        await delete_query.execute(db=db)
 
         # Update the relationship to the branch itself
         query = await NodeGetListQuery.init(
