@@ -1,0 +1,47 @@
+import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
+import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { Navigate } from "react-router";
+import { toast } from "react-toastify";
+
+export interface ObjectRelationshipsManagerProps {
+  parentNodeSchema: IModelSchema;
+  parentNodeId: string;
+  relationshipName: string;
+}
+export function ObjectRelationshipsManager({
+  parentNodeSchema,
+  parentNodeId,
+  relationshipName,
+}: ObjectRelationshipsManagerProps) {
+  const relationshipDefinition = parentNodeSchema.relationships?.find(
+    (r) => r?.name === relationshipName
+  );
+  const { schema: relationshipSchema } = useSchema(relationshipDefinition?.peer);
+
+  if (!relationshipSchema) {
+    toast(
+      <Alert
+        type={ALERT_TYPES.ERROR}
+        message={
+          <>
+            Relationship <strong>{relationshipName}</strong> not found in {parentNodeSchema.label}{" "}
+            schema
+          </>
+        }
+      />
+    );
+    return <Navigate to={getObjectDetailsUrl2(parentNodeSchema.kind as string, parentNodeId)} />;
+  }
+
+  return (
+    <RelationshipTable
+      parentKind={parentNodeSchema.kind as string}
+      parentId={parentNodeId}
+      relationshipName={relationshipName}
+      relationshipSchema={relationshipSchema}
+    />
+  );
+}

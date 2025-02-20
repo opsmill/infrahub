@@ -9,6 +9,7 @@ import {
   getObjectTabs,
   getTabs,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import { Permission } from "@/entities/permission/types";
@@ -36,7 +37,6 @@ import { NodeEvents } from "../../events/ui/node-events";
 import { ActionButtons } from "./action-buttons";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
-import { RelationshipsDetails } from "./relationships-details-paginated";
 
 type ObjectDetailsProps = {
   schema: IModelSchema;
@@ -219,11 +219,10 @@ export default function ObjectItemDetails({
       )}
 
       {qspTab && qspTab !== TASK_TAB && (
-        <RelationshipsDetails
-          parentNode={objectDetailsData}
-          parentSchema={schema}
-          refetchObjectDetails={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
-          ref={refetchRef}
+        <ObjectRelationshipsManager
+          parentNodeSchema={schema}
+          parentNodeId={objectDetailsData.id}
+          relationshipName={qspTab}
         />
       )}
 

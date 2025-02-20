@@ -1,4 +1,3 @@
-import { ActionsCell } from "@/entities/nodes/object/ui/object-table/cells/actions-cell";
 import { KindBodyCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-body-cell";
 import { KindHeaderCell } from "@/entities/nodes/object/ui/object-table/cells/generics/kind-header-cell";
 import { TableAttributeCell } from "@/entities/nodes/object/ui/object-table/cells/table-attribute-cell";
@@ -9,19 +8,19 @@ import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/ge
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
 import { NodeObject } from "@/entities/nodes/types";
-import { Permission } from "@/entities/permission/types";
 import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { isGenericSchema } from "@/entities/schema/utils";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
+import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { ColumnDef } from "@tanstack/react-table";
 import * as R from "remeda";
 
 export const getObjectTableColumns = (
   schema: IModelSchema,
-  permission: Permission
+  headerProps?: PopoverTriggerProps
 ): ColumnDef<NodeObject>[] => {
   const attributes = getAttributesVisibleInListView(schema.attributes ?? []);
   const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []);
@@ -56,7 +55,7 @@ export const getObjectTableColumns = (
           {
             id: "__typename",
             accessorFn: (row) => row.__typename,
-            header: () => <KindHeaderCell schema={schema} />,
+            header: () => <KindHeaderCell schema={schema} {...headerProps} />,
             cell: ({ cell }) => <KindBodyCell schemaKind={cell.getValue() as string} />,
           },
         ]
@@ -64,7 +63,9 @@ export const getObjectTableColumns = (
     ...sortedColumns.map((columnSchema) => {
       return {
         accessorKey: columnSchema.name,
-        header: () => <TableColumnHeader columnSchema={columnSchema} schema={schema} />,
+        header: () => (
+          <TableColumnHeader columnSchema={columnSchema} schema={schema} {...headerProps} />
+        ),
         cell: ({ cell }) => {
           const value = cell.getValue();
           if ("peer" in columnSchema) {
@@ -82,27 +83,5 @@ export const getObjectTableColumns = (
         },
       };
     }),
-    {
-      id: "actions",
-      header: () => (
-        <div
-          className={classNames(
-            cellsStyle,
-            cellHeaderStyle,
-            "right-0 z-10 border-l size-10 -ml-px hover:bg-white"
-          )}
-        />
-      ),
-      cell: ({ row }) => {
-        return (
-          <ActionsCell
-            permission={permission}
-            objectKind={row.original.__typename as string}
-            objectLabel={row.getValue("id") as string}
-            objectId={row.original.id as string}
-          />
-        );
-      },
-    },
   ];
 };

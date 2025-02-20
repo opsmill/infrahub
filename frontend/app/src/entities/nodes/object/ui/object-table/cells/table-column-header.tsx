@@ -9,14 +9,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
+import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { useState } from "react";
 
-export interface TableColumnHeaderProps {
+export interface TableColumnHeaderProps extends PopoverTriggerProps {
   schema: IModelSchema;
   columnSchema: AttributeSchema | RelationshipSchema;
 }
 
-export function TableColumnHeader({ schema, columnSchema }: TableColumnHeaderProps) {
+export function TableColumnHeader({ schema, columnSchema, ...props }: TableColumnHeaderProps) {
   const [filters] = useFilters();
   const [showFilters, setShowFilters] = useState(false);
   const filtersAsObjectData = getObjectFromFilters(schema, filters);
@@ -28,7 +29,7 @@ export function TableColumnHeader({ schema, columnSchema }: TableColumnHeaderPro
 
   return (
     <Popover open={showFilters} onOpenChange={setShowFilters}>
-      <PopoverTrigger className={classNames(cellsStyle, cellHeaderStyle)}>
+      <PopoverTrigger className={classNames(cellsStyle, cellHeaderStyle)} {...props}>
         <TableColumnHeaderIcon fieldSchema={columnSchema} />
 
         <span className="truncate mr-2">{columnSchema.label ?? columnSchema.name}</span>

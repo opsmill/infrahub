@@ -1,0 +1,62 @@
+import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
+import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
+import { getObjectRelationships } from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships";
+import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { Filter } from "@/shared/hooks/useFilters";
+import { store } from "@/shared/stores";
+import { datetimeAtom } from "@/shared/stores/time.atom";
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+
+export type UseObjectRelationshipsParams = {
+  parentKind: string;
+  parentId: string;
+  relationshipName: string;
+  relationshipSchema: IModelSchema;
+  filters?: Array<Filter>;
+};
+
+export function getObjectRelationshipsQueryOptions({
+  parentKind,
+  parentId,
+  relationshipName,
+  relationshipSchema,
+  filters,
+}: UseObjectRelationshipsParams) {
+  const currentBranchName = getCurrentBranchName();
+  const timeMachineDate = store.get(datetimeAtom);
+
+  return infiniteQueryOptions({
+    queryKey: [
+      currentBranchName,
+      timeMachineDate,
+      "objects",
+      parentKind,
+      parentId,
+      relationshipSchema.kind,
+      filters,
+    ],
+    queryFn: ({ pageParam }) => {
+      return getObjectRelationships({
+        parentKind,
+        parentId,
+        relationshipName,
+        relationshipSchema,
+        offset: pageParam,
+        branchName: currentBranchName,
+        atDate: timeMachineDate,
+        filters,
+      });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _, lastPageParam) => {
+      if (lastPage.length < OBJECTS_PER_PAGE) {
+        return undefined;
+      }
+      return lastPageParam + OBJECTS_PER_PAGE;
+    },
+  });
+}
+
+export function useObjectRelationships(params: UseObjectRelationshipsParams) {
+  return useInfiniteQuery(getObjectRelationshipsQueryOptions(params));
+}

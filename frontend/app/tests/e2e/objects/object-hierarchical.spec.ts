@@ -38,7 +38,7 @@ test.describe("Object hierarchical view", () => {
 
     await test.step("navigate using tab", async () => {
       await page.getByText("Children5").click();
-      await expect(page.getByRole("link", { name: "Atlanta" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1" })).toBeVisible();
     });
   });
 
