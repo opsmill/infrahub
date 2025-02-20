@@ -2,8 +2,6 @@ import { getCurrentBranchName } from "@/entities/branches/domain/get-current-bra
 import { store } from "@/shared/stores";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { EventType } from "../ui/event";
-import { INFRAHUB_EVENT } from "../utils/constants";
 import { GlobalEventsFilters, getEventsFromApi } from "./get-events-from-api";
 
 export function getEventsQueryOptions(filters: GlobalEventsFilters) {
@@ -23,17 +21,5 @@ export function getEventsQueryOptions(filters: GlobalEventsFilters) {
 }
 
 export const useEvents = (filters: GlobalEventsFilters) => {
-  const { data } = useQuery(getEventsQueryOptions(filters));
-
-  const activities: EventType[] = data?.data?.[INFRAHUB_EVENT]?.edges?.map((edge) => {
-    return edge.node;
-  });
-
-  const count = data?.data?.[INFRAHUB_EVENT]?.count;
-
-  return {
-    ...useQuery(getEventsQueryOptions(filters)),
-    data: activities,
-    count,
-  };
+  return useQuery(getEventsQueryOptions(filters));
 };

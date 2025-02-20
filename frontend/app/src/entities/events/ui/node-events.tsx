@@ -14,7 +14,7 @@ const MAX_EVENTS = 5;
 export const NodeEvents = () => {
   const { objectKind, objectid } = useParams();
 
-  const { isLoading, data, count, error } = useEvents({ ids: [objectid], limit: MAX_EVENTS });
+  const { isLoading, data, error } = useEvents({ ids: [objectid], limit: MAX_EVENTS });
   const {
     isLoading: isLoadingNodeLabel,
     error: displayLabelError,
@@ -36,7 +36,7 @@ export const NodeEvents = () => {
     return <ErrorFallback error={error} />;
   }
 
-  if (!data?.length) {
+  if (!data?.activities?.length) {
     return <NoDataFound message="No activity found for this object." />;
   }
 
@@ -47,11 +47,11 @@ export const NodeEvents = () => {
 
   return (
     <div className="flex flex-col gap-2 p-2">
-      {data?.map((activity) => (
+      {data?.activities?.map((activity) => (
         <Event key={activity.id} {...activity} />
       ))}
 
-      {count > MAX_EVENTS && (
+      {data?.count > MAX_EVENTS && (
         <div className="flex items-center justify-center">
           <Link
             to={constructPath("/activities", [

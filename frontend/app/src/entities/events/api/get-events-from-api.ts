@@ -1,5 +1,7 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
+import { EventType } from "../ui/event";
+import { INFRAHUB_EVENT } from "../utils/constants";
 
 export type GlobalEventsFilters = {
   hasChildren?: boolean;
@@ -76,12 +78,12 @@ const EVENTS_QUERY = gql`
   }
 `;
 
-export function getEventsFromApi({
+export async function getEventsFromApi({
   branchName,
   atDate,
   ...filters
 }: GlobalEventsFilters & { branchName?: string; atDate?: Date | null }) {
-  return graphqlClient.query({
+  const { data } = await graphqlClient.query({
     query: EVENTS_QUERY,
     variables: {
       ...filters,
@@ -91,4 +93,15 @@ export function getEventsFromApi({
       date: atDate,
     },
   });
+
+  const activities: EventType[] = data?.[INFRAHUB_EVENT]?.edges?.map((edge) => {
+    return edge.node;
+  });
+
+  const count = data?.data?.[INFRAHUB_EVENT]?.count;
+
+  return {
+    activities,
+    count,
+  };
 }
