@@ -6,7 +6,7 @@ const getDisplayLabelQuery = ({
   objectid,
   kind,
 }: {
-  objectid: string;
+  objectid?: string;
   kind: string;
 }) => {
   const request = {
@@ -33,7 +33,12 @@ export function getDisplayLabelFromApi({
   kind,
   branchName,
   atDate,
-}: { objectid: string; kind: string; branchName: string; atDate: Date | null }) {
+}: {
+  objectid?: string;
+  kind: string;
+  branchName: string;
+  atDate: Date | null;
+}) {
   return graphqlClient.query({
     query: gql(getDisplayLabelQuery({ objectid, kind })),
     context: {
