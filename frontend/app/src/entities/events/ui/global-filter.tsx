@@ -50,8 +50,10 @@ export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagPr
     <Tag
       className={classNames(
         focusVisibleStyle,
-        "group text-gray-600 text-sm whitespace-nowrap bg-neutral-100 rounded-full inline-flex items-center gap-1.5 pl-1 border border-gray-300 cursor-pointer",
-        "data-[hovered]:bg-gray-100 data-[hovered]:border-custom-blue-700"
+        "group text-sm whitespace-nowrap rounded-full inline-flex items-center gap-1.5 border border-gray-300",
+        currentFilter?.value && "text-gray-600  bg-neutral-100 pl-1 cursor-pointer",
+        !currentFilter?.value && "text-gray-400 px-1 cursor-pointer border-dashed",
+        "data-[hovered]:bg-gray-100 data-[hovered]:text-gray-600 data-[hovered]:border-gray-600"
       )}
       textValue={`${label} contains ${currentFilter?.value}`}
       {...props}
