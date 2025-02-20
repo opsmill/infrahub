@@ -14,7 +14,7 @@ const MAX_EVENTS = 5;
 export const NodeEvents = ({ parentId }: { parentId?: string }) => {
   const { objectKind, objectid } = useParams();
 
-  const { isLoading, data, count, error } = useEvents({
+  const { isLoading, data, error } = useEvents({
     parentIds: parentId,
     relatedNodeIds: objectid,
     limit: parentId ? 0 : MAX_EVENTS,
