@@ -1,25 +1,33 @@
 import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
 import { store } from "@/shared/stores";
 import { datetimeAtom } from "@/shared/stores/time.atom";
-import { queryOptions, useQuery } from "@tanstack/react-query";
-import { GlobalEventsFilters, getEventsFromApi } from "./get-events-from-api";
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import { GlobalEventsFilters, OBJECTS_PER_PAGE, getEventsFromApi } from "./get-events-from-api";
 
 export function getEventsQueryOptions(filters: GlobalEventsFilters) {
   const currentBranchName = getCurrentBranchName();
   const timeMachineDate = store.get(datetimeAtom);
 
-  return queryOptions({
+  return infiniteQueryOptions({
     queryKey: ["events", filters],
-    queryFn: () => {
+    queryFn: ({ pageParam }) => {
       return getEventsFromApi({
         ...filters,
+        offset: pageParam,
         branchName: currentBranchName,
         atDate: timeMachineDate,
       });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _, lastPageParam) => {
+      if (lastPage.length < OBJECTS_PER_PAGE) {
+        return undefined;
+      }
+      return lastPageParam + OBJECTS_PER_PAGE;
     },
   });
 }
 
 export const useEvents = (filters: GlobalEventsFilters) => {
-  return useQuery(getEventsQueryOptions(filters));
+  return useInfiniteQuery(getEventsQueryOptions(filters));
 };

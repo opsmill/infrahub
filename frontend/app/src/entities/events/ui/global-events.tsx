@@ -1,17 +1,16 @@
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
+import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorFallback from "@/shared/components/errors/error-fallback";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
-import { Pagination } from "@/shared/components/ui/pagination";
 import { Spinner } from "@/shared/components/ui/spinner";
 import useFilters from "@/shared/hooks/useFilters";
-import usePagination from "@/shared/hooks/usePagination";
+import React from "react";
 import { useEvents } from "../api/get-events.query";
 import { Event } from "./global-event";
 import { GlobalEventsFilters } from "./global-events-filters";
 
 export const GlobalEvents = () => {
-  const [pagination] = usePagination();
   const [filters] = useFilters();
 
   const queryFilters = filters.reduce((acc, filter) => {
@@ -27,11 +26,13 @@ export const GlobalEvents = () => {
     return { ...acc, [filter.name.split("__")[0]]: filter.value };
   }, {});
 
-  const { isLoading, data, error, refetch } = useEvents({
-    ...pagination,
-    ...queryFilters,
-    level: 0,
-  });
+  const { isLoading, data, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useEvents({
+      ...queryFilters,
+      level: 0,
+    });
+
+  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
   if (error) {
     return <ErrorFallback error={error} />;
@@ -41,7 +42,7 @@ export const GlobalEvents = () => {
     <Content.Card>
       <Content.CardTitle
         title="Activities"
-        badgeContent={data?.count}
+        // badgeContent={flatData?.count}
         isReloadLoading={isLoading}
         reload={() => refetch()}
       />
@@ -52,11 +53,23 @@ export const GlobalEvents = () => {
         </div>
 
         <div className="flex flex-col gap-2">
-          {!isLoading && !data?.activities?.length && <NoDataFound message="No activity found." />}
+          {!isLoading && !flatData?.length && <NoDataFound message="No activity found." />}
 
-          {data?.activities?.map((activity) => (
+          {flatData?.map((activity) => (
             <Event key={activity.id} {...activity} />
           ))}
+
+          {hasNextPage && (
+            <div className="flex items-center justify-center">
+              <Button
+                variant={"primary"}
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+              >
+                {isFetchingNextPage ? "Loading more..." : "Load more"}
+              </Button>
+            </div>
+          )}
         </div>
 
         {isLoading && (
@@ -64,8 +77,6 @@ export const GlobalEvents = () => {
             <Spinner />
           </div>
         )}
-
-        <Pagination count={data?.count} />
       </div>
     </Content.Card>
   );

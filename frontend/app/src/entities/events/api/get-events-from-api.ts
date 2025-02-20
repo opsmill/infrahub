@@ -3,6 +3,8 @@ import { gql } from "@apollo/client";
 import { EventType } from "../ui/event";
 import { INFRAHUB_EVENT } from "../utils/constants";
 
+export const OBJECTS_PER_PAGE = 40;
+
 export type GlobalEventsFilters = {
   hasChildren?: boolean;
   eventType?: Array<string>;
@@ -84,11 +86,13 @@ const EVENTS_QUERY = gql`
 export async function getEventsFromApi({
   branchName,
   atDate,
+  limit = OBJECTS_PER_PAGE,
   ...filters
 }: GlobalEventsFilters & { branchName?: string; atDate?: Date | null }) {
   const { data } = await graphqlClient.query({
     query: EVENTS_QUERY,
     variables: {
+      limit,
       ...filters,
     },
     context: {
@@ -101,10 +105,5 @@ export async function getEventsFromApi({
     return edge.node;
   });
 
-  const count = data?.[INFRAHUB_EVENT]?.count;
-
-  return {
-    activities,
-    count,
-  };
+  return activities;
 }
