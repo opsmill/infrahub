@@ -44,19 +44,19 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
       });
 
       await test.step("Delete the relationship", async () => {
-        await page
-          .getByRole("row", { name: "atl1-leaf1" })
-          .getByTestId("relationship-delete-button")
-          .click();
-        await expect(page.getByRole("paragraph")).toContainText(
-          "Are you sure you want to remove the association between `Cisco IOS` and `atl1-leaf1`? The `InfraDevice` `atl1-leaf1` won't be deleted in the process."
-        );
+        await page.getByTestId("actions-cell-atl1-leaf1").click();
+        await page.getByRole("menuitem", { name: "Dissociate" }).click();
+        await expect(
+          page.getByText(
+            "Are you sure you want to dissociate atl1-leaf1 ?- This action will only remove the association.- The object itself will not be deleted."
+          )
+        ).toBeVisible();
         await page.getByTestId("modal-delete-confirm").click();
       });
 
       await test.step("Verify deletion of relationship", async () => {
-        await expect(page.getByText("Item removed from the group")).toBeVisible();
-        await expect(page.getByText("Showing 1 to 9 of 9 results")).toBeVisible();
+        await expect(page.getByText("Association with atl1-leaf1")).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-leaf1" })).toBeHidden();
         await expect(page.getByLabel("Tabs")).toContainText("Devices9");
       });
     });
@@ -77,7 +77,6 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
 
       await test.step("Verify new relationship addition", async () => {
         await expect(page.getByText("Association with InfraDevice added")).toBeVisible();
-        await expect(page.getByText("Showing 1 to 10 of 10 results")).toBeVisible();
         await expect(page.getByLabel("Tabs")).toContainText("Devices10");
         await expect(page.getByRole("cell", { name: "atl1-leaf1" })).toBeVisible();
       });
@@ -97,10 +96,10 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
       await test.step("Navigates to the USA and checks the children", async () => {
         await page.getByRole("link", { name: "United States of America" }).click();
         await page.getByText("Children5").click();
-        await expect(page.getByRole("link", { name: "Atlanta" })).toBeVisible();
-        await expect(page.getByRole("link", { name: "Denver" })).toBeVisible();
-        await expect(page.getByRole("link", { name: "Bailey Li" })).toBeVisible();
-        await expect(page.getByRole("link", { name: "Francesca Wilcox" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "den1" })).toBeVisible();
+        await expect(page.getByText("Bailey Li")).toBeVisible();
+        await expect(page.getByText("Francesca Wilcox")).toBeVisible();
       });
     });
 
