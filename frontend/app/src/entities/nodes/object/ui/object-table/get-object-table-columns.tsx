@@ -14,10 +14,14 @@ import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
+import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { ColumnDef } from "@tanstack/react-table";
 import * as R from "remeda";
 
-export const getObjectTableColumns = (schema: IModelSchema): ColumnDef<NodeObject>[] => {
+export const getObjectTableColumns = (
+  schema: IModelSchema,
+  headerProps?: PopoverTriggerProps
+): ColumnDef<NodeObject>[] => {
   const attributes = getAttributesVisibleInListView(schema.attributes ?? []);
   const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []);
   const sortedColumns = R.pipe(
@@ -51,7 +55,7 @@ export const getObjectTableColumns = (schema: IModelSchema): ColumnDef<NodeObjec
           {
             id: "__typename",
             accessorFn: (row) => row.__typename,
-            header: () => <KindHeaderCell schema={schema} />,
+            header: () => <KindHeaderCell schema={schema} {...headerProps} />,
             cell: ({ cell }) => <KindBodyCell schemaKind={cell.getValue() as string} />,
           },
         ]
@@ -59,7 +63,9 @@ export const getObjectTableColumns = (schema: IModelSchema): ColumnDef<NodeObjec
     ...sortedColumns.map((columnSchema) => {
       return {
         accessorKey: columnSchema.name,
-        header: () => <TableColumnHeader columnSchema={columnSchema} schema={schema} />,
+        header: () => (
+          <TableColumnHeader columnSchema={columnSchema} schema={schema} {...headerProps} />
+        ),
         cell: ({ cell }) => {
           const value = cell.getValue();
           if ("peer" in columnSchema) {

@@ -32,7 +32,7 @@ export function RelationshipTable({
 
   const columns = React.useMemo(() => {
     return [
-      ...getObjectTableColumns(relationshipSchema),
+      ...getObjectTableColumns(relationshipSchema, { disabled: true }),
       getRelationshipActionsColumn({
         parentId,
         parentKind,
