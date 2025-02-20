@@ -1,6 +1,10 @@
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import {
+  AttributeKind,
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/types";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { SelectOption } from "@/shared/components/inputs/select-old";
 import { FormField } from "@/shared/components/ui/form";
@@ -110,14 +114,14 @@ export type DynamicDropdownFieldProps = FormFieldProps & {
   type: "Dropdown";
   items: Array<DropdownOption>;
   field?: AttributeSchema;
-  schema?: IModelSchema;
+  schema?: ModelSchema;
 };
 
 export type DynamicEnumFieldProps = FormFieldProps & {
   type: "enum";
   items: Array<unknown>;
   field?: AttributeSchema;
-  schema?: IModelSchema;
+  schema?: ModelSchema;
 };
 
 export type DynamicAttributeFieldProps =
@@ -133,7 +137,7 @@ export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue">
   parent?: string;
   options?: SelectOption[];
   relationship: RelationshipSchema;
-  schema: IModelSchema;
+  schema: ModelSchema;
   peerField?: string;
 };
 

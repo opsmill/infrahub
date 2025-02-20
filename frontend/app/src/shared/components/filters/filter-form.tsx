@@ -1,4 +1,4 @@
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { FilterKindSelector } from "@/shared/components/filters/filter-kind-selector";
@@ -11,7 +11,7 @@ import { classNames } from "@/shared/utils/common";
 import { forwardRef } from "react";
 
 export interface FilterFormProps extends FormProps {
-  schema: IModelSchema | null;
+  schema: ModelSchema | null;
   filters: Array<Filter>;
   onCancel?: () => void;
 }

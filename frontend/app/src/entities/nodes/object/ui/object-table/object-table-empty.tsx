@@ -1,9 +1,9 @@
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import useFilters from "@/shared/hooks/useFilters";
 import { Icon } from "@iconify-icon/react";
 
-export function ObjectTableEmpty({ schema }: { schema: IModelSchema }) {
+export function ObjectTableEmpty({ schema }: { schema: ModelSchema }) {
   const [filters, setFilters] = useFilters();
   const schemaLabel = schema.label ?? schema.name;
 

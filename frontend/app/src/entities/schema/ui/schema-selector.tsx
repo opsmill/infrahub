@@ -1,10 +1,10 @@
 import { QSP } from "@/config/qsp";
 import {
-  IModelSchema,
-  genericsState,
-  profilesAtom,
-  schemaState,
+  genericSchemasAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils";
 import Accordion from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/ui/badge";
@@ -21,9 +21,9 @@ type SchemaSelectorProps = {
 };
 export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
   const [selectedKind, setKind] = useQueryParam(QSP.KIND, ArrayParam);
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
-  const profiles = useAtomValue(profilesAtom);
+  const nodes = useAtomValue(nodeSchemasAtom);
+  const generics = useAtomValue(genericSchemasAtom);
+  const profiles = useAtomValue(profileSchemasAtom);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
@@ -33,12 +33,12 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
     ref.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [selectedKind?.length]);
 
-  const schemas: IModelSchema[] = [...nodes, ...generics, ...profiles].filter(({ kind }) =>
+  const schemas: ModelSchema[] = [...nodes, ...generics, ...profiles].filter(({ kind }) =>
     kind?.toLowerCase().includes(search.toLowerCase())
   );
 
   const schemasPerNamespace = R.pipe(
-    R.sortBy<IModelSchema>(R.prop("name")),
+    R.sortBy<ModelSchema>(R.prop("name")),
     R.groupBy(R.prop("namespace"))
   )(schemas);
 

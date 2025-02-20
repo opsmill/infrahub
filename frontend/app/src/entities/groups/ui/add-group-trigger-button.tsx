@@ -2,7 +2,7 @@ import { GroupDataFromAPI } from "@/entities/groups/api/types";
 import AddGroupForm from "@/entities/groups/ui/add-group-form";
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import { Permission } from "@/entities/permission/types";
-import { iNodeSchema } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -10,7 +10,7 @@ import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
 type AddGroupTriggerButtonProps = {
-  schema: iNodeSchema;
+  schema: NodeSchema;
   objectId: string;
   permission: Permission;
   currentGroups?: Array<GroupDataFromAPI>;

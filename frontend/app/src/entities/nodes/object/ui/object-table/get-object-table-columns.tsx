@@ -8,7 +8,7 @@ import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/ge
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
 import { NodeObject } from "@/entities/nodes/types";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
@@ -19,7 +19,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import * as R from "remeda";
 
 export const getObjectTableColumns = (
-  schema: IModelSchema,
+  schema: ModelSchema,
   headerProps?: PopoverTriggerProps
 ): ColumnDef<NodeObject>[] => {
   const attributes = getAttributesVisibleInListView(schema.attributes ?? []);

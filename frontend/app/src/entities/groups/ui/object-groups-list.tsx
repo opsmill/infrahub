@@ -2,7 +2,7 @@ import { QSP } from "@/config/qsp";
 import { GroupDataFromAPI } from "@/entities/groups/api/types";
 import { useRemoveRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships.mutation";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ItemGroup from "@/shared/components/layouts/item-group";
@@ -41,7 +41,7 @@ type ObjectGroupProps = {
 };
 
 const ObjectGroupItem = ({ objectId, group }: ObjectGroupProps) => {
-  const nodes = useAtomValue(schemaState);
+  const nodes = useAtomValue(nodeSchemasAtom);
   const groupSchema = nodes.find((node) => node.kind === group.__typename);
 
   return (

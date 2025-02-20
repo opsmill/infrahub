@@ -2,7 +2,8 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRelationshipsInfiniteQueryOptions } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { useSchema } from "@/entities/schema/hooks/useSchema";
-import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema } from "@/entities/schema/types";
 import { getRootSchemaOfHierarchicalSchema, isHierarchicalSchema } from "@/entities/schema/utils";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";
@@ -46,9 +47,9 @@ export const RelationshipHierarchicalComboboxList = ({
 };
 
 type HierarchicalExplorerProps = {
-  topLevelSchema: iNodeSchema;
+  topLevelSchema: NodeSchema;
   topLevelNode?: RelationshipNode;
-  targetSchema: iNodeSchema;
+  targetSchema: NodeSchema;
   removeSelectedNode?: () => void;
   onSelect: (relationshipNode: RelationshipNode) => void;
   value?: RelationshipNode | null;
@@ -65,7 +66,7 @@ const HierarchicalExplorer = ({
   removeSelectedNode,
 }: HierarchicalExplorerProps) => {
   const peer = topLevelNode ? topLevelSchema.children : topLevelSchema.kind;
-  const nodeSchemas = useAtomValue(schemaState);
+  const nodeSchemas = useAtomValue(nodeSchemasAtom);
   const { currentBranch } = useCurrentBranch();
   const branchName = currentBranch.name;
   const [search, setSearch] = useState("");

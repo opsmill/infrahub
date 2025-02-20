@@ -1,7 +1,7 @@
 import { DEFAULT_BRANCH_NAME } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { getPermission } from "@/entities/permission/utils";
-import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-with-tooltip";
@@ -39,8 +39,8 @@ function IpamRouter() {
   const navigate = useNavigate();
   const { prefix } = useParams();
   const branch = useAtomValue(currentBranchAtom);
-  const schemaList = useAtomValue(schemaState);
-  const genericList = useAtomValue(genericsState);
+  const schemaList = useAtomValue(nodeSchemasAtom);
+  const genericList = useAtomValue(genericSchemasAtom);
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
   const defaultIpNamespace = useAtomValue(defaultIpNamespaceAtom);
   const reloadIpamTree = useSetAtom(reloadIpamTreeAtom);

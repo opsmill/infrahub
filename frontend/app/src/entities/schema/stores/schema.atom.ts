@@ -1,21 +1,10 @@
-import { components } from "@/shared/api/rest/types.generated";
+import { GenericSchema, Namespace, NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { atom } from "jotai";
 
-export type iNodeSchema = components["schemas"]["APINodeSchema"];
-export const schemaState = atom<iNodeSchema[]>([]);
+export const nodeSchemasAtom = atom<readonly NodeSchema[]>([]);
+export const genericSchemasAtom = atom<readonly GenericSchema[]>([]);
+export const profileSchemasAtom = atom<readonly ProfileSchema[]>([]);
+export const namespacesAtom = atom<readonly Namespace[]>([]);
 
-export type iGenericSchema = components["schemas"]["APIGenericSchema"];
-export const genericsState = atom<iGenericSchema[]>([]);
-
-export type IProfileSchema = components["schemas"]["APIProfileSchema"];
-export const profilesAtom = atom<IProfileSchema[]>([]);
-
-export type IModelSchema = iGenericSchema | iNodeSchema | IProfileSchema;
-
-export type iNamespace = {
-  name: string;
-  user_editable: boolean;
-};
-export const namespacesState = atom<iNamespace[]>([]);
-
+// Current schema hash for tracking changes
 export const currentSchemaHashAtom = atom<string | null>(null);

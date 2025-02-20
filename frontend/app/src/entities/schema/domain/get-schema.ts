@@ -1,28 +1,26 @@
 import {
-  IProfileSchema,
-  genericsState,
-  iGenericSchema,
-  iNodeSchema,
-  profilesAtom,
-  schemaState,
+  genericSchemasAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
+import { GenericSchema, NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { store } from "@/shared/stores";
 
 type GetSchema = (kind?: string | null) =>
   | {
-      schema: iNodeSchema;
+      schema: NodeSchema;
       isGeneric: false;
       isNode: true;
       isProfile: false;
     }
   | {
-      schema: iGenericSchema;
+      schema: GenericSchema;
       isGeneric: true;
       isNode: false;
       isProfile: false;
     }
   | {
-      schema: IProfileSchema;
+      schema: ProfileSchema;
       isGeneric: false;
       isNode: false;
       isProfile: true;
@@ -44,7 +42,7 @@ export const getSchema: GetSchema = (kind) => {
     };
   }
 
-  const node = store.get(schemaState).find((schema) => schema.kind === kind);
+  const node = store.get(nodeSchemasAtom).find((schema) => schema.kind === kind);
   if (node) {
     return {
       schema: node,
@@ -54,7 +52,7 @@ export const getSchema: GetSchema = (kind) => {
     };
   }
 
-  const generic = store.get(genericsState).find((schema) => schema.kind === kind);
+  const generic = store.get(genericSchemasAtom).find((schema) => schema.kind === kind);
   if (generic) {
     return {
       schema: generic,
@@ -64,7 +62,7 @@ export const getSchema: GetSchema = (kind) => {
     };
   }
 
-  const profile = store.get(profilesAtom).find((schema) => schema.kind === kind);
+  const profile = store.get(profileSchemasAtom).find((schema) => schema.kind === kind);
   if (profile) {
     return {
       schema: profile,

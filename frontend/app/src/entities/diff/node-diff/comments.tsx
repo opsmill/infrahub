@@ -8,7 +8,7 @@ import { getThreadLabel } from "@/entities/diff/utils";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { deleteObject } from "@/entities/nodes/api/deleteObject";
 import { getProposedChangesObjectThreadComments } from "@/entities/proposed-changes/api/getProposedChangesObjectThreadComments";
-import { schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { AddComment } from "@/shared/components/conversations/add-comment";
@@ -32,7 +32,7 @@ export const DiffComments = (props: tDiffComments) => {
   const { path, refetch: parentRefetch } = props;
 
   const { proposedChangeId } = useParams();
-  const [schemaList] = useAtom(schemaState);
+  const [schemaList] = useAtom(nodeSchemasAtom);
   const auth = useAuth();
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);

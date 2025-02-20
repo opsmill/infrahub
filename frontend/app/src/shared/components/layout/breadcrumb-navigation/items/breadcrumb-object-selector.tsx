@@ -1,7 +1,7 @@
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
 import { useSchema } from "@/entities/schema/hooks/useSchema";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { BreadcrumbLink } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-link";
 import BreadcrumbLoading from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-loading";
 import { NetworkStatus } from "@apollo/client";
@@ -27,7 +27,7 @@ const ObjectSelector = ({
   id,
   ...props
 }: {
-  schema: IModelSchema;
+  schema: ModelSchema;
   id: string;
   className?: string;
 }) => {

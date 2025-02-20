@@ -1,4 +1,5 @@
-import { iGenericSchema, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { GenericSchema } from "@/entities/schema/types";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
@@ -18,10 +19,10 @@ import { useState } from "react";
 export const FilterKindSelector = ({
   genericSchema,
   showLabel = true,
-}: { genericSchema: iGenericSchema; showLabel?: boolean }) => {
+}: { genericSchema: GenericSchema; showLabel?: boolean }) => {
   const [activeFilters] = useFilters();
-  const availableNodes = useAtomValue(schemaState);
-  const availableProfiles = useAtomValue(profilesAtom);
+  const availableNodes = useAtomValue(nodeSchemasAtom);
+  const availableProfiles = useAtomValue(profileSchemasAtom);
   const allAvailableSchemas = [...availableNodes, ...availableProfiles];
 
   const selectedKindFilter = activeFilters.find((filter) => filter.name === "kind__value");

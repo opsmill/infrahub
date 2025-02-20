@@ -1,4 +1,4 @@
-import { schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { store } from "@/shared/stores";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -182,7 +182,7 @@ describe("Schema Utils", () => {
 
       // THEN
       expect(result).toBe(rootSchema);
-      expect(store.get).toHaveBeenCalledWith(schemaState);
+      expect(store.get).toHaveBeenCalledWith(nodeSchemasAtom);
     });
 
     it("should return the root schema when found through multiple levels", () => {
@@ -197,7 +197,7 @@ describe("Schema Utils", () => {
 
       // THEN
       expect(result).toBe(rootSchema);
-      expect(store.get).toHaveBeenCalledWith(schemaState);
+      expect(store.get).toHaveBeenCalledWith(nodeSchemasAtom);
     });
 
     it("should return the original schema when no parent exists", () => {
@@ -210,7 +210,7 @@ describe("Schema Utils", () => {
 
       // THEN
       expect(result).toBe(schema);
-      expect(store.get).toHaveBeenCalledWith(schemaState);
+      expect(store.get).toHaveBeenCalledWith(nodeSchemasAtom);
     });
 
     it("should return the schema itself when it has no parent", () => {
@@ -223,7 +223,7 @@ describe("Schema Utils", () => {
 
       // THEN
       expect(result).toBe(schema);
-      expect(store.get).toHaveBeenCalledWith(schemaState);
+      expect(store.get).toHaveBeenCalledWith(nodeSchemasAtom);
     });
   });
 });

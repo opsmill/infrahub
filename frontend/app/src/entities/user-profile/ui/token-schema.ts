@@ -1,6 +1,6 @@
-import { iNodeSchema } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema } from "@/entities/schema/types";
 
-export const tokenSchema: iNodeSchema = {
+export const tokenSchema: NodeSchema = {
   id: "17e2a71e-2ac0-bf55-3105-c516dbe1b504",
   state: "present",
   name: "AccountToken",

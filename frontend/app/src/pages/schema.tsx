@@ -1,4 +1,8 @@
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
+import {
+  genericSchemasAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
+} from "@/entities/schema/stores/schema.atom";
 import { SchemaSelector } from "@/entities/schema/ui/schema-selector";
 import { SchemaViewerStack } from "@/entities/schema/ui/schema-viewer";
 import Content from "@/shared/components/layout/content";
@@ -7,9 +11,9 @@ import { useAtomValue } from "jotai";
 
 function SchemaPage() {
   useTitle("Schema");
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
-  const profiles = useAtomValue(profilesAtom);
+  const nodes = useAtomValue(nodeSchemasAtom);
+  const generics = useAtomValue(genericSchemasAtom);
+  const profiles = useAtomValue(profileSchemasAtom);
 
   return (
     <Content.Card className="h-[calc(100%-1rem)] flex flex-col">

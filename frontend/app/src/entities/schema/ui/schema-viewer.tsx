@@ -1,10 +1,10 @@
 import { QSP } from "@/config/qsp";
 import {
-  IModelSchema,
-  genericsState,
-  profilesAtom,
-  schemaState,
+  genericSchemasAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema, isNodeSchema, isProfileSchema } from "@/entities/schema/utils";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
@@ -21,9 +21,9 @@ import { ModelDisplay, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 
 export const SchemaViewerStack = ({ className = "" }: { className: string }) => {
   const [selectedKind, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
-  const profiles = useAtomValue(profilesAtom);
+  const nodes = useAtomValue(nodeSchemasAtom);
+  const generics = useAtomValue(genericSchemasAtom);
+  const profiles = useAtomValue(profileSchemasAtom);
 
   if (!selectedKind) return null;
 
@@ -65,7 +65,7 @@ export const SchemaViewer = ({
   style,
 }: {
   className?: string;
-  schema: IModelSchema;
+  schema: ModelSchema;
   onClose: () => void;
   style?: CSSProperties;
 }) => {
@@ -101,7 +101,7 @@ export const SchemaViewer = ({
   );
 };
 
-const SchemaViewerTitle = ({ schema }: { schema: IModelSchema }) => {
+const SchemaViewerTitle = ({ schema }: { schema: ModelSchema }) => {
   return (
     <header className="flex gap-2">
       {schema.icon && (
@@ -119,7 +119,7 @@ const SchemaViewerTitle = ({ schema }: { schema: IModelSchema }) => {
   );
 };
 
-const SchemaViewerDetails = ({ schema }: { schema: IModelSchema }) => {
+const SchemaViewerDetails = ({ schema }: { schema: ModelSchema }) => {
   return (
     <Tabs className="flex flex-col overflow-y-hidden">
       <TabList className="flex">
@@ -153,7 +153,7 @@ const SchemaViewerDetails = ({ schema }: { schema: IModelSchema }) => {
   );
 };
 
-const Properties = ({ schema }: { schema: IModelSchema }) => {
+const Properties = ({ schema }: { schema: ModelSchema }) => {
   return (
     <div className="p-2 divide-y">
       <div>

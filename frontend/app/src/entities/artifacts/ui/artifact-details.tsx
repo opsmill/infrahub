@@ -7,7 +7,7 @@ import {
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { getPermission } from "@/entities/permission/utils";
-import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -28,9 +28,9 @@ import ArtifactHeader from "./artifact-header";
 function ArtifactsDetails() {
   const { objectid } = useParams();
 
-  const [schemaList] = useAtom(schemaState);
+  const [schemaList] = useAtom(nodeSchemasAtom);
   const [schemaLabels] = useAtom(schemaKindLabelState);
-  const [genericList] = useAtom(genericsState);
+  const [genericList] = useAtom(genericSchemasAtom);
   const schema = schemaList.find((s) => s.kind === ARTIFACT_OBJECT);
   const generic = genericList.find((s) => s.kind === ARTIFACT_OBJECT);
   useTitle("Artifact details");

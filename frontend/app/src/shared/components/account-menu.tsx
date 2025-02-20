@@ -6,7 +6,8 @@ import {
 } from "@/config/config";
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { IModelSchema, genericsState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/buttons/button-primitive";
@@ -30,7 +31,7 @@ import { toast } from "react-toastify";
 
 export const AccountMenu = () => {
   const { isAuthenticated, signOut } = useAuth();
-  const generics = useAtomValue(genericsState);
+  const generics = useAtomValue(genericSchemasAtom);
   const schema = generics.find((s) => s.kind === ACCOUNT_GENERIC_OBJECT);
 
   if (!isAuthenticated) {
@@ -142,7 +143,7 @@ const AuthenticatedAccountMenu = ({
   schema,
   signOut,
 }: {
-  schema: IModelSchema;
+  schema: ModelSchema;
   signOut: () => void;
 }) => {
   const query = gql(getProfileDetails({ ...schema }));

@@ -1,28 +1,26 @@
 import {
-  IProfileSchema,
-  genericsState,
-  iGenericSchema,
-  iNodeSchema,
-  profilesAtom,
-  schemaState,
+  genericSchemasAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
+import { GenericSchema, NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { useAtomValue } from "jotai/index";
 
 type UseSchema = (kind: string | null | undefined) =>
   | {
-      schema: iNodeSchema;
+      schema: NodeSchema;
       isGeneric: false;
       isNode: true;
       isProfile: false;
     }
   | {
-      schema: iGenericSchema;
+      schema: GenericSchema;
       isGeneric: true;
       isNode: false;
       isProfile: false;
     }
   | {
-      schema: IProfileSchema;
+      schema: ProfileSchema;
       isGeneric: false;
       isNode: false;
       isProfile: true;
@@ -35,9 +33,9 @@ type UseSchema = (kind: string | null | undefined) =>
     };
 
 export const useSchema: UseSchema = (kind) => {
-  const nodesSchema = useAtomValue(schemaState);
-  const profilesSchema = useAtomValue(profilesAtom);
-  const genericsSchema = useAtomValue(genericsState);
+  const nodesSchema = useAtomValue(nodeSchemasAtom);
+  const profilesSchema = useAtomValue(profileSchemasAtom);
+  const genericsSchema = useAtomValue(genericSchemasAtom);
 
   if (!kind) {
     return {
