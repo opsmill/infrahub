@@ -104,7 +104,10 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("Verify profile link", async () => {
-      await page.getByRole("link", { name: "profile test tag" }).click();
+      await page
+        .getByTestId("metadata-tooltip")
+        .getByRole("link", { name: "profile test tag" })
+        .click();
       expect(page.url()).toContain("/objects/ProfileBuiltinTag/");
     });
   });
