@@ -89,6 +89,19 @@ export const router = createBrowserRouter([
                     index: true,
                     lazy: () => import("@/pages/activities"),
                   },
+                  {
+                    path: ":activityid",
+                    lazy: () => import("@/pages/activities/details"),
+                    handle: {
+                      breadcrumb: (match: UIMatch) => {
+                        return {
+                          type: "display",
+                          value: match.params.activityid,
+                          kind: "InfrahubEvent",
+                        };
+                      },
+                    },
+                  },
                 ],
               },
               {

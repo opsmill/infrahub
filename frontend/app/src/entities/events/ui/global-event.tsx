@@ -1,6 +1,7 @@
 import { classNames } from "@/shared/utils/common";
 import { format } from "date-fns";
 import { useState } from "react";
+import { Link } from "react-router";
 import { BRANCH_EVENTS, STANDARD_EVENTS } from "../utils/constants";
 import { EventType } from "./event";
 import { BranchEvent } from "./global-branch-event";
@@ -11,29 +12,28 @@ export const Event = ({ __typename, ...props }: EventType) => {
   const [show, setShow] = useState(false);
 
   return (
-    <div className="flex flex-col relative">
-      <div
-        className={classNames(
-          "flex w-full items-center flex-grow gap-3 p-2 rounded-md shadow-sm border",
-          props.has_children &&
-            "bg-custom-blue-500/10 cursor-pointer hover:bg-custom-blue-500/20 transition-all"
-        )}
-        onClick={() => {
-          setShow(!show);
-        }}
-      >
-        <div className="flex flex-col gap-2 grow">
-          {"attributes" in props && <NodeEvent {...props} />}
+    <Link
+      to={`/activities/${props.id}`}
+      className={classNames(
+        "flex w-full items-center flex-grow gap-3 p-2 rounded-md shadow-sm border transition-all",
+        "bg-gray-50 hover:bg-gray-100",
+        props.has_children && "bg-custom-blue-500/10 hover:bg-custom-blue-500/20 "
+      )}
+      onClick={() => {
+        setShow(!show);
+      }}
+    >
+      <div className="flex flex-col gap-2 grow">
+        {"attributes" in props && <NodeEvent {...props} />}
 
-          {BRANCH_EVENTS.includes(__typename) && <BranchEvent {...props} />}
+        {BRANCH_EVENTS.includes(__typename) && <BranchEvent {...props} />}
 
-          {STANDARD_EVENTS.includes(__typename) && <StandardEvent {...props} />}
-        </div>
-
-        <div className="text-xs font-medium text-gray-500 dark:text-neutral-400">
-          {format(new Date(props.occurred_at), "yyyy-MM-dd HH:mm:ss (O)")}
-        </div>
+        {STANDARD_EVENTS.includes(__typename) && <StandardEvent {...props} />}
       </div>
-    </div>
+
+      <div className="text-xs font-medium text-gray-500 dark:text-neutral-400">
+        {format(new Date(props.occurred_at), "yyyy-MM-dd HH:mm:ss (O)")}
+      </div>
+    </Link>
   );
 };
