@@ -53,8 +53,8 @@ test.describe("/objects/:objectKind", () => {
       await page.goto("/objects/CoreStandardGroup");
       await page.getByTestId("object-items").getByRole("link", { name: "arista_devices" }).click();
       await page.getByText("Members").click();
-      await expect(page.getByRole("columnheader", { name: "Type" })).toBeVisible();
-      await expect(page.getByRole("columnheader", { name: "Name" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Name" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Group Type" })).toBeVisible();
     });
 
     test("clicking on a relationship value redirects to its details page", async ({ page }) => {
