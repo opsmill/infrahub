@@ -1,4 +1,4 @@
-import { DisplayLabel } from "@/entities/nodes/object/ui/display-label";
+import { NodeLabel } from "@/entities/nodes/object/ui/display-label";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -43,7 +43,7 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           <div className="font-semibold">
-            <DisplayLabel id={account_id} />
+            <NodeLabel id={account_id} />
           </div>
 
           <div className="text-gray-500">{NODE_EVENTS_MAPPING[event] ?? "-"}</div>
@@ -55,7 +55,7 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
               `/objects/${props.payload.data.node_kind}/${props.payload.data.node_id}`
             )}
           >
-            <DisplayLabel id={props.payload.data.node_id} />
+            <NodeLabel id={props.payload.data.node_id} />
           </Link>
         </div>
       </div>

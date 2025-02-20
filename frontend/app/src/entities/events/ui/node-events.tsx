@@ -1,5 +1,5 @@
 import { QSP } from "@/config/qsp";
-import { useDisplayLabel } from "@/entities/nodes/object/api/get-display-label.query";
+import { useNodeLabel } from "@/entities/nodes/object/api/get-display-label.query";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorFallback from "@/shared/components/errors/error-fallback";
 import NoDataFound from "@/shared/components/errors/no-data-found";
@@ -21,16 +21,16 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
   });
 
   const {
-    isLoading: isLoadingDisplayLabel,
+    isLoading: isLoadingNodeLabel,
     error: displayLabelError,
     data: displayLabelData,
-  } = useDisplayLabel({
+  } = useNodeLabel({
     objectid: objectid,
     kind: objectKind,
     enabled: !parentId,
   });
 
-  if (isLoading || isLoadingDisplayLabel) {
+  if (isLoading || isLoadingNodeLabel) {
     return (
       <div className="flex items-center justify-center flex-grow">
         <Spinner />
@@ -42,7 +42,7 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
     return <ErrorFallback error={error} />;
   }
 
-  if (!data?.length) {
+  if (!data?.activities?.length) {
     return <NoDataFound message="No activity found for this object." />;
   }
 
@@ -53,11 +53,11 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
 
   return (
     <div className="flex flex-col gap-2 p-2">
-      {data?.map((activity) => (
+      {data?.activities?.map((activity) => (
         <Event key={activity.id} {...activity} />
       ))}
 
-      {!parentId && count > MAX_EVENTS && (
+      {!parentId && data?.count > MAX_EVENTS && (
         <div className="flex items-center justify-center">
           <Link
             to={constructPath("/activities", [

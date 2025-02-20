@@ -27,11 +27,7 @@ export const GlobalEvents = () => {
     return { ...acc, [filter.name.split("__")[0]]: filter.value };
   }, {});
 
-  const { isLoading, data, count, error, refetch } = useEvents({
-    ...pagination,
-    level: 0,
-    ...queryFilters,
-  });
+  const { isLoading, data, error, refetch } = useEvents({ ...pagination, ...queryFilters });
 
   if (error) {
     return <ErrorFallback error={error} />;
@@ -41,7 +37,7 @@ export const GlobalEvents = () => {
     <Content.Card>
       <Content.CardTitle
         title="Activities"
-        badgeContent={count}
+        badgeContent={data?.count}
         isReloadLoading={isLoading}
         reload={() => refetch()}
       />
@@ -52,9 +48,9 @@ export const GlobalEvents = () => {
         </div>
 
         <div className="flex flex-col gap-2">
-          {!isLoading && !data?.length && <NoDataFound message="No activity found." />}
+          {!isLoading && !data?.activities?.length && <NoDataFound message="No activity found." />}
 
-          {data?.map((activity) => (
+          {data?.activities?.map((activity) => (
             <Event key={activity.id} {...activity} />
           ))}
         </div>
@@ -65,7 +61,7 @@ export const GlobalEvents = () => {
           </div>
         )}
 
-        <Pagination count={count} />
+        <Pagination count={data?.count} />
       </div>
     </Content.Card>
   );

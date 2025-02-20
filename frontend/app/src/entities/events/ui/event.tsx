@@ -1,7 +1,7 @@
 import { EventNodeInterface, NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { DateDisplay } from "@/shared/components/display/date-display";
 
-import { DisplayLabel } from "@/entities/nodes/object/ui/display-label";
+import { NodeLabel } from "@/entities/nodes/object/ui/display-label";
 import { PropertyRow } from "@/entities/schema/ui/styled";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
@@ -44,7 +44,7 @@ export const EventDetails = ({ id, event, occurred_at, account_id, ...props }: E
       />
       <PropertyRow title="Event" value={event} />
       <PropertyRow title="Occured at" value={<DateDisplay date={occurred_at} />} />
-      {account_id && <PropertyRow title="Account" value={<DisplayLabel id={account_id} />} />}
+      {account_id && <PropertyRow title="Account" value={<NodeLabel id={account_id} />} />}
       {"attributes" in props && (
         <PropertyRow title="Changes" value={<EventAttributes attributes={props.attributes} />} />
       )}
