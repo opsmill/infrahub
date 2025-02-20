@@ -1,4 +1,5 @@
 import { classNames } from "@/shared/utils/common";
+import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -31,7 +32,12 @@ export const Event = ({ __typename, ...props }: EventType) => {
         {STANDARD_EVENTS.includes(__typename) && <StandardEvent {...props} />}
       </div>
 
-      <div className="text-xs font-medium text-gray-500 dark:text-neutral-400">
+      <div className="text-xs font-medium text-gray-500 flex items-center gap-1">
+        <Icon icon={"mdi:source-branch"} />
+        {props.branch}
+      </div>
+
+      <div className="text-xs font-medium text-gray-500">
         {format(new Date(props.occurred_at), "yyyy-MM-dd HH:mm:ss (O)")}
       </div>
     </Link>
