@@ -101,7 +101,7 @@ export async function getEventsFromApi({
     return edge.node;
   });
 
-  const count = data?.data?.[INFRAHUB_EVENT]?.count;
+  const count = data?.[INFRAHUB_EVENT]?.count;
 
   return {
     activities,
