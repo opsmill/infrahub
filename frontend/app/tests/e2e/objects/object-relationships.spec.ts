@@ -78,7 +78,7 @@ test.describe("/objects/:objectKind/:objectid - relationship tab", () => {
       await test.step("Verify new relationship addition", async () => {
         await expect(page.getByText("Association with InfraDevice added")).toBeVisible();
         await expect(page.getByLabel("Tabs")).toContainText("Devices10");
-        await expect(page.getByRole("cell", { name: "atl1-leaf1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-leaf1" })).toBeVisible();
       });
     });
 

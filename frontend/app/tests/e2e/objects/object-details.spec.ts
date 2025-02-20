@@ -59,7 +59,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
       await page.goto("/objects/InfraDevice");
       await page.getByRole("link", { name: "atl1-edge1" }).click();
       await page.getByText("Interfaces15").click();
-      await page.getByRole("link", { name: "Backbone: Connected to jfk1-" }).click();
+      await page.getByRole("link", { name: "atl1-edge1, Ethernet4" }).click();
       await page.getByTestId("edit-button").click();
 
       const kindSelector = page.getByLabel("Kind").getByTestId("select-value");
