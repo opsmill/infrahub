@@ -976,13 +976,11 @@ class GraphQLSchemaManager:
         main_attrs: dict[str, Any] = {
             "count": graphene.Int(required=True),
             "edges": graphene.List(of_type=graphene.NonNull(edge), required=True),
+            "permissions": graphene.Field(
+                PaginatedObjectPermission, required=True, resolver=parent_field_name_resolver
+            ),
             "Meta": type("Meta", (object,), meta_attrs),
         }
-
-        if isinstance(schema, NodeSchema | GenericSchema):
-            main_attrs["permissions"] = graphene.Field(
-                PaginatedObjectPermission, required=True, resolver=parent_field_name_resolver
-            )
 
         graphql_paginated_object = type(object_name, (InfrahubObject,), main_attrs)
 
