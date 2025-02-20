@@ -154,12 +154,26 @@ export interface EnumProps {
   schema?: IModelSchema;
   className?: string;
   onChange: (value: string | number | null) => void;
+  defaultOpen?: boolean;
+  fitTriggerWidth?: boolean;
 }
 
 export const Enum = forwardRef<HTMLButtonElement, EnumProps>(
-  ({ items, value, fieldSchema, schema, onChange, ...props }, ref) => {
+  (
+    {
+      items,
+      value,
+      fieldSchema,
+      schema,
+      onChange,
+      defaultOpen = false,
+      fitTriggerWidth = false,
+      ...props
+    },
+    ref
+  ) => {
     const [localItems, setLocalItems] = useState(items);
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(defaultOpen);
 
     const handleAddOption = (newOption: string | number) => {
       setLocalItems([...localItems, newOption]);
@@ -179,7 +193,7 @@ export const Enum = forwardRef<HTMLButtonElement, EnumProps>(
           {value}
         </ComboboxTrigger>
 
-        <ComboboxContent>
+        <ComboboxContent fitTriggerWidth={fitTriggerWidth}>
           <ComboboxList>
             <ComboboxEmpty>No enum found.</ComboboxEmpty>
             {localItems.map((item) => (
