@@ -121,4 +121,29 @@ test.describe("Object filters", () => {
       await expect(page.getByTestId("object-items")).toContainText("Interface L3");
     });
   });
+
+  test("should filter using enum value", async ({ page }) => {
+    await page.goto("/objects/InfraBGPSession");
+    await expect(page.getByTestId("object-items")).toContainText("EXTERNAL");
+    await expect(page.getByTestId("object-items")).toContainText("INTERNAL");
+
+    await page.getByRole("button", { name: "Type" }).click();
+    await expect(page.getByPlaceholder("Filter...")).toBeFocused();
+    await expect(page.getByRole("option", { name: "EXTERNAL" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "INTERNAL" })).toBeVisible();
+    await page.getByRole("option", { name: "EXTERNAL" }).click();
+    await expect(page.getByRole("combobox").filter({ hasText: "EXTERNAL" })).toBeVisible();
+    await page.getByRole("button", { name: "Apply" }).click();
+
+    await expect(page.getByRole("row", { name: "Type contains EXTERNAL" })).toBeVisible();
+    await expect(page.getByTestId("object-items")).toContainText("EXTERNAL");
+    await expect(page.getByTestId("object-items")).not.toContainText("INTERNAL");
+
+    await page.getByRole("button", { name: "Type" }).click();
+    await expect(page.getByRole("combobox").filter({ hasText: "EXTERNAL" })).toBeVisible();
+
+    await page.getByRole("row", { name: "Type contains EXTERNAL" }).click();
+    await expect(page.getByTestId("object-items")).toContainText("EXTERNAL");
+    await expect(page.getByTestId("object-items")).toContainText("INTERNAL");
+  });
 });

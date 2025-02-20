@@ -50,7 +50,7 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
         ...filters.filter((f) => f.name !== currentFilter?.name),
         {
           name: `${attributeSchema.name}__isnull`,
-          value: false,
+          value: true,
         },
       ]);
     }
