@@ -30,6 +30,7 @@ class RequestGeneratorDefinitionRun(BaseModel):
 
     generator_definition: ProposedChangeGeneratorDefinition = Field(..., description="The Generator Definition")
     branch: str = Field(..., description="The branch to target")
+    target_members: list[str] = Field(default_factory=list, description="List of targets to run the generator for")
 
 
 class ProposedChangeGeneratorDefinition(BaseModel):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Field, InputObjectType, Mutation, String
+from graphene import Boolean, Field, InputObjectType, List, Mutation, NonNull, String
 
 from infrahub.core.manager import NodeManager
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 class GeneratorDefinitionRequestRunInput(InputObjectType):
     id = String(required=True)
+    nodes = List(of_type=NonNull(String))
 
 
 class GeneratorDefinitionRequestRun(Mutation):
@@ -63,6 +64,7 @@ class GeneratorDefinitionRequestRun(Mutation):
                 convert_query_response=generator_definition.convert_query_response.value or False,
             ),
             branch=graphql_context.branch.name,
+            target_members=data.get("nodes", []),
         )
 
         if not wait_until_completion:
