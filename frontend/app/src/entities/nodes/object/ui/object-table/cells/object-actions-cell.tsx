@@ -26,7 +26,12 @@ export interface ActionsCellProps {
   objectLabel: string;
 }
 
-export function ActionsCell({ objectKind, objectId, objectLabel, permission }: ActionsCellProps) {
+export function ObjectActionsCell({
+  objectKind,
+  objectId,
+  objectLabel,
+  permission,
+}: ActionsCellProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const { schema } = useSchema(objectKind);
