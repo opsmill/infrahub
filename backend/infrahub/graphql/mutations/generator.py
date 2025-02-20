@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, InputObjectType, Mutation, String
+from graphene import Boolean, Field, InputObjectType, Mutation, String
 
 from infrahub.core.manager import NodeManager
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
+from infrahub.graphql.types.task import TaskInfo
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_RUN
 
 if TYPE_CHECKING:
@@ -21,8 +22,10 @@ class GeneratorDefinitionRequestRunInput(InputObjectType):
 class GeneratorDefinitionRequestRun(Mutation):
     class Arguments:
         data = GeneratorDefinitionRequestRunInput(required=True)
+        wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
+    task = Field(TaskInfo, required=False)
 
     @classmethod
     async def mutate(
@@ -30,11 +33,18 @@ class GeneratorDefinitionRequestRun(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: dict[str, Any],
+        wait_until_completion: bool = True,
     ) -> dict[str, bool]:
         graphql_context: GraphqlContext = info.context
         db = graphql_context.db
 
-        generator_definition = await NodeManager.get_one(id=data.get("id", ""), db=db, prefetch_relationships=True)
+        generator_definition = await NodeManager.get_one(
+            id=data.get("id", ""),
+            db=db,
+            branch=graphql_context.branch,
+            prefetch_relationships=True,
+            raise_on_error=True,
+        )
         query = await generator_definition.query.get_peer(db=db)
         repository = await generator_definition.repository.get_peer(db=db)
         group = await generator_definition.targets.get_peer(db=db)
@@ -54,11 +64,19 @@ class GeneratorDefinitionRequestRun(Mutation):
             ),
             branch=graphql_context.branch.name,
         )
-        if graphql_context.service:
-            await graphql_context.service.workflow.submit_workflow(
+
+        if not wait_until_completion:
+            workflow = await graphql_context.active_service.workflow.submit_workflow(
                 workflow=REQUEST_GENERATOR_DEFINITION_RUN,
                 context=graphql_context.get_context(),
                 parameters={"model": request_model},
             )
+            task = {"id": workflow.id}
+            return cls(ok=True, task=task)
 
+        await graphql_context.active_service.workflow.execute_workflow(
+            workflow=REQUEST_GENERATOR_DEFINITION_RUN,
+            context=graphql_context.get_context(),
+            parameters={"model": request_model},
+        )
         return {"ok": True}
