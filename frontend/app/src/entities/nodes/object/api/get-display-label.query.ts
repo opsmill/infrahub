@@ -2,28 +2,35 @@ import { getCurrentBranchName } from "@/entities/branches/domain/get-current-bra
 import { store } from "@/shared/stores";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { getDisplayLabelFromApi } from "./get-display-label";
+import { getNodeLabelFromApi } from "./get-display-label";
 
-export function getDisplayLabelQueryOptions({
-  objectid,
-  kind,
-}: { objectid: string; kind: string }) {
+type NodeLabelProps = { objectid?: string; kind: string; enabled?: boolean };
+
+export function getNodeLabelQueryOptions({ objectid, kind, enabled }: NodeLabelProps) {
   const currentBranchName = getCurrentBranchName();
   const timeMachineDate = store.get(datetimeAtom);
 
   return queryOptions({
-    queryKey: ["display-label", objectid],
+    queryKey: ["display-label", objectid, kind],
     queryFn: () => {
-      return getDisplayLabelFromApi({
+      return getNodeLabelFromApi({
         objectid,
         kind,
         branchName: currentBranchName,
         atDate: timeMachineDate,
       });
     },
+    enabled,
   });
 }
 
-export const useDisplayLabel = ({ objectid, kind }: { objectid: string; kind: string }) => {
-  return useQuery(getDisplayLabelQueryOptions({ objectid, kind }));
+export const useNodeLabel = ({ objectid, kind, enabled }: NodeLabelProps) => {
+  const { data, ...props } = useQuery(getNodeLabelQueryOptions({ objectid, kind, enabled }));
+
+  const object = data?.data?.[kind]?.edges?.[0]?.node ?? {};
+
+  return {
+    data: object,
+    ...props,
+  };
 };

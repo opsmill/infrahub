@@ -1,7 +1,7 @@
 import { EventNodeInterface, NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { DateDisplay } from "@/shared/components/display/date-display";
 
-import { DisplayLabel } from "@/entities/nodes/object/ui/display-label";
+import { NodeLabel } from "@/entities/nodes/object/ui/display-label";
 import { PropertyRow } from "@/entities/schema/ui/styled";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
@@ -11,9 +11,11 @@ import {
   BRANCH_DELETED_EVENT,
   BRANCH_EVENTS,
   BRANCH_REBASEDED_EVENT,
+  GROUP_EVENTS,
   NODE_MUTATED_EVENT,
 } from "../utils/constants";
 import { BranchEvent } from "./branch-event";
+import { GroupEvent } from "./group-event";
 import { EventAttributes, NodeEvent } from "./node-event";
 
 export type BranchEventType = EventNodeInterface & {
@@ -42,7 +44,7 @@ export const EventDetails = ({ id, event, occurred_at, account_id, ...props }: E
       />
       <PropertyRow title="Event" value={event} />
       <PropertyRow title="Occured at" value={<DateDisplay date={occurred_at} />} />
-      {account_id && <PropertyRow title="Account" value={<DisplayLabel id={account_id} />} />}
+      {account_id && <PropertyRow title="Account" value={<NodeLabel id={account_id} />} />}
       {"attributes" in props && (
         <PropertyRow title="Changes" value={<EventAttributes attributes={props.attributes} />} />
       )}
@@ -62,6 +64,8 @@ export const Event = ({ __typename, ...props }: EventType) => {
           {"attributes" in props && <EventAttributes attributes={props.attributes} />}
 
           {BRANCH_EVENTS.includes(__typename) && <BranchEvent {...props} />}
+
+          {GROUP_EVENTS.includes(__typename) && <GroupEvent {...props} />}
 
           <div className="flex justify-between">
             <div className="text-xs font-medium text-gray-500 dark:text-neutral-400">

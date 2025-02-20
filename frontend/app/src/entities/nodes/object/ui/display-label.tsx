@@ -1,26 +1,28 @@
 import { NODE_OBJECT } from "@/config/constants";
 import { Skeleton } from "@/shared/components/skeleton";
 import { classNames } from "@/shared/utils/common";
-import { useDisplayLabel } from "../api/get-display-label.query";
+import { useNodeLabel } from "../api/get-display-label.query";
 
-type DisplayLabelProps = {
+type NodeLabelProps = {
   id?: string;
   kind?: string;
   className?: string;
 };
 
-export const DisplayLabel = ({ id, kind = NODE_OBJECT, className }: DisplayLabelProps) => {
-  const { isLoading, error, data } = useDisplayLabel({ objectid: id, kind });
-
-  const object = data?.data?.[kind]?.edges?.[0]?.node ?? {};
+export const NodeLabel = ({ id, kind = NODE_OBJECT, className }: NodeLabelProps) => {
+  const { isLoading, error, data } = useNodeLabel({ objectid: id, kind, enabled: !!id });
 
   if (isLoading) {
     return <Skeleton className="h-3 w-14" />;
   }
 
-  if (error || !id || !object?.display_label) {
-    return <div className="italic">Name not found</div>;
+  if (!id) {
+    return <div className="italic">Name id provided</div>;
   }
 
-  return <div className={classNames(className)}>{object?.display_label}</div>;
+  if (error || !data?.display_label) {
+    return <div className="italic">{id}</div>;
+  }
+
+  return <div className={classNames(className)}>{data?.display_label}</div>;
 };
