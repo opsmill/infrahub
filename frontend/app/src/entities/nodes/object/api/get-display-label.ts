@@ -2,7 +2,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-const getDisplayLabelQuery = ({
+const getNodeLabelQuery = ({
   objectid,
   kind,
 }: {
@@ -28,7 +28,7 @@ const getDisplayLabelQuery = ({
   return jsonToGraphQLQuery(request);
 };
 
-export function getDisplayLabelFromApi({
+export function getNodeLabelFromApi({
   objectid,
   kind,
   branchName,
@@ -40,7 +40,7 @@ export function getDisplayLabelFromApi({
   atDate: Date | null;
 }) {
   return graphqlClient.query({
-    query: gql(getDisplayLabelQuery({ objectid, kind })),
+    query: gql(getNodeLabelQuery({ objectid, kind })),
     context: {
       branch: branchName,
       date: atDate,

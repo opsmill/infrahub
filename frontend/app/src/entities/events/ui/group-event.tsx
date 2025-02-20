@@ -1,4 +1,4 @@
-import { DisplayLabel } from "@/entities/nodes/object/ui/display-label";
+import { NodeLabel } from "@/entities/nodes/object/ui/display-label";
 import { EventNodeInterface } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
@@ -15,7 +15,7 @@ export const GROUP_EVENTS_MAPPING: Record<
         {nodes.map(({ id, kind }) => {
           return (
             <Link key={id} to={constructPath(`/objects/${kind}/${id}`)}>
-              <DisplayLabel key={id} id={id} />
+              <NodeLabel key={id} id={id} />
             </Link>
           );
         })}
@@ -23,7 +23,7 @@ export const GROUP_EVENTS_MAPPING: Record<
       in group{" "}
       <span className="text-black font-semibold">
         <Link key={groupId} to={constructPath(`/objects/CoreGroup/${groupId}`)}>
-          <DisplayLabel key={groupId} id={groupId} kind="CoreGroup" />
+          <NodeLabel key={groupId} id={groupId} kind="CoreGroup" />
         </Link>
       </span>
     </div>
@@ -35,7 +35,7 @@ export const GROUP_EVENTS_MAPPING: Record<
         {nodes.map(({ id, kind }) => {
           return (
             <Link key={id} to={constructPath(`/objects/${kind}/${id}`)}>
-              <DisplayLabel key={id} id={id} />
+              <NodeLabel key={id} id={id} />
             </Link>
           );
         })}
@@ -43,7 +43,7 @@ export const GROUP_EVENTS_MAPPING: Record<
       from group{" "}
       <span className="text-black">
         <Link key={groupId} to={constructPath(`/objects/CoreGroup/${groupId}`)}>
-          <DisplayLabel key={groupId} id={groupId} kind="CoreGroup" />
+          <NodeLabel key={groupId} id={groupId} kind="CoreGroup" />
         </Link>
       </span>
     </div>
@@ -58,7 +58,7 @@ export const GroupEvent = (props: EventNodeInterface) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           <div className="font-semibold">
-            <DisplayLabel id={account_id} />
+            <NodeLabel id={account_id} />
           </div>
 
           <div className="text-gray-500">

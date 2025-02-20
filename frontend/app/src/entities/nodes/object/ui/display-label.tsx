@@ -1,16 +1,16 @@
 import { NODE_OBJECT } from "@/config/constants";
 import { Skeleton } from "@/shared/components/skeleton";
 import { classNames } from "@/shared/utils/common";
-import { useDisplayLabel } from "../api/get-display-label.query";
+import { useNodeLabel } from "../api/get-display-label.query";
 
-type DisplayLabelProps = {
+type NodeLabelProps = {
   id?: string;
   kind?: string;
   className?: string;
 };
 
-export const DisplayLabel = ({ id, kind = NODE_OBJECT, className }: DisplayLabelProps) => {
-  const { isLoading, error, data } = useDisplayLabel({ objectid: id, kind, enabled: !!id });
+export const NodeLabel = ({ id, kind = NODE_OBJECT, className }: NodeLabelProps) => {
+  const { isLoading, error, data } = useNodeLabel({ objectid: id, kind, enabled: !!id });
 
   if (isLoading) {
     return <Skeleton className="h-3 w-14" />;

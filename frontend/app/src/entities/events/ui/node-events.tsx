@@ -1,5 +1,5 @@
 import { QSP } from "@/config/qsp";
-import { useDisplayLabel } from "@/entities/nodes/object/api/get-display-label.query";
+import { useNodeLabel } from "@/entities/nodes/object/api/get-display-label.query";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorFallback from "@/shared/components/errors/error-fallback";
 import NoDataFound from "@/shared/components/errors/no-data-found";
@@ -16,15 +16,15 @@ export const NodeEvents = () => {
 
   const { isLoading, data, count, error } = useEvents({ ids: [objectid], limit: MAX_EVENTS });
   const {
-    isLoading: isLoadingDisplayLabel,
+    isLoading: isLoadingNodeLabel,
     error: displayLabelError,
     data: displayLabelData,
-  } = useDisplayLabel({
+  } = useNodeLabel({
     objectid,
     kind: objectKind,
   });
 
-  if (isLoading || isLoadingDisplayLabel) {
+  if (isLoading || isLoadingNodeLabel) {
     return (
       <div className="flex items-center justify-center flex-grow">
         <Spinner />

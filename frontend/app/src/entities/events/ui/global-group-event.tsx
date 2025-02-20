@@ -1,4 +1,4 @@
-import { DisplayLabel } from "@/entities/nodes/object/ui/display-label";
+import { NodeLabel } from "@/entities/nodes/object/ui/display-label";
 import { EventNodeInterface } from "@/shared/api/graphql/generated/graphql";
 import { Icon } from "@iconify-icon/react";
 import { GROUP_EVENTS_MAPPING } from "./group-event";
@@ -13,7 +13,7 @@ export const GroupEvent = (props: EventNodeInterface) => {
           <Icon icon="mdi:group" className="text-gray-400" />
 
           <div className="text-black font-semibold">
-            <DisplayLabel id={account_id} />
+            <NodeLabel id={account_id} />
           </div>
 
           {primary_node?.id &&
