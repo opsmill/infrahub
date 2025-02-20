@@ -32,7 +32,7 @@ export const getObjectTableColumns = (
   return [
     {
       id: "id",
-      accessorFn: (node) => getNodeLabel({ node, schema }),
+      accessorFn: (node) => getNodeLabel(node),
       header: () => (
         <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white")}>
           {schema.icon && <Icon icon={schema.icon} className="text-stone-400" />}
