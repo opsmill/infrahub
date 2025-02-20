@@ -12,13 +12,16 @@ export const STANDARD_EVENTS_MAPPING: Record<
     <div className="flex items-center gap-2">
       added{" "}
       <div className="flex items-center gap-1 text-black">
-        {nodes.map(({ id, kind }) => {
+        {nodes.slice(0, 5).map(({ id, kind }) => {
           return (
             <Link key={id} to={constructPath(`/objects/${kind}/${id}`)}>
               <NodeLabel key={id} id={id} />
             </Link>
           );
         })}
+        {nodes.slice(6).length > 0 && (
+          <span className="italic text-gray-500">(+{nodes.slice(6).length})</span>
+        )}
       </div>{" "}
       in group{" "}
       <span className="text-black font-semibold">
@@ -32,13 +35,16 @@ export const STANDARD_EVENTS_MAPPING: Record<
     <div className="flex items-center gap-2">
       removed{" "}
       <div className="flex items-center gap-1 text-black">
-        {nodes.map(({ id, kind }) => {
+        {nodes.slice(0, 5).map(({ id, kind }) => {
           return (
             <Link key={id} to={constructPath(`/objects/${kind}/${id}`)}>
               <NodeLabel key={id} id={id} />
             </Link>
           );
         })}
+        {nodes.slice(6).length > 0 && (
+          <span className="italic text-gray-500">(+{nodes.slice(6).length})</span>
+        )}
       </div>{" "}
       from group{" "}
       <span className="text-black">
