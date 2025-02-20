@@ -1,5 +1,6 @@
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { Filter } from "@/shared/hooks/useFilters";
 
 type AddAttributesToRequestOptions = {
   withMetadata?: boolean;
@@ -101,4 +102,40 @@ export const addRelationshipsToRequest = (
         relationship.cardinality === "one" ? baseFragment : { edges: baseFragment },
     };
   }, {});
+};
+
+export const addFiltersToRequest = (filters: Array<Filter>) => {
+  return filters.reduce(
+    (acc, filter) => {
+      // Skip kind__value filter as it's handled separately
+      if (filter.name === "kind__value") {
+        return acc;
+      }
+
+      const [fieldName, fieldKey] = filter.name.split("__");
+      if (!fieldName || !fieldKey) {
+        return acc;
+      }
+
+      switch (fieldKey) {
+        case "value":
+        case "values": {
+          acc.partial_match = true; // Add partial_match for text-based filters
+          acc[filter.name] = filter.value;
+          break;
+        }
+        case "isnull": {
+          acc[filter.name] = filter.value;
+          break;
+        }
+        case "ids": {
+          acc[filter.name] = filter.value.map(({ id }: { id: string }) => id);
+          break;
+        }
+      }
+
+      return acc;
+    },
+    {} as Record<string, string | number | boolean | string[]>
+  );
 };
