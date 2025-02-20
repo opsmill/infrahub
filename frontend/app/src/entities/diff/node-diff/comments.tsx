@@ -4,7 +4,7 @@ import {
 } from "@/config/constants";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import { getThreadLabel } from "@/entities/diff/diff";
+import { getThreadLabel } from "@/entities/diff/utils";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { deleteObject } from "@/entities/nodes/api/deleteObject";
 import { getProposedChangesObjectThreadComments } from "@/entities/proposed-changes/api/getProposedChangesObjectThreadComments";
@@ -19,7 +19,7 @@ import { gql } from "@apollo/client";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext } from "react";
+import { use } from "react";
 import { useParams } from "react-router";
 import { DiffContext } from ".";
 
@@ -36,7 +36,7 @@ export const DiffComments = (props: tDiffComments) => {
   const auth = useAuth();
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const { refetch: contextRefetch, node, currentBranch } = useContext(DiffContext);
+  const { refetch: contextRefetch, node, currentBranch } = use(DiffContext);
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 

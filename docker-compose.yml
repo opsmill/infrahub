@@ -175,7 +175,7 @@ services:
 
   task-manager:
     image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.1.4}"
-    command: prefect server start --host 0.0.0.0 --ui
+    command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
       task-manager-db:
@@ -199,13 +199,15 @@ services:
     volumes:
       - workflow_db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
+      test:
+        - "CMD-SHELL"
+        - "pg_isready -q -d ${INFRAHUB_TASKMANAGER_DB_DATABASE:-prefect} -U ${INFRAHUB_TASKMANAGER_DB_USER:-postgres}"
       interval: 10s
       timeout: 5s
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.1.6}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.1.7}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -251,7 +253,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.1.6}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.1.7}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

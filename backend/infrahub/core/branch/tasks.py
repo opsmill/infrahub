@@ -8,6 +8,7 @@ from prefect.client.schemas.objects import State  # noqa: TC002
 from prefect.states import Completed, Failed
 
 from infrahub import lock
+from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -36,14 +37,14 @@ from infrahub.workflows.catalogue import (
     GIT_REPOSITORIES_CREATE_BRANCH,
     IPAM_RECONCILIATION,
 )
-from infrahub.workflows.utils import add_branch_tag
+from infrahub.workflows.utils import add_tags
 
 
 @flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
-async def rebase_branch(branch: str, service: InfrahubServices) -> None:
+async def rebase_branch(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
     async with service.database.start_session() as db:
         log = get_run_logger()
-        await add_branch_tag(branch_name=branch)
+        await add_tags(branches=[branch])
         obj = await Branch.get_by_name(db=db, name=branch)
         base_branch = await Branch.get_by_name(db=db, name=registry.default_branch)
         component_registry = get_component_registry()
@@ -59,14 +60,17 @@ async def rebase_branch(branch: str, service: InfrahubServices) -> None:
             service=service,
         )
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(base_branch=base_branch, diff_branch=obj)
-        if enriched_diff.get_all_conflicts():
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
+        async for _ in diff_repository.get_all_conflicts_for_diff(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
+        ):
+            # if there are any conflicts, raise the error
             raise ValidationError(
                 f"Branch {obj.name} contains conflicts with the default branch that must be addressed."
                 " Please review the diff for details and manually update the conflicts before rebasing."
             )
         node_diff_field_summaries = await diff_repository.get_node_field_summaries(
-            diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
 
         candidate_schema = merger.get_candidate_schema()
@@ -137,27 +141,32 @@ async def rebase_branch(branch: str, service: InfrahubServices) -> None:
         )
         if ipam_node_details:
             await service.workflow.submit_workflow(
-                workflow=IPAM_RECONCILIATION, parameters={"branch": obj.name, "ipam_node_details": ipam_node_details}
+                workflow=IPAM_RECONCILIATION,
+                context=context,
+                parameters={"branch": obj.name, "ipam_node_details": ipam_node_details},
             )
 
-    await service.workflow.submit_workflow(workflow=DIFF_REFRESH_ALL, parameters={"branch_name": obj.name})
+    await service.workflow.submit_workflow(
+        workflow=DIFF_REFRESH_ALL, context=context, parameters={"branch_name": obj.name}
+    )
 
     # -------------------------------------------------------------
     # Generate an event to indicate that a branch has been rebased
     # -------------------------------------------------------------
     # TODO Add account information
     await service.event.send(
-        event=BranchRebasedEvent(branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj))
+        event=BranchRebasedEvent(
+            branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
+        )
     )
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
-async def merge_branch(branch: str, service: InfrahubServices) -> None:
+async def merge_branch(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
     async with service.database.start_session() as db:
         log = get_run_logger()
 
-        await add_branch_tag(branch_name=branch)
-        await add_branch_tag(branch_name=registry.default_branch)
+        await add_tags(branches=[branch, registry.default_branch])
 
         obj = await Branch.get_by_name(db=db, name=branch)
         component_registry = get_component_registry()
@@ -209,13 +218,14 @@ async def merge_branch(branch: str, service: InfrahubServices) -> None:
         if ipam_node_details:
             await service.workflow.submit_workflow(
                 workflow=IPAM_RECONCILIATION,
+                context=context,
                 parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
             )
         # -------------------------------------------------------------
         # remove tracking ID from the diff because there is no diff after the merge
         # -------------------------------------------------------------
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
-        await diff_repository.drop_tracking_ids(tracking_ids=[BranchTrackingId(name=obj.name)])
+        await diff_repository.mark_tracking_ids_merged(tracking_ids=[BranchTrackingId(name=obj.name)])
 
         # -------------------------------------------------------------
         # Generate an event to indicate that a branch has been merged
@@ -227,25 +237,29 @@ async def merge_branch(branch: str, service: InfrahubServices) -> None:
         message = messages.EventBranchMerge(
             source_branch=obj.name,
             target_branch=registry.default_branch,
+            context=context,
             meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
         )
         await service.message_bus.send(message=message)
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")
-async def delete_branch(branch: str, service: InfrahubServices) -> None:
-    await add_branch_tag(branch_name=branch)
+async def delete_branch(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
+    await add_tags(branches=[branch])
 
     async with service.database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=str(branch))
         await obj.delete(db=db)
 
         event = BranchDeletedEvent(
-            branch_name=branch, branch_id=str(obj.uuid), sync_with_git=obj.sync_with_git, meta=EventMeta(branch=obj)
+            branch_name=branch,
+            branch_id=str(obj.uuid),
+            sync_with_git=obj.sync_with_git,
+            meta=EventMeta(branch=obj, context=context),
         )
 
         await service.workflow.submit_workflow(
-            workflow=BRANCH_CANCEL_PROPOSED_CHANGES, parameters={"branch_name": branch}
+            workflow=BRANCH_CANCEL_PROPOSED_CHANGES, context=context, parameters={"branch_name": branch}
         )
 
         await service.event.send(event=event)
@@ -258,7 +272,7 @@ async def delete_branch(branch: str, service: InfrahubServices) -> None:
     persist_result=True,
 )
 async def validate_branch(branch: str, service: InfrahubServices) -> State:
-    await add_branch_tag(branch_name=branch)
+    await add_tags(branches=[branch])
 
     async with service.database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=branch)
@@ -274,8 +288,8 @@ async def validate_branch(branch: str, service: InfrahubServices) -> State:
 
 
 @flow(name="create-branch", flow_run_name="Create branch {model.name}")
-async def create_branch(model: BranchCreateModel, service: InfrahubServices) -> None:
-    await add_branch_tag(model.name)
+async def create_branch(model: BranchCreateModel, context: InfrahubContext, service: InfrahubServices) -> None:
+    await add_tags(branches=[model.name])
 
     async with service.database.start_session() as db:
         try:
@@ -309,12 +323,15 @@ async def create_branch(model: BranchCreateModel, service: InfrahubServices) -> 
             branch_name=obj.name,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta(branch=obj),
+            meta=EventMeta(
+                branch=obj, account_id=context.account.account_id, initiator_id=WORKER_IDENTITY, context=context
+            ),
         )
         await service.event.send(event=event)
 
         if obj.sync_with_git:
             await service.workflow.submit_workflow(
                 workflow=GIT_REPOSITORIES_CREATE_BRANCH,
+                context=context,
                 parameters={"branch": obj.name, "branch_id": str(obj.uuid)},
             )

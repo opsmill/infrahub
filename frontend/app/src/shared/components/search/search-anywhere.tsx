@@ -36,7 +36,7 @@ export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
   }, []);
 
   return (
-    <SearchAnywhereContext.Provider
+    <SearchAnywhereContext
       value={{
         isOpen,
         setIsOpen,
@@ -56,6 +56,6 @@ export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
           <SearchDocs />
         </Command.List>
       </SearchAnywhereDialog>
-    </SearchAnywhereContext.Provider>
+    </SearchAnywhereContext>
   );
 }

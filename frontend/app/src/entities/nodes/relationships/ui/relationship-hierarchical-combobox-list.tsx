@@ -1,4 +1,5 @@
-import { relationshipsInfiniteQueryOptions } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { getRelationshipsInfiniteQueryOptions } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
@@ -65,10 +66,20 @@ const HierarchicalExplorer = ({
 }: HierarchicalExplorerProps) => {
   const peer = topLevelNode ? topLevelSchema.children : topLevelSchema.kind;
   const nodeSchemas = useAtomValue(schemaState);
+  const { currentBranch } = useCurrentBranch();
+  const branchName = currentBranch.name;
   const [search, setSearch] = useState("");
   const queryOptions = search
-    ? relationshipsInfiniteQueryOptions({ peer: topLevelSchema.hierarchy as string, search })
-    : relationshipsInfiniteQueryOptions({ peer: peer as string, parentId: topLevelNode?.id });
+    ? getRelationshipsInfiniteQueryOptions({
+        peer: topLevelSchema.hierarchy as string,
+        search,
+        branchName,
+      })
+    : getRelationshipsInfiniteQueryOptions({
+        peer: peer as string,
+        parentId: topLevelNode?.id,
+        branchName,
+      });
 
   const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery(queryOptions);

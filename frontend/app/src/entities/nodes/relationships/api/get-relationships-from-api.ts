@@ -1,0 +1,31 @@
+import { generateRelationshipListQuery } from "@/entities/nodes/api/generateRelationshipListQuery";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { ContextParams, PaginationParams } from "@/shared/api/types";
+import { gql } from "@apollo/client";
+
+export type getRelationshipsFromApiParams = ContextParams &
+  PaginationParams & {
+    peer: string;
+    search?: string;
+    parent?: { name: string; value: string };
+  };
+
+export const getRelationshipsFromApi = async ({
+  peer,
+  limit,
+  offset,
+  search,
+  branchName,
+  atDate,
+  parent,
+}: getRelationshipsFromApiParams) => {
+  const query = gql(generateRelationshipListQuery({ peer, limit, offset, search, parent }));
+
+  return graphqlClient.query({
+    query,
+    context: {
+      branch: branchName,
+      date: atDate,
+    },
+  });
+};

@@ -1,18 +1,26 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Any, Optional, Sequence, TypeVar, Union, overload
 
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.changelog.models import NodeChangelog
-from infrahub.core.constants import BranchSupportType, ComputedAttributeKind, InfrahubKind, RelationshipCardinality
+from infrahub.core.constants import (
+    OBJECT_TEMPLATE_NAME_ATTR,
+    OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+    BranchSupportType,
+    ComputedAttributeKind,
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipKind,
+)
 from infrahub.core.constants.schema import SchemaElementPathType
-from infrahub.core.protocols import CoreNumberPool
+from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
-from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema
+from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema, TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.support.macro import MacroDefinition
@@ -53,7 +61,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         _meta.default_filter = default_filter
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
-    def get_schema(self) -> Union[NodeSchema, ProfileSchema]:
+    def get_schema(self) -> Union[NodeSchema, ProfileSchema, TemplateSchema]:
         return self._schema
 
     def get_kind(self) -> str:
@@ -127,7 +135,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 labels.append(InfrahubKind.NODE)
             return labels
 
-        if isinstance(self._schema, ProfileSchema):
+        if isinstance(self._schema, ProfileSchema | TemplateSchema):
             labels = [self.get_kind()] + self._schema.inherit_from
             return labels
 
@@ -150,8 +158,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return f"{self.get_kind()}(ID: {str(self.id)})"
 
-    def __init__(self, schema: Union[NodeSchema, ProfileSchema], branch: Branch, at: Timestamp):
-        self._schema: Union[NodeSchema, ProfileSchema] = schema
+    def __init__(self, schema: Union[NodeSchema, ProfileSchema, TemplateSchema], branch: Branch, at: Timestamp):
+        self._schema: Union[NodeSchema, ProfileSchema, TemplateSchema] = schema
         self._branch: Branch = branch
         self._at: Timestamp = at
         self._existing: bool = False
@@ -181,7 +189,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
     async def init(
         cls,
-        schema: Union[NodeSchema, ProfileSchema, str],
+        schema: Union[NodeSchema, ProfileSchema, TemplateSchema, str],
         db: InfrahubDatabase,
         branch: Optional[Union[Branch, str]] = ...,
         at: Optional[Union[Timestamp, str]] = ...,
@@ -200,7 +208,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
     async def init(
         cls,
-        schema: Union[NodeSchema, ProfileSchema, str, type[SchemaProtocol]],
+        schema: Union[NodeSchema, ProfileSchema, TemplateSchema, str, type[SchemaProtocol]],
         db: InfrahubDatabase,
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
@@ -209,7 +217,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         branch = await registry.get_branch(branch=branch, db=db)
 
-        if isinstance(schema, NodeSchema | ProfileSchema):
+        if isinstance(schema, NodeSchema | ProfileSchema | TemplateSchema):
             attrs["schema"] = schema
         elif isinstance(schema, str):
             # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
@@ -217,7 +225,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         elif hasattr(schema, "_is_runtime_protocol") and schema._is_runtime_protocol:
             attrs["schema"] = db.schema.get(name=schema.__name__, branch=branch)
         else:
-            raise ValueError(f"Invalid schema provided {type(schema)}, expected NodeSchema or ProfileSchema")
+            raise ValueError(
+                f"Invalid schema provided {type(schema)}, expected NodeSchema, ProfileSchema or TemplateSchema"
+            )
 
         attrs["branch"] = branch
         attrs["at"] = Timestamp(at)
@@ -266,6 +276,40 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 )
             )
 
+    async def handle_object_template(self, fields: dict, db: InfrahubDatabase, errors: list) -> None:
+        """Fill the `fields` parameters with values from an object template if one is in use."""
+        object_template_field = fields.get(OBJECT_TEMPLATE_RELATIONSHIP_NAME)
+        if not object_template_field:
+            return
+
+        try:
+            template: CoreObjectTemplate = await registry.manager.find_object(
+                db=db,
+                kind=self._schema.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME).peer,
+                id=object_template_field.get("id"),
+                hfid=object_template_field.get("hfid"),
+                branch=self.get_branch_based_on_support_type(),
+            )
+        except NodeNotFoundError:
+            errors.append(
+                ValidationError(
+                    {
+                        f"{OBJECT_TEMPLATE_RELATIONSHIP_NAME}": (
+                            "Unable to find the object template in the database "
+                            f"'{object_template_field.get('id') or object_template_field.get('hfid')}'"
+                        )
+                    }
+                )
+            )
+            return
+
+        # Handle attributes, copy values from template
+        # Relationships handling in performed in GraphQL mutation to create nodes for relationships
+        for attribute in template._attributes:
+            if attribute in list(fields) + [OBJECT_TEMPLATE_NAME_ATTR]:
+                continue
+            fields[attribute] = {"value": getattr(template, attribute).value}
+
     async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
         errors = []
 
@@ -283,6 +327,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for field_name in fields.keys():
             if field_name not in self._schema.valid_input_names:
                 errors.append(ValidationError({field_name: f"{field_name} is not a valid input for {self.get_kind()}"}))
+
+        # Backfill fields with the ones from the template if there's one
+        await self.handle_object_template(fields=fields, db=db, errors=errors)
 
         # If the object is new, we need to ensure that all mandatory attributes and relationships have been provided
         if not self._existing:
@@ -581,11 +628,21 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     node_changelog.add_attribute(attribute=updated_attribute)
 
         # Go over the list of relationships and update them one by one
+        processed_relationships: list[str] = []
         for name in self._relationships:
             if (fields and name in fields) or not fields:
+                processed_relationships.append(name)
                 rel: RelationshipManager = getattr(self, name)
                 updated_relationship = await rel.save(at=update_at, db=db)
                 node_changelog.add_relationship(relationship=updated_relationship)
+
+        if len(processed_relationships) != len(self._relationships):
+            # Analyze if the node has a parent and add it to the changelog if missing
+            if parent_relationship := self._get_parent_relationship_name():
+                if parent_relationship not in processed_relationships:
+                    rel: RelationshipManager = getattr(self, parent_relationship)
+                    if parent := await rel.get_parent(db=db):
+                        node_changelog.add_parent_from_relationship(parent=parent)
 
         node_changelog.display_label = await self.render_display_label(db=db)
         return node_changelog
@@ -782,3 +839,26 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if not display_label.strip():
             return repr(self)
         return display_label.strip()
+
+    def _get_parent_relationship_name(self) -> str | None:
+        """Return the name of the parent relationship is one is present"""
+        for relationship in self._schema.relationships:
+            if relationship.kind == RelationshipKind.PARENT:
+                return relationship.name
+
+    async def get_object_template(self, db: InfrahubDatabase) -> Node | None:
+        object_template: RelationshipManager = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
+        return None if not object_template else await object_template.get_peer(db=db)
+
+    def get_relationships(
+        self, kind: RelationshipKind, exclude: Sequence[str] | None = None
+    ) -> list[RelationshipSchema]:
+        """Return relationships of a given kind with the possiblity to exclude some of them by name."""
+        if exclude is None:
+            exclude = []
+
+        return [
+            relationship
+            for relationship in self.get_schema().relationships
+            if relationship.name not in exclude and relationship.kind == kind
+        ]

@@ -17,16 +17,19 @@ from prefect.logging import get_run_logger
 from prefect.states import Completed, Failed
 
 from infrahub import config
+from infrahub.artifacts.models import CheckArtifactCreate
+from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import merge_branch
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion, ValidatorState
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.protocols import CoreDataCheck, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
+from infrahub.core.validators.checks_runner import run_checks_and_update_validator
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
@@ -39,6 +42,7 @@ from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.operations.requests.proposed_change import DefinitionSelect
 from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.proposed_change.models import (
+    RequestArtifactDefinitionCheck,
     RequestProposedChangeDataIntegrity,
     RequestProposedChangeRepositoryChecks,
     RequestProposedChangeRunGenerators,
@@ -47,7 +51,11 @@ from infrahub.proposed_change.models import (
 )
 from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
-from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_SETUP_PYTHON, REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS
+from infrahub.workflows.catalogue import (
+    COMPUTED_ATTRIBUTE_SETUP_PYTHON,
+    GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
+    REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
+)
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
@@ -96,7 +104,12 @@ async def _proposed_change_transition_state(
     # on_crashed=[proposed_change_transition_open],  # type: ignore
     # on_cancellation=[proposed_change_transition_open],  # type: ignore
 )
-async def merge_proposed_change(proposed_change_id: str, proposed_change_name: str, service: InfrahubServices) -> State:  # noqa: ARG001
+async def merge_proposed_change(
+    proposed_change_id: str,
+    proposed_change_name: str,  # noqa: ARG001
+    context: InfrahubContext,
+    service: InfrahubServices,
+) -> State:
     log = get_run_logger()
 
     await add_tags(nodes=[proposed_change_id])
@@ -134,7 +147,7 @@ async def merge_proposed_change(proposed_change_id: str, proposed_change_name: s
 
         log.info("Proposed change is eligible to be merged")
         try:
-            await merge_branch(branch=source_branch.name, service=service)
+            await merge_branch(branch=source_branch.name, context=context, service=service)
         except MergeFailedError as exc:
             await _proposed_change_transition_state(
                 proposed_change=proposed_change, state=ProposedChangeState.OPEN, service=service
@@ -146,7 +159,7 @@ async def merge_proposed_change(proposed_change_id: str, proposed_change_name: s
         await _proposed_change_transition_state(
             proposed_change=proposed_change, state=ProposedChangeState.MERGED, service=service
         )
-        await service.workflow.submit_workflow(workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON)
+        await service.workflow.submit_workflow(workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON, context=context)
         return Completed(message="proposed change merged successfully")
 
 
@@ -209,7 +222,9 @@ async def run_proposed_change_data_integrity_check(
     name="proposed-changed-run-generator",
     flow_run_name="Run generators",
 )
-async def run_generators(model: RequestProposedChangeRunGenerators, service: InfrahubServices) -> None:
+async def run_generators(
+    model: RequestProposedChangeRunGenerators, context: InfrahubContext, service: InfrahubServices
+) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
 
     generators = await service.client.filters(
@@ -288,7 +303,9 @@ async def run_generators(model: RequestProposedChangeRunGenerators, service: Inf
             branch_diff=model.branch_diff,
         )
         await service.workflow.submit_workflow(
-            workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS, parameters={"model": model_proposed_change_repo_checks}
+            workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
+            context=context,
+            parameters={"model": model_proposed_change_repo_checks},
         )
 
     for next_msg in next_messages:
@@ -492,3 +509,125 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests, 
 
             return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
             log.info(msg=f"repository_tests_completed return_code={return_code}")
+
+
+@flow(
+    name="artifacts-generation-validation",
+    flow_run_name="Validating generation of artifacts for {model.artifact_definition.definition_name}",
+)
+async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, service: InfrahubServices) -> None:
+    await add_tags(branches=[model.source_branch], nodes=[model.proposed_change], db_change=True)
+
+    log = get_run_logger()
+    artifact_definition = await service.client.get(
+        kind=InfrahubKind.ARTIFACTDEFINITION,
+        id=model.artifact_definition.definition_id,
+        branch=model.source_branch,
+    )
+    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+
+    validator_name = f"Artifact Validator: {model.artifact_definition.definition_name}"
+
+    await proposed_change.validations.fetch()
+
+    validator = None
+    for relationship in proposed_change.validations.peers:
+        existing_validator = relationship.peer
+        if (
+            existing_validator.typename == InfrahubKind.ARTIFACTVALIDATOR
+            and existing_validator.definition.id == model.artifact_definition.definition_id
+        ):
+            validator = existing_validator
+
+    if validator:
+        validator.conclusion.value = ValidatorConclusion.UNKNOWN.value
+        validator.state.value = ValidatorState.QUEUED.value
+        validator.started_at.value = ""
+        validator.completed_at.value = ""
+        await validator.save()
+    else:
+        validator = await service.client.create(
+            kind=InfrahubKind.ARTIFACTVALIDATOR,
+            data={
+                "label": validator_name,
+                "proposed_change": model.proposed_change,
+                "definition": model.artifact_definition.definition_id,
+            },
+        )
+        await validator.save()
+
+    await artifact_definition.targets.fetch()
+    group = artifact_definition.targets.peer
+    await group.members.fetch()
+
+    existing_artifacts = await service.client.filters(
+        kind=InfrahubKind.ARTIFACT,
+        definition__ids=[model.artifact_definition.definition_id],
+        include=["object"],
+        branch=model.source_branch,
+    )
+    artifacts_by_member = {}
+    for artifact in existing_artifacts:
+        artifacts_by_member[artifact.object.peer.id] = artifact.id
+
+    repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
+    impacted_artifacts = model.branch_diff.get_subscribers_ids(kind=InfrahubKind.ARTIFACT)
+
+    checks = []
+
+    for relationship in group.members.peers:
+        member = relationship.peer
+        artifact_id = artifacts_by_member.get(member.id)
+        if _should_render_artifact(
+            artifact_id=artifact_id,
+            managed_branch=model.source_branch_sync_with_git,
+            impacted_artifacts=impacted_artifacts,
+        ):
+            log.info(f"Trigger Artifact processing for {member.display_label}")
+
+            check_model = CheckArtifactCreate(
+                artifact_name=model.artifact_definition.artifact_name,
+                artifact_id=artifact_id,
+                artifact_definition=model.artifact_definition.definition_id,
+                commit=repository.source_commit,
+                content_type=model.artifact_definition.content_type,
+                transform_type=model.artifact_definition.transform_kind,
+                transform_location=model.artifact_definition.transform_location,
+                repository_id=repository.repository_id,
+                repository_name=repository.repository_name,
+                repository_kind=repository.kind,
+                branch_name=model.source_branch,
+                query=model.artifact_definition.query_name,
+                variables=member.extract(params=artifact_definition.parameters.value),
+                target_id=member.id,
+                target_name=member.display_label,
+                timeout=model.artifact_definition.timeout,
+                validator_id=validator.id,
+            )
+
+            checks.append(
+                service.workflow.execute_workflow(
+                    workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
+                    parameters={"model": check_model},
+                    expected_return=ValidatorConclusion,
+                )
+            )
+
+    await run_checks_and_update_validator(checks, validator)
+
+
+def _should_render_artifact(artifact_id: str | None, managed_branch: bool, impacted_artifacts: list[str]) -> bool:  # noqa: ARG001
+    """Returns a boolean to indicate if an artifact should be generated or not.
+    Will return true if:
+        * The artifact_id wasn't set which could be that it's a new object that doesn't have a previous artifact
+        * The source brance is not data only which would indicate that it could contain updates in git to the transform
+        * The artifact_id exists in the impacted_artifacts list
+    Will return false if:
+        * The source branch is a data only branch and the artifact_id exists and is not in the impacted list
+    """
+
+    # if not artifact_id or managed_branch:
+    #    return True
+    # return artifact_id in impacted_artifacts
+    # Temporary workaround tracked in https://github.com/opsmill/infrahub/issues/4991
+    return True

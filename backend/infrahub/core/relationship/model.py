@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.changelog.models import ChangelogRelationshipMapper
-from infrahub.core.constants import BranchSupportType, InfrahubKind
+from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipKind
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -979,6 +979,19 @@ class RelationshipManager:
 
         return rels
 
+    async def get_parent(
+        self, db: InfrahubDatabase, branch_agnostic: bool = False, force_refresh: bool = False
+    ) -> Relationship | None:
+        if self.schema.kind == RelationshipKind.PARENT:
+            for relationship in await self.get_relationships(
+                db=db, branch_agnostic=branch_agnostic, force_refresh=force_refresh
+            ):
+                # As parent relationships requires cardinality=one there will always only be one relationship
+                # here even though it's within a loop
+                return relationship
+
+        return None
+
     async def get_relationships(
         self, db: InfrahubDatabase, branch_agnostic: bool = False, force_refresh: bool = False
     ) -> list[Relationship]:
@@ -1179,6 +1192,8 @@ class RelationshipManager:
                         old_data=details.peers_database[rel.peer_id],
                         properties_to_update=properties_not_matching,
                     )
+            elif rel.schema.kind == RelationshipKind.PARENT:
+                relationship_mapper.add_parent_from_relationship(relationship=rel)
 
         return relationship_mapper.changelog
 
@@ -1213,7 +1228,7 @@ class RelationshipManager:
 
     async def _validate_hierarchy(self) -> None:
         schema = self.node.get_schema()
-        if schema.is_profile_schema or not schema.hierarchy:  # type: ignore[union-attr]
+        if schema.is_profile_schema or schema.is_template_schema or not schema.hierarchy:  # type: ignore[union-attr]
             return
 
         if self.name == "parent" and not schema.parent:  # type: ignore[union-attr]

@@ -76,11 +76,10 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
       await expect(page.getByTestId("source-profile-badge")).toBeVisible();
       await expect(page.getByTestId("source-profile-badge")).toContainText("profile test tag");
-      await page.getByLabel("Select profiles").click();
       await page.getByTestId("source-profile-badge").hover();
       await expect(page.getByTestId("source-profile-tooltip").first()).toBeVisible();
       await expect(page.getByRole("link", { name: "profile test tag" }).first()).toBeVisible();
-      await page.locator("body").press("Escape"); // hide tooltip
+      await page.getByLabel("Name *").click(); // hide tooltip
 
       await page.getByLabel("Name *").fill("tag with profile");
       await page.getByRole("button", { name: "Save" }).click();
@@ -259,7 +258,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
   test("should verify profile values after creation", async ({ page }) => {
     await page.goto("/objects/CoreProfile");
     await page.getByRole("link", { name: PROFILE_NAME }).click();
-    await expect(page.locator("dl").getByText(PROFILE_NAME)).toBeVisible();
+    await expect(page.locator("span").filter({ hasText: PROFILE_NAME })).toBeVisible();
     await expect(page.getByText("Profile Priority2000")).toBeVisible();
     await expect(page.getByText("MTU256")).toBeVisible();
     await expect(
@@ -269,7 +268,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
         .locator("svg")
         .first()
     ).toBeVisible();
-    await expect(page.getByText("Provisioning")).toBeVisible();
+    await expect(page.getByText("Provisioning", { exact: true })).toBeVisible();
   });
 
   test("should verify the available profiles in the object form", async ({ page }) => {
@@ -278,7 +277,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
     await page.getByLabel("Select an object type").click();
     await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
     await page.getByLabel("Select profiles optional").click();
-    await expect(page.getByText(PROFILE_NAME)).toBeVisible();
+    await expect(page.getByText(PROFILE_NAME, { exact: true })).toBeVisible();
     await expect(page.getByText(GENERIC_PROFILE_NAME)).toBeVisible();
   });
 });

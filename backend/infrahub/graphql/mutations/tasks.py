@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from prefect import flow
 
+from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -15,12 +16,12 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import ValidationError
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.catalogue import BRANCH_MERGE
-from infrahub.workflows.utils import add_branch_tag
+from infrahub.workflows.utils import add_tags
 
 
 @flow(name="merge-branch-mutation", flow_run_name="Merge branch graphQL mutation")
-async def merge_branch_mutation(branch: str, service: InfrahubServices) -> None:
-    await add_branch_tag(branch_name=branch)
+async def merge_branch_mutation(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
+    await add_tags(branches=[branch])
 
     async with service.database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=branch)
@@ -30,14 +31,17 @@ async def merge_branch_mutation(branch: str, service: InfrahubServices) -> None:
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
         diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(base_branch=base_branch, diff_branch=obj)
-        if enriched_diff.get_all_conflicts():
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
+        async for _ in diff_repository.get_all_conflicts_for_diff(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
+        ):
+            # if there are any conflicts, raise the error
             raise ValidationError(
                 f"Branch {obj.name} contains conflicts with the default branch."
                 " Please create a Proposed Change to resolve the conflicts or manually update them before merging."
             )
         node_diff_field_summaries = await diff_repository.get_node_field_summaries(
-            diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
 
         merger = BranchMerger(
@@ -65,4 +69,4 @@ async def merge_branch_mutation(branch: str, service: InfrahubServices) -> None:
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
 
-        await service.workflow.execute_workflow(workflow=BRANCH_MERGE, parameters={"branch": obj.name})
+        await service.workflow.execute_workflow(workflow=BRANCH_MERGE, context=context, parameters={"branch": obj.name})

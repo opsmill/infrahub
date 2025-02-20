@@ -278,10 +278,6 @@ module = "infrahub.graphql.mutations.proposed_change"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.mutations.relationship"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.repository"
 ignore_errors = true
 

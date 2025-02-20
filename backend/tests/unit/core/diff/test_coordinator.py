@@ -1,5 +1,6 @@
 from typing import Any
-from unittest.mock import AsyncMock, call
+from unittest.mock import AsyncMock
+from uuid import uuid4
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction
@@ -50,7 +51,11 @@ class TestDiffCoordinator:
 
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
-        diff = await diff_coordinator.update_branch_diff_and_return(base_branch=default_branch, diff_branch=branch)
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+        diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+        diff = await diff_repository.get_one(
+            diff_branch_name=diff_metadata.diff_branch_name, diff_id=diff_metadata.uuid
+        )
 
         assert diff.base_branch_name == default_branch.name
         assert diff.diff_branch_name == branch.name
@@ -99,7 +104,11 @@ class TestDiffCoordinator:
         t3 = Timestamp()
         # overlapping diff from t1 to t3
         arbitrary_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
-            base_branch=default_branch, diff_branch=branch, from_time=t1, to_time=t3
+            base_branch=default_branch,
+            diff_branch=branch,
+            from_time=t1,
+            to_time=t3,
+            name=str(uuid4()),
         )
 
         full_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
@@ -108,20 +117,20 @@ class TestDiffCoordinator:
         tracking_diff = await diff_repository.get_one(
             diff_branch_name=branch.name, tracking_id=BranchTrackingId(name=branch.name)
         )
-        assert tracking_diff == full_diff
+        assert tracking_diff.uuid == full_diff.uuid
         # test that arbitrary diff still exists
         retrieved_arbitrary_diff = await diff_repository.get_one(
             diff_branch_name=branch.name, diff_id=arbitrary_diff.uuid
         )
-        assert retrieved_arbitrary_diff == arbitrary_diff
+        assert retrieved_arbitrary_diff.uuid == arbitrary_diff.uuid
 
         # validate content of the diff
-        assert full_diff.base_branch_name == default_branch.name
-        assert full_diff.diff_branch_name == branch.name
-        assert full_diff.from_time < t0
-        assert full_diff.to_time > t3
-        assert len(full_diff.nodes) == 1
-        diff_node = full_diff.nodes.pop()
+        assert tracking_diff.base_branch_name == default_branch.name
+        assert tracking_diff.diff_branch_name == branch.name
+        assert tracking_diff.from_time < t0
+        assert tracking_diff.to_time > t3
+        assert len(tracking_diff.nodes) == 1
+        diff_node = tracking_diff.nodes.pop()
         assert diff_node.uuid == person_john_main.id
         assert diff_node.action is DiffAction.UPDATED
         assert not diff_node.relationships
@@ -141,38 +150,46 @@ class TestDiffCoordinator:
     ):
         branch = await create_branch(db=db, branch_name="branch")
         wrapped_diff_coordinator = await self.get_wrapped_diff_coordinator(db=db, branch=branch)
+        component_registry = get_component_registry()
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
 
-        time1 = Timestamp()
         person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
         person_john_branch.height.value += 1
         await person_john_branch.save(db=db)
-        time2 = Timestamp()
 
         # calculate this diff in the middle of change timeframe
-        diff_with_data = await wrapped_diff_coordinator.create_or_update_arbitrary_timeframe_diff(
-            base_branch=default_branch, diff_branch=branch, from_time=time1, to_time=time2
+        diff_with_data = await wrapped_diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=branch
         )
         self.reset_mocks(wrapped_diff_coordinator)
 
         # get the whole diff with no-change time periods before and after the calculated diff
-        no_changes_diff = await wrapped_diff_coordinator.update_branch_diff(
+        no_changes_diff_metadata = await wrapped_diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch
         )
-        assert type(no_changes_diff) is EnrichedDiffRootMetadata
-        assert no_changes_diff.uuid == diff_with_data.uuid
-        assert no_changes_diff.from_time == Timestamp(branch.get_branched_from())
-        assert no_changes_diff.from_time < diff_with_data.from_time
-        assert no_changes_diff.to_time > diff_with_data.to_time
+        assert type(no_changes_diff_metadata) is EnrichedDiffRootMetadata
+        assert no_changes_diff_metadata.uuid == diff_with_data.uuid
+        assert no_changes_diff_metadata.from_time == Timestamp(branch.get_branched_from())
+        assert no_changes_diff_metadata.from_time == diff_with_data.from_time
+        assert no_changes_diff_metadata.to_time > diff_with_data.to_time
         wrapped_diff_coordinator.diff_calculator.calculate_diff.assert_not_awaited()
         wrapped_diff_coordinator.diff_repo.get_one.assert_not_awaited()
-        wrapped_diff_coordinator.diff_repo.save.assert_not_awaited()
         wrapped_diff_coordinator.diff_repo.hydrate_diff_pair.assert_not_awaited()
+
+        # verify that to_time was updated on the database
+        no_changes_diff = await diff_repository.get_one(
+            diff_branch_name=no_changes_diff_metadata.diff_branch_name, diff_id=no_changes_diff_metadata.uuid
+        )
+        assert no_changes_diff.from_time == no_changes_diff_metadata.from_time == diff_with_data.from_time
+        assert no_changes_diff.to_time == no_changes_diff_metadata.to_time
 
     async def test_unrelated_changes_skip_some_expensive_operations(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
     ):
         branch = await create_branch(db=db, branch_name="branch")
         wrapped_diff_coordinator = await self.get_wrapped_diff_coordinator(db=db, branch=branch)
+        component_registry = get_component_registry()
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
 
         # unrelated change on main before
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
@@ -180,52 +197,46 @@ class TestDiffCoordinator:
         await john_main.save(db=db)
 
         # change on branch for the diff
-        time1 = Timestamp()
         person_john_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
         person_john_branch.height.value += 1
         await person_john_branch.save(db=db)
-        time2 = Timestamp()
+
+        # calculate this diff in the middle of change timeframe
+        diff_with_data = await wrapped_diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=branch
+        )
+        self.reset_mocks(wrapped_diff_coordinator)
 
         # unrelated change on main after
         john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
         john_main.name.value = "After John"
         await john_main.save(db=db)
 
-        # calculate this diff in the middle of change timeframe
-        diff_with_data = await wrapped_diff_coordinator.create_or_update_arbitrary_timeframe_diff(
-            base_branch=default_branch, diff_branch=branch, from_time=time1, to_time=time2
-        )
-        self.reset_mocks(wrapped_diff_coordinator)
-
         # get the whole diff with no-change time periods before and after the calculated diff
-        no_changes_diff = await wrapped_diff_coordinator.update_branch_diff(
+        no_changes_diff_metadata = await wrapped_diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch
         )
-        assert type(no_changes_diff) is EnrichedDiffRootMetadata
-        assert no_changes_diff.uuid == diff_with_data.uuid
-        assert no_changes_diff.from_time == Timestamp(branch.get_branched_from())
-        assert no_changes_diff.from_time < diff_with_data.from_time
-        assert no_changes_diff.to_time > diff_with_data.to_time
-        wrapped_diff_coordinator.diff_calculator.calculate_diff.assert_has_awaits(
-            [
-                call(
-                    base_branch=default_branch,
-                    diff_branch=branch,
-                    from_time=Timestamp(branch.get_branched_from()),
-                    to_time=diff_with_data.from_time,
-                    include_unchanged=False,
-                    previous_node_specifiers={},
-                ),
-                call(
-                    base_branch=default_branch,
-                    diff_branch=branch,
-                    from_time=diff_with_data.to_time,
-                    to_time=no_changes_diff.to_time,
-                    include_unchanged=True,
-                    previous_node_specifiers={person_john_main.id: {"height"}},
-                ),
-            ]
+        assert type(no_changes_diff_metadata) is EnrichedDiffRootMetadata
+        assert no_changes_diff_metadata.uuid == diff_with_data.uuid
+        assert no_changes_diff_metadata.from_time == Timestamp(branch.get_branched_from())
+        assert no_changes_diff_metadata.from_time == diff_with_data.from_time
+        assert no_changes_diff_metadata.to_time > diff_with_data.to_time
+
+        wrapped_diff_coordinator.diff_calculator.calculate_diff.assert_awaited_once_with(
+            base_branch=default_branch,
+            diff_branch=branch,
+            from_time=diff_with_data.to_time,
+            to_time=no_changes_diff_metadata.to_time,
+            include_unchanged=True,
+            previous_node_specifiers={person_john_main.id: {"height"}},
         )
         wrapped_diff_coordinator.diff_repo.get_one.assert_not_awaited()
-        wrapped_diff_coordinator.diff_repo.save.assert_not_awaited()
+        wrapped_diff_coordinator.diff_repo.save.assert_awaited_once()
         wrapped_diff_coordinator.diff_repo.hydrate_diff_pair.assert_not_awaited()
+
+        # verify that to_time was updated on the database
+        no_changes_diff = await diff_repository.get_one(
+            diff_branch_name=no_changes_diff_metadata.diff_branch_name, diff_id=no_changes_diff_metadata.uuid
+        )
+        assert no_changes_diff.from_time == no_changes_diff_metadata.from_time == diff_with_data.from_time
+        assert no_changes_diff.to_time == no_changes_diff_metadata.to_time

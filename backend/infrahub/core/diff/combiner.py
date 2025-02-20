@@ -1,7 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from typing import Iterable
-from uuid import uuid4
 
 from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
@@ -342,6 +341,8 @@ class DiffCombiner:
 
     def _copy_node_without_parents(self, node: EnrichedDiffNode) -> EnrichedDiffNode:
         rels_without_parents = {replace(r, nodes=set()) for r in node.relationships}
+        for rel in rels_without_parents:
+            rel.reset_summaries()
         node_without_parents = replace(node, relationships=rels_without_parents)
         return deepcopy(node_without_parents)
 
@@ -351,15 +352,11 @@ class DiffCombiner:
             if node_pair.earlier is None:
                 if node_pair.later is not None:
                     copied = self._copy_node_without_parents(node_pair.later)
-                    for rel in copied.relationships:
-                        rel.reset_summaries()
                     combined_nodes.add(copied)
                 continue
             if node_pair.later is None:
                 if node_pair.earlier is not None:
                     copied = self._copy_node_without_parents(node_pair.earlier)
-                    for rel in copied.relationships:
-                        rel.reset_summaries()
                     combined_nodes.add(copied)
                 continue
             combined_attributes = self._combine_attributes(
@@ -420,14 +417,21 @@ class DiffCombiner:
             filtered_node_pairs = self._filter_nodes_to_keep(earlier_diff=earlier, later_diff=later)
             combined_nodes = self._combine_nodes(node_pairs=filtered_node_pairs)
             self._link_child_nodes(nodes=combined_nodes)
+            if earlier.exists_on_database:
+                diff_uuid = earlier.uuid
+                partner_uuid = earlier.partner_uuid
+            else:
+                diff_uuid = later.uuid
+                partner_uuid = later.partner_uuid
             combined_diffs.append(
                 EnrichedDiffRoot(
-                    uuid=str(uuid4()),
-                    partner_uuid=later.partner_uuid,
+                    uuid=diff_uuid,
+                    partner_uuid=partner_uuid,
                     base_branch_name=later.base_branch_name,
                     diff_branch_name=later.diff_branch_name,
                     from_time=earlier.from_time,
                     to_time=later.to_time,
+                    tracking_id=later.tracking_id,
                     nodes=combined_nodes,
                 )
             )

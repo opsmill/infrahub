@@ -5,7 +5,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
-from infrahub.core.diff.model.path import ConflictSelection
+from infrahub.core.diff.model.path import ConflictSelection, EnrichedDiffRoot
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -104,6 +104,20 @@ class TestDiffMerge(TestInfrahubApp):
         await delorean_branch.owner.update(db=db, data=biff_id)
         await delorean_branch.save(db=db)
 
+    async def _update_and_get_diff(
+        self,
+        diff_coordinator: DiffCoordinator,
+        diff_repository: DiffRepository,
+        base_branch: Branch,
+        diff_branch: Branch,
+    ) -> EnrichedDiffRoot:
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
+            base_branch=base_branch, diff_branch=diff_branch
+        )
+        return await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
+        )
+
     async def test_select_cardinality_one_resolution_and_merge(
         self,
         db: InfrahubDatabase,
@@ -117,8 +131,11 @@ class TestDiffMerge(TestInfrahubApp):
         delorean_id = initial_dataset["delorean"].get_id()
         marty_id = initial_dataset["marty"].get_id()
 
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
-            base_branch=default_branch, diff_branch=diff_branch
+        enriched_diff = await self._update_and_get_diff(
+            diff_coordinator=diff_coordinator,
+            diff_repository=diff_repository,
+            base_branch=default_branch,
+            diff_branch=diff_branch,
         )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 1
@@ -141,6 +158,7 @@ class TestDiffMerge(TestInfrahubApp):
         initial_dataset,
         default_branch: Branch,
         diff_coordinator: DiffCoordinator,
+        diff_repository: DiffRepository,
         delete_on_branch: bool,
     ):
         new_person = await Node.init(db=db, schema=PERSON_KIND)
@@ -171,8 +189,11 @@ class TestDiffMerge(TestInfrahubApp):
         await new_car.save(db=db)
 
         # check that the expected node-level conflict exists
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
-            base_branch=default_branch, diff_branch=diff_branch
+        enriched_diff = await self._update_and_get_diff(
+            diff_coordinator=diff_coordinator,
+            diff_repository=diff_repository,
+            base_branch=default_branch,
+            diff_branch=diff_branch,
         )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert set(conflicts_map.keys()) == {f"data/{person_updated.id}"}
@@ -194,8 +215,11 @@ class TestDiffMerge(TestInfrahubApp):
         await car_branch.save(db=db)
 
         # check that the conflict is gone
-        enriched_diff = await diff_coordinator.update_branch_diff_and_return(
-            base_branch=default_branch, diff_branch=diff_branch
+        enriched_diff = await self._update_and_get_diff(
+            diff_coordinator=diff_coordinator,
+            diff_repository=diff_repository,
+            base_branch=default_branch,
+            diff_branch=diff_branch,
         )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 0

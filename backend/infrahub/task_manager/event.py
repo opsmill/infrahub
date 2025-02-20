@@ -1,16 +1,18 @@
-import uuid
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from prefect.client.orchestration import PrefectClient, get_client
-from prefect.events.filters import EventFilter, EventIDFilter, EventNameFilter, EventRelatedFilter, EventResourceFilter
 from prefect.events.schemas.events import Event as PrefectEventModel
-from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field, TypeAdapter
 
 from infrahub.log import get_logger
 from infrahub.utils import get_nested_dict
 
 log = get_logger()
+
+if TYPE_CHECKING:
+    from .models import InfrahubEventFilter
 
 
 class PrefectEventData(PrefectEventModel):
@@ -23,12 +25,64 @@ class PrefectEventData(PrefectEventModel):
             return resource.get("infrahub.resource.label")
         return None
 
+    def get_level(self) -> int:
+        for resource in self.related:
+            level = resource.get("infrahub.event.level")
+            if level is None:
+                continue
+            try:
+                return int(level)
+            except ValueError:
+                return 0
+
+        return 0
+
+    def get_parent(self) -> str | None:
+        for resource in self.related:
+            if resource.get("prefect.resource.role") != "infrahub.child_event":
+                continue
+            return resource.get("infrahub.event_parent.id")
+        return None
+
+    def get_primary_node(self) -> dict[str, str] | None:
+        node_id = self.resource.get("infrahub.node.id")
+        node_kind = self.resource.get("infrahub.node.kind")
+        if node_id and node_kind:
+            return {"id": node_id, "kind": node_kind}
+
+        return None
+
+    def get_related_nodes(self) -> list[dict[str, str]]:
+        related_nodes = []
+        for resource in self.related:
+            if resource.get("prefect.resource.role") != "infrahub.related.node":
+                continue
+
+            node_id = resource.get("prefect.resource.id")
+            node_kind = resource.get("infrahub.node.kind")
+            if node_id == self.resource.get("infrahub.node.id"):
+                # Don't include the primary node as a related node.
+                continue
+            if node_id and node_kind:
+                related_nodes.append({"id": node_id, "kind": node_kind})
+
+        return related_nodes
+
     def get_account_id(self) -> str | None:
         for resource in self.related:
             if resource.get("prefect.resource.role") != "infrahub.account":
                 continue
             return resource.get("infrahub.resource.id")
         return None
+
+    def has_children(self) -> bool:
+        for resource in self.related:
+            if resource.get("prefect.resource.role") != "infrahub.event":
+                continue
+            if resource.get("infrahub.event.has_children") == "true":
+                return True
+            return False
+        return False
 
     def _return_node_mutation(self) -> dict[str, Any]:
         attributes = []
@@ -66,8 +120,13 @@ class PrefectEventData(PrefectEventModel):
             "event": self.event,
             "branch": self.get_branch(),
             "account_id": self.get_account_id(),
-            "occurred_at": self.occurred.to_iso8601_string(),
+            "occurred_at": self.occurred,
+            "has_children": self.has_children(),
             "payload": self.payload,
+            "level": self.get_level(),
+            "primary_node": self.get_primary_node(),
+            "parent_id": self.get_parent(),
+            "related_nodes": self.get_related_nodes(),
         }
         response.update(self._return_event_specifics())
         return response
@@ -81,73 +140,35 @@ class PrefectEventResponse(BaseModel):
 class PrefectEvent:
     @classmethod
     async def query_events(
-        cls, client: PrefectClient, filters: EventFilter | None = None, limit: int | None = None
-    ) -> PrefectEventResponse:
-        body: dict[str, Any] = {}
-        if filters:
-            body["filter"] = filters.model_dump(mode="json", exclude_unset=True)
-
-        if limit is not None:
-            body["limit"] = limit
-
-        response = await client._client.post("/events/filter", json=body)
-        response.raise_for_status()
-        # TODO need to implement pagination :(
-        return PrefectEventResponse(
-            count=response.json().get("total", 0),
-            events=TypeAdapter(list[PrefectEventData]).validate_python(response.json().get("events")),
-        )
-
-    @classmethod
-    def _generate_filters(
         cls,
-        ids: list[str] | None = None,
-        account: str | None = None,
-        related_node__ids: list[str] | None = None,
-        branch: str | None = None,
-    ) -> EventFilter:
-        filters = EventFilter(event=EventNameFilter(prefix=["infrahub."], name=[]))
+        client: PrefectClient,
+        limit: int,
+        filters: InfrahubEventFilter,
+        offset: int | None = None,
+    ) -> PrefectEventResponse:
+        body = {"limit": limit, "filter": filters.model_dump(mode="json", exclude_none=True), "offset": offset}
 
-        if ids:
-            filters.id = EventIDFilter(id=[uuid.UUID(id) for id in ids])
+        response = await client._client.post("/infrahub/events/filter", json=body)
+        response.raise_for_status()
+        data: dict[str, Any] = response.json()
 
-        if related_node__ids:
-            filters.resource = EventResourceFilter(
-                labels=ResourceSpecification({"infrahub.node.id": related_node__ids})
-            )
-
-        if branch:
-            filters.related = EventRelatedFilter(
-                labels=ResourceSpecification(
-                    {"prefect.resource.role": "infrahub.branch", "infrahub.resource.label": branch}
-                )
-            )
-
-        if account:
-            filters.related = EventRelatedFilter(
-                labels=ResourceSpecification(
-                    {"prefect.resource.role": "infrahub.account", "infrahub.resource.id": account}
-                )
-            )
-
-        return filters
+        return PrefectEventResponse(
+            count=data.get("total", 0),
+            events=TypeAdapter(list[PrefectEventData]).validate_python(data.get("events")),
+        )
 
     @classmethod
     async def query(
         cls,
         fields: dict[str, Any],
-        q: str | None = None,  # noqa: ARG003
-        ids: list[str] | None = None,
-        branch: str | None = None,
-        account: str | None = None,
+        event_filter: InfrahubEventFilter,
         limit: int | None = None,
-        related_node__ids: list[str] | None = None,
-        offset: int | None = None,  # noqa: ARG003
+        offset: int | None = None,
     ) -> dict[str, Any]:
         nodes: list[dict] = []
+        limit = limit or 50
 
         node_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node"])
-        filters = cls._generate_filters(ids=ids, branch=branch, account=account, related_node__ids=related_node__ids)
 
         if not node_fields:
             # This means that it's purely a count query and as such we can override the limit to avoid
@@ -155,7 +176,7 @@ class PrefectEvent:
             limit = 1
 
         async with get_client(sync_client=False) as client:
-            response = await cls.query_events(client=client, filters=filters, limit=limit)
+            response = await cls.query_events(client=client, filters=event_filter, limit=limit, offset=offset)
             nodes = [{"node": event.to_graphql()} for event in response.events]
 
         return {"count": response.count, "edges": nodes}

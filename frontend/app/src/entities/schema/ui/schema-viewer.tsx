@@ -9,10 +9,10 @@ import { isGenericSchema, isNodeSchema, isProfileSchema } from "@/entities/schem
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
-import { Tab } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { CSSProperties } from "react";
+import { TabList, Tabs } from "react-aria-components";
 import { ArrayParam, useQueryParam } from "use-query-params";
 import { AttributeDisplay } from "./attribute-display";
 import { RelationshipDisplay } from "./relationship-display";
@@ -121,39 +121,35 @@ const SchemaViewerTitle = ({ schema }: { schema: IModelSchema }) => {
 
 const SchemaViewerDetails = ({ schema }: { schema: IModelSchema }) => {
   return (
-    <section className="flex flex-col overflow-hidden">
-      <Tab.Group>
-        <Tab.List>
-          <TabStyled>Properties</TabStyled>
-          <TabStyled>Attributes</TabStyled>
-          <TabStyled>Relationships</TabStyled>
-        </Tab.List>
+    <Tabs className="flex flex-col overflow-y-hidden">
+      <TabList className="flex">
+        <TabStyled id="properties">Properties</TabStyled>
+        <TabStyled id="attributes">Attributes</TabStyled>
+        <TabStyled id="relationships">Relationships</TabStyled>
+      </TabList>
 
-        <Tab.Panels className="p-2 bg-gray-100 flex-grow min-h-0 overflow-auto">
-          <TabPanelStyled>
-            <Properties schema={schema} />
-          </TabPanelStyled>
+      <TabPanelStyled id="properties">
+        <Properties schema={schema} />
+      </TabPanelStyled>
 
-          <TabPanelStyled>
-            {schema.attributes && schema.attributes.length > 0 ? (
-              schema.attributes?.map((attribute) => (
-                <AttributeDisplay key={attribute.id} attribute={attribute} />
-              ))
-            ) : (
-              <div className="h-32 flex items-center justify-center">No attribute</div>
-            )}
-          </TabPanelStyled>
+      <TabPanelStyled id="attributes">
+        {schema.attributes && schema.attributes.length > 0 ? (
+          schema.attributes?.map((attribute) => (
+            <AttributeDisplay key={attribute.id} attribute={attribute} />
+          ))
+        ) : (
+          <div className="h-32 flex items-center justify-center">No attribute</div>
+        )}
+      </TabPanelStyled>
 
-          <TabPanelStyled>
-            {schema.relationships && schema.relationships.length > 0
-              ? schema.relationships?.map((relationship) => (
-                  <RelationshipDisplay key={relationship.id} relationship={relationship} />
-                ))
-              : "No relationship"}
-          </TabPanelStyled>
-        </Tab.Panels>
-      </Tab.Group>
-    </section>
+      <TabPanelStyled id="relationships">
+        {schema.relationships && schema.relationships.length > 0
+          ? schema.relationships?.map((relationship) => (
+              <RelationshipDisplay key={relationship.id} relationship={relationship} />
+            ))
+          : "No relationship"}
+      </TabPanelStyled>
+    </Tabs>
   );
 };
 

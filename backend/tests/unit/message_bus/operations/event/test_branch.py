@@ -3,8 +3,10 @@ from uuid import uuid4
 
 import pytest
 
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.branch import Branch
-from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot
+from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, NameTrackingId
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
@@ -30,7 +32,15 @@ async def init_service():
     return service
 
 
-async def test_merged(default_branch: Branch, prefect_test_fixture, init_service):
+@pytest.fixture
+def context():
+    return InfrahubContext(
+        account=AccountSession(account_id="123", auth_type=AuthType.NONE),
+        branch=BranchContext(name="main", id="placeholder"),
+    )
+
+
+async def test_merged(default_branch: Branch, prefect_test_fixture, context: InfrahubContext, init_service):
     """
     Test that merge flow triggers corrects events/workflows. It does not actually test these events/workflows behaviors
     as they are mocked.
@@ -40,7 +50,7 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, init_service
     target_branch_name = "main"
     right_now = Timestamp()
     message = messages.EventBranchMerge(
-        source_branch=source_branch_name, target_branch=target_branch_name, ipam_node_details=[]
+        source_branch=source_branch_name, target_branch=target_branch_name, context=context, ipam_node_details=[]
     )
 
     tracked_diff_roots = [
@@ -63,6 +73,7 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, init_service
             to_time=right_now,
             uuid=str(uuid4()),
             partner_uuid=str(uuid4()),
+            tracking_id=NameTrackingId(name=str(uuid4())),
         )
         for _ in range(2)
     ]
@@ -81,18 +92,25 @@ async def test_merged(default_branch: Branch, prefect_test_fixture, init_service
         await merge.fn(message=message, service=init_service)
 
         expected_calls = [
-            call(workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE, parameters={"branch": message.target_branch}),
+            call(
+                workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+                parameters={"branch": message.target_branch},
+                context=context,
+            ),
             call(
                 workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
                 parameters={"branch": target_branch_name},
+                context=context,
             ),
             call(
                 workflow=DIFF_UPDATE,
                 parameters={"model": RequestDiffUpdate(branch_name=tracked_diff_roots[0].diff_branch_name)},
+                context=context,
             ),
             call(
                 workflow=DIFF_UPDATE,
                 parameters={"model": RequestDiffUpdate(branch_name=tracked_diff_roots[1].diff_branch_name)},
+                context=context,
             ),
         ]
         mock_submit_workflow.assert_has_calls(expected_calls)

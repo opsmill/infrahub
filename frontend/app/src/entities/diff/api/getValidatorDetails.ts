@@ -1,7 +1,7 @@
 import Handlebars from "handlebars";
 
 export const getValidatorDetails = Handlebars.compile(`
-query {
+query GET_VALIDATOR_DETAILS {
   CoreValidator(
     ids: ["{{id}}"]
   ) {

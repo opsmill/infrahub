@@ -1,0 +1,78 @@
+{{- if .Values.emma.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-emma
+  labels:
+    service: emma
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.emma.replicas | default 1 }}
+  selector:
+    matchLabels:
+      service: emma
+    {{- include "infrahub-helm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        service: emma
+      {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.emma.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.emma.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.emma.runtimeClassName }}
+      runtimeClassName: {{ . }}
+      {{- end }}
+      containers:
+        - args: {{- toYaml .Values.emma.args | nindent 12 }}
+          env:
+            {{- include "infrahub-helm.emma.defaultEnv" . | nindent 12 }}
+            {{- range $key, $value := .Values.emma.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- with .Values.emma.envFromExistingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . }}
+          {{- end }}
+          image: {{ default .Values.global.imageRegistry .Values.emma.imageRegistry }}/{{ .Values.emma.imageName }}:{{ .Values.emma.version }}
+          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.emma.imagePullPolicy }}
+          name: emma
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.emma.env.STREAMLIT_SERVER_BASE_URL_PATH }}/_stcore/health
+              port: {{ (index .Values.emma.ports 0).port }}
+              scheme: HTTP
+            timeoutSeconds: 1
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.emma.env.STREAMLIT_SERVER_BASE_URL_PATH }}/_stcore/health
+              port: {{ (index .Values.emma.ports 0).port }}
+              scheme: HTTP
+            timeoutSeconds: 1
+          resources: {}
+          tty: true
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-emma
+  labels:
+    service: emma
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.emma.type }}
+  selector:
+    service: emma
+  {{- include "infrahub-helm.selectorLabels" . | nindent 4 }}
+  ports:
+    {{- .Values.emma.ports | toYaml | nindent 4 }}
+
+{{- end }}

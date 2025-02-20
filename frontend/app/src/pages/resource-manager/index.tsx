@@ -1,5 +1,5 @@
 import ObjectHeader from "@/entities/nodes/object-header";
-import { ObjectsTableManager } from "@/entities/nodes/object/ui/objects-table/objects-table-manager";
+import { ObjectsManager } from "@/entities/nodes/object/ui/objects-manager";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { genericsState } from "@/entities/schema/stores/schema.atom";
 import Content from "@/shared/components/layout/content";
@@ -13,10 +13,10 @@ const ResourceManagerPage = () => {
   if (!resourcePoolSchema) return <LoadingIndicator className="h-full" />;
 
   return (
-    <Content.Card>
+    <Content.Card className="flex flex-col">
       <ObjectHeader schema={resourcePoolSchema} />
 
-      <ObjectsTableManager schema={resourcePoolSchema} />
+      <ObjectsManager schema={resourcePoolSchema} />
     </Content.Card>
   );
 };

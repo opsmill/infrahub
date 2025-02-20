@@ -5,6 +5,7 @@ from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
 from infrahub import lock
+from infrahub.context import InfrahubContext
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
@@ -228,7 +229,7 @@ async def git_branch_create(
 
 
 @flow(name="artifact-definition-generate", flow_run_name="Generate all artifacts")
-async def generate_artifact_definition(branch: str, service: InfrahubServices) -> None:
+async def generate_artifact_definition(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
     await add_branch_tag(branch_name=branch)
 
     artifact_definitions = await service.client.all(kind=CoreArtifactDefinition, branch=branch, include=["id"])
@@ -240,7 +241,7 @@ async def generate_artifact_definition(branch: str, service: InfrahubServices) -
             artifact_definition_name=artifact_definition.name.value,
         )
         await service.workflow.submit_workflow(
-            workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, parameters={"model": model}
+            workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE, context=context, parameters={"model": model}
         )
 
 
@@ -256,7 +257,7 @@ async def generate_artifact(model: RequestArtifactGenerate, service: InfrahubSer
         commit=model.commit,
     )
 
-    artifact = await define_artifact(message=model, service=service)
+    artifact = await define_artifact(model=model, service=service)
 
     try:
         result = await repo.render_artifact(artifact=artifact, message=model)
@@ -275,7 +276,7 @@ async def generate_artifact(model: RequestArtifactGenerate, service: InfrahubSer
     flow_run_name="Trigger Generation of Artifacts for {model.artifact_definition_name}",
 )
 async def generate_request_artifact_definition(
-    model: RequestArtifactDefinitionGenerate, service: InfrahubServices
+    model: RequestArtifactDefinitionGenerate, context: InfrahubContext, service: InfrahubServices
 ) -> None:
     await add_tags(branches=[model.branch])
 
@@ -346,7 +347,7 @@ async def generate_request_artifact_definition(
         )
 
         await service.workflow.submit_workflow(
-            workflow=REQUEST_ARTIFACT_GENERATE, parameters={"model": request_artifact_generate_model}
+            workflow=REQUEST_ARTIFACT_GENERATE, context=context, parameters={"model": request_artifact_generate_model}
         )
 
 

@@ -42,6 +42,28 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Activate ruff B rules. ([#2193](https://github.com/opsmill/infrahub/issues/2193))
 - Activate ruff C4 rule. ([#2194](https://github.com/opsmill/infrahub/issues/2194))
 
+## [Infrahub - v1.1.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.7) - 2025-02-18
+
+### Added
+
+- Data diffs are loaded in sequential batches for faster performance with large changes.
+- The diff tree and diff list can now be scrolled independently.
+
+### Changed
+
+- Modified node mutation events to not send metadata properties as part of the mutation payload. The reason is that the property lookup was time consuming. This information will return again in Infrahub 1.2 with a completely updated format. ([#5664](https://github.com/opsmill/infrahub/issues/5664))
+
+### Fixed
+
+- Fix nodes remaining in the database after a create mutation fails when using pools. ([#4303](https://github.com/opsmill/infrahub/issues/4303))
+- Modify the query for the current tasks, ensuring the correct determination of the merge button state. ([#5565](https://github.com/opsmill/infrahub/issues/5565))
+- Fix Docker `task-manager-db` PostgreSQL health check test by adding database and user parameters. ([#5739](https://github.com/opsmill/infrahub/issues/5739))
+- Fixed issue causing a gap in menu sidebar when text is too long.
+- Prevent avatar from being cut off in menu sidebar.
+- Enforce permission checks when using relationship add or delete mutation.
+- Enhance the data integrity checks UI to enable navigation from the check to the diff view.
+- Improved performance when updating an existing diff.
+
 ## [Infrahub - v1.1.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.6) - 2025-01-30
 
 ### Artifact improvements

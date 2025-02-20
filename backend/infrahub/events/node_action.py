@@ -36,6 +36,32 @@ class NodeMutatedEvent(InfrahubEvent):
                     "infrahub.attribute.action": attribute.value_update_status.value,  # type: ignore[attr-defined]
                 }
             )
+        if self.data.parent:
+            related.append(
+                {
+                    "prefect.resource.id": self.data.parent.node_id,
+                    "prefect.resource.role": "infrahub.node.parent",
+                    "infrahub.parent.kind": self.data.parent.node_kind,
+                    "infrahub.parent.id": self.data.parent.node_id,
+                }
+            )
+
+        related.append(
+            {
+                "prefect.resource.id": self.node_id,
+                "prefect.resource.role": "infrahub.related.node",
+                "infrahub.node.kind": self.kind,
+            }
+        )
+
+        for related_node in self.data.get_related_nodes():
+            related.append(
+                {
+                    "prefect.resource.id": related_node.node_id,
+                    "prefect.resource.role": "infrahub.related.node",
+                    "infrahub.node.kind": related_node.node_kind,
+                }
+            )
 
         return related
 
@@ -49,6 +75,7 @@ class NodeMutatedEvent(InfrahubEvent):
             "infrahub.node.kind": self.kind,
             "infrahub.node.id": self.node_id,
             "infrahub.node.action": self.action.value,
+            "infrahub.node.root_id": self.data.root_node_id,
         }
 
     def get_payload(self) -> dict[str, Any]:

@@ -33,5 +33,5 @@ class InfrahubEventService:
             event=event.get_name(),
             resource=event.get_resource(),
             related=event.get_related(),
-            payload=event.get_payload(),
+            payload=event.get_event_payload(),
         )

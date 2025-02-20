@@ -23,6 +23,10 @@ class ProfileSchema(Protocol): ...
 
 
 @runtime_checkable
+class TemplateSchema(Protocol): ...
+
+
+@runtime_checkable
 class Branch(Protocol): ...
 
 

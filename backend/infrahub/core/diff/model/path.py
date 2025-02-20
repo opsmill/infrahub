@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional
-from uuid import uuid4
 
 from infrahub.core.constants import (
     BranchSupportType,
@@ -171,6 +170,12 @@ class EnrichedDiffAttribute(BaseSummary):
         for prop in self.properties:
             prop.conflict = None
 
+    def get_property(self, property_type: DatabaseEdgeType) -> EnrichedDiffProperty:
+        for prop in self.properties:
+            if prop.property_type is property_type:
+                return prop
+        raise ValueError(f"No {property_type.value} property found")
+
     @classmethod
     def from_calculated_attribute(cls, calculated_attribute: DiffAttribute) -> EnrichedDiffAttribute:
         return EnrichedDiffAttribute(
@@ -252,6 +257,12 @@ class EnrichedDiffRelationship(BaseSummary):
     def clear_conflicts(self) -> None:
         for element in self.relationships:
             element.clear_conflicts()
+
+    def get_element(self, peer_id: str) -> EnrichedDiffSingleRelationship:
+        for element in self.relationships:
+            if element.peer_id == peer_id:
+                return element
+        raise ValueError(f"No relationship for {peer_id} found")
 
     @property
     def include_in_response(self) -> bool:
@@ -353,16 +364,11 @@ class EnrichedDiffNode(BaseSummary):
                 all_children |= n.get_all_child_nodes()
         return all_children
 
-    def get_trimmed_node(self, max_depth: int) -> EnrichedDiffNode:
-        trimmed = replace(self, relationships=set())
-        for rel in self.relationships:
-            trimmed_rel = replace(rel, nodes=set())
-            trimmed.relationships.add(trimmed_rel)
-            if max_depth == 0:
-                continue
-            for child_node in rel.nodes:
-                trimmed_rel.nodes.add(child_node.get_trimmed_node(max_depth=max_depth - 1))
-        return trimmed
+    def get_attribute(self, name: str) -> EnrichedDiffAttribute:
+        for attr in self.attributes:
+            if attr.name == name:
+                return attr
+        raise ValueError(f"No attribute {name} found")
 
     def get_relationship(self, name: str) -> EnrichedDiffRelationship:
         for rel in self.relationships:
@@ -404,7 +410,8 @@ class EnrichedDiffRootMetadata(BaseSummary):
     to_time: Timestamp
     uuid: str
     partner_uuid: str
-    tracking_id: TrackingId | None = field(default=None, kw_only=True)
+    tracking_id: TrackingId
+    exists_on_database: bool = field(default=False)
 
     def __hash__(self) -> int:
         return hash(self.uuid)
@@ -426,7 +433,7 @@ class EnrichedDiffRootMetadata(BaseSummary):
         if to_time and self.to_time != to_time:
             self.to_time = to_time
             is_changed = True
-        if self.tracking_id != tracking_id:
+        if self.tracking_id != tracking_id and tracking_id is not None:
             self.tracking_id = tracking_id
             is_changed = True
         return is_changed
@@ -475,7 +482,11 @@ class EnrichedDiffRoot(EnrichedDiffRootMetadata):
 
     @classmethod
     def from_calculated_diff(
-        cls, calculated_diff: DiffRoot, base_branch_name: str, partner_uuid: str
+        cls,
+        calculated_diff: DiffRoot,
+        base_branch_name: str,
+        partner_uuid: str,
+        tracking_id: TrackingId,
     ) -> EnrichedDiffRoot:
         return EnrichedDiffRoot(
             base_branch_name=base_branch_name,
@@ -484,6 +495,7 @@ class EnrichedDiffRoot(EnrichedDiffRootMetadata):
             to_time=calculated_diff.to_time,
             uuid=calculated_diff.uuid,
             partner_uuid=partner_uuid,
+            tracking_id=tracking_id,
             nodes={EnrichedDiffNode.from_calculated_node(calculated_node=n) for n in calculated_diff.nodes},
         )
 
@@ -563,14 +575,6 @@ class EnrichedDiffsMetadata:
         )
         return is_changed
 
-    def set_fresh_uuids(self) -> None:
-        base_uuid = str(uuid4())
-        branch_uuid = str(uuid4())
-        self.base_branch_diff.uuid = base_uuid
-        self.base_branch_diff.partner_uuid = branch_uuid
-        self.diff_branch_diff.uuid = branch_uuid
-        self.diff_branch_diff.partner_uuid = base_uuid
-
 
 @dataclass
 class EnrichedDiffs(EnrichedDiffsMetadata):
@@ -591,16 +595,18 @@ class EnrichedDiffs(EnrichedDiffsMetadata):
         )
 
     @classmethod
-    def from_calculated_diffs(cls, calculated_diffs: CalculatedDiffs) -> EnrichedDiffs:
+    def from_calculated_diffs(cls, calculated_diffs: CalculatedDiffs, tracking_id: TrackingId) -> EnrichedDiffs:
         base_branch_diff = EnrichedDiffRoot.from_calculated_diff(
             calculated_diff=calculated_diffs.base_branch_diff,
             base_branch_name=calculated_diffs.base_branch_name,
             partner_uuid=calculated_diffs.diff_branch_diff.uuid,
+            tracking_id=tracking_id,
         )
         diff_branch_diff = EnrichedDiffRoot.from_calculated_diff(
             calculated_diff=calculated_diffs.diff_branch_diff,
             base_branch_name=calculated_diffs.base_branch_name,
             partner_uuid=calculated_diffs.base_branch_diff.uuid,
+            tracking_id=tracking_id,
         )
         return EnrichedDiffs(
             base_branch_name=calculated_diffs.base_branch_name,
@@ -612,6 +618,14 @@ class EnrichedDiffs(EnrichedDiffsMetadata):
     @property
     def is_empty(self) -> bool:
         return len(self.base_branch_diff.nodes) == 0 and len(self.diff_branch_diff.nodes) == 0
+
+    @property
+    def base_node_uuids(self) -> set[str]:
+        return {n.uuid for n in self.base_branch_diff.nodes}
+
+    @property
+    def branch_node_uuids(self) -> set[str]:
+        return {n.uuid for n in self.diff_branch_diff.nodes}
 
 
 @dataclass

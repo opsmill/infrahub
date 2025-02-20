@@ -1,6 +1,6 @@
 # Contributing
 
-We develop Infrahub for customers and with the community. We are open to pull requests. You can also discuss your intentions via [![Discord](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)].
+We develop Infrahub for customers and with the community. We are open to pull requests. You can also discuss your intentions via [![Discord](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/opsmill)
 
 ## Contribute to Infrahub
 

@@ -1,8 +1,9 @@
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { currentBranchAtom } from "@/entities/branches/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { resolveConflict } from "@/entities/diff/api/resolveConflict";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
@@ -15,7 +16,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 
 export const Conflict = ({ conflict }: any) => {
-  const currentBranch = useAtomValue(currentBranchAtom);
+  const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
   const proposedChangesDetails = useAtomValue(proposedChangedState);
@@ -44,7 +45,10 @@ export const Conflict = ({ conflict }: any) => {
         },
       });
 
-      await graphqlClient.refetchQueries({ include: ["GET_PROPOSED_CHANGES_DIFF_TREE"] });
+      await queryClient.invalidateQueries({ queryKey: ["diff-tree"] });
+      await graphqlClient.refetchQueries({
+        include: ["TASK_DETAILS_CHECK"],
+      });
 
       const message = newValue ? "Conflict marked as resolved" : "Conflict marked as not resolved";
 
