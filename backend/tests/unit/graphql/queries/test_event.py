@@ -80,8 +80,8 @@ query MutatedNodes($id: [String!]) {
       node {
         id
         level
+        __typename
         ... on NodeMutatedEvent {
-          __typename
           branch
           event
           payload

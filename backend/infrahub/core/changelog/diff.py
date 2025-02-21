@@ -50,6 +50,15 @@ class DiffChangelogCollector:
     def get_node(self, node_id: str) -> NodeInDiff:
         return self._diff_nodes[node_id]
 
+    def get_peer_kind(self, peer_id: str, node_kind: str, relationship_name: str) -> str:
+        """If the peer kind doesn't exist in the diff use the peer kind from the schema"""
+        try:
+            return self.get_node(node_id=peer_id).kind
+        except KeyError:
+            schema = self._db.schema.get(node_kind, branch=self._branch, duplicate=False)
+            rel_schema = schema.get_relationship(name=relationship_name)
+            return rel_schema.peer
+
     def _process_node(self, node: EnrichedDiffNode) -> NodeChangelog:
         node_changelog = NodeChangelog(node_id=node.uuid, node_kind=node.kind, display_label=node.label)
         schema = self._db.schema.get(node_changelog.node_kind, branch=self._branch, duplicate=False)
@@ -64,8 +73,15 @@ class DiffChangelogCollector:
     def _process_node_attribute(
         self, node: NodeChangelog, attribute: EnrichedDiffAttribute, schema: MainSchemaTypes
     ) -> None:
-        schema_attribute = schema.get_attribute(name=attribute.name)
-        changelog_attribute = AttributeChangelog(name=attribute.name, kind=schema_attribute.kind)
+        try:
+            schema_attribute = schema.get_attribute(name=attribute.name)
+            attribute_kind = schema_attribute.kind
+        except ValueError:
+            # This would currently happen if there has been a schema migration as part of the merge
+            # then we don't have access to the attribute kind
+            attribute_kind = "n/a"
+
+        changelog_attribute = AttributeChangelog(name=attribute.name, kind=attribute_kind)
         for attr_property in attribute.properties:
             match attr_property.property_type:
                 case DatabaseEdgeType.HAS_VALUE:
@@ -117,10 +133,18 @@ class DiffChangelogCollector:
                     case DatabaseEdgeType.IS_RELATED:
                         if rel_prop.new_value:
                             changelog_rel.peer_id = rel_prop.new_value
-                            changelog_rel.peer_kind = self.get_node(node_id=rel_prop.new_value).kind
+                            changelog_rel.peer_kind = self.get_peer_kind(
+                                peer_id=rel_prop.new_value,
+                                node_kind=node.node_kind,
+                                relationship_name=relationship.name,
+                            )
                         if rel_prop.previous_value:
                             changelog_rel.peer_id_previous = rel_prop.previous_value
-                            changelog_rel.peer_kind_previous = self.get_node(node_id=rel_prop.previous_value).kind
+                            changelog_rel.peer_kind_previous = self.get_peer_kind(
+                                peer_id=rel_prop.previous_value,
+                                node_kind=node.node_kind,
+                                relationship_name=relationship.name,
+                            )
                     case DatabaseEdgeType.IS_PROTECTED:
                         changelog_rel.add_property(
                             name="is_protected",
@@ -161,7 +185,11 @@ class DiffChangelogCollector:
         changelog_rel = RelationshipCardinalityManyChangelog(name=relationship.name)
         for peer in relationship.relationships:
             peer_log = RelationshipPeerChangelog(
-                peer_id=peer.peer_id, peer_kind=self.get_node(node_id=peer.peer_id).kind, peer_status=peer.action
+                peer_id=peer.peer_id,
+                peer_kind=self.get_peer_kind(
+                    peer_id=peer.peer_id, node_kind=node.node_kind, relationship_name=relationship.name
+                ),
+                peer_status=peer.action,
             )
             for peer_prop in peer.properties:
                 match peer_prop.property_type:
