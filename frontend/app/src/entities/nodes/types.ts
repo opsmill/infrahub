@@ -1,12 +1,7 @@
+import { components } from "@/shared/api/rest/types.generated";
+
 // https://docs.infrahub.app/reference/schema/relationship/#kind
-export type RelationshipKind =
-  | "Generic"
-  | "Attribute"
-  | "Component"
-  | "Parent"
-  | "Group"
-  | "Hierarchy"
-  | "Profile";
+export type RelationshipKind = components["schemas"]["RelationshipKind"];
 
 export type NodeCore = {
   id: string;
