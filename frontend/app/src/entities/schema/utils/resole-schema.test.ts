@@ -1,9 +1,10 @@
-import { GenericSchema, NodeSchema, ProfileSchema } from "@/entities/schema/types";
+import { GenericSchema, NodeSchema, ProfileSchema, TemplateSchema } from "@/entities/schema/types";
 import { describe, expect, it } from "vitest";
 import {
   generateGenericSchema,
   generateNodeSchema,
   generateProfileSchema,
+  generateTemplateSchema,
 } from "../../../../tests/fake/schema";
 import { resolveSchema } from "./resolve-schema";
 
@@ -11,6 +12,7 @@ describe("resolveSchema", () => {
   const baseNodeSchema: NodeSchema = generateNodeSchema();
   const baseGenericSchema: GenericSchema = generateGenericSchema();
   const baseProfileSchema: ProfileSchema = generateProfileSchema();
+  const baseTemplateSchema: TemplateSchema = generateTemplateSchema();
 
   it("should return null schema when kind is null", () => {
     // GIVEN
@@ -18,6 +20,7 @@ describe("resolveSchema", () => {
       nodeSchemas: [baseNodeSchema],
       genericSchemas: [baseGenericSchema],
       profileSchemas: [baseProfileSchema],
+      templateSchemas: [baseTemplateSchema],
     };
 
     // WHEN
@@ -29,6 +32,7 @@ describe("resolveSchema", () => {
       isGeneric: false,
       isNode: false,
       isProfile: false,
+      isTemplate: false,
     });
   });
 
@@ -38,6 +42,7 @@ describe("resolveSchema", () => {
       nodeSchemas: [baseNodeSchema],
       genericSchemas: [baseGenericSchema],
       profileSchemas: [baseProfileSchema],
+      templateSchemas: [baseTemplateSchema],
     };
 
     // WHEN
@@ -49,6 +54,7 @@ describe("resolveSchema", () => {
       isGeneric: false,
       isNode: false,
       isProfile: false,
+      isTemplate: false,
     });
   });
 
@@ -62,6 +68,7 @@ describe("resolveSchema", () => {
       nodeSchemas: [nodeSchema],
       genericSchemas: [baseGenericSchema],
       profileSchemas: [baseProfileSchema],
+      templateSchemas: [baseTemplateSchema],
     };
 
     // WHEN
@@ -73,6 +80,7 @@ describe("resolveSchema", () => {
       isGeneric: false,
       isNode: true,
       isProfile: false,
+      isTemplate: false,
     });
   });
 
@@ -86,6 +94,7 @@ describe("resolveSchema", () => {
       nodeSchemas: [],
       genericSchemas: [genericSchema],
       profileSchemas: [baseProfileSchema],
+      templateSchemas: [baseTemplateSchema],
     };
 
     // WHEN
@@ -97,6 +106,7 @@ describe("resolveSchema", () => {
       isGeneric: true,
       isNode: false,
       isProfile: false,
+      isTemplate: false,
     });
   });
 
@@ -110,6 +120,7 @@ describe("resolveSchema", () => {
       nodeSchemas: [],
       genericSchemas: [],
       profileSchemas: [profileSchema],
+      templateSchemas: [baseTemplateSchema],
     };
 
     // WHEN
@@ -121,6 +132,33 @@ describe("resolveSchema", () => {
       isGeneric: false,
       isNode: false,
       isProfile: true,
+      isTemplate: false,
+    });
+  });
+
+  it("should return template schema when kind matches a template schema", () => {
+    // GIVEN
+    const templateSchema = {
+      ...baseTemplateSchema,
+      kind: "SpecificTemplate",
+    };
+    const schemas = {
+      nodeSchemas: [],
+      genericSchemas: [],
+      profileSchemas: [],
+      templateSchemas: [templateSchema],
+    };
+
+    // WHEN
+    const result = resolveSchema("SpecificTemplate", schemas);
+
+    // THEN
+    expect(result).toEqual({
+      schema: templateSchema,
+      isGeneric: false,
+      isNode: false,
+      isProfile: false,
+      isTemplate: true,
     });
   });
 
@@ -130,6 +168,7 @@ describe("resolveSchema", () => {
       nodeSchemas: [{ ...baseNodeSchema, kind: "ExistingNode" }],
       genericSchemas: [{ ...baseGenericSchema, kind: "ExistingGeneric" }],
       profileSchemas: [{ ...baseProfileSchema, kind: "ExistingProfile" }],
+      templateSchemas: [{ ...baseTemplateSchema, kind: "ExistingTemplate" }],
     };
 
     // WHEN
@@ -141,6 +180,7 @@ describe("resolveSchema", () => {
       isGeneric: false,
       isNode: false,
       isProfile: false,
+      isTemplate: false,
     });
   });
 });

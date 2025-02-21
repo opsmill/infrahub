@@ -1,10 +1,7 @@
 import { HierarchicalTree } from "@/entities/nodes/hierarchical-tree";
 import ObjectHeader from "@/entities/nodes/object-header";
-import {
-  genericSchemasAtom,
-  nodeSchemasAtom,
-  profileSchemasAtom,
-} from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
@@ -21,17 +18,15 @@ import { Outlet, useParams } from "react-router";
 const ObjectPageLayout = () => {
   const { objectKind, objectid } = useParams();
 
-  const nodes = useAtomValue(nodeSchemasAtom);
   const generics = useAtomValue(genericSchemasAtom);
-  const profiles = useAtomValue(profileSchemasAtom);
+  const { schema } = useSchema(objectKind);
   const state = useAtomValue(stateAtom);
-  const schema = [...nodes, ...generics, ...profiles].find(({ kind }) => kind === objectKind);
 
   if (!state.isReady) {
     return <InfrahubLoading>Loading config...</InfrahubLoading>;
   }
 
-  if (!schema) return <NoDataFound message="No schema found for this kind." />;
+  if (!schema) return <NoDataFound message={`No schema found for ${objectKind}`} />;
 
   const isHierarchicalModel = "hierarchical" in schema && schema.hierarchical;
   const inheritFormHierarchicalModel = "hierarchy" in schema && schema.hierarchy;
