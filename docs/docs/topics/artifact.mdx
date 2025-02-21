@@ -46,11 +46,11 @@ From an **artifact definition** artifact nodes are created, for each target whic
 
 ## CoreArtifactTarget
 
-Optionally, a Node can have a relation to an Artifact. The relation will be created when the Artifact is generated the first time. This has the benefit that querying the artifacts for a node becomes easier and that an extra artifacts tab will appear in the Node's detailed view in the UI.
+A node for which you want to generate an Artifact, must inherit from the `CoreArtifactTarget` generic.
+
+As a result of this, an Artifacts tab will show up in the node's detailed view in the UI, which allows you to access all of the artifacts that have been generated for this node.
 
 ![artifact tab](../media/topics/artifact/node_detail_view_artifact_tab.png)
-
-To achieve this we have to inherit from the **CoreArtifactTarget** Generic in the [schema](./schema.mdx) of the node.
 
 ```yaml
 nodes:
