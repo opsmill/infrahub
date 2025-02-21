@@ -30,6 +30,8 @@ export const StandardEvent = (props: EventNodeInterface) => {
 
           {STANDARD_EVENTS_MAPPING[event] &&
             STANDARD_EVENTS_MAPPING[event](related_nodes, primary_node?.id)}
+
+          {!STANDARD_EVENTS_MAPPING[event] && event}
         </div>
       </div>
     </>

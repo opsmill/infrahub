@@ -60,6 +60,8 @@ export const STANDARD_EVENTS_MAPPING: Record<
 export const StandardEvent = (props: EventNodeInterface) => {
   const { event, account_id, primary_node, related_nodes } = props;
 
+  console.log("event: ", event);
+
   return (
     <>
       <div className="flex items-center justify-between">
@@ -71,6 +73,8 @@ export const StandardEvent = (props: EventNodeInterface) => {
           <div className="text-gray-500">
             {STANDARD_EVENTS_MAPPING[event] &&
               STANDARD_EVENTS_MAPPING[event](related_nodes, primary_node?.id)}
+
+            {!STANDARD_EVENTS_MAPPING[event] && event}
           </div>
         </div>
       </div>
