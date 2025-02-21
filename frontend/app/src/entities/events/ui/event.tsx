@@ -1,7 +1,7 @@
 import { EventNodeInterface, NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { DateDisplay } from "@/shared/components/display/date-display";
 
-import { NodeLabel } from "@/entities/nodes/object/ui/display-label";
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { PropertyRow } from "@/entities/schema/ui/styled";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";

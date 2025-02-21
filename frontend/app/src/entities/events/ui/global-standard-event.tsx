@@ -1,4 +1,4 @@
-import { NodeLabel } from "@/entities/nodes/object/ui/display-label";
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { EventNodeInterface } from "@/shared/api/graphql/generated/graphql";
 import { Icon } from "@iconify-icon/react";
 import { STANDARD_EVENTS_MAPPING } from "./standard-event";

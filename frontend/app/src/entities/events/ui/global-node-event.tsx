@@ -1,5 +1,5 @@
 import { QSP } from "@/config/qsp";
-import { NodeLabel } from "@/entities/nodes/object/ui/display-label";
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
