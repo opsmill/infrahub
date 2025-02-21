@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: '1.0'
+
+nodes:
+  - name: Color
+    namespace: Testing
+    description: "A color"
+    icon: "jam:world"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+      - name: description
+        kind: Text
+        optional: false
+  - name: TShirt
+    namespace: Testing
+    description: "A color"
+    icon: "jam:world"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+      - name: description
+        kind: Text
+        optional: false
+        read_only: true
+        computed_attribute:
+          kind: Jinja2
+          jinja2_template: "A {{color__name__value }} {{ name__value}} t-shirt. {{ color__description__value }}"
+      - name: pitch
+        kind: Text
+        optional: true
+        read_only: true
+        computed_attribute:
+          kind: TransformPython
+          transform: TShirtPitch
+    relationships:
+      - name: color
+        optional: false
+        peer: TestingColor
+        cardinality: one

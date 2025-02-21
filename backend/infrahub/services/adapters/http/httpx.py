@@ -2,30 +2,37 @@ from __future__ import annotations
 
 import ssl
 from functools import cached_property
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import httpx
 
 from infrahub import config
 from infrahub.exceptions import HTTPServerError, HTTPServerSSLError, HTTPServerTimeoutError
+from infrahub.log import get_logger
 from infrahub.services.adapters.http import InfrahubHTTP
 
-if TYPE_CHECKING:
-    from infrahub.services import InfrahubServices
+log = get_logger()
 
 
 class HttpxAdapter(InfrahubHTTP):
-    settings: config.HTTPSettings
-    service: InfrahubServices
+    """The HttpxAdapter is a generic interface for InfrahubHTTP
 
-    async def initialize(self, service: InfrahubServices) -> None:
-        """Initialize the HTTP adapter"""
-        self.service = service
-        self.settings = config.SETTINGS.http
+    The class provides a way to send HTTP requests from Infrahub for example
+    when sending webhooks, telemetry data or when communicating with SSO
+    providers. The main purpose is to have a single location to manage
+    configuration and error handling with regards to HTTP traffic and
+    allow users to define configurations such as timeout, TLS options
+    and eventually proxy settings in one location."""
 
-        # Cache the context during init, this is to avoid issue when a CA bundle might be accessible
-        # when Infrahub initializes but then removed before the first external HTTP call is made.
-        _ = self.tls_context
+    _settings: config.HTTPSettings | None = None
+
+    @property
+    def settings(self) -> config.HTTPSettings:
+        if self._settings:
+            return self._settings
+
+        self._settings = config.SETTINGS.http
+        return self._settings
 
     @cached_property
     def tls_context(self) -> ssl.SSLContext:
@@ -62,16 +69,16 @@ class HttpxAdapter(InfrahubHTTP):
                     **params,
                 )
             except ssl.SSLCertVerificationError as exc:
-                self.service.log.info(f"TLS verification failed for connection to {url}")
+                log.info(f"TLS verification failed for connection to {url}")
                 raise HTTPServerSSLError(message=f"Unable to validate TLS certificate for connection to {url}") from exc
             except httpx.ReadTimeout as exc:
-                self.service.log.info(f"Connection timed out when trying to reach {url}")
+                log.info(f"Connection timed out when trying to reach {url}")
                 raise HTTPServerTimeoutError(
                     message=f"Connection to {url} timed out after {self.settings.timeout}"
                 ) from exc
             except httpx.RequestError as exc:
                 # Catch all error from httpx
-                self.service.log.warning(f"Unhandled HTTP error for {url} ({exc})")
+                log.warning(f"Unhandled HTTP error for {url} ({exc})")
                 raise HTTPServerError(message=f"Unknown http error when connecting to {url}") from exc
 
         return response

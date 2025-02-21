@@ -2,13 +2,13 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/localStorage";
 import { AuthProvider } from "../../../src/entities/authentication/ui/useAuth";
 import { ArtifactsDiff } from "../../../src/entities/diff/artifact-diff/artifacts-diff";
 import { proposedChangedState } from "../../../src/entities/proposed-changes/stores/proposedChanges.atom";
-import { withSchemaContext } from "../../../src/entities/schema/decorators/withSchemaContext";
-import { schemaState } from "../../../src/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "../../../src/entities/schema/stores/schema.atom";
+import { withSchemaContext } from "../../../src/entities/schema/ui/decorators/withSchemaContext";
 import { encodeJwt } from "../../../src/shared/utils/common";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
@@ -66,7 +66,7 @@ const ArtifactsDiffProvider = ({ loggedIn }: { loggedIn: boolean }) => {
   return (
     <TestProvider
       initialValues={[
-        [schemaState, [...artifactThreadSchema, ...accountDetailsMocksSchema]],
+        [nodeSchemasAtom, [...artifactThreadSchema, ...accountDetailsMocksSchema]],
         [proposedChangedState, proposedChangesDetails],
       ]}
     >

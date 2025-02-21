@@ -39,6 +39,7 @@ const GraphqlSandboxPage = () => {
 
   return (
     <GraphiQL
+      className="rounded-lg border"
       defaultEditorToolsVisibility
       query={query ?? undefined}
       plugins={[explorerPlugin({ showAttribution: false })]}

@@ -36,11 +36,11 @@ class DiffUpdateMutation(Mutation):
     @retry_db_transaction(name="diff_update")
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: DiffUpdateInput,
     ) -> dict[str, bool]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         from_timestamp_str = DateTime.serialize(data.from_time) if data.from_time else None
         to_timestamp_str = DateTime.serialize(data.to_time) if data.to_time else None
@@ -48,9 +48,11 @@ class DiffUpdateMutation(Mutation):
             raise ValidationError("diff with specified time range requires a name")
 
         component_registry = get_component_registry()
-        base_branch = await registry.get_branch(db=context.db, branch=registry.default_branch)
-        diff_branch = await registry.get_branch(db=context.db, branch=data.branch)
-        diff_repository = await component_registry.get_component(DiffRepository, db=context.db, branch=diff_branch)
+        base_branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
+        diff_branch = await registry.get_branch(db=graphql_context.db, branch=data.branch)
+        diff_repository = await component_registry.get_component(
+            DiffRepository, db=graphql_context.db, branch=diff_branch
+        )
 
         tracking_id = NameTrackingId(name=data.name)
         existing_diffs_metatdatas = await diff_repository.get_roots_metadata(
@@ -70,7 +72,7 @@ class DiffUpdateMutation(Mutation):
 
         if data.wait_for_completion is True:
             diff_coordinator = await component_registry.get_component(
-                DiffCoordinator, db=context.db, branch=diff_branch
+                DiffCoordinator, db=graphql_context.db, branch=diff_branch
             )
             await diff_coordinator.run_update(
                 base_branch=base_branch,
@@ -88,7 +90,9 @@ class DiffUpdateMutation(Mutation):
             from_time=from_timestamp_str,
             to_time=to_timestamp_str,
         )
-        if context.service:
-            await context.service.workflow.submit_workflow(workflow=DIFF_UPDATE, parameters={"model": model})
+        if graphql_context.service:
+            await graphql_context.service.workflow.submit_workflow(
+                workflow=DIFF_UPDATE, context=graphql_context.get_context(), parameters={"model": model}
+            )
 
         return {"ok": True}

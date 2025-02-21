@@ -1,8 +1,9 @@
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import { useObjectItems } from "@/entities/nodes/hooks/useObjectItems";
 import { getPermission } from "@/entities/permission/utils";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import Content from "@/shared/components/layout/content";
 import { ObjectDetailsButton } from "@/shared/components/menu/object-details-button";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
@@ -10,7 +11,7 @@ import { Skeleton } from "@/shared/components/skeleton";
 import useFilters from "@/shared/hooks/useFilters";
 
 type ObjectHeaderProps = {
-  schema: IModelSchema;
+  schema: ModelSchema;
   objectId?: string;
 };
 
@@ -79,7 +80,10 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
       title={title}
       description={objectDetailsData?.description?.value ?? schema.description}
       isReloadLoading={loading}
-      reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
+      reload={() => {
+        graphqlClient.refetchQueries({ include: [schema.kind!] });
+        queryClient.invalidateQueries({ queryKey: ["events", [objectId]] });
+      }}
       end={
         objectDetailsData?.hfid &&
         objectId && (

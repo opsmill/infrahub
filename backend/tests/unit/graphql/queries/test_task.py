@@ -7,7 +7,6 @@ from infrahub_sdk.graphql import Query
 from prefect.artifacts import ArtifactRequest
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.states import State
-from prefect.testing.utilities import prefect_test_harness
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -87,12 +86,6 @@ query TaskQuery(
 
 
 @pytest.fixture
-def local_prefect_server():
-    with prefect_test_harness():
-        yield
-
-
-@pytest.fixture
 async def tag_blue(db: InfrahubDatabase, default_branch: Branch) -> Node:
     blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await blue.new(db=db, name="Blue", description="The Blue tag")
@@ -125,7 +118,7 @@ async def account_bill(db: InfrahubDatabase, default_branch: Branch) -> Node:
 
 
 @pytest.fixture
-async def prefect_client(local_prefect_server):
+async def prefect_client(prefect_test_fixture):
     async with get_client(sync_client=False) as client:
         yield client
 
@@ -479,6 +472,7 @@ async def test_task_query_filter_node(
     tag_red,
     account_bob,
     account_bill,
+    delete_flow_runs,
     flow_runs_data,
 ):
     result = await run_query(
@@ -585,6 +579,7 @@ async def test_task_query_both(
     register_core_models_schema: None,
     tag_blue,
     account_bob,
+    delete_flow_runs,
     flow_runs_data,
 ):
     result = await run_query(
@@ -615,6 +610,7 @@ async def test_task_branch_status(
     register_core_models_schema: None,
     tag_blue,
     account_bob,
+    delete_flow_runs,
     flow_runs_data,
 ):
     QUERY = """
@@ -713,6 +709,7 @@ async def test_task_no_count(
     register_core_models_schema: None,
     tag_blue,
     account_bob,
+    delete_flow_runs,
     flow_runs_data,
 ):
     QUERY = """
@@ -755,6 +752,7 @@ async def test_task_only_count(
     register_core_models_schema: None,
     tag_blue,
     account_bob,
+    delete_flow_runs,
     flow_runs_data,
 ):
     QUERY = """

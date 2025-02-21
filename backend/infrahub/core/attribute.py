@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from infrahub import config
 from infrahub.core import registry
+from infrahub.core.changelog.models import AttributeChangelog
 from infrahub.core.constants import NULL_VALUE, AttributeDBNodeType, BranchSupportType, RelationshipStatus
 from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
 from infrahub.core.query.attribute import (
@@ -36,8 +37,6 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
-
-# pylint: disable=redefined-builtin,c-extension-no-member,too-many-lines,too-many-public-methods
 
 
 # Use a more user-friendly threshold than Neo4j one (8167 bytes).
@@ -81,7 +80,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     _rel_to_node_label: str = RELATIONSHIP_TO_NODE_LABEL
     _rel_to_value_label: str = RELATIONSHIP_TO_VALUE_LABEL
 
-    def __init__(  # pylint: disable=too-many-branches
+    def __init__(
         self,
         name: str,
         schema: AttributeSchema,
@@ -218,7 +217,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         value_to_check = value
         if schema.enum and isinstance(value, Enum):
             value_to_check = value.value
-        if not isinstance(value_to_check, cls.type):  # pylint: disable=isinstance-second-argument-not-valid-type
+        if not isinstance(value_to_check, cls.type):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
     @classmethod
@@ -267,7 +266,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     @classmethod
     def deserialize_from_string(cls, value_as_string: str) -> Any:
         """Return a value corresponding to the attribute type given it formatted as a string."""
-        return cls.type(value_as_string)  # pylint: disable=not-callable
+        return cls.type(value_as_string)
 
     def to_db(self) -> dict[str, Any]:
         """Return the properties of the AttributeValue node in Dict format."""
@@ -318,19 +317,19 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         """Deserialize the value coming from the database."""
         return data.value
 
-    async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
+    async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> AttributeChangelog | None:
         """Create or Update the Attribute in the database."""
 
         save_at = Timestamp(at)
 
         if not self.id or self.is_from_profile:
-            return False
+            return None
 
         return await self._update(at=save_at, db=db)
 
-    async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
+    async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> AttributeChangelog | None:
         if not self.db_id:
-            return False
+            return None
 
         delete_at = Timestamp(at)
 
@@ -339,7 +338,14 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         results = query.get_results()
 
         if not results:
-            return False
+            return None
+
+        changelog = AttributeChangelog(
+            name=self.name,
+            value=None,
+            value_previous=None,
+            kind=self.schema.kind,
+        )
 
         properties_to_delete = []
         branch = self.get_branch_based_on_support_type()
@@ -347,6 +353,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         # Check all the relationship and update the one that are in the same branch
         rel_ids_to_update = set()
         for result in results:
+            if result.get_rel("r2").type == "HAS_VALUE":
+                changelog.value_previous = result.get_node("ap").get("value")
             properties_to_delete.append((result.get_rel("r2").type, result.get_node("ap").element_id))
 
             await add_relationship(
@@ -378,9 +386,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             db=db,
         )
 
-        return True
+        return changelog
 
-    async def _update(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
+    async def _update(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> AttributeChangelog | None:
         """Update the attribute in the database.
 
         Get the current value
@@ -420,6 +428,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         branch = self.get_branch_based_on_support_type()
 
+        changelog = AttributeChangelog(
+            name=self.name,
+            value=self.to_db().get("value"),
+            value_previous=current_attr_data.value,
+            kind=self.schema.kind,
+        )
+
         # ---------- Update the Value ----------
         if current_attr_data.content != self.to_db():
             # Create the new AttributeValue and update the existing relationship
@@ -439,6 +454,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         for flag_name, _, rel_name in SUPPORTED_FLAGS:
             if current_attr_data.flag_properties[flag_name] != getattr(self, flag_name):
+                changelog.add_property(
+                    name=flag_name,
+                    value_current=getattr(self, flag_name),
+                    value_previous=current_attr_data.flag_properties[flag_name],
+                )
                 query = await AttributeUpdateFlagQuery.init(db=db, attr=self, at=update_at, flag_name=flag_name)
                 await query.execute(db=db)
 
@@ -452,6 +472,16 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 prop_name in current_attr_data.node_properties
                 and current_attr_data.node_properties[prop_name].uuid == getattr(self, f"{prop_name}_id")
             ):
+                previous_attribute_node_property = current_attr_data.node_properties.get(prop_name)
+                previous_value = None
+                if previous_attribute_node_property:
+                    previous_value = previous_attribute_node_property.uuid
+
+                changelog.add_property(
+                    name=prop_name,
+                    value_current=getattr(self, f"{prop_name}_id"),
+                    value_previous=previous_value,
+                )
                 query = await AttributeUpdateNodePropertyQuery.init(
                     db=db, attr=self, at=update_at, prop_name=prop_name, prop_id=getattr(self, f"{prop_name}_id")
                 )
@@ -461,7 +491,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 if rel and rel.get("branch") == branch.name:
                     await update_relationships_to([rel.element_id], to=update_at, db=db)
 
-        return True
+        if changelog.has_updates:
+            return changelog
 
     async def to_graphql(
         self,
@@ -473,7 +504,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         include_properties: bool = True,
     ) -> dict:
         """Generate GraphQL Payload for this attribute."""
-        # pylint: disable=too-many-branches
 
         response: dict[str, Any] = {"id": self.id}
 
@@ -530,11 +560,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                     field = field.value
             if isinstance(field, str):
                 response[field_name] = self._filter_sensitive(value=field, filter_sensitive=filter_sensitive)
-            elif isinstance(field, (int, bool, dict, list)):
+            elif isinstance(field, int | bool | dict | list):
                 response[field_name] = field
 
-            if related_node_ids and self.is_from_profile and getattr(self, "source_id"):
-                related_node_ids.add(getattr(self, "source_id"))
+            if related_node_ids and self.is_from_profile and self.source_id:
+                related_node_ids.add(self.source_id)
 
         return response
 
@@ -592,7 +622,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return AttributeDBNodeType.DEFAULT
 
     def get_create_data(self) -> AttributeCreateData:
-        # pylint: disable=no-member
         branch = self.branch
         hierarchy_level = branch.hierarchy_level
         if self.schema.branch == BranchSupportType.AGNOSTIC:
@@ -1162,7 +1191,7 @@ class ListAttribute(BaseAttribute):
 
     def deserialize_value(self, data: AttributeFromDB) -> Any:
         """Deserialize the value (potentially) coming from the database."""
-        if isinstance(data.value, (str, bytes)):
+        if isinstance(data.value, str | bytes):
             return ujson.loads(data.value)
         return data.value
 
@@ -1198,7 +1227,7 @@ class JSONAttribute(BaseAttribute):
 
     def deserialize_value(self, data: AttributeFromDB) -> Any:
         """Deserialize the value (potentially) coming from the database."""
-        if data.value and isinstance(data.value, (str, bytes)):
+        if data.value and isinstance(data.value, str | bytes):
             return ujson.loads(data.value)
         return data.value
 

@@ -2,7 +2,7 @@ import { getValidatorDetails } from "@/entities/diff/api/getValidatorDetails";
 import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Pagination } from "@/shared/components/ui/pagination";
 import usePagination from "@/shared/hooks/usePagination";
 import { gql } from "@apollo/client";
@@ -35,7 +35,7 @@ export const ValidatorDetails = ({ id }: tValidatorDetails) => {
   const { loading, error, data } = useQuery(query);
 
   if (loading) {
-    return <LoadingScreen hideText />;
+    return <LoadingIndicator className="p-4" />;
   }
 
   if (error) {

@@ -28,7 +28,7 @@ async def connectivity(message: messages.GitRepositoryConnectivity, service: Inf
         response = GitRepositoryConnectivityResponse(
             data=response_data,
         )
-        await service.reply(message=response, initiator=message)
+        await service.message_bus.reply_if_initiator_meta(message=response, initiator=message)
 
 
 @flow(name="refresh-git-fetch", flow_run_name="Fetch git repository {message.repository_name} on " + WORKER_IDENTITY)

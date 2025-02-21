@@ -945,4 +945,4 @@ async def test_diff_get_filters(
     )
 
     assert result.errors is None
-    assert set([node["label"] for node in result.data["DiffTree"]["nodes"]]) == set(labels)
+    assert {node["label"] for node in result.data["DiffTree"]["nodes"]} == set(labels)

@@ -25,7 +25,7 @@ class EnrichedDiffRootsUpsertQuery(Query):
         super().__init__(**kwargs)
         self.enriched_diffs = enriched_diffs
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = self._build_diff_root_params(enriched_diffs=self.enriched_diffs)
         query = """
 UNWIND $diff_root_list AS diff_root_map
@@ -77,7 +77,7 @@ class EnrichedNodeBatchCreateQuery(Query):
         super().__init__(**kwargs)
         self.node_create_batch = node_create_batch
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = self._build_node_batch_params()
         query = """
 UNWIND $node_details_list AS node_details
@@ -413,7 +413,7 @@ class EnrichedNodesLinkQuery(Query):
         super().__init__(**kwargs)
         self.enriched_diffs = enriched_diffs
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         parent_links_list = []
         for diff_root in (self.enriched_diffs.base_branch_diff, self.enriched_diffs.diff_branch_diff):
             for node in diff_root.nodes:

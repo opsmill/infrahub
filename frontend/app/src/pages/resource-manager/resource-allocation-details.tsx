@@ -11,7 +11,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Card } from "@/shared/components/ui/card";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { Icon } from "@iconify-icon/react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 
 const ResourceAllocationDetailsPage = () => {
   const { resourcePoolId, resourceId } = useParams();

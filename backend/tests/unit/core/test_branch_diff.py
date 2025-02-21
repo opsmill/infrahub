@@ -17,9 +17,8 @@ from infrahub.core.schema import AttributeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.git.models import GitDiffNamesOnly, GitDiffNamesOnlyResponse
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from tests.helpers.utils import init_global_service
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
@@ -124,17 +123,16 @@ async def test_diff_get_files_repository(db: InfrahubDatabase, repos_in_main, ba
         )
         return model
 
-    service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
     with (
         patch(
             "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
             side_effect=execute_workflow_side_effect,
         ),
-        init_global_service(service),
     ):
         branch2 = await create_branch(branch_name="branch2", db=db)
 
-        diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
+        diff = await BranchDiffer.init(branch=branch2, db=db, service=service)
 
         resp = await diff.get_files_repository(
             branch_name=branch2.name,
@@ -167,13 +165,12 @@ async def test_diff_get_files_repositories_for_branch_case01(
         )
         return model
 
-    service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
+    service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
     with (
         patch(
             "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
             side_effect=execute_workflow_side_effect,
         ),
-        init_global_service(service),
     ):
         branch2 = await create_branch(branch_name="branch2", db=db)
 
@@ -184,7 +181,7 @@ async def test_diff_get_files_repositories_for_branch_case01(
         repo01.commit.value = "dddddddddd"
         await repo01.save(db=db)
 
-        diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
+        diff = await BranchDiffer.init(branch=branch2, db=db, service=service)
 
         resp = await diff.get_files_repositories_for_branch(branch=branch2)
 
@@ -218,31 +215,31 @@ async def test_diff_get_files_repositories_for_branch_case02(
             )
         raise ValueError(f"Should not reach here: {model}")
 
-    service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
-    with init_global_service(service):
-        branch2 = await create_branch(branch_name="branch2", db=db)
+    service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
 
-        repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
-        repos = {repo.name.value: repo for repo in repos_list}
+    branch2 = await create_branch(branch_name="branch2", db=db)
 
-        repo01 = repos["repo01"]
-        repo01.commit.value = "dddddddddd"
-        await repo01.save(db=db)
+    repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
+    repos = {repo.name.value: repo for repo in repos_list}
 
-        repo02 = repos["repo02"]
-        repo02.commit.value = "eeeeeeeeee"
-        await repo02.save(db=db)
+    repo01 = repos["repo01"]
+    repo01.commit.value = "dddddddddd"
+    await repo01.save(db=db)
 
-        diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
-        with patch(
-            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
-            side_effect=execute_workflow_side_effect,
-        ):
-            resp = await diff.get_files_repositories_for_branch(branch=branch2)
+    repo02 = repos["repo02"]
+    repo02.commit.value = "eeeeeeeeee"
+    await repo02.save(db=db)
 
-        assert len(resp) == 3
-        assert isinstance(resp, list)
-        assert sorted([fde.location for fde in resp]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
+    diff = await BranchDiffer.init(branch=branch2, db=db, service=service)
+    with patch(
+        "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
+        side_effect=execute_workflow_side_effect,
+    ):
+        resp = await diff.get_files_repositories_for_branch(branch=branch2)
+
+    assert len(resp) == 3
+    assert isinstance(resp, list)
+    assert sorted([fde.location for fde in resp]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
 
 
 async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repos_in_main):
@@ -266,32 +263,32 @@ async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repo
             )
         raise ValueError(f"Should not reach here: {model}")
 
-    service = InfrahubServices(database=db, workflow=WorkflowLocalExecution())
-    with init_global_service(service):
-        branch2 = await create_branch(branch_name="branch2", db=db)
+    service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
 
-        repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
-        repos = {repo.name.value: repo for repo in repos_list}
+    branch2 = await create_branch(branch_name="branch2", db=db)
 
-        repo01 = repos["repo01"]
-        repo01.commit.value = "dddddddddd"
-        await repo01.save(db=db)
+    repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
+    repos = {repo.name.value: repo for repo in repos_list}
 
-        repo02 = repos["repo02"]
-        repo02.commit.value = "eeeeeeeeee"
-        await repo02.save(db=db)
+    repo01 = repos["repo01"]
+    repo01.commit.value = "dddddddddd"
+    await repo01.save(db=db)
 
-        diff = await BranchDiffer.init(branch=branch2, db=db, service=services.service)
-        with patch(
-            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
-            side_effect=execute_workflow_side_effect,
-        ):
-            resp = await diff.get_files()
+    repo02 = repos["repo02"]
+    repo02.commit.value = "eeeeeeeeee"
+    await repo02.save(db=db)
 
-        assert len(resp) == 2
-        assert "branch2" in resp
-        assert isinstance(resp["branch2"], list)
-        assert sorted([fde.location for fde in resp["branch2"]]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
+    diff = await BranchDiffer.init(branch=branch2, db=db, service=service)
+    with patch(
+        "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow",
+        side_effect=execute_workflow_side_effect,
+    ):
+        resp = await diff.get_files()
+
+    assert len(resp) == 2
+    assert "branch2" in resp
+    assert isinstance(resp["branch2"], list)
+    assert sorted([fde.location for fde in resp["branch2"]]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
 
 
 @pytest.mark.skip(reason="Update for new diff logic")
@@ -1064,7 +1061,7 @@ async def test_diff_schema_changes(
     diff = BranchDiffer(db=db, branch=branch2)
     summary = await diff.get_schema_summary()
     assert list(summary.keys()) == ["branch2", "main"]
-    assert set([element.kind for elements in summary.values() for element in elements]) == {
+    assert {element.kind for elements in summary.values() for element in elements} == {
         "SchemaNode",
         "SchemaAttribute",
         "SchemaRelationship",

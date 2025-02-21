@@ -15,41 +15,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 ## Messages events
 <!-- markdownlint-disable MD012 -->
 <!-- vale off -->
-### Check Artifact
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event check.artifact.create
-<!-- vale on -->
-
-**Description**: Runs a check to verify the creation of an artifact.
-
-**Priority**: 2
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **artifact_name** | Name of the artifact | string | None |
-| **artifact_definition** | The the ID of the artifact definition | string | None |
-| **commit** | The commit to target | string | None |
-| **content_type** | Content type of the artifact | string | None |
-| **transform_type** | The type of transform associated with this artifact | string | None |
-| **transform_location** | The transforms location within the repository | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **repository_kind** | The kind of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **target_id** | The ID of the target object for this artifact | string | None |
-| **target_name** | Name of the artifact target | string | None |
-| **artifact_id** | The id of the artifact if it previously existed | N/A | None |
-| **query** | The name of the query to use when collecting data | string | None |
-| **timeout** | Timeout for requests used to generate this artifact | integer | None |
-| **variables** | Input variables when generating the artifact | object | None |
-| **validator_id** | The ID of the validator | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
 ### Check Generator
 <!-- vale on -->
 
@@ -207,6 +172,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 | **source_branch** | The source branch | string | None |
 | **target_branch** | The target branch | string | None |
+| **context** | The context of the event | N/A | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event event.branch.rebased
@@ -410,30 +376,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 
 
 <!-- vale off -->
-### Request Artifact Definition
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.artifact_definition.check
-<!-- vale on -->
-
-**Description**: Sent to validate the generation of artifacts in relation to a proposed change.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **artifact_definition** | The Artifact Definition | N/A | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The target branch | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
 ### Request Generator Definition
 <!-- vale on -->
 
@@ -478,6 +420,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **destination_branch** | The destination branch of the proposed change | string | None |
 | **check_type** | Can be used to restrict the pipeline to a specific type of job | N/A | all |
+| **context** | The context of the task | N/A | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event request.proposed_change.refresh_artifacts
@@ -566,42 +509,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 ## Responses events
 
 <!-- vale off -->
-### Check Artifact
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event check.artifact.create
-<!-- vale on -->
-
-**Description**: Runs a check to verify the creation of an artifact.
-
-**Priority**: 2
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **artifact_name** | Name of the artifact | string | None |
-| **artifact_definition** | The the ID of the artifact definition | string | None |
-| **commit** | The commit to target | string | None |
-| **content_type** | Content type of the artifact | string | None |
-| **transform_type** | The type of transform associated with this artifact | string | None |
-| **transform_location** | The transforms location within the repository | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **repository_kind** | The kind of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **target_id** | The ID of the target object for this artifact | string | None |
-| **target_name** | Name of the artifact target | string | None |
-| **artifact_id** | The id of the artifact if it previously existed | N/A | None |
-| **query** | The name of the query to use when collecting data | string | None |
-| **timeout** | Timeout for requests used to generate this artifact | integer | None |
-| **variables** | Input variables when generating the artifact | object | None |
-| **validator_id** | The ID of the validator | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
 ### Check Generator
 <!-- vale on -->
 
@@ -766,6 +673,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta** | Meta properties for the message | N/A | None |
 | **source_branch** | The source branch | string | None |
 | **target_branch** | The target branch | string | None |
+| **context** | The context of the event | N/A | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event event.branch.rebased
@@ -979,31 +887,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 
 
 <!-- vale off -->
-### Request Artifact Definition
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.artifact_definition.check
-<!-- vale on -->
-
-**Description**: Sent to validate the generation of artifacts in relation to a proposed change.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **artifact_definition** | The Artifact Definition | N/A | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **source_branch** | The source branch | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **destination_branch** | The target branch | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
 ### Request Generator Definition
 <!-- vale on -->
 
@@ -1050,6 +933,7 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **destination_branch** | The destination branch of the proposed change | string | None |
 | **check_type** | Can be used to restrict the pipeline to a specific type of job | N/A | all |
+| **context** | The context of the task | N/A | None |
 <!-- vale on -->
 <!-- vale off -->
 #### Event request.proposed_change.refresh_artifacts

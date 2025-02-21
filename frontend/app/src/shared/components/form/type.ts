@@ -1,9 +1,12 @@
-import { SchemaAttributeType } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import {
+  AttributeKind,
+  AttributeSchema,
+  ModelSchema,
+  RelationshipSchema,
+} from "@/entities/schema/types";
 import { DropdownOption } from "@/shared/components/inputs/dropdown";
-import { SelectOption } from "@/shared/components/inputs/select";
+import { SelectOption } from "@/shared/components/inputs/select-old";
 import { FormField } from "@/shared/components/ui/form";
 import { ComponentProps } from "react";
 
@@ -99,7 +102,7 @@ export type FormFieldProps = {
 };
 
 export type DynamicInputFieldProps = FormFieldProps & {
-  type: Exclude<SchemaAttributeType, "Dropdown">;
+  type: Exclude<AttributeKind, "Dropdown">;
 };
 
 export type DynamicNumberFieldProps = FormFieldProps & {
@@ -111,15 +114,21 @@ export type DynamicDropdownFieldProps = FormFieldProps & {
   type: "Dropdown";
   items: Array<DropdownOption>;
   field?: AttributeSchema;
-  schema?: IModelSchema;
+  schema?: ModelSchema;
 };
 
 export type DynamicEnumFieldProps = FormFieldProps & {
   type: "enum";
   items: Array<unknown>;
   field?: AttributeSchema;
-  schema?: IModelSchema;
+  schema?: ModelSchema;
 };
+
+export type DynamicAttributeFieldProps =
+  | DynamicInputFieldProps
+  | DynamicNumberFieldProps
+  | DynamicDropdownFieldProps
+  | DynamicEnumFieldProps;
 
 export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue"> & {
   type: "relationship";
@@ -128,16 +137,11 @@ export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue">
   parent?: string;
   options?: SelectOption[];
   relationship: RelationshipSchema;
-  schema: IModelSchema;
+  schema: ModelSchema;
   peerField?: string;
 };
 
-export type DynamicFieldProps =
-  | DynamicInputFieldProps
-  | DynamicNumberFieldProps
-  | DynamicDropdownFieldProps
-  | DynamicEnumFieldProps
-  | DynamicRelationshipFieldProps;
+export type DynamicFieldProps = DynamicAttributeFieldProps | DynamicRelationshipFieldProps;
 
 export const isFormFieldValueFromPool = (
   fieldData: FormFieldValue

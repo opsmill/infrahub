@@ -26,7 +26,7 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         self.db = db
         self.branch = branch
 
-    async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes) -> None:
+    async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes) -> None:  # noqa: ARG002
         branch = await registry.get_branch(db=self.db) if not self.branch else self.branch
 
         # NOTE adding resolve here because we need to retrieve the real ID

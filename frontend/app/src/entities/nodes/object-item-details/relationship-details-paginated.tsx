@@ -7,7 +7,7 @@ import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { getPermission } from "@/entities/permission/utils";
-import { schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -17,6 +17,7 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link as StyledLink } from "@/shared/components/ui/link";
@@ -27,9 +28,8 @@ import { EyeSlashIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue } from "jotai";
 import { Fragment, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
-import LoadingScreen from "../../../shared/components/loading-screen";
 import { getObjectPermissionsQuery } from "../../permission/queries/getObjectPermissions";
 import { ObjectAttributeRow } from "./object-attribute-row";
 
@@ -57,7 +57,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const { objectKind, objectid } = useParams();
 
-  const schemaList = useAtomValue(schemaState);
+  const schemaList = useAtomValue(nodeSchemasAtom);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
@@ -97,7 +97,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   }
 
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="h-12" />;
   }
 
   if (relationshipsData && relationshipsData?.properties?.is_visible === false) {

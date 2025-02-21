@@ -1,4 +1,4 @@
-import { NUMBER_POOL_OBJECT, SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
+import { NUMBER_POOL_OBJECT } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
@@ -7,8 +7,9 @@ import {
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
   NUMBER_POOL_NODE_FIELD,
 } from "@/entities/resource-manager/constants";
-import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema } from "@/entities/schema/types";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { AttributeSchema, NodeSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
@@ -146,22 +147,20 @@ export const NumberPoolForm = ({
 };
 
 const NodeAttributesSelects = () => {
-  const nodes = useAtomValue(schemaState);
+  const nodes = useAtomValue(nodeSchemasAtom);
 
   const form = useFormContext();
   const selectedNodeField: FormAttributeValue = form.watch(NUMBER_POOL_NODE_FIELD);
   const selectedNode = nodes.find((node) => node.kind === selectedNodeField?.value);
 
-  const nodesWithNumberAttributes: Array<iNodeSchema> = nodes.filter((node) =>
+  const nodesWithNumberAttributes: Array<NodeSchema> = nodes.filter((node) =>
     node.attributes?.some(
-      (attribute) => attribute.kind === SCHEMA_ATTRIBUTE_KIND.NUMBER && !attribute.read_only
+      (attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER && !attribute.read_only
     )
   );
 
   const numberAttributeOptions: Array<AttributeSchema> =
-    selectedNode?.attributes?.filter(
-      (attribute) => attribute.kind === SCHEMA_ATTRIBUTE_KIND.NUMBER
-    ) ?? [];
+    selectedNode?.attributes?.filter((attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER) ?? [];
 
   useEffect(() => {
     if (numberAttributeOptions.length === 1) {

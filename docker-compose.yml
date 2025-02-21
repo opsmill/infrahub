@@ -174,8 +174,8 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${TASK_MANAGER_DOCKER_IMAGE:-prefecthq/prefect:3.0.11-python3.12}"
-    command: prefect server start --host 0.0.0.0 --ui
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.1.4}"
+    command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
       task-manager-db:

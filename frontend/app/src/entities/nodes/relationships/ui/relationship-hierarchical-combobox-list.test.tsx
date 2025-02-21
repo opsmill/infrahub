@@ -1,7 +1,7 @@
 import { getRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { RelationshipHierarchicalComboboxList } from "@/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list";
-import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { store } from "@/shared/stores";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "../../../../../tests/components/render";
@@ -69,8 +69,8 @@ describe("RelationshipHierarchicalComboboxList", () => {
   ];
 
   beforeEach(() => {
-    store.set(genericsState, [hierarchyGenericSchema]);
-    store.set(schemaState, [rootSchema, parentSchema, childSchema]);
+    store.set(genericSchemasAtom, [hierarchyGenericSchema]);
+    store.set(nodeSchemasAtom, [rootSchema, parentSchema, childSchema]);
     vi.mocked(getRelationships).mockResolvedValue([]);
   });
 

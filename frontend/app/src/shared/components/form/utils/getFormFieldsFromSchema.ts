@@ -1,29 +1,15 @@
-import { SCHEMA_ATTRIBUTE_KIND } from "@/config/constants";
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
-import { SchemaAttributeType } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { ProfileData } from "@/shared/components/form/object-form";
-import {
-  DynamicDropdownFieldProps,
-  DynamicEnumFieldProps,
-  DynamicFieldProps,
-  DynamicInputFieldProps,
-  DynamicNumberFieldProps,
-  DynamicRelationshipFieldProps,
-  FormFieldValue,
-  NumberPoolData,
-} from "@/shared/components/form/type";
-import { getFieldDefaultValue } from "@/shared/components/form/utils/getFieldDefaultValue";
-import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
-import { getRelationshipParent } from "@/shared/components/form/utils/getRelationshipParent";
+import { DynamicFieldProps, NumberPoolData } from "@/shared/components/form/type";
+import { getFormFieldFromAttribute } from "@/shared/components/form/utils/getFormFieldFromAttribute";
+import { getFormFieldFromRelationship } from "@/shared/components/form/utils/getFormFieldFromRelationship";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
-import { isFieldDisabled } from "@/shared/components/form/utils/isFieldDisabled";
-import { isRequired } from "@/shared/components/form/utils/validation";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 type GetFormFieldsFromSchema = {
-  schema: IModelSchema;
+  schema: ModelSchema;
   profiles?: Array<ProfileData>;
   initialObject?: Record<string, AttributeType | RelationshipType>;
   auth?: AuthContextType;
@@ -41,118 +27,31 @@ export const getFormFieldsFromSchema = ({
   pools = [],
   isUpdate,
 }: GetFormFieldsFromSchema): Array<DynamicFieldProps> => {
-  const unorderedFields = [
+  const unorderedFields: Array<AttributeSchema | RelationshipSchema> = [
     ...(schema.attributes ?? []),
     ...getRelationshipsForForm(schema.relationships ?? [], isUpdate),
   ].filter((attribute) => !attribute.read_only);
   const orderedFields: typeof unorderedFields = sortByOrderWeight(unorderedFields);
 
-  const formFields: Array<DynamicFieldProps> = orderedFields.map((attribute) => {
-    const currentFieldValue = initialObject
-      ? (initialObject[attribute.name] as AttributeType)
-      : null;
-
-    const basicFomFieldProps: DynamicInputFieldProps = {
-      name: attribute.name,
-      label: attribute.label ?? undefined,
-      defaultValue: getFieldDefaultValue({
-        fieldSchema: attribute,
-        initialObject: initialObject as Record<string, AttributeType>,
-        profiles,
-        isFilterForm,
-      }),
-      description: attribute.description ?? undefined,
-      disabled: isFieldDisabled({
+  return orderedFields.map((field) => {
+    if ("peer" in field) {
+      return getFormFieldFromRelationship({
         auth,
-        owner: currentFieldValue?.owner,
-        isProtected: !!currentFieldValue?.is_protected,
-        permissions: { update: currentFieldValue?.permissions?.update_value },
-        isReadOnly: attribute.read_only,
-      }),
-      type: attribute.kind as Exclude<SchemaAttributeType, "Dropdown">,
-      rules: {
-        required: !isFilterForm && !attribute.optional,
-        validate: {
-          required: (formFieldValue: FormFieldValue) => {
-            if (isFilterForm || attribute.optional) return true;
-
-            return isRequired(formFieldValue);
-          },
-        },
-      },
-    };
-
-    if ("peer" in attribute) {
-      const currentRelationshipData = initialObject?.[attribute.name] as
-        | RelationshipType
-        | undefined;
-
-      const relationshipField: DynamicRelationshipFieldProps = {
-        ...basicFomFieldProps,
-        type: "relationship",
-        defaultValue: getRelationshipDefaultValue({
-          relationshipData: currentRelationshipData,
-          isFilterForm,
-        }),
-        parent: getRelationshipParent(currentRelationshipData),
-        relationship: attribute,
+        relationshipSchema: field,
+        relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
+        isFilterForm: !!isFilterForm,
         schema,
-      };
-
-      return relationshipField;
+      });
     }
 
-    if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.DROPDOWN) {
-      const dropdownField: DynamicDropdownFieldProps = {
-        ...basicFomFieldProps,
-        type: SCHEMA_ATTRIBUTE_KIND.DROPDOWN,
-        unique: attribute.unique,
-        field: attribute,
-        schema: schema,
-        items: (attribute.choices ?? []).map((choice) => ({
-          value: choice.name,
-          label: choice.label ?? choice.name,
-          color: choice.color ?? undefined,
-          description: choice.description ?? undefined,
-        })),
-      };
-
-      return dropdownField;
-    }
-
-    if (Array.isArray(attribute.enum)) {
-      const enumField: DynamicEnumFieldProps = {
-        ...basicFomFieldProps,
-        type: "enum",
-        field: attribute,
-        schema: schema,
-        unique: attribute.unique,
-        items: attribute.enum,
-      };
-
-      return enumField;
-    }
-
-    if (attribute.kind === SCHEMA_ATTRIBUTE_KIND.NUMBER) {
-      const numberPools = pools?.filter((pool) => pool.nodeAttribute.name === attribute.name);
-
-      const dropdownField: DynamicNumberFieldProps = {
-        ...basicFomFieldProps,
-        type: "Number",
-        unique: attribute.unique,
-        pools: numberPools,
-      };
-
-      return dropdownField;
-    }
-
-    const field: DynamicInputFieldProps = {
-      ...basicFomFieldProps,
-      unique: attribute.unique,
-    };
-
-    return field;
+    return getFormFieldFromAttribute({
+      auth,
+      attributeSchema: field,
+      currentObject: initialObject as Record<string, AttributeType>,
+      isFilterForm: !!isFilterForm,
+      schema,
+      pools,
+      profiles,
+    });
   });
-
-  return formFields;
 };

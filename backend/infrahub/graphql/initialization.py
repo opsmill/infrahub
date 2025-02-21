@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from starlette.background import BackgroundTasks
 
+from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError
@@ -35,9 +36,9 @@ class GraphqlContext:
     branch: Branch
     types: dict
     single_relationship_resolver: SingleRelationshipResolver
+    service: InfrahubServices | None = None
     at: Timestamp | None = None
     related_node_ids: set | None = None
-    service: InfrahubServices | None = None
     account_session: AccountSession | None = None
     permissions: PermissionManager | None = None
     background: BackgroundTasks | None = None
@@ -69,6 +70,9 @@ class GraphqlContext:
         if self.service:
             return self.service
         raise InitializationError("GraphQLContext doesn't contain a service")
+
+    def get_context(self) -> InfrahubContext:
+        return InfrahubContext.init(branch=self.branch, account=self.active_account_session)
 
 
 async def prepare_graphql_params(

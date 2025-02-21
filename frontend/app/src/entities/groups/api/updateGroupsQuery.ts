@@ -1,11 +1,11 @@
-import { IProfileSchema, iNodeSchema } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { gql } from "@apollo/client";
 import { VariableType, jsonToGraphQLQuery } from "json-to-graphql-query";
 
 export const updateGroupsQuery = ({
   schema,
 }: {
-  schema: iNodeSchema | IProfileSchema;
+  schema: NodeSchema | ProfileSchema;
   objectId: string;
 }) => {
   const request = {

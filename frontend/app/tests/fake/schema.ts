@@ -1,8 +1,14 @@
-import { IProfileSchema, iGenericSchema, iNodeSchema } from "@/entities/schema/stores/schema.atom";
+import {
+  AttributeSchema,
+  GenericSchema,
+  NodeSchema,
+  ProfileSchema,
+  RelationshipSchema,
+} from "@/entities/schema/types";
 
 export const generateNodeSchema = (
-  overrides?: Partial<iNodeSchema>
-): iNodeSchema & { kind: string } => {
+  overrides?: Partial<NodeSchema>
+): NodeSchema & { kind: string } => {
   return {
     id: "18102d49-2480-33e9-3cbd-c51702dfa1e2",
     state: "present",
@@ -150,7 +156,7 @@ export const generateNodeSchema = (
   };
 };
 
-export const generateGenericSchema = (overrides?: Partial<iGenericSchema>): iGenericSchema => {
+export const generateGenericSchema = (overrides?: Partial<GenericSchema>): GenericSchema => {
   return {
     id: "18102fa4-23c7-dbe0-3cb6-c515f0d8bc92",
     state: "present",
@@ -571,7 +577,7 @@ export const generateGenericSchema = (overrides?: Partial<iGenericSchema>): iGen
   };
 };
 
-export const generateProfileSchema = (overrides?: Partial<IProfileSchema>): IProfileSchema => {
+export const generateProfileSchema = (overrides?: Partial<ProfileSchema>): ProfileSchema => {
   return {
     id: null,
     state: "present",
@@ -737,3 +743,53 @@ export const generateProfileSchema = (overrides?: Partial<IProfileSchema>): IPro
     ...overrides,
   };
 };
+
+export const generateAttributeSchema = (overrides?: Partial<AttributeSchema>): AttributeSchema => {
+  return {
+    id: null,
+    state: "present",
+    name: "name",
+    kind: "Text",
+    label: "Name",
+    description: "description",
+    enum: null,
+    computed_attribute: null,
+    default_value: null,
+    order_weight: 0,
+    optional: true,
+    unique: false,
+    allow_override: "any",
+    branch: "aware",
+    inherited: false,
+    read_only: false,
+    deprecation: null,
+    ...overrides,
+  };
+};
+
+export const generateRelationshipSchema = (
+  overrides: Partial<RelationshipSchema>
+): RelationshipSchema => ({
+  id: "test-id",
+  state: "present",
+  name: "test_relationship",
+  peer: "TestRelationship",
+  kind: "Attribute",
+  label: "Relationship test",
+  description: null,
+  identifier: "test_relationship__testrelationship",
+  cardinality: "many",
+  min_count: 0,
+  max_count: 0,
+  order_weight: 9000,
+  optional: true,
+  branch: "aware",
+  inherited: false,
+  direction: "bidirectional",
+  hierarchical: null,
+  on_delete: "no-action",
+  allow_override: "any",
+  read_only: false,
+  deprecation: null,
+  ...overrides,
+});

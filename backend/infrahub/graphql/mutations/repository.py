@@ -45,7 +45,7 @@ log = get_logger()
 
 class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: Optional[NodeSchema] = None, _meta=None, **options):  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(cls, schema: Optional[NodeSchema] = None, _meta=None, **options):
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -63,9 +63,9 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
+        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
     ):
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         cleanup_payload(data)
         # Create the object in the database
@@ -74,17 +74,17 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
 
         # First check the connectivity to the remote repository
         # If the connectivity is not good, we remove the repository to allow the user to add a new one
-        if context.service:
+        if graphql_context.service:
             message = messages.GitRepositoryConnectivity(
                 repository_name=obj.name.value,
                 repository_location=obj.location.value,
             )
-            response = await context.service.message_bus.rpc(
+            response = await graphql_context.service.message_bus.rpc(
                 message=message, response_class=GitRepositoryConnectivityResponse
             )
 
             if response.data.success is False:
-                await obj.delete(db=context.db)
+                await obj.delete(db=graphql_context.db)
                 raise ValidationError(response.data.message)
 
         # If we are in the default branch, we set the sync status to Active
@@ -93,13 +93,13 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             obj.internal_status.value = RepositoryInternalStatus.ACTIVE.value
         else:
             obj.internal_status.value = RepositoryInternalStatus.STAGING.value
-        await obj.save(db=context.db)
+        await obj.save(db=graphql_context.db)
 
         # Create the new repository in the filesystem.
         log.info("create_repository", name=obj.name.value)
         authenticated_user = None
-        if context.account_session and context.account_session.authenticated:
-            authenticated_user = context.account_session.account_id
+        if graphql_context.account_session and graphql_context.account_session.authenticated:
+            authenticated_user = graphql_context.account_session.account_id
         if obj.get_kind() == InfrahubKind.READONLYREPOSITORY:
             obj = cast(CoreReadOnlyRepository, obj)
             model = GitRepositoryAddReadOnly(
@@ -112,9 +112,11 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 internal_status=obj.internal_status.value,
                 created_by=authenticated_user,
             )
-            if context.service:
-                await context.service.workflow.submit_workflow(
-                    workflow=GIT_REPOSITORY_ADD_READ_ONLY, parameters={"model": model}
+            if graphql_context.service:
+                await graphql_context.service.workflow.submit_workflow(
+                    workflow=GIT_REPOSITORY_ADD_READ_ONLY,
+                    context=graphql_context.get_context(),
+                    parameters={"model": model},
                 )
 
         else:
@@ -130,9 +132,11 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 created_by=authenticated_user,
             )
 
-            if context.service:
-                await context.service.workflow.submit_workflow(
-                    workflow=GIT_REPOSITORY_ADD, parameters={"model": git_repo_add_model}
+            if graphql_context.service:
+                await graphql_context.service.workflow.submit_workflow(
+                    workflow=GIT_REPOSITORY_ADD,
+                    context=graphql_context.get_context(),
+                    parameters={"model": git_repo_add_model},
                 )
 
         # TODO Validate that the creation of the repository went as expected
@@ -145,15 +149,15 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
+        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
         node: Optional[Node] = None,
     ):
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         cleanup_payload(data)
         if not node:
             node: CoreReadOnlyRepository | CoreRepository = await NodeManager.get_one_by_id_or_default_filter(
-                db=context.db,
+                db=graphql_context.db,
                 kind=cls._meta.schema.kind,
                 id=data.get("id"),
                 branch=branch,
@@ -161,7 +165,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 include_source=True,
             )
         if node.get_kind() != InfrahubKind.READONLYREPOSITORY:
-            return await super().mutate_update(info, data, branch, database=context.db, node=node)
+            return await super().mutate_update(info, data, branch, database=graphql_context.db, node=node)
 
         node = cast(CoreReadOnlyRepository, node)
         current_commit = node.commit.value
@@ -173,7 +177,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         if data.ref and data.ref.value:
             new_ref = data.ref.value
 
-        obj, result = await super().mutate_update(info, data, branch, database=context.db, node=node)
+        obj, result = await super().mutate_update(info, data, branch, database=graphql_context.db, node=node)
         obj = cast(CoreReadOnlyRepository, obj)
 
         send_update_message = (new_commit and new_commit != current_commit) or (new_ref and new_ref != current_ref)
@@ -196,9 +200,11 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             infrahub_branch_name=branch.name,
             infrahub_branch_id=str(branch.get_uuid()),
         )
-        if context.service:
-            await context.service.workflow.submit_workflow(
-                workflow=GIT_REPOSITORIES_PULL_READ_ONLY, parameters={"model": model}
+        if graphql_context.service:
+            await graphql_context.service.workflow.submit_workflow(
+                workflow=GIT_REPOSITORIES_PULL_READ_ONLY,
+                context=graphql_context.get_context(),
+                parameters={"model": model},
             )
         return obj, result
 
@@ -226,15 +232,15 @@ class ProcessRepository(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: IdentifierInput,
     ) -> dict[str, bool]:
-        context: GraphqlContext = info.context
-        branch = context.branch
+        graphql_context: GraphqlContext = info.context
+        branch = graphql_context.branch
         repository_id = str(data.id)
         repo: CoreReadOnlyRepository | CoreRepository = await NodeManager.get_one_by_id_or_default_filter(
-            db=context.db,
+            db=graphql_context.db,
             kind=InfrahubKind.GENERICREPOSITORY,
             id=str(data.id),
             branch=branch,
@@ -247,8 +253,8 @@ class ProcessRepository(Mutation):
             commit=str(repo.commit.value),
             infrahub_branch_name=branch.name,
         )
-        workflow = await context.active_service.workflow.submit_workflow(
-            workflow=GIT_REPOSITORIES_IMPORT_OBJECTS, parameters={"model": model}
+        workflow = await graphql_context.active_service.workflow.submit_workflow(
+            workflow=GIT_REPOSITORIES_IMPORT_OBJECTS, context=graphql_context.get_context(), parameters={"model": model}
         )
         task = {"id": workflow.id}
         return cls(ok=True, task=task)
@@ -264,15 +270,15 @@ class ValidateRepositoryConnectivity(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: IdentifierInput,
     ) -> dict[str, Any]:
-        context: GraphqlContext = info.context
-        branch = context.branch
+        graphql_context: GraphqlContext = info.context
+        branch = graphql_context.branch
         repository_id = str(data.id)
         repo: CoreReadOnlyRepository | CoreRepository = await NodeManager.get_one_by_id_or_default_filter(
-            db=context.db,
+            db=graphql_context.db,
             kind=InfrahubKind.GENERICREPOSITORY,
             id=repository_id,
             branch=branch,
@@ -282,8 +288,8 @@ class ValidateRepositoryConnectivity(Mutation):
             repository_name=str(repo.name.value),
             repository_location=str(repo.location.value),
         )
-        if context.service:
-            response = await context.service.message_bus.rpc(
+        if graphql_context.service:
+            response = await graphql_context.service.message_bus.rpc(
                 message=message, response_class=GitRepositoryConnectivityResponse
             )
 

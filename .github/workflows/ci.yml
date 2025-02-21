@@ -138,7 +138,7 @@ jobs:
         with:
           submodules: true
       - name: "Linting: markdownlint"
-        uses: DavidAnson/markdownlint-cli2-action@v18
+        uses: DavidAnson/markdownlint-cli2-action@v19
         with:
           config: .markdownlint.yaml
           globs: |
@@ -172,6 +172,45 @@ jobs:
     uses: "./.github/workflows/poetry-check.yml"
     with:
       directory: "./"
+
+  infrahub-testcontainers-check:
+    if: needs.files-changed.outputs.python == 'true'
+    needs: ["files-changed"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: "Setup Python environment"
+        run: |
+          pipx install poetry==1.8.5
+          poetry config virtualenvs.create true --local
+          poetry env use 3.12
+
+      - name: Compare package versions
+        run: |
+          INFRAHUB_VERSION=$(poetry version --short)
+          echo "Infrahub version: $INFRAHUB_VERSION"
+
+          cd python_testcontainers
+          TESTCONTAINERS_VERSION=$(poetry version --short)
+          echo "Testcontainers version: $TESTCONTAINERS_VERSION"
+
+          if [ "$INFRAHUB_VERSION" != "$TESTCONTAINERS_VERSION" ]; then
+            echo "Error: Version mismatch!"
+            echo "infrahub version: $INFRAHUB_VERSION"
+            echo "infrahub-testcontainers version: $TESTCONTAINERS_VERSION"
+            echo "The version of infrahub-testcontainers must match the version of infrahub"
+            exit 1
+          fi
 
   # TODO NEED TO REVISIT THIS ONE
   # python-sdk-poetry-check:
@@ -233,7 +272,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: huge-runners
     timeout-minutes: 45
@@ -286,7 +325,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
     timeout-minutes: 30
@@ -332,7 +371,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
     timeout-minutes: 30
@@ -361,8 +400,6 @@ jobs:
         run: "poetry install --no-interaction --no-ansi"
       - name: "Mypy Tests"
         run: "poetry run invoke backend.mypy"
-      - name: "Pylint Tests"
-        run: "poetry run invoke backend.pylint"
       - name: "Functional Tests"
         run: "poetry run invoke backend.test-functional"
       - name: "Coveralls : Functional Tests"
@@ -480,7 +517,7 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.backend == 'true' ||
       needs.files-changed.outputs.documentation == 'true')
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
@@ -564,7 +601,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.documentation == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
@@ -591,7 +628,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.python == 'true') || (needs.files-changed.outputs.documentation_generated == 'true')
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
@@ -621,7 +658,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.release == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
@@ -646,7 +683,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.release == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
+    needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
@@ -675,6 +712,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -770,14 +808,6 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install chromium
 
-      # Make chromium ignore netlink messages by returning HandleMessage early
-      - name: Chrome path
-        run: echo CHROME_BIN_PATH="$(npx playwright install chromium --dry-run | grep Install | grep chromium- | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
-      - name: Chrome func offset
-        run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::HandleMessage(char const*, int, bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
-      - name: Patch chromium
-        run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
-
       - name: Wait for artifacts to be generated before restarting infrahub
         if: needs.files-changed.outputs.e2e_tests == 'true'
         run: npx playwright test artifact
@@ -864,11 +894,12 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      github.base_ref == 'develop'
+      github.base_ref == 'stable'
     runs-on:
       group: huge-runners
     steps:
@@ -890,7 +921,8 @@ jobs:
         run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
 
       - name: "Set environment variables"
-        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+        run: |
+          echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
       - name: "Clear docker environment"
         run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
 
@@ -937,6 +969,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -950,6 +983,7 @@ jobs:
       - files-changed
       - yaml-lint
       - python-lint
+      - infrahub-testcontainers-check
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&

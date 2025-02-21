@@ -17,16 +17,16 @@ class SuperAdminPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
-    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002
         return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
-        db: InfrahubDatabase,
-        account_session: AccountSession,
-        analyzed_query: InfrahubGraphQLQueryAnalyzer,
+        db: InfrahubDatabase,  # noqa: ARG002
+        account_session: AccountSession,  # noqa: ARG002
+        analyzed_query: InfrahubGraphQLQueryAnalyzer,  # noqa: ARG002
         query_parameters: GraphqlParams,
-        branch: Branch,
+        branch: Branch,  # noqa: ARG002
     ) -> CheckerResolution:
         return (
             CheckerResolution.TERMINATE

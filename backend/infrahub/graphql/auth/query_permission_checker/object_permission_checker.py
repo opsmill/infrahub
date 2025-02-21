@@ -18,16 +18,16 @@ from .interface import CheckerResolution, GraphQLQueryPermissionCheckerInterface
 class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     """Checker that makes sure a user account can perform some action on some kind of objects."""
 
-    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002
         return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
-        db: InfrahubDatabase,
-        account_session: AccountSession,
+        db: InfrahubDatabase,  # noqa: ARG002
+        account_session: AccountSession,  # noqa: ARG002
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
-        branch: Branch,
+        branch: Branch,  # noqa: ARG002
     ) -> CheckerResolution:
         required_decision = (
             PermissionDecisionFlag.ALLOW_DEFAULT
@@ -36,34 +36,27 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
             else PermissionDecisionFlag.ALLOW_OTHER
         )
 
-        kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
-
-        # Identify which operations are performed. As we don't have a mapping between kinds and the
-        # operation we currently require permissions all defined permissions for all objects
-        # within the GraphQL query / mutation
-        actions: set[str] = set()
-        for operation in analyzed_query.operations:
-            for kind in kinds:
-                if operation.name and operation.name.startswith(kind):
-                    # An empty string after prefix removal means a query to "view"
-                    query_action = operation.name[len(kind) :].lower() or "view"
-                    if query_action == "upsert":
-                        # Require both create and update for Upsert mutations
-                        actions.add("create")
-                        actions.add("update")
-                    else:
-                        actions.add(query_action)
-
-        # Infer required permissions from the kind/operation map
         permissions: list[ObjectPermission] = []
-        for action in actions:
-            for kind in kinds:
+        for kind, object_access in analyzed_query.query_report.requested_read.items():
+            if object_access.attributes or object_access.relationships:
                 extracted_words = extract_camelcase_words(kind)
                 permissions.append(
                     ObjectPermission(
                         namespace=extracted_words[0],
                         name="".join(extracted_words[1:]),
-                        action=action.lower(),
+                        action="view",
+                        decision=required_decision,
+                    )
+                )
+
+        for kind, requested_permissions in analyzed_query.query_report.kind_action_map.items():
+            for requested_permission in requested_permissions:
+                extracted_words = extract_camelcase_words(kind)
+                permissions.append(
+                    ObjectPermission(
+                        namespace=extracted_words[0],
+                        name="".join(extracted_words[1:]),
+                        action=requested_permission.value,
                         decision=required_decision,
                     )
                 )
@@ -83,19 +76,19 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         action=GlobalPermissions.MANAGE_ACCOUNTS.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
-    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002
         return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
         db: InfrahubDatabase,
-        account_session: AccountSession,
+        account_session: AccountSession,  # noqa: ARG002
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
         branch: Branch,
     ) -> CheckerResolution:
         is_account_operation = False
-        kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
+        kinds = analyzed_query.query_report.impacted_models
         operation_names = [operation.name for operation in analyzed_query.operations]
 
         for kind in kinds:
@@ -127,19 +120,19 @@ class PermissionManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         action=GlobalPermissions.MANAGE_PERMISSIONS.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
-    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002
         return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
         db: InfrahubDatabase,
-        account_session: AccountSession,
+        account_session: AccountSession,  # noqa: ARG002
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
         branch: Branch,
     ) -> CheckerResolution:
         is_permission_operation = False
-        kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
+        kinds = analyzed_query.query_report.impacted_models
 
         for kind in kinds:
             schema = get_schema(db=db, branch=branch, node_schema=kind)
@@ -168,19 +161,19 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
         action=GlobalPermissions.MANAGE_REPOSITORIES.value, decision=PermissionDecision.ALLOW_ALL.value
     )
 
-    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:
+    async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002
         return config.SETTINGS.main.allow_anonymous_access or account_session.authenticated
 
     async def check(
         self,
         db: InfrahubDatabase,
-        account_session: AccountSession,
+        account_session: AccountSession,  # noqa: ARG002
         analyzed_query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
         branch: Branch,
     ) -> CheckerResolution:
         is_repository_operation = False
-        kinds = await analyzed_query.get_models_in_use(types=query_parameters.context.types)
+        kinds = analyzed_query.query_report.impacted_models
 
         for kind in kinds:
             schema = get_schema(db=db, branch=branch, node_schema=kind)

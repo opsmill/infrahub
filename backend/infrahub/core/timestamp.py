@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 class Timestamp(BaseTimestamp):
-    async def to_graphql(self, *args: Any, **kwargs: Any) -> DateTime:  # pylint: disable=unused-argument
+    async def to_graphql(self, *args: Any, **kwargs: Any) -> DateTime:  # noqa: ARG002
         return self.obj
 
     def get_query_filter_path(self, rel_name: str = "r") -> tuple[str, dict]:

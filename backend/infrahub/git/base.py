@@ -122,7 +122,7 @@ class BranchInLocal(BaseModel):
     has_worktree: bool = False
 
 
-class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public-methods
+class InfrahubRepositoryBase(BaseModel, ABC):
     """
     Local version of a Git repository organized to work with Infrahub.
     The idea is that all commits that are being tracked in the graph will be checkout out
@@ -395,9 +395,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         return [Worktree.init(response) for response in responses]
 
     def get_client(self) -> InfrahubClient:
-        if self.client:
-            return self.client
-        return self.service.client
+        return self.sdk
 
     def get_location(self) -> str:
         if self.location:
@@ -702,7 +700,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 log.info("New commit detected", repository=self.name, branch=branch_name)
                 updated_branches.append(branch_name)
 
-        return sorted(list(new_branches)), sorted(updated_branches)
+        return sorted(new_branches), sorted(updated_branches)
 
     def validate_remote_branch(self, branch_name: str) -> bool:
         """Process a remote branch to validate that we can use it safely.

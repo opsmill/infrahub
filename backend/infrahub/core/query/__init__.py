@@ -479,7 +479,7 @@ class Query(ABC):
         """Search for all the variables in a Query string and replace each variable with its value."""
 
         def prep_value(v: Any) -> str:
-            if isinstance(v, (int, list)):
+            if isinstance(v, int | list):
                 return str(v)
             return f'"{v}"'
 
@@ -517,7 +517,7 @@ class Query(ABC):
         params = []
 
         for key, value in self.params.items():
-            if isinstance(value, (int, list)):
+            if isinstance(value, int | list):
                 params.append(f"{key}: {str(value)}")
             else:
                 params.append(f'{key}: "{value}"')
@@ -670,8 +670,6 @@ class Query(ABC):
         return len([result for result in self.results if not result.has_deleted_rels])
 
     def print_table(self) -> None:
-        # pylint: disable=import-outside-toplevel
-
         from rich.console import Console
         from rich.table import Table
 
@@ -689,7 +687,6 @@ class Query(ABC):
         console.print(table)
 
     def print(self, include_var: bool = False) -> None:
-        # pylint: disable=import-outside-toplevel
         from rich import print as rprint
 
         print("-------------------------------------------------------")

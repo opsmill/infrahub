@@ -15,7 +15,7 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 export interface MenuSectionObjectsProps {
   items: MenuItem[];
@@ -117,9 +117,8 @@ const TopLevelMenuItem: React.FC<{
         side="left"
         align="start"
         sideOffset={isCollapsed ? 6 : 12}
-        className="h-[calc(100vh-57px)] mt-[57px] min-w-[275px] px-4 py-5 bg-white border rounded-r-lg rounded-l-none shadow-none relative -top-px overflow-auto data-[side=right]:slide-in-from-left-[100px]"
+        className="min-w-60 max-h-[calc(100vh-7rem)] overflow-auto"
       >
-        <h3 className="text-xl font-medium text-neutral-800 mb-5">{item.label}</h3>
         {item.children.map((child) => (
           <RecursiveObjectMenuItem key={child.identifier} item={child} isCollapsed={isCollapsed} />
         ))}

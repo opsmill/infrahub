@@ -395,6 +395,14 @@ node_schema = SchemaNode(
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
         ),
         SchemaAttribute(
+            name="generate_template",
+            kind="Boolean",
+            description="Indicate if an object template schema should be generated for this schema",
+            default_value=False,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
             name="hierarchy",
             kind="Text",
             description="Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",
@@ -857,6 +865,14 @@ generic_schema = SchemaNode(
             default_value=True,
             optional=True,
             extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+        ),
+        SchemaAttribute(
+            name="generate_template",
+            kind="Boolean",
+            description="Indicate if an object template schema should be generated for this schema",
+            default_value=False,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
         ),
         SchemaAttribute(
             name="used_by",

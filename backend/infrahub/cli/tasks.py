@@ -12,13 +12,11 @@ from infrahub.workflows.models import WorkerPoolDefinition
 
 app = AsyncTyper()
 
-# pylint: disable=unused-argument
-
 
 @app.command()
 async def init(
-    ctx: typer.Context,
-    debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
+    ctx: typer.Context,  # noqa: ARG001
+    debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),  # noqa: ARG001
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Initialize the task manager"""
@@ -31,8 +29,8 @@ async def init(
 
 @app.command()
 async def execute(
-    ctx: typer.Context,
-    debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
+    ctx: typer.Context,  # noqa: ARG001
+    debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),  # noqa: ARG001
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Check the current format of the internal graph and apply the necessary migrations"""

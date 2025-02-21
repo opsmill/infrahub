@@ -3,8 +3,6 @@ from infrahub.core.protocols import CoreGroup
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
 
-# pylint: skip-file
-
 ROLES = ["spine", "leaf", "firewall", "server", "loopback"]
 STATUSES = ["active", "provisioning", "maintenance"]
 TAGS = ["blue", "green", "red"]

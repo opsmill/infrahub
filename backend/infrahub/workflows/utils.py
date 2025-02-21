@@ -76,4 +76,4 @@ async def wait_for_schema_to_converge(
 
         iteration += 1
 
-    log.info(f"Schema converged after {delay * iteration} seconds")
+    log.info(f"Schema converged after {delay * iteration:.2f} seconds")

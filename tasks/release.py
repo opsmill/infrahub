@@ -96,7 +96,7 @@ def ship(context: Context) -> None:
 
 
 @task
-def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yaml") -> None:
+def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yaml") -> None:  # noqa: ARG001
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     print(" - [release] Update Helm chart")
 
@@ -150,7 +150,7 @@ def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yam
 
 
 @task
-def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:
+def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:  # noqa: ARG001
     """Update docker-compose.yml with the current version from pyproject.toml."""
     print(" - [release] Update docker-compose.yml")
 
@@ -196,7 +196,7 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
 
 
 @task
-def update_test_containers(context: Context, toml_file: str | None = "python_testcontainers/pyproject.toml") -> None:
+def update_test_containers(context: Context, toml_file: str | None = "python_testcontainers/pyproject.toml") -> None:  # noqa: ARG001
     """Update test containers pyproject.toml with the current version from pyproject.toml."""
     print(" - [release] Update python_testcontainers/pyproject.toml")
 
@@ -339,7 +339,7 @@ def update_docker_compose_env_vars(
 
 @task
 def gen_config_env(
-    context: Context,
+    context: Context,  # noqa: ARG001
     docker_file: str | None = "docker-compose.yml",
     update_docker_file: bool | None = False,
 ) -> None:

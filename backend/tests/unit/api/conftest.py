@@ -1,7 +1,6 @@
 import pendulum
 import pytest
 from fastapi.testclient import TestClient
-from prefect.testing.utilities import prefect_test_harness
 
 from infrahub import config
 from infrahub.core.constants import InfrahubKind
@@ -31,12 +30,6 @@ def admin_headers():
     return {"X-INFRAHUB-KEY": "admin-security"}
 
 
-@pytest.fixture(autouse=True, scope="session")
-def prefect_test_fixture():
-    with prefect_test_harness():
-        yield
-
-
 @pytest.fixture
 def rpc_bus(helper):
     original = config.OVERRIDE.message_bus
@@ -47,15 +40,6 @@ def rpc_bus(helper):
 
 
 @pytest.fixture
-def rpc_bus_simulator(helper, db):
-    original = config.OVERRIDE.message_bus
-    bus = helper.get_message_bus_simulator(db=db)
-    config.OVERRIDE.message_bus = bus
-    yield bus
-    config.OVERRIDE.message_bus = original
-
-
-@pytest.fixture()
 async def workflow_local():
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()

@@ -319,27 +319,6 @@ REQUEST_PROPOSED_CHANGE_USER_TESTS = WorkflowDefinition(
     function="run_proposed_change_user_tests",
 )
 
-AUTOMATION_BRANCH_ACTIONS = WorkflowDefinition(
-    name="branch-actions-setup",
-    type=WorkflowType.CORE,
-    module="infrahub.core.branch.tasks",
-    function="branch_actions_setup",
-)
-
-AUTOMATION_SCHEMA_UPDATED = WorkflowDefinition(
-    name="schema-updated-setup",
-    type=WorkflowType.CORE,
-    module="infrahub.schema.tasks",
-    function="schema_updated_setup",
-)
-
-AUTOMATION_GIT_UPDATED = WorkflowDefinition(
-    name="git-commit-automation-setup",
-    type=WorkflowType.CORE,
-    module="infrahub.git.tasks",
-    function="setup_commit_automation",
-)
-
 GIT_REPOSITORIES_DIFF_NAMES_ONLY = WorkflowDefinition(
     name="git-repository-diff-names-only",
     type=WorkflowType.INTERNAL,
@@ -370,6 +349,13 @@ REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS = WorkflowDefinition(
     function="repository_checks",
 )
 
+REQUEST_ARTIFACT_DEFINITION_CHECK = WorkflowDefinition(
+    name="artifacts-generation-validation",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="validate_artifacts_generation",
+)
+
 WEBHOOK_CONFIGURE = WorkflowDefinition(
     name="webhook-setup-automations",
     type=WorkflowType.USER,
@@ -384,22 +370,17 @@ WEBHOOK_TRIGGER = WorkflowDefinition(
     function="trigger_webhooks",
 )
 
-AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER = WorkflowDefinition(
-    name="webhook-setup-configuration-trigger",
+GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE = WorkflowDefinition(
+    name="git-repository-check-artifact-create",
     type=WorkflowType.USER,
-    module="infrahub.webhook.tasks",
-    function="trigger_webhook_configuration",
+    module="infrahub.artifacts.tasks",
+    function="create",
 )
-
 
 worker_pools = [INFRAHUB_WORKER_POOL]
 
 workflows = [
     ANONYMOUS_TELEMETRY_SEND,
-    AUTOMATION_BRANCH_ACTIONS,
-    AUTOMATION_GIT_UPDATED,
-    AUTOMATION_SCHEMA_UPDATED,
-    AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER,
     BRANCH_CANCEL_PROPOSED_CHANGES,
     BRANCH_CREATE,
     BRANCH_DELETE,
@@ -413,6 +394,7 @@ workflows = [
     DIFF_REFRESH,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
+    GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
     GIT_REPOSITORIES_DIFF_NAMES_ONLY,
     GIT_REPOSITORIES_IMPORT_OBJECTS,
@@ -426,6 +408,7 @@ workflows = [
     PROCESS_COMPUTED_MACRO,
     PROPOSED_CHANGE_MERGE,
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
+    REQUEST_ARTIFACT_DEFINITION_CHECK,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_ARTIFACT_GENERATE,
     REQUEST_GENERATOR_DEFINITION_RUN,
@@ -447,11 +430,4 @@ workflows = [
     WEBHOOK_CONFIGURE,
     WEBHOOK_SEND,
     WEBHOOK_TRIGGER,
-]
-
-automation_setup_workflows = [
-    AUTOMATION_BRANCH_ACTIONS,
-    AUTOMATION_GIT_UPDATED,
-    AUTOMATION_SCHEMA_UPDATED,
-    AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER,
 ]

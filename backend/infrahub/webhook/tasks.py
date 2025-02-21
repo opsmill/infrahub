@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import ujson
 from infrahub_sdk.protocols import CoreCustomWebhook, CoreStandardWebhook, CoreTransformPython
@@ -12,18 +12,20 @@ from prefect.events.schemas.automations import EventTrigger, Posture
 from prefect.events.schemas.events import ResourceSpecification
 from prefect.logging import get_run_logger
 
-from infrahub.core.constants import InfrahubKind, MutationAction
+from infrahub.core.constants import MutationAction
 from infrahub.exceptions import NodeNotFoundError
-from infrahub.services import services
-from infrahub.workflows.catalogue import WEBHOOK_CONFIGURE, WEBHOOK_SEND, WEBHOOK_TRIGGER
+from infrahub.services import InfrahubServices
+from infrahub.workflows.catalogue import WEBHOOK_SEND, WEBHOOK_TRIGGER
 
-from .constants import AUTOMATION_NAME, AUTOMATION_NAME_RUN
+from .constants import AUTOMATION_NAME_RUN
 from .models import CustomWebhook, SendWebhookData, StandardWebhook, TransformWebhook, Webhook
+
+if TYPE_CHECKING:
+    from prefect.events.schemas.automations import Automation
 
 
 @flow(name="event-send-webhook", flow_run_name="Send Webhook")
-async def send_webhook(model: SendWebhookData) -> None:
-    service = services.service
+async def send_webhook(model: SendWebhookData, service: InfrahubServices) -> None:
     log = get_run_logger()
 
     webhook_definition = await service.cache.get(key=f"webhook:active:{model.webhook_id}")
@@ -49,20 +51,16 @@ async def send_webhook(model: SendWebhookData) -> None:
 
 
 @flow(name="webhook-trigger-actions", flow_run_name="Trigger configured webhooks")
-async def trigger_webhooks(event_type: str, event_data: str) -> None:
-    service = services.service
-    payload: dict = ujson.loads(event_data)
-
+async def trigger_webhooks(event_type: str, event_data: dict, service: InfrahubServices) -> None:
     webhooks = await service.cache.list_keys(filter_pattern="webhook:active:*")
     for webhook in webhooks:
         webhook_id = webhook.split(":")[-1]
-        model = SendWebhookData(webhook_id=webhook_id, event_type=event_type, event_data=payload)
+        model = SendWebhookData(webhook_id=webhook_id, event_type=event_type, event_data=event_data)
         await service.workflow.submit_workflow(workflow=WEBHOOK_SEND, parameters={"model": model})
 
 
 @flow(name="webhook-setup-automations", flow_run_name="Configuration webhook automation and populate cache")
-async def configure_webhooks() -> None:
-    service = services.service
+async def configure_webhooks(service: InfrahubServices) -> None:
     log = get_run_logger()
 
     log.debug("Refreshing webhook configuration")
@@ -135,7 +133,10 @@ async def configure_webhooks() -> None:
 
         deployment_id_webhook_trigger = deployments[WEBHOOK_TRIGGER.name].id
 
-        webhook_configure_automation = await client.find_automation(id_or_name=AUTOMATION_NAME_RUN)
+        webhook_configure_automation: Automation | None = None
+        automations = await client.read_automations_by_name(name=AUTOMATION_NAME_RUN)
+        if automations:
+            webhook_configure_automation = automations[0]
 
         if not has_webhooks:
             if webhook_configure_automation:
@@ -163,7 +164,10 @@ async def configure_webhooks() -> None:
                     deployment_id=deployment_id_webhook_trigger,
                     parameters={
                         "event_type": "{{ event.resource['infrahub.node.kind'] }}.{{ event.resource['infrahub.node.action'] }}",
-                        "event_data": "{{ event.payload['data'] | tojson }}",
+                        "event_data": {
+                            "__prefect_kind": "json",
+                            "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['data'] | tojson }}"},
+                        },
                     },
                     job_variables={},
                 ),
@@ -176,60 +180,3 @@ async def configure_webhooks() -> None:
         else:
             await client.create_automation(automation=automation)
             log.info(f"{AUTOMATION_NAME_RUN} Created")
-
-
-@flow(name="webhook-setup-configuration-trigger", flow_run_name="Setup automations for webhooks")
-async def trigger_webhook_configuration() -> None:
-    log = get_run_logger()
-
-    async with get_client(sync_client=False) as client:
-        deployments = {
-            item.name: item
-            for item in await client.read_deployments(
-                deployment_filter=DeploymentFilter(
-                    name=DeploymentFilterName(
-                        any_=[
-                            WEBHOOK_CONFIGURE.name,
-                        ]
-                    )
-                )
-            )
-        }
-        if WEBHOOK_CONFIGURE.name not in deployments:
-            raise ValueError("Unable to find the deployment for WEBHOOK_CONFIGURE")
-
-        deployment_id_webhook_setup = deployments[WEBHOOK_CONFIGURE.name].id
-
-        webhook_configure_automation = await client.find_automation(id_or_name=AUTOMATION_NAME)
-
-        automation = AutomationCore(
-            name=AUTOMATION_NAME,
-            description="Trigger actions on schema update event",
-            enabled=True,
-            trigger=EventTrigger(
-                posture=Posture.Reactive,
-                expect={"infrahub.node.*"},
-                within=timedelta(0),
-                match=ResourceSpecification(
-                    {
-                        "infrahub.node.kind": [InfrahubKind.WEBHOOK, InfrahubKind.STANDARDWEBHOOK],
-                    }
-                ),
-                threshold=1,
-            ),
-            actions=[
-                RunDeployment(
-                    source="selected",
-                    deployment_id=deployment_id_webhook_setup,
-                    parameters={},
-                    job_variables={},
-                ),
-            ],
-        )
-
-        if webhook_configure_automation:
-            await client.update_automation(automation_id=webhook_configure_automation.id, automation=automation)
-            log.info(f"{AUTOMATION_NAME} Updated")
-        else:
-            await client.create_automation(automation=automation)
-            log.info(f"{AUTOMATION_NAME} Created")

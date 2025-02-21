@@ -5,14 +5,15 @@ import {
   getTabs,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { getPermission } from "@/entities/permission/utils";
-import { IModelSchema, genericsState } from "@/entities/schema/stores/schema.atom";
-import { isGenericSchema } from "@/entities/schema/utils";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";
 
-export const useObjectDetails = (schema: IModelSchema, objectId: string) => {
-  const generics = useAtomValue(genericsState);
+export const useObjectDetails = (schema: ModelSchema, objectId: string) => {
+  const generics = useAtomValue(genericSchemasAtom);
   const profileGenericSchema = generics.find((s) => s.kind === PROFILE_KIND);
 
   const relationshipsTabs = getTabs(schema);

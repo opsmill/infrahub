@@ -8,12 +8,19 @@ from infrahub_sdk.uuidt import UUIDT
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
+from infrahub.core.branch import Branch
+from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog
 from infrahub.core.constants import InfrahubKind, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.utils import count_relationships
+from infrahub.database import InfrahubDatabase
+from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
+from infrahub.events.node_action import NodeMutatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.permissions import LocalPermissionBackend
+from infrahub.services import InfrahubServices
+from tests.adapters.event import MemoryInfrahubEvent
 from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
@@ -29,7 +36,28 @@ async def test_relationship_add(
     tag_red_main: Node,
     tag_black_main: Node,
     branch: Branch,
+    enable_broker_config: None,
+    session_first_account: AccountSession,
+    first_account: Node,
 ):
+    await _define_permissions(
+        account=first_account,
+        db=db,
+        object_permissions=[
+            ObjectPermission(
+                namespace="Builtin",
+                name="Tag",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            ),
+            ObjectPermission(
+                namespace="Test",
+                name="Person",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            ),
+        ],
+    )
     query = """
     mutation {
         RelationshipAdd(data: {
@@ -46,7 +74,11 @@ async def test_relationship_add(
         tag_black_main.id,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -56,6 +88,19 @@ async def test_relationship_add(
     )
 
     assert result.errors is None
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    assert len(memory_event.events) == 1
+    node_event = memory_event.events[0]
+    assert isinstance(node_event, NodeMutatedEvent)
+    assert node_event.data.node_id == person_jack_main.id
+    relationship = node_event.data.relationships["tags"]
+    assert isinstance(relationship, RelationshipCardinalityManyChangelog)
+    peers = [peer.peer_id for peer in relationship.peers]
+    assert len(peers) == 2
+    assert tag_blue_main.id in peers
+    assert tag_black_main.id in peers
 
     p1 = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=branch)
 
@@ -86,7 +131,11 @@ async def test_relationship_add(
         tag_red_main.id,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=branch)
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -107,6 +156,19 @@ async def test_relationship_add(
             tag_red_main.id,
         ]
     )
+
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    assert len(memory_event.events) == 1
+    node_event = memory_event.events[0]
+    assert isinstance(node_event, NodeMutatedEvent)
+    assert node_event.data.node_id == person_jack_main.id
+    relationship = node_event.data.relationships["tags"]
+    assert isinstance(relationship, RelationshipCardinalityManyChangelog)
+    peers = [peer.peer_id for peer in relationship.peers]
+    assert len(peers) == 1
+    assert tag_red_main.id in peers
 
 
 async def test_relationship_remove(
@@ -320,7 +382,38 @@ async def test_relationship_wrong_node(
     )
 
 
-async def test_relationship_groups_add(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
+async def test_relationship_groups_add(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_generics_data,
+    enable_broker_config: None,
+    session_first_account: AccountSession,
+    first_account: Node,
+):
+    await _define_permissions(
+        account=first_account,
+        db=db,
+        object_permissions=[
+            ObjectPermission(
+                namespace="Core",
+                name="StandardGroup",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            ),
+            ObjectPermission(
+                namespace="Test",
+                name="ElectricCar",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            ),
+            ObjectPermission(
+                namespace="Test",
+                name="GazCar",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            ),
+        ],
+    )
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
@@ -346,8 +439,11 @@ async def test_relationship_groups_add(db: InfrahubDatabase, default_branch: Bra
         g1.id,
         c2.id,
     )
-
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -361,6 +457,15 @@ async def test_relationship_groups_add(db: InfrahubDatabase, default_branch: Bra
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
     assert len(members) == 2
+
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    assert len(memory_event.events) == 1
+    group_event = memory_event.events[0]
+    assert isinstance(group_event, GroupMemberAddedEvent)
+
+    assert [member.id for member in group_event.members] == [c2.id]
 
     query = """
     mutation {
@@ -377,8 +482,11 @@ async def test_relationship_groups_add(db: InfrahubDatabase, default_branch: Bra
         g1.id,
         g2.id,
     )
-
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -397,8 +505,50 @@ async def test_relationship_groups_add(db: InfrahubDatabase, default_branch: Bra
     members = await group2.members.get(db=db)
     assert len(members) == 2
 
+    assert gql_params.context.background
+    await gql_params.context.background()
 
-async def test_relationship_groups_remove(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
+    assert len(memory_event.events) == 1
+    group_event = memory_event.events[0]
+    assert isinstance(group_event, GroupMemberAddedEvent)
+    # While we mutated the relationship for c3 we expect the group member event to reflect that of the g1
+    # group as c3 was already a member of g2 we don't see an event for that entry
+    assert group_event.node_id == g1.id
+    assert [member.id for member in group_event.members] == [c3.id]
+
+
+async def test_relationship_groups_remove(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_generics_data,
+    enable_broker_config: None,
+    session_first_account: AccountSession,
+    first_account: Node,
+):
+    await _define_permissions(
+        account=first_account,
+        db=db,
+        object_permissions=[
+            ObjectPermission(
+                namespace="Core",
+                name="StandardGroup",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            ),
+            ObjectPermission(
+                namespace="Test",
+                name="ElectricCar",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            ),
+            ObjectPermission(
+                namespace="Test",
+                name="GazCar",
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_DEFAULT.value,
+            ),
+        ],
+    )
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
@@ -425,7 +575,12 @@ async def test_relationship_groups_remove(db: InfrahubDatabase, default_branch: 
         c1.id,
     )
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -439,6 +594,14 @@ async def test_relationship_groups_remove(db: InfrahubDatabase, default_branch: 
     group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
     members = await group1.members.get(db=db)
     assert len(members) == 0
+
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    assert len(memory_event.events) == 1
+    group_event = memory_event.events[0]
+    assert isinstance(group_event, GroupMemberRemovedEvent)
+    assert [member.id for member in group_event.members] == [c1.id]
 
     query = """
     mutation {
@@ -455,8 +618,13 @@ async def test_relationship_groups_remove(db: InfrahubDatabase, default_branch: 
         g1.id,
         g2.id,
     )
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
 
-    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=default_branch, service=service, account_session=session_first_account
+    )
+
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -474,6 +642,16 @@ async def test_relationship_groups_remove(db: InfrahubDatabase, default_branch: 
     group2 = await NodeManager.get_one(db=db, id=g2.id, branch=default_branch)
     members = await group2.members.get(db=db)
     assert len(members) == 1
+
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    assert len(memory_event.events) == 1
+    group_event = memory_event.events[0]
+    assert isinstance(group_event, GroupMemberRemovedEvent)
+    # The c3 node is not member of g1 so we only expect to see a group event for the g2 group
+    assert group_event.node_id == g2.id
+    assert [member.id for member in group_event.members] == [c3.id]
 
 
 async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
@@ -757,6 +935,7 @@ async def test_add_generic_related_node_with_hfid(
         variable_values={},
     )
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpdate"]["object"]["car"]["node"]["name"]["value"] == "testing-car"
 
 
@@ -876,3 +1055,31 @@ async def test_without_permissions(
 
     assert result.errors
     assert "You do not have one of the following permissions" in result.errors[0].message
+
+
+async def _define_permissions(account: Node, db: InfrahubDatabase, object_permissions: list[ObjectPermission]) -> None:
+    registry.permission_backends = [LocalPermissionBackend()]
+
+    permissions = []
+    for object_permission in object_permissions:
+        obj = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+        await obj.new(
+            db=db,
+            namespace=object_permission.namespace,
+            name=object_permission.name,
+            action=object_permission.action,
+            decision=object_permission.decision,
+        )
+        await obj.save(db=db)
+        permissions.append(obj)
+
+    role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role.new(db=db, name="chief-people-officer", permissions=permissions)
+    await role.save(db=db)
+
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="hr", roles=[role])
+    await group.save(db=db)
+
+    await group.members.add(db=db, data={"id": account.id})
+    await group.members.save(db=db)

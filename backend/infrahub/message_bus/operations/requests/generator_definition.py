@@ -125,7 +125,7 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
     )
     for event in events:
         event.assign_meta(parent=message)
-        await service.send(message=event)
+        await service.message_bus.send(message=event)
 
 
 def _run_generator(instance_id: Optional[str], managed_branch: bool, impacted_instances: list[str]) -> bool:

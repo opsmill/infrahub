@@ -72,12 +72,12 @@ class RelationshipSchema(GeneratedRelationshipSchema):
         db: InfrahubDatabase,
         filter_name: str,
         filter_value: Optional[Union[str, int, bool]] = None,
-        name: Optional[str] = None,  # pylint: disable=unused-argument
+        name: Optional[str] = None,  # noqa: ARG002
         branch: Optional[Branch] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
         partial_match: bool = False,
-        support_profiles: bool = False,  # pylint: disable=unused-argument
+        support_profiles: bool = False,  # noqa: ARG002
     ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
         """Generate Query String Snippet to filter the right node."""
 

@@ -1,9 +1,9 @@
 import { relationshipKindForForm } from "@/config/constants";
 import { RelationshipKind } from "@/entities/nodes/types";
-import { components } from "@/shared/api/rest/types.generated";
+import { RelationshipSchema } from "@/entities/schema/types";
 
 export const getRelationshipsForForm = (
-  relationships: components["schemas"]["RelationshipSchema-Output"][],
+  relationships: Array<RelationshipSchema>,
   isUpdate?: boolean
 ) => {
   // Filter relationships based on cardinality and kind for form inclusion

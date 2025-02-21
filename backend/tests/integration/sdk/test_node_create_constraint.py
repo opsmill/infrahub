@@ -13,7 +13,6 @@ from tests.helpers.test_app import TestInfrahubApp
 
 from ..shared import load_schema
 
-# pylint: disable=unused-argument
 ACCORD_COLOR = "#3443eb"
 PERSON_KIND = "TestingPerson"
 CAR_KIND = "TestingCar"

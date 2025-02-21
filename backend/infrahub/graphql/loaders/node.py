@@ -50,7 +50,7 @@ class NodeDataLoader(DataLoader[str, Node | None]):
         self.query_params = query_params
         self.db = db
 
-    async def batch_load_fn(self, keys: list[Any]) -> list[Node | None]:  # pylint: disable=method-hidden
+    async def batch_load_fn(self, keys: list[Any]) -> list[Node | None]:
         async with self.db.start_session() as db:
             nodes_by_id = await NodeManager.get_many(
                 db=db,
@@ -75,7 +75,7 @@ def to_frozen_set(to_freeze: dict[str, Any]) -> frozenset:
     for k, v in to_freeze.items():
         if isinstance(v, dict):
             freezing_dict[k] = to_frozen_set(v)
-        elif isinstance(v, (list, set)):
+        elif isinstance(v, list | set):
             freezing_dict[k] = frozenset(v)
         else:
             freezing_dict[k] = v

@@ -5,9 +5,9 @@ import { IP_ADDRESS_GENERIC } from "@/entities/ipam/constants";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
-import { schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
@@ -193,7 +193,7 @@ const AddressTypesCombobox = ({
   currentObject,
 }: { currentObject?: Record<string, AttributeType | RelationshipType> }) => {
   const { schema } = useSchema(IP_ADDRESS_POOL);
-  const schemaList = useAtomValue(schemaState);
+  const schemaList = useAtomValue(nodeSchemasAtom);
   const { schema: genericSchema, isGeneric } = useSchema(IP_ADDRESS_GENERIC);
   const schemaKindName = useAtomValue(schemaKindLabelState);
   const [open, setOpen] = useState(false);

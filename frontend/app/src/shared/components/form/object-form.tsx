@@ -18,13 +18,13 @@ import { AccountGroupForm } from "@/entities/role-manager/ui/account-group-form"
 import { AccountRoleForm } from "@/entities/role-manager/ui/account-role-form";
 import { GlobalPermissionForm } from "@/entities/role-manager/ui/global-permissions-form";
 import { ObjectPermissionForm } from "@/entities/role-manager/ui/object-permissions-form";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import { GenericObjectForm } from "@/shared/components/form/generic-object-form";
 import { NodeForm, NodeFormSubmitParams } from "@/shared/components/form/node-form";
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Suspense, lazy } from "react";
 
 export type ProfileData = {
@@ -43,7 +43,6 @@ export interface ObjectFormProps extends Omit<DynamicFormProps, "fields" | "onSu
   currentProfiles?: ProfileData[];
   isUpdate?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
-  onUpdateComplete?: () => void;
 }
 
 const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
@@ -59,7 +58,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
 
   if ([REPOSITORY_KIND, READONLY_REPOSITORY_KIND].includes(kind)) {
     return (
-      <Suspense fallback={<LoadingScreen hideText className="mt-4" />}>
+      <Suspense fallback={<LoadingIndicator className="mt-4" />}>
         <RepositoryForm schema={schema} {...props} />
       </Suspense>
     );

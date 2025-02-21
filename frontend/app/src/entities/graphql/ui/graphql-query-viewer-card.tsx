@@ -4,7 +4,7 @@ import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { GraphqlViewer } from "@/shared/components/editor/graphql/graphql-viewer";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 const GraphqlQueryViewerCard = ({ query }: { query: string }) => {
   return (

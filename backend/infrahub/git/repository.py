@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
@@ -10,7 +10,9 @@ from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.exceptions import RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
-from infrahub.services import InfrahubServices
+
+if TYPE_CHECKING:
+    from infrahub.services import InfrahubServices
 
 log = get_logger()
 
@@ -24,9 +26,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
     @classmethod
     async def new(
-        cls, service: InfrahubServices | None = None, update_commit_value: bool = True, **kwargs: Any
+        cls, service: InfrahubServices, update_commit_value: bool = True, **kwargs: Any
     ) -> InfrahubRepository:
-        service = service or InfrahubServices()
         self = cls(service=service, **kwargs)
         await self.create_locally(
             infrahub_branch_name=self.infrahub_branch_name, update_commit_value=update_commit_value
@@ -208,9 +209,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
     ref: str | None = Field(None, description="Ref to track on the external repository")
 
     @classmethod
-    async def new(cls, service: InfrahubServices | None = None, **kwargs: Any) -> InfrahubReadOnlyRepository:
-        service = service or InfrahubServices()
-
+    async def new(cls, service: InfrahubServices, **kwargs: Any) -> InfrahubReadOnlyRepository:
         if "ref" not in kwargs or "infrahub_branch_name" not in kwargs:
             raise ValueError("ref and infrahub_branch_name are mandatory to initialize a new Read-Only repository")
 
@@ -219,7 +218,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         log.info("Created new repository locally.", repository=self.name)
         return self
 
-    def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
+    def get_commit_value(self, branch_name: str, remote: bool = False) -> str:  # noqa: ARG002
         """Always get the latest commit for this repository's ref on the remote"""
         git_repo = self.get_git_repo_main()
         git_repo.remotes.origin.fetch()

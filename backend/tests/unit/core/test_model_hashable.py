@@ -1,5 +1,3 @@
-from typing import Optional
-
 from deepdiff import DeepDiff
 
 from infrahub.core.constants import HashableModelState
@@ -59,7 +57,7 @@ def test_hashing_dict():
     class MySubElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
-        value1: Optional[dict] = None
+        value1: dict | None = None
 
     class MyTopElement(HashableModel):
         _sort_by: list[str] = ["name"]
@@ -80,14 +78,14 @@ def test_update():
     class MySubElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
-        value1: Optional[str] = None
-        value2: Optional[int] = None
+        value1: str | None = None
+        value2: int | None = None
 
     class MyTopElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
-        value1: Optional[str] = None
-        value2: Optional[int] = None
+        value1: str | None = None
+        value2: int | None = None
         value3: list[str]
         subs: list[MySubElement]
 
@@ -126,14 +124,14 @@ def test_update_element_absent():
     class MySubElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
-        value1: Optional[str] = None
-        value2: Optional[int] = None
+        value1: str | None = None
+        value2: int | None = None
 
     class MyTopElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
-        value1: Optional[str] = None
-        value2: Optional[int] = None
+        value1: str | None = None
+        value2: int | None = None
         value3: list[str]
         subs: list[MySubElement]
 
@@ -174,14 +172,14 @@ def test_update_rename():
     class MySubElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
-        value1: Optional[str] = None
-        value2: Optional[int] = None
+        value1: str | None = None
+        value2: int | None = None
 
     class MyTopElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
-        value1: Optional[str] = None
-        value2: Optional[int] = None
+        value1: str | None = None
+        value2: int | None = None
         value3: list[str]
         subs: list[MySubElement]
 
@@ -259,14 +257,14 @@ def test_diff_nested_objects():
     class MySubElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
-        value1: Optional[str] = None
-        value2: Optional[int] = None
+        value1: str | None = None
+        value2: int | None = None
 
     class MyTopElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
-        value1: Optional[str] = None
-        value2: Optional[int] = None
+        value1: str | None = None
+        value2: int | None = None
         value3: list[str]
         value4: MySubElement
         subs: list[MySubElement]
@@ -297,14 +295,14 @@ def test_update_nested_objects():
     class MySubElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
-        value1: Optional[str] = None
-        value2: Optional[int] = None
+        value1: str | None = None
+        value2: int | None = None
 
     class MyTopElement(HashableModel):
         _sort_by: list[str] = ["name"]
         name: str
-        value1: Optional[str] = None
-        value2: Optional[int] = None
+        value1: str | None = None
+        value2: int | None = None
         value3: list[str]
         value4: MySubElement
         subs: list[MySubElement]

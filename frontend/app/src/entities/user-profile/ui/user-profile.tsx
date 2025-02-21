@@ -1,12 +1,12 @@
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { genericsState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
 import { Avatar } from "@/shared/components/display/avatar";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Tabs } from "@/shared/components/tabs";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { gql, useQuery } from "@apollo/client";
@@ -50,7 +50,7 @@ const renderContent = (tab: string | null | undefined) => {
 
 export function UserProfilePage() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-  const schemaList = useAtomValue(genericsState);
+  const schemaList = useAtomValue(genericSchemasAtom);
   useTitle("Profile");
 
   const schema = schemaList.find((s) => s.kind === ACCOUNT_GENERIC_OBJECT);
@@ -79,7 +79,7 @@ export function UserProfilePage() {
   }
 
   if (loading || !schema) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="h-full" />;
   }
 
   if (!profile) {

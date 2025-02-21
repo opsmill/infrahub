@@ -556,12 +556,12 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             same_kind_diff_node = self.build_diff_node(num_sub_fields=3, no_recurse=True)
             same_kind_diff_node.kind = diff_node.kind
             same_attr_names = random.sample([a.name for a in diff_node.attributes], k=min(len(diff_node.attributes), 2))
-            for attr_diff, attr_name in zip(list(same_kind_diff_node.attributes)[:2], same_attr_names):
+            for attr_diff, attr_name in zip(list(same_kind_diff_node.attributes)[:2], same_attr_names, strict=False):
                 attr_diff.name = attr_name
             same_rel_names = random.sample(
                 [r.name for r in diff_node.relationships], k=min(len(diff_node.relationships), 2)
             )
-            for rel_diff, rel_name in zip(list(same_kind_diff_node.relationships)[:2], same_rel_names):
+            for rel_diff, rel_name in zip(list(same_kind_diff_node.relationships)[:2], same_rel_names, strict=False):
                 rel_diff.name = rel_name
             diff_nodes.add(same_kind_diff_node)
         diff_root = EnrichedRootFactory.build(nodes=diff_nodes)

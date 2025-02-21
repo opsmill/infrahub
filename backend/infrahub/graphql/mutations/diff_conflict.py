@@ -19,9 +19,6 @@ if TYPE_CHECKING:
     from ..initialization import GraphqlContext
 
 
-# pylint: disable=unused-argument
-
-
 class ResolveDiffConflictInput(InputObjectType):
     conflict_id = InputField(String(required=True), description="ID of the diff conflict to resolve")
     selected_branch = InputField(
@@ -39,14 +36,16 @@ class ResolveDiffConflict(Mutation):
     @retry_db_transaction(name="resolve_diff_conflict")
     async def mutate(
         cls,
-        root: dict,
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: ResolveDiffConflictInput,
     ) -> ResolveDiffConflict:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         component_registry = get_component_registry()
-        diff_repo = await component_registry.get_component(DiffRepository, db=context.db, branch=context.branch)
+        diff_repo = await component_registry.get_component(
+            DiffRepository, db=graphql_context.db, branch=graphql_context.branch
+        )
 
         selection = ConflictSelection(data.selected_branch.value) if data.selected_branch else None
         conflict = await diff_repo.get_conflict_by_id(conflict_id=data.conflict_id)
@@ -55,7 +54,9 @@ class ResolveDiffConflict(Mutation):
         await diff_repo.update_conflict_by_id(conflict_id=data.conflict_id, selection=selection)
 
         core_data_checks = await NodeManager.query(
-            db=context.db, schema=InfrahubKind.DATACHECK, filters={"enriched_conflict_id__value": data.conflict_id}
+            db=graphql_context.db,
+            schema=InfrahubKind.DATACHECK,
+            filters={"enriched_conflict_id__value": data.conflict_id},
         )
         if not core_data_checks:
             return cls(ok=True)
@@ -67,5 +68,5 @@ class ResolveDiffConflict(Mutation):
             keep_branch = None
         for cdc in core_data_checks:
             cdc.keep_branch.value = keep_branch
-            await cdc.save(db=context.db)
+            await cdc.save(db=graphql_context.db)
         return cls(ok=True)

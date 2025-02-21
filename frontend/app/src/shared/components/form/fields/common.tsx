@@ -11,7 +11,7 @@ import { LabelProps } from "@/shared/components/ui/label";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 export const InputUniqueTips = ({ className }: { className: string }) => (
   <span className={classNames("text-xs leading-3 text-gray-600 italic", className)}>

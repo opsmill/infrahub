@@ -1,5 +1,9 @@
+from uuid import uuid4
+
 import pytest
 
+from infrahub.auth import AccountSession, AuthType
+from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import InfrahubKind
@@ -8,6 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+from infrahub.services import InfrahubServices, WorkflowLocalExecution
 
 
 async def test_rebase_graph(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
@@ -89,7 +94,6 @@ async def test_branch_rebase_diff_conflict(
     db: InfrahubDatabase,
     default_branch: Branch,
     workflow_local,
-    init_service,
     car_person_schema,
     car_camry_main,
 ):
@@ -101,5 +105,14 @@ async def test_branch_rebase_diff_conflict(
     car_branch.name.value += "-branch"
     await car_branch.save(db=db)
 
+    service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
+
     with pytest.raises(ValidationError, match="contains conflicts with the default branch that must be addressed"):
-        await rebase_branch(branch=branch2.name)
+        await rebase_branch(
+            branch=branch2.name,
+            service=service,
+            context=InfrahubContext.init(
+                branch=default_branch,
+                account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE),
+            ),
+        )
