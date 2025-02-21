@@ -1,4 +1,4 @@
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { TableCell } from "@/shared/components/table/table-cell";
 
 export function KindBodyCell({ schemaKind }: { schemaKind: string }) {

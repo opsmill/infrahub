@@ -1,7 +1,6 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { RelationshipSchema } from "@/entities/schema/types";
+import { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
@@ -22,7 +21,7 @@ export const getFormFieldFromRelationship = ({
   isFilterForm: boolean;
   relationshipSchema: RelationshipSchema;
   relationshipData: RelationshipType | undefined;
-  schema: IModelSchema;
+  schema: ModelSchema;
 }): DynamicRelationshipFieldProps => {
   const label = relationshipSchema.label ?? relationshipSchema.name;
   return {

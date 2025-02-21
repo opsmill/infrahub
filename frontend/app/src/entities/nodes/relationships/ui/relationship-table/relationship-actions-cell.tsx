@@ -2,7 +2,7 @@ import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-it
 import { DissociateRelationshipsModal } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
 import { RelationshipProperties } from "@/entities/nodes/relationships/ui/relationship-properties";
 import { Permission } from "@/entities/permission/types";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";

@@ -5,20 +5,15 @@ import {
   relationshipsForTabs,
 } from "@/config/constants";
 import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
-import {
-  IModelSchema,
-  iGenericSchema,
-  iNodeSchema,
-  profilesAtom,
-} from "@/entities/schema/stores/schema.atom";
-import { AttributeKind } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils";
+import { profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { AttributeKind, GenericSchema, ModelSchema, NodeSchema } from "@/entities/schema/types";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { store } from "@/shared/stores";
 import { sortByOrderWeight } from "@/shared/utils/common";
 import * as R from "ramda";
 
 type tgetObjectAttributes = {
-  schema: IModelSchema | undefined;
+  schema: ModelSchema | undefined;
   forListView?: boolean;
   forQuery?: boolean;
   forProfiles?: boolean;
@@ -52,7 +47,7 @@ export const getObjectAttributes = ({
 };
 
 type tgetObjectRelationships = {
-  schema?: iNodeSchema | iGenericSchema;
+  schema?: NodeSchema | GenericSchema;
   forListView?: boolean;
   forQuery?: boolean;
 };
@@ -84,7 +79,7 @@ export const getObjectRelationships = ({
   return relationships;
 };
 
-export const getTabs = (schema?: iNodeSchema | iGenericSchema) => {
+export const getTabs = (schema?: NodeSchema | GenericSchema) => {
   if (!schema) {
     return [];
   }
@@ -105,7 +100,7 @@ export const getTabs = (schema?: iNodeSchema | iGenericSchema) => {
 };
 
 type tgetSchemaObjectColumns = {
-  schema?: iNodeSchema | iGenericSchema;
+  schema?: NodeSchema | GenericSchema;
   forListView?: boolean;
   forQuery?: boolean;
   limit?: number;
@@ -163,7 +158,7 @@ export const getRelationshipOptions = (row: any, field: any, schemas: any[], gen
 
   if (generic) {
     const options = (generic.used_by || []).map((name: string) => {
-      const profiles = store.get(profilesAtom);
+      const profiles = store.get(profileSchemasAtom);
 
       const relatedSchema = [...schemas, ...profiles].find((s: any) => s.kind === name);
 

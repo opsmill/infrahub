@@ -1,28 +1,20 @@
-import {
-  IProfileSchema,
-  genericsState,
-  iGenericSchema,
-  iNodeSchema,
-  profilesAtom,
-  schemaState,
-} from "@/entities/schema/stores/schema.atom";
-import { useAtomValue } from "jotai/index";
+import { GenericSchema, NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
-type UseSchema = (kind: string | null | undefined) =>
+export type SchemaResult =
   | {
-      schema: iNodeSchema;
+      schema: NodeSchema;
       isGeneric: false;
       isNode: true;
       isProfile: false;
     }
   | {
-      schema: iGenericSchema;
+      schema: GenericSchema;
       isGeneric: true;
       isNode: false;
       isProfile: false;
     }
   | {
-      schema: IProfileSchema;
+      schema: ProfileSchema;
       isGeneric: false;
       isNode: false;
       isProfile: true;
@@ -34,11 +26,14 @@ type UseSchema = (kind: string | null | undefined) =>
       isProfile: false;
     };
 
-export const useSchema: UseSchema = (kind) => {
-  const nodesSchema = useAtomValue(schemaState);
-  const profilesSchema = useAtomValue(profilesAtom);
-  const genericsSchema = useAtomValue(genericsState);
-
+export function resolveSchema(
+  kind: string | null | undefined,
+  schemas: {
+    nodeSchemas: NodeSchema[];
+    genericSchemas: GenericSchema[];
+    profileSchemas: ProfileSchema[];
+  }
+): SchemaResult {
   if (!kind) {
     return {
       schema: null,
@@ -48,7 +43,7 @@ export const useSchema: UseSchema = (kind) => {
     };
   }
 
-  const node = nodesSchema.find((schema) => schema.kind === kind);
+  const node = schemas.nodeSchemas.find((schema) => schema.kind === kind);
   if (node) {
     return {
       schema: node,
@@ -58,7 +53,7 @@ export const useSchema: UseSchema = (kind) => {
     };
   }
 
-  const generic = genericsSchema.find((schema) => schema.kind === kind);
+  const generic = schemas.genericSchemas.find((schema) => schema.kind === kind);
   if (generic) {
     return {
       schema: generic,
@@ -68,7 +63,7 @@ export const useSchema: UseSchema = (kind) => {
     };
   }
 
-  const profile = profilesSchema.find((schema) => schema.kind === kind);
+  const profile = schemas.profileSchemas.find((schema) => schema.kind === kind);
   if (profile) {
     return {
       schema: profile,
@@ -84,4 +79,4 @@ export const useSchema: UseSchema = (kind) => {
     isNode: false,
     isProfile: false,
   };
-};
+}

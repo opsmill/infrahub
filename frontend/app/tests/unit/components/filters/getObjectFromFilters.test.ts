@@ -1,4 +1,4 @@
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import { buildRelationshipSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema.test";
 import { Filter } from "@/shared/hooks/useFilters";
@@ -43,7 +43,7 @@ describe("getObjectFromFilters - test", () => {
       relationships: [
         buildRelationshipSchema({ name: "relationship1", cardinality: "one", peer: "peer1" }),
       ],
-    } as IModelSchema;
+    } as ModelSchema;
 
     // WHEN
     const objectData = getObjectFromFilters(schema, filters);
@@ -66,7 +66,7 @@ describe("getObjectFromFilters - test", () => {
       relationships: [
         buildRelationshipSchema({ name: "relationship1", cardinality: "many", peer: "peer1" }),
       ],
-    } as IModelSchema;
+    } as ModelSchema;
 
     // WHEN
     const objectData = getObjectFromFilters(schema, filters);

@@ -1,14 +1,14 @@
 import { SEARCH_ANY_FILTER } from "@/config/constants";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
 import { SearchInput, SearchInputProps } from "@/shared/components/inputs/search-input";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import useFilters from "@/shared/hooks/useFilters";
 import { useSearch } from "@/shared/hooks/useSearch";
 
+import { ModelSchema } from "@/entities/schema/types";
 import { useEffect, useState } from "react";
 
 interface FilterSearchInputProps extends Omit<SearchInputProps, "onChange" | "value"> {
-  schema?: IModelSchema;
+  schema?: ModelSchema;
 }
 
 export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchInputProps) => {

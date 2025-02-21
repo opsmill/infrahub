@@ -1,7 +1,7 @@
 import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
 import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
 import { getObjectRelationships } from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { Filter } from "@/shared/hooks/useFilters";
 import { store } from "@/shared/stores";
 import { datetimeAtom } from "@/shared/stores/time.atom";
@@ -11,7 +11,7 @@ export type UseObjectRelationshipsParams = {
   parentKind: string;
   parentId: string;
   relationshipName: string;
-  relationshipSchema: IModelSchema;
+  relationshipSchema: ModelSchema;
   filters?: Array<Filter>;
 };
 

@@ -1,7 +1,7 @@
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
 import { NodeObject } from "@/entities/nodes/types";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
   addAttributesToRequest,
@@ -22,7 +22,7 @@ export const OBJECTS_PER_PAGE = 40;
 export type GetObjects = (
   args: ContextParams &
     PaginationParams & {
-      schema: IModelSchema;
+      schema: ModelSchema;
       filters?: Array<Filter>;
     }
 ) => Promise<Array<NodeObject>>;

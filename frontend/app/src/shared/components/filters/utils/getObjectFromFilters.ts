@@ -5,11 +5,11 @@ import {
   RelationshipOneType,
   RelationshipType,
 } from "@/entities/nodes/getObjectItemDisplayValue";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { Filter } from "@/shared/hooks/useFilters";
 
 export const getObjectFromFilters = (
-  schema: IModelSchema | null,
+  schema: ModelSchema | null,
   filters: Array<Filter>
 ): Record<string, AttributeType | RelationshipType> => {
   return filters.reduce(

@@ -2,8 +2,12 @@ import { PROFILE_KIND } from "@/config/constants";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { PermissionData } from "@/entities/permission/types";
 import { getPermission } from "@/entities/permission/utils";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
+import {
+  genericSchemasAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
+} from "@/entities/schema/stores/schema.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
@@ -34,9 +38,9 @@ export const GenericSelector = ({
   onChange,
 }: GenericSelectorProps) => {
   const id = useId();
-  const nodeSchemas = useAtomValue(schemaState);
-  const nodeGenerics = useAtomValue(genericsState);
-  const profileSchemas = useAtomValue(profilesAtom);
+  const nodeSchemas = useAtomValue(nodeSchemasAtom);
+  const nodeGenerics = useAtomValue(genericSchemasAtom);
+  const profileSchemas = useAtomValue(profileSchemasAtom);
   const { schema } = useSchema(value);
   const [open, setOpen] = useState(false);
   const { data, loading } = useQuery(gql(getObjectPermissionsQuery(currentKind)));

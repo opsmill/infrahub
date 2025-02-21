@@ -4,7 +4,7 @@ import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import { ErrorBoundary } from "react-error-boundary";
 import { Route, Routes } from "react-router";
-import { schemaState } from "../../../src/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "../../../src/entities/schema/stores/schema.atom";
 import { ObjectDetailsPage } from "../../../src/pages/objects/object-details";
 import ErrorFallback from "../../../src/shared/components/errors/error-fallback";
 import {
@@ -67,7 +67,7 @@ const mocks: any[] = [
 // Provide the initial value for jotai
 const ObjectDetailsProvider = () => {
   return (
-    <TestProvider initialValues={[[schemaState, deviceDetailsMocksSchema]]}>
+    <TestProvider initialValues={[[nodeSchemasAtom, deviceDetailsMocksSchema]]}>
       <ObjectDetailsPage />
     </TestProvider>
   );

@@ -1,6 +1,6 @@
 import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
-import { genericsState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { getProfileDetails } from "@/entities/user-profile/api/getProfileDetails";
 import { Avatar } from "@/shared/components/display/avatar";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -50,7 +50,7 @@ const renderContent = (tab: string | null | undefined) => {
 
 export function UserProfilePage() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
-  const schemaList = useAtomValue(genericsState);
+  const schemaList = useAtomValue(genericSchemasAtom);
   useTitle("Profile");
 
   const schema = schemaList.find((s) => s.kind === ACCOUNT_GENERIC_OBJECT);

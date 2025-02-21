@@ -1,6 +1,10 @@
 import { HierarchicalTree } from "@/entities/nodes/hierarchical-tree";
 import ObjectHeader from "@/entities/nodes/object-header";
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
+import {
+  genericSchemasAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
+} from "@/entities/schema/stores/schema.atom";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
@@ -17,9 +21,9 @@ import { Outlet, useParams } from "react-router";
 const ObjectPageLayout = () => {
   const { objectKind, objectid } = useParams();
 
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
-  const profiles = useAtomValue(profilesAtom);
+  const nodes = useAtomValue(nodeSchemasAtom);
+  const generics = useAtomValue(genericSchemasAtom);
+  const profiles = useAtomValue(profileSchemasAtom);
   const state = useAtomValue(stateAtom);
   const schema = [...nodes, ...generics, ...profiles].find(({ kind }) => kind === objectKind);
 

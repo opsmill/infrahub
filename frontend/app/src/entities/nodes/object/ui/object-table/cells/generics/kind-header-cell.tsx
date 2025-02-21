@@ -1,4 +1,4 @@
-import { iGenericSchema } from "@/entities/schema/stores/schema.atom";
+import { GenericSchema } from "@/entities/schema/types";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { FilterKindSelector } from "@/shared/components/filters/filter-kind-selector";
 import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
@@ -13,7 +13,7 @@ import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { useState } from "react";
 
 export interface KindHeaderCellProps extends PopoverTriggerProps {
-  schema: iGenericSchema;
+  schema: GenericSchema;
 }
 
 export function KindHeaderCell({ schema, ...props }: KindHeaderCellProps) {

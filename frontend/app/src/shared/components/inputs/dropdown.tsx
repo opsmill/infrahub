@@ -1,6 +1,5 @@
 import { DROPDOWN_ADD_MUTATION, DROPDOWN_REMOVE_MUTATION } from "@/entities/schema/api/dropdown";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema } from "@/entities/schema/types";
+import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -34,7 +33,7 @@ export interface DropdownProps extends Omit<HTMLAttributes<HTMLButtonElement>, "
   items: Array<DropdownOption>;
   className?: string;
   onChange: (value: DropdownOption["value"] | null) => void;
-  schema?: IModelSchema;
+  schema?: ModelSchema;
   field?: AttributeSchema;
   defaultOpen?: boolean;
 }
@@ -43,7 +42,7 @@ export interface DropdownItemProps extends React.ComponentPropsWithoutRef<typeof
   fieldSchema?: {
     name: string;
   };
-  schema?: IModelSchema;
+  schema?: ModelSchema;
   onDelete: (item: DropdownOption) => void;
   item: DropdownOption;
 }
@@ -134,7 +133,7 @@ export const DropdownItem = React.forwardRef<
 });
 
 interface DropdownAddActionProps {
-  schema: IModelSchema;
+  schema: ModelSchema;
   field: AttributeSchema;
   addOption: (item: DropdownOption) => void;
 }

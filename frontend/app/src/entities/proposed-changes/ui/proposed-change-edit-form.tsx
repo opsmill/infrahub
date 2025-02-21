@@ -3,7 +3,7 @@ import { branchesState } from "@/entities/branches/stores";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
@@ -21,7 +21,7 @@ type ProposedChangeEditFormProps = {
 };
 
 export const ProposedChangeEditForm = ({ initialData, onSuccess }: ProposedChangeEditFormProps) => {
-  const nodes = useAtomValue(schemaState);
+  const nodes = useAtomValue(nodeSchemasAtom);
   const branches = useAtomValue(branchesState);
   const { currentBranch } = useCurrentBranch();
   const date = useAtomValue(datetimeAtom);

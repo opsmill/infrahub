@@ -1,13 +1,13 @@
 import { getObjectRelationshipsFromApi } from "@/entities/nodes/relationships/api/get-object-relationships-from-api";
 import { NodeObject } from "@/entities/nodes/types";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { Filter } from "@/shared/hooks/useFilters";
 
 export type GetObjectRelationshipsParams = {
   parentKind: string;
   parentId: string;
   relationshipName: string;
-  relationshipSchema: IModelSchema;
+  relationshipSchema: ModelSchema;
   branchName: string;
   atDate: Date | null;
   limit?: number;

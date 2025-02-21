@@ -1792,7 +1792,7 @@ class SchemaBranch:
                 "name": "object_template",
                 "identifier": "node__objecttemplate",
                 "peer": self._get_object_template_kind(node.kind),
-                "kind": RelationshipKind.ATTRIBUTE,
+                "kind": RelationshipKind.TEMPLATE,
                 "cardinality": RelationshipCardinality.ONE,
                 "branch": BranchSupportType.AWARE,
                 "order_weight": 1,
@@ -1829,16 +1829,24 @@ class SchemaBranch:
             if relationship.peer in [
                 InfrahubKind.GENERICGROUP,
                 InfrahubKind.PROFILE,
-            ] or relationship.kind not in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]:
+            ] or relationship.kind not in [
+                RelationshipKind.COMPONENT,
+                RelationshipKind.PARENT,
+                RelationshipKind.ATTRIBUTE,
+            ]:
                 continue
 
-            rel_template_peer = self._get_object_template_kind(node_kind=relationship.peer)
+            rel_template_peer = (
+                self._get_object_template_kind(node_kind=relationship.peer)
+                if relationship.kind != RelationshipKind.ATTRIBUTE
+                else relationship.peer
+            )
             template_schema.relationships.append(
                 RelationshipSchema(
                     name=relationship.name,
                     peer=rel_template_peer,
                     kind=relationship.kind,
-                    optional=relationship.kind == RelationshipKind.COMPONENT,
+                    optional=relationship.kind in [RelationshipKind.COMPONENT, RelationshipKind.ATTRIBUTE],
                     cardinality=relationship.cardinality,
                     branch=relationship.branch,
                     identifier=self._generate_identifier_string(template_schema.kind, rel_template_peer),
