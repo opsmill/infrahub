@@ -44,11 +44,11 @@ class PrefectEventData(PrefectEventModel):
             return resource.get("infrahub.event_parent.id")
         return None
 
-    def get_primary_node(self) -> dict[str, str] | None:
+    def get_primary_node(self) -> dict[str, str | None] | None:
         node_id = self.resource.get("infrahub.node.id")
         node_kind = self.resource.get("infrahub.node.kind")
         if node_id and node_kind:
-            return {"id": node_id, "kind": node_kind}
+            return {"id": node_id, "kind": node_kind, "display_label": self.resource.get("infrahub.node.label")}
 
         return None
 

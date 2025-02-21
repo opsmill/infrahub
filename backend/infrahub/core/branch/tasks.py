@@ -174,7 +174,11 @@ async def merge_branch(branch: str, context: InfrahubContext, service: InfrahubS
         obj = await Branch.get_by_name(db=db, name=branch)
         default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
         component_registry = get_component_registry()
-        merge_event = BranchMergedEvent(meta=EventMeta.from_context(context=context, branch=obj))
+        merge_event = BranchMergedEvent(
+            branch_name=obj.name,
+            branch_id=str(obj.get_uuid()),
+            meta=EventMeta.from_context(context=context, branch=obj),
+        )
 
         merger: BranchMerger | None = None
         async with lock.registry.global_graph_lock():
