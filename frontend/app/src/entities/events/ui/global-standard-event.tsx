@@ -16,7 +16,7 @@ const getStandardEventIcon = (event: string) => {
 };
 
 export const StandardEvent = (props: EventNodeInterface) => {
-  const { event, account_id, primary_node, related_nodes } = props;
+  const { event, account_id } = props;
 
   return (
     <>
@@ -28,8 +28,7 @@ export const StandardEvent = (props: EventNodeInterface) => {
             <NodeLabel id={account_id} kind="CoreAccount" />
           </div>
 
-          {STANDARD_EVENTS_MAPPING[event] &&
-            STANDARD_EVENTS_MAPPING[event](related_nodes, primary_node?.id)}
+          {STANDARD_EVENTS_MAPPING[event] && STANDARD_EVENTS_MAPPING[event](props)}
 
           {!STANDARD_EVENTS_MAPPING[event] && event}
         </div>

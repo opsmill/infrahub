@@ -77,6 +77,18 @@ const EVENTS_QUERY = gql`
             }
             payload
           }
+          ... on BranchCreatedEvent {
+            payload
+          }
+          ... on StandardEvent {
+            payload
+          }
+          ... on BranchDeletedEvent {
+            payload
+          }
+          ... on BranchRebasedEvent {
+            payload
+          }
         }
       }
     }
