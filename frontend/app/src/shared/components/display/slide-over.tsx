@@ -1,5 +1,5 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Badge } from "@/shared/components/ui/badge";
 import usePrevious from "@/shared/hooks/usePrevious";
@@ -116,7 +116,7 @@ export default function SlideOver({ open, setOpen, onClose, title, offset = 0, c
 }
 
 type SlideOverTitleProps = {
-  schema: IModelSchema;
+  schema: ModelSchema;
   currentObjectLabel?: string | null;
   title?: React.ReactNode;
   subtitle?: React.ReactNode;

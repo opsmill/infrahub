@@ -3,7 +3,7 @@ import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-res
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { ObjectTable } from "@/entities/nodes/object/ui/object-table/object-table";
 import { useGetObjectPermissions } from "@/entities/permission/domain/get-object-permissions.query";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { queryClient } from "@/shared/api/rest/client";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
@@ -13,7 +13,7 @@ import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import useFilters from "@/shared/hooks/useFilters";
 
 export interface ObjectsTableManagerProps {
-  schema: IModelSchema;
+  schema: ModelSchema;
 }
 
 export function ObjectsManager({ schema }: ObjectsTableManagerProps) {

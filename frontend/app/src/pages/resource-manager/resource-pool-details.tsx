@@ -12,7 +12,8 @@ import {
 } from "@/entities/resource-manager/constants";
 import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";
 import ResourceSelector, { ResourceProps } from "@/entities/resource-manager/ui/resource-selector";
-import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema } from "@/entities/schema/types";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
@@ -30,7 +31,7 @@ import { Outlet, useParams } from "react-router";
 
 const ResourcePoolDetailsPage = () => {
   const { resourcePoolId } = useParams();
-  const nodes = useAtomValue(schemaState);
+  const nodes = useAtomValue(nodeSchemasAtom);
 
   const { data, loading } = useQuery(GET_KIND_FOR_RESOURCE_POOL, {
     variables: { ids: [resourcePoolId] },
@@ -50,7 +51,7 @@ const ResourcePoolDetailsPage = () => {
 
 type ResourcePoolContentProps = {
   id: string;
-  schema: iNodeSchema;
+  schema: NodeSchema;
 };
 
 const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {

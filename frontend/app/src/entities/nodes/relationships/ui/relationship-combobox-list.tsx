@@ -1,6 +1,6 @@
 import { useRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ComboboxEmpty, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { Spinner } from "@/shared/components/ui/spinner";

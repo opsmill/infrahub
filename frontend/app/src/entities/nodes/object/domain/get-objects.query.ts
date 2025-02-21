@@ -1,5 +1,5 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { ContextParams } from "@/shared/api/types";
 import { Filter } from "@/shared/hooks/useFilters";
 import { datetimeAtom } from "@/shared/stores/time.atom";
@@ -8,7 +8,7 @@ import { useAtomValue } from "jotai";
 import { OBJECTS_PER_PAGE, getObjects } from "./get-objects";
 
 type GetObjectsQueryParams = ContextParams & {
-  schema: IModelSchema;
+  schema: ModelSchema;
   filters?: Array<Filter>;
 };
 

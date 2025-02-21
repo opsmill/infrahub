@@ -1,4 +1,8 @@
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
+import {
+  genericSchemasAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
+} from "@/entities/schema/stores/schema.atom";
 import { store } from "@/shared/stores";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -14,11 +18,11 @@ describe("getSchema", () => {
   const profileSchema = generateProfileSchema({ kind: "Profile" });
 
   beforeEach(() => {
-    store.set(schemaState, [nodeSchema]);
+    store.set(nodeSchemasAtom, [nodeSchema]);
 
-    store.set(genericsState, [genericSchema]);
+    store.set(genericSchemasAtom, [genericSchema]);
 
-    store.set(profilesAtom, [profileSchema]);
+    store.set(profileSchemasAtom, [profileSchema]);
   });
 
   it("should return null schema when no kind is provided", () => {

@@ -1,9 +1,14 @@
-import { IProfileSchema, iGenericSchema, iNodeSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import {
+  AttributeSchema,
+  GenericSchema,
+  NodeSchema,
+  ProfileSchema,
+  RelationshipSchema,
+} from "@/entities/schema/types";
 
 export const generateNodeSchema = (
-  overrides?: Partial<iNodeSchema>
-): iNodeSchema & { kind: string } => {
+  overrides?: Partial<NodeSchema>
+): NodeSchema & { kind: string } => {
   return {
     id: "18102d49-2480-33e9-3cbd-c51702dfa1e2",
     state: "present",
@@ -151,7 +156,7 @@ export const generateNodeSchema = (
   };
 };
 
-export const generateGenericSchema = (overrides?: Partial<iGenericSchema>): iGenericSchema => {
+export const generateGenericSchema = (overrides?: Partial<GenericSchema>): GenericSchema => {
   return {
     id: "18102fa4-23c7-dbe0-3cb6-c515f0d8bc92",
     state: "present",
@@ -572,7 +577,7 @@ export const generateGenericSchema = (overrides?: Partial<iGenericSchema>): iGen
   };
 };
 
-export const generateProfileSchema = (overrides?: Partial<IProfileSchema>): IProfileSchema => {
+export const generateProfileSchema = (overrides?: Partial<ProfileSchema>): ProfileSchema => {
   return {
     id: null,
     state: "present",

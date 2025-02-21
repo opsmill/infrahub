@@ -1,6 +1,9 @@
 import { QSP } from "@/config/qsp";
 import { branchesState } from "@/entities/branches/stores";
-import { SchemaContext, withSchemaContext } from "@/entities/schema/decorators/withSchemaContext";
+import {
+  SchemaContext,
+  withSchemaContext,
+} from "@/entities/schema/ui/decorators/withSchemaContext";
 import Sidebar from "@/shared/components/layout/sidebar";
 import { useAtomValue } from "jotai/index";
 import { use, useEffect } from "react";

@@ -7,7 +7,8 @@ import {
   objectTopLevelTreeQuery,
 } from "@/entities/nodes/api/objectTreeQuery";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { IModelSchema, genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Tree, TreeItemProps, TreeProps } from "@/shared/components/ui/tree";
@@ -23,7 +24,7 @@ import { Link, useNavigate } from "react-router";
 export const HIDE_AUTO_GENERATED_FILTER: Filter = { name: "group_type__value", value: "default" };
 
 export type HierarchicalTreeProps = {
-  schema: IModelSchema;
+  schema: ModelSchema;
   className?: string;
   currentNodeId?: string;
 };
@@ -168,8 +169,8 @@ export const HierarchicalTree = ({ schema, currentNodeId, className }: Hierarchi
 };
 
 const ObjectTreeItem = ({ element }: TreeItemProps) => {
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
+  const nodes = useAtomValue(nodeSchemasAtom);
+  const generics = useAtomValue(genericSchemasAtom);
 
   const schema = [...nodes, ...generics].find(({ kind }) => kind === element.metadata?.kind);
 

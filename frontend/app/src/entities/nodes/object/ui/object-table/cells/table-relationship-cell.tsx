@@ -5,8 +5,8 @@ import {
   NodeRelationshipOne,
 } from "@/entities/nodes/types";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { RelationshipSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
 

@@ -7,7 +7,7 @@ import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { getPermission } from "@/entities/permission/utils";
-import { schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -57,7 +57,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const { objectKind, objectid } = useParams();
 
-  const schemaList = useAtomValue(schemaState);
+  const schemaList = useAtomValue(nodeSchemasAtom);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 

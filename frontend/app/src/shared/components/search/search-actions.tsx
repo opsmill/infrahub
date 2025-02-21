@@ -1,4 +1,5 @@
-import { IModelSchema, genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { MenuItem } from "@/shared/components/layout/menu-navigation/types";
 import { useMenu } from "@/shared/components/menu/domain/get-menu.query";
@@ -12,9 +13,9 @@ import { useMemo } from "react";
 
 export const SearchActions = () => {
   const query = useCommandState((state) => state.search);
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
-  const models: IModelSchema[] = [...nodes, ...generics];
+  const nodes = useAtomValue(nodeSchemasAtom);
+  const generics = useAtomValue(genericSchemasAtom);
+  const models: ModelSchema[] = [...nodes, ...generics];
 
   const { data: menuData, isPending, isError } = useMenu();
 
@@ -98,7 +99,7 @@ const ActionOnMenu = ({ menuItem }: ActionOnMenuProps) => {
   );
 };
 
-const ActionOnSchema = ({ model }: { model: IModelSchema }) => {
+const ActionOnSchema = ({ model }: { model: ModelSchema }) => {
   const { kind, label, name } = model;
   const url = constructPath("/schema", [{ name: "kind", value: kind }]);
 

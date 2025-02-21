@@ -7,9 +7,8 @@ import {
   SHOW_INTERNAL_GROUPS_ID,
 } from "@/entities/nodes/object/ui/filters/groups-auto-generated-filter-button";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeKind } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils";
+import { AttributeKind, ModelSchema } from "@/entities/schema/types";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import useFilters from "@/shared/hooks/useFilters";
 import { formatFullDate } from "@/shared/utils/date";
 import { TagGroup, TagGroupProps, TagList } from "react-aria-components";
@@ -29,7 +28,7 @@ export function formatAttributeFilterValue({
 }
 
 export interface ObjectsFilterTagsProps extends TagGroupProps {
-  schema?: IModelSchema;
+  schema?: ModelSchema;
 }
 
 export function ActiveFilterTags({ schema, ...props }: ObjectsFilterTagsProps) {

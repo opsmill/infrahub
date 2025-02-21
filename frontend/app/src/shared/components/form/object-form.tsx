@@ -18,7 +18,7 @@ import { AccountGroupForm } from "@/entities/role-manager/ui/account-group-form"
 import { AccountRoleForm } from "@/entities/role-manager/ui/account-role-form";
 import { GlobalPermissionForm } from "@/entities/role-manager/ui/global-permissions-form";
 import { ObjectPermissionForm } from "@/entities/role-manager/ui/object-permissions-form";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import { GenericObjectForm } from "@/shared/components/form/generic-object-form";

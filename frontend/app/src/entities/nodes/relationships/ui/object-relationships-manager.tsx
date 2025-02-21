@@ -1,13 +1,13 @@
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Navigate } from "react-router";
 import { toast } from "react-toastify";
 
 export interface ObjectRelationshipsManagerProps {
-  parentNodeSchema: IModelSchema;
+  parentNodeSchema: ModelSchema;
   parentNodeId: string;
   relationshipName: string;
 }

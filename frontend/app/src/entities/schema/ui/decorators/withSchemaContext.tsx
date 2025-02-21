@@ -3,18 +3,15 @@ import { QSP } from "@/config/qsp";
 import { branchesState, currentBranchAtom } from "@/entities/branches/stores";
 import { findSelectedBranch } from "@/entities/branches/utils";
 import {
-  IProfileSchema,
   currentSchemaHashAtom,
-  genericsState,
-  iGenericSchema,
-  iNamespace,
-  iNodeSchema,
-  namespacesState,
-  profilesAtom,
-  schemaState,
+  genericSchemasAtom,
+  namespacesAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import { GenericSchema, Namespace, NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { tokenSchema } from "@/entities/user-profile/ui/token-schema";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { fetchUrl } from "@/shared/api/rest/fetch";
@@ -38,12 +35,12 @@ export const SchemaContext = createContext<tSchemaContext>({
 export const withSchemaContext = (AppComponent: any) => (props: any) => {
   const [currentBranch, setCurrentBranch] = useAtom(currentBranchAtom);
   const [currentSchemaHash, setCurrentSchemaHash] = useAtom(currentSchemaHashAtom);
-  const setSchema = useSetAtom(schemaState);
+  const setSchema = useSetAtom(nodeSchemasAtom);
   const setSchemaKindNameState = useSetAtom(schemaKindNameState);
   const setSchemaKindLabelState = useSetAtom(schemaKindLabelState);
-  const setGenerics = useSetAtom(genericsState);
-  const setNamespaces = useSetAtom(namespacesState);
-  const setProfiles = useSetAtom(profilesAtom);
+  const setGenerics = useSetAtom(genericSchemasAtom);
+  const setNamespaces = useSetAtom(namespacesAtom);
+  const setProfiles = useSetAtom(profileSchemasAtom);
   const setState = useSetAtom(stateAtom);
   const branches = useAtomValue(branchesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
@@ -55,14 +52,14 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
     try {
       const schemaData: {
         main: string;
-        nodes: iNodeSchema[];
-        generics: iGenericSchema[];
-        namespaces: iNamespace[];
-        profiles: IProfileSchema[];
+        nodes: NodeSchema[];
+        generics: GenericSchema[];
+        namespaces: Namespace[];
+        profiles: ProfileSchema[];
       } = await fetchUrl(CONFIG.SCHEMA_URL(branch?.name));
 
       const hash = schemaData.main;
-      const schema = sortByName([...schemaData.nodes, tokenSchema] || []);
+      const schema = sortByName([...schemaData.nodes, tokenSchema]);
       const generics = sortByName(schemaData.generics || []);
       const namespaces = sortByName(schemaData.namespaces || []);
       const profiles = sortByName(schemaData.profiles || []);

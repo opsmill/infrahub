@@ -1,6 +1,6 @@
 import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { FormRelationshipValue } from "@/shared/components/form/type";
 import { store } from "@/shared/stores";
 
@@ -56,7 +56,7 @@ export const getRelationshipDefaultValue = ({
   const source = relationshipData.properties.source;
   const sourceKind = source.__typename;
 
-  const nodes = store.get(schemaState);
+  const nodes = store.get(nodeSchemasAtom);
   const sourceSchema = nodes.find(({ kind }) => kind === sourceKind);
 
   if (sourceSchema && sourceSchema.inherit_from?.includes(RESOURCE_GENERIC_KIND)) {

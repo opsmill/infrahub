@@ -13,7 +13,8 @@ import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/ob
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import { Permission } from "@/entities/permission/types";
-import { IModelSchema, genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -39,7 +40,7 @@ import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 
 type ObjectDetailsProps = {
-  schema: IModelSchema;
+  schema: ModelSchema;
   objectDetailsData: any;
   taskData?: Object;
   hideHeaders?: boolean;
@@ -62,8 +63,8 @@ export default function ObjectItemDetails({
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useAtomValue(currentBranchAtom);
-  const [schemaList] = useAtom(schemaState);
-  const [genericList] = useAtom(genericsState);
+  const [schemaList] = useAtom(nodeSchemasAtom);
+  const [genericList] = useAtom(genericSchemasAtom);
 
   const refetchRef = useRef(null);
 

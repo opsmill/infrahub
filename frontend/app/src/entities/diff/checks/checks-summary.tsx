@@ -6,7 +6,7 @@ import {
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { runCheck } from "@/entities/diff/api/runCheck";
 import { getValidatorsStats } from "@/entities/proposed-changes/ui/checks";
-import { genericsState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -32,7 +32,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
 
   const { proposedChangeId } = useParams();
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
-  const schemaList = useAtomValue(genericsState);
+  const schemaList = useAtomValue(genericSchemasAtom);
   const { isAuthenticated } = useAuth();
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_VALIDATOR_OBJECT);

@@ -1,6 +1,5 @@
 import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/entities/schema/api/enum";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema } from "@/entities/schema/types";
+import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { Button, ButtonProps } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -20,7 +19,7 @@ import React, { forwardRef, useState } from "react";
 
 export interface EnumDeleteButtonProps extends ButtonProps {
   fieldSchema: AttributeSchema;
-  schema: IModelSchema;
+  schema: ModelSchema;
   value: string | number;
   onDelete: (id: string | number) => void;
 }
@@ -78,7 +77,7 @@ export const EnumDeleteButton = React.forwardRef<HTMLButtonElement, EnumDeleteBu
 );
 
 interface EnumAddActionProps {
-  schema?: IModelSchema;
+  schema?: ModelSchema;
   field?: AttributeSchema;
   addOption: (item: string | number) => void;
 }
@@ -151,7 +150,7 @@ export interface EnumProps {
   items: Array<string | number>;
   value: string | number | null;
   fieldSchema?: AttributeSchema;
-  schema?: IModelSchema;
+  schema?: ModelSchema;
   className?: string;
   onChange: (value: string | number | null) => void;
   defaultOpen?: boolean;

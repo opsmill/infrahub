@@ -1,5 +1,5 @@
 import { ObjectsManager } from "@/entities/nodes/object/ui/objects-manager";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { useParams } from "react-router";
 

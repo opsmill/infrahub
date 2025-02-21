@@ -1,6 +1,6 @@
 import { PROPOSED_CHANGES_EDITABLE_STATE, PROPOSED_CHANGES_OBJECT } from "@/config/constants";
 import { ProposedChangeEditForm } from "@/entities/proposed-changes/ui/proposed-change-edit-form";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";

@@ -1,6 +1,6 @@
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
   addAttributesToRequest,
@@ -15,7 +15,7 @@ type GenerateObjectRelationshipsQueryParams = {
   parentKind: string;
   parentId: string;
   relationshipName: string;
-  relationshipSchema: IModelSchema;
+  relationshipSchema: ModelSchema;
   limit?: number;
   offset?: number;
   filters?: Array<Filter>;

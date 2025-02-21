@@ -1,8 +1,7 @@
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
 import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-icon";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
@@ -13,7 +12,7 @@ import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { useState } from "react";
 
 export interface TableColumnHeaderProps extends PopoverTriggerProps {
-  schema: IModelSchema;
+  schema: ModelSchema;
   columnSchema: AttributeSchema | RelationshipSchema;
 }
 

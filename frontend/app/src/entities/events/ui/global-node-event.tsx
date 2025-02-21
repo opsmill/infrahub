@@ -1,6 +1,6 @@
 import { NodeLabel } from "@/entities/nodes/object/ui/display-label";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";

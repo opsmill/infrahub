@@ -1,5 +1,5 @@
 import { getArtifactDetails } from "@/entities/artifacts/api/getArtifacts";
-import { schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import Accordion from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/display/badge";
@@ -14,7 +14,7 @@ import { ArtifactContentDiff } from "./artifact-content-diff";
 export const ArtifactRepoDiff = (props: any) => {
   const { diff } = props;
 
-  const [schemaList] = useAtom(schemaState);
+  const [schemaList] = useAtom(nodeSchemasAtom);
 
   const schemaData = schemaList.filter((s) => s.kind === "Artifact")[0];
 
