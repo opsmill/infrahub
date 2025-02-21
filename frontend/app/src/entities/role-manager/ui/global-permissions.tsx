@@ -1,7 +1,7 @@
 import { GLOBAL_PERMISSION_OBJECT } from "@/config/constants";
 import { GET_ROLE_MANAGEMENT_GLOBAL_PERMISSIONS } from "@/entities/role-manager/api/getGlobalPermissions";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";

@@ -1,9 +1,9 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRelationshipsInfiniteQueryOptions } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { NodeSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import {
   getRootSchemaOfHierarchicalSchema,
   isHierarchicalSchema,

@@ -2,12 +2,12 @@ import { PROFILE_KIND } from "@/config/constants";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { PermissionData } from "@/entities/permission/types";
 import { getPermission } from "@/entities/permission/utils";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
 import {
   genericSchemasAtom,
   nodeSchemasAtom,
   profileSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";

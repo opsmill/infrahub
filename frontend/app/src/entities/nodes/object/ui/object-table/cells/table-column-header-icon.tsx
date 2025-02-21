@@ -1,5 +1,5 @@
-import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { Icon } from "@iconify-icon/react";
 
 const ATTRIBUTE_ICONS: Record<AttributeKind, string> = {

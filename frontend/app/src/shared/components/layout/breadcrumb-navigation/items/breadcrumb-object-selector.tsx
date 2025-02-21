@@ -1,7 +1,7 @@
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { ModelSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { BreadcrumbLink } from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-link";
 import BreadcrumbLoading from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-loading";
 import { NetworkStatus } from "@apollo/client";

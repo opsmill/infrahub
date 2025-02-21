@@ -17,7 +17,7 @@ import { ProposedChangesCounter } from "@/entities/proposed-changes/ui/counter";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary";
 import { ProposedChangesInfo } from "@/entities/proposed-changes/ui/item-info";
 import { ProposedChangesReviewers } from "@/entities/proposed-changes/ui/reviewers";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { TabsButtons } from "@/shared/components/buttons/tabs-buttons";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
