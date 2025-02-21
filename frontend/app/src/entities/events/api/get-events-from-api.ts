@@ -1,4 +1,5 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 import { EventType } from "../ui/event";
 import { INFRAHUB_EVENT } from "../utils/constants";
@@ -96,11 +97,11 @@ const EVENTS_QUERY = gql`
 `;
 
 export async function getEventsFromApi({
+  limit = OBJECTS_PER_PAGE,
   branchName,
   atDate,
-  limit = OBJECTS_PER_PAGE,
   ...filters
-}: GlobalEventsFilters & { branchName?: string; atDate?: Date | null }) {
+}: GlobalEventsFilters & ContextParams) {
   const { data } = await graphqlClient.query({
     query: EVENTS_QUERY,
     variables: {

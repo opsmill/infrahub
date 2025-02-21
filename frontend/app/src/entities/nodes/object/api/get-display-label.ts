@@ -1,4 +1,5 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
@@ -36,9 +37,7 @@ export function getNodeLabelFromApi({
 }: {
   objectid?: string;
   kind: string;
-  branchName: string;
-  atDate: Date | null;
-}) {
+} & ContextParams) {
   return graphqlClient.query({
     query: gql(getNodeLabelQuery({ objectid, kind })),
     context: {
