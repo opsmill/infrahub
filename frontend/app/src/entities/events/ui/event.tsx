@@ -62,7 +62,7 @@ export const EventDetails = ({
           value={
             <div className="flex items-center gap-1">
               {related_nodes.map((node) => {
-                return <NodeLabel id={node?.id} />;
+                return <NodeLabel key={node.id} id={node?.id} />;
               })}
             </div>
           }
