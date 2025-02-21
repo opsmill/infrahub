@@ -18,7 +18,7 @@ from tests.helpers.graphql import graphql
 
 
 @pytest.fixture
-async def group1(db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: dict[str, Node]) -> Node:
+async def group1(db: InfrahubDatabase, car_person_data_generic: dict[str, Node]) -> Node:
     g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
     await g1.save(db=db)
@@ -26,9 +26,7 @@ async def group1(db: InfrahubDatabase, default_branch: Branch, car_person_data_g
 
 
 @pytest.fixture
-async def definition1(
-    db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: dict[str, Node], group1: Node
-) -> Node:
+async def definition1(db: InfrahubDatabase, car_person_data_generic: dict[str, Node], group1: Node) -> Node:
     gd1 = await Node.init(db=db, schema=InfrahubKind.GENERATORDEFINITION)
     await gd1.new(
         db=db,
@@ -50,12 +48,11 @@ async def test_run_generator_definition(
     register_core_models_schema,
     car_person_data_generic,
     create_test_admin: Node,
-    branch: Branch,
     definition1: Node,
 ):
     query = """
     mutation {
-        CoreGeneratorDefinitionRun(data: { id: "%s" }) {
+        CoreGeneratorDefinitionRun(data: { id: "%s" }, wait_until_completion: false) {
             ok
         }
     }
@@ -67,7 +64,7 @@ async def test_run_generator_definition(
         authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
     )
     gql_params = await prepare_graphql_params(
-        db=db, include_subscription=False, branch=branch, service=service, account_session=account_session
+        db=db, include_subscription=False, branch=default_branch, service=service, account_session=account_session
     )
 
     with patch(
@@ -85,7 +82,7 @@ async def test_run_generator_definition(
         assert result.data
         assert result.data["CoreGeneratorDefinitionRun"]["ok"]
 
-        context = InfrahubContext.init(branch=branch, account=account_session)
+        context = InfrahubContext.init(branch=default_branch, account=account_session)
         query = await definition1.query.get_peer(db=db)
         repository = await definition1.repository.get_peer(db=db)
         group = await definition1.targets.get_peer(db=db)
