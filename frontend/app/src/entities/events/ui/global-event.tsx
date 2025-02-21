@@ -12,7 +12,7 @@ export const Event = ({ __typename, ...props }: EventType) => {
   return (
     <div
       className={classNames(
-        "flex w-full items-center flex-grow gap-3 p-2 rounded-md shadow-sm border transition-all",
+        "grid grid-cols-2 p-2 rounded-md shadow-sm border transition-all",
         "bg-gray-50",
         props.has_children && "bg-custom-blue-500/10"
       )}
@@ -25,7 +25,7 @@ export const Event = ({ __typename, ...props }: EventType) => {
         {STANDARD_EVENTS.includes(__typename) && <StandardEvent {...props} />}
       </div>
 
-      <div className="grid grid-cols-3">
+      <div className="grid grid-cols-3 items-center">
         <Link to={`/activities/${props.id}`} className="text-xs text-gray-500">
           View more
         </Link>
