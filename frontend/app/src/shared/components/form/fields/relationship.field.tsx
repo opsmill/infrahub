@@ -4,6 +4,7 @@ import {
   genericSchemasAtom,
   nodeSchemasAtom,
   profileSchemasAtom,
+  templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { LabelFormField } from "@/shared/components/form/fields/common";
@@ -121,9 +122,12 @@ const RelationshipField = ({
 
   if (generic) {
     const profiles = store.get(profileSchemasAtom);
+    const templates = store.get(templateSchemasAtom);
     const genericOptions = (generic.used_by || [])
       .map((name: string) => {
-        const relatedSchema = [...schemaList, ...profiles].find((s) => s.kind === name);
+        const relatedSchema = [...schemaList, ...profiles, ...templates].find(
+          (s) => s.kind === name
+        );
 
         if (relatedSchema) {
           return {
