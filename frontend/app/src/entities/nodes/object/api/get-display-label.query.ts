@@ -1,23 +1,27 @@
-import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
-import { store } from "@/shared/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
 import { getNodeLabelFromApi } from "./get-display-label";
 
 type NodeLabelProps = { objectid?: string; kind: string; enabled?: boolean };
 
-export function getNodeLabelQueryOptions({ objectid, kind, enabled }: NodeLabelProps) {
-  const currentBranchName = getCurrentBranchName();
-  const timeMachineDate = store.get(datetimeAtom);
-
+export function getNodeLabelQueryOptions({
+  objectid,
+  kind,
+  enabled,
+  branchName,
+  atDate,
+}: NodeLabelProps & ContextParams) {
   return queryOptions({
-    queryKey: ["display-label", objectid, kind],
+    queryKey: [branchName, atDate, "display-label", objectid, kind],
     queryFn: () => {
       return getNodeLabelFromApi({
         objectid,
         kind,
-        branchName: currentBranchName,
-        atDate: timeMachineDate,
+        branchName,
+        atDate,
       });
     },
     enabled,
@@ -25,7 +29,18 @@ export function getNodeLabelQueryOptions({ objectid, kind, enabled }: NodeLabelP
 }
 
 export const useNodeLabel = ({ objectid, kind, enabled }: NodeLabelProps) => {
-  const { data, ...props } = useQuery(getNodeLabelQueryOptions({ objectid, kind, enabled }));
+  const { currentBranch } = useCurrentBranch();
+  const timeMachineDate = useAtomValue(datetimeAtom);
+
+  const { data, ...props } = useQuery(
+    getNodeLabelQueryOptions({
+      objectid,
+      kind,
+      enabled,
+      branchName: currentBranch.name,
+      atDate: timeMachineDate,
+    })
+  );
 
   const object = data?.data?.[kind]?.edges?.[0]?.node ?? {};
 

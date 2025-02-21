@@ -1,7 +1,10 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { ContextParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 import { EventType } from "../ui/event";
 import { INFRAHUB_EVENT } from "../utils/constants";
+
+export const OBJECTS_PER_PAGE = 40;
 
 export type GlobalEventsFilters = {
   hasChildren?: boolean;
@@ -10,6 +13,7 @@ export type GlobalEventsFilters = {
   relatedNodeIds?: Array<string>;
   parentIds?: Array<string>;
   accountIds?: Array<string>;
+  level?: number;
   since?: Date;
   until?: Date;
   offset?: number;
@@ -25,6 +29,7 @@ const EVENTS_QUERY = gql`
     $relatedNodeIds: [String!]
     $parentIds: [String!]
     $accountIds: [String!]
+    $level: Int
     $since: DateTime
     $until: DateTime
     $offset: Int
@@ -38,6 +43,7 @@ const EVENTS_QUERY = gql`
       related_node__ids: $relatedNodeIds
       parent__ids: $parentIds
       account__ids: $accountIds
+      level: $level
       since: $since
       until: $until
       offset: $offset
@@ -72,6 +78,18 @@ const EVENTS_QUERY = gql`
             }
             payload
           }
+          ... on BranchCreatedEvent {
+            payload
+          }
+          ... on StandardEvent {
+            payload
+          }
+          ... on BranchDeletedEvent {
+            payload
+          }
+          ... on BranchRebasedEvent {
+            payload
+          }
         }
       }
     }
@@ -79,13 +97,15 @@ const EVENTS_QUERY = gql`
 `;
 
 export async function getEventsFromApi({
+  limit = OBJECTS_PER_PAGE,
   branchName,
   atDate,
   ...filters
-}: GlobalEventsFilters & { branchName?: string; atDate?: Date | null }) {
+}: GlobalEventsFilters & ContextParams) {
   const { data } = await graphqlClient.query({
     query: EVENTS_QUERY,
     variables: {
+      limit,
       ...filters,
     },
     context: {
@@ -98,10 +118,5 @@ export async function getEventsFromApi({
     return edge.node;
   });
 
-  const count = data?.data?.[INFRAHUB_EVENT]?.count;
-
-  return {
-    activities,
-    count,
-  };
+  return activities;
 }

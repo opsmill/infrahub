@@ -1,4 +1,5 @@
-import { NodeLabel } from "@/entities/nodes/object/ui/display-label";
+import { QSP } from "@/config/qsp";
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
@@ -51,7 +52,13 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
 
           <Link
             to={constructPath(
-              `/objects/${props.payload.data.node_kind}/${props.payload.data.node_id}`
+              `/objects/${props.payload.data.node_kind}/${props.payload.data.node_id}`,
+              [
+                {
+                  name: QSP.BRANCH,
+                  value: props.branch,
+                },
+              ]
             )}
           >
             <NodeLabel id={props.payload.data.node_id} />

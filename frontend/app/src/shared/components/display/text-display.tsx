@@ -7,9 +7,14 @@ const MAX_TEXT_LENGTH = 200;
 interface TextDisplayProps {
   children: string;
   maxChars?: number;
+  preventShowMore?: boolean;
 }
 
-export const TextDisplay = ({ children, maxChars = MAX_TEXT_LENGTH }: TextDisplayProps) => {
+export const TextDisplay = ({
+  children,
+  maxChars = MAX_TEXT_LENGTH,
+  preventShowMore,
+}: TextDisplayProps) => {
   const [showFullText, setShowFullText] = useState(false);
 
   const shouldShowReadMore = children.length > maxChars;
@@ -22,7 +27,7 @@ export const TextDisplay = ({ children, maxChars = MAX_TEXT_LENGTH }: TextDispla
         {truncatedText}
         {shouldTruncateText && "..."}
       </p>
-      {shouldShowReadMore && (
+      {shouldShowReadMore && !preventShowMore && (
         <ToggleFullTextButton isFullText={showFullText} setShowFullText={setShowFullText} />
       )}
     </div>
