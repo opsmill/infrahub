@@ -310,6 +310,20 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 continue
             fields[attribute] = {"value": getattr(template, attribute).value}
 
+        for relationship_name in template._relationships:
+            relationship_schema = template._schema.get_relationship(name=relationship_name)
+            if (
+                relationship_schema.kind != RelationshipKind.ATTRIBUTE
+                or relationship_name == OBJECT_TEMPLATE_RELATIONSHIP_NAME
+            ):
+                continue
+
+            relationship: RelationshipManager = getattr(template, relationship_name)
+            if relationship_schema.cardinality == RelationshipCardinality.ONE:
+                fields[relationship_name] = {"id": (await relationship.get_peer(db=db)).id}
+            else:
+                fields[relationship_name] = [{"id": peer_id} for peer_id in await relationship.get_peers(db=db)]
+
     async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
         errors = []
 
