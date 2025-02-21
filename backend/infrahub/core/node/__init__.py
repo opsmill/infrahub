@@ -7,7 +7,13 @@ from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchSupportType, ComputedAttributeKind, InfrahubKind, RelationshipCardinality
+from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
+    BranchSupportType,
+    ComputedAttributeKind,
+    InfrahubKind,
+    RelationshipCardinality,
+)
 from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
@@ -602,7 +608,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         branch = self.get_branch_based_on_support_type()
 
-        delete_query = await RelationshipDeleteAllQuery.init(db=db, node_id=self.get_id(), branch=branch, at=delete_at)
+        delete_query = await RelationshipDeleteAllQuery.init(
+            db=db, node_id=self.get_id(), branch=branch, at=delete_at, branch_agnostic=branch.name == GLOBAL_BRANCH_NAME
+        )
         await delete_query.execute(db=db)
 
         # Update the relationship to the branch itself

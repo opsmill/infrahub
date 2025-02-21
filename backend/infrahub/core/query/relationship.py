@@ -936,9 +936,10 @@ class RelationshipCountPerNodeQuery(Query):
 
 class RelationshipDeleteAllQuery(Query):
     """
-    Delete all relationships linked to a given node on a given branch. So, it will both:
-    - Set `to` time on corresponding active edge.
+    Delete all relationships linked to a given node on a given branch at a given time. For every IS_RELATED edge:
+    - Set `to` time if an active edge exist on the same branch.
     - Create `deleted` edge.
+    - Apply above to every edges linked to any connected Relationship node.
     """
 
     name = "node_delete_all_relationships"
@@ -962,11 +963,17 @@ class RelationshipDeleteAllQuery(Query):
 
         self.params["at"] = self.at.to_string()
 
-        edge_filter, rel_params = self.branch.get_query_filter_path(at=self.at, variable_name="edge")
+        edge_filter, rel_params = self.branch.get_query_filter_path(
+            at=self.at, variable_name="edge", branch_agnostic=self.branch_agnostic
+        )
         self.params.update(rel_params)
 
-        r1_active_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string(), variable_name="r1_active")
-        r2_active_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string(), variable_name="r2_active")
+        r1_active_filter, _ = self.branch.get_query_filter_path(
+            at=self.at.to_string(), variable_name="r1_active", branch_agnostic=self.branch_agnostic
+        )
+        r2_active_filter, _ = self.branch.get_query_filter_path(
+            at=self.at.to_string(), variable_name="r2_active", branch_agnostic=self.branch_agnostic
+        )
 
         arrows = [("<-", "-", "<-", "-"), ("-", "->", "-", "->"), ("<-", "-", "-", "->"), ("-", "->", "<-", "-")]
 
@@ -978,14 +985,27 @@ class RelationshipDeleteAllQuery(Query):
                 (rl:Relationship)%(arrow_right_start)s[r2_active:IS_RELATED]%(arrow_right_end)s(d:Node)
                 WHERE %(r1_active_filter)s AND %(r2_active_filter)s AND r1_active.status = "active" AND r2_active.status = "active"
 
-                WITH s, rl, d, r1_active, r2_active
-                LIMIT 1
-                SET r1_active.to = $at
-                SET r2_active.to = $at
-                CREATE (s)%(arrow_left_start)s[r1:IS_RELATED $rel_prop]%(arrow_left_end)s(rl)
-                SET r1.hierarchical = r1_active.hierarchical
-                CREATE (rl)%(arrow_right_start)s[r2:IS_RELATED $rel_prop]%(arrow_right_end)s(d)
-                SET r2.hierarchical = r2_active.hierarchical
+                CALL {
+                    WITH s, r1_active, rl
+                    WITH DISTINCT s, r1_active, rl
+                    CREATE (s)%(arrow_left_start)s[r1:IS_RELATED $rel_prop]%(arrow_left_end)s(rl)
+                    SET r1.hierarchy = r1_active.hierarchy
+                    WITH r1_active
+                    WHERE r1_active.branch = $branch
+                    SET r1_active.to = $at
+                }
+
+                CALL {
+                    WITH rl, r2_active, d
+                    WITH DISTINCT rl, r2_active, d
+                    CREATE (rl)%(arrow_right_start)s[r2:IS_RELATED $rel_prop]%(arrow_right_end)s(d)
+                    SET r2.hierarchy = r2_active.hierarchy
+                    WITH r2_active
+                    WHERE r2_active.branch = $branch
+                    SET r2_active.to = $at
+                }
+
+                // Delete other edges related to Relationship node
                 WITH rl
                 CALL {
                     WITH rl
