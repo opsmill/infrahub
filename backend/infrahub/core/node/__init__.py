@@ -320,9 +320,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
             relationship: RelationshipManager = getattr(template, relationship_name)
             if relationship_schema.cardinality == RelationshipCardinality.ONE:
-                fields[relationship_name] = {"id": (await relationship.get_peer(db=db)).id}
-            else:
-                fields[relationship_name] = [{"id": peer_id} for peer_id in await relationship.get_peers(db=db)]
+                if relationship_peer := await relationship.get_peer(db=db):
+                    fields[relationship_name] = {"id": relationship_peer.id}
+            elif relationship_peers := await relationship.get_peers(db=db):
+                fields[relationship_name] = [{"id": peer_id} for peer_id in relationship_peers]
 
     async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
         errors = []
