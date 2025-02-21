@@ -7,7 +7,7 @@ import {
 import { getPermission } from "@/entities/permission/utils";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai";

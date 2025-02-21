@@ -11,7 +11,7 @@ import {
   nodeSchemasAtom,
   profileSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
-import { isGenericSchema } from "@/entities/schema/utils";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { store } from "@/shared/stores";
 import { constructPath, overrideQueryParams } from "../../shared/api/rest/fetch";
 

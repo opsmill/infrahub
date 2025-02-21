@@ -1,6 +1,6 @@
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { getSchema } from "@/entities/schema/domain/get-schema";
-import { isHierarchicalSchema } from "@/entities/schema/utils";
+import { isHierarchicalSchema } from "@/entities/schema/utils/is-hierarchical-schema";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import ColorField from "@/shared/components/form/fields/color.field";

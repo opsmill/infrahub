@@ -5,7 +5,7 @@ import {
   profileSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import Accordion from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/ui/badge";
 import { SearchInput } from "@/shared/components/ui/search-input";

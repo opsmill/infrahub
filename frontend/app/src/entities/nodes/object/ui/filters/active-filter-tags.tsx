@@ -8,7 +8,7 @@ import {
 } from "@/entities/nodes/object/ui/filters/groups-auto-generated-filter-button";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { AttributeKind, ModelSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import useFilters from "@/shared/hooks/useFilters";
 import { formatFullDate } from "@/shared/utils/date";
 import { TagGroup, TagGroupProps, TagList } from "react-aria-components";

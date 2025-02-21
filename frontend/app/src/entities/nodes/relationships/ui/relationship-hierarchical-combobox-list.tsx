@@ -4,7 +4,10 @@ import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { NodeSchema } from "@/entities/schema/types";
-import { getRootSchemaOfHierarchicalSchema, isHierarchicalSchema } from "@/entities/schema/utils";
+import {
+  getRootSchemaOfHierarchicalSchema,
+  isHierarchicalSchema,
+} from "@/entities/schema/utils/is-hierarchical-schema";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";
 import { ComboboxEmpty, ComboboxItem } from "@/shared/components/ui/combobox";

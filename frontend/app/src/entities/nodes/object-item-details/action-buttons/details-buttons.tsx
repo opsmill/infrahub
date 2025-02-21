@@ -4,7 +4,7 @@ import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import RepositoryActionMenu from "@/entities/repository/ui/repository-action-menu";
 import { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";

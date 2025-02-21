@@ -7,7 +7,7 @@ import {
 import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
 import { profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { AttributeKind, GenericSchema, ModelSchema, NodeSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { store } from "@/shared/stores";
 import { sortByOrderWeight } from "@/shared/utils/common";
 import * as R from "ramda";

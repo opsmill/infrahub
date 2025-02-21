@@ -1,5 +1,5 @@
 import { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema } from "@/entities/schema/utils";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { FilterKindSelector } from "@/shared/components/filters/filter-kind-selector";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";

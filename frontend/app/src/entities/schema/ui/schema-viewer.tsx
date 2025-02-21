@@ -5,7 +5,9 @@ import {
   profileSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema } from "@/entities/schema/types";
-import { isGenericSchema, isNodeSchema, isProfileSchema } from "@/entities/schema/utils";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import { isNodeSchema } from "@/entities/schema/utils/is-node-schema";
+import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
