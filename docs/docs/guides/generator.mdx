@@ -104,7 +104,7 @@ We provide `convert_query_response` option to be toggled to be able to access ob
 
 This allows you to manage the returned data with helper methods on the SDK objects such as `save`, `fetch`, etc. on the returned data rather than having to build a payload to send back to Infrahub to manage the objects.
 
-Read more on the [Infrahub Python SDK](../python-sdk).
+Read more on the [Infrahub Python SDK]($(local_base_url_1)python-sdk).
 :::
 
 <Tabs groupId="convertResponse">
@@ -291,7 +291,7 @@ widget_generator (widget_generator.py::Generator) Target: widgets
 
 :::warning
 
-When running a generator with `infrahubctl` the [SDK tracking](../python-sdk/topics/tracking) feature isn't used. The reason for this is that internally Infrahub uses the ID of the generator_definition to control the tracking, this isn't available from the outside. For this reason it is recommended to create test branches when developing generators and validating the results.
+When running a generator with `infrahubctl` the [SDK tracking]($(local_base_url_1)python-sdk/topics/tracking) feature isn't used. The reason for this is that internally Infrahub uses the ID of the generator_definition to control the tracking, this isn't available from the outside. For this reason it is recommended to create test branches when developing generators and validating the results.
 
 :::
 

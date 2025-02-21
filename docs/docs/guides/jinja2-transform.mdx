@@ -16,18 +16,48 @@ The goal of this guide is to develop a Jinja Transform and add it to Infrahub, w
 6. Add the repository to Infrahub as an external repository
 7. Validate that the transform works by using the render API endpoint
 
-In this guide we are going to work with the builtin tag objects in Infrahub. It won't provide a rendered template that is very useful, the goal is instead to show how the Jinja Rendering works. Once you have mastered the basics you will be ready to go on to create more advanced template.
+## 1. Loading a schema
 
-## 1. Creating a query to collect the desired data
+In this guide we are going to work with a very simplistic network device model. I won't provide a rendered template that is very useful, the goal is instead to show how the Jinja Rendering works. Once you have mastered the basics you will be ready to go on to create more advanced template.
+
+```yaml
+---
+version: "1.0"
+nodes:
+  - name: Device
+    namespace: Network
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        unique: true
+      - name: description
+        kind: Text
+        label: Description
+        optional: true
+```
+
+Store the schema as a YAML file on your local disk, and load the schema into Infrahub using the following command
+
+```bash
+infrahubctl schema load /path/to/schema.yml
+```
+
+More information on loading schema files into Infrahub can be found [here](../guides/import-schema#load-a-schema-file).
+
+## 2. Creating a query to collect the desired data
 
 As the first step we need to have some data in the database to actually query.
 
-Create three tags, called "red", "green", "blue", either using the frontend or by submitting three GraphQL mutations as per below (just swapping out the name of the color each time).
+Create three devices, called "switch1", "switch2", "switch3", either using the frontend or by submitting three GraphQL mutations as per below (just swapping out the name of the color each time).
 
 ```graphql
-mutation CreateTags {
-  BuiltinTagCreate(
-    data: {name: {value: "red"}, description: {value: "The red tag"}}
+mutation CreateDevice {
+  NetworkDeviceCreate(
+    data: {name: {value: "switch1"}, description: {value: "This is device switch1"}}
   ) {
     ok
     object {
@@ -40,8 +70,8 @@ mutation CreateTags {
 The next step is to create a query that returns the data we just created. The rest of this guide assumes that the following query will return a response similar to the response below the query.
 
 ```graphql
-query TagsQuery {
-  BuiltinTag {
+query DeviceQuery {
+  NetworkDevice {
     edges {
       node {
         name {
@@ -61,35 +91,35 @@ Response to the tags query:
 ```json
 {
   "data": {
-    "BuiltinTag": {
+    "NetworkDevice": {
       "edges": [
         {
           "node": {
             "name": {
-              "value": "blue"
+              "value": "switch1"
             },
             "description": {
-              "value": "The blue tag"
+              "value": "This is device switch1"
             }
           }
         },
         {
           "node": {
             "name": {
-              "value": "green"
+              "value": "switch2"
             },
             "description": {
-              "value": "The green tag"
+              "value": "This is device switch2"
             }
           }
         },
         {
           "node": {
             "name": {
-              "value": "red"
+              "value": "switch3"
             },
             "description": {
-              "value": "The red tag"
+              "value": "This is device switch3"
             }
           }
         }
@@ -99,19 +129,19 @@ Response to the tags query:
 }
 ```
 
-While it would be possible to create a transform that targets all of these tags, for example if you want to create a report, the goal for us is to be able to focus on one of these objects. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
+While it would be possible to create a transform that targets all of these devices, for example if you want to create a report, the goal for us is to be able to focus on one of these objects. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
 
 Create a local directory on your computer.
 
 ```shell
-mkdir tags_render
+mkdir device_config_render
 ```
 
-Then save the below query as a text file named tags_query.gql.
+Then save the below query as a text file named `device_config.gql`.
 
 ```graphql
-query TagsQuery($tag: String!) {
-  BuiltinTag(name__value: $tag) {
+query DeviceQuery($name: String!) {
+  NetworkDevice(name__value: $name) {
     edges {
       node {
         name {
@@ -126,30 +156,31 @@ query TagsQuery($tag: String!) {
 }
 ```
 
-Here the query will require an input parameter called `$name` what will refer to the name of each tag. When we want to query for the red tag the input variables to the query would look like this:
+Here the query will require an input parameter called `$name` what will refer to the name of each device. When we want to query for device switch1, the input variables to the query would look like this:
 
 ```json
 {
-  "tag": "red"
+  "name": "switch1"
 }
 ```
 
-## 2. Create the Jinja template
+## 3. Create the Jinja template
 
-The next step is to create the actual Jinja Template file. Create a file called tags_tpl.j2
+The next step is to create the actual Jinja Template file. Create a file called `device_config.j2`.
 
 ```jinja2
-{% if data.BuiltinTag.edges and data.BuiltinTag.edges is iterable %}
-{% for tag in data["BuiltinTag"]["edges"] %}
-{% set tag_name = tag.node.name.value %}
-{% set tag_description = tag.node.description.value %}
-{{ tag_name }}
-   description: {{ tag_description }}
+{% if data.NetworkDevice.edges and data.NetworkDevice.edges is iterable %}
+{% for device in data["NetworkDevice"]["edges"] %}
+{% set device_name = device.node.name.value %}
+{% set device_description = device.node.description.value %}
+hostname {{ device_name }}
+   description "{{ device_description }}"
+end
 {% endfor %}
 {% endif %}
 ```
 
-## 3. Create a .infrahub.yml file
+## 4. Create a .infrahub.yml file
 
 In the .infrahub.yml file you define what transforms you have in your repository that you want to make available for Infrahub.
 
@@ -158,26 +189,26 @@ Create a .infrahub.yml file in the root of the directory.
 ```yaml
 ---
 jinja2_transforms:
-  - name: my-jinja2-transform        # Unique name for your transform
-    description: "short description" # (optional)
-    query: "tags_query"              # Name or ID of the GraphQLQuery
-    template_path: "tags_tpl.j2"     # Path to the main Jinja2 template
+  - name: device_config_transform             # Unique name for your transform
+    description: "device config transform"    # (optional)
+    query: "device_config_query"              # Name or ID of the GraphQLQuery
+    template_path: "device_config.j2"         # Path to the main Jinja2 template
 
 queries:
-  - name: tags_query                 # Name of the GraphQLQuery
-    file_path: "tags_query.gql"      # Path to the main Jinja2 template
+  - name: device_config_query                 # Name of the GraphQLQuery
+    file_path: "device_config.gql"            # Path to the main Jinja2 template
 ```
 
 > The main Jinja2 template can import other templates
 
 Three parts here are required, first the `name` of the transform which should be unique across Infrahub, `query` the GraphqlQuery linked to our transform and also the `template_path` that should point to the Jinja2 file within the repository.
 
-## 4. Create a Git repository
+## 5. Create a Git repository
 
-Within the `tags_render` folder you should now have tree files:
+Within the `device_config_render` folder you should now have tree files:
 
-* tags_query.gql: Contains the GraphQL query
-* tags_tpl.j2: Contains the Jinja2 Template
+* device_config.gql: Contains the GraphQL query
+* device_config.j2: Contains the Jinja2 Template
 * .infrahub.yml: Contains the definition for the transform
 
 Before we can test our transform we must add the files to a local Git repository.
@@ -188,7 +219,7 @@ git add .
 git commit -m "First commit"
 ```
 
-## 5. Test the render using infrahubctl
+## 6. Test the render using infrahubctl
 
 Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available transforms.
 
@@ -224,11 +255,11 @@ If `--branch` is not provided it will automatically use the name of the local br
 
 :::
 
-## 6. Adding the repository to Infrahub
+## 7. Adding the repository to Infrahub
 
 In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](../guides/repository) in order to sync the repository you created and make it available within Infrahub.
 
-## 7. Accessing the Transform from the API
+## 8. Accessing the Transform from the API
 
 A transform can be rendered on demand via the REST API with the endpoint: `https://<host>/api/transform/jinja2/<transform name or ID>`
 

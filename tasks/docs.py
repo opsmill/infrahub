@@ -53,10 +53,10 @@ def generate_repository(context: Context) -> None:
     _generate_infrahub_repository_configuration_documentation(context=context)
 
 
-@task
-def generate_python_sdk(context: Context) -> None:
-    """Generate documentation for the Python SDK."""
-    _generate_infrahub_sdk_configuration_documentation(context=context)
+# @task
+# def generate_python_sdk(context: Context) -> None:
+#    """Generate documentation for the Python SDK."""
+#    _generate_infrahub_sdk_configuration_documentation(context=context)
 
 
 @task
@@ -169,7 +169,7 @@ def _generate(context: Context) -> None:
     _generate_infrahubctl_documentation(context=context)
     _generate_infrahub_schema_documentation()
     _generate_infrahub_repository_configuration_documentation()
-    _generate_infrahub_sdk_configuration_documentation()
+    # _generate_infrahub_sdk_configuration_documentation()
     _generate_infrahub_events_documentation()
 
 
