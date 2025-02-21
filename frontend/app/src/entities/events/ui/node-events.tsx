@@ -16,9 +16,11 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
   const { objectKind, objectid } = useParams();
 
   const { isLoading, data, error } = useEvents({
-    parentIds: parentId,
-    relatedNodeIds: objectid,
-    limit: parentId ? 0 : MAX_EVENTS,
+    filters: {
+      parentIds: parentId,
+      relatedNodeIds: objectid,
+      limit: parentId ? 0 : MAX_EVENTS,
+    },
   });
 
   const {

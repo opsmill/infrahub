@@ -28,8 +28,10 @@ export const GlobalEvents = () => {
 
   const { isLoading, data, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useEvents({
-      ...queryFilters,
-      level: 0,
+      filters: {
+        ...queryFilters,
+        level: 0,
+      },
     });
 
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
@@ -56,7 +58,7 @@ export const GlobalEvents = () => {
           {!isLoading && !flatData?.length && <NoDataFound message="No activity found." />}
 
           {flatData?.map((activity) => (
-            <Event key={activity.id} {...activity} />
+            <Event key={activity?.id} {...activity} />
           ))}
 
           {hasNextPage && (

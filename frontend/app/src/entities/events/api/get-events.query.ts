@@ -4,7 +4,7 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import { GlobalEventsFilters, OBJECTS_PER_PAGE, getEventsFromApi } from "./get-events-from-api";
 
-export function getEventsQueryOptions(filters: GlobalEventsFilters) {
+export function getEventsQueryOptions({ filters }: { filters: GlobalEventsFilters }) {
   const currentBranchName = getCurrentBranchName();
   const timeMachineDate = store.get(datetimeAtom);
 
@@ -20,7 +20,7 @@ export function getEventsQueryOptions(filters: GlobalEventsFilters) {
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
-      if (lastPage.length < OBJECTS_PER_PAGE) {
+      if (lastPage?.length < OBJECTS_PER_PAGE) {
         return undefined;
       }
       return lastPageParam + OBJECTS_PER_PAGE;
@@ -28,6 +28,6 @@ export function getEventsQueryOptions(filters: GlobalEventsFilters) {
   });
 }
 
-export const useEvents = (filters: GlobalEventsFilters) => {
-  return useInfiniteQuery(getEventsQueryOptions(filters));
+export const useEvents = ({ filters }: { filters: GlobalEventsFilters }) => {
+  return useInfiniteQuery(getEventsQueryOptions({ filters }));
 };
