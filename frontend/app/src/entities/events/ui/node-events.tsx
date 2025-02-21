@@ -5,6 +5,7 @@ import ErrorFallback from "@/shared/components/errors/error-fallback";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { Link } from "@/shared/components/ui/link";
 import { Spinner } from "@/shared/components/ui/spinner";
+import React from "react";
 import { useParams } from "react-router";
 import { useEvents } from "../api/get-events.query";
 import { Event } from "./event";
@@ -30,6 +31,8 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
     enabled: !parentId,
   });
 
+  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+
   if (isLoading || isLoadingNodeLabel) {
     return (
       <div className="flex items-center justify-center flex-grow">
@@ -42,7 +45,7 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
     return <ErrorFallback error={error} />;
   }
 
-  if (!data?.activities?.length) {
+  if (!flatData?.length) {
     return <NoDataFound message="No activity found for this object." />;
   }
 
@@ -53,11 +56,11 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
 
   return (
     <div className="flex flex-col gap-2 p-2">
-      {data?.activities?.map((activity) => (
+      {flatData?.map((activity) => (
         <Event key={activity.id} {...activity} />
       ))}
 
-      {!parentId && data?.count > MAX_EVENTS && (
+      {!parentId && flatData?.count > MAX_EVENTS && (
         <div className="flex items-center justify-center">
           <Link
             to={constructPath("/activities", [
