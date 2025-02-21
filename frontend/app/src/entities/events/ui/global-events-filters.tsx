@@ -96,7 +96,7 @@ export const GlobalEventsFilters = () => {
 
   return (
     <ScrollArea scrollX>
-      <TagGroup className="flex" selectionMode="single">
+      <TagGroup className="flex" selectionMode="single" aria-label="Filter group">
         <TagList className="flex items-center gap-2 py-3">
           {FILTERS.map((filter) => {
             return <GlobalFilter key={filter.name} {...filter} />;

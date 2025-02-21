@@ -55,6 +55,7 @@ export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagPr
         !currentFilter?.value && "text-gray-400 px-1 cursor-pointer border-dashed",
         "data-[hovered]:bg-gray-100 data-[hovered]:text-gray-600 data-[hovered]:border-gray-600"
       )}
+      aria-label={`${label} contains ${currentFilter?.value}`}
       textValue={`${label} contains ${currentFilter?.value}`}
       {...props}
     >
