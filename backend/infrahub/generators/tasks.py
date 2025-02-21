@@ -7,7 +7,7 @@ from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreGeneratorInstance
 from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig
-from prefect import flow, task
+from prefect import State, flow, task
 from prefect.cache_policies import NONE
 from prefect.states import Completed, Failed
 
@@ -161,7 +161,7 @@ async def run_generator_definition(branch: str, context: InfrahubContext, servic
 )
 async def request_generator_definition_run(
     model: RequestGeneratorDefinitionRun, context: InfrahubContext, service: InfrahubServices
-) -> None:
+) -> State[Any]:
     await add_tags(branches=[model.branch], nodes=[model.generator_definition.definition_id])
 
     group = await service.client.get(
