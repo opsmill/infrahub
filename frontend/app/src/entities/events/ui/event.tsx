@@ -31,7 +31,15 @@ export type NodeEventType = NodeMutatedEvent & {
 
 export type EventType = BranchEventType | NodeEventType;
 
-export const EventDetails = ({ id, event, occurred_at, account_id, ...props }: EventType) => {
+export const EventDetails = ({
+  id,
+  event,
+  occurred_at,
+  account_id,
+  primary_node,
+  related_nodes,
+  ...props
+}: EventType) => {
   return (
     <div className="divide-y">
       <PropertyRow
@@ -45,6 +53,21 @@ export const EventDetails = ({ id, event, occurred_at, account_id, ...props }: E
       <PropertyRow title="Event" value={event} />
       <PropertyRow title="Occured at" value={<DateDisplay date={occurred_at} />} />
       {account_id && <PropertyRow title="Account" value={<NodeLabel id={account_id} />} />}
+      {primary_node?.id && (
+        <PropertyRow title="Primary Node" value={<NodeLabel id={primary_node?.id} />} />
+      )}
+      {!!related_nodes?.length && (
+        <PropertyRow
+          title="Related Nodes"
+          value={
+            <div className="flex items-center gap-1">
+              {related_nodes.map((node) => {
+                return <NodeLabel id={node?.id} />;
+              })}
+            </div>
+          }
+        />
+      )}
       {"attributes" in props && (
         <PropertyRow title="Changes" value={<EventAttributes attributes={props.attributes} />} />
       )}
