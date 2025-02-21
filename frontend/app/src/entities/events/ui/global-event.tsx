@@ -25,11 +25,7 @@ export const Event = ({ __typename, ...props }: EventType) => {
         {STANDARD_EVENTS.includes(__typename) && <StandardEvent {...props} />}
       </div>
 
-      <div className="grid grid-cols-3 items-center">
-        <Link to={`/activities/${props.id}`} className="text-xs text-gray-500">
-          View more
-        </Link>
-
+      <div className="grid grid-cols-3 items-center text-right">
         <div className="text-xs font-medium text-gray-500 flex items-center gap-1">
           <Icon icon={"mdi:source-branch"} />
           {props.branch}
@@ -40,6 +36,10 @@ export const Event = ({ __typename, ...props }: EventType) => {
             {props.occurred_at && format(new Date(props.occurred_at), "yyyy-MM-dd HH:mm:ss (O)")}
           </span>
         </div>
+
+        <Link to={`/activities/${props.id}`} className="text-xs text-gray-500">
+          View more
+        </Link>
       </div>
     </div>
   );
