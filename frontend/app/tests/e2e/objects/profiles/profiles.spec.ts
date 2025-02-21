@@ -131,7 +131,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await test.step("Verify the changes in an object using the edited profile", async () => {
       await page.goto("/objects/BuiltinTag");
       await page.getByRole("link", { name: "tag with profile" }).click();
-      await expect(page.getByText("DescriptionA profile for E2E test")).toBeVisible();
+      await expect(page.getByText("DescriptionA profile for E2E test edited")).toBeVisible();
     });
   });
 
