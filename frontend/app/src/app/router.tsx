@@ -95,9 +95,9 @@ export const router = createBrowserRouter([
                     handle: {
                       breadcrumb: (match: UIMatch) => {
                         return {
-                          type: "display",
+                          type: "id",
                           value: match.params.activityid,
-                          kind: "InfrahubEvent",
+                          link: "/activities",
                         };
                       },
                     },
