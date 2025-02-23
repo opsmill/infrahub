@@ -111,10 +111,11 @@ jobs:
   publish-helm-chart:
     needs: check_release
     if: github.event.release.prerelease == false
-    uses: ./.github/workflows/publish-helm-chart.yml
+    uses: opsmill/infrahub-helm/.github/workflows/publish-helm-chart.yml@stable
     secrets: inherit
     with:
       publish: true
+      chart: infrahub
 
   publish-pypi:
     needs: check_release
