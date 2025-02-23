@@ -8,10 +8,17 @@ import {
   namespacesAtom,
   nodeSchemasAtom,
   profileSchemasAtom,
+  templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
-import { GenericSchema, Namespace, NodeSchema, ProfileSchema } from "@/entities/schema/types";
+import {
+  GenericSchema,
+  Namespace,
+  NodeSchema,
+  ProfileSchema,
+  TemplateSchema,
+} from "@/entities/schema/types";
 import { tokenSchema } from "@/entities/user-profile/ui/token-schema";
 import { Branch } from "@/shared/api/graphql/generated/graphql";
 import { fetchUrl } from "@/shared/api/rest/fetch";
@@ -41,6 +48,7 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
   const setGenerics = useSetAtom(genericSchemasAtom);
   const setNamespaces = useSetAtom(namespacesAtom);
   const setProfiles = useSetAtom(profileSchemasAtom);
+  const setTemplates = useSetAtom(templateSchemasAtom);
   const setState = useSetAtom(stateAtom);
   const branches = useAtomValue(branchesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
@@ -54,15 +62,17 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
         main: string;
         nodes: NodeSchema[];
         generics: GenericSchema[];
-        namespaces: Namespace[];
         profiles: ProfileSchema[];
+        templates: TemplateSchema[];
+        namespaces: Namespace[];
       } = await fetchUrl(CONFIG.SCHEMA_URL(branch?.name));
 
       const hash = schemaData.main;
       const schema = sortByName([...schemaData.nodes, tokenSchema]);
       const generics = sortByName(schemaData.generics || []);
-      const namespaces = sortByName(schemaData.namespaces || []);
       const profiles = sortByName(schemaData.profiles || []);
+      const templates = sortByName(schemaData.templates || []);
+      const namespaces = sortByName(schemaData.namespaces || []);
 
       schema.forEach((s) => {
         s.attributes = sortByOrderWeight(s.attributes || []);
@@ -73,12 +83,14 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
         ...schema.map((s) => s.kind),
         ...generics.map((s) => s.kind),
         ...profiles.map((s) => s.kind),
+        ...templates.map((s) => s.kind),
       ];
 
       const schemaNames = [
         ...schema.map((s) => s.label),
         ...generics.map((s) => s.label),
         ...profiles.map((s) => s.label),
+        ...templates.map((s) => s.label),
       ];
       const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
       const schemaKindNameMap = {
@@ -99,6 +111,7 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
       setSchemaKindLabelState(schemaKindLabelMap);
       setNamespaces(namespaces);
       setProfiles(profiles);
+      setTemplates(templates);
       setState({ isReady: true });
     } catch (error) {
       toast(

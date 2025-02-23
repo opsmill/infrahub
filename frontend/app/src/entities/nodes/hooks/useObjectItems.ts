@@ -5,17 +5,12 @@ import {
   getObjectRelationships,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { getPermission } from "@/entities/permission/utils";
-import {
-  genericSchemasAtom,
-  nodeSchemasAtom,
-  profileSchemasAtom,
-} from "@/entities/schema/stores/schema.atom";
+import { getSchema } from "@/entities/schema/domain/get-schema";
 import { ModelSchema } from "@/entities/schema/types";
 import { getTokens } from "@/entities/user-profile/api/getTokens";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Filter } from "@/shared/hooks/useFilters";
 import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai";
 
 const getQuery = (schema?: ModelSchema, filters?: Array<Filter>) => {
   if (!schema) return "query {ok}";
@@ -24,15 +19,8 @@ const getQuery = (schema?: ModelSchema, filters?: Array<Filter>) => {
     return getTokens;
   }
 
-  const nodes = useAtomValue(nodeSchemasAtom);
-  const generics = useAtomValue(genericSchemasAtom);
-  const profiles = useAtomValue(profileSchemasAtom);
-
   const kindFilter = filters?.find((filter) => filter.name === "kind__value");
-
-  const kindFilterSchema = [...nodes, ...generics, ...profiles].find(
-    ({ kind }) => kind === kindFilter?.value
-  );
+  const { schema: kindFilterSchema } = getSchema(kindFilter?.value);
 
   // All the filter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.

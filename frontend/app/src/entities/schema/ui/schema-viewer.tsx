@@ -3,6 +3,7 @@ import {
   genericSchemasAtom,
   nodeSchemasAtom,
   profileSchemasAtom,
+  templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
@@ -26,10 +27,11 @@ export const SchemaViewerStack = ({ className = "" }: { className: string }) => 
   const nodes = useAtomValue(nodeSchemasAtom);
   const generics = useAtomValue(genericSchemasAtom);
   const profiles = useAtomValue(profileSchemasAtom);
+  const templates = useAtomValue(templateSchemasAtom);
 
   if (!selectedKind) return null;
 
-  const schemas = [...nodes, ...generics, ...profiles];
+  const schemas = [...nodes, ...generics, ...profiles, ...templates];
 
   return (
     <div className={classNames("relative", className)}>

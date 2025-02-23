@@ -4,8 +4,9 @@ import { components } from "@/shared/api/rest/types.generated";
 export type NodeSchema = components["schemas"]["APINodeSchema"];
 export type GenericSchema = components["schemas"]["APIGenericSchema"];
 export type ProfileSchema = components["schemas"]["APIProfileSchema"];
+export type TemplateSchema = components["schemas"]["APITemplateSchema"];
 
-export type ModelSchema = GenericSchema | NodeSchema | ProfileSchema;
+export type ModelSchema = GenericSchema | NodeSchema | ProfileSchema | TemplateSchema;
 
 export type RelationshipSchema = components["schemas"]["RelationshipSchema"];
 

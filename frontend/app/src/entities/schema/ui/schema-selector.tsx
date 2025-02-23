@@ -3,6 +3,7 @@ import {
   genericSchemasAtom,
   nodeSchemasAtom,
   profileSchemasAtom,
+  templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
@@ -24,6 +25,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
   const nodes = useAtomValue(nodeSchemasAtom);
   const generics = useAtomValue(genericSchemasAtom);
   const profiles = useAtomValue(profileSchemasAtom);
+  const templates = useAtomValue(templateSchemasAtom);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
@@ -33,8 +35,8 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
     ref.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [selectedKind?.length]);
 
-  const schemas: ModelSchema[] = [...nodes, ...generics, ...profiles].filter(({ kind }) =>
-    kind?.toLowerCase().includes(search.toLowerCase())
+  const schemas: ModelSchema[] = [...nodes, ...generics, ...profiles, ...templates].filter(
+    ({ kind }) => kind?.toLowerCase().includes(search.toLowerCase())
   );
 
   const schemasPerNamespace = R.pipe(

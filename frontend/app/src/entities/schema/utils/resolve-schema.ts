@@ -1,4 +1,4 @@
-import { GenericSchema, NodeSchema, ProfileSchema } from "@/entities/schema/types";
+import { GenericSchema, NodeSchema, ProfileSchema, TemplateSchema } from "@/entities/schema/types";
 
 export type SchemaResult =
   | {
@@ -6,24 +6,35 @@ export type SchemaResult =
       isGeneric: false;
       isNode: true;
       isProfile: false;
+      isTemplate: false;
     }
   | {
       schema: GenericSchema;
       isGeneric: true;
       isNode: false;
       isProfile: false;
+      isTemplate: false;
     }
   | {
       schema: ProfileSchema;
       isGeneric: false;
       isNode: false;
       isProfile: true;
+      isTemplate: false;
+    }
+  | {
+      schema: TemplateSchema;
+      isGeneric: false;
+      isNode: false;
+      isProfile: false;
+      isTemplate: true;
     }
   | {
       schema: null;
       isGeneric: false;
       isNode: false;
       isProfile: false;
+      isTemplate: false;
     };
 
 export function resolveSchema(
@@ -32,6 +43,7 @@ export function resolveSchema(
     nodeSchemas: NodeSchema[];
     genericSchemas: GenericSchema[];
     profileSchemas: ProfileSchema[];
+    templateSchemas: TemplateSchema[];
   }
 ): SchemaResult {
   if (!kind) {
@@ -40,6 +52,7 @@ export function resolveSchema(
       isGeneric: false,
       isNode: false,
       isProfile: false,
+      isTemplate: false,
     };
   }
 
@@ -50,6 +63,7 @@ export function resolveSchema(
       isGeneric: false,
       isNode: true,
       isProfile: false,
+      isTemplate: false,
     };
   }
 
@@ -60,6 +74,7 @@ export function resolveSchema(
       isGeneric: true,
       isNode: false,
       isProfile: false,
+      isTemplate: false,
     };
   }
 
@@ -70,6 +85,18 @@ export function resolveSchema(
       isGeneric: false,
       isNode: false,
       isProfile: true,
+      isTemplate: false,
+    };
+  }
+
+  const template = schemas.templateSchemas.find((schema) => schema.kind === kind);
+  if (template) {
+    return {
+      schema: template,
+      isGeneric: false,
+      isNode: false,
+      isProfile: false,
+      isTemplate: true,
     };
   }
 
@@ -78,5 +105,6 @@ export function resolveSchema(
     isGeneric: false,
     isNode: false,
     isProfile: false,
+    isTemplate: false,
   };
 }
