@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from graphene import Boolean, Field, InputObjectType, List, Mutation, NonNull, String
+from graphene import Boolean, Field, InputField, InputObjectType, List, Mutation, NonNull, String
 
 from infrahub.core.manager import NodeManager
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 
 
 class GeneratorDefinitionRequestRunInput(InputObjectType):
-    id = String(required=True)
-    nodes = List(of_type=NonNull(String))
+    id = InputField(String(required=True), description="ID of the generator definition to run")
+    nodes = InputField(List(of_type=NonNull(String)), description="ID list of targets to run the generator for")
 
 
 class GeneratorDefinitionRequestRun(Mutation):
@@ -33,18 +33,14 @@ class GeneratorDefinitionRequestRun(Mutation):
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
-        data: dict[str, Any],
+        data: GeneratorDefinitionRequestRunInput,
         wait_until_completion: bool = True,
-    ) -> dict[str, bool]:
+    ) -> GeneratorDefinitionRequestRun:
         graphql_context: GraphqlContext = info.context
         db = graphql_context.db
 
         generator_definition = await NodeManager.get_one(
-            id=data.get("id", ""),
-            db=db,
-            branch=graphql_context.branch,
-            prefetch_relationships=True,
-            raise_on_error=True,
+            id=str(data.id), db=db, branch=graphql_context.branch, prefetch_relationships=True, raise_on_error=True
         )
         query = await generator_definition.query.get_peer(db=db)
         repository = await generator_definition.repository.get_peer(db=db)
@@ -73,12 +69,11 @@ class GeneratorDefinitionRequestRun(Mutation):
                 context=graphql_context.get_context(),
                 parameters={"model": request_model},
             )
-            task = {"id": workflow.id}
-            return cls(ok=True, task=task)
+            return cls(ok=True, task={"id": workflow.id})
 
         await graphql_context.active_service.workflow.execute_workflow(
             workflow=REQUEST_GENERATOR_DEFINITION_RUN,
             context=graphql_context.get_context(),
             parameters={"model": request_model},
         )
-        return {"ok": True}
+        return cls(ok=True)
