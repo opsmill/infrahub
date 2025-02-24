@@ -1,9 +1,12 @@
 import { AttributeType, FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { NodeObject } from "@/entities/nodes/types";
 import { LineageSource } from "@/shared/api/graphql/generated/graphql";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
   AttributeValueFromPool,
   AttributeValueFromProfile,
+  AttributeValueFromTemplate,
   AttributeValueFromUser,
   FormAttributeValue,
 } from "@/shared/components/form/type";
@@ -12,6 +15,7 @@ import * as R from "ramda";
 export type GetFieldDefaultValue = {
   fieldSchema: FieldSchema;
   initialObject?: Record<string, AttributeType>;
+  objectTemplate?: NodeObject;
   profiles?: Array<ProfileData>;
   isFilterForm?: boolean;
 };
@@ -19,6 +23,7 @@ export type GetFieldDefaultValue = {
 export const getFieldDefaultValue = ({
   fieldSchema,
   initialObject,
+  objectTemplate,
   profiles = [],
   isFilterForm,
 }: GetFieldDefaultValue): FormAttributeValue => {
@@ -31,6 +36,7 @@ export const getFieldDefaultValue = ({
     getCurrentFieldValue(fieldSchema.name, initialObject) ??
     getDefaultValueFromProfiles(fieldSchema.name, profiles) ??
     getDefaultValueFromPool(fieldSchema.name, initialObject) ??
+    getDefaultValueFromTemplate(fieldSchema.name, objectTemplate) ??
     getDefaultValueFromSchema(fieldSchema) ?? { source: null, value: null }
   );
 };
@@ -114,6 +120,26 @@ const getDefaultValueFromPool = (
       id: pool.id,
       label: pool.display_label || null,
       kind: pool.__typename,
+    },
+    value: currentField.value,
+  };
+};
+
+export const getDefaultValueFromTemplate = (
+  fieldName: string,
+  objectTemplate?: NodeObject
+): AttributeValueFromTemplate | null => {
+  if (!objectTemplate) return null;
+
+  const currentField = objectTemplate[fieldName];
+  if (!currentField) return null;
+
+  return {
+    source: {
+      type: "template",
+      label: getNodeLabel(objectTemplate),
+      kind: objectTemplate.__typename,
+      id: objectTemplate.id,
     },
     value: currentField.value,
   };

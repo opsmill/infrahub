@@ -1,5 +1,6 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NodeRelationship } from "@/entities/nodes/types";
 import { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import {
   DynamicRelationshipFieldProps,
@@ -13,6 +14,7 @@ import { isMaxCount, isMinCount, isRequired } from "@/shared/components/form/uti
 export const getFormFieldFromRelationship = ({
   relationshipSchema,
   relationshipData,
+  relationshipTemplate,
   isFilterForm = false,
   schema,
   auth,
@@ -21,6 +23,7 @@ export const getFormFieldFromRelationship = ({
   isFilterForm: boolean;
   relationshipSchema: RelationshipSchema;
   relationshipData: RelationshipType | undefined;
+  relationshipTemplate: NodeRelationship | undefined;
   schema: ModelSchema;
 }): DynamicRelationshipFieldProps => {
   const label = relationshipSchema.label ?? relationshipSchema.name;
@@ -30,6 +33,7 @@ export const getFormFieldFromRelationship = ({
     label,
     defaultValue: getRelationshipDefaultValue({
       relationshipData,
+      relationshipTemplate,
       isFilterForm,
     }),
     description: relationshipSchema.description ?? undefined,

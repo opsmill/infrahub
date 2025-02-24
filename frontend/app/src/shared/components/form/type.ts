@@ -34,6 +34,13 @@ export type PoolSource = {
   id: string;
 };
 
+export type TemplateSource = {
+  type: "template";
+  label: string | null;
+  kind: string;
+  id: string;
+};
+
 export type AttributeValueFromPool = {
   source: PoolSource;
   value: { from_pool: { id: string } };
@@ -53,10 +60,16 @@ export type AttributeValueFromUser =
     }
   | AttributeValueForCheckbox;
 
+export type AttributeValueFromTemplate = {
+  source: TemplateSource;
+  value: string | string[] | number | boolean | null;
+};
+
 export type FormAttributeValue =
   | AttributeValueFromUser
   | AttributeValueFromProfile
   | AttributeValueFromPool
+  | AttributeValueFromTemplate
   | EmptyFieldValue;
 
 export type RelationshipOneValueFromUser = {
@@ -146,6 +159,10 @@ export type DynamicFieldProps = DynamicAttributeFieldProps | DynamicRelationship
 export const isFormFieldValueFromPool = (
   fieldData: FormFieldValue
 ): fieldData is RelationshipValueFromPool => fieldData.source?.type === "pool";
+
+export const isFormFieldValueFromTemplate = (
+  fieldData: FormFieldValue
+): fieldData is AttributeValueFromTemplate => fieldData.source?.type === "template";
 
 export type NumberPoolData = {
   id: string;

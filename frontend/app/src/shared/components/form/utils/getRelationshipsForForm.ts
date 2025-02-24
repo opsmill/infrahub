@@ -10,7 +10,7 @@ export const getRelationshipsForForm = (
   // For create forms, include relationships with cardinality 'one', eligible kinds, or mandatory cardinality 'many'
   // For update forms, only include relationships with cardinality 'one' or those with eligible kinds (Attribute or Parent). Other should be display as tabs on details view
   return relationships.filter((relationship) => {
-    if (relationship.cardinality === "one") return true;
+    if (relationship.cardinality === "one" && relationship.kind !== "Template") return true;
 
     const isPeerKindEligibleForForm = relationshipKindForForm.includes(
       relationship.kind as RelationshipKind

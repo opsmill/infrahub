@@ -1,4 +1,5 @@
 import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NodeRelationship } from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { FormRelationshipValue } from "@/shared/components/form/type";
@@ -6,6 +7,7 @@ import { store } from "@/shared/stores";
 
 type GetRelationshipDefaultValueParams = {
   relationshipData: RelationshipType | undefined;
+  relationshipTemplate: NodeRelationship | undefined;
   isFilterForm?: boolean;
   peerField?: string;
 };
@@ -13,6 +15,7 @@ type GetRelationshipDefaultValueParams = {
 export const getRelationshipDefaultValue = ({
   isFilterForm,
   relationshipData,
+  relationshipTemplate,
   peerField,
 }: GetRelationshipDefaultValueParams): FormRelationshipValue => {
   if (!relationshipData) {
