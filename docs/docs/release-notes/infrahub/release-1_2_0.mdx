@@ -61,31 +61,34 @@ The complete list of changes can always be found in the `CHANGELOG.md` file in t
 ### Added
 
 - Added Containerlab to the codespace base image. ([#458](https://github.com/opsmill/infrahub/issues/458))
+- - We added validation on UI for `min_count` and `max_count` in relationships fields. ([#5661](https://github.com/opsmill/infrahub/issues/5661))
+- - Improved Infrahub app layout for a cleaner look.
+  - Made the top menu more compact.
+- Add activities logs in the nodes details view
+- Add new feature to create object templates when setting `generate_template: true` in a schema on a node
 
 ### Changed
 
-- Replace PrefixPool with `netaddr.IPSet`. ([#3547](https://github.com/opsmill/infrahub/issues/3547))
-- Modified query analyzer to not list all potential meta data models when only querying for "source" or "owner" ID.
-  The full models will still show up if a fragment is used under the meta data properties.
-  This change makes it easier to setup fine grained permissions and also speeds up the permission lookup as it doesn't require as many checks. ([#4644](https://github.com/opsmill/infrahub/issues/4644))
-- Modified node mutation events to not send metadata properties as part of the mutation payload.
-  The reason is that the property lookup was time consuming.
-  This information will return again in Infrahub 1.2 with a completely updated format. ([#5664](https://github.com/opsmill/infrahub/issues/5664))
+- Replace PrefixPool with netaddr.IPSet ([#3547](https://github.com/opsmill/infrahub/issues/3547))
+- Modified query analyzer to not list all potential meta data models when only querying for "source" or "owner" ID. The full models will still show up if a fragment is used under the meta data properties. This change makes it easier to setup fine grained permissions and also speeds up the permission lookup as it doesn't require as many checks. ([#4644](https://github.com/opsmill/infrahub/issues/4644))
+- - We made object list retrieval faster with an optimized query.
 - Improve typing of GraphQL schema by defining list as non-nullable and ensure that top level item are mandatory.
+- Reorganized builtin/default menu to provide a better user experience.
 - Updated Infrahub account tokens view:
+
   - Redesigned for a faster, cleaner experience
   - Improved clarity and formatting of expiration dates.
   - Resolved an issue where expiration data was not being sent to the API.
 
 ### Fixed
 
-- Fixed issue causing a gap in menu sidebar when text is too long.
-- Prevent avatar from being cut off in menu sidebar.
+- Set correct state in events after merging a proposed change, they were incorrectly set as "merging" instead of "merged" ([#5600](https://github.com/opsmill/infrahub/issues/5600))
 
 ### Housekeeping
 
 - Activate ruff B rules. ([#2193](https://github.com/opsmill/infrahub/issues/2193))
 - Activate ruff C4 rule. ([#2194](https://github.com/opsmill/infrahub/issues/2194))
+- Add basic integration test for the HTTP service adapter ([#5553](https://github.com/opsmill/infrahub/issues/5553))
 
 ## Migration guide
 
