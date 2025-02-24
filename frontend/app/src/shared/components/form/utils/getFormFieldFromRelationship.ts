@@ -44,7 +44,7 @@ export const getFormFieldFromRelationship = ({
       permissions: undefined, // Permissions are not supported for relationships yet
       isReadOnly: relationshipSchema.read_only,
     }),
-    parent: getRelationshipParent(relationshipData),
+    parent: getRelationshipParent(relationshipData ?? relationshipTemplate),
     relationship: relationshipSchema,
     rules: {
       required: !isFilterForm && !relationshipSchema.optional,
