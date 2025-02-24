@@ -1,5 +1,5 @@
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { NodeAttribute, NodeObject } from "@/entities/nodes/types";
+import { NodeObject } from "@/entities/nodes/types";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
   GetFieldDefaultValue,

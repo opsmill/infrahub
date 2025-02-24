@@ -50,10 +50,43 @@ describe("getTemplateRelationshipFromSchema", () => {
     expect(result).toBeUndefined();
   });
 
-  it("should return Template relationship when schema has one", () => {
+  it("should return undefined when schema has Template relationship with wrong name", () => {
+    // GIVEN
+    const schema = {
+      ...baseSchema,
+      relationships: [
+        generateRelationshipSchema({ kind: "Template", name: "wrong_name", peer: "TemplateKind" }),
+      ],
+    };
+
+    // WHEN
+    const result = getTemplateRelationshipFromSchema(schema);
+
+    // THEN
+    expect(result).toBeUndefined();
+  });
+
+  it("should return undefined when schema has relationship named object_template but wrong kind", () => {
+    // GIVEN
+    const schema = {
+      ...baseSchema,
+      relationships: [
+        generateRelationshipSchema({ kind: "Other", name: "object_template", peer: "TemplateKind" }),
+      ],
+    };
+
+    // WHEN
+    const result = getTemplateRelationshipFromSchema(schema);
+
+    // THEN
+    expect(result).toBeUndefined();
+  });
+
+  it("should return Template relationship when schema has one with name object_template", () => {
     // GIVEN
     const templateRelationship = generateRelationshipSchema({
       kind: "Template",
+      name: "object_template",
       peer: "TemplateKind",
     });
     const schema = {
