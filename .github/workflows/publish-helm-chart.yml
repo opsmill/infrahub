@@ -38,7 +38,7 @@ jobs:
         with:
           submodules: true
       - name: Install Helm
-        uses: azure/setup-helm@v4.2.0
+        uses: azure/setup-helm@v4.3.0
 
       - name: Determine Chart Version
         id: version
