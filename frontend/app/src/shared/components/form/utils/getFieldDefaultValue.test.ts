@@ -500,6 +500,30 @@ describe("getFieldDefaultValue", () => {
         value: "template-value",
       });
     });
+
+    it("returns null value when template field value is null", () => {
+      // GIVEN
+      const fieldSchema = buildAttributeSchema({ name: "field1" });
+      const objectTemplate: NodeObject = {
+        id: "template-id" as any,
+        __typename: "FakeTemplate" as any,
+        field1: {
+          id: "field1-id",
+          value: null,
+        },
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, objectTemplate });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "schema",
+        },
+        value: null,
+      });
+    });
   });
 
   describe("when source is pool", () => {

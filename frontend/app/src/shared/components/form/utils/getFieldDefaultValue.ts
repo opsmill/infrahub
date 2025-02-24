@@ -134,6 +134,8 @@ export const getDefaultValueFromTemplate = (
   const currentField = objectTemplate[fieldName] as NodeAttribute | undefined;
   if (!currentField) return null;
 
+  if (currentField.value === null) return null;
+
   return {
     source: {
       type: "template",
