@@ -43,12 +43,12 @@ export const GlobalEvents = () => {
   return (
     <Content.Card className="relative">
       <Content.CardTitle title="Activities" isReloadLoading={isLoading} reload={() => refetch()} />
-      <div className="flex flex-col flex-grow gap-2 p-2">
-        <div className="flex items-center gap-2 sticky top-0 bg-white">
-          <GlobalEventsFilters />
-          {filters.length > 0 && <FilterResetButton />}
-        </div>
+      <div className="flex items-center gap-2 sticky top-0 bg-white z-10 p-2">
+        <GlobalEventsFilters />
+        {filters.length > 0 && <FilterResetButton />}
+      </div>
 
+      <div className="flex flex-col flex-grow gap-2 p-2 bg-white z-30">
         <div className="flex flex-col gap-2">
           {!isLoading && !flatData?.length && <NoDataFound message="No activity found." />}
 
