@@ -39,6 +39,7 @@ async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["InfrahubAccountSelfUpdate"]["ok"] is True
 
     updated_account = await NodeManager.get_one(db=db, id=first_account.id, branch=default_branch)
@@ -80,6 +81,7 @@ async def test_permissions(
     )
 
     assert result.errors is None
+    assert result.data
     perms = [edge["node"]["identifier"] for edge in result.data["InfrahubPermissions"]["global_permissions"]["edges"]]
     assert perms == [
         str(GlobalPermission(action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value))
@@ -106,4 +108,5 @@ async def test_permissions(
     )
 
     assert result.errors is None
+    assert result.data
     assert not result.data["InfrahubPermissions"]["global_permissions"]["edges"]
