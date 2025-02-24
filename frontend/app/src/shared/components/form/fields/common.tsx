@@ -12,6 +12,7 @@ import { LabelProps } from "@/shared/components/ui/label";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
+import { FileBoxIcon } from "lucide-react";
 import { Link } from "react-router";
 
 export const InputUniqueTips = ({ className }: { className: string }) => (
@@ -111,7 +112,7 @@ const TemplateSourceBadge = ({ source }: { source: TemplateSource }) => {
       enabled
       content={
         <div className="max-w-60">
-          <p>This value is allocated from the template:</p>
+          <p>This value is from the following template:</p>
           <Link
             to={getObjectDetailsUrl2(source.kind!, source.id)}
             className="underline inline-flex items-center gap-1"
@@ -123,8 +124,8 @@ const TemplateSourceBadge = ({ source }: { source: TemplateSource }) => {
       }
     >
       <button type="button" className="ml-auto" data-testid="source-template-badge">
-        <Badge variant="yellow">
-          <Icon icon="mdi:view-grid-outline" className="mr-1" /> {source?.label}
+        <Badge variant="blue">
+          <FileBoxIcon className="mr-1 size-3" /> {source?.label}
         </Badge>
       </button>
     </Tooltip>
