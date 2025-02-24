@@ -212,3 +212,55 @@ class TestConflict:
                 assert action == DiffAction.UPDATED
                 assert node_changelog.attributes["name"].value == "John-branch"
                 assert node_changelog.attributes["name"].value_previous == "John"
+
+    @pytest.mark.parametrize(
+        "conflict_selection",
+        [ConflictSelection.BASE_BRANCH, ConflictSelection.DIFF_BRANCH],
+    )
+    async def test_diff_and_merge_with_attribute_property_conflict(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        person_john_main: Node,
+        person_jane_main: Node,
+        person_alfred_main: Node,
+        car_accord_main: Node,
+        conflict_selection: ConflictSelection,
+    ):
+        branch2 = await create_branch(db=db, branch_name="branch2")
+        john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
+        john_main.name.source = person_alfred_main
+        await john_main.save(db=db)
+        john_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_john_main.id)
+        john_branch.name.source = person_jane_main
+        await john_branch.save(db=db)
+
+        at = Timestamp()
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch2)
+        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=branch2
+        )
+        enriched_diff = await diff_repository.get_one(
+            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
+        )
+        conflicts_map = enriched_diff.get_all_conflicts()
+        assert len(conflicts_map) == 1
+        conflict = next(iter(conflicts_map.values()))
+        await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
+        diff_merger = await self._get_diff_merger(db=db, branch=branch2)
+        diff = await diff_merger.merge_graph(at=at)
+        diff_events = DiffChangelogCollector(diff=diff, db=db, branch=branch2)
+        events = diff_events.collect_changelogs()
+        match conflict_selection:
+            case ConflictSelection.BASE_BRANCH:
+                # When we want to keep the conflict in the base branch we don't expect to see any updates after the merge
+                assert len(events) == 0
+            case ConflictSelection.DIFF_BRANCH:
+                # Expect to see changes on the diff branch when we keep changes from that branch
+                assert len(events) == 1
+                event = events[0]
+                action, node_changelog = event
+                assert action == DiffAction.UPDATED
+                assert node_changelog.attributes["name"].properties["source"].value == person_jane_main.id
+                assert node_changelog.attributes["name"].properties["source"].value_previous is None
