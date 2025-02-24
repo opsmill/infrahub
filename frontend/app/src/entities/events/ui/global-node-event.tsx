@@ -61,7 +61,11 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
         )}
         className="overflow-hidden text-ellipsis"
       >
-        <NodeLabel id={props.payload.data.node_id} className="overflow-hidden text-ellipsis" />
+        <NodeLabel
+          id={props.primary_node.id}
+          kind={props.primary_node?.kind}
+          className="overflow-hidden text-ellipsis"
+        />
       </Link>
     </div>
   );
