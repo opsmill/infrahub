@@ -88,9 +88,18 @@ export const EventDetails = ({
         <PropertyRow
           title="Related Nodes"
           value={
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-end gap-1">
               {related_nodes.map((node) => {
-                return <NodeLabel key={node.id} id={node?.id} />;
+                return (
+                  <Link
+                    key={node.id}
+                    to={constructPath(`/${node.kind}/${node.id}`, [
+                      { name: QSP.BRANCH, value: props.branch },
+                    ])}
+                  >
+                    <NodeLabel id={node?.id} />
+                  </Link>
+                );
               })}
             </div>
           }
