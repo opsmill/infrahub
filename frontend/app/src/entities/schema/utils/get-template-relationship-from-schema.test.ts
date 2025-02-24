@@ -71,7 +71,11 @@ describe("getTemplateRelationshipFromSchema", () => {
     const schema = {
       ...baseSchema,
       relationships: [
-        generateRelationshipSchema({ kind: "Other", name: "object_template", peer: "TemplateKind" }),
+        generateRelationshipSchema({
+          kind: "Attribute",
+          name: "object_template",
+          peer: "TemplateKind",
+        }),
       ],
     };
 
