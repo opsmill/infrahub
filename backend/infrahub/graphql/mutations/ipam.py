@@ -402,7 +402,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-    ) -> tuple[Node, Self]:
+    ) -> tuple[Node, Self, list[Node]]:
         graphql_context: GraphqlContext = info.context
         db = graphql_context.db
 
@@ -431,4 +431,4 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
 
         ok = True
 
-        return reconciled_prefix, cls(ok=ok)
+        return reconciled_prefix, cls(ok=ok), []

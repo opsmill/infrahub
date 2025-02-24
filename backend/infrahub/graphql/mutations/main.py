@@ -64,6 +64,7 @@ class InfrahubMutationMixin:
         obj = None
         mutation = None
         action = MutationAction.UNDEFINED
+        deleted: list[Node] = []
 
         if "Create" in cls.__name__:
             obj, mutation = await cls.mutate_create(info=info, branch=graphql_context.branch, data=data, **kwargs)
@@ -86,7 +87,9 @@ class InfrahubMutationMixin:
             else:
                 action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
-            obj, mutation = await cls.mutate_delete(info=info, branch=graphql_context.branch, data=data, **kwargs)
+            obj, mutation, deleted = await cls.mutate_delete(
+                info=info, branch=graphql_context.branch, data=data, **kwargs
+            )
             action = MutationAction.DELETED
         else:
             raise ValueError(
@@ -124,17 +127,33 @@ class InfrahubMutationMixin:
 
             events = [main_event]
 
-            for node_changelog in node_changelogs:
+            deleted_changelogs = [node.node_changelog for node in deleted if node.id != obj.id]
+            deleted_ids = [node.node_id for node in deleted_changelogs]
+
+            for node_changelog in deleted_changelogs:
                 meta = EventMeta.from_parent(parent=main_event)
                 event = NodeMutatedEvent(
                     kind=node_changelog.node_kind,
                     node_id=node_changelog.node_id,
                     data=node_changelog,
-                    action=MutationAction.UPDATED,
+                    action=MutationAction.DELETED,
                     fields=node_changelog.updated_fields,
                     meta=meta,
                 )
                 events.append(event)
+
+            for node_changelog in node_changelogs:
+                if node_changelog.node_id not in deleted_ids:
+                    meta = EventMeta.from_parent(parent=main_event)
+                    event = NodeMutatedEvent(
+                        kind=node_changelog.node_kind,
+                        node_id=node_changelog.node_id,
+                        data=node_changelog,
+                        action=MutationAction.UPDATED,
+                        fields=node_changelog.updated_fields,
+                        meta=meta,
+                    )
+                    events.append(event)
 
             for event in events:
                 graphql_context.background.add_task(graphql_context.active_service.event.send, event)
@@ -494,7 +513,7 @@ class InfrahubMutationMixin:
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-    ) -> tuple[Node, Self]:
+    ) -> tuple[Node, Self, list[Node]]:
         graphql_context: GraphqlContext = info.context
 
         obj = await NodeManager.find_object(
@@ -512,7 +531,7 @@ class InfrahubMutationMixin:
 
         ok = True
 
-        return obj, cls(ok=ok)
+        return obj, cls(ok=ok), deleted
 
 
 class InfrahubMutation(InfrahubMutationMixin, Mutation):

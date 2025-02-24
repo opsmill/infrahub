@@ -89,7 +89,7 @@ class InfrahubCoreMenuMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-    ) -> tuple[Node, Self]:
+    ) -> tuple[Node, Self, list[Node]]:
         graphql_context: GraphqlContext = info.context
         obj = await NodeManager.find_object(
             db=graphql_context.db, kind=CoreMenuItem, id=data.get("id"), hfid=data.get("hfid"), branch=branch
