@@ -81,7 +81,7 @@ export const NodeForm = ({
     schema,
     profiles,
     initialObject: currentObject,
-    objectTemplate: objectTemplate,
+    objectTemplate,
     auth,
     isFilterForm,
     filters,

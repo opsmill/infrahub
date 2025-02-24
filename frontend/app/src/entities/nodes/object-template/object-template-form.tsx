@@ -3,26 +3,32 @@ import { NodeObject } from "@/entities/nodes/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { Popover } from "@/shared/components/aria/popover";
 import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
+import { classNames } from "@/shared/utils/common";
 import { FileBoxIcon, PlusIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Button, Dialog, DialogTrigger } from "react-aria-components";
+import { Button, ButtonProps, Dialog, DialogTrigger } from "react-aria-components";
 
-export interface ObjectTemplateFormProps extends ObjectFormProps {
-  objectTemplateKind: string;
+interface StartButtonProps extends ButtonProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  className?: string;
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
-const StartFromScratchButton = ({ onPress }: { onPress: () => void }) => (
+const StartButton = ({ icon, title, description, className, ...props }: StartButtonProps) => (
   <Button
-    onPress={onPress}
-    className="flex items-center gap-2 border border-dashed border-gray-400 p-4 rounded-lg hover:bg-gray-50"
+    className={classNames(
+      "flex items-center gap-2 border border-dashed border-gray-400 p-4 rounded-lg hover:bg-gray-50",
+      className
+    )}
+    {...props}
   >
-    <div className="bg-indigo-100 rounded-lg p-3">
-      <PlusIcon className="size-6" />
-    </div>
+    <div className="bg-indigo-100 rounded-lg p-3">{icon}</div>
 
     <div className="flex flex-col items-start gap-1">
-      <p className="text-sm font-medium">Start from scratch</p>
-      <p className="text-xs text-gray-600">Create a new blank object</p>
+      <p className="text-sm font-medium">{title}</p>
+      <p className="text-xs text-gray-600">{description}</p>
     </div>
   </Button>
 );
@@ -44,19 +50,12 @@ const StartFromTemplateButton = ({
 
   return (
     <DialogTrigger>
-      <Button
+      <StartButton
         ref={buttonRef}
-        className="flex items-center gap-2 border border-dashed border-gray-400 p-4 rounded-lg hover:bg-gray-50 relative"
-      >
-        <div className="bg-indigo-100 rounded-lg p-3">
-          <FileBoxIcon className="size-6" />
-        </div>
-
-        <div className="flex flex-col items-start gap-1">
-          <p className="text-sm font-medium">Start from template</p>
-          <p className="text-xs text-gray-600">Pick a premade object and customize it</p>
-        </div>
-      </Button>
+        icon={<FileBoxIcon className="size-6" />}
+        title="Start from template"
+        description="Pick a premade object and customize it"
+      />
 
       <Popover style={buttonWidth ? { width: buttonWidth } : undefined} placement="bottom start">
         <Dialog>
@@ -71,27 +70,36 @@ const StartFromTemplateButton = ({
   );
 };
 
+export interface ObjectTemplateFormProps extends ObjectFormProps {
+  objectTemplateKind: string;
+}
+
 export default function ObjectTemplateForm({
   objectTemplateKind,
   ...props
 }: ObjectTemplateFormProps) {
   const { schema: objectTemplateSchema } = useSchema(objectTemplateKind);
-  const [currentObjectTemplate, setCurrentObjectTemplate] = useState<NodeObject | null>();
+  const [selectedObjectTemplate, setSelectedObjectTemplate] = useState<NodeObject | null>();
 
   if (!objectTemplateSchema) {
     return `Could not find template schema for ${objectTemplateKind}`;
   }
 
-  if (currentObjectTemplate !== undefined) {
-    return <ObjectForm {...props} objectTemplate={currentObjectTemplate} />;
+  if (selectedObjectTemplate !== undefined) {
+    return <ObjectForm {...props} objectTemplate={selectedObjectTemplate} />;
   }
 
   return (
     <div className="flex flex-col gap-4 p-6">
-      <StartFromScratchButton onPress={() => setCurrentObjectTemplate(null)} />
+      <StartButton
+        icon={<PlusIcon className="size-6" />}
+        title="Start from scratch"
+        description="Create a new blank object"
+        onPress={() => setSelectedObjectTemplate(null)}
+      />
       <StartFromTemplateButton
         objectTemplateSchema={objectTemplateSchema}
-        onSelect={setCurrentObjectTemplate}
+        onSelect={setSelectedObjectTemplate}
       />
     </div>
   );

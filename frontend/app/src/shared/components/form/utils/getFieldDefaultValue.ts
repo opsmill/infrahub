@@ -1,6 +1,6 @@
 import { AttributeType, FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { NodeObject } from "@/entities/nodes/types";
+import { NodeAttribute, NodeObject } from "@/entities/nodes/types";
 import { LineageSource } from "@/shared/api/graphql/generated/graphql";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
@@ -15,7 +15,7 @@ import * as R from "ramda";
 export type GetFieldDefaultValue = {
   fieldSchema: FieldSchema;
   initialObject?: Record<string, AttributeType>;
-  objectTemplate?: NodeObject;
+  objectTemplate?: NodeObject | null;
   profiles?: Array<ProfileData>;
   isFilterForm?: boolean;
 };
@@ -127,11 +127,11 @@ const getDefaultValueFromPool = (
 
 export const getDefaultValueFromTemplate = (
   fieldName: string,
-  objectTemplate?: NodeObject
+  objectTemplate?: NodeObject | null
 ): AttributeValueFromTemplate | null => {
   if (!objectTemplate) return null;
 
-  const currentField = objectTemplate[fieldName];
+  const currentField = objectTemplate[fieldName] as NodeAttribute | undefined;
   if (!currentField) return null;
 
   return {

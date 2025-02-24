@@ -31,7 +31,7 @@ export const getFormFieldFromAttribute = ({
   auth: AuthContextType | undefined;
   attributeSchema: AttributeSchema;
   currentObject: Record<string, AttributeType> | undefined;
-  objectTemplate: NodeObject | undefined;
+  objectTemplate: NodeObject | null | undefined;
   schema: ModelSchema;
   isFilterForm: boolean;
   pools?: Array<NumberPoolData>;
