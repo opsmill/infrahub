@@ -1836,6 +1836,11 @@ class SchemaBranch:
             ]:
                 continue
 
+            # Remove previous relationships to account for updates
+            template_schema.relationships = [
+                rel for rel in template_schema.relationships if rel.name != relationship.name
+            ]
+
             rel_template_peer = (
                 self._get_object_template_kind(node_kind=relationship.peer)
                 if relationship.kind != RelationshipKind.ATTRIBUTE
