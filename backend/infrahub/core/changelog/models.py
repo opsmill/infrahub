@@ -304,7 +304,8 @@ class NodeChangelog(BaseModel):
             )
 
     def add_attribute(self, attribute: AttributeChangelog) -> None:
-        self.attributes[attribute.name] = attribute
+        if attribute.has_updates:
+            self.attributes[attribute.name] = attribute
 
     def add_relationship(
         self, relationship: RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog
