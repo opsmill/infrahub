@@ -163,7 +163,7 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
     docker_yaml: dict = yaml.load(docker_path)
 
     # Define services to update
-    services_to_update = ["infrahub-server", "task-worker"]
+    services_to_update = ["infrahub-server", "task-worker", "task-manager"]
     updates_made = False
 
     # Iterate over the services and update their image versions
