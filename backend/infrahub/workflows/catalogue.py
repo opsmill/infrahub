@@ -377,6 +377,42 @@ GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE = WorkflowDefinition(
     function="create",
 )
 
+GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER = WorkflowDefinition(
+    name="git-repository-user-checks-definition-trigger",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="trigger_repository_user_checks_definitions",
+)
+
+GIT_REPOSITORY_USER_CHECK_RUN = WorkflowDefinition(
+    name="git-repository-run-user-check",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="run_user_check",
+)
+
+GIT_REPOSITORY_USER_CHECKS_TRIGGER = WorkflowDefinition(
+    name="git-repository-trigger-user-checks",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="trigger_user_checks",
+)
+
+GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER = WorkflowDefinition(
+    name="git-repository-trigger-internal-checks",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="trigger_internal_checks",
+)
+
+GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN = WorkflowDefinition(
+    name="git-repository-check-merge-conflict",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="run_check_merge_conflicts",
+)
+
+
 worker_pools = [INFRAHUB_WORKER_POOL]
 
 workflows = [
@@ -403,6 +439,11 @@ workflows = [
     GIT_REPOSITORIES_SYNC,
     GIT_REPOSITORY_ADD,
     GIT_REPOSITORY_ADD_READ_ONLY,
+    GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
+    GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
+    GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER,
+    GIT_REPOSITORY_USER_CHECKS_TRIGGER,
+    GIT_REPOSITORY_USER_CHECK_RUN,
     GRAPHQL_QUERY_GROUP_UPDATE,
     IPAM_RECONCILIATION,
     PROCESS_COMPUTED_MACRO,
