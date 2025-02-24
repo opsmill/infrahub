@@ -6,6 +6,7 @@ from prefect.client.orchestration import PrefectClient, get_client
 from prefect.events.schemas.events import Event as PrefectEventModel
 from pydantic import BaseModel, Field, TypeAdapter
 
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.log import get_logger
 from infrahub.utils import get_nested_dict
 
@@ -22,6 +23,8 @@ class PrefectEventData(PrefectEventModel):
                 continue
             if "infrahub.resource.label" not in resource:
                 continue
+            if resource.get("infrahub.resource.label") == GLOBAL_BRANCH_NAME:
+                return None
             return resource.get("infrahub.resource.label")
         return None
 
@@ -107,10 +110,34 @@ class PrefectEventData(PrefectEventModel):
 
         return {"attributes": attributes}
 
+    def _get_branch_name_from_resource(self) -> str:
+        return self.resource.get("infrahub.branch.name") or ""
+
+    def _return_branch_created(self) -> dict[str, Any]:
+        return {"created_branch": self._get_branch_name_from_resource()}
+
+    def _return_branch_deleted(self) -> dict[str, Any]:
+        return {"deleted_branch": self._get_branch_name_from_resource()}
+
+    def _return_branch_merged(self) -> dict[str, Any]:
+        return {"source_branch": self._get_branch_name_from_resource()}
+
+    def _return_branch_rebased(self) -> dict[str, Any]:
+        return {"rebased_branch": self._get_branch_name_from_resource()}
+
     def _return_event_specifics(self) -> dict[str, Any]:
+        """Return event specific data based on the type of event being processed"""
         match self.event:
             case "infrahub.node.created" | "infrahub.node.updated" | "infrahub.node.deleted":
                 return self._return_node_mutation()
+            case "infrahub.branch.created":
+                return self._return_branch_created()
+            case "infrahub.branch.deleted":
+                return self._return_branch_deleted()
+            case "infrahub.branch.merged":
+                return self._return_branch_merged()
+            case "infrahub.branch.rebased":
+                return self._return_branch_rebased()
 
         return {}
 
