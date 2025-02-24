@@ -7,10 +7,11 @@ import { useNodeLabel } from "../api/get-display-label.query";
 type NodeLabelProps = {
   id?: string;
   kind?: string;
+  maxChar?: number;
   className?: string;
 };
 
-export const NodeLabel = ({ id, kind = NODE_OBJECT, className }: NodeLabelProps) => {
+export const NodeLabel = ({ id, kind = NODE_OBJECT, maxChar, className }: NodeLabelProps) => {
   const { isLoading, error, data } = useNodeLabel({ objectid: id, kind, enabled: !!id });
 
   if (isLoading) {
@@ -24,7 +25,7 @@ export const NodeLabel = ({ id, kind = NODE_OBJECT, className }: NodeLabelProps)
   if (error || !data?.display_label) {
     return (
       <div className="italic">
-        <TextDisplay maxChars={20} preventShowMore>
+        <TextDisplay maxChars={maxChar} preventShowMore>
           {id}
         </TextDisplay>
       </div>
@@ -33,7 +34,7 @@ export const NodeLabel = ({ id, kind = NODE_OBJECT, className }: NodeLabelProps)
 
   return (
     <div className={classNames(className)}>
-      <TextDisplay maxChars={20} preventShowMore>
+      <TextDisplay maxChars={maxChar} preventShowMore>
         {data?.display_label}
       </TextDisplay>
     </div>
