@@ -1,29 +1,51 @@
-import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
-import { store } from "@/shared/stores";
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { getDisplayLabelFromApi } from "./get-display-label";
+import { useAtomValue } from "jotai";
+import { getNodeLabelFromApi } from "./get-display-label";
 
-export function getDisplayLabelQueryOptions({
+type NodeLabelProps = { objectid?: string; kind: string; enabled?: boolean };
+
+export function getNodeLabelQueryOptions({
   objectid,
   kind,
-}: { objectid: string; kind: string }) {
-  const currentBranchName = getCurrentBranchName();
-  const timeMachineDate = store.get(datetimeAtom);
-
+  enabled,
+  branchName,
+  atDate,
+}: NodeLabelProps & ContextParams) {
   return queryOptions({
-    queryKey: ["display-label", objectid],
+    queryKey: [branchName, atDate, "display-label", objectid, kind],
     queryFn: () => {
-      return getDisplayLabelFromApi({
+      return getNodeLabelFromApi({
         objectid,
         kind,
-        branchName: currentBranchName,
-        atDate: timeMachineDate,
+        branchName,
+        atDate,
       });
     },
+    enabled,
   });
 }
 
-export const useDisplayLabel = ({ objectid, kind }: { objectid: string; kind: string }) => {
-  return useQuery(getDisplayLabelQueryOptions({ objectid, kind }));
+export const useNodeLabel = ({ objectid, kind, enabled }: NodeLabelProps) => {
+  const { currentBranch } = useCurrentBranch();
+  const timeMachineDate = useAtomValue(datetimeAtom);
+
+  const { data, ...props } = useQuery(
+    getNodeLabelQueryOptions({
+      objectid,
+      kind,
+      enabled,
+      branchName: currentBranch.name,
+      atDate: timeMachineDate,
+    })
+  );
+
+  const object = data?.data?.[kind]?.edges?.[0]?.node ?? {};
+
+  return {
+    data: object,
+    ...props,
+  };
 };

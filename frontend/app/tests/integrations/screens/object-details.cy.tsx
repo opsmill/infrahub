@@ -4,7 +4,8 @@ import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import { ErrorBoundary } from "react-error-boundary";
 import { Route, Routes } from "react-router";
-import { schemaState } from "../../../src/entities/schema/stores/schema.atom";
+import { BranchContext } from "../../../src/entities/branches/ui/branches-provider";
+import { nodeSchemasAtom } from "../../../src/entities/schema/stores/schema.atom";
 import { ObjectDetailsPage } from "../../../src/pages/objects/object-details";
 import ErrorFallback from "../../../src/shared/components/errors/error-fallback";
 import {
@@ -67,7 +68,7 @@ const mocks: any[] = [
 // Provide the initial value for jotai
 const ObjectDetailsProvider = () => {
   return (
-    <TestProvider initialValues={[[schemaState, deviceDetailsMocksSchema]]}>
+    <TestProvider initialValues={[[nodeSchemasAtom, deviceDetailsMocksSchema]]}>
       <ObjectDetailsPage />
     </TestProvider>
   );
@@ -82,13 +83,15 @@ describe("List screen", () => {
 
     // Mount the view with the default route and the mocked data
     cy.mount(
-      <MockedProvider mocks={mocks} addTypename={false}>
-        <ErrorBoundary FallbackComponent={ErrorFallback}>
-          <Routes>
-            <Route element={<ObjectDetailsProvider />} path={graphqlQueryItemsPath} />
-          </Routes>
-        </ErrorBoundary>
-      </MockedProvider>,
+      <BranchContext value={{ currentBranch: { name: "main" } }}>
+        <MockedProvider mocks={mocks} addTypename={false}>
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <Routes>
+              <Route element={<ObjectDetailsProvider />} path={graphqlQueryItemsPath} />
+            </Routes>
+          </ErrorBoundary>
+        </MockedProvider>
+      </BranchContext>,
       {
         // Add iniital route for the app router, to display the current items view
         routerProps: {

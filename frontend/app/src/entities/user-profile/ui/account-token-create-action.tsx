@@ -1,6 +1,6 @@
 import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
 import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
-import { schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { getInfrahubAccountTokenQueryOptions } from "@/entities/user-profile/domain/get-infrahub-account-token.query";
 import { queryClient } from "@/shared/api/rest/client";
 import { TokenInput } from "@/shared/components/display/token-input";
@@ -20,7 +20,7 @@ type AccountTokenCreateResponse = {
 
 export function AccountTokenCreateAction() {
   const [result, setResult] = useState<AccountTokenCreateResponse>();
-  const schemaList = useAtomValue(schemaState);
+  const schemaList = useAtomValue(nodeSchemasAtom);
   const schema = schemaList.find((schema) => schema.kind === ACCOUNT_TOKEN_OBJECT);
 
   if (!schema) return <LoadingIndicator className="p-4" />;

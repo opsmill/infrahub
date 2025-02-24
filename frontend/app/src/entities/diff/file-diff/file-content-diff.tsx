@@ -9,7 +9,7 @@ import { currentBranchAtom } from "@/entities/branches/stores";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { deleteObject } from "@/entities/nodes/api/deleteObject";
 import { getProposedChangesFilesThreads } from "@/entities/proposed-changes/api/getProposedChangesFilesThreads";
-import { schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { fetchStream } from "@/shared/api/rest/fetch";
@@ -108,7 +108,7 @@ export const FileContentDiff = (props: any) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
   const auth = useAuth();
-  const [schemaList] = useAtom(schemaState);
+  const [schemaList] = useAtom(nodeSchemasAtom);
   const [isLoading, setIsLoading] = useState(false);
   const [previousFile, setPreviousFile] = useState(false);
   const [newFile, setNewFile] = useState(false);

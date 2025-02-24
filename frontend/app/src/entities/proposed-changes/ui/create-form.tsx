@@ -5,7 +5,7 @@ import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";

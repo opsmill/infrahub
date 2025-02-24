@@ -1,6 +1,7 @@
-import { DisplayLabel } from "@/entities/nodes/object/ui/display-label";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { QSP } from "@/config/qsp";
+import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
@@ -42,7 +43,7 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
           <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="text-gray-400" />
 
           <div className="font-semibold">
-            <DisplayLabel id={account_id} />
+            <NodeLabel id={account_id} />
           </div>
 
           <div className="text-gray-500">{NODE_EVENTS_MAPPING[event] ?? "-"}</div>
@@ -51,10 +52,16 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
 
           <Link
             to={constructPath(
-              `/objects/${props.payload.data.node_kind}/${props.payload.data.node_id}`
+              `/objects/${props.payload.data.node_kind}/${props.payload.data.node_id}`,
+              [
+                {
+                  name: QSP.BRANCH,
+                  value: props.branch,
+                },
+              ]
             )}
           >
-            <DisplayLabel id={props.payload.data.node_id} />
+            <NodeLabel id={props.payload.data.node_id} />
           </Link>
         </div>
       </div>

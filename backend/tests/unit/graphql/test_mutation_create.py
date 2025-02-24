@@ -1184,6 +1184,48 @@ async def test_create_with_object_template(
     assert sorted([(await sfp.interface.get_peer(db=db)).name.value for sfp in device_sfps]) == if_names
 
 
+async def test_create_without_object_template(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+):
+    registry.schema.register_schema(schema=DEVICE_SCHEMA, branch=default_branch.name)
+
+    query = """
+    mutation NewDevice($device_name: String!, $manufacturer: String!) {
+      TestingDeviceCreate(data: {
+        name: {value: $device_name}
+        manufacturer: {value: $manufacturer}
+        height: {value: 1}
+        weight: {value: 6}
+        airflow: {value: "Front to rear"}
+      }) {
+        ok
+        object {
+          id
+        }
+      }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"device_name": "th2.par.asbr01", "manufacturer": "Juniper"},
+    )
+    assert not result.errors
+
+    device = await NodeManager.get_one(
+        db=db, kind="TestingDevice", branch=default_branch, id=result.data["TestingDeviceCreate"]["object"]["id"]
+    )
+    assert device
+    assert device.name.value == "th2.par.asbr01"
+    # Validate object not is linked to object template
+    device_template_node = await device.object_template.get_peer(db=db)
+    assert not device_template_node
+
+
 # These tests have been moved at the end of the file to avoid colliding with other and breaking them
 
 

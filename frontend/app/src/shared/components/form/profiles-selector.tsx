@@ -1,6 +1,7 @@
 import { getProfiles } from "@/entities/nodes/api/getProfiles";
 import { getObjectAttributes } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { genericsState, iNodeSchema, profilesAtom } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema } from "@/entities/schema/types";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -25,7 +26,7 @@ import { useAtomValue } from "jotai/index";
 import { useEffect, useId } from "react";
 
 type ProfilesSelectorProps = {
-  schema: iNodeSchema;
+  schema: NodeSchema;
   value?: ProfileData[];
   defaultValue?: ProfileData[];
   onChange: (item: ProfileData[]) => void;
@@ -45,8 +46,8 @@ export const ProfilesSelector = ({
     }
   }, [defaultValue]);
 
-  const genericSchemas = useAtomValue(genericsState);
-  const profileSchemas = useAtomValue(profilesAtom);
+  const genericSchemas = useAtomValue(genericSchemasAtom);
+  const profileSchemas = useAtomValue(profileSchemasAtom);
 
   const nodeGenerics = schema?.inherit_from ?? [];
 

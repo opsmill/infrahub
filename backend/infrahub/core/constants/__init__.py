@@ -180,6 +180,18 @@ class MutationAction(InfrahubStringEnum):
     UPDATED = "updated"
     UNDEFINED = "undefined"
 
+    @classmethod
+    def from_diff_action(cls, diff_action: DiffAction) -> MutationAction:
+        match diff_action:
+            case DiffAction.ADDED:
+                return MutationAction.CREATED
+            case DiffAction.REMOVED:
+                return MutationAction.DELETED
+            case DiffAction.UPDATED:
+                return MutationAction.UPDATED
+            case DiffAction.UNCHANGED:
+                return MutationAction.UNDEFINED
+
 
 class PathResourceType(InfrahubStringEnum):
     SCHEMA = "schema"

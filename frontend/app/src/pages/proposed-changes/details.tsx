@@ -13,7 +13,7 @@ import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { ProposedChangesChecksTab } from "@/entities/proposed-changes/ui/checks-tab";
 import { ProposedChangeDetails } from "@/entities/proposed-changes/ui/proposed-change-details";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
 import { CoreProposedChange } from "@/shared/api/graphql/generated/graphql";

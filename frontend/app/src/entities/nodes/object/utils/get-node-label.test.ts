@@ -1,10 +1,19 @@
 import { NodeCore } from "@/entities/nodes/types";
-import { describe, expect, it } from "vitest";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { describe, expect, it, vi } from "vitest";
 import { generateNodeSchema } from "../../../../../tests/fake/schema";
 import { getNodeLabel } from "./get-node-label";
 
+vi.mock("@/entities/schema/domain/get-schema", () => ({
+  getSchema: vi.fn(() => ({
+    schema: generateNodeSchema(),
+    isGeneric: false,
+    isNode: true,
+    isProfile: false,
+  })),
+}));
+
 describe("getNodeLabel", () => {
-  const baseSchema = generateNodeSchema();
   const baseNode: NodeCore = {
     id: "test-id",
     hfid: null,
@@ -14,11 +23,10 @@ describe("getNodeLabel", () => {
 
   it("should join multiple hfids with comma when node has hfid array", () => {
     // GIVEN
-    const node = { ...baseNode, hfid: ["hfid-1", "hfid-2"] };
-    const schema = baseSchema;
+    const node: NodeCore = { ...baseNode, hfid: ["hfid-1", "hfid-2"] };
 
     // WHEN
-    const result = getNodeLabel({ node, schema });
+    const result = getNodeLabel(node);
 
     // THEN
     expect(result).toBe("hfid-1, hfid-2");
@@ -26,11 +34,10 @@ describe("getNodeLabel", () => {
 
   it("should use display_label when hfid is not present", () => {
     // GIVEN
-    const node = { ...baseNode, display_label: "Display Label" };
-    const schema = baseSchema;
+    const node: NodeCore = { ...baseNode, display_label: "Display Label" };
 
     // WHEN
-    const result = getNodeLabel({ node, schema });
+    const result = getNodeLabel(node);
 
     // THEN
     expect(result).toBe("Display Label");
@@ -38,7 +45,7 @@ describe("getNodeLabel", () => {
 
   it("should fallback to node.id when neither hfid nor display_label are present", () => {
     // WHEN
-    const result = getNodeLabel({ node: baseNode, schema: baseSchema });
+    const result = getNodeLabel(baseNode);
 
     // THEN
     expect(result).toBe("test-id");
@@ -46,46 +53,44 @@ describe("getNodeLabel", () => {
 
   it("should prefer hfid over display_label when both are available", () => {
     // GIVEN
-    const node = {
+    const node: NodeCore = {
       ...baseNode,
       hfid: ["hfid-1"],
       display_label: "Display Label",
     };
-    const schema = baseSchema;
 
     // WHEN
-    const result = getNodeLabel({ node, schema });
+    const result = getNodeLabel(node);
 
     // THEN
     expect(result).toBe("hfid-1");
   });
 
-  it("should fallback to node.id when schema allows special labels but node values are null", () => {
-    // GIVEN
-    const schema = baseSchema;
-
+  it("should fallback to node.id when special labels are null", () => {
     // WHEN
-    const result = getNodeLabel({ node: baseNode, schema });
+    const result = getNodeLabel(baseNode);
 
     // THEN
     expect(result).toBe("test-id");
   });
 
-  it("should use node.id when schema disables special labels even if node has them", () => {
+  it("should use node.id when schema is not found even if node has special labels", () => {
     // GIVEN
-    const node = {
+    vi.mocked(getSchema).mockReturnValueOnce({
+      schema: null,
+      isGeneric: false,
+      isNode: false,
+      isProfile: false,
+    });
+    const node: NodeCore = {
       ...baseNode,
       hfid: ["hfid-1"],
       display_label: "Display Label",
-    };
-    const schema = {
-      ...baseSchema,
-      human_friendly_id: null,
-      display_labels: null,
+      __typename: "UnknownType",
     };
 
     // WHEN
-    const result = getNodeLabel({ node, schema: schema });
+    const result = getNodeLabel(node);
 
     // THEN
     expect(result).toBe("test-id");

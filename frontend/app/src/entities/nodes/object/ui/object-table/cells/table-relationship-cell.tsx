@@ -5,8 +5,8 @@ import {
   NodeRelationshipOne,
 } from "@/entities/nodes/types";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
 import { RelationshipSchema } from "@/entities/schema/types";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { LinkButton } from "@/shared/components/buttons/button-primitive";
 import { Icon } from "@iconify-icon/react";
 
@@ -39,7 +39,7 @@ export function TableRelationshipCell({
 export function RelationshipNodeDisplay({ node }: NodeRelationshipOne) {
   const { schema } = useSchema(node.__typename);
 
-  if (!schema) return "Unknown schema";
+  if (!schema) return `Schema for ${node.__typename} not found`;
 
   return (
     <LinkButton
@@ -49,7 +49,7 @@ export function RelationshipNodeDisplay({ node }: NodeRelationshipOne) {
       className="rounded-full truncate hover:underline hover:border-custom-blue-700 pr-2.5"
     >
       <Icon icon={schema.icon ?? "mdi:cube-outline"} className="mr-1 text-custom-blue-800" />
-      {getNodeLabel({ node, schema })}
+      {getNodeLabel(node)}
     </LinkButton>
   );
 }

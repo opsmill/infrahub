@@ -1,22 +1,22 @@
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
 import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-icon";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
+import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { useState } from "react";
 
-export interface TableColumnHeaderProps {
-  schema: IModelSchema;
+export interface TableColumnHeaderProps extends PopoverTriggerProps {
+  schema: ModelSchema;
   columnSchema: AttributeSchema | RelationshipSchema;
 }
 
-export function TableColumnHeader({ schema, columnSchema }: TableColumnHeaderProps) {
+export function TableColumnHeader({ schema, columnSchema, ...props }: TableColumnHeaderProps) {
   const [filters] = useFilters();
   const [showFilters, setShowFilters] = useState(false);
   const filtersAsObjectData = getObjectFromFilters(schema, filters);
@@ -28,7 +28,7 @@ export function TableColumnHeader({ schema, columnSchema }: TableColumnHeaderPro
 
   return (
     <Popover open={showFilters} onOpenChange={setShowFilters}>
-      <PopoverTrigger className={classNames(cellsStyle, cellHeaderStyle)}>
+      <PopoverTrigger className={classNames(cellsStyle, cellHeaderStyle)} {...props}>
         <TableColumnHeaderIcon fieldSchema={columnSchema} />
 
         <span className="truncate mr-2">{columnSchema.label ?? columnSchema.name}</span>

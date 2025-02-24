@@ -1,7 +1,6 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { ProfileData } from "@/shared/components/form/object-form";
 import { DynamicFieldProps, NumberPoolData } from "@/shared/components/form/type";
 import { getFormFieldFromAttribute } from "@/shared/components/form/utils/getFormFieldFromAttribute";
@@ -10,7 +9,7 @@ import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelat
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 type GetFormFieldsFromSchema = {
-  schema: IModelSchema;
+  schema: ModelSchema;
   profiles?: Array<ProfileData>;
   initialObject?: Record<string, AttributeType | RelationshipType>;
   auth?: AuthContextType;

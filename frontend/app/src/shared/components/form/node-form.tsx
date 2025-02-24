@@ -5,7 +5,7 @@ import { createObject } from "@/entities/nodes/api/createObject";
 import { GET_FORM_REQUIREMENTS } from "@/entities/nodes/api/getFormRequirements";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
-import { IProfileSchema, iNodeSchema } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { CREATE_ACCOUNT_TOKEN } from "@/entities/user-profile/api/createAccountToken";
 import { CoreNumberPool } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -33,7 +33,7 @@ export type NodeFormSubmitParams = {
 
 export type NodeFormProps = {
   className?: string;
-  schema: iNodeSchema | IProfileSchema;
+  schema: NodeSchema | ProfileSchema;
   profiles?: ProfileData[];
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType | RelationshipType>;

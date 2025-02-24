@@ -5,7 +5,7 @@ import { IPAM_QSP, IPAM_ROUTE, IP_PREFIX_GENERIC } from "@/entities/ipam/constan
 import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails";
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { getPermission } from "@/entities/permission/utils";
-import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -58,8 +58,8 @@ type PrefixSummaryContentProps = {
 };
 
 const PrefixSummaryContent = ({ prefixId, prefixKind }: PrefixSummaryContentProps) => {
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
+  const nodes = useAtomValue(nodeSchemasAtom);
+  const generics = useAtomValue(genericSchemasAtom);
   const [namespace] = useQueryParam(IPAM_QSP.NAMESPACE, StringParam);
 
   const prefixSchema = [...nodes, ...generics].find(({ kind }) => kind === prefixKind);

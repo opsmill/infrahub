@@ -1,4 +1,4 @@
-import { iGenericSchema } from "@/entities/schema/stores/schema.atom";
+import { GenericSchema } from "@/entities/schema/types";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { FilterKindSelector } from "@/shared/components/filters/filter-kind-selector";
 import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
@@ -9,9 +9,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
+import { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { useState } from "react";
 
-export function KindHeaderCell({ schema }: { schema: iGenericSchema }) {
+export interface KindHeaderCellProps extends PopoverTriggerProps {
+  schema: GenericSchema;
+}
+
+export function KindHeaderCell({ schema, ...props }: KindHeaderCellProps) {
   const [filters, setFilters] = useFilters();
   const [showFilters, setShowFilters] = useState(false);
   const currentKindFilters = filters.find((filter) => filter.name === "kind__value");
@@ -25,7 +30,7 @@ export function KindHeaderCell({ schema }: { schema: iGenericSchema }) {
 
   return (
     <Popover open={showFilters} onOpenChange={setShowFilters}>
-      <PopoverTrigger className={classNames(cellsStyle, cellHeaderStyle)}>
+      <PopoverTrigger className={classNames(cellsStyle, cellHeaderStyle)} {...props}>
         <Icon icon="mdi:code-json" className="text-stone-400" />
         <span className="truncate mr-2">Kind</span>
         <Icon

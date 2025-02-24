@@ -70,6 +70,25 @@ class BranchCreatedEvent(InfrahubEvent):
         return f"{EVENT_NAMESPACE}.branch.created"
 
 
+class BranchMergedEvent(InfrahubEvent):
+    """Event generated when a branch has been merged"""
+
+    def get_resource(self) -> dict[str, str]:
+        return {
+            "prefect.resource.id": f"infrahub.branch.{self.meta.get_branch_id()}",
+            "infrahub.node.kind": "Branch",
+            "infrahub.node.id": self.meta.get_branch_id(),
+            "infrahub.node.label": self.meta.context.branch.name,
+        }
+
+    def get_messages(self) -> list[InfrahubMessage]:
+        return []
+
+    @computed_field
+    def event_name(self) -> str:
+        return f"{EVENT_NAMESPACE}.branch.merged"
+
+
 class BranchRebasedEvent(InfrahubEvent):
     """Event generated when a branch has been rebased"""
 

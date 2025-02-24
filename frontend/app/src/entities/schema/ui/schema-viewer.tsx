@@ -1,11 +1,14 @@
 import { QSP } from "@/config/qsp";
 import {
-  IModelSchema,
-  genericsState,
-  profilesAtom,
-  schemaState,
+  genericSchemasAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
+  templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
-import { isGenericSchema, isNodeSchema, isProfileSchema } from "@/entities/schema/utils";
+import { ModelSchema } from "@/entities/schema/types";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import { isNodeSchema } from "@/entities/schema/utils/is-node-schema";
+import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
@@ -21,13 +24,14 @@ import { ModelDisplay, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
 
 export const SchemaViewerStack = ({ className = "" }: { className: string }) => {
   const [selectedKind, setKinds] = useQueryParam(QSP.KIND, ArrayParam);
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
-  const profiles = useAtomValue(profilesAtom);
+  const nodes = useAtomValue(nodeSchemasAtom);
+  const generics = useAtomValue(genericSchemasAtom);
+  const profiles = useAtomValue(profileSchemasAtom);
+  const templates = useAtomValue(templateSchemasAtom);
 
   if (!selectedKind) return null;
 
-  const schemas = [...nodes, ...generics, ...profiles];
+  const schemas = [...nodes, ...generics, ...profiles, ...templates];
 
   return (
     <div className={classNames("relative", className)}>
@@ -65,7 +69,7 @@ export const SchemaViewer = ({
   style,
 }: {
   className?: string;
-  schema: IModelSchema;
+  schema: ModelSchema;
   onClose: () => void;
   style?: CSSProperties;
 }) => {
@@ -101,7 +105,7 @@ export const SchemaViewer = ({
   );
 };
 
-const SchemaViewerTitle = ({ schema }: { schema: IModelSchema }) => {
+const SchemaViewerTitle = ({ schema }: { schema: ModelSchema }) => {
   return (
     <header className="flex gap-2">
       {schema.icon && (
@@ -119,7 +123,7 @@ const SchemaViewerTitle = ({ schema }: { schema: IModelSchema }) => {
   );
 };
 
-const SchemaViewerDetails = ({ schema }: { schema: IModelSchema }) => {
+const SchemaViewerDetails = ({ schema }: { schema: ModelSchema }) => {
   return (
     <Tabs className="flex flex-col overflow-y-hidden">
       <TabList className="flex">
@@ -153,7 +157,7 @@ const SchemaViewerDetails = ({ schema }: { schema: IModelSchema }) => {
   );
 };
 
-const Properties = ({ schema }: { schema: IModelSchema }) => {
+const Properties = ({ schema }: { schema: ModelSchema }) => {
   return (
     <div className="p-2 divide-y">
       <div>

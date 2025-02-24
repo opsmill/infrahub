@@ -1,6 +1,7 @@
 import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
+import globalVars from './globalVars'
 
 const config: Config = {
   title: "Infrahub Documentation",
@@ -108,6 +109,18 @@ const config: Config = {
       additionalLanguages: ["bash", "python", "markup-templating", "django", "json", "toml", "yaml"],
     },
   } satisfies Preset.ThemeConfig,
+
+  markdown: {
+    format: "mdx",
+    preprocessor: ({ filePath, fileContent }) => {
+      console.log(`Processing ${filePath}`);
+      const transformedContent = fileContent.replace(/\$\(\s*(\w+)\s*\)/g, (match, variableName) => {
+        return globalVars[variableName] || match;
+      });
+
+      return transformedContent;
+    },
+  },
 };
 
 export default config;

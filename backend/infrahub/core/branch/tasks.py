@@ -11,6 +11,8 @@ from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.changelog.diff import DiffChangelogCollector
+from infrahub.core.constants import MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -23,8 +25,9 @@ from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchRebasedEvent
-from infrahub.events.models import EventMeta
+from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent, BranchRebasedEvent
+from infrahub.events.models import EventMeta, InfrahubEvent
+from infrahub.events.node_action import NodeMutatedEvent
 from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.log import get_log_data
@@ -169,7 +172,9 @@ async def merge_branch(branch: str, context: InfrahubContext, service: InfrahubS
         await add_tags(branches=[branch, registry.default_branch])
 
         obj = await Branch.get_by_name(db=db, name=branch)
+        default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
         component_registry = get_component_registry()
+        merge_event = BranchMergedEvent(meta=EventMeta.from_context(context=context, branch=obj))
 
         merger: BranchMerger | None = None
         async with lock.registry.global_graph_lock():
@@ -187,13 +192,15 @@ async def merge_branch(branch: str, context: InfrahubContext, service: InfrahubS
                 service=service,
             )
             try:
-                await merger.merge()
+                branch_diff = await merger.merge()
             except Exception as exc:
                 log.exception("Merge failed, beginning rollback")
                 await merger.rollback()
                 raise MergeFailedError(branch_name=branch) from exc
             await merger.update_schema()
 
+        changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=obj, db=db)
+        node_events = changelog_collector.collect_changelogs()
         if merger and merger.migrations:
             errors = await schema_apply_migrations(
                 message=SchemaApplyMigrationData(
@@ -241,6 +248,24 @@ async def merge_branch(branch: str, context: InfrahubContext, service: InfrahubS
             meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
         )
         await service.message_bus.send(message=message)
+
+        events: list[InfrahubEvent] = [merge_event]
+
+        for action, node_changelog in node_events:
+            meta = EventMeta.from_parent(parent=merge_event)
+            mutate_event = NodeMutatedEvent(
+                kind=node_changelog.node_kind,
+                node_id=node_changelog.node_id,
+                data=node_changelog,
+                action=MutationAction.from_diff_action(diff_action=action),
+                fields=node_changelog.updated_fields,
+                meta=meta,
+            )
+            mutate_event.set_context_branch(branch=default_branch)
+            events.append(mutate_event)
+
+        for event in events:
+            await service.event.send(event=event)
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")

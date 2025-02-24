@@ -305,10 +305,26 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         # Handle attributes, copy values from template
         # Relationships handling in performed in GraphQL mutation to create nodes for relationships
-        for attribute in template._attributes:
-            if attribute in list(fields) + [OBJECT_TEMPLATE_NAME_ATTR]:
+        for attribute_name in template._attributes:
+            if attribute_name in list(fields) + [OBJECT_TEMPLATE_NAME_ATTR]:
                 continue
-            fields[attribute] = {"value": getattr(template, attribute).value}
+            fields[attribute_name] = {"value": getattr(template, attribute_name).value}
+
+        for relationship_name in template._relationships:
+            relationship_schema = template._schema.get_relationship(name=relationship_name)
+            if (
+                relationship_name in list(fields)
+                or relationship_schema.kind != RelationshipKind.ATTRIBUTE
+                or relationship_name == OBJECT_TEMPLATE_RELATIONSHIP_NAME
+            ):
+                continue
+
+            relationship: RelationshipManager = getattr(template, relationship_name)
+            if relationship_schema.cardinality == RelationshipCardinality.ONE:
+                if relationship_peer := await relationship.get_peer(db=db):
+                    fields[relationship_name] = {"id": relationship_peer.id}
+            elif relationship_peers := await relationship.get_peers(db=db):
+                fields[relationship_name] = [{"id": peer_id} for peer_id in relationship_peers]
 
     async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
         errors = []
@@ -848,7 +864,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     async def get_object_template(self, db: InfrahubDatabase) -> Node | None:
         object_template: RelationshipManager = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
-        return None if not object_template else await object_template.get_peer(db=db)
+        return await object_template.get_peer(db=db) if object_template is not None else None
 
     def get_relationships(
         self, kind: RelationshipKind, exclude: Sequence[str] | None = None

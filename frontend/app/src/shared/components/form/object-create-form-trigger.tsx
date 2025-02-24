@@ -1,6 +1,6 @@
 import { ARTIFACT_OBJECT } from "@/config/constants";
 import { Permission } from "@/entities/permission/types";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
@@ -10,7 +10,7 @@ import { Button, ButtonProps } from "../buttons/button-primitive";
 import { Tooltip } from "../ui/tooltip";
 
 interface ObjectCreateFormTriggerProps extends ButtonProps {
-  schema: IModelSchema;
+  schema: ModelSchema;
   onSuccess?: (newObject: any) => void;
   permission: Permission;
 }

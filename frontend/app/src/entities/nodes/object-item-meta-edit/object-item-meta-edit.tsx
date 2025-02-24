@@ -1,7 +1,7 @@
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import getMutationMetaDetailsFromFormData from "@/entities/nodes/object-item-meta-edit/getMutationMetaDetailsFromFormData";
-import { iNodeSchema } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
@@ -15,7 +15,7 @@ import { mapValues } from "remeda";
 
 interface Props {
   row: any;
-  schema: iNodeSchema;
+  schema: NodeSchema;
   type: "attribute" | "relationship";
   attributeOrRelationshipToEdit: any;
   attributeOrRelationshipName: any;

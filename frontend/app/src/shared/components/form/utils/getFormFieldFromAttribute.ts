@@ -1,8 +1,7 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeKind, AttributeSchema } from "@/entities/schema/types";
+import { AttributeKind, AttributeSchema, ModelSchema } from "@/entities/schema/types";
 import { components } from "@/shared/api/rest/types.generated";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
@@ -30,7 +29,7 @@ export const getFormFieldFromAttribute = ({
   auth: AuthContextType | undefined;
   attributeSchema: AttributeSchema;
   currentObject: Record<string, AttributeType> | undefined;
-  schema: IModelSchema;
+  schema: ModelSchema;
   isFilterForm: boolean;
   pools?: Array<NumberPoolData>;
   profiles?: Array<ProfileData>;

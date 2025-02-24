@@ -1,4 +1,4 @@
-import { iNodeSchema } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema } from "@/entities/schema/types";
 
 const metadataFields = ["source", "owner", "is_visible", "is_protected"];
 
@@ -18,7 +18,7 @@ const isValueValid = (value: any) => {
 };
 
 const getMutationMetaDetailsFromFormData = (
-  schema: iNodeSchema,
+  schema: NodeSchema,
   data: any,
   row: any,
   type: any,

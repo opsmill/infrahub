@@ -1,5 +1,5 @@
 import { SEARCH_FILTERS, TASK_OBJECT } from "@/config/constants";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { Button, ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { FilterForm } from "@/shared/components/filters/filter-form";
@@ -12,7 +12,7 @@ import { useState } from "react";
 import { TasksFilterForm } from "./tasks-filter-form";
 
 type FiltersProps = {
-  schema?: IModelSchema;
+  schema?: ModelSchema;
   kind?: string;
 };
 

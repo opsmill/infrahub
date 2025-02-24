@@ -6,7 +6,8 @@ import { getObjectDetailsPaginated } from "@/entities/nodes/api/getObjectDetails
 import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { Permission } from "@/entities/permission/types";
 import { getPermission } from "@/entities/permission/utils";
-import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema } from "@/entities/schema/types";
 import { CoreGraphQlQuery } from "@/shared/api/graphql/generated/graphql";
 import useQuery from "@/shared/api/graphql/useQuery";
 import NoDataFound from "@/shared/components/errors/no-data-found";
@@ -20,7 +21,7 @@ export default function GraphqlQueryDetailsPage({ graphqlQueryId }: { graphqlQue
 
   const objectid = graphqlQueryId;
 
-  const nodes = useAtomValue(schemaState);
+  const nodes = useAtomValue(nodeSchemasAtom);
   const graphqlQuerySchema = nodes.find((s) => s.kind === GRAPHQL_QUERY_OBJECT);
 
   const columns = getSchemaObjectColumns({ schema: graphqlQuerySchema });
@@ -70,7 +71,7 @@ const GraphqlQueryDetailsContent = ({
   permission,
 }: {
   graphqlQuery: CoreGraphQlQuery;
-  graphqlQuerySchema: iNodeSchema;
+  graphqlQuerySchema: NodeSchema;
   refetch: () => Promise<unknown>;
   permission: Permission;
 }) => {

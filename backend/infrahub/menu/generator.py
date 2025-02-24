@@ -103,6 +103,7 @@ async def generate_menu(db: InfrahubDatabase, branch: Branch, menu_items: list[C
 
             if schema.namespace == "Template":
                 object_templates_menu.children[menu_item.identifier] = menu_item
+                items_to_add[item_name] = True
             elif not schema.menu_placement:
                 first_element = MenuItemDict.from_schema(model=schema)
                 first_element.identifier = f"{first_element.identifier}Sub"

@@ -51,6 +51,26 @@ def car_person_branch_agnostic_schema() -> dict[str, Any]:
                     }
                 ],
             },
+            {
+                "name": "Roofrack",
+                "namespace": "Test",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "size", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "car",
+                        "label": "Commander of Car",
+                        "peer": "TestCar",
+                        "optional": False,
+                        "kind": "Parent",
+                        "cardinality": "one",
+                        "direction": "outbound",
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
+                ],
+            },
         ],
     }
     return schema

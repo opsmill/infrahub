@@ -3,7 +3,7 @@ import { GroupDataFromAPI } from "@/entities/groups/api/types";
 import AddGroupTriggerButton from "@/entities/groups/ui/add-group-trigger-button";
 import ObjectGroupsList from "@/entities/groups/ui/object-groups-list";
 import { getPermission } from "@/entities/permission/utils";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -17,7 +17,7 @@ import { useState } from "react";
 
 export type GroupsManagerProps = {
   className?: string;
-  schema: IModelSchema;
+  schema: ModelSchema;
   objectId: string;
   onUpdateCompleted?: () => void;
 };

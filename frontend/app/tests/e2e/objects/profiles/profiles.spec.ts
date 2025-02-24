@@ -104,7 +104,10 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("Verify profile link", async () => {
-      await page.getByRole("link", { name: "profile test tag" }).click();
+      await page
+        .getByTestId("metadata-tooltip")
+        .getByRole("link", { name: "profile test tag" })
+        .click();
       expect(page.url()).toContain("/objects/ProfileBuiltinTag/");
     });
   });
@@ -128,7 +131,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await test.step("Verify the changes in an object using the edited profile", async () => {
       await page.goto("/objects/BuiltinTag");
       await page.getByRole("link", { name: "tag with profile" }).click();
-      await expect(page.getByText("DescriptionA profile for E2E test")).toBeVisible();
+      await expect(page.getByText("DescriptionA profile for E2E test edited")).toBeVisible();
     });
   });
 
@@ -258,7 +261,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
   test("should verify profile values after creation", async ({ page }) => {
     await page.goto("/objects/CoreProfile");
     await page.getByRole("link", { name: PROFILE_NAME }).click();
-    await expect(page.locator("span").filter({ hasText: PROFILE_NAME })).toBeVisible();
+    await expect(page.getByText("Profile NameInterface L2")).toBeVisible();
     await expect(page.getByText("Profile Priority2000")).toBeVisible();
     await expect(page.getByText("MTU256")).toBeVisible();
     await expect(

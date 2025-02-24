@@ -9,10 +9,12 @@ import {
   getObjectTabs,
   getTabs,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
+import { ObjectRelationshipsManager } from "@/entities/nodes/relationships/ui/object-relationships-manager";
 import { showMetaEditState } from "@/entities/nodes/stores/metaEditFieldDetails.atom";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
 import { Permission } from "@/entities/permission/types";
-import { IModelSchema, genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -36,10 +38,9 @@ import { NodeEvents } from "../../events/ui/node-events";
 import { ActionButtons } from "./action-buttons";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
-import { RelationshipsDetails } from "./relationships-details-paginated";
 
 type ObjectDetailsProps = {
-  schema: IModelSchema;
+  schema: ModelSchema;
   objectDetailsData: any;
   taskData?: Object;
   hideHeaders?: boolean;
@@ -62,8 +63,8 @@ export default function ObjectItemDetails({
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
   const branch = useAtomValue(currentBranchAtom);
-  const [schemaList] = useAtom(schemaState);
-  const [genericList] = useAtom(genericsState);
+  const [schemaList] = useAtom(nodeSchemasAtom);
+  const [genericList] = useAtom(genericSchemasAtom);
 
   const refetchRef = useRef(null);
 
@@ -219,11 +220,10 @@ export default function ObjectItemDetails({
       )}
 
       {qspTab && qspTab !== TASK_TAB && (
-        <RelationshipsDetails
-          parentNode={objectDetailsData}
-          parentSchema={schema}
-          refetchObjectDetails={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
-          ref={refetchRef}
+        <ObjectRelationshipsManager
+          parentNodeSchema={schema}
+          parentNodeId={objectDetailsData.id}
+          relationshipName={qspTab}
         />
       )}
 

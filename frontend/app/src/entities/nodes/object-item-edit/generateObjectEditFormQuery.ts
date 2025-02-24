@@ -1,4 +1,4 @@
-import { IProfileSchema, iNodeSchema } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
@@ -7,7 +7,7 @@ export const generateObjectEditFormQuery = ({
   schema,
   objectId,
 }: {
-  schema: iNodeSchema | IProfileSchema;
+  schema: NodeSchema | ProfileSchema;
   objectId: string;
 }): string => {
   const request = {
