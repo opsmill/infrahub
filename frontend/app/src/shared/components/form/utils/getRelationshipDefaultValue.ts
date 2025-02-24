@@ -1,8 +1,15 @@
 import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { NodeRelationship } from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { FormRelationshipValue } from "@/shared/components/form/type";
+import {
+  EmptyFieldValue,
+  FormRelationshipValue,
+  RelationshipValueFromPool,
+  RelationshipValueFromTemplate,
+  RelationshipValueFromUser,
+} from "@/shared/components/form/type";
 import { store } from "@/shared/stores";
 
 type GetRelationshipDefaultValueParams = {
@@ -18,10 +25,25 @@ export const getRelationshipDefaultValue = ({
   relationshipTemplate,
   peerField,
 }: GetRelationshipDefaultValueParams): FormRelationshipValue => {
-  if (!relationshipData) {
+  if (isFilterForm) {
     return { source: null, value: null };
   }
 
+  if (relationshipData) {
+    return getRelationshipDefaultValueFromData(relationshipData, peerField);
+  }
+
+  if (relationshipTemplate) {
+    return getRelationshipDefaultValueFromTemplate(relationshipTemplate);
+  }
+
+  return { source: null, value: null };
+};
+
+export const getRelationshipDefaultValueFromData = (
+  relationshipData: RelationshipType,
+  peerField?: string
+): RelationshipValueFromUser | RelationshipValueFromPool | EmptyFieldValue => {
   if ("edges" in relationshipData) {
     return {
       source: {
@@ -49,11 +71,6 @@ export const getRelationshipDefaultValue = ({
       },
       value: relationshipData.node,
     };
-  }
-
-  // if filter form, we should only display user input
-  if (isFilterForm) {
-    return { source: null, value: null };
   }
 
   const source = relationshipData.properties.source;
@@ -84,5 +101,41 @@ export const getRelationshipDefaultValue = ({
       type: "user",
     },
     value: relationshipData.node,
+  };
+};
+
+export const getRelationshipDefaultValueFromTemplate = (
+  relationshipTemplate: NodeRelationship
+): RelationshipValueFromTemplate => {
+  if ("edges" in relationshipTemplate) {
+    return {
+      source: {
+        type: "template",
+      },
+      value: relationshipTemplate.edges
+        .map(({ node }) =>
+          node
+            ? {
+                id: node.id,
+                display_label: getNodeLabel(node),
+                __typename: node.__typename,
+              }
+            : null
+        )
+        .filter((n) => !!n),
+    };
+  }
+
+  const { node } = relationshipTemplate;
+
+  return {
+    source: {
+      type: "template",
+    },
+    value: {
+      id: node.id,
+      display_label: getNodeLabel(node),
+      __typename: node.__typename,
+    },
   };
 };
