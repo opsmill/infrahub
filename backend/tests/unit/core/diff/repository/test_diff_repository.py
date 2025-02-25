@@ -48,7 +48,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         original_size = config.SETTINGS.database.query_size_limit
         config.SETTINGS.database.max_depth_search_hierarchy = 10
         config.SETTINGS.database.query_size_limit = 50
-        diff_repository = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
+        diff_repository = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer(), max_save_batch_size=30)
         yield diff_repository
         config.SETTINGS.database.max_depth_search_hierarchy = original_depth
         config.SETTINGS.database.query_size_limit = original_size
@@ -90,7 +90,6 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         assert diff_root == enriched_diff
 
     async def test_save_and_retrieve_large_diff(self, diff_repository: DiffRepository, reset_database):
-        diff_repository.max_save_batch_size = 50
         enriched_branch_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,

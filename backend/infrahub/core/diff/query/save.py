@@ -103,20 +103,28 @@ CALL {
 }
 OPTIONAL MATCH (diff_node)-[:DIFF_HAS_CONFLICT]->(current_node_conflict:DiffConflict)
 CALL {
+    // -------------------------
+    // create a node-level conflict, if necessary
+    // -------------------------
     WITH diff_node, current_node_conflict, has_node_conflict
     WITH diff_node, current_node_conflict, has_node_conflict
     WHERE current_node_conflict IS NULL AND has_node_conflict = TRUE
     CREATE (diff_node)-[:DIFF_HAS_CONFLICT]->(:DiffConflict)
 }
 CALL {
+    // -------------------------
+    // delete a node-level conflict, if necessary
+    // -------------------------
     WITH current_node_conflict, has_node_conflict
     WITH current_node_conflict, has_node_conflict
     WHERE current_node_conflict IS NOT NULL AND has_node_conflict = FALSE
     DETACH DELETE current_node_conflict
 }
-WITH root_uuid, node_map, diff_node, has_node_conflict,
-    node_map.conflict_params AS node_conflict_params
+WITH root_uuid, node_map, diff_node, has_node_conflict, node_map.conflict_params AS node_conflict_params
 CALL {
+    // -------------------------
+    // set the properties of the node-level conflict, if necessary
+    // -------------------------
     WITH diff_node, has_node_conflict, node_conflict_params
     WITH diff_node, has_node_conflict, node_conflict_params
     WHERE has_node_conflict = TRUE
