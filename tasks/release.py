@@ -96,57 +96,58 @@ def ship(context: Context) -> None:
 
 
 @task
-def update_helm_chart(context: Context, chart_file: str | None = "helm/Chart.yaml") -> None:
+def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> None:
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     print(" - [release] Update Helm chart")
 
     # Get the app version directly from pyproject.toml
     app_version = get_version_from_pyproject()  # Returns a string like '1.1.0a1'
 
-    # Initialize YAML and load the Chart.yaml file
-    yaml: YAML = init_yaml_obj()
-    chart_path = Path(chart_file)
-    chart_yaml = yaml.load(chart_path)
+    for chart in ["infrahub", "infrahub-enterprise"]:
+        # Initialize YAML and load the Chart.yaml file
+        yaml: YAML = init_yaml_obj()
+        chart_path = Path(chart_repo) / "charts" / Path(chart) / "Chart.yaml"
+        chart_yaml = yaml.load(chart_path)
 
-    if "appVersion" not in chart_yaml:
-        raise ValueError(f"appVersion not found in {chart_file}; no updates made.")
+        if "appVersion" not in chart_yaml:
+            raise ValueError(f"appVersion not found in {str(chart_path)}; no updates made.")
 
-    old_app_version = chart_yaml.get("appVersion", "")
-    if old_app_version == app_version:
-        print(
-            f"{chart_file} updates not required, `appVersion` of {old_app_version} matches current from `pyproject.toml`"
-        )
-        return
+        old_app_version = chart_yaml.get("appVersion", "")
+        if old_app_version == app_version:
+            print(
+                f"{str(chart_path)} updates not required, `appVersion` of {old_app_version} matches current from `pyproject.toml`"
+            )
+            return
 
-    # Handle Helm chart version increment
-    old_helm_version = chart_yaml.get("version", "")
-    if not old_helm_version:
-        raise ValueError(f"Helm chart `version` not found in {chart_file}; no updates made.")
+        # Handle Helm chart version increment
+        old_helm_version = chart_yaml.get("version", "")
+        if not old_helm_version:
+            raise ValueError(f"Helm chart `version` not found in {str(chart_path)}; no updates made.")
 
-    # Split the Helm chart version into components for increment logic
-    major, minor, patch = map(int, old_helm_version.split("."))
-    new_helm_version = f"{major}.{minor}.{patch}"
+        # Split the Helm chart version into components for increment logic
+        major, minor, patch = map(int, old_helm_version.split("."))
+        new_helm_version = f"{major}.{minor}.{patch}"
 
-    # Determine the appropriate increment
-    try:
-        if app_version > old_app_version:
-            if int(app_version.split(".")[0]) > major:
-                new_helm_version = f"{major + 1}.0.0"
-            elif int(app_version.split(".")[1]) > minor:
-                new_helm_version = f"{major}.{minor + 1}.0"
-            elif int(app_version.split(".")[2].split("a")[0]) > patch:  # For alpha, beta handling
-                new_helm_version = f"{major}.{minor}.{patch + 1}"
-    except Exception:
-        # Fallback in case app_version has non-standard format for Helm comparison
-        print(f"Warning: Unable to strictly compare versions, using default Helm chart version: {new_helm_version}")
+        # Determine the appropriate increment
+        try:
+            if app_version > old_app_version:
+                if int(app_version.split(".")[0]) > major:
+                    new_helm_version = f"{major + 1}.0.0"
+                elif int(app_version.split(".")[1]) > minor:
+                    new_helm_version = f"{major}.{minor + 1}.0"
+                elif int(app_version.split(".")[2].split("a")[0]) > patch:  # For alpha, beta handling
+                    new_helm_version = f"{major}.{minor}.{patch + 1}"
+        except Exception:
+            # Fallback in case app_version has non-standard format for Helm comparison
+            print(f"Warning: Unable to strictly compare versions, using default Helm chart version: {new_helm_version}")
 
-    # Update the YAML
-    chart_yaml["appVersion"] = app_version
-    chart_yaml["version"] = new_helm_version
+        # Update the YAML
+        chart_yaml["appVersion"] = app_version
+        chart_yaml["version"] = new_helm_version
 
-    yaml.dump(chart_yaml, chart_path)
+        yaml.dump(chart_yaml, chart_path)
 
-    print(f"{chart_file} updated with Helm `version`: {new_helm_version} and `appVersion`: {app_version}")
+        print(f"{str(chart_path)} updated with Helm `version`: {new_helm_version} and `appVersion`: {app_version}")
 
 
 @task

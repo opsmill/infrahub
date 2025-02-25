@@ -55,21 +55,36 @@ jobs:
       - name: "Update Infrahub Image Version in docker-compose.yml file"
         if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
         run: "poetry run invoke release.update-docker-compose"
-      - name: "Update AppVersion in helm/chart.yaml file"
-        if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
-        run: "poetry run invoke release.update-helm-chart"
       - name: "Update Versions in python_testcontainers/pyproject.toml"
         run: "poetry run invoke release.update-test-containers"
-      - name: Commit docker-compose.yml and helm
+      - name: Commit docker-compose.yml
         uses: github-actions-x/commit@v2.9
         with:
           github-token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
           push-branch: 'stable'
-          commit-message: 'chore: update docker-compose and helm chart'
+          commit-message: 'chore: update docker-compose'
           files: |
             docker-compose.yml
-            helm/Chart.yaml
             python_testcontainers/pyproject.toml
           name: opsmill-bot
           email: github-bot@opsmill.com
           rebase: true
+
+      - name: Checkout infrahub-helm
+        if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
+        uses: actions/checkout@v4
+        with:
+          repository: opsmill/infrahub-helm
+          path: helm
+          token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
+
+      - name: "Update AppVersion in helm/chart.yaml file"
+        if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
+        run: "poetry run invoke release.update-helm-chart"
+
+      - name: Commit helm
+        if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
+        working-directory: helm
+        run: |
+          git commit -a -m 'chore: bump appVersion'
+          git push
