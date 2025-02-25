@@ -1,6 +1,6 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { NodeObject, NodeRelationship } from "@/entities/nodes/types";
+import { NodeObject } from "@/entities/nodes/types";
 import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { ProfileData } from "@/shared/components/form/object-form";
 import { DynamicFieldProps, NumberPoolData } from "@/shared/components/form/type";
@@ -42,7 +42,7 @@ export const getFormFieldsFromSchema = ({
         auth,
         relationshipSchema: field,
         relationshipData: initialObject?.[field.name] as RelationshipType | undefined,
-        relationshipTemplate: objectTemplate?.[field.name] as NodeRelationship | undefined,
+        objectTemplate,
         isFilterForm: !!isFilterForm,
         schema,
       });

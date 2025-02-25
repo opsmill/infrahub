@@ -1,22 +1,19 @@
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { ModelSchema } from "@/entities/schema/types";
-import { ContextParams } from "@/shared/api/types";
-import { Filter } from "@/shared/hooks/useFilters";
+import { PaginationParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
-import { OBJECTS_PER_PAGE, getObjects } from "./get-objects";
+import { GetObjectsParams, OBJECTS_PER_PAGE, getObjects } from "./get-objects";
 
-type GetObjectsQueryParams = ContextParams & {
-  schema: ModelSchema;
-  filters?: Array<Filter>;
-};
+type GetObjectsQueryParams = Omit<GetObjectsParams, keyof PaginationParams>;
 
 export function getObjectsInfiniteQueryOptions({
   schema,
   filters,
   branchName,
   atDate,
+  getAttributesVisible,
+  getRelationshipsVisible,
 }: GetObjectsQueryParams) {
   return infiniteQueryOptions({
     queryKey: [branchName, atDate, "objects", schema.kind, JSON.stringify(filters)],
@@ -27,6 +24,8 @@ export function getObjectsInfiniteQueryOptions({
         branchName,
         atDate,
         filters,
+        getAttributesVisible,
+        getRelationshipsVisible,
       });
     },
     initialPageParam: 0,

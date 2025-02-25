@@ -89,16 +89,12 @@ export type RelationshipManyValueFromUser = {
 };
 
 export type RelationshipOneValueFromTemplate = {
-  source: {
-    type: TemplateSource;
-  };
+  source: TemplateSource;
   value: Node | null;
 };
 
 export type RelationshipManyValueFromTemplate = {
-  source: {
-    type: TemplateSource;
-  };
+  source: TemplateSource;
   value: Array<Node> | null;
 };
 

@@ -1,43 +1,44 @@
 import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { NodeRelationship } from "@/entities/nodes/types";
+import { NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import {
   EmptyFieldValue,
   FormRelationshipValue,
   RelationshipValueFromPool,
   RelationshipValueFromTemplate,
   RelationshipValueFromUser,
+  TemplateSource,
 } from "@/shared/components/form/type";
 import { store } from "@/shared/stores";
 
 type GetRelationshipDefaultValueParams = {
   relationshipData: RelationshipType | undefined;
-  relationshipTemplate: NodeRelationship | undefined;
+  objectTemplate: NodeObject | null | undefined;
   isFilterForm?: boolean;
-  peerField?: string;
+  relationshipName?: string;
 };
 
 export const getRelationshipDefaultValue = ({
   isFilterForm,
   relationshipData,
-  relationshipTemplate,
-  peerField,
+  objectTemplate,
+  relationshipName,
 }: GetRelationshipDefaultValueParams): FormRelationshipValue => {
   if (isFilterForm) {
     return { source: null, value: null };
   }
 
   if (relationshipData) {
-    return getRelationshipDefaultValueFromData(relationshipData, peerField);
+    return getRelationshipDefaultValueFromData(relationshipData, relationshipName);
   }
 
-  if (relationshipTemplate) {
-    return getRelationshipDefaultValueFromTemplate(relationshipTemplate);
-  }
-
-  return { source: null, value: null };
+  return (
+    getRelationshipDefaultValueFromTemplate(objectTemplate, relationshipName) ??
+    DEFAULT_FORM_FIELD_VALUE
+  );
 };
 
 export const getRelationshipDefaultValueFromData = (
@@ -105,13 +106,24 @@ export const getRelationshipDefaultValueFromData = (
 };
 
 export const getRelationshipDefaultValueFromTemplate = (
-  relationshipTemplate: NodeRelationship
-): RelationshipValueFromTemplate => {
+  objectTemplate: NodeObject | null | undefined,
+  relationshipName: string | undefined
+): RelationshipValueFromTemplate | null => {
+  if (!objectTemplate || !relationshipName) return null;
+
+  const relationshipTemplate = objectTemplate[relationshipName] as NodeRelationship | undefined;
+  if (!relationshipTemplate) return null;
+
+  const source: TemplateSource = {
+    type: "template",
+    label: getNodeLabel(objectTemplate),
+    kind: objectTemplate.__typename,
+    id: objectTemplate.id,
+  };
+
   if ("edges" in relationshipTemplate) {
     return {
-      source: {
-        type: "template",
-      },
+      source,
       value: relationshipTemplate.edges
         .map(({ node }) =>
           node
@@ -129,9 +141,7 @@ export const getRelationshipDefaultValueFromTemplate = (
   const { node } = relationshipTemplate;
 
   return {
-    source: {
-      type: "template",
-    },
+    source,
     value: {
       id: node.id,
       display_label: getNodeLabel(node),

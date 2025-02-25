@@ -20,7 +20,11 @@ export function ObjectTemplateAutocomplete({
   onSelect,
   ...props
 }: ObjectTemplateAutocompleteProps) {
-  const { data, isPending, error } = useObjects({ schema: templateSchema });
+  const { data, isPending, error } = useObjects({
+    schema: templateSchema,
+    getAttributesVisible: (attributes) => attributes,
+    getRelationshipsVisible: (relationships) => relationships,
+  });
 
   if (error) {
     return <div>Error: {error.message}</div>;
