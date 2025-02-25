@@ -26,7 +26,7 @@ const EventDetailsView = () => {
 
             {data?.has_children && (
               <CardWithBorder className="p-0 border-0 flex-1">
-                <CardWithBorder.Title>Activities</CardWithBorder.Title>
+                <CardWithBorder.Title>Sub activities</CardWithBorder.Title>
                 <NodeEvents parentId={activityid} />
               </CardWithBorder>
             )}
