@@ -331,9 +331,9 @@ default_menu = [
             ),
             MenuItemDefinition(
                 namespace="Builtin",
-                name="ActivityLog",
-                label="Activity Log",
-                path="/activity-log",
+                name="Activities",
+                label="Activities",
+                path="/activities",
                 icon="mdi:timeline-text",
                 protected=True,
                 section=MenuSection.INTERNAL,
