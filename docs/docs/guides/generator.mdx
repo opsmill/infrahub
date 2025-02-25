@@ -6,7 +6,7 @@ import TabItem from '@theme/TabItem';
 
 # Creating a generator in Infrahub
 
-Within Infrahub a generator is defined in an [external repository](../topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the transform using [infrahubctl generator](../infrahubctl/infrahubctl-generator).
+Within Infrahub a generator is defined in an [external repository](../topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the transform using [infrahubctl generator]($(base_url)infrahubctl/infrahubctl-generator).
 
 The goal of this guide is to develop a Generator and add it to Infrahub, we will achieve this by following these steps.
 
@@ -58,7 +58,7 @@ nodes:
         unique: true
 ```
 
-Load the following schema using the [infrahubctl schema](../infrahubctl/infrahubctl-schema) command.
+Load the following schema using the [infrahubctl schema]($(base_url)infrahubctl/infrahubctl-schema) command.
 
 ```shell
 infrahubctl schema load widgets.yml
@@ -104,7 +104,7 @@ We provide `convert_query_response` option to be toggled to be able to access ob
 
 This allows you to manage the returned data with helper methods on the SDK objects such as `save`, `fetch`, etc. on the returned data rather than having to build a payload to send back to Infrahub to manage the objects.
 
-Read more on the [Infrahub Python SDK]($(local_base_url_1)python-sdk).
+Read more on the [Infrahub Python SDK]($(base_url)python-sdk/introduction).
 :::
 
 <Tabs groupId="convertResponse">
@@ -291,7 +291,7 @@ widget_generator (widget_generator.py::Generator) Target: widgets
 
 :::warning
 
-When running a generator with `infrahubctl` the [SDK tracking]($(local_base_url_1)python-sdk/topics/tracking) feature isn't used. The reason for this is that internally Infrahub uses the ID of the generator_definition to control the tracking, this isn't available from the outside. For this reason it is recommended to create test branches when developing generators and validating the results.
+When running a generator with `infrahubctl` the [SDK tracking]($(base_url)python-sdk/topics/tracking) feature isn't used. The reason for this is that internally Infrahub uses the ID of the generator_definition to control the tracking, this isn't available from the outside. For this reason it is recommended to create test branches when developing generators and validating the results.
 
 :::
 
@@ -310,7 +310,7 @@ Now you should see the tree [TestResource](http://localhost:8000/objects/TestRes
 
 ![resources](../media/guides/generator_pc_3.png)
 
-Merge the changes into the **main** branch using [infrahubctl branch](../infrahubctl/infrahubctl-branch) command.
+Merge the changes into the **main** branch using [infrahubctl branch]($(base_url)infrahubctl/infrahubctl-branch) command.
 
 ```shell
 infrahubctl branch merge 'test-branch1'
