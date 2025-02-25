@@ -20,7 +20,7 @@ from infrahub.graphql.mutations.node_getter.interface import MutationNodeGetterI
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_logger
 
-from .main import InfrahubMutationMixin, InfrahubMutationOptions
+from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
 
 if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
@@ -235,7 +235,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-    ):
+    ) -> DeleteResult:
         return await super().mutate_delete(info=info, data=data, branch=branch)
 
 
@@ -402,7 +402,7 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-    ) -> tuple[Node, Self, list[Node]]:
+    ) -> DeleteResult:
         graphql_context: GraphqlContext = info.context
         db = graphql_context.db
 
@@ -431,4 +431,4 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
 
         ok = True
 
-        return reconciled_prefix, cls(ok=ok), []
+        return DeleteResult(node=reconciled_prefix, mutation=cls(ok=ok))
