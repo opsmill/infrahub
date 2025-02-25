@@ -1,9 +1,13 @@
 import { EventNodeInterface, NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { DateDisplay } from "@/shared/components/display/date-display";
 
+import { ACCOUNT_OBJECT } from "@/config/constants";
+import { QSP } from "@/config/qsp";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { PropertyRow } from "@/entities/schema/ui/styled";
+import { constructPath } from "@/shared/api/rest/fetch";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
+import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 import {
@@ -52,17 +56,50 @@ export const EventDetails = ({
       />
       <PropertyRow title="Event" value={event} />
       <PropertyRow title="Occured at" value={<DateDisplay date={occurred_at} />} />
-      {account_id && <PropertyRow title="Account" value={<NodeLabel id={account_id} />} />}
+      {account_id && (
+        <PropertyRow
+          title="Account"
+          value={
+            <Link
+              to={constructPath(`/${ACCOUNT_OBJECT}/${account_id}`, [
+                { name: QSP.BRANCH, value: props.branch },
+              ])}
+            >
+              <NodeLabel id={account_id} />
+            </Link>
+          }
+        />
+      )}
       {primary_node?.id && (
-        <PropertyRow title="Primary Node" value={<NodeLabel id={primary_node?.id} />} />
+        <PropertyRow
+          title="Primary Node"
+          value={
+            <Link
+              to={constructPath(`/${primary_node.kind}/${primary_node.id}`, [
+                { name: QSP.BRANCH, value: props.branch },
+              ])}
+            >
+              <NodeLabel id={primary_node.id} />
+            </Link>
+          }
+        />
       )}
       {!!related_nodes?.length && (
         <PropertyRow
           title="Related Nodes"
           value={
-            <div className="flex items-center gap-1">
+            <div className="flex flex-col items-end gap-1">
               {related_nodes.map((node) => {
-                return <NodeLabel key={node.id} id={node?.id} />;
+                return (
+                  <Link
+                    key={node.id}
+                    to={constructPath(`/${node.kind}/${node.id}`, [
+                      { name: QSP.BRANCH, value: props.branch },
+                    ])}
+                  >
+                    <NodeLabel id={node?.id} />
+                  </Link>
+                );
               })}
             </div>
           }
