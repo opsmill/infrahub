@@ -164,6 +164,7 @@ class EnrichedDiffDeserializer:
     def build_diff_root_metadata(cls, root_node: Neo4jNode) -> EnrichedDiffRootMetadata:
         from_time = Timestamp(str(root_node.get("from_time")))
         to_time = Timestamp(str(root_node.get("to_time")))
+        partner_uuid = cls._get_str_or_none_property_value(node=root_node, property_name="partner_uuid")
         tracking_id_str = str(root_node.get("tracking_id"))
         tracking_id = deserialize_tracking_id(tracking_id_str=tracking_id_str)
         return EnrichedDiffRootMetadata(
@@ -172,7 +173,7 @@ class EnrichedDiffDeserializer:
             from_time=from_time,
             to_time=to_time,
             uuid=str(root_node.get("uuid")),
-            partner_uuid=str(root_node.get("partner_uuid")),
+            partner_uuid=partner_uuid,
             tracking_id=tracking_id,
             num_added=int(root_node.get("num_added", 0)),
             num_updated=int(root_node.get("num_updated", 0)),

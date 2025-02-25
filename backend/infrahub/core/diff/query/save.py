@@ -42,6 +42,7 @@ CALL {
 }
 WITH DISTINCT diff_root AS diff_root
 WITH collect(diff_root) AS diff_roots
+WHERE SIZE(diff_roots) = 2
 CALL {
     WITH diff_roots
     WITH diff_roots[0] AS base_diff_node, diff_roots[1] AS branch_diff_node

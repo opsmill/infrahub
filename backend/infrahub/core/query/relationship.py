@@ -581,6 +581,7 @@ class RelationshipGetPeerQuery(Query):
         query = """
         MATCH (source_node:Node)%(arrow_left_start)s[:IS_RELATED]%(arrow_left_end)s(rl:Relationship { name: $rel_identifier })
         WHERE source_node.uuid IN $source_ids
+        WITH DISTINCT source_node, rl
         CALL {
             WITH rl, source_node
             MATCH path = (source_node)%(path)s(peer:Node)
@@ -657,10 +658,23 @@ class RelationshipGetPeerQuery(Query):
         # QUERY Properties
         # ----------------------------------------------------------------------------
         query = """
-        MATCH (rl)-[rel_is_visible:IS_VISIBLE]-(is_visible)
-        MATCH (rl)-[rel_is_protected:IS_PROTECTED]-(is_protected)
-        WHERE all(r IN [ rel_is_visible, rel_is_protected] WHERE (%s))
-        """ % (branch_filter,)
+        CALL {
+            WITH rl
+            MATCH (rl)-[r:IS_VISIBLE]-(is_visible)
+            WHERE %(branch_filter)s
+            RETURN r AS rel_is_visible, is_visible
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        CALL {
+            WITH rl
+            MATCH (rl)-[r:IS_PROTECTED]-(is_protected)
+            WHERE %(branch_filter)s
+            RETURN r AS rel_is_protected, is_protected
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
 
@@ -670,19 +684,23 @@ class RelationshipGetPeerQuery(Query):
         # We must query them one by one otherwise the second one won't return
         for node_prop in ["source", "owner"]:
             query = """
-            WITH %s
-            OPTIONAL MATCH (rl)-[rel_%s:HAS_%s]-(%s)
-            WHERE all(r IN [ rel_%s ] WHERE (%s))
-            """ % (
-                ",".join(self.return_labels),
-                node_prop,
-                node_prop.upper(),
-                node_prop,
-                node_prop,
-                branch_filter,
-            )
+        CALL {
+            WITH rl
+            OPTIONAL MATCH (rl)-[r:HAS_%(node_prop_type)s]-(%(node_prop)s)
+            WHERE %(branch_filter)s
+            RETURN r AS rel_%(node_prop)s, %(node_prop)s
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+            """ % {
+                "node_prop": node_prop,
+                "node_prop_type": node_prop.upper(),
+                "branch_filter": branch_filter,
+            }
             self.add_to_query(query)
             self.update_return_labels([f"rel_{node_prop}", node_prop])
+
+        self.add_to_query("WITH " + ",".join(self.return_labels))
 
         # ----------------------------------------------------------------------------
         # ORDER Results
