@@ -55,20 +55,14 @@ class ValidateNodeRelationshipQuery(Query):
         // Return the result based on conditions
         WITH
             CASE
-                    WHEN nb_edges_on_correct_branch <> nb_edges
-                    THEN "nb_edges: " + nb_edges + " VS nb_edges_on_correct_branch: " + nb_edges_on_correct_branch
-                    ELSE
-                        CASE
-                            WHEN nb_edges = 1 AND nb_active_no_to_edges <> 1
-                            THEN "1 edge but nb_active_no_to_edges: " + nb_active_no_to_edges
-                            ELSE
-                            CASE
-                                WHEN nb_edges = 2 AND NOT (nb_active_with_to_edges = 1 AND nb_deleted_edges = 1
-                                     AND active_with_to_edges[0].to = deleted_edges[0].from)
-                                THEN "2 edges but they are invalid"
-                                ELSE "Edges state is correct"
-                            END
-                        END
+                WHEN nb_edges_on_correct_branch <> nb_edges
+                THEN "nb_edges: " + nb_edges + " VS nb_edges_on_correct_branch: " + nb_edges_on_correct_branch
+                WHEN nb_edges = 1 AND nb_active_no_to_edges <> 1
+                THEN "1 edge but nb_active_no_to_edges: " + nb_active_no_to_edges
+                WHEN nb_edges = 2 AND NOT (nb_active_with_to_edges = 1 AND nb_deleted_edges = 1
+                      AND active_with_to_edges[0].to = deleted_edges[0].from)
+                THEN "2 edges but they are invalid"
+                ELSE "Edges state is correct"
             END AS res
         """
 
