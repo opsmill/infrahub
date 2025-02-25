@@ -692,6 +692,7 @@ async def computed_attribute_setup_python(
 )
 async def computed_attribute_remove_python(
     branch_name: str,
+    context: InfrahubContext,  # noqa: ARG001
 ) -> None:
     async with get_client(sync_client=False) as client:
         automations = await client.read_automations()

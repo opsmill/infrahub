@@ -77,6 +77,7 @@ class NodeMutatedEvent(InfrahubEvent):
             "infrahub.node.id": self.node_id,
             "infrahub.node.action": self.action.value,
             "infrahub.node.root_id": self.data.root_node_id,
+            "infrahub.branch.name": self.meta.context.branch.name,
         }
 
     def get_payload(self) -> dict[str, Any]:

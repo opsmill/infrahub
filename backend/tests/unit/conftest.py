@@ -1205,7 +1205,7 @@ async def car_person_data_generic(db: InfrahubDatabase, register_core_models_sch
     """
 
     q1 = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
-    await q1.new(db=db, name="query01", query=query)
+    await q1.new(db=db, name="query01", query=query, models=["TestPerson"])
     await q1.save(db=db)
 
     r1 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)

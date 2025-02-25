@@ -1899,7 +1899,7 @@ class SchemaBranch:
         return template
 
     def identify_required_object_templates(
-        self, node_schema: NodeSchema, identified: set[NodeSchema]
+        self, node_schema: NodeSchema | GenericSchema, identified: set[NodeSchema | GenericSchema]
     ) -> set[NodeSchema]:
         """Identify all templates required to turn a given node into a template."""
         if node_schema in identified:
@@ -1915,7 +1915,7 @@ class SchemaBranch:
                 continue
 
             peer_schema = self.get(name=relationship.peer, duplicate=False)
-            if not isinstance(peer_schema, NodeSchema) or peer_schema in identified:
+            if not isinstance(peer_schema, NodeSchema | GenericSchema) or peer_schema in identified:
                 continue
 
             identified |= self.identify_required_object_templates(node_schema=peer_schema, identified=identified)
@@ -1923,7 +1923,7 @@ class SchemaBranch:
         return identified
 
     def manage_object_template_schemas(self) -> None:
-        need_templates: set[NodeSchema] = set()
+        need_templates: set[NodeSchema | GenericSchema] = set()
         template_schema_kinds: set[str] = set()
 
         for node_name in self.node_names + self.generic_names:

@@ -7,6 +7,7 @@ from infrahub_sdk.utils import str_to_bool
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.diff.model.path import ConflictSelection
 
 from .models import (
     AttributeChangelog,
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
     from infrahub.core.diff.model.path import (
         EnrichedDiffAttribute,
         EnrichedDiffNode,
+        EnrichedDiffProperty,
         EnrichedDiffRelationship,
         EnrichedDiffRoot,
     )
@@ -86,8 +88,9 @@ class DiffChangelogCollector:
             match attr_property.property_type:
                 case DatabaseEdgeType.HAS_VALUE:
                     # TODO deserialize correct value type from string
-                    changelog_attribute.value = attr_property.new_value
-                    changelog_attribute.value_previous = attr_property.previous_value
+                    if _keep_branch_update(diff_property=attr_property):
+                        changelog_attribute.value = attr_property.new_value
+                        changelog_attribute.value_previous = attr_property.previous_value
                 case DatabaseEdgeType.IS_PROTECTED:
                     changelog_attribute.add_property(
                         name="is_protected",
@@ -113,7 +116,7 @@ class DiffChangelogCollector:
                         value_previous=attr_property.previous_value,
                     )
 
-        node.attributes[attribute.name] = changelog_attribute
+        node.add_attribute(attribute=changelog_attribute)
 
     def _process_node_relationship(self, node: NodeChangelog, relationship: EnrichedDiffRelationship) -> None:
         match relationship.cardinality:
@@ -229,4 +232,10 @@ class DiffChangelogCollector:
             for node in self._diff.nodes
             if node.action != DiffAction.UNCHANGED
         ]
-        return changelogs
+        return [(action, node_changelog) for action, node_changelog in changelogs if node_changelog.has_changes]
+
+
+def _keep_branch_update(diff_property: EnrichedDiffProperty) -> bool:
+    if diff_property.conflict and diff_property.conflict.selected_branch == ConflictSelection.BASE_BRANCH:
+        return False
+    return True
