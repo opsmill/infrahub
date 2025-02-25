@@ -451,7 +451,7 @@ class NodeManager:
         limit: Optional[int] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Node]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 

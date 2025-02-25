@@ -15,6 +15,7 @@ from infrahub.core.constants import (
     PermissionAction,
     PermissionDecision,
     RelationshipCardinality,
+    RelationshipHierarchyDirection,
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetKindQuery
@@ -23,6 +24,7 @@ from infrahub.core.query.relationship import (
     RelationshipPeerData,
 )
 from infrahub.core.relationship import Relationship
+from infrahub.core.schema import NodeSchema
 from infrahub.database import retry_db_transaction
 from infrahub.events import EventMeta, NodeMutatedEvent
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
@@ -89,6 +91,10 @@ class RelationshipAdd(Mutation):
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
 
+        group_event_type = _get_group_event_type(
+            node=source, relationship_schema=rel_schema, relationship_name=relationship_name
+        )
+
         async with graphql_context.db.start_transaction() as db:
             peers: list[EventNode] = []
             for node_data in data.get("nodes"):
@@ -99,19 +105,19 @@ class RelationshipAdd(Mutation):
                 await rel.resolve(db=db)
                 # Save it only if it does not exist
                 if rel.get_peer_id() not in existing_peers.keys():
-                    peers.append(EventNode(id=rel.get_peer_id(), kind=rel.get_peer_kind()))
+                    if group_event_type != GroupUpdateType.NONE:
+                        peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.create_relationship(relationship=rel)
                     await rel.save(db=db)
 
         if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
-            group_event_type = _get_group_event_type(
-                node=source, relationship_schema=rel_schema, relationship_name=relationship_name
-            )
             if group_event_type == GroupUpdateType.MEMBERS:
+                ancestors = await _collect_ancestors(info=info, node_kind=source.get_schema().kind, node_id=source.id)
                 group_add_event = GroupMemberAddedEvent(
                     node_id=source.id,
                     kind=source.get_schema().kind,
                     members=peers,
+                    ancestors=ancestors,
                     meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
                 )
                 graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
@@ -124,9 +130,11 @@ class RelationshipAdd(Mutation):
                     node_kind_map = await node_kind_query.get_node_kind_map()
 
                     for node_id, node_kind in node_kind_map.items():
+                        ancestors = await _collect_ancestors(info=info, node_kind=node_kind, node_id=node_id)
                         group_add_event = GroupMemberAddedEvent(
                             node_id=node_id,
                             kind=node_kind,
+                            ancestors=ancestors,
                             members=[EventNode(id=source.get_id(), kind=source.get_kind())],
                             meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
                         )
@@ -175,6 +183,9 @@ class RelationshipRemove(Mutation):
         )
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
+        group_event_type = _get_group_event_type(
+            node=source, relationship_schema=rel_schema, relationship_name=relationship_name
+        )
 
         async with graphql_context.db.start_transaction() as db:
             peers: list[EventNode] = []
@@ -186,19 +197,19 @@ class RelationshipRemove(Mutation):
                     # it would be more query efficient
                     rel = Relationship(schema=rel_schema, branch=graphql_context.branch, node=source)
                     await rel.load(db=db, data=existing_peers[node_data.get("id")])
-                    peers.append(EventNode(id=rel.get_peer_id(), kind=rel.get_peer_kind()))
+                    if group_event_type != GroupUpdateType.NONE:
+                        peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.delete_relationship(relationship=rel)
                     await rel.delete(db=db)
 
         if config.SETTINGS.broker.enable and graphql_context.background and node_changelog.has_changes:
-            group_event_type = _get_group_event_type(
-                node=source, relationship_schema=rel_schema, relationship_name=relationship_name
-            )
             if group_event_type == GroupUpdateType.MEMBERS:
+                ancestors = await _collect_ancestors(info=info, node_kind=source.get_schema().kind, node_id=source.id)
                 group_remove_event = GroupMemberRemovedEvent(
                     node_id=source.id,
                     kind=source.get_schema().kind,
                     members=peers,
+                    ancestors=ancestors,
                     meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
                 )
                 graphql_context.background.add_task(graphql_context.active_service.event.send, group_remove_event)
@@ -210,6 +221,7 @@ class RelationshipRemove(Mutation):
                     node_kind_map = await node_kind_query.get_node_kind_map()
 
                     for node_id, node_kind in node_kind_map.items():
+                        ancestors = await _collect_ancestors(info=info, node_kind=node_kind, node_id=node_id)
                         group_remove_event = GroupMemberRemovedEvent(
                             node_id=node_id,
                             kind=node_kind,
@@ -330,6 +342,24 @@ async def _validate_peer_types(
                     raise ValidationError(
                         f"{node_id!r} {node.get_kind()!r} is already related to another peer on '{peer_relationships[0].name}'"
                     )
+
+
+async def _collect_ancestors(info: GraphQLResolveInfo, node_kind: str, node_id: str) -> list[EventNode]:
+    graphql_context: GraphqlContext = info.context
+    schema = graphql_context.db.schema.get(name=node_kind, branch=graphql_context.branch)
+
+    if not isinstance(schema, NodeSchema):
+        return []
+
+    ancestors = await NodeManager.query_hierarchy(
+        db=graphql_context.db,
+        branch=graphql_context.branch,
+        direction=RelationshipHierarchyDirection.ANCESTORS,
+        id=node_id,
+        node_schema=schema,
+        filters={"id": None},
+    )
+    return [EventNode(id=ancestor.get_id(), kind=ancestor.get_kind()) for ancestor in ancestors.values()]
 
 
 async def _collect_current_peers(

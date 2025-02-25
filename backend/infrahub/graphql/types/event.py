@@ -113,6 +113,14 @@ class NodeMutatedEvent(ObjectType):
     attributes = Field(List(of_type=NonNull(InfrahubMutatedAttribute), required=True), required=True)
 
 
+class GroupEvent(ObjectType):
+    class Meta:
+        interfaces = (EventNodeInterface,)
+
+    members = List(NonNull(RelatedNode), required=True, description="Group members modified in this event")
+    ancestors = List(NonNull(RelatedNode), required=True, description="Ancestor groups of this impacted group")
+
+
 class StandardEvent(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
@@ -128,5 +136,7 @@ EVENT_TYPES: dict[str, type[ObjectType]] = {
     "infrahub.branch.merged": BranchMergedEvent,
     "infrahub.branch.rebased": BranchRebasedEvent,
     "infrahub.branch.deleted": BranchDeletedEvent,
+    "infrahub.group.member_added": GroupEvent,
+    "infrahub.group.member_removed": GroupEvent,
     "undefined": StandardEvent,
 }
