@@ -93,7 +93,10 @@ class DeleteNodesRelsQuery(Query):
         // Note that if an AWARE node has been deleted on a branch and relationship is AGNOSTIC, we do not "delete" this relationship
         // right now as this aware node might exist on another branch.
 
-        // Set to time if there is an active edge on deleted edge branch
+        // Set to time if there is an active edge:
+        // - on deleted edge branch
+        // - or on any branch and deleted node is agnostic
+        // - or deleted node is aware and rel is agnostic
         CALL {
             WITH rel, deleted_edge
             OPTIONAL MATCH (rel)-[peer_active_edge {status: "active"}]-(peer_1)
@@ -111,7 +114,7 @@ class DeleteNodesRelsQuery(Query):
             deleted_node.branch_support as deleted_node_branch_support
 
 
-        // No need  to check deleted edge branch because
+        // No need to check deleted edge branch because
         // If deleted_node has different branch support type (agnostic/aware) than rel type,
         // there might already be a deleted edge that we would not match if we filter on deleted_edge_branch.
         // If both are aware, it still works, as we would have one Relationship node for each branch on which this relationship exists.

@@ -99,7 +99,7 @@ async def test_migration_agnostic_relationship(
     await person_john.save(db=db)
 
     car = await Node.init(db=db, schema="TestCar")
-    await car.new(db=db, name="yaris", owner=person_john.id)
+    await car.new(db=db, name="yaris", agnostic_owner=person_john.id)
     await car.save(db=db)
 
     schema = registry.schema.get_schema_branch(name=default_branch.name)
