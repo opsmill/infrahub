@@ -2095,6 +2095,8 @@ async def run(
     # Create timer to keep track of time elapsed
     start: float = time.time()
 
+    branch = branch or "main"
+
     # ------------------------------------------
     # Config
     # ------------------------------------------
