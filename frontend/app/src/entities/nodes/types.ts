@@ -16,7 +16,7 @@ export type NodeAttribute = {
 };
 
 export type NodeRelationshipOne = {
-  node: NodeCore;
+  node: NodeCore | null;
 };
 
 export type NodeRelationshipMany = {

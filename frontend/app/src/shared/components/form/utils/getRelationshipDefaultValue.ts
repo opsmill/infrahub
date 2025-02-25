@@ -139,6 +139,7 @@ export const getRelationshipDefaultValueFromTemplate = (
   }
 
   const { node } = relationshipTemplate;
+  if (!node) return null;
 
   return {
     source,
