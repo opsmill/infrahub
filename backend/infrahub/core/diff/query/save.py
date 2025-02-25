@@ -98,7 +98,7 @@ CALL {
     // delete parent-child relationships for included nodes, they will be added in EnrichedNodesLinkQuery
     // -------------------------
     WITH diff_node
-    MATCH (:DiffRelationship)-[parent_rel:DIFF_HAS_NODE]->(diff_node)
+    MATCH (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(:DiffRelationship)-[parent_rel:DIFF_HAS_NODE]->(:DiffNode)
     DELETE parent_rel
 }
 OPTIONAL MATCH (diff_node)-[:DIFF_HAS_CONFLICT]->(current_node_conflict:DiffConflict)
@@ -440,14 +440,14 @@ WITH
     node_link_details.root_uuid AS root_uuid,
     node_link_details.parent_uuid AS parent_uuid,
     node_link_details.child_uuid AS child_uuid,
-    node_link_details.relationship_name AS relationship_name
+    node_link_details.child_relationship_name AS relationship_name
 CALL {
     WITH root_uuid, parent_uuid, child_uuid, relationship_name
     MATCH (diff_root {uuid: root_uuid})
-    MATCH (diff_root)-[:DIFF_HAS_NODE]->(parent_node:DiffNode {uuid: parent_uuid})
-        -[:DIFF_HAS_RELATIONSHIP]->(diff_rel_group:DiffRelationship {name: relationship_name})
     MATCH (diff_root)-[:DIFF_HAS_NODE]->(child_node:DiffNode {uuid: child_uuid})
-    MERGE (diff_rel_group)-[:DIFF_HAS_NODE]->(child_node)
+        -[:DIFF_HAS_RELATIONSHIP]->(diff_rel_group:DiffRelationship {name: relationship_name})
+    MATCH (diff_root)-[:DIFF_HAS_NODE]->(parent_node:DiffNode {uuid: parent_uuid})
+    MERGE (diff_rel_group)-[:DIFF_HAS_NODE]->(parent_node)
 }
         """
         self.add_to_query(query)
@@ -457,14 +457,14 @@ CALL {
             return []
         parent_links = []
         for relationship in enriched_node.relationships:
-            for child_node in relationship.nodes:
+            for parent_node in relationship.nodes:
                 parent_links.append(
                     {
-                        "parent_uuid": enriched_node.uuid,
-                        "relationship_name": relationship.name,
-                        "child_uuid": child_node.uuid,
+                        "child_uuid": enriched_node.uuid,
+                        "child_relationship_name": relationship.name,
+                        "parent_uuid": parent_node.uuid,
                         "root_uuid": root_uuid,
                     }
                 )
-                parent_links.extend(self._build_node_parent_links(enriched_node=child_node, root_uuid=root_uuid))
+                parent_links.extend(self._build_node_parent_links(enriched_node=parent_node, root_uuid=root_uuid))
         return parent_links

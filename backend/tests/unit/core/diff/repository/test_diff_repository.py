@@ -970,7 +970,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             diff_branch_name=self.diff_branch_name,
             from_time=Timestamp(self.diff_from_time),
             to_time=Timestamp(self.diff_to_time),
-            nodes=set(nodes),
+            nodes=nodes,
             tracking_id=NameTrackingId(name="the-best-diff"),
         )
         saved_diffs = await self._save_single_diff(
@@ -981,10 +981,17 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         new_parent = self.build_diff_node(num_sub_fields=2, no_recurse=True)
         removed_parent = parent_rel.nodes.pop()
         parent_rel.nodes.add(new_parent)
-        saved_diffs.base_branch_diff.nodes = set()
-        saved_diffs.diff_branch_diff.nodes = {child_node, new_parent, removed_parent}
-        await diff_repository.save(enriched_diffs=saved_diffs, do_summary_counts=False)
+        saved_diffs.diff_branch_diff.nodes.add(new_parent)
 
+        # the update includes some nodes in the existing diff, but not all
+        updated_base_branch_diff = replace(saved_diffs.base_branch_diff, nodes=set())
+        updated_diff_branch_diff = replace(saved_diffs.diff_branch_diff, nodes={child_node, new_parent, removed_parent})
+        updated_diffs = replace(
+            saved_diffs, base_branch_diff=updated_base_branch_diff, diff_branch_diff=updated_diff_branch_diff
+        )
+        await diff_repository.save(enriched_diffs=updated_diffs, do_summary_counts=False)
+
+        # retrieving the diff still gets all the nodes for the whole diff
         retrieved_diff = await diff_repository.get_one(
             diff_branch_name=enriched_diff.diff_branch_name, diff_id=enriched_diff.uuid
         )
@@ -992,9 +999,13 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved_child = retrieved_diff.get_node(child_node.uuid)
         retrieved_parent_rel = retrieved_child.get_relationship(name=parent_rel.name)
         assert {n.uuid for n in retrieved_parent_rel.nodes} == {n.uuid for n in parent_rel.nodes}
+        assert retrieved_child == child_node
         retrieved_removed_parent = retrieved_diff.get_node(removed_parent.uuid)
         assert retrieved_removed_parent == removed_parent
-        assert retrieved_diff == enriched_diff
+
+        assert retrieved_diff.exists_on_database is True
+        retrieved_diff.exists_on_database = False
+        assert retrieved_diff == saved_diffs.diff_branch_diff
         await verify_no_orphaned_nodes(db=db)
 
 
