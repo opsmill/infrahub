@@ -18,6 +18,7 @@ from .mutations.branch import (
 from .mutations.computed_attribute import UpdateComputedAttribute
 from .mutations.diff import DiffUpdateMutation
 from .mutations.diff_conflict import ResolveDiffConflict
+from .mutations.generator import GeneratorDefinitionRequestRun
 from .mutations.proposed_change import ProposedChangeMerge, ProposedChangeRequestRunCheck
 from .mutations.relationship import (
     RelationshipAdd,
@@ -83,6 +84,7 @@ class InfrahubBaseMutation(ObjectType):
     InfrahubAccountTokenDelete = InfrahubAccountTokenDelete.Field()
     CoreProposedChangeRunCheck = ProposedChangeRequestRunCheck.Field()
     CoreProposedChangeMerge = ProposedChangeMerge.Field()
+    CoreGeneratorDefinitionRun = GeneratorDefinitionRequestRun.Field()
 
     IPPrefixPoolGetResource = IPPrefixPoolGetResource.Field()
     IPAddressPoolGetResource = IPAddressPoolGetResource.Field()
