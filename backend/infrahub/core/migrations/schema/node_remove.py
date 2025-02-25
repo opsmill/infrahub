@@ -105,12 +105,12 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
             LIMIT 1
         }
         WITH n1 as active_node, rel_inband1 as rel_inband, p1 as peer_node
-        WHERE rel_inband.status = "active" AND rel_inband.to IS NULL
+        WHERE rel_inband.status = "active"
         CALL {
             %(sub_query)s
         }
         WITH p2 as peer_node, rel_inband, active_node
-        FOREACH (i in CASE WHEN rel_inband.branch = "-global-" or rel_inband.branch = $branch THEN [1] ELSE [] END |
+        FOREACH (i in CASE WHEN rel_inband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
             SET rel_inband.to = $current_time
         )
         """ % {"sub_query": sub_query, "branch_filter": branch_filter}
@@ -151,7 +151,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
             LIMIT 1
         }
         WITH n1 as active_node, rel_outband1 as rel_outband, p1 as peer_node
-        WHERE rel_outband.status = "active" AND rel_outband.to IS NULL
+        WHERE rel_outband.status = "active"
         CALL {
             %(sub_query)s
         }

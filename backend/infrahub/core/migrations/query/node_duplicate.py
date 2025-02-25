@@ -184,11 +184,10 @@ class NodeDuplicateQuery(Query):
             %(sub_query_in)s
         }
         WITH p2 as peer_node, rel_inband, active_node, new_node
-        FOREACH (i in CASE WHEN rel_inband.branch = "-global-" or rel_inband.branch = $branch THEN [1] ELSE [] END |
+        FOREACH (i in CASE WHEN rel_inband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
             SET rel_inband.to = $current_time
         )
 
-        WITH peer_node, rel_inband, active_node, new_node
         RETURN DISTINCT new_node
         """ % {
             "branch_filter": branch_filter,
