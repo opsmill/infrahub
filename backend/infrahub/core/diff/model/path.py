@@ -409,8 +409,8 @@ class EnrichedDiffRootMetadata(BaseSummary):
     from_time: Timestamp
     to_time: Timestamp
     uuid: str
-    partner_uuid: str
     tracking_id: TrackingId
+    partner_uuid: str | None = field(default=None)
     exists_on_database: bool = field(default=False)
 
     def __hash__(self) -> int:
