@@ -3,7 +3,7 @@ from __future__ import annotations
 import enum
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from pydantic import field_validator, model_validator
+from pydantic import ConfigDict, field_validator, model_validator
 
 from infrahub import config
 from infrahub.core.enums import generate_python_enum
@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 
 
 class AttributeSchema(GeneratedAttributeSchema):
+    model_config = ConfigDict(use_enum_values=True)
+
     _sort_by: list[str] = ["name"]
     _enum_class: Optional[type[enum.Enum]] = None
 

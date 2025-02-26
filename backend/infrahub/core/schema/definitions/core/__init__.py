@@ -1098,7 +1098,7 @@ core_models: dict[str, Any] = {
                 },
             ],
         },
-        core_repository.model_dump(),
+        core_repository.to_dict(),
         core_read_only_repository,
         {
             "name": "TransformJinja2",

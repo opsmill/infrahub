@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from infrahub import config
 from infrahub.core.constants import RelationshipDirection
@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 
 
 class RelationshipSchema(GeneratedRelationshipSchema):
+    model_config = ConfigDict(use_enum_values=True)
+
     _exclude_from_hash: list[str] = ["filters"]
     _sort_by: list[str] = ["name"]
 

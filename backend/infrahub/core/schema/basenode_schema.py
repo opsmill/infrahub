@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Optional, Union, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
-from pydantic import field_validator
+from pydantic import ConfigDict, field_validator
 
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.models import HashableModelDiff
@@ -27,6 +27,8 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
 class BaseNodeSchema(GeneratedBaseNodeSchema):
+    model_config = ConfigDict(use_enum_values=True)
+
     _exclude_from_hash: list[str] = ["attributes", "relationships"]
     _sort_by: list[str] = ["namespace", "name"]
 
@@ -61,6 +63,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         """Return a hash of the object.
         Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
         return hash(self.get_hash())
+
+    def to_dict(self) -> dict:
+        return self.model_dump(exclude_unset=True, exclude_none=True, exclude_defaults=True)
 
     def get_hash(self, display_values: bool = False) -> str:
         """Extend the Hash Calculation to account for attributes and relationships."""
