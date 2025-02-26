@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Union
 
 from graphene import InputObjectType, Mutation
@@ -49,6 +50,13 @@ log = get_logger()
 KINDS_CONCURRENT_MUTATIONS_NOT_ALLOWED = [InfrahubKind.GENERICGROUP]
 
 
+@dataclass
+class DeleteResult:
+    node: Node
+    mutation: InfrahubMutationMixin
+    deleted_nodes: list[Node] = field(default_factory=list)
+
+
 # ------------------------------------------
 # Infrahub GraphQLType
 # ------------------------------------------
@@ -64,6 +72,7 @@ class InfrahubMutationMixin:
         obj = None
         mutation = None
         action = MutationAction.UNDEFINED
+        deleted_nodes: list[Node] = []
 
         if "Create" in cls.__name__:
             obj, mutation = await cls.mutate_create(info=info, branch=graphql_context.branch, data=data, **kwargs)
@@ -86,7 +95,11 @@ class InfrahubMutationMixin:
             else:
                 action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
-            obj, mutation = await cls.mutate_delete(info=info, branch=graphql_context.branch, data=data, **kwargs)
+            delete_result = await cls.mutate_delete(info=info, branch=graphql_context.branch, data=data, **kwargs)
+            obj = delete_result.node
+            mutation = delete_result.mutation
+            deleted_nodes = delete_result.deleted_nodes
+
             action = MutationAction.DELETED
         else:
             raise ValueError(
@@ -124,17 +137,33 @@ class InfrahubMutationMixin:
 
             events = [main_event]
 
-            for node_changelog in node_changelogs:
+            deleted_changelogs = [node.node_changelog for node in deleted_nodes if node.id != obj.id]
+            deleted_ids = {node.node_id for node in deleted_changelogs}
+
+            for node_changelog in deleted_changelogs:
                 meta = EventMeta.from_parent(parent=main_event)
                 event = NodeMutatedEvent(
                     kind=node_changelog.node_kind,
                     node_id=node_changelog.node_id,
                     data=node_changelog,
-                    action=MutationAction.UPDATED,
+                    action=MutationAction.DELETED,
                     fields=node_changelog.updated_fields,
                     meta=meta,
                 )
                 events.append(event)
+
+            for node_changelog in node_changelogs:
+                if node_changelog.node_id not in deleted_ids:
+                    meta = EventMeta.from_parent(parent=main_event)
+                    event = NodeMutatedEvent(
+                        kind=node_changelog.node_kind,
+                        node_id=node_changelog.node_id,
+                        data=node_changelog,
+                        action=MutationAction.UPDATED,
+                        fields=node_changelog.updated_fields,
+                        meta=meta,
+                    )
+                    events.append(event)
 
             for event in events:
                 graphql_context.background.add_task(graphql_context.active_service.event.send, event)
@@ -429,9 +458,9 @@ class InfrahubMutationMixin:
         await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
 
         fields = list(data.keys())
-        for field in ("id", "hfid"):
-            if field in fields:
-                fields.remove(field)
+        for field_to_remove in ("id", "hfid"):
+            if field_to_remove in fields:
+                fields.remove(field_to_remove)
 
         await obj.save(db=db, fields=fields)
 
@@ -494,7 +523,7 @@ class InfrahubMutationMixin:
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-    ) -> tuple[Node, Self]:
+    ) -> DeleteResult:
         graphql_context: GraphqlContext = info.context
 
         obj = await NodeManager.find_object(
@@ -512,7 +541,7 @@ class InfrahubMutationMixin:
 
         ok = True
 
-        return obj, cls(ok=ok)
+        return DeleteResult(node=obj, mutation=cls(ok=ok), deleted_nodes=deleted)
 
 
 class InfrahubMutation(InfrahubMutationMixin, Mutation):

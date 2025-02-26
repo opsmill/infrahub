@@ -14,7 +14,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 
-from .main import InfrahubMutationOptions
+from .main import DeleteResult, InfrahubMutationOptions
 
 if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
@@ -89,7 +89,7 @@ class InfrahubCoreMenuMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-    ) -> tuple[Node, Self]:
+    ) -> DeleteResult:
         graphql_context: GraphqlContext = info.context
         obj = await NodeManager.find_object(
             db=graphql_context.db, kind=CoreMenuItem, id=data.get("id"), hfid=data.get("hfid"), branch=branch

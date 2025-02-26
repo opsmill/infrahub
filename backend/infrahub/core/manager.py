@@ -1315,7 +1315,7 @@ class NodeManager:
         nodes: list[Node],
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
-    ) -> list[Any]:
+    ) -> list[Node]:
         """Returns list of deleted nodes because of cascading deletes"""
         branch = await registry.get_branch(branch=branch, db=db)
         node_delete_validator = NodeDeleteValidator(db=db, branch=branch)
