@@ -117,6 +117,8 @@ const sidebars: SidebarsConfig = {
         'topics/transformation',
         'topics/auth',
         'topics/computed-attributes',
+        'topics/activity-log',
+        'topics/tasks',
       ],
     },
     {
@@ -160,6 +162,7 @@ const sidebars: SidebarsConfig = {
         },
         'reference/configuration',
         'reference/git-agent',
+        'reference/infrahub-events',
         'reference/message-bus-events',
         'reference/api-server',
         'reference/dotinfrahub',

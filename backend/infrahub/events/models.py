@@ -27,7 +27,7 @@ class ParentEvent(BaseModel):
 
 
 class EventMeta(BaseModel):
-    branch: Branch | None = Field(default=None)
+    branch: Branch | None = Field(default=None, description="The branch on which originate this event")
     request_id: str = ""
     account_id: str | None = Field(default=None, description="The ID of the account triggering this event")
     initiator_id: str = Field(

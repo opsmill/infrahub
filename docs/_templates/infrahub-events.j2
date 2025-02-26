@@ -1,0 +1,32 @@
+---
+title: Infrahub Events
+---
+
+# Infrahub events
+
+This document provides detailed documentation for all events used in the Infrahub event system.
+
+:::info
+For more detailed explanations on how to use these events within Infrahub, see the [activity](../topics/activity-log) topic.
+:::
+
+{% for primary, events in event_groups.items() %}
+## {{ primary | replace("_", " ") | title }} events
+
+{% for event in events %}
+<!-- vale off -->
+### Event `{{ event.event_name }}`
+<!-- vale on -->
+{% if event.description -%}
+**Description**: {{ event.description }}
+{% endif -%}
+
+<!-- vale off -->
+| Key | Description |  Default Value |
+|-----|-------------|---------------|
+{% for field in event.fields -%}
+{{ "| **{}** | {} | {} |".format(field.name, field.description | replace("\n", " "), field.default if field.default else "None") }}
+{% endfor -%}
+<!-- vale on -->
+{% endfor %}
+{% endfor %}

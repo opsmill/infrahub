@@ -50,7 +50,7 @@ def generate_infrahubctl(context: Context) -> None:
 @task
 def generate_repository(context: Context) -> None:
     """Generate documentation for the repository configuration file."""
-    _generate_infrahub_repository_configuration_documentation(context=context)
+    _generate_infrahub_repository_configuration_documentation()
 
 
 # @task
@@ -61,8 +61,13 @@ def generate_repository(context: Context) -> None:
 
 @task
 def generate_bus_events(context: Context) -> None:
-    """Generate documentation for the Bus events."""
-    _generate_infrahub_events_documentation(context=context)
+    """Generate documentation for Infrahub Bus events."""
+    _generate_infrahub_bus_events_documentation()
+
+@task
+def generate_infrahub_events(context: Context) -> None:
+    """Generate documentation for Infrahub events."""
+    _generate_infrahub_events_documentation()
 
 
 @task
@@ -170,6 +175,7 @@ def _generate(context: Context) -> None:
     _generate_infrahub_schema_documentation()
     _generate_infrahub_repository_configuration_documentation()
     # _generate_infrahub_sdk_configuration_documentation()
+    _generate_infrahub_bus_events_documentation()
     _generate_infrahub_events_documentation()
 
 
@@ -339,13 +345,11 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
     print(f"Docs saved to: {output_label}")
 
 
-def _generate_infrahub_events_documentation() -> None:
+def _generate_infrahub_bus_events_documentation() -> None:
     """
     Generate documentation for all classes in the event system into a single file
     using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
     """
-    from collections import defaultdict
-
     from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
     def group_classes_by_category(
@@ -362,19 +366,41 @@ def _generate_infrahub_events_documentation() -> None:
             priority = priority_map.get(event_name, 3) if priority_map else -1
             description = cls.__doc__.strip() if cls.__doc__ else None
 
-            event_info = {
-                "event_name": event_name,
-                "description": description,
-                "priority": priority,
-                "fields": [
-                    {
+            # Retrieve the model schema and expand fields if necessary
+            schema = cls.model_json_schema().get("properties", {})
+            fields = []
+            for prop, details in schema.items():
+                # For a nested "data" field, expand its inner properties if available.
+                if prop == "data" and hasattr(cls, "__annotations__") and "data" in cls.__annotations__:
+                    data_type = cls.__annotations__["data"]
+                    if hasattr(data_type, "model_json_schema"):
+                        data_schema = data_type.model_json_schema().get("properties", {})
+                        for dprop, ddetails in data_schema.items():
+                            fields.append({
+                                "name": f"data.{dprop}",
+                                "type": ddetails.get("type", "N/A"),
+                                "description": ddetails.get("description", "N/A"),
+                                "default": ddetails.get("default", "None"),
+                            })
+                    else:
+                        fields.append({
+                            "name": prop,
+                            "type": details.get("type", "N/A"),
+                            "description": details.get("description", "N/A"),
+                            "default": details.get("default", "None"),
+                        })
+                else:
+                    fields.append({
                         "name": prop,
                         "type": details.get("type", "N/A"),
                         "description": details.get("description", "N/A"),
                         "default": details.get("default", "None"),
-                    }
-                    for prop, details in cls.model_json_schema().get("properties", {}).items()
-                ],
+                    })
+            event_info = {
+                "event_name": event_name,
+                "description": description,
+                "priority": priority,
+                "fields": fields,
             }
             grouped[primary][secondary].append(event_info)
         return grouped
@@ -390,7 +416,11 @@ def _generate_infrahub_events_documentation() -> None:
 
     import jinja2
 
-    from infrahub.message_bus.messages import MESSAGE_MAP, PRIORITY_MAP, RESPONSE_MAP
+    from infrahub.message_bus.messages import (
+        MESSAGE_MAP,
+        PRIORITY_MAP,
+        RESPONSE_MAP,
+    )
 
     template_text = template_file.read_text(encoding="utf-8")
     environment = jinja2.Environment()
@@ -402,5 +432,105 @@ def _generate_infrahub_events_documentation() -> None:
     rendered_doc = template.render(message_classes=message_classes, response_classes=response_classes)
 
     output_file.parent.mkdir(exist_ok=True)
+    output_file.write_text(rendered_doc, encoding="utf-8")
+    print(f"Docs saved to: {output_file}")
+
+
+def _generate_infrahub_events_documentation() -> None:
+    """
+    Generate documentation for all Infrahub events into a single MDX file
+    using a Jinja2 template. Accessible via `invoke generate_infrahub_event_documentation`.
+
+    Note: Ensure all event classes (e.g. GroupMutatedEvent, CommitUpdatedEvent, etc.) are imported
+    so that they appear in the introspection.
+    """
+    import re
+    from importlib import import_module
+    from pkgutil import walk_packages
+
+    import jinja2
+
+    import infrahub.events
+
+    # Import the base event type and the EventMeta model.
+    from infrahub.events.models import EventMeta, InfrahubEvent
+
+    def load_all_event_modules(package: Any) -> None:  # noqa: ANN401
+        """Recursively load all modules in the given package."""
+        for _, modname, _ in walk_packages(package.__path__, package.__name__ + "."):
+            import_module(modname)
+
+    def get_all_event_subclasses(cls: type) -> list[type]:
+        """Recursively get all subclasses of the given class."""
+        subclasses: list[type] = []
+        for subclass in cls.__subclasses__():
+            subclasses.append(subclass)
+            subclasses.extend(get_all_event_subclasses(subclass))
+        return subclasses
+
+    # Group events by a primary category derived from the class name.
+    # For example, "NodeMutatedEvent" will be grouped under "Node".
+    def group_events_by_category(event_classes: list[type]) -> dict[str, list[dict[str, any]]]:
+        grouped = defaultdict(list)
+        for cls in event_classes:
+            if cls is InfrahubEvent:
+                continue
+
+            # Extract the primary category from the class name (like "Node", "Group", "Commit")
+            category = re.match(r"([A-Z][a-z]+)", cls.__name__)
+            if not category:
+                continue
+            primary = category.group(1)
+            description = cls.__doc__.strip() if cls.__doc__ else ""
+            event_name = cls.__name__
+
+            schema = cls.model_json_schema().get("properties", {})
+            fields = []
+            for prop, details in schema.items():
+                # Expand the "meta" field using the EventMeta model.
+                if prop == "meta":
+                    meta_schema = EventMeta.model_json_schema().get("properties", {})
+                    for mprop, mdetails in meta_schema.items():
+                        fields.append({
+                            "name": f"meta.{mprop}",
+                            "description": mdetails.get("description", "N/A"),
+                            "default": mdetails.get("default", "None"),
+                        })
+                    continue
+                fields.append({
+                    "name": prop,
+                    "description": details.get("description", "N/A"),
+                    "default": details.get("default", "None"),
+                })
+
+            event_info = {
+                "event_name": event_name,
+                "description": description,
+                "fields": fields,
+            }
+            grouped[primary].append(event_info)
+        return grouped
+
+    template_file = DOCUMENTATION_DIRECTORY / "_templates" / "infrahub-events.j2"
+    output_file = DOCUMENTATION_DIRECTORY / "docs" / "reference" / "infrahub-events.mdx"
+
+    print(" - Generating Infrahub Events documentation")
+
+    if not template_file.exists():
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
+
+    template_text = template_file.read_text(encoding="utf-8")
+    environment = jinja2.Environment(trim_blocks=True)
+    template = environment.from_string(template_text)
+
+    # IMPORTANT: Ensure all event classes are imported so that they are found by introspection.
+    load_all_event_modules(package=infrahub.events)
+    all_event_classes = get_all_event_subclasses(cls=InfrahubEvent)
+    event_groups = group_events_by_category(event_classes=all_event_classes)
+
+    rendered_doc = template.render(event_groups=event_groups)
+
+    output_file.parent.mkdir(exist_ok=True, parents=True)
     output_file.write_text(rendered_doc, encoding="utf-8")
     print(f"Docs saved to: {output_file}")
