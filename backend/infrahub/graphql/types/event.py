@@ -64,6 +64,9 @@ class EventTypeFilter(InputObjectType):
     branch_merged = Field(
         BranchEventTypeFilter, required=False, description="Filters specific to infrahub.branch.merged events"
     )
+    branch_rebased = Field(
+        BranchEventTypeFilter, required=False, description="Filters specific to infrahub.branch.rebased events"
+    )
 
 
 # ---------------------------------------
