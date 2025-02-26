@@ -48,19 +48,37 @@ class NodeDuplicateQuery(Query):
 
     @staticmethod
     def _render_sub_query_per_rel_type(
-        rel_name: str, rel_type: str, rel_def: FieldInfo, direction: GraphRelDirection
+        rel_name: str,
+        rel_type: str,
+        rel_def: FieldInfo,
     ) -> str:
         subquery = [
             f"WITH peer_node, {rel_name}, active_node, new_node",
             f"WITH peer_node, {rel_name}, active_node, new_node",
             f'WHERE type({rel_name}) = "{rel_type}"',
         ]
-        if rel_def.default.direction in [direction, GraphRelDirection.EITHER]:
-            subquery.append(f"CREATE (new_node)-[:{rel_type} $rel_props_new ]->(peer_node)")
-            subquery.append(f"CREATE (active_node)-[:{rel_type} $rel_props_prev ]->(peer_node)")
-        elif rel_def.default.direction in [direction, GraphRelDirection.EITHER]:
-            subquery.append(f"CREATE (new_node)<-[:{rel_type} $rel_props_new ]-(peer_node)")
-            subquery.append(f"CREATE (active_node)<-[:{rel_type} $rel_props_prev ]-(peer_node)")
+        if rel_def.default.direction in [GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER]:
+            subquery.append(f"""
+                CREATE (new_node)-[new_active_edge:{rel_type} $rel_props_new ]->(peer_node)
+                SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
+                SET new_active_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
+                """)
+            subquery.append(f"""
+                CREATE (active_node)-[deleted_edge:{rel_type} $rel_props_prev ]->(peer_node)
+                SET deleted_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
+                SET deleted_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
+                """)
+        elif rel_def.default.direction in [GraphRelDirection.INBOUND, GraphRelDirection.EITHER]:
+            subquery.append(f"""
+                CREATE (new_node)<-[new_active_edge:{rel_type} $rel_props_new ]-(peer_node)
+                SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
+                SET new_active_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
+                """)
+            subquery.append(f"""
+                CREATE (active_node)<-[deleted_edge:{rel_type} $rel_props_prev ]-(peer_node)
+                SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
+                SET new_active_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
+                """)
         subquery.append("RETURN peer_node as p2")
         return "\n".join(subquery)
 
@@ -68,7 +86,9 @@ class NodeDuplicateQuery(Query):
     def _render_sub_query_out(cls) -> str:
         sub_queries_out = [
             cls._render_sub_query_per_rel_type(
-                rel_name="rel_outband", rel_type=rel_type, rel_def=rel_def, direction=GraphRelDirection.OUTBOUND
+                rel_name="rel_outband",
+                rel_type=rel_type,
+                rel_def=rel_def,
             )
             for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
         ]
@@ -79,7 +99,9 @@ class NodeDuplicateQuery(Query):
     def _render_sub_query_in(cls) -> str:
         sub_queries_in = [
             cls._render_sub_query_per_rel_type(
-                rel_name="rel_inband", rel_type=rel_type, rel_def=rel_def, direction=GraphRelDirection.INBOUND
+                rel_name="rel_inband",
+                rel_type=rel_type,
+                rel_def=rel_def,
             )
             for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
         ]
@@ -94,19 +116,16 @@ class NodeDuplicateQuery(Query):
         self.params["previous_node"] = self.previous_node.model_dump()
 
         self.params["current_time"] = self.at.to_string()
-        self.params["branch_name"] = self.branch.name
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
         self.params["branch_support"] = self.new_node.branch_support
 
         self.params["rel_props_new"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
             "status": RelationshipStatus.ACTIVE.value,
             "from": self.at.to_string(),
         }
 
         self.params["rel_props_prev"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
             "status": RelationshipStatus.DELETED.value,
             "from": self.at.to_string(),
         }
@@ -141,12 +160,12 @@ class NodeDuplicateQuery(Query):
             LIMIT 1
         }
         WITH n1 as active_node, rel_outband1 as rel_outband, p1 as peer_node, new_node
-        WHERE rel_outband.status = "active"
+        WHERE rel_outband.status = "active" AND rel_outband.to IS NULL
         CALL {
             %(sub_query_out)s
         }
         WITH p2 as peer_node, rel_outband, active_node, new_node
-        FOREACH (i in CASE WHEN rel_outband.branch = $branch_name THEN [1] ELSE [] END |
+        FOREACH (i in CASE WHEN rel_outband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
             SET rel_outband.to = $current_time
         )
         WITH active_node, new_node
@@ -160,14 +179,15 @@ class NodeDuplicateQuery(Query):
             LIMIT 1
         }
         WITH n1 as active_node, rel_inband1 as rel_inband, p1 as peer_node, new_node
-        WHERE rel_inband.status = "active"
+        WHERE rel_inband.status = "active" AND rel_inband.to IS NULL
         CALL {
             %(sub_query_in)s
         }
         WITH p2 as peer_node, rel_inband, active_node, new_node
-        FOREACH (i in CASE WHEN rel_inband.branch = $branch_name THEN [1] ELSE [] END |
+        FOREACH (i in CASE WHEN rel_inband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
             SET rel_inband.to = $current_time
         )
+
         RETURN DISTINCT new_node
         """ % {
             "branch_filter": branch_filter,
