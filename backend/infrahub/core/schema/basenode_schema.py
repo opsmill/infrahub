@@ -4,10 +4,11 @@ import hashlib
 import keyword
 import os
 from dataclasses import asdict, dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Optional, Union, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
-from pydantic import ConfigDict, field_validator
+from pydantic import field_validator
 
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.models import HashableModelDiff
@@ -27,8 +28,6 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
 class BaseNodeSchema(GeneratedBaseNodeSchema):
-    model_config = ConfigDict(use_enum_values=True)
-
     _exclude_from_hash: list[str] = ["attributes", "relationships"]
     _sort_by: list[str] = ["namespace", "name"]
 
@@ -65,7 +64,15 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return hash(self.get_hash())
 
     def to_dict(self) -> dict:
-        return self.model_dump(exclude_unset=True, exclude_none=True, exclude_defaults=True)
+        data = self.model_dump(
+            exclude_unset=True, exclude_none=True, exclude_defaults=True, exclude={"attributes", "relationships"}
+        )
+        for field_name, value in data.items():
+            if isinstance(value, Enum):
+                data[field_name] = value.value
+        data["attributes"] = [attr.to_dict() for attr in self.attributes]
+        data["relationships"] = [rel.to_dict() for rel in self.relationships]
+        return data
 
     def get_hash(self, display_values: bool = False) -> str:
         """Extend the Hash Calculation to account for attributes and relationships."""

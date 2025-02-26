@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import enum
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from pydantic import ConfigDict, field_validator, model_validator
+from pydantic import field_validator, model_validator
 
 from infrahub import config
 from infrahub.core.enums import generate_python_enum
@@ -21,8 +22,6 @@ if TYPE_CHECKING:
 
 
 class AttributeSchema(GeneratedAttributeSchema):
-    model_config = ConfigDict(use_enum_values=True)
-
     _sort_by: list[str] = ["name"]
     _enum_class: Optional[type[enum.Enum]] = None
 
@@ -37,6 +36,13 @@ class AttributeSchema(GeneratedAttributeSchema):
     @property
     def is_deprecated(self) -> bool:
         return bool(self.deprecation)
+
+    def to_dict(self) -> dict:
+        data = self.model_dump(exclude_unset=True, exclude_none=True, exclude_defaults=True)
+        for field_name, value in data.items():
+            if isinstance(value, Enum):
+                data[field_name] = value.value
+        return data
 
     @field_validator("kind")
     @classmethod
