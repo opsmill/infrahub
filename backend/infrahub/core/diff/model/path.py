@@ -163,6 +163,10 @@ class EnrichedDiffAttribute(BaseSummary):
     def __hash__(self) -> int:
         return hash(self.name)
 
+    @property
+    def num_properties(self) -> int:
+        return len(self.properties)
+
     def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
         return {prop.path_identifier: prop.conflict for prop in self.properties if prop.conflict}
 
@@ -201,6 +205,10 @@ class EnrichedDiffSingleRelationship(BaseSummary):
 
     def __hash__(self) -> int:
         return hash(self.peer_id)
+
+    @property
+    def num_properties(self) -> int:
+        return len(self.properties)
 
     def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
         all_conflicts: dict[str, EnrichedDiffConflict] = {}
@@ -247,6 +255,10 @@ class EnrichedDiffRelationship(BaseSummary):
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+    @property
+    def num_properties(self) -> int:
+        return sum(r.num_properties for r in self.relationships)
 
     def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
         all_conflicts: dict[str, EnrichedDiffConflict] = {}
@@ -307,6 +319,10 @@ class EnrichedDiffNode(BaseSummary):
 
     def __hash__(self) -> int:
         return hash(self.uuid)
+
+    @property
+    def num_properties(self) -> int:
+        return sum(a.num_properties for a in self.attributes) + sum(r.num_properties for r in self.relationships)
 
     def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
         all_conflicts: dict[str, EnrichedDiffConflict] = {}

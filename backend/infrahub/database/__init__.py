@@ -514,6 +514,7 @@ def retry_db_transaction(
                         if exc.code != "Neo.ClientError.Statement.EntityNotFound":
                             raise exc
                     retry_time: float = random.randrange(100, 500) / 1000
+                    log.exception("Retry handler caught database error")
                     log.info(
                         f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}",
                         retry_time=retry_time,
