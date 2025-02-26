@@ -36,8 +36,8 @@ test.describe("Global Activity Log - List view and filter usage", () => {
       await page.getByRole("button", { name: "Primary Node" }).click();
 
       // Narrow the search to the dialog that contains the "Primary Node" text.
-      await page.getByPlaceholder('Filter...').fill('blue');
-      await page.getByRole('option', { name: 'blue' }).click();
+      await page.getByPlaceholder("Filter...").fill("blue");
+      await page.getByRole("option", { name: "blue" }).click();
 
       await expect(page.getByText("blue")).toBeVisible();
       await saveScreenshotForDocs(page, "activity_log_global_filters_primary");
@@ -51,19 +51,18 @@ test.describe("Global Activity Log - List view and filter usage", () => {
     });
 
     await test.step("Choose filters", async () => {
-      await page.getByRole('button', { name: 'Has Children' }).click();
-      await page.getByText('True').click();
-      await page.getByRole('button', { name: 'Apply' }).click();
+      await page.getByRole("button", { name: "Has Children" }).click();
+      await page.getByText("True").click();
+      await page.getByRole("button", { name: "Apply" }).click();
       await saveScreenshotForDocs(page, "activity_log_global_filters_children");
     });
 
     await test.step("View Event details with children", async () => {
-      const viewMoreLink = page.getByRole('link', { name: /View more/i }).first();
+      const viewMoreLink = page.getByRole("link", { name: /View more/i }).first();
       await viewMoreLink.click();
 
       // Check that at least one "View more." button is present in the details page
-      await expect(page.locator('#root')).toContainText('View more.');
-
+      await expect(page.locator("#root")).toContainText("View more.");
       await saveScreenshotForDocs(page, "activity_log_global_details_children");
     });
   });

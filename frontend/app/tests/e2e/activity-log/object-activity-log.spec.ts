@@ -28,13 +28,13 @@ test.describe("Object Activity Log - Timeline and Details", () => {
       await viewMoreButton.click();
 
       // Wait for a known text inside the popover to appear
-      const viewText = page.getByText('Changes', { exact: true });
+      const viewText = page.getByText("Changes", { exact: true });
       await expect(viewText).toBeVisible();
 
-      const popoverContent = page.getByRole('dialog');
+      const popoverContent = page.getByRole("dialog");
       // Assert that the popover contains the expected text "Primary Node"
       await expect(popoverContent).toContainText("Primary Node");
-      await popoverContent.locator('text=atl1-edge1').waitFor({ state: 'visible' });
+      await popoverContent.locator("text=atl1-edge1").waitFor({ state: "visible" });
       await saveScreenshotForDocs(page, "activity_log_device_popover");
     });
   });

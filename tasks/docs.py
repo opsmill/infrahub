@@ -48,7 +48,7 @@ def generate_infrahubctl(context: Context) -> None:
 
 
 @task
-def generate_repository(context: Context) -> None:
+def generate_repository(context: Context) -> None:  # noqa: ARG001
     """Generate documentation for the repository configuration file."""
     _generate_infrahub_repository_configuration_documentation()
 
@@ -60,12 +60,13 @@ def generate_repository(context: Context) -> None:
 
 
 @task
-def generate_bus_events(context: Context) -> None:
+def generate_bus_events(context: Context) -> None:  # noqa: ARG001
     """Generate documentation for Infrahub Bus events."""
     _generate_infrahub_bus_events_documentation()
 
+
 @task
-def generate_infrahub_events(context: Context) -> None:
+def generate_infrahub_events(context: Context) -> None:  # noqa: ARG001
     """Generate documentation for Infrahub events."""
     _generate_infrahub_events_documentation()
 
@@ -376,26 +377,32 @@ def _generate_infrahub_bus_events_documentation() -> None:
                     if hasattr(data_type, "model_json_schema"):
                         data_schema = data_type.model_json_schema().get("properties", {})
                         for dprop, ddetails in data_schema.items():
-                            fields.append({
-                                "name": f"data.{dprop}",
-                                "type": ddetails.get("type", "N/A"),
-                                "description": ddetails.get("description", "N/A"),
-                                "default": ddetails.get("default", "None"),
-                            })
+                            fields.append(
+                                {
+                                    "name": f"data.{dprop}",
+                                    "type": ddetails.get("type", "N/A"),
+                                    "description": ddetails.get("description", "N/A"),
+                                    "default": ddetails.get("default", "None"),
+                                }
+                            )
                     else:
-                        fields.append({
+                        fields.append(
+                            {
+                                "name": prop,
+                                "type": details.get("type", "N/A"),
+                                "description": details.get("description", "N/A"),
+                                "default": details.get("default", "None"),
+                            }
+                        )
+                else:
+                    fields.append(
+                        {
                             "name": prop,
                             "type": details.get("type", "N/A"),
                             "description": details.get("description", "N/A"),
                             "default": details.get("default", "None"),
-                        })
-                else:
-                    fields.append({
-                        "name": prop,
-                        "type": details.get("type", "N/A"),
-                        "description": details.get("description", "N/A"),
-                        "default": details.get("default", "None"),
-                    })
+                        }
+                    )
             event_info = {
                 "event_name": event_name,
                 "description": description,
@@ -491,17 +498,21 @@ def _generate_infrahub_events_documentation() -> None:
                 if prop == "meta":
                     meta_schema = EventMeta.model_json_schema().get("properties", {})
                     for mprop, mdetails in meta_schema.items():
-                        fields.append({
-                            "name": f"meta.{mprop}",
-                            "description": mdetails.get("description", "N/A"),
-                            "default": mdetails.get("default", "None"),
-                        })
+                        fields.append(
+                            {
+                                "name": f"meta.{mprop}",
+                                "description": mdetails.get("description", "N/A"),
+                                "default": mdetails.get("default", "None"),
+                            }
+                        )
                     continue
-                fields.append({
-                    "name": prop,
-                    "description": details.get("description", "N/A"),
-                    "default": details.get("default", "None"),
-                })
+                fields.append(
+                    {
+                        "name": prop,
+                        "description": details.get("description", "N/A"),
+                        "default": details.get("default", "None"),
+                    }
+                )
 
             event_info = {
                 "event_name": event_name,
