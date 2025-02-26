@@ -993,7 +993,7 @@ class RelationshipDeleteAllQuery(Query):
                         CREATE (rl)%(arrow_left)s[deleted_edge:%(edge_type)s $rel_prop]%(arrow_right)s(n)
                         SET deleted_edge.hierarchy = active_edge.hierarchy
                         WITH active_edge
-                        WHERE active_edge.branch = $branch
+                        WHERE active_edge.branch = $branch AND active_edge.to IS NULL
                         SET active_edge.to = $at
                     }
                 """ % {
