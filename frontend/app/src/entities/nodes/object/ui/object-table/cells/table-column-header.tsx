@@ -2,7 +2,6 @@ import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribut
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
 import { TableColumnHeaderIcon } from "@/entities/nodes/object/ui/object-table/cells/table-column-header-icon";
 import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
@@ -19,8 +18,7 @@ export interface TableColumnHeaderProps extends PopoverTriggerProps {
 export function TableColumnHeader({ schema, columnSchema, ...props }: TableColumnHeaderProps) {
   const [filters] = useFilters();
   const [showFilters, setShowFilters] = useState(false);
-  const filtersAsObjectData = getObjectFromFilters(schema, filters);
-  const currentColumnFilters = filtersAsObjectData[columnSchema.name];
+  const currentColumnFilters = filters.find((f) => f.name.startsWith(columnSchema.name));
 
   const closePopover = () => {
     setShowFilters(false);
