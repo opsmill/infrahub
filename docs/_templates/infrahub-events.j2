@@ -22,10 +22,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 {% endif -%}
 
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
+| Key | Description |
+|-----|-------------|
 {% for field in event.fields -%}
-{{ "| **{}** | {} | {} |".format(field.name, field.description | replace("\n", " "), field.default if field.default else "None") }}
+{{ "| **{}** | {} |".format(field.name, field.description | replace("\n", " ")) }}
 {% endfor -%}
 <!-- vale on -->
 {% endfor %}

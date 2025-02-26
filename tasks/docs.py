@@ -502,7 +502,6 @@ def _generate_infrahub_events_documentation() -> None:
                             {
                                 "name": f"meta.{mprop}",
                                 "description": mdetails.get("description", "N/A"),
-                                "default": mdetails.get("default", "None"),
                             }
                         )
                     continue
@@ -510,7 +509,6 @@ def _generate_infrahub_events_documentation() -> None:
                     {
                         "name": prop,
                         "description": details.get("description", "N/A"),
-                        "default": details.get("default", "None"),
                     }
                 )
 

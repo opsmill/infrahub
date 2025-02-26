@@ -17,89 +17,89 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale on -->
 **Description**: Event generated when a node has been mutated
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
-| **meta.branch** | The branch on which originate this event | None |
-| **meta.request_id** | N/A | None |
-| **meta.account_id** | The ID of the account triggering this event | None |
-| **meta.initiator_id** | The worker identity of the initial sender of this message | 9e141ae6-0846-4d40-82cb-cfcf44ce9e35 |
-| **meta.context** | The context used when originating this event | None |
-| **meta.level** | N/A | None |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. | None |
-| **meta.id** | UUID of the event | None |
-| **meta.parent** | The UUID of the parent event if applicable | None |
-| **meta.ancestors** | Any event used to trigger this event | None |
-| **kind** | The type of object modified | None |
-| **node_id** | The ID of the mutated node | None |
-| **action** | The action taken on the node | None |
-| **data** | Data on modified object | None |
-| **fields** | Fields provided in the mutation | None |
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of object modified |
+| **node_id** | The ID of the mutated node |
+| **action** | The action taken on the node |
+| **data** | Data on modified object |
+| **fields** | Fields provided in the mutation |
 <!-- vale on -->
 <!-- vale off -->
 ### Event `NodeCreatedEvent`
 <!-- vale on -->
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
-| **meta.branch** | The branch on which originate this event | None |
-| **meta.request_id** | N/A | None |
-| **meta.account_id** | The ID of the account triggering this event | None |
-| **meta.initiator_id** | The worker identity of the initial sender of this message | 9e141ae6-0846-4d40-82cb-cfcf44ce9e35 |
-| **meta.context** | The context used when originating this event | None |
-| **meta.level** | N/A | None |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. | None |
-| **meta.id** | UUID of the event | None |
-| **meta.parent** | The UUID of the parent event if applicable | None |
-| **meta.ancestors** | Any event used to trigger this event | None |
-| **kind** | The type of object modified | None |
-| **node_id** | The ID of the mutated node | None |
-| **action** | N/A | created |
-| **data** | Data on modified object | None |
-| **fields** | Fields provided in the mutation | None |
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of object modified |
+| **node_id** | The ID of the mutated node |
+| **action** | N/A |
+| **data** | Data on modified object |
+| **fields** | Fields provided in the mutation |
 <!-- vale on -->
 <!-- vale off -->
 ### Event `NodeUpdatedEvent`
 <!-- vale on -->
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
-| **meta.branch** | The branch on which originate this event | None |
-| **meta.request_id** | N/A | None |
-| **meta.account_id** | The ID of the account triggering this event | None |
-| **meta.initiator_id** | The worker identity of the initial sender of this message | 9e141ae6-0846-4d40-82cb-cfcf44ce9e35 |
-| **meta.context** | The context used when originating this event | None |
-| **meta.level** | N/A | None |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. | None |
-| **meta.id** | UUID of the event | None |
-| **meta.parent** | The UUID of the parent event if applicable | None |
-| **meta.ancestors** | Any event used to trigger this event | None |
-| **kind** | The type of object modified | None |
-| **node_id** | The ID of the mutated node | None |
-| **action** | N/A | updated |
-| **data** | Data on modified object | None |
-| **fields** | Fields provided in the mutation | None |
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of object modified |
+| **node_id** | The ID of the mutated node |
+| **action** | N/A |
+| **data** | Data on modified object |
+| **fields** | Fields provided in the mutation |
 <!-- vale on -->
 <!-- vale off -->
 ### Event `NodeDeletedEvent`
 <!-- vale on -->
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
-| **meta.branch** | The branch on which originate this event | None |
-| **meta.request_id** | N/A | None |
-| **meta.account_id** | The ID of the account triggering this event | None |
-| **meta.initiator_id** | The worker identity of the initial sender of this message | 9e141ae6-0846-4d40-82cb-cfcf44ce9e35 |
-| **meta.context** | The context used when originating this event | None |
-| **meta.level** | N/A | None |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. | None |
-| **meta.id** | UUID of the event | None |
-| **meta.parent** | The UUID of the parent event if applicable | None |
-| **meta.ancestors** | Any event used to trigger this event | None |
-| **kind** | The type of object modified | None |
-| **node_id** | The ID of the mutated node | None |
-| **action** | N/A | deleted |
-| **data** | Data on modified object | None |
-| **fields** | Fields provided in the mutation | None |
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of object modified |
+| **node_id** | The ID of the mutated node |
+| **action** | N/A |
+| **data** | Data on modified object |
+| **fields** | Fields provided in the mutation |
 <!-- vale on -->
 ## Branch events
 
@@ -108,80 +108,80 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale on -->
 **Description**: Event generated when a branch has been deleted
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
-| **meta.branch** | The branch on which originate this event | None |
-| **meta.request_id** | N/A | None |
-| **meta.account_id** | The ID of the account triggering this event | None |
-| **meta.initiator_id** | The worker identity of the initial sender of this message | 9e141ae6-0846-4d40-82cb-cfcf44ce9e35 |
-| **meta.context** | The context used when originating this event | None |
-| **meta.level** | N/A | None |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. | None |
-| **meta.id** | UUID of the event | None |
-| **meta.parent** | The UUID of the parent event if applicable | None |
-| **meta.ancestors** | Any event used to trigger this event | None |
-| **branch_name** | The name of the branch | None |
-| **branch_id** | The ID of the mutated node | None |
-| **sync_with_git** | Indicates if the branch was extended to Git | None |
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **branch_name** | The name of the branch |
+| **branch_id** | The ID of the mutated node |
+| **sync_with_git** | Indicates if the branch was extended to Git |
 <!-- vale on -->
 <!-- vale off -->
 ### Event `BranchCreatedEvent`
 <!-- vale on -->
 **Description**: Event generated when a branch has been created
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
-| **meta.branch** | The branch on which originate this event | None |
-| **meta.request_id** | N/A | None |
-| **meta.account_id** | The ID of the account triggering this event | None |
-| **meta.initiator_id** | The worker identity of the initial sender of this message | 9e141ae6-0846-4d40-82cb-cfcf44ce9e35 |
-| **meta.context** | The context used when originating this event | None |
-| **meta.level** | N/A | None |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. | None |
-| **meta.id** | UUID of the event | None |
-| **meta.parent** | The UUID of the parent event if applicable | None |
-| **meta.ancestors** | Any event used to trigger this event | None |
-| **branch_name** | The name of the branch | None |
-| **branch_id** | The ID of the branch | None |
-| **sync_with_git** | Indicates if the branch was extended to Git | None |
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **branch_name** | The name of the branch |
+| **branch_id** | The ID of the branch |
+| **sync_with_git** | Indicates if the branch was extended to Git |
 <!-- vale on -->
 <!-- vale off -->
 ### Event `BranchMergedEvent`
 <!-- vale on -->
 **Description**: Event generated when a branch has been merged
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
-| **meta.branch** | The branch on which originate this event | None |
-| **meta.request_id** | N/A | None |
-| **meta.account_id** | The ID of the account triggering this event | None |
-| **meta.initiator_id** | The worker identity of the initial sender of this message | 9e141ae6-0846-4d40-82cb-cfcf44ce9e35 |
-| **meta.context** | The context used when originating this event | None |
-| **meta.level** | N/A | None |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. | None |
-| **meta.id** | UUID of the event | None |
-| **meta.parent** | The UUID of the parent event if applicable | None |
-| **meta.ancestors** | Any event used to trigger this event | None |
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
 <!-- vale on -->
 <!-- vale off -->
 ### Event `BranchRebasedEvent`
 <!-- vale on -->
 **Description**: Event generated when a branch has been rebased
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
-| **meta.branch** | The branch on which originate this event | None |
-| **meta.request_id** | N/A | None |
-| **meta.account_id** | The ID of the account triggering this event | None |
-| **meta.initiator_id** | The worker identity of the initial sender of this message | 9e141ae6-0846-4d40-82cb-cfcf44ce9e35 |
-| **meta.context** | The context used when originating this event | None |
-| **meta.level** | N/A | None |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. | None |
-| **meta.id** | UUID of the event | None |
-| **meta.parent** | The UUID of the parent event if applicable | None |
-| **meta.ancestors** | Any event used to trigger this event | None |
-| **branch_id** | The ID of the mutated node | None |
-| **branch_name** | The name of the branch | None |
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **branch_id** | The ID of the mutated node |
+| **branch_name** | The name of the branch |
 <!-- vale on -->
 ## Group events
 
@@ -190,64 +190,64 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale on -->
 **Description**: Event generated when a node has been mutated
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
-| **meta.branch** | The branch on which originate this event | None |
-| **meta.request_id** | N/A | None |
-| **meta.account_id** | The ID of the account triggering this event | None |
-| **meta.initiator_id** | The worker identity of the initial sender of this message | 9e141ae6-0846-4d40-82cb-cfcf44ce9e35 |
-| **meta.context** | The context used when originating this event | None |
-| **meta.level** | N/A | None |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. | None |
-| **meta.id** | UUID of the event | None |
-| **meta.parent** | The UUID of the parent event if applicable | None |
-| **meta.ancestors** | Any event used to trigger this event | None |
-| **kind** | The type of updated group | None |
-| **node_id** | The ID of the updated group | None |
-| **action** | The action taken on the node | None |
-| **members** | Updated members during this event. | None |
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of updated group |
+| **node_id** | The ID of the updated group |
+| **action** | The action taken on the node |
+| **members** | Updated members during this event. |
 <!-- vale on -->
 <!-- vale off -->
 ### Event `GroupMemberAddedEvent`
 <!-- vale on -->
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
-| **meta.branch** | The branch on which originate this event | None |
-| **meta.request_id** | N/A | None |
-| **meta.account_id** | The ID of the account triggering this event | None |
-| **meta.initiator_id** | The worker identity of the initial sender of this message | 9e141ae6-0846-4d40-82cb-cfcf44ce9e35 |
-| **meta.context** | The context used when originating this event | None |
-| **meta.level** | N/A | None |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. | None |
-| **meta.id** | UUID of the event | None |
-| **meta.parent** | The UUID of the parent event if applicable | None |
-| **meta.ancestors** | Any event used to trigger this event | None |
-| **kind** | The type of updated group | None |
-| **node_id** | The ID of the updated group | None |
-| **action** | N/A | created |
-| **members** | Updated members during this event. | None |
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of updated group |
+| **node_id** | The ID of the updated group |
+| **action** | N/A |
+| **members** | Updated members during this event. |
 <!-- vale on -->
 <!-- vale off -->
 ### Event `GroupMemberRemovedEvent`
 <!-- vale on -->
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
-| **meta.branch** | The branch on which originate this event | None |
-| **meta.request_id** | N/A | None |
-| **meta.account_id** | The ID of the account triggering this event | None |
-| **meta.initiator_id** | The worker identity of the initial sender of this message | 9e141ae6-0846-4d40-82cb-cfcf44ce9e35 |
-| **meta.context** | The context used when originating this event | None |
-| **meta.level** | N/A | None |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. | None |
-| **meta.id** | UUID of the event | None |
-| **meta.parent** | The UUID of the parent event if applicable | None |
-| **meta.ancestors** | Any event used to trigger this event | None |
-| **kind** | The type of updated group | None |
-| **node_id** | The ID of the updated group | None |
-| **action** | N/A | deleted |
-| **members** | Updated members during this event. | None |
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of updated group |
+| **node_id** | The ID of the updated group |
+| **action** | N/A |
+| **members** | Updated members during this event. |
 <!-- vale on -->
 ## Commit events
 
@@ -256,21 +256,21 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale on -->
 **Description**: Event generated when the the commit within a repository has been updated.
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
-| **meta.branch** | The branch on which originate this event | None |
-| **meta.request_id** | N/A | None |
-| **meta.account_id** | The ID of the account triggering this event | None |
-| **meta.initiator_id** | The worker identity of the initial sender of this message | 9e141ae6-0846-4d40-82cb-cfcf44ce9e35 |
-| **meta.context** | The context used when originating this event | None |
-| **meta.level** | N/A | None |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. | None |
-| **meta.id** | UUID of the event | None |
-| **meta.parent** | The UUID of the parent event if applicable | None |
-| **meta.ancestors** | Any event used to trigger this event | None |
-| **commit** | The commit the repository was updated to | None |
-| **repository_id** | The ID of the repository | None |
-| **repository_name** | The name of the repository | None |
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **commit** | The commit the repository was updated to |
+| **repository_id** | The ID of the repository |
+| **repository_name** | The name of the repository |
 <!-- vale on -->
 ## Schema events
 
@@ -279,18 +279,18 @@ For more detailed explanations on how to use these events within Infrahub, see t
 <!-- vale on -->
 **Description**: Event generated when the schema within a branch has been updated.
 <!-- vale off -->
-| Key | Description |  Default Value |
-|-----|-------------|---------------|
-| **meta.branch** | The branch on which originate this event | None |
-| **meta.request_id** | N/A | None |
-| **meta.account_id** | The ID of the account triggering this event | None |
-| **meta.initiator_id** | The worker identity of the initial sender of this message | 9e141ae6-0846-4d40-82cb-cfcf44ce9e35 |
-| **meta.context** | The context used when originating this event | None |
-| **meta.level** | N/A | None |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. | None |
-| **meta.id** | UUID of the event | None |
-| **meta.parent** | The UUID of the parent event if applicable | None |
-| **meta.ancestors** | Any event used to trigger this event | None |
-| **branch_name** | The name of the branch | None |
-| **schema_hash** | Schema hash after the update | None |
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **branch_name** | The name of the branch |
+| **schema_hash** | Schema hash after the update |
 <!-- vale on -->
