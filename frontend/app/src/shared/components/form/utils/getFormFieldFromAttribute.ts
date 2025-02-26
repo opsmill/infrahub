@@ -1,5 +1,6 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NodeObject } from "@/entities/nodes/types";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import { AttributeKind, AttributeSchema, ModelSchema } from "@/entities/schema/types";
 import { components } from "@/shared/api/rest/types.generated";
@@ -21,6 +22,7 @@ export const getFormFieldFromAttribute = ({
   auth,
   attributeSchema,
   currentObject,
+  objectTemplate,
   schema,
   isFilterForm,
   pools,
@@ -29,6 +31,7 @@ export const getFormFieldFromAttribute = ({
   auth: AuthContextType | undefined;
   attributeSchema: AttributeSchema;
   currentObject: Record<string, AttributeType> | undefined;
+  objectTemplate: NodeObject | null | undefined;
   schema: ModelSchema;
   isFilterForm: boolean;
   pools?: Array<NumberPoolData>;
@@ -42,6 +45,7 @@ export const getFormFieldFromAttribute = ({
     defaultValue: getFieldDefaultValue({
       fieldSchema: attributeSchema,
       initialObject: currentObject,
+      objectTemplate,
       profiles,
       isFilterForm,
     }),

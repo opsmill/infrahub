@@ -1,5 +1,6 @@
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import {
+  NodeCore,
   NodeRelationship,
   NodeRelationshipMany,
   NodeRelationshipOne,
@@ -36,7 +37,7 @@ export function TableRelationshipCell({
   return nodes.map((node) => <RelationshipNodeDisplay key={node.id} node={node} />);
 }
 
-export function RelationshipNodeDisplay({ node }: NodeRelationshipOne) {
+export function RelationshipNodeDisplay({ node }: { node: NodeCore }) {
   const { schema } = useSchema(node.__typename);
 
   if (!schema) return `Schema for ${node.__typename} not found`;

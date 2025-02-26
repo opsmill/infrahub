@@ -68,9 +68,9 @@ export interface ComboboxListProps extends React.ComponentPropsWithoutRef<typeof
 export const ComboboxList = React.forwardRef<
   React.ElementRef<typeof CommandList>,
   ComboboxListProps
->(({ shouldFilter, autoFocus, onValueChange, ...props }, ref) => {
+>(({ shouldFilter, className, autoFocus, onValueChange, ...props }, ref) => {
   return (
-    <Command shouldFilter={shouldFilter}>
+    <Command shouldFilter={shouldFilter} className={className}>
       <CommandInput placeholder="Filter..." autoFocus={autoFocus} onValueChange={onValueChange} />
       <CommandList ref={ref} {...props} />
     </Command>

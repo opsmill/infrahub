@@ -48,7 +48,7 @@ export const AccountRoleForm = ({
 
   const permissions = getRelationshipDefaultValue({
     relationshipData: currentObject?.permissions?.value,
-    peerField: "identifier",
+    relationshipName: "identifier",
   });
 
   const defaultValues = {
