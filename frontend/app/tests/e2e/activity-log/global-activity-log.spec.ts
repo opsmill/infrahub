@@ -18,9 +18,7 @@ test.describe("Global Activity Log - List view and filter usage", () => {
   test("1. Reach global activity-log", async ({ page }) => {
     await page.goto("/");
 
-    await page.getByTestId("sidebar")
-      .getByRole("button", { name: "Activity" })
-      .click();
+    await page.getByTestId("sidebar").getByRole("button", { name: "Activity" }).click();
     await page.getByRole("menuitem", { name: "Activities" }).click();
     // Verify that clicking "Activity Log" navigates to the activities page
     const activitiesHeading = page.getByRole("heading", { name: "Activities" });
