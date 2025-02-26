@@ -33,8 +33,8 @@ export function RelationshipFilterForm({
 }: RelationshipFilterFormProps) {
   const [filters, setFilters] = useFilters();
   const currentFilter = filters.find((filter) => filter.name.startsWith(relationshipSchema.name));
-  const [condition, setCondition] = useState<FilterCondition | undefined>(
-    getCurrentFilterCondition(currentFilter) ?? "is any of"
+  const [condition, setCondition] = useState<FilterCondition>(
+    getCurrentFilterCondition(currentFilter) ?? FILTER_CONDITION.IS_ANY_OF
   );
 
   const handleSubmit = (data: FormData) => {
@@ -98,10 +98,15 @@ export function RelationshipFilterForm({
         }}
         data-testid="relationship-filter-form"
       >
-        {condition === "is any of" && (
+        {condition === FILTER_CONDITION.IS_ANY_OF && (
           <FormField
             name="relationships"
-            defaultValue={currentFilter?.value}
+            defaultValue={
+              currentFilter &&
+              getCurrentFilterCondition(currentFilter) === FILTER_CONDITION.IS_ANY_OF
+                ? currentFilter.value
+                : undefined
+            }
             render={({ field }) => {
               const value = field.value as RelationshipNode[] | undefined;
 
