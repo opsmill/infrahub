@@ -1,14 +1,13 @@
 import { QSP } from "@/config/qsp";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
-import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
-import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import React, { useEffect, useState } from "react";
-import { Tag, TagProps } from "react-aria-components";
+import { TagProps } from "react-aria-components";
 import { useQueryParam } from "use-query-params";
 import { GlobalFilterForm } from "./global-filter-form";
+import { FilterTag } from "./global-filter-tag";
 
 interface FilterTagProps extends TagProps {
   label: React.ReactNode;
@@ -59,18 +58,7 @@ export function GlobalBranchFilter({ label, name, fieldSchema, ...props }: Filte
   }, []);
 
   return (
-    <Tag
-      className={classNames(
-        focusVisibleStyle,
-        "group text-sm whitespace-nowrap rounded-full inline-flex items-center gap-1.5 border border-gray-300",
-        currentFilter?.value && "text-gray-600  bg-neutral-100 pl-1 cursor-pointer",
-        !currentFilter?.value && "text-gray-400 px-1 cursor-pointer border-dashed",
-        "data-[hovered]:bg-gray-100 data-[hovered]:text-gray-600 data-[hovered]:border-gray-600"
-      )}
-      aria-label={`${label} contains ${currentFilter?.value}`}
-      textValue={`${label} contains ${currentFilter?.value}`}
-      {...props}
-    >
+    <FilterTag label="branches" currentFilter={currentFilter} {...props}>
       <Popover open={showFilters} onOpenChange={setShowFilters}>
         <PopoverTrigger className="flex items-center h-6 pl-1">
           <span>{label}</span>
@@ -118,6 +106,6 @@ export function GlobalBranchFilter({ label, name, fieldSchema, ...props }: Filte
           />
         </PopoverContent>
       </Popover>
-    </Tag>
+    </FilterTag>
   );
 }
