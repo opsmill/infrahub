@@ -77,7 +77,7 @@ export function GlobalBranchFilter({ label, name, fieldSchema, ...props }: Filte
               className="flex items-center gap-1 h-6 rounded-r-full px-1 hover:bg-gray-300 transition-all"
               onClick={(event) => {
                 event.stopPropagation();
-                handleRemoveFilter(name);
+                handleRemoveFilter();
               }}
             >
               <div className="text-custom-blue-700 font-medium inline-flex items-center">
