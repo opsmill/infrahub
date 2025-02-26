@@ -28,7 +28,7 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface)
               key={primary_node?.id}
               to={constructPath(`/objects/CoreGroup/${primary_node?.id}`)}
             >
-              <NodeLabel key={primary_node?.id} id={primary_node?.id} kind="CoreGroup" />
+              <NodeLabel key={primary_node?.id} id={primary_node?.id} kind={primary_node?.kind} />
             </Link>
           </span>
         </div>
@@ -56,7 +56,7 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface)
               key={primary_node?.id}
               to={constructPath(`/objects/CoreGroup/${primary_node?.id}`)}
             >
-              <NodeLabel key={primary_node?.id} id={primary_node?.id} kind="CoreGroup" />
+              <NodeLabel key={primary_node?.id} id={primary_node?.id} kind={primary_node?.kind} />
             </Link>
           </span>
         </div>

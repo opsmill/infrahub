@@ -55,7 +55,7 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
               `/objects/${props.payload.data.node_kind}/${props.payload.data.node_id}`
             )}
           >
-            <NodeLabel id={props.payload.data.node_id} />
+            <NodeLabel id={props.primary_node.id} kind={props.primary_node?.kind} />
           </Link>
         </div>
       </div>

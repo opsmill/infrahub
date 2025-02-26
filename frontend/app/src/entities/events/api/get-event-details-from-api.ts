@@ -48,11 +48,13 @@ const EVENT_DETAILS_QUERY = gql`
 export async function getEventDetailsFromApi({
   branchName,
   atDate,
+  id,
   ...filters
 }: EventDetailsFilters & { branchName?: string; atDate?: Date | null }) {
   const { data } = await graphqlClient.query({
     query: EVENT_DETAILS_QUERY,
     variables: {
+      ids: [id],
       ...filters,
     },
     context: {

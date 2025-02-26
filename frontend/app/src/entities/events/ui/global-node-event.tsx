@@ -37,34 +37,36 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
   const { schema } = useSchema(props.payload.data.node_kind);
 
   return (
-    <>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm">
-          <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="text-gray-400" />
+    <div className="flex items-center gap-2 text-sm whitespace-nowrap">
+      <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="text-gray-400" />
 
-          <div className="font-semibold">
-            <NodeLabel id={account_id} />
-          </div>
+      <NodeLabel
+        id={account_id}
+        className="overflow-hidden text-ellipsis whitespace-nowrap font-semibold"
+      />
 
-          <div className="text-gray-500">{NODE_EVENTS_MAPPING[event] ?? "-"}</div>
+      <div className="text-gray-500">{NODE_EVENTS_MAPPING[event] ?? "-"}</div>
 
-          <div className="font-semibold">{schemaLabels[props.payload.data.node_kind] ?? "-"}</div>
+      <div className="font-semibold">{schemaLabels[props.payload.data.node_kind] ?? "-"}</div>
 
-          <Link
-            to={constructPath(
-              `/objects/${props.payload.data.node_kind}/${props.payload.data.node_id}`,
-              [
-                {
-                  name: QSP.BRANCH,
-                  value: props.branch,
-                },
-              ]
-            )}
-          >
-            <NodeLabel id={props.payload.data.node_id} />
-          </Link>
-        </div>
-      </div>
-    </>
+      <Link
+        to={constructPath(
+          `/objects/${props.payload.data.node_kind}/${props.payload.data.node_id}`,
+          [
+            {
+              name: QSP.BRANCH,
+              value: props.branch,
+            },
+          ]
+        )}
+        className="overflow-hidden text-ellipsis"
+      >
+        <NodeLabel
+          id={props.primary_node.id}
+          kind={props.primary_node?.kind}
+          className="overflow-hidden text-ellipsis"
+        />
+      </Link>
+    </div>
   );
 };
