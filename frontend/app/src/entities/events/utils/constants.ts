@@ -67,6 +67,10 @@ export const FILTERS = [
           label: "Schema updated",
           name: "infrahub.schema.updated",
         },
+        {
+          label: "Commit updated",
+          name: "infrahub.repository.update_commit",
+        },
       ],
     },
   },
