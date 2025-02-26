@@ -365,7 +365,7 @@ class InfrahubMutationMixin:
                             data=data,
                         )
         except ValidationError as exc:
-            raise ValueError(str(exc)) from exc
+            raise ValidationError(input_value=str(exc)) from exc
 
         if await cls._get_profile_ids(db=db, obj=obj):
             obj = await cls._refresh_for_profile_update(db=db, branch=branch, obj=obj)
