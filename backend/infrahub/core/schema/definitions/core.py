@@ -223,6 +223,7 @@ core_models: dict[str, Any] = {
                     "optional": True,
                     "identifier": "group_member",
                     "cardinality": "many",
+                    "branch": BranchSupportType.AWARE,
                 },
                 {
                     "name": "subscribers",
