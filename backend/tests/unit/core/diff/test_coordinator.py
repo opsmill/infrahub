@@ -8,7 +8,7 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.diff.combiner import DiffCombiner
 from infrahub.core.diff.coordinator import DiffCoordinator
-from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRootMetadata
+from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRootMetadata, NameTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -240,3 +240,64 @@ class TestDiffCoordinator:
         )
         assert no_changes_diff.from_time == no_changes_diff_metadata.from_time == diff_with_data.from_time
         assert no_changes_diff.to_time == no_changes_diff_metadata.to_time
+
+    async def test_diff_on_default_branch_only(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        person_john_main: Node,
+        person_jane_main: Node,
+        person_alfred_main: Node,
+        car_camry_main: Node,
+        car_accord_main: Node,
+    ) -> None:
+        branch = await create_branch(db=db, branch_name="branch1")
+
+        updated_person = await NodeManager.get_one(db=db, id=person_john_main.id)
+        updated_person.height.value = 200
+        await updated_person.save(db=db)
+
+        new_person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+        await new_person.new(db=db, name="Jeff", height=170)
+        await new_person.save(db=db)
+
+        deleted_person = await NodeManager.get_one(db=db, id=person_alfred_main.id)
+        await deleted_person.delete(db=db)
+
+        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
+        await updated_car.owner.update(db=db, data=new_person)
+        await updated_car.save(db=db)
+
+        from_time = Timestamp(branch.get_branched_from())
+        to_time = Timestamp()
+        name = str(uuid4())
+        diff_coordinator = await self.get_wrapped_diff_coordinator(db=db, branch=default_branch)
+        component_registry = get_component_registry()
+        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
+        main_diff_metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+            base_branch=default_branch, diff_branch=default_branch, from_time=from_time, to_time=to_time, name=name
+        )
+        main_diff = await diff_repository.get_one(diff_branch_name=default_branch.name, diff_id=main_diff_metadata.uuid)
+
+        assert main_diff.base_branch_name == default_branch.name
+        assert main_diff.diff_branch_name == default_branch.name
+        assert main_diff.from_time == from_time
+        assert main_diff.to_time == to_time
+        assert main_diff.tracking_id == NameTrackingId(name=name)
+        assert len(main_diff.nodes) == 4
+        nodes_by_id = {n.uuid: n for n in main_diff.nodes}
+        assert set(nodes_by_id.keys()) == {updated_person.id, new_person.id, deleted_person.id, updated_car.id}
+        new_person_diff = nodes_by_id[new_person.id]
+        assert new_person_diff.action is DiffAction.ADDED
+        deleted_person_diff = nodes_by_id[deleted_person.id]
+        assert deleted_person_diff.action is DiffAction.REMOVED
+        updated_car_diff = nodes_by_id[updated_car.id]
+        assert updated_car_diff.action is DiffAction.UPDATED
+        assert updated_car_diff.attributes == set()
+        rel_diffs = {(r.name, r.action) for r in updated_car_diff.relationships}
+        assert rel_diffs == {("owner", DiffAction.UPDATED)}
+        updated_person_diff = nodes_by_id[updated_person.id]
+        rel_diffs = {(r.name, r.action) for r in updated_person_diff.relationships}
+        assert rel_diffs == {("cars", DiffAction.UPDATED)}
+        attr_diffs = {(a.name, a.action) for a in updated_person_diff.attributes}
+        assert attr_diffs == {("height", DiffAction.UPDATED)}

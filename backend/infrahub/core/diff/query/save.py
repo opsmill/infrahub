@@ -42,6 +42,7 @@ CALL {
 }
 WITH DISTINCT diff_root AS diff_root
 WITH collect(diff_root) AS diff_roots
+WHERE SIZE(diff_roots) = 2
 CALL {
     WITH diff_roots
     WITH diff_roots[0] AS base_diff_node, diff_roots[1] AS branch_diff_node
@@ -82,33 +83,55 @@ class EnrichedNodeBatchCreateQuery(Query):
         query = """
 UNWIND $node_details_list AS node_details
 WITH node_details.root_uuid AS root_uuid, node_details.node_map AS node_map
+MATCH (diff_root:DiffRoot {uuid: root_uuid})
+MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_map.node_properties.uuid})
+WITH root_uuid, node_map, diff_node, (node_map.conflict_params IS NOT NULL) AS has_node_conflict
+SET
+    diff_node.kind = node_map.node_properties.kind,
+    diff_node.label = node_map.node_properties.label,
+    diff_node.changed_at = node_map.node_properties.changed_at,
+    diff_node.action = node_map.node_properties.action,
+    diff_node.path_identifier = node_map.node_properties.path_identifier
+WITH root_uuid, node_map, diff_node, has_node_conflict
 CALL {
-    WITH root_uuid, node_map
-    MATCH (diff_root {uuid: root_uuid})
-    MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_map.node_properties.uuid})
-    SET
-        diff_node.kind = node_map.node_properties.kind,
-        diff_node.label = node_map.node_properties.label,
-        diff_node.changed_at = node_map.node_properties.changed_at,
-        diff_node.action = node_map.node_properties.action,
-        diff_node.path_identifier = node_map.node_properties.path_identifier
     // -------------------------
-    // add/remove node-level conflict
+    // delete parent-child relationships for included nodes, they will be added in EnrichedNodesLinkQuery
     // -------------------------
-    WITH diff_node, node_map
-    OPTIONAL MATCH (diff_node)-[:DIFF_HAS_CONFLICT]->(current_diff_node_conflict:DiffConflict)
-    WITH diff_node, node_map, current_diff_node_conflict, (node_map.conflict_params IS NOT NULL) AS has_node_conflict
-    FOREACH (i in CASE WHEN has_node_conflict = FALSE THEN [1] ELSE [] END |
-        DETACH DELETE current_diff_node_conflict
-    )
-    FOREACH (i in CASE WHEN has_node_conflict = TRUE THEN [1] ELSE [] END |
-        MERGE (diff_node)-[:DIFF_HAS_CONFLICT]->(diff_node_conflict:DiffConflict)
-        SET diff_node_conflict = node_map.conflict_params
-    )
+    WITH diff_node
+    MATCH (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(:DiffRelationship)-[parent_rel:DIFF_HAS_NODE]->(:DiffNode)
+    DELETE parent_rel
+}
+OPTIONAL MATCH (diff_node)-[:DIFF_HAS_CONFLICT]->(current_node_conflict:DiffConflict)
+CALL {
+    // -------------------------
+    // create a node-level conflict, if necessary
+    // -------------------------
+    WITH diff_node, current_node_conflict, has_node_conflict
+    WITH diff_node, current_node_conflict, has_node_conflict
+    WHERE current_node_conflict IS NULL AND has_node_conflict = TRUE
+    CREATE (diff_node)-[:DIFF_HAS_CONFLICT]->(:DiffConflict)
 }
 CALL {
-    WITH root_uuid, node_map
-    MATCH (diff_root {uuid: root_uuid})-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_map.node_properties.uuid})
+    // -------------------------
+    // delete a node-level conflict, if necessary
+    // -------------------------
+    WITH current_node_conflict, has_node_conflict
+    WITH current_node_conflict, has_node_conflict
+    WHERE current_node_conflict IS NOT NULL AND has_node_conflict = FALSE
+    DETACH DELETE current_node_conflict
+}
+WITH root_uuid, node_map, diff_node, has_node_conflict, node_map.conflict_params AS node_conflict_params
+CALL {
+    // -------------------------
+    // set the properties of the node-level conflict, if necessary
+    // -------------------------
+    WITH diff_node, has_node_conflict, node_conflict_params
+    WITH diff_node, has_node_conflict, node_conflict_params
+    WHERE has_node_conflict = TRUE
+    OPTIONAL MATCH (diff_node)-[:DIFF_HAS_CONFLICT]->(node_conflict:DiffConflict)
+    SET node_conflict = node_conflict_params
+}
+CALL {
     // -------------------------
     // remove stale attributes for this node
     // -------------------------
@@ -425,14 +448,14 @@ WITH
     node_link_details.root_uuid AS root_uuid,
     node_link_details.parent_uuid AS parent_uuid,
     node_link_details.child_uuid AS child_uuid,
-    node_link_details.relationship_name AS relationship_name
+    node_link_details.child_relationship_name AS relationship_name
 CALL {
     WITH root_uuid, parent_uuid, child_uuid, relationship_name
     MATCH (diff_root {uuid: root_uuid})
-    MATCH (diff_root)-[:DIFF_HAS_NODE]->(parent_node:DiffNode {uuid: parent_uuid})
-        -[:DIFF_HAS_RELATIONSHIP]->(diff_rel_group:DiffRelationship {name: relationship_name})
     MATCH (diff_root)-[:DIFF_HAS_NODE]->(child_node:DiffNode {uuid: child_uuid})
-    MERGE (diff_rel_group)-[:DIFF_HAS_NODE]->(child_node)
+        -[:DIFF_HAS_RELATIONSHIP]->(diff_rel_group:DiffRelationship {name: relationship_name})
+    MATCH (diff_root)-[:DIFF_HAS_NODE]->(parent_node:DiffNode {uuid: parent_uuid})
+    MERGE (diff_rel_group)-[:DIFF_HAS_NODE]->(parent_node)
 }
         """
         self.add_to_query(query)
@@ -442,14 +465,14 @@ CALL {
             return []
         parent_links = []
         for relationship in enriched_node.relationships:
-            for child_node in relationship.nodes:
+            for parent_node in relationship.nodes:
                 parent_links.append(
                     {
-                        "parent_uuid": enriched_node.uuid,
-                        "relationship_name": relationship.name,
-                        "child_uuid": child_node.uuid,
+                        "child_uuid": enriched_node.uuid,
+                        "child_relationship_name": relationship.name,
+                        "parent_uuid": parent_node.uuid,
                         "root_uuid": root_uuid,
                     }
                 )
-                parent_links.extend(self._build_node_parent_links(enriched_node=child_node, root_uuid=root_uuid))
+                parent_links.extend(self._build_node_parent_links(enriched_node=parent_node, root_uuid=root_uuid))
         return parent_links

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Generator, Optional, Union
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.constants import RelationshipDirection, RelationshipStatus
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=redefined-builtin
+# pylint: disable=redefined-builtin,too-many-lines
 
 
 @dataclass
@@ -583,6 +584,7 @@ class RelationshipGetPeerQuery(Query):
         query = """
         MATCH (source_node:Node)%(arrow_left_start)s[:IS_RELATED]%(arrow_left_end)s(rl:Relationship { name: $rel_identifier })
         WHERE source_node.uuid IN $source_ids
+        WITH DISTINCT source_node, rl
         CALL {
             WITH rl, source_node
             MATCH path = (source_node)%(path)s(peer:Node)
@@ -659,10 +661,23 @@ class RelationshipGetPeerQuery(Query):
         # QUERY Properties
         # ----------------------------------------------------------------------------
         query = """
-        MATCH (rl)-[rel_is_visible:IS_VISIBLE]-(is_visible)
-        MATCH (rl)-[rel_is_protected:IS_PROTECTED]-(is_protected)
-        WHERE all(r IN [ rel_is_visible, rel_is_protected] WHERE (%s))
-        """ % (branch_filter,)
+        CALL {
+            WITH rl
+            MATCH (rl)-[r:IS_VISIBLE]-(is_visible)
+            WHERE %(branch_filter)s
+            RETURN r AS rel_is_visible, is_visible
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        CALL {
+            WITH rl
+            MATCH (rl)-[r:IS_PROTECTED]-(is_protected)
+            WHERE %(branch_filter)s
+            RETURN r AS rel_is_protected, is_protected
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        """ % {"branch_filter": branch_filter}
 
         self.add_to_query(query)
 
@@ -672,19 +687,23 @@ class RelationshipGetPeerQuery(Query):
         # We must query them one by one otherwise the second one won't return
         for node_prop in ["source", "owner"]:
             query = """
-            WITH %s
-            OPTIONAL MATCH (rl)-[rel_%s:HAS_%s]-(%s)
-            WHERE all(r IN [ rel_%s ] WHERE (%s))
-            """ % (
-                ",".join(self.return_labels),
-                node_prop,
-                node_prop.upper(),
-                node_prop,
-                node_prop,
-                branch_filter,
-            )
+        CALL {
+            WITH rl
+            OPTIONAL MATCH (rl)-[r:HAS_%(node_prop_type)s]-(%(node_prop)s)
+            WHERE %(branch_filter)s
+            RETURN r AS rel_%(node_prop)s, %(node_prop)s
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+            """ % {
+                "node_prop": node_prop,
+                "node_prop_type": node_prop.upper(),
+                "branch_filter": branch_filter,
+            }
             self.add_to_query(query)
             self.update_return_labels([f"rel_{node_prop}", node_prop])
+
+        self.add_to_query("WITH " + ",".join(self.return_labels))
 
         # ----------------------------------------------------------------------------
         # ORDER Results
@@ -932,3 +951,73 @@ class RelationshipCountPerNodeQuery(Query):
                 data[node_id] = 0
 
         return data
+
+
+class RelationshipDeleteAllQuery(Query):
+    """
+    Delete all relationships linked to a given node on a given branch at a given time. For every IS_RELATED edge:
+    - Set `to` time if an active edge exist on the same branch.
+    - Create `deleted` edge.
+    - Apply above to every edges linked to any connected Relationship node.
+    """
+
+    name = "node_delete_all_relationships"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, node_id: str, **kwargs):
+        self.node_id = node_id
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+        self.params["source_id"] = kwargs["node_id"]
+        self.params["branch"] = self.branch.name
+
+        self.params["rel_prop"] = {
+            "branch": self.branch.name,
+            "branch_level": self.branch.hierarchy_level,
+            "status": RelationshipStatus.DELETED.value,
+            "from": self.at.to_string(),
+        }
+
+        self.params["at"] = self.at.to_string()
+
+        active_rel_filter, rel_params = self.branch.get_query_filter_path(
+            at=self.at, variable_name="active_edge", branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(rel_params)
+
+        query_match_relationships = """
+        MATCH (s:Node { uuid: $source_id })-[active_edge:IS_RELATED]-(rl:Relationship)
+        WHERE %(active_rel_filter)s AND active_edge.status = "active"
+        WITH DISTINCT rl
+        """ % {"active_rel_filter": active_rel_filter}
+
+        self.add_to_query(query_match_relationships)
+
+        for arrow_left, arrow_right in (("<-", "-"), ("-", "->")):
+            for edge_type in [
+                DatabaseEdgeType.IS_RELATED.value,
+                DatabaseEdgeType.IS_VISIBLE.value,
+                DatabaseEdgeType.IS_PROTECTED.value,
+                DatabaseEdgeType.HAS_OWNER.value,
+                DatabaseEdgeType.HAS_SOURCE.value,
+            ]:
+                query = """
+                    CALL {
+                        WITH rl
+                        MATCH (rl)%(arrow_left)s[active_edge:%(edge_type)s]%(arrow_right)s(n)
+                        WHERE %(active_rel_filter)s AND active_edge.status ="active"
+                        CREATE (rl)%(arrow_left)s[deleted_edge:%(edge_type)s $rel_prop]%(arrow_right)s(n)
+                        SET deleted_edge.hierarchy = active_edge.hierarchy
+                        WITH active_edge
+                        WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+                        SET active_edge.to = $at
+                    }
+                """ % {
+                    "arrow_left": arrow_left,
+                    "arrow_right": arrow_right,
+                    "active_rel_filter": active_rel_filter,
+                    "edge_type": edge_type,
+                }
+                self.add_to_query(query)

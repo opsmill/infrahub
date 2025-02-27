@@ -301,6 +301,8 @@ class TestDiffAndMerge:
         car_camry_main: Node,
         conflict_selection: ConflictSelection,
     ):
+        person_schema = db.schema.get(name="TestPerson", duplicate=False)
+        cars_rel_schema = person_schema.get_relationship(name="cars")
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
         await car_main.owner.update(db=db, data={"id": person_john_main.id, "_relation__owner": person_alfred_main.id})
@@ -332,6 +334,16 @@ class TestDiffAndMerge:
             assert owner_prop.id == person_alfred_main.id
         if conflict_selection is ConflictSelection.DIFF_BRANCH:
             assert owner_prop.id == person_jane_main.id
+
+        john_car_count = await NodeManager.count_peers(
+            db=db,
+            ids=[person_john_main.id],
+            source_kind="TestPerson",
+            filters={},
+            schema=cars_rel_schema,
+            branch=branch2,
+        )
+        assert john_car_count == 1
 
         await diff_merger.rollback(at=at)
 
@@ -615,6 +627,8 @@ class TestDiffAndMerge:
         car_accord_main,
         car_camry_main,
     ):
+        person_schema = db.schema.get(name="TestPerson", duplicate=False)
+        cars_rel_schema = person_schema.get_relationship(name="cars")
         branch2 = await create_branch(db=db, branch_name="branch2")
         car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
         await car_branch.owner.update(db=db, data={"id": person_john_main.id, "_relation__is_protected": True})
@@ -639,6 +653,16 @@ class TestDiffAndMerge:
         assert owner_rel.peer_id == person_john_main.id
         assert owner_rel.is_protected is True
         assert owner_rel.is_visible is False
+
+        john_car_count = await NodeManager.count_peers(
+            db=db,
+            ids=[person_john_main.id],
+            source_kind="TestPerson",
+            filters={},
+            schema=cars_rel_schema,
+            branch=branch2,
+        )
+        assert john_car_count == 1
 
         await diff_merger.rollback(at=at)
 

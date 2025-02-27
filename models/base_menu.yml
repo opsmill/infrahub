@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/menu/latest.json
 ---
 apiVersion: infrahub.app/v1
 kind: Menu

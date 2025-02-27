@@ -1,6 +1,8 @@
 from collections import defaultdict
 from typing import AsyncGenerator, Generator, Iterable
 
+from neo4j.exceptions import TransientError
+
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.diff.query.field_summary import EnrichedDiffNodeFieldSummaryQuery
@@ -42,11 +44,10 @@ log = get_logger()
 
 
 class DiffRepository:
-    MAX_SAVE_BATCH_SIZE: int = 100
-
-    def __init__(self, db: InfrahubDatabase, deserializer: EnrichedDiffDeserializer):
+    def __init__(self, db: InfrahubDatabase, deserializer: EnrichedDiffDeserializer, max_save_batch_size: int = 1000):
         self.db = db
         self.deserializer = deserializer
+        self.max_save_batch_size = max_save_batch_size
 
     async def _run_get_diff_query(
         self,
@@ -154,18 +155,23 @@ class DiffRepository:
             diff_branch_names=[base_branch_name],
             max_depth=max_depth,
             batch_size_limit=batch_size_limit,
-            diff_ids=[d.partner_uuid for d in diffs_by_uuid.values()],
+            diff_ids=[d.partner_uuid for d in diffs_by_uuid.values() if d.partner_uuid],
         )
         diffs_by_uuid.update({bbr.uuid: bbr for bbr in base_branch_roots})
-        return [
-            EnrichedDiffs(
-                base_branch_name=base_branch_name,
-                diff_branch_name=diff_branch_name,
-                base_branch_diff=diffs_by_uuid[dbr.partner_uuid],
-                diff_branch_diff=dbr,
+        diff_pairs = []
+        for dbr in diff_branch_roots:
+            if dbr.partner_uuid is None:
+                continue
+            base_branch_diff = diffs_by_uuid[dbr.partner_uuid]
+            diff_pairs.append(
+                EnrichedDiffs(
+                    base_branch_name=base_branch_name,
+                    diff_branch_name=diff_branch_name,
+                    base_branch_diff=base_branch_diff,
+                    diff_branch_diff=dbr,
+                )
             )
-            for dbr in diff_branch_roots
-        ]
+        return diff_pairs
 
     async def hydrate_diff_pair(
         self,
@@ -225,20 +231,44 @@ class DiffRepository:
     ) -> Generator[list[EnrichedNodeCreateRequest], None, None]:
         node_requests = []
         for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
+            size_count = 0
             for node in diff_root.nodes:
-                node_requests.append(EnrichedNodeCreateRequest(node=node, root_uuid=diff_root.uuid))
-                if len(node_requests) == self.MAX_SAVE_BATCH_SIZE:
+                node_size_count = node.num_properties
+                if size_count + node_size_count < self.max_save_batch_size:
+                    node_requests.append(EnrichedNodeCreateRequest(node=node, root_uuid=diff_root.uuid))
+                    size_count += node_size_count
+                else:
+                    log.info(f"Num nodes in batch: {len(node_requests)}, num properties in batch: {size_count}")
                     yield node_requests
-                    node_requests = []
+                    size_count = node_size_count
+                    node_requests = [EnrichedNodeCreateRequest(node=node, root_uuid=diff_root.uuid)]
         if node_requests:
+            log.info(f"Num nodes in batch: {len(node_requests)}, num properties in batch: {size_count}")
             yield node_requests
 
-    @retry_db_transaction(name="enriched_diff_save")
-    async def save(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata, do_summary_counts: bool = True) -> None:
+    @retry_db_transaction(name="enriched_diff_metadata_save")
+    async def _save_root_metadata(self, enriched_diffs: EnrichedDiffsMetadata) -> None:
         log.info("Updating diff metadata...")
         root_query = await EnrichedDiffRootsUpsertQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await root_query.execute(db=self.db)
         log.info("Diff metadata updated.")
+
+    async def _save_node_batch(self, node_create_batch: list[EnrichedNodeCreateRequest]) -> None:
+        node_query = await EnrichedNodeBatchCreateQuery.init(db=self.db, node_create_batch=node_create_batch)
+        try:
+            await node_query.execute(db=self.db)
+        except TransientError as exc:
+            if not exc.code or "OutOfMemoryError".lower() not in str(exc.code).lower():
+                raise
+            log.exception("Database memory error during save. Trying smaller transactions")
+            for node_request in node_create_batch:
+                single_node_query = await EnrichedNodeBatchCreateQuery.init(
+                    db=self.db, node_create_batch=[node_request]
+                )
+                await single_node_query.execute(db=self.db)
+
+    async def save(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata, do_summary_counts: bool = True) -> None:
+        await self._save_root_metadata(enriched_diffs=enriched_diffs)
         if not isinstance(enriched_diffs, EnrichedDiffs):
             return
         num_nodes = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
@@ -247,9 +277,8 @@ class DiffRepository:
             self._get_node_create_request_batch(enriched_diffs=enriched_diffs)
         ):
             log.info(f"Saving node batch #{batch_num}...")
-            node_query = await EnrichedNodeBatchCreateQuery.init(db=self.db, node_create_batch=node_create_batch)
-            await node_query.execute(db=self.db)
-            log.info(f"Batch #{batch_num} saved")
+            await self._save_node_batch(node_create_batch=node_create_batch)
+            log.info(f"Batch saved. num_nodes={len(node_create_batch)}")
         link_query = await EnrichedNodesLinkQuery.init(db=self.db, enriched_diffs=enriched_diffs)
         await link_query.execute(db=self.db)
         log.info("Diff saved.")
@@ -325,7 +354,7 @@ class DiffRepository:
         roots_by_id = {root.uuid: root for root in empty_roots}
         pairs: list[EnrichedDiffsMetadata] = []
         for branch_root in empty_roots:
-            if branch_root.base_branch_name == branch_root.diff_branch_name:
+            if branch_root.base_branch_name == branch_root.diff_branch_name or branch_root.partner_uuid is None:
                 continue
             base_root = roots_by_id[branch_root.partner_uuid]
             pairs.append(
@@ -439,6 +468,7 @@ class DiffRepository:
             offset += limit
         return specifiers
 
+    @retry_db_transaction(name="enriched_diff_summary_counts")
     async def add_summary_counts(
         self,
         diff_branch_name: str,
@@ -455,4 +485,4 @@ class DiffRepository:
             node_uuids=node_uuids,
         )
         await query.execute(db=self.db)
-        log.info("Summary counts updated...")
+        log.info("Summary counts updated.")
