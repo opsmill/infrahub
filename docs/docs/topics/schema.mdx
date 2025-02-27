@@ -828,6 +828,8 @@ At the node (or generic) level, 3 attributes are available to control where a gi
 
 `menu_placement` makes it possible to create a nested structure within the menu to display a given model under another one.
 
+You can read this [guide](../guides/menu) for a more detailed explanation of how to operate the menu.
+
 #### Icon
 
 `icon` can be used to indicate which icon should be displayed next to the model in the menu.
@@ -835,11 +837,9 @@ Any icon from the [Material Design Icons library / iconify.design](https://icon-
 
 The full identifier of the icon must be used. Example `mdi:domain`
 
-#### Examples
+#### Menu rendering example
 
-<div className="container">
-  <div className="row">
-  <div className="col col--6">
+#### Menu schema
 
   ```yaml title="Schema" {6-7,11-12,17-18} showLineNumbers
   ---
@@ -864,15 +864,10 @@ The full identifier of the icon must be used. Example `mdi:domain`
       label: "Rack"
   ```
 
-  </div>
+#### Menu rendering
 
-  <div className="col col--6 padding-top--md">
-  #### Rendering
+  ![Location Menu](../media/location_menu.png)
 
-  ![Location Menu](../media/reference/schema/location_menu.png)
-  </div>
-  </div>
-</div>
 
 ## Load a schema into Infrahub
 
@@ -1002,13 +997,14 @@ The internal identifier should be an UUID4, with 36 characters.
 </TabItem>
 </Tabs>
 
-### Restrictions and limitations
+### Restrictions
 
 Most changes to an existing schema are supported but there are a few properties that can't be updated in the current release:
 
 * Properties that can't be updated on a Node or a Generic: `branch`
 * Properties that can't be updated on an Attribute: `branch`
 * Properties that can't be updated on an Relationship: `branch`, `direction`, `hierarchical`
+* Properties that can't be updated on an Attribute inherited from a Generic: `optional`
 
 [A reference guide for validators and migrations is available](../reference/schema/validator-migration)
 
