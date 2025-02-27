@@ -15,7 +15,7 @@ from infrahub.core.constants import InfrahubKind, MutationAction, RelationshipCa
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema, RelationshipSchema
+from infrahub.core.schema import MainSchemaTypes, NodeSchema, RelationshipSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.profile_schema import ProfileSchema
 from infrahub.core.schema.template_schema import TemplateSchema
@@ -232,7 +232,7 @@ class InfrahubMutationMixin:
         cls,
         db: InfrahubDatabase,
         template_peer: Node,
-        obj_peer_schema,
+        obj_peer_schema: MainSchemaTypes,
         parent_obj: Node,
         current_template: CoreObjectTemplate,
     ) -> Mapping[str, Any]:
@@ -241,7 +241,7 @@ class InfrahubMutationMixin:
         for attr in template_peer.get_schema().attribute_names:
             if attr not in obj_peer_schema.attribute_names:
                 continue
-            obj_peer_data[attr] = {"value": getattr(template_peer, attr).value}
+            obj_peer_data[attr] = {"value": getattr(template_peer, attr).value, "source": template_peer.id}
 
         for rel in template_peer.get_schema().relationship_names:
             rel_manager: RelationshipManager = getattr(template_peer, rel)
