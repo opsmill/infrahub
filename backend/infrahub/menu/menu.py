@@ -137,13 +137,23 @@ default_menu = [
             ),
             MenuItemDefinition(
                 namespace="Builtin",
+                name="ObjectTemplates",
+                label="Object Templates",
+                kind=InfrahubKind.OBJECTTEMPLATE,
+                icon=_extract_node_icon(infrahub_schema.get(InfrahubKind.OBJECTTEMPLATE)),
+                protected=True,
+                section=MenuSection.INTERNAL,
+                order_weight=2000,
+            ),
+            MenuItemDefinition(
+                namespace="Builtin",
                 name="ResourceManager",
                 label="Resource Managers",
                 path="/resource-manager",
                 icon=_extract_node_icon(infrahub_schema.get(InfrahubKind.RESOURCEPOOL)),
                 protected=True,
                 section=MenuSection.INTERNAL,
-                order_weight=2000,
+                order_weight=2500,
             ),
             MenuItemDefinition(
                 namespace="Builtin",
@@ -153,7 +163,7 @@ default_menu = [
                 icon=_extract_node_icon(infrahub_schema.get(InfrahubKind.ARTIFACT)),
                 protected=True,
                 section=MenuSection.INTERNAL,
-                order_weight=2500,
+                order_weight=3000,
             ),
             MenuItemDefinition(
                 namespace="Builtin",
