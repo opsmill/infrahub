@@ -1,6 +1,6 @@
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import ErrorFallback from "@/shared/components/errors/error-fallback";
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { Spinner } from "@/shared/components/ui/spinner";
@@ -37,7 +37,7 @@ export const GlobalEvents = () => {
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
   if (error) {
-    return <ErrorFallback error={error} />;
+    return <ErrorScreen message={error.message} />;
   }
 
   return (

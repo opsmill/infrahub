@@ -13,7 +13,7 @@ import { AuthProvider } from "@/entities/authentication/ui/useAuth";
 import { ConfigProvider } from "@/entities/config/config-provider";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
-import ErrorFallback from "@/shared/components/errors/error-fallback";
+import { ErrorBoundaryApp } from "@/shared/components/errors/error-boundary-app";
 import { store } from "@/shared/stores";
 
 import "@/app/styles/index.css";
@@ -23,7 +23,7 @@ addCollection(mdiIcons);
 
 export function App() {
   return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
+    <ErrorBoundary FallbackComponent={ErrorBoundaryApp}>
       <Provider store={store}>
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
