@@ -19,7 +19,7 @@ test.describe("Menu view - List view and filter usage", () => {
     await page.goto("/");
 
     await page.getByTestId("sidebar").getByRole("button", { name: "Location" }).click();
-    await page.getByRole("menu", { name: "Location" })
+    await page.getByRole("menu", { name: "Location" });
     await saveScreenshotForDocs(page, "location_menu");
   });
 });
