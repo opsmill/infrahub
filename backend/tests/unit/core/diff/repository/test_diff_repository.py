@@ -1,12 +1,10 @@
 import random
 from collections import defaultdict
 from dataclasses import replace
-from datetime import UTC
 from typing import Generator
 from uuid import uuid4
 
 import pytest
-from pendulum.datetime import DateTime
 
 from infrahub import config
 from infrahub.core.constants import DiffAction
@@ -37,10 +35,10 @@ from .base import DiffRepositoryTestBase
 
 
 class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
-    base_branch_name = "main"
-    diff_branch_name = "diff"
-    diff_from_time = DateTime.create(2024, 6, 15, 18, 35, 20, tz=UTC)
-    diff_to_time = DateTime.create(2024, 6, 15, 18, 49, 40, tz=UTC)
+    base_branch_name: str = "main"
+    diff_branch_name: str = "diff"
+    diff_from_time = Timestamp("2024-06-15T18:35:20Z")
+    diff_to_time = Timestamp("2024-06-15T18:49:40Z")
 
     @pytest.fixture
     def diff_repository(self, db: InfrahubDatabase) -> Generator[DiffRepository, None, None]:
@@ -60,7 +58,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
             from_time=right_now,
-            to_time=right_now.add_delta(hours=1),
+            to_time=right_now.add(hours=1),
         )
         assert len(enriched_diffs) == 0
 
@@ -68,8 +66,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         enriched_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             nodes=self._build_nodes(num_nodes=5, num_sub_fields=2),
             tracking_id=NameTrackingId(name="the-best-diff"),
         )
@@ -81,8 +79,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
         )
         assert len(retrieved) == 1
         diff_root = retrieved[0]
@@ -95,16 +93,16 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         enriched_branch_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             nodes=self._build_nodes(num_nodes=20, num_sub_fields=2),
             tracking_id=NameTrackingId(name="the-best-diff"),
         )
         enriched_base_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.base_branch_name,
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             nodes=self._build_nodes(num_nodes=18, num_sub_fields=1),
             tracking_id=NameTrackingId(name="the-best-diff"),
         )
@@ -122,8 +120,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get_pairs(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
         )
         assert len(retrieved) == 1
         retrieved_pair = retrieved[0]
@@ -139,8 +137,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             enriched_diff = EnrichedRootFactory.build(
                 base_branch_name=base_branch_name,
                 diff_branch_name=self.diff_branch_name,
-                from_time=Timestamp(self.diff_from_time),
-                to_time=Timestamp(self.diff_to_time),
+                from_time=self.diff_from_time,
+                to_time=self.diff_to_time,
                 uuid=root_uuid,
                 nodes={EnrichedNodeFactory.build(relationships={})},
             )
@@ -151,8 +149,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
         )
         assert len(retrieved) == 1
         assert retrieved[0].base_branch_name == self.base_branch_name
@@ -162,7 +160,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         diff_branch_1, diff_branch_2, diff_branch_3 = "diff1", "diff2", "diff3"
         diff_uuids_by_name = {diff_branch_1: set(), diff_branch_2: set(), diff_branch_3: set()}
         for diff_branch_name in (diff_branch_1, diff_branch_2, diff_branch_3):
-            start_time = DateTime.create(2024, 6, 15, 18, 35, 20, tz=UTC)
+            start_time = Timestamp("2024-06-15T18:35:20Z")
             for _ in range(5):
                 start_time = start_time.add(seconds=random.randint(150_000, 300_000))
                 end_time = start_time.add(seconds=random.randint(25_000, 100_000))
@@ -171,8 +169,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
                 enriched_diff = EnrichedRootFactory.build(
                     base_branch_name=self.base_branch_name,
                     diff_branch_name=diff_branch_name,
-                    from_time=Timestamp(start_time),
-                    to_time=Timestamp(end_time),
+                    from_time=start_time,
+                    to_time=end_time,
                     uuid=root_uuid,
                     nodes={EnrichedNodeFactory.build(relationships={})},
                 )
@@ -180,14 +178,14 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
                     diff_repository=diff_repository, enriched_diff=enriched_diff, do_summary_counts=False
                 )
 
-        start_time = DateTime.create(2024, 6, 15, 18, 35, 20, tz=UTC)
+        start_time = Timestamp("2024-06-15T18:35:20Z")
         end_time = start_time.add(months=1)
         for diff_name, expected_uuids in diff_uuids_by_name.items():
             retrieved = await diff_repository.get(
                 base_branch_name=self.base_branch_name,
                 diff_branch_names=[diff_name],
-                from_time=Timestamp(start_time),
-                to_time=Timestamp(end_time),
+                from_time=start_time,
+                to_time=end_time,
             )
             retrieved_uuids = {root_diff.uuid for root_diff in retrieved}
             assert retrieved_uuids == expected_uuids
@@ -195,8 +193,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[diff_branch_1, diff_branch_2],
-            from_time=Timestamp(start_time),
-            to_time=Timestamp(end_time),
+            from_time=start_time,
+            to_time=end_time,
         )
         expected_uuids = diff_uuids_by_name[diff_branch_1] | diff_uuids_by_name[diff_branch_2]
         retrieved_uuids = {root_diff.uuid for root_diff in retrieved}
@@ -207,8 +205,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         enriched_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             uuid=root_uuid,
             nodes={EnrichedNodeFactory.build(relationships={})},
         )
@@ -220,24 +218,24 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time.subtract(minutes=100)),
-            to_time=Timestamp(self.diff_from_time.subtract(minutes=50)),
+            from_time=self.diff_from_time.subtract(minutes=100),
+            to_time=self.diff_from_time.subtract(minutes=50),
         )
         assert len(retrieved) == 0
         # one before, one during
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time.subtract(minutes=100)),
-            to_time=Timestamp(self.diff_to_time.subtract(minutes=1)),
+            from_time=self.diff_from_time.subtract(minutes=100),
+            to_time=self.diff_to_time.subtract(minutes=1),
         )
         assert len(retrieved) == 0
         # one before, one after
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time.subtract(minutes=100)),
-            to_time=Timestamp(self.diff_to_time.add(minutes=100)),
+            from_time=self.diff_from_time.subtract(minutes=100),
+            to_time=self.diff_to_time.add(minutes=100),
         )
         assert len(retrieved) == 1
         assert retrieved[0].uuid == root_uuid
@@ -245,24 +243,24 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time.add(minutes=1)),
-            to_time=Timestamp(self.diff_to_time.subtract(minutes=1)),
+            from_time=self.diff_from_time.add(minutes=1),
+            to_time=self.diff_to_time.subtract(minutes=1),
         )
         assert len(retrieved) == 0
         # one during, one after
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time.add(minutes=1)),
-            to_time=Timestamp(self.diff_to_time.add(minutes=1)),
+            from_time=self.diff_from_time.add(minutes=1),
+            to_time=self.diff_to_time.add(minutes=1),
         )
         assert len(retrieved) == 0
         # both after
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_to_time.add(minutes=1)),
-            to_time=Timestamp(self.diff_to_time.add(minutes=10)),
+            from_time=self.diff_to_time.add(minutes=1),
+            to_time=self.diff_to_time.add(minutes=10),
         )
         assert len(retrieved) == 0
 
@@ -273,8 +271,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             enriched_diff = EnrichedRootFactory.build(
                 base_branch_name=self.base_branch_name,
                 diff_branch_name=f"branch{i}",
-                from_time=Timestamp(self.diff_from_time),
-                to_time=Timestamp(self.diff_to_time),
+                from_time=self.diff_from_time,
+                to_time=self.diff_to_time,
                 nodes=nodes,
             )
             enriched_diffs.append(enriched_diff)
@@ -293,8 +291,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         this_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name="diff",
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             nodes=other_nodes | {parent_node, middle_node, leaf_node},
         )
         await self._save_single_diff(diff_repository=diff_repository, enriched_diff=this_diff, do_summary_counts=False)
@@ -304,8 +302,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=diff_branch_names,
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             filters={"ids": [parent_node.uuid]},
         )
         assert len(retrieved) == 1
@@ -328,8 +326,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=diff_branch_names,
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             filters={"ids": [middle_node.uuid]},
         )
         assert len(retrieved) == 1
@@ -360,8 +358,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=diff_branch_names,
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             filters={"ids": [leaf_node.uuid]},
         )
         assert len(retrieved) == 1
@@ -422,8 +420,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             enriched_diff = EnrichedRootFactory.build(
                 base_branch_name=self.base_branch_name,
                 diff_branch_name=self.diff_branch_name,
-                from_time=Timestamp(start_time.add(minutes=i * 30)),
-                to_time=Timestamp(start_time.add(minutes=(i * 30) + 29)),
+                from_time=start_time.add(minutes=i * 30),
+                to_time=start_time.add(minutes=(i * 30) + 29),
                 nodes=nodes,
             )
             await self._save_single_diff(
@@ -435,8 +433,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             enriched_diff = EnrichedRootFactory.build(
                 base_branch_name=self.base_branch_name,
                 diff_branch_name=self.diff_branch_name,
-                from_time=Timestamp(start_time.add(days=3, minutes=(i * 30))),
-                to_time=Timestamp(start_time.add(days=3, minutes=(i * 30) + 29)),
+                from_time=start_time.add(days=3, minutes=(i * 30)),
+                to_time=start_time.add(days=3, minutes=(i * 30) + 29),
                 nodes=nodes,
             )
             await self._save_single_diff(
@@ -446,8 +444,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(start_time),
-            to_time=Timestamp(start_time.add(minutes=150)),
+            from_time=start_time,
+            to_time=start_time.add(minutes=150),
         )
         assert len(retrieved) == 5
         for r in retrieved:
@@ -463,8 +461,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             enriched_diff = EnrichedRootFactory.build(
                 base_branch_name=self.base_branch_name,
                 diff_branch_name=self.diff_branch_name,
-                from_time=Timestamp(start_time.add(minutes=i * 30)),
-                to_time=Timestamp(start_time.add(minutes=(i * 30) + 29)),
+                from_time=start_time.add(minutes=i * 30),
+                to_time=start_time.add(minutes=(i * 30) + 29),
                 nodes=nodes,
             )
             await self._save_single_diff(
@@ -480,8 +478,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_from_time.add(minutes=(4 * 30) + 29)),
+            from_time=self.diff_from_time,
+            to_time=self.diff_from_time.add(minutes=(4 * 30) + 29),
         )
         assert len(retrieved) == len(diffs)
         for r in retrieved:
@@ -498,8 +496,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             enriched_diff = EnrichedRootFactory.build(
                 base_branch_name=self.base_branch_name,
                 diff_branch_name=self.diff_branch_name,
-                from_time=Timestamp(self.diff_from_time.add(minutes=i * 30)),
-                to_time=Timestamp(end_time.add(minutes=(i * 30) + 29)),
+                from_time=self.diff_from_time.add(minutes=i * 30),
+                to_time=end_time.add(minutes=(i * 30) + 29),
                 nodes=nodes,
             )
             await self._save_single_diff(
@@ -509,8 +507,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         branch_tracked_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
-            from_time=Timestamp(self.diff_from_time.add(minutes=i * 30)),
-            to_time=Timestamp(end_time.add(minutes=(i * 30) + 29)),
+            from_time=self.diff_from_time.add(minutes=i * 30),
+            to_time=end_time.add(minutes=(i * 30) + 29),
             nodes=nodes,
             tracking_id=branch_tracking_id,
         )
@@ -520,8 +518,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         name_tracked_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
-            from_time=Timestamp(self.diff_from_time.add(minutes=i * 30)),
-            to_time=Timestamp(end_time.add(minutes=(i * 30) + 29)),
+            from_time=self.diff_from_time.add(minutes=i * 30),
+            to_time=end_time.add(minutes=(i * 30) + 29),
             nodes=nodes,
             tracking_id=name_tracking_id,
         )
@@ -640,16 +638,16 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         enriched_branch_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             nodes=all_nodes,
             tracking_id=NameTrackingId(name="the-best-diff"),
         )
         enriched_base_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.base_branch_name,
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             nodes=set(),
             tracking_id=NameTrackingId(name="the-best-diff"),
         )
@@ -668,8 +666,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             limit=7,
         )
         assert len(retrieved) == 1
@@ -681,8 +679,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             limit=7,
             offset=7,
         )
@@ -695,8 +693,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             limit=7,
             filters={"kind": {"includes": ["KindOne"]}},
         )
@@ -711,8 +709,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             limit=7,
             offset=7,
             filters={"kind": {"includes": ["KindOne"]}},
@@ -743,8 +741,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         enriched_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
             nodes={node_with_removes, node_with_updates, node_with_adds},
             tracking_id=NameTrackingId(name="the-best-diff"),
         )
@@ -854,8 +852,8 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved = await diff_repository.get(
             base_branch_name=self.base_branch_name,
             diff_branch_names=[self.diff_branch_name],
-            from_time=Timestamp(self.diff_from_time),
-            to_time=Timestamp(self.diff_to_time),
+            from_time=self.diff_from_time,
+            to_time=self.diff_to_time,
         )
         assert len(retrieved) == 1
         retrieved_diff_root = retrieved[0]

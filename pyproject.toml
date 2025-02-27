@@ -72,6 +72,7 @@ numpy = [
     { version = "^1.26.2", python = ">=3.12" },
 ]
 dulwich = "^0.22.7"
+whenever = "0.7.2"
 
 
 [tool.poetry.group.dev.dependencies]

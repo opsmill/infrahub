@@ -180,10 +180,10 @@ class InfrahubEventFilter(EventFilter):
     ) -> InfrahubEventFilter:
         occurred_filter = {}
         if since:
-            occurred_filter["since"] = Timestamp(since.isoformat()).obj
+            occurred_filter["since"] = Timestamp(since.isoformat()).to_datetime()
 
         if until:
-            occurred_filter["until"] = Timestamp(until.isoformat()).obj
+            occurred_filter["until"] = Timestamp(until.isoformat()).to_datetime()
 
         if occurred_filter:
             filters = cls(occurred=EventOccurredFilter(**occurred_filter))

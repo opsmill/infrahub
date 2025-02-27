@@ -193,7 +193,7 @@ class DiffTreeResolver:
             label=enriched_node.label,
             status=enriched_node.action,
             parent=parent,
-            last_changed_at=enriched_node.changed_at.obj if enriched_node.changed_at else None,
+            last_changed_at=enriched_node.changed_at.to_datetime() if enriched_node.changed_at else None,
             path_identifier=enriched_node.path_identifier,
             attributes=diff_attributes,
             relationships=diff_relationships,
@@ -219,7 +219,7 @@ class DiffTreeResolver:
                 diff_prop.conflict = None
         return DiffAttribute(
             name=enriched_attribute.name,
-            last_changed_at=enriched_attribute.changed_at.obj,
+            last_changed_at=enriched_attribute.changed_at.to_datetime(),
             status=enriched_attribute.action,
             path_identifier=enriched_attribute.path_identifier,
             properties=diff_properties,
@@ -241,7 +241,9 @@ class DiffTreeResolver:
         return DiffRelationship(
             name=enriched_relationship.name,
             label=enriched_relationship.label,
-            last_changed_at=enriched_relationship.changed_at.obj if enriched_relationship.changed_at else None,
+            last_changed_at=enriched_relationship.changed_at.to_datetime()
+            if enriched_relationship.changed_at
+            else None,
             status=enriched_relationship.action,
             cardinality=enriched_relationship.cardinality,
             path_identifier=enriched_relationship.path_identifier,
@@ -263,7 +265,7 @@ class DiffTreeResolver:
                 enriched_conflict=enriched_element.conflict, graphql_context=graphql_context
             )
         return DiffSingleRelationship(
-            last_changed_at=enriched_element.changed_at.obj,
+            last_changed_at=enriched_element.changed_at.to_datetime(),
             status=enriched_element.action,
             peer_id=enriched_element.peer_id,
             peer_label=enriched_element.peer_label,
@@ -287,7 +289,7 @@ class DiffTreeResolver:
             )
         return DiffProperty(
             property_type=enriched_property.property_type.value,
-            last_changed_at=enriched_property.changed_at.obj,
+            last_changed_at=enriched_property.changed_at.to_datetime(),
             previous_value=enriched_property.previous_value,
             new_value=enriched_property.new_value,
             previous_label=enriched_property.previous_label,
@@ -306,13 +308,13 @@ class DiffTreeResolver:
             uuid=enriched_conflict.uuid,
             base_branch_action=enriched_conflict.base_branch_action,
             base_branch_value=enriched_conflict.base_branch_value,
-            base_branch_changed_at=enriched_conflict.base_branch_changed_at.obj
+            base_branch_changed_at=enriched_conflict.base_branch_changed_at.to_datetime()
             if enriched_conflict.base_branch_changed_at
             else None,
             base_branch_label=enriched_conflict.base_branch_label,
             diff_branch_action=enriched_conflict.diff_branch_action,
             diff_branch_value=enriched_conflict.diff_branch_value,
-            diff_branch_changed_at=enriched_conflict.diff_branch_changed_at.obj
+            diff_branch_changed_at=enriched_conflict.diff_branch_changed_at.to_datetime()
             if enriched_conflict.diff_branch_changed_at
             else None,
             diff_branch_label=enriched_conflict.diff_branch_label,
@@ -426,7 +428,10 @@ class DiffTreeResolver:
             # take the one with the longest duration that covers multiple branches
             enriched_diff = sorted(
                 enriched_diffs,
-                key=lambda d: (d.base_branch_name != d.diff_branch_name, d.to_time.obj - d.from_time.obj),
+                key=lambda d: (
+                    d.base_branch_name != d.diff_branch_name,
+                    d.to_time.to_datetime() - d.from_time.to_datetime(),
+                ),
                 reverse=True,
             )[0]
         else:
@@ -485,8 +490,8 @@ class DiffTreeResolver:
         diff_tree_summary = DiffTreeSummary(
             base_branch=base_branch.name,
             diff_branch=diff_branch.name,
-            from_time=summary.from_time.obj,
-            to_time=summary.to_time.obj,
+            from_time=summary.from_time.to_datetime(),
+            to_time=summary.to_time.to_datetime(),
             **summary.model_dump(exclude={"from_time", "to_time"}),
         )
         full_fields = await extract_fields(info.field_nodes[0].selection_set)

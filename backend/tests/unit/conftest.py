@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-import pendulum
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
@@ -57,6 +56,7 @@ from infrahub.core.schema import (
     core_models,
 )
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
@@ -206,8 +206,8 @@ async def simple_dataset_01(db: InfrahubDatabase, empty_database) -> dict:
 
     params = {
         "branch": "main",
-        "time1": pendulum.now(tz="UTC").to_iso8601_string(),
-        "time2": pendulum.now(tz="UTC").subtract(seconds=5).to_iso8601_string(),
+        "time1": Timestamp().to_string(),
+        "time2": Timestamp().subtract(seconds=5).to_string(),
     }
 
     query = """
@@ -264,20 +264,20 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     """
 
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
     params = {
         "main_branch": "main",
         "branch1": "branch1",
-        "time0": time0.to_iso8601_string(),
-        "time_m10": time0.subtract(seconds=10).to_iso8601_string(),
-        "time_m20": time0.subtract(seconds=20).to_iso8601_string(),
-        "time_m25": time0.subtract(seconds=25).to_iso8601_string(),
-        "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
-        "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
-        "time_m40": time0.subtract(seconds=40).to_iso8601_string(),
-        "time_m45": time0.subtract(seconds=45).to_iso8601_string(),
-        "time_m50": time0.subtract(seconds=50).to_iso8601_string(),
-        "time_m60": time0.subtract(seconds=60).to_iso8601_string(),
+        "time0": time0.to_string(),
+        "time_m10": time0.subtract(seconds=10).to_string(),
+        "time_m20": time0.subtract(seconds=20).to_string(),
+        "time_m25": time0.subtract(seconds=25).to_string(),
+        "time_m30": time0.subtract(seconds=30).to_string(),
+        "time_m35": time0.subtract(seconds=35).to_string(),
+        "time_m40": time0.subtract(seconds=40).to_string(),
+        "time_m45": time0.subtract(seconds=45).to_string(),
+        "time_m50": time0.subtract(seconds=50).to_string(),
+        "time_m60": time0.subtract(seconds=60).to_string(),
     }
 
     # Update Main Branch and Create new Branch1
@@ -485,21 +485,21 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
     """
 
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
     params = {
         "main_branch": "main",
         "branch1": "branch1",
         "global_branch": GLOBAL_BRANCH_NAME,
-        "time0": time0.to_iso8601_string(),
-        "time_m10": time0.subtract(seconds=10).to_iso8601_string(),
-        "time_m20": time0.subtract(seconds=20).to_iso8601_string(),
-        "time_m25": time0.subtract(seconds=25).to_iso8601_string(),
-        "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
-        "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
-        "time_m40": time0.subtract(seconds=40).to_iso8601_string(),
-        "time_m45": time0.subtract(seconds=45).to_iso8601_string(),
-        "time_m50": time0.subtract(seconds=50).to_iso8601_string(),
-        "time_m60": time0.subtract(seconds=60).to_iso8601_string(),
+        "time0": time0.to_string(),
+        "time_m10": time0.subtract(seconds=10).to_string(),
+        "time_m20": time0.subtract(seconds=20).to_string(),
+        "time_m25": time0.subtract(seconds=25).to_string(),
+        "time_m30": time0.subtract(seconds=30).to_string(),
+        "time_m35": time0.subtract(seconds=35).to_string(),
+        "time_m40": time0.subtract(seconds=40).to_string(),
+        "time_m45": time0.subtract(seconds=45).to_string(),
+        "time_m50": time0.subtract(seconds=50).to_string(),
+        "time_m60": time0.subtract(seconds=60).to_string(),
     }
 
     # Update Main Branch and Create new Branch1
@@ -710,15 +710,15 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
     """
 
     # ---- Create all timestamps and save them in Params -----------------
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
     params = {
         "main_branch": "main",
-        "time0": time0.to_iso8601_string(),
+        "time0": time0.to_string(),
     }
 
     for cnt in range(1, 30):
         nbr_sec = cnt * 5
-        params[f"time_m{nbr_sec}"] = time0.subtract(seconds=nbr_sec).to_iso8601_string()
+        params[f"time_m{nbr_sec}"] = time0.subtract(seconds=nbr_sec).to_string()
 
     # ---- Create all Branches and register them in the Registry -----------------
     # Update Main Branch
@@ -1028,16 +1028,16 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
 async def base_dataset_04(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, register_organization_schema
 ) -> dict:
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
     params = {
         "main_branch": "main",
         "branch1": "branch1",
-        "time0": time0.to_iso8601_string(),
-        "time_m5": time0.subtract(seconds=5).to_iso8601_string(),
-        "time_m10": time0.subtract(seconds=10).to_iso8601_string(),
-        "time_m20": time0.subtract(seconds=20).to_iso8601_string(),
-        "time_m30": time0.subtract(seconds=30).to_iso8601_string(),
-        "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
+        "time0": time0.to_string(),
+        "time_m5": time0.subtract(seconds=5).to_string(),
+        "time_m10": time0.subtract(seconds=10).to_string(),
+        "time_m20": time0.subtract(seconds=20).to_string(),
+        "time_m30": time0.subtract(seconds=30).to_string(),
+        "time_m35": time0.subtract(seconds=35).to_string(),
     }
 
     blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
