@@ -7,12 +7,15 @@ from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.core.query.relationship import RelationshipGetPeerQuery, RelationshipPeerData
 from infrahub.core.schema import ProfileSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.log import get_logger
 
 from ..model.path import (
     CalculatedDiffs,
     EnrichedDiffRoot,
 )
 from .interface import DiffEnricherInterface
+
+log = get_logger()
 
 
 class DiffHierarchyEnricher(DiffEnricherInterface):
@@ -27,7 +30,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
         # A hierarchy can be defined in 2 ways
         # - A node has a relationship of kind parent
         # - A node is part of a hierarchy
-
+        log.info("Beginning hierarchical diff enrichment...")
         node_rel_parent_map: dict[str, list[str]] = defaultdict(list)
         node_hierarchy_map: dict[str, list[str]] = defaultdict(list)
 
@@ -53,6 +56,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
 
         await self._enrich_nodes_with_parent(enriched_diff_root=enriched_diff_root, node_map=node_rel_parent_map)
         await self._enrich_hierarchical_nodes(enriched_diff_root=enriched_diff_root, node_map=node_hierarchy_map)
+        log.info("Hierarchical diff enrichment complete.")
 
     async def _enrich_hierarchical_nodes(
         self,
@@ -63,21 +67,23 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
 
         # Retrieve the ID of all ancestors
         for kind, node_ids in node_map.items():
+            log.info(f"Beginning enrichment for {kind} node, num_nodes={len(node_ids)}...")
             hierarchy_schema = self.db.schema.get(
                 name=kind, branch=enriched_diff_root.diff_branch_name, duplicate=False
             )
-            for node_id in node_ids:
-                query = await NodeGetHierarchyQuery.init(
-                    db=self.db,
-                    direction=RelationshipHierarchyDirection.ANCESTORS,
-                    node_id=node_id,
-                    node_schema=hierarchy_schema,
-                    branch=diff_branch,
-                    hierarchical_ordering=True,
-                )
-                await query.execute(db=self.db)
+            query = await NodeGetHierarchyQuery.init(
+                db=self.db,
+                direction=RelationshipHierarchyDirection.ANCESTORS,
+                node_ids=node_ids,
+                node_schema=hierarchy_schema,
+                branch=diff_branch,
+                hierarchical_ordering=True,
+            )
+            await query.execute(db=self.db)
 
-                ancestors = list(query.get_relatives())
+            ancestors_map = query.get_relatives_by_node()
+            for node_id in node_ids:
+                ancestors = ancestors_map.get(node_id)
 
                 if not ancestors:
                     continue

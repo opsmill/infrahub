@@ -261,7 +261,7 @@ async def many_relationship_resolver(
             query = await NodeGetHierarchyQuery.init(
                 db=db,
                 direction=RelationshipHierarchyDirection.DESCENDANTS,
-                node_id=parent["id"],
+                node_ids=[parent["id"]],
                 node_schema=node_schema,
                 at=context.at,
                 branch=context.branch,
@@ -269,7 +269,8 @@ async def many_relationship_resolver(
             if node_schema.hierarchy:
                 source_kind = node_schema.hierarchy
             await query.execute(db=db)
-            descendants_ids = list(query.get_peer_ids())
+            descendants_ids_by_node = query.get_peer_ids_by_node()
+            descendants_ids = descendants_ids_by_node.get(parent["id"], [])
             ids.extend(descendants_ids)
 
         if "count" in fields:

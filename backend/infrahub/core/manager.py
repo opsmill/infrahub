@@ -424,14 +424,15 @@ class NodeManager:
         query = await NodeGetHierarchyQuery.init(
             db=db,
             direction=direction,
-            node_id=id,
+            node_ids=[id],
             node_schema=node_schema,
             filters=filters,
             at=at,
             branch=branch,
         )
-
-        return await query.count(db=db)
+        await query.execute(db=db)
+        peer_id_map = query.get_peer_ids_by_node()
+        return len(peer_id_map.get(id, []))
 
     @classmethod
     async def query_hierarchy(
@@ -453,7 +454,7 @@ class NodeManager:
         query = await NodeGetHierarchyQuery.init(
             db=db,
             direction=direction,
-            node_id=id,
+            node_ids=[id],
             node_schema=node_schema,
             filters=filters,
             offset=offset,
@@ -463,9 +464,9 @@ class NodeManager:
         )
         await query.execute(db=db)
 
-        peers_ids = list(query.get_peer_ids())
-
-        if not peers_ids:
+        peer_ids_map = query.get_peer_ids_by_node()
+        peer_ids = peer_ids_map.get(id)
+        if not peer_ids:
             return {}
 
         hierarchy_schema = node_schema.get_hierarchy_schema(db=db, branch=branch)
@@ -478,7 +479,7 @@ class NodeManager:
                 fields = deep_merge_dict(dicta=fields, dictb=display_label_fields)
 
         return await cls.get_many(
-            db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_owner=True, include_source=True
+            db=db, ids=peer_ids, fields=fields, at=at, branch=branch, include_owner=True, include_source=True
         )
 
     @overload

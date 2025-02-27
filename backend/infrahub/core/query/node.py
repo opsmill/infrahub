@@ -5,7 +5,7 @@ from copy import copy
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, AsyncIterator, Generator, Optional, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Optional, Union
 
 from infrahub import config
 from infrahub.core.constants import (
@@ -1260,10 +1260,11 @@ class NodeGetListQuery(Query):
 class NodeGetHierarchyQuery(Query):
     name = "node_get_hierarchy"
     type = QueryType.READ
+    insert_return = False
 
     def __init__(
         self,
-        node_id: str,
+        node_ids: list[str],
         direction: RelationshipHierarchyDirection,
         node_schema: Union[NodeSchema, GenericSchema],
         filters: Optional[dict] = None,
@@ -1272,7 +1273,7 @@ class NodeGetHierarchyQuery(Query):
     ) -> None:
         self.filters = filters or {}
         self.direction = direction
-        self.node_id = node_id
+        self.node_ids = node_ids
         self.node_schema = node_schema
         self.hierarchical_ordering = hierarchical_ordering
 
@@ -1282,8 +1283,8 @@ class NodeGetHierarchyQuery(Query):
         hierarchy_schema = self.node_schema.get_hierarchy_schema(db=db, branch=self.branch)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
-        self.order_by = []
-        self.params["uuid"] = self.node_id
+        order_by = []
+        self.params["uuids"] = self.node_ids
 
         filter_str = "[:IS_RELATED*2..%s { hierarchy: $hierarchy }]" % (
             config.SETTINGS.database.max_depth_search_hierarchy * 2,
@@ -1303,8 +1304,9 @@ class NodeGetHierarchyQuery(Query):
         )
 
         query = """
-        MATCH path = (n:Node { uuid: $uuid } )%(filter)s(peer:Node)
-        WHERE $hierarchy IN LABELS(peer) and all(r IN relationships(path) WHERE (%(branch_filter)s))
+        MATCH path = (n:Node)%(filter)s(peer:%(hierarchy)s)
+        WHERE n.uuid IN $uuids
+        AND all(r IN relationships(path) WHERE (%(branch_filter)s))
         WITH n, collect(last(nodes(path))) AS peers_with_duplicates
         CALL {
             WITH peers_with_duplicates
@@ -1316,12 +1318,17 @@ class NodeGetHierarchyQuery(Query):
             MATCH path = (n)%(filter)s(peer)
             WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
             WITH %(with_clause)s
-            RETURN peer as peer1, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
+            RETURN all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
             ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
             LIMIT 1
         }
-        WITH peer1 as peer, is_active
-        """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
+        WITH n, peer, is_active
+        """ % {
+            "filter": filter_str,
+            "branch_filter": branch_filter,
+            "with_clause": with_clause,
+            "hierarchy": hierarchy_schema.kind,
+        }
 
         self.add_to_query(query)
         where_clause = ["is_active = TRUE"]
@@ -1335,8 +1342,6 @@ class NodeGetHierarchyQuery(Query):
                 self.params["peer_ids"].append(clean_filters.get("id"))
 
         self.add_to_query("WHERE " + " AND ".join(where_clause))
-
-        self.return_labels = ["peer"]
 
         # ----------------------------------------------------------------------------
         # FILTER Results
@@ -1377,9 +1382,7 @@ class NodeGetHierarchyQuery(Query):
         # ----------------------------------------------------------------------------
         # ORDER Results
         # ----------------------------------------------------------------------------
-        if self.hierarchical_ordering:
-            return
-        if hasattr(hierarchy_schema, "order_by") and hierarchy_schema.order_by:
+        if not self.hierarchical_ordering and hasattr(hierarchy_schema, "order_by") and hierarchy_schema.order_by:
             order_cnt = 1
 
             for order_by_value in hierarchy_schema.order_by:
@@ -1397,24 +1400,41 @@ class NodeGetHierarchyQuery(Query):
                     branch=self.branch,
                     subquery_idx=order_cnt,
                 )
-                self.order_by.append(subquery_result_name)
+                order_by.append(subquery_result_name)
                 self.params.update(subquery_params)
 
                 self.add_subquery(subquery=subquery)
 
                 order_cnt += 1
-        else:
-            self.order_by.append("peer.uuid")
+        elif not self.hierarchical_ordering:
+            order_by.append("peer_uuid")
 
-    def get_peer_ids(self) -> Generator[str, None, None]:
-        for result in self.get_results_group_by(("peer", "uuid")):
-            data = result.get("peer").get("uuid")
-            yield data
+        order_by_str = ", ".join(order_by)
+        order_by_str = (", " + order_by_str) if order_by_str else ""
 
-    def get_relatives(self) -> Generator[PeerInfo, None, None]:
-        for result in self.get_results_group_by(("peer", "uuid")):
-            peer_node = result.get("peer")
-            yield PeerInfo(
-                uuid=peer_node.get("uuid"),
-                kind=peer_node.get("kind"),
-            )
+        self.add_to_query(
+            f"WITH n.uuid AS node_uuid, n.kind AS node_kind, peer.uuid AS peer_uuid, peer.kind AS peer_kind{order_by_str}"
+        )
+        self.add_to_query(f"ORDER BY n.uuid{order_by_str}")
+        self.add_to_query("RETURN node_uuid, node_kind, collect([peer_uuid, peer_kind]) AS peers")
+        self.return_labels = ["node_uuid", "node_kind", "peers"]
+
+    def get_peer_ids_by_node(self) -> dict[str, list[str]]:
+        peer_node_map: dict[str, list[str]] = {}
+        for result in self.get_results():
+            node_uuid = result.get_as_str(label="node_uuid")
+            peers = result.get_as_type(label="peers", return_type=list[str])
+            peer_node_map[node_uuid] = [p[0] for p in peers]
+        return peer_node_map
+
+    def get_relatives_by_node(self) -> dict[str, list[PeerInfo]]:
+        peer_infos_by_node: dict[str, list[PeerInfo]] = {}
+        for result in self.get_results():
+            node_uuid = result.get_as_str(label="node_uuid")
+            peers = result.get_as_type(label="peers", return_type=list[str])
+            peer_infos_by_node[node_uuid] = []
+            for peer_tuple in peers:
+                peer_uuid = peer_tuple[0]
+                peer_kind = peer_tuple[1]
+                peer_infos_by_node[node_uuid].append(PeerInfo(uuid=peer_uuid, kind=peer_kind))
+        return peer_infos_by_node
