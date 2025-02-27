@@ -1,6 +1,7 @@
 import { GRAPHQL_QUERY_OBJECT, TASK_OBJECT } from "@/config/constants";
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
+import { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -11,11 +12,8 @@ import { NetworkStatus } from "@apollo/client";
 import { Navigate, useParams } from "react-router";
 import GraphqlQueryDetailsPage from "./CoreGraphQLQuery/graphql-query-details";
 
-export function ObjectDetailsPage() {
-  const { objectKind, objectid } = useParams();
-  const { schema } = useSchema(objectKind);
-
-  if (!schema) return <ErrorScreen message={`Object ${objectKind} not found.`} />;
+export function ObjectDetailsPage({ schema }: { schema: ModelSchema }) {
+  const { objectid } = useParams();
 
   const { data, networkStatus, error, permission } = useObjectDetails(schema, objectid as string);
 
@@ -59,14 +57,19 @@ export function ObjectDetailsPage() {
 
 export const Component = () => {
   const { objectKind, objectid } = useParams();
+  const { schema } = useSchema(objectKind);
+
+  if (!schema) {
+    return <ErrorScreen message={`Schema ${objectKind} not found.`} />;
+  }
 
   if (!objectid) {
     return <Navigate to={constructPath(`/objects/${objectKind}`)} />;
   }
 
   if (objectKind === GRAPHQL_QUERY_OBJECT) {
-    return <GraphqlQueryDetailsPage graphqlQueryId={objectid} />;
+    return <GraphqlQueryDetailsPage graphqlQuerySchema={schema} graphqlQueryId={objectid} />;
   }
 
-  return <ObjectDetailsPage />;
+  return <ObjectDetailsPage schema={schema} />;
 };
