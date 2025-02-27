@@ -172,7 +172,7 @@ def _generate_infrahub_cli_documentation(context: Context) -> None:
 def _generate(context: Context) -> None:
     """Generate documentation output from code."""
     _generate_infrahub_cli_documentation(context=context)
-    #_generate_infrahubctl_documentation(context=context)
+    # _generate_infrahubctl_documentation(context=context)
     _generate_infrahub_schema_documentation()
     _generate_infrahub_repository_configuration_documentation()
     # _generate_infrahub_sdk_configuration_documentation()
@@ -443,12 +443,12 @@ def _generate_infrahub_bus_events_documentation() -> None:
     print(f"Docs saved to: {output_file}")
 
 
-def _generate_infrahub_events_documentation() -> None:
+def _generate_infrahub_events_documentation() -> None:  # noqa: PLR0915
     """
     Generate documentation for all Infrahub events into a single MDX file
     using a Jinja2 template. Accessible via `invoke generate_infrahub_event_documentation`.
 
-    Note: Ensure all event classes (e.g. GroupMutatedEvent, CommitUpdatedEvent, etc.) are imported
+    Note: Ensure all event classes (like GroupMutatedEvent, CommitUpdatedEvent, etc.) are imported
     so that they appear in the introspection.
     """
     import re
