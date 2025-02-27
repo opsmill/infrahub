@@ -1,9 +1,6 @@
 import ErrorFallback from "@/shared/components/errors/error-fallback";
-import { ErrorBoundaryProps } from "react-error-boundary";
+import { FallbackProps } from "react-error-boundary";
 
-export const ErrorBoundaryApp: ErrorBoundaryProps["FallbackComponent"] = ({
-  error,
-  resetErrorBoundary,
-}) => {
+export const ErrorBoundaryApp = ({ error, resetErrorBoundary }: FallbackProps) => {
   return <ErrorFallback error={error} onReset={resetErrorBoundary} />;
 };
