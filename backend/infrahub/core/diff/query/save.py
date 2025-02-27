@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Iterable
 
 from infrahub.core.query import Query, QueryType
 from infrahub.database import InfrahubDatabase
@@ -83,7 +83,7 @@ class EnrichedNodeBatchCreateQuery(Query):
         query = """
 UNWIND $node_details_list AS node_details
 WITH node_details.root_uuid AS root_uuid, node_details.node_map AS node_map
-MATCH (diff_root:DiffRoot {uuid: root_uuid})
+MERGE (diff_root:DiffRoot {uuid: root_uuid})
 MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_map.node_properties.uuid})
 WITH root_uuid, node_map, diff_node, (node_map.conflict_params IS NOT NULL) AS has_node_conflict
 SET
@@ -432,26 +432,34 @@ class EnrichedNodesLinkQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    def __init__(self, enriched_diffs: EnrichedDiffs, **kwargs: Any) -> None:
+    def __init__(self, diff_root_uuid: str, diff_nodes: Iterable[EnrichedDiffNode], **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.enriched_diffs = enriched_diffs
+        self.diff_root_uuid = diff_root_uuid
+        self.diff_nodes = diff_nodes
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         parent_links_list = []
-        for diff_root in (self.enriched_diffs.base_branch_diff, self.enriched_diffs.diff_branch_diff):
-            for node in diff_root.nodes:
-                parent_links_list.extend(self._build_node_parent_links(enriched_node=node, root_uuid=diff_root.uuid))
-        self.params = {"node_links_list": parent_links_list}
+        for diff_node in self.diff_nodes:
+            for relationship in diff_node.relationships:
+                for parent_node in relationship.nodes:
+                    parent_links_list.append(
+                        {
+                            "child_uuid": diff_node.uuid,
+                            "child_relationship_name": relationship.name,
+                            "parent_uuid": parent_node.uuid,
+                        }
+                    )
+
+        self.params = {"root_uuid": self.diff_root_uuid, "node_links_list": parent_links_list}
         query = """
 UNWIND $node_links_list AS node_link_details
 WITH
-    node_link_details.root_uuid AS root_uuid,
     node_link_details.parent_uuid AS parent_uuid,
     node_link_details.child_uuid AS child_uuid,
     node_link_details.child_relationship_name AS relationship_name
 CALL {
-    WITH root_uuid, parent_uuid, child_uuid, relationship_name
-    MATCH (diff_root {uuid: root_uuid})
+    WITH parent_uuid, child_uuid, relationship_name
+    MATCH (diff_root {uuid: $root_uuid})
     MATCH (diff_root)-[:DIFF_HAS_NODE]->(child_node:DiffNode {uuid: child_uuid})
         -[:DIFF_HAS_RELATIONSHIP]->(diff_rel_group:DiffRelationship {name: relationship_name})
     MATCH (diff_root)-[:DIFF_HAS_NODE]->(parent_node:DiffNode {uuid: parent_uuid})
@@ -459,20 +467,3 @@ CALL {
 }
         """
         self.add_to_query(query)
-
-    def _build_node_parent_links(self, enriched_node: EnrichedDiffNode, root_uuid: str) -> list[dict[str, str]]:
-        if not enriched_node.relationships:
-            return []
-        parent_links = []
-        for relationship in enriched_node.relationships:
-            for parent_node in relationship.nodes:
-                parent_links.append(
-                    {
-                        "child_uuid": enriched_node.uuid,
-                        "child_relationship_name": relationship.name,
-                        "parent_uuid": parent_node.uuid,
-                        "root_uuid": root_uuid,
-                    }
-                )
-                parent_links.extend(self._build_node_parent_links(enriched_node=parent_node, root_uuid=root_uuid))
-        return parent_links
