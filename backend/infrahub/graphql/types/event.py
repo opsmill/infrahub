@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, DateTime, Field, Int, Interface, List, NonNull, ObjectType, String
+from graphene import Boolean, DateTime, Field, InputObjectType, Int, Interface, List, NonNull, ObjectType, String
 from graphene.types.generic import GenericScalar
 
 from .common import RelatedNode
@@ -21,16 +21,25 @@ class InfrahubMutatedAttribute(ObjectType):
 
 
 class EventNodeInterface(Interface):
-    id = String(required=True)
-    event = String(required=True)
-    branch = String(required=False)
-    account_id = String(required=False)
-    occurred_at = DateTime(required=True)
-    level = Int(required=True)
-    primary_node = Field(RelatedNode, required=False)
-    related_nodes = List(NonNull(RelatedNode), required=True)
-    has_children = Boolean(required=True)
-    parent_id = String(required=False)
+    id = String(required=True, description="The ID of the event.")
+    event = String(required=True, description="The name of the event.")
+    branch = String(required=False, description="The branch where the event occurred.")
+    account_id = String(required=False, description="The account ID that triggered the event.")
+    occurred_at = DateTime(required=True, description="The timestamp when the event occurred.")
+    level = Int(
+        required=True,
+        description="The level of the event 0 is a root level event, the child events will have 1 and grand children 2.",
+    )
+    primary_node = Field(
+        RelatedNode, required=False, description="The primary Infrahub node this event is associated with."
+    )
+    related_nodes = List(
+        NonNull(RelatedNode), required=True, description="Related Infrahub nodes this event is associated with."
+    )
+    has_children = Boolean(
+        required=True, description="Indicates if the event is expected to have child events under it"
+    )
+    parent_id = String(required=False, description="The event ID of the direct parent to this event.")
 
     @classmethod
     def resolve_type(
@@ -47,6 +56,16 @@ class EventNodes(ObjectType):
     node = Field(EventNodeInterface)
 
 
+class BranchEventTypeFilter(InputObjectType):
+    branches = List(NonNull(String), required=True, description="Name of impacted branches")
+
+
+class EventTypeFilter(InputObjectType):
+    branch_merged = Field(
+        BranchEventTypeFilter, required=False, description="Filters specific to infrahub.branch.merged events"
+    )
+
+
 # ---------------------------------------
 # Branch events
 # ---------------------------------------
@@ -54,13 +73,24 @@ class BranchCreatedEvent(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
 
+    created_branch = String(required=True, description="The name of the branch that was created")
     payload = Field(GenericScalar, required=True)
+
+
+class BranchMergedEvent(ObjectType):
+    class Meta:
+        interfaces = (EventNodeInterface,)
+
+    source_branch = String(required=True, description="The name of the branch that was merged into the default branch")
 
 
 class BranchRebasedEvent(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
 
+    rebased_branch = String(
+        required=True, description="The name of the branch that was rebased and aligned with the default branch"
+    )
     payload = Field(GenericScalar, required=True)
 
 
@@ -68,6 +98,7 @@ class BranchDeletedEvent(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
 
+    deleted_branch = String(required=True, description="The name of the branch that was deleted")
     payload = Field(GenericScalar, required=True)
 
 
@@ -94,6 +125,7 @@ EVENT_TYPES: dict[str, type[ObjectType]] = {
     "infrahub.node.updated": NodeMutatedEvent,
     "infrahub.node.deleted": NodeMutatedEvent,
     "infrahub.branch.created": BranchCreatedEvent,
+    "infrahub.branch.merged": BranchMergedEvent,
     "infrahub.branch.rebased": BranchRebasedEvent,
     "infrahub.branch.deleted": BranchDeletedEvent,
     "undefined": StandardEvent,

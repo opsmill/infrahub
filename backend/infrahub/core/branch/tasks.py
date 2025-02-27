@@ -159,7 +159,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, service: Infrahub
     # TODO Add account information
     await service.event.send(
         event=BranchRebasedEvent(
-            branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
+            branch_name=obj.name,
+            branch_id=str(obj.uuid),
+            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
         )
     )
 
@@ -174,7 +176,11 @@ async def merge_branch(branch: str, context: InfrahubContext, service: InfrahubS
         obj = await Branch.get_by_name(db=db, name=branch)
         default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
         component_registry = get_component_registry()
-        merge_event = BranchMergedEvent(meta=EventMeta.from_context(context=context, branch=obj))
+        merge_event = BranchMergedEvent(
+            branch_name=obj.name,
+            branch_id=str(obj.get_uuid()),
+            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+        )
 
         merger: BranchMerger | None = None
         async with lock.registry.global_graph_lock():
@@ -280,7 +286,7 @@ async def delete_branch(branch: str, context: InfrahubContext, service: Infrahub
             branch_name=branch,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta(branch=obj, context=context),
+            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
         )
 
         await service.workflow.submit_workflow(
@@ -348,9 +354,7 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext, serv
             branch_name=obj.name,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta(
-                branch=obj, account_id=context.account.account_id, initiator_id=WORKER_IDENTITY, context=context
-            ),
+            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
         )
         await service.event.send(event=event)
 
