@@ -2,11 +2,9 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
-import { ErrorBoundary } from "react-error-boundary";
 import { Route, Routes } from "react-router";
 import { BranchContext } from "../../../src/entities/branches/ui/branches-provider";
 import { ObjectDetailsPage } from "../../../src/pages/objects/object-details";
-import ErrorFallback from "../../../src/shared/components/errors/error-fallback";
 import { generateBranch } from "../../fake/branch";
 import {
   deviceDetailsMocksASNName,
@@ -75,14 +73,12 @@ describe("List screen", () => {
     cy.mount(
       <BranchContext value={{ currentBranch: generateBranch(), setCurrentBranch: () => {} }}>
         <MockedProvider mocks={mocks} addTypename={false}>
-          <ErrorBoundary FallbackComponent={ErrorFallback}>
-            <Routes>
-              <Route
-                element={<ObjectDetailsPage schema={deviceDetailsMocksSchema[0]} />}
-                path={graphqlQueryItemsPath}
-              />
-            </Routes>
-          </ErrorBoundary>
+          <Routes>
+            <Route
+              element={<ObjectDetailsPage schema={deviceDetailsMocksSchema[0]} />}
+              path={graphqlQueryItemsPath}
+            />
+          </Routes>
         </MockedProvider>
       </BranchContext>,
       {
