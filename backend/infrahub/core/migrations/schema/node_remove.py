@@ -15,17 +15,28 @@ if TYPE_CHECKING:
 
 class NodeRemoveMigrationBaseQuery(MigrationQuery):
     def render_sub_query_per_rel_type(
-        self, rel_name: str, rel_type: str, rel_def: FieldInfo, direction: GraphRelDirection
+        self,
+        rel_name: str,
+        rel_type: str,
+        rel_def: FieldInfo,
     ) -> str:
         subquery = [
             f"WITH peer_node, {rel_name}, active_node",
             f"WITH peer_node, {rel_name}, active_node",
             f'WHERE type({rel_name}) = "{rel_type}"',
         ]
-        if rel_def.default.direction in [direction, GraphRelDirection.EITHER]:
-            subquery.append(f"CREATE (active_node)-[:{rel_type} $rel_props ]->(peer_node)")
-        elif rel_def.default.direction in [direction, GraphRelDirection.EITHER]:
-            subquery.append(f"CREATE (active_node)<-[:{rel_type} $rel_props ]-(peer_node)")
+        if rel_def.default.direction in [GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER]:
+            subquery.append(f"""
+                CREATE (active_node)-[edge:{rel_type} $rel_props ]->(peer_node)
+                SET edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
+                SET edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
+                """)
+        elif rel_def.default.direction in [GraphRelDirection.INBOUND, GraphRelDirection.EITHER]:
+            subquery.append(f"""
+                CREATE (active_node)<-[edge:{rel_type} $rel_props ]-(peer_node)
+                SET edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
+                SET edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
+                """)
         subquery.append("RETURN peer_node as p2")
         return "\n".join(subquery)
 
@@ -38,10 +49,10 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
 
         self.params["current_time"] = self.at.to_string()
         self.params["branch_name"] = self.branch.name
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
 
         self.params["rel_props"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
             "status": RelationshipStatus.DELETED.value,
             "from": self.at.to_string(),
         }
@@ -99,7 +110,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
             %(sub_query)s
         }
         WITH p2 as peer_node, rel_inband, active_node
-        FOREACH (i in CASE WHEN rel_inband.branch = $branch_name THEN [1] ELSE [] END |
+        FOREACH (i in CASE WHEN rel_inband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
             SET rel_inband.to = $current_time
         )
         """ % {"sub_query": sub_query, "branch_filter": branch_filter}
@@ -108,7 +119,9 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     def render_sub_query_in(self) -> str:
         sub_queries_in = [
             self.render_sub_query_per_rel_type(
-                rel_name="rel_inband", rel_type=rel_type, rel_def=rel_def, direction=GraphRelDirection.INBOUND
+                rel_name="rel_inband",
+                rel_type=rel_type,
+                rel_def=rel_def,
             )
             for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
         ]
@@ -142,8 +155,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
         CALL {
             %(sub_query)s
         }
-        WITH p2 as peer_node, rel_outband, active_node
-        FOREACH (i in CASE WHEN rel_outband.branch = $branch_name THEN [1] ELSE [] END |
+        FOREACH (i in CASE WHEN rel_outband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
             SET rel_outband.to = $current_time
         )
         """ % {"sub_query": sub_query, "branch_filter": branch_filter}
@@ -153,7 +165,9 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     def render_sub_query_out(self) -> str:
         sub_queries_out = [
             self.render_sub_query_per_rel_type(
-                rel_name="rel_outband", rel_type=rel_type, rel_def=rel_def, direction=GraphRelDirection.OUTBOUND
+                rel_name="rel_outband",
+                rel_type=rel_type,
+                rel_def=rel_def,
             )
             for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
         ]

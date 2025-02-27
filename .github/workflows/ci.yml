@@ -41,7 +41,6 @@ jobs:
       documentation_generated: ${{ steps.changes.outputs.documentation_generated_all }}
       release: ${{ steps.changes.outputs.release_all }}
       frontend: ${{ steps.changes.outputs.frontend_all }}
-      helm: ${{ steps.changes.outputs.helm_all }}
       e2e: ${{ steps.changes.outputs.e2e_all }}
       python: ${{ steps.changes.outputs.python_all }}
       javascript: ${{ steps.changes.outputs.javascript_all }}
@@ -62,21 +61,6 @@ jobs:
           filters: .github/file-filters.yml
 
  # ------------------------------------------ All Linter  ------------------------------------------
-  helm-lint:
-    if: needs.files-changed.outputs.helm == 'true'
-    needs: ["files-changed"]
-    runs-on: "ubuntu-latest"
-    timeout-minutes: 5
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-        with:
-          submodules: true
-      - name: "Install Helm"
-        uses: azure/setup-helm@v4.3.0
-      - name: "Linting: helm lint"
-        run: "helm lint helm/"
-
   yaml-lint:
     if: needs.files-changed.outputs.yaml == 'true'
     needs: ["files-changed"]
