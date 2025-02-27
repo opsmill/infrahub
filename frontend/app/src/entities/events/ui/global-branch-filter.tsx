@@ -1,9 +1,11 @@
+import { QSP } from "@/config/qsp";
 import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
 import { Icon } from "@iconify-icon/react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { TagProps } from "react-aria-components";
+import { useQueryParam } from "use-query-params";
 import { GlobalFilterForm } from "./global-filter-form";
 import { FilterTag } from "./global-filter-tag";
 
@@ -13,14 +15,15 @@ interface FilterTagProps extends TagProps {
   fieldSchema: AttributeSchema | RelationshipSchema;
 }
 
-export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagProps) {
+export function GlobalBranchFilter({ label, name, fieldSchema, ...props }: FilterTagProps) {
   const [filters, setFilters] = useFilters();
+  const [branch] = useQueryParam(QSP.BRANCH);
   const [showFilters, setShowFilters] = useState(false);
 
   const currentFilter = filters.find((filter) => filter.name.startsWith(name));
 
-  const handleRemoveFilter = (filterName: string) => {
-    setFilters(filters.filter((f) => f.name !== `${filterName}__value`));
+  const handleRemoveFilter = () => {
+    setFilters([...filters, { name: "branches__value", value: null }]);
   };
 
   const getFilterDisplayValue = () => {
@@ -45,8 +48,17 @@ export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagPr
     return currentFilter?.value;
   };
 
+  useEffect(() => {
+    if (!branch || branch === "main") return;
+
+    if (currentFilter?.value === null) return;
+
+    // Set the current branch if it's not main and if it has not been removed from the filters
+    setFilters([...filters, { name: "branches__value", value: branch }]);
+  }, []);
+
   return (
-    <FilterTag currentFilter={currentFilter} label={label} {...props}>
+    <FilterTag label="branches" currentFilter={currentFilter} {...props}>
       <Popover open={showFilters} onOpenChange={setShowFilters}>
         <PopoverTrigger className="flex items-center h-6 pl-1">
           <span>{label}</span>
@@ -65,7 +77,7 @@ export function GlobalFilter({ label, name, fieldSchema, ...props }: FilterTagPr
               className="flex items-center gap-1 h-6 rounded-r-full px-1 hover:bg-gray-300 transition-all"
               onClick={(event) => {
                 event.stopPropagation();
-                handleRemoveFilter(name);
+                handleRemoveFilter();
               }}
             >
               <div className="text-custom-blue-700 font-medium inline-flex items-center">
