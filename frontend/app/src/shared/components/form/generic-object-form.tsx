@@ -28,7 +28,7 @@ export const GenericObjectForm = ({ genericSchema, ...props }: GenericObjectForm
         onChange={setKindToCreate}
       />
 
-      {kindToCreate && <ObjectForm kind={kindToCreate} {...props} />}
+      {kindToCreate && <ObjectForm key={kindToCreate} kind={kindToCreate} {...props} />}
     </>
   );
 };

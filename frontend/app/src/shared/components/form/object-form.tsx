@@ -62,7 +62,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     );
   }
 
-  if (!props.isUpdate) {
+  if (!props.isUpdate && !isGeneric) {
     const objectTemplateRelationship = getTemplateRelationshipFromSchema(schema);
     if (objectTemplateRelationship && props.objectTemplate === undefined) {
       return (
