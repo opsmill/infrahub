@@ -73,12 +73,14 @@ class BranchCreatedEvent(InfrahubEvent):
 class BranchMergedEvent(InfrahubEvent):
     """Event generated when a branch has been merged"""
 
+    branch_name: str = Field(..., description="The name of the branch")
+    branch_id: str = Field(..., description="The ID of the branch")
+
     def get_resource(self) -> dict[str, str]:
         return {
-            "prefect.resource.id": f"infrahub.branch.{self.meta.get_branch_id()}",
-            "infrahub.node.kind": "Branch",
-            "infrahub.node.id": self.meta.get_branch_id(),
-            "infrahub.node.label": self.meta.context.branch.name,
+            "prefect.resource.id": f"infrahub.branch.{self.branch_name}",
+            "infrahub.branch.id": self.branch_id,
+            "infrahub.branch.name": self.branch_name,
         }
 
     def get_messages(self) -> list[InfrahubMessage]:
@@ -99,6 +101,7 @@ class BranchRebasedEvent(InfrahubEvent):
         return {
             "prefect.resource.id": f"infrahub.branch.{self.branch_name}",
             "infrahub.branch.id": self.branch_id,
+            "infrahub.branch.name": self.branch_name,
         }
 
     def get_messages(self) -> list[InfrahubMessage]:

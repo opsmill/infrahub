@@ -19,9 +19,6 @@ from infrahub.tasks.check import set_check_status
 
 COMMAND_MAP = {
     "check.generator.run": check.generator.run,
-    "check.repository.check_definition": check.repository.check_definition,
-    "check.repository.merge_conflicts": check.repository.merge_conflicts,
-    "check.repository.user_check": check.repository.user_check,
     "event.branch.merge": event.branch.merge,
     "event.node.mutated": event.node.mutated,
     "event.schema.update": event.schema.update,
@@ -35,8 +32,6 @@ COMMAND_MAP = {
     "request.generator_definition.check": requests.generator_definition.check,
     "request.proposed_change.pipeline": requests.proposed_change.pipeline,
     "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
-    "request.repository.checks": requests.repository.checks,
-    "request.repository.user_checks": requests.repository.user_checks,
     "send.echo.request": send.echo.request,
 }
 

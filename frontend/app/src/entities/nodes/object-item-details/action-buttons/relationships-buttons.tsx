@@ -2,6 +2,7 @@ import { QSP } from "@/config/qsp";
 import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/addRelationship";
 import { Permission } from "@/entities/permission/types";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
@@ -19,16 +20,19 @@ import { StringParam, useQueryParam } from "use-query-params";
 
 interface RelationshipsButtonsProps {
   permission: Permission;
+  schema: ModelSchema;
 }
 
-export function RelationshipsButtons({ permission }: RelationshipsButtonsProps) {
+export function RelationshipsButtons({
+  permission,
+  schema: parentSchema,
+}: RelationshipsButtonsProps) {
   const { objectKind, objectid } = useParams();
   const [addRelationship] = useMutation(ADD_RELATIONSHIP);
   const generics = useAtomValue(genericSchemasAtom);
   const schemaList = useAtomValue(nodeSchemasAtom);
   const [relationshipTab] = useQueryParam(QSP.TAB, StringParam);
 
-  const parentSchema = schemaList.find((s) => s.kind === objectKind);
   const parentGeneric = generics.find((s) => s.kind === objectKind);
   const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipTab);
   const relationshipGeneric = parentGeneric?.relationships?.find(

@@ -6,7 +6,7 @@ import {
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { AttributeSchema } from "@/entities/schema/types";
 import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
-import { FormFieldValue } from "@/shared/components/form/type";
+import { FormAttributeValue } from "@/shared/components/form/type";
 import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
 import useFilters, { Filter } from "@/shared/hooks/useFilters";
 import { useState } from "react";
@@ -19,20 +19,21 @@ export type AttributeFilterFormProps = {
 export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFilterFormProps) {
   const [filters, setFilters] = useFilters();
   const currentFilter = filters.find((filter) => filter.name.startsWith(attributeSchema.name));
-  const [condition, setCondition] = useState<FilterCondition | undefined>(
+  const [condition, setCondition] = useState<FilterCondition>(
     getCurrentFilterCondition(currentFilter) ?? FILTER_CONDITION.CONTAINS
   );
 
-  const handleSubmit = (formData: Record<string, FormFieldValue>) => {
+  const handleSubmit = (formData: Record<string, FormAttributeValue["value"]>) => {
     if (condition === FILTER_CONDITION.CONTAINS) {
       const { attribute } = formData;
 
-      if (attribute === undefined) {
-        return;
+      if (!attribute && attribute !== 0) {
+        return setFilters(filters.filter((f) => !f.name.startsWith(attributeSchema.name)));
       }
 
+      const isAttributeArray = Array.isArray(attribute);
       const newFilter: Filter = {
-        name: `${attributeSchema.name}__value`,
+        name: `${attributeSchema.name}__${isAttributeArray ? "values" : "value"}`,
         value: attribute,
       };
 
@@ -87,7 +88,12 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
         {condition === FILTER_CONDITION.CONTAINS && (
           <FormField
             name="attribute"
-            defaultValue={currentFilter?.value}
+            defaultValue={
+              currentFilter &&
+              getCurrentFilterCondition(currentFilter) === FILTER_CONDITION.CONTAINS
+                ? currentFilter.value
+                : undefined
+            }
             render={({ field }) => {
               return <DynamicFilterInput {...field} fieldSchema={attributeSchema} />;
             }}

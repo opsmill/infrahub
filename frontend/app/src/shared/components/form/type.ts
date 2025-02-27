@@ -17,21 +17,30 @@ export type EmptyFieldValue = {
   value: null;
 };
 
-export type AttributeValueFromProfile = {
-  source: {
-    type: "profile";
-    label: string | null;
-    kind: string;
-    id: string;
-  };
-  value: string | number | boolean | null;
-};
-
 export type PoolSource = {
   type: "pool";
   label: string | null;
   kind: string;
   id: string;
+};
+
+export type ProfileSource = {
+  type: "profile";
+  label: string | null;
+  kind: string;
+  id: string;
+};
+
+export type TemplateSource = {
+  type: "template";
+  label: string | null;
+  kind: string;
+  id: string;
+};
+
+export type AttributeValueFromProfile = {
+  source: ProfileSource;
+  value: string | number | boolean | null;
 };
 
 export type AttributeValueFromPool = {
@@ -53,10 +62,16 @@ export type AttributeValueFromUser =
     }
   | AttributeValueForCheckbox;
 
+export type AttributeValueFromTemplate = {
+  source: TemplateSource;
+  value: string | string[] | number | boolean | null;
+};
+
 export type FormAttributeValue =
   | AttributeValueFromUser
   | AttributeValueFromProfile
   | AttributeValueFromPool
+  | AttributeValueFromTemplate
   | EmptyFieldValue;
 
 export type RelationshipOneValueFromUser = {
@@ -73,6 +88,16 @@ export type RelationshipManyValueFromUser = {
   value: Array<Node> | null;
 };
 
+export type RelationshipOneValueFromTemplate = {
+  source: TemplateSource;
+  value: Node | null;
+};
+
+export type RelationshipManyValueFromTemplate = {
+  source: TemplateSource;
+  value: Array<Node> | null;
+};
+
 export type RelationshipValueFromPool = {
   source: PoolSource;
   value: Node | { from_pool: { id: string } };
@@ -82,9 +107,14 @@ export type RelationshipValueFromUser =
   | RelationshipOneValueFromUser
   | RelationshipManyValueFromUser;
 
+export type RelationshipValueFromTemplate =
+  | RelationshipOneValueFromTemplate
+  | RelationshipManyValueFromTemplate;
+
 export type FormRelationshipValue =
   | RelationshipValueFromUser
   | RelationshipValueFromPool
+  | RelationshipValueFromTemplate
   | EmptyFieldValue;
 
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
@@ -146,6 +176,10 @@ export type DynamicFieldProps = DynamicAttributeFieldProps | DynamicRelationship
 export const isFormFieldValueFromPool = (
   fieldData: FormFieldValue
 ): fieldData is RelationshipValueFromPool => fieldData.source?.type === "pool";
+
+export const isFormFieldValueFromTemplate = (
+  fieldData: FormFieldValue
+): fieldData is AttributeValueFromTemplate => fieldData.source?.type === "template";
 
 export type NumberPoolData = {
   id: string;

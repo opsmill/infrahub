@@ -5,9 +5,9 @@ import { MockedProvider } from "@apollo/client/testing";
 import { ErrorBoundary } from "react-error-boundary";
 import { Route, Routes } from "react-router";
 import { BranchContext } from "../../../src/entities/branches/ui/branches-provider";
-import { nodeSchemasAtom } from "../../../src/entities/schema/stores/schema.atom";
 import { ObjectDetailsPage } from "../../../src/pages/objects/object-details";
 import ErrorFallback from "../../../src/shared/components/errors/error-fallback";
+import { generateBranch } from "../../fake/branch";
 import {
   deviceDetailsMocksASNName,
   deviceDetailsMocksData,
@@ -19,7 +19,6 @@ import {
   getPermissionsData,
   getPermissionsQuery,
 } from "../../mocks/data/devices";
-import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
 const graphqlQueryItemsUrl = `/objects/InfraDevice/${deviceDetailsMocksId}`;
@@ -65,15 +64,6 @@ const mocks: any[] = [
   },
 ];
 
-// Provide the initial value for jotai
-const ObjectDetailsProvider = () => {
-  return (
-    <TestProvider initialValues={[[nodeSchemasAtom, deviceDetailsMocksSchema]]}>
-      <ObjectDetailsPage />
-    </TestProvider>
-  );
-};
-
 describe("List screen", () => {
   it("should fetch object details and render a list of details", () => {
     cy.viewport(1920, 1080);
@@ -83,11 +73,14 @@ describe("List screen", () => {
 
     // Mount the view with the default route and the mocked data
     cy.mount(
-      <BranchContext value={{ currentBranch: { name: "main" } }}>
+      <BranchContext value={{ currentBranch: generateBranch(), setCurrentBranch: () => {} }}>
         <MockedProvider mocks={mocks} addTypename={false}>
           <ErrorBoundary FallbackComponent={ErrorFallback}>
             <Routes>
-              <Route element={<ObjectDetailsProvider />} path={graphqlQueryItemsPath} />
+              <Route
+                element={<ObjectDetailsPage schema={deviceDetailsMocksSchema[0]} />}
+                path={graphqlQueryItemsPath}
+              />
             </Routes>
           </ErrorBoundary>
         </MockedProvider>

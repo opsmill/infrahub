@@ -1,5 +1,6 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import {
   DynamicRelationshipFieldProps,
@@ -13,6 +14,7 @@ import { isMaxCount, isMinCount, isRequired } from "@/shared/components/form/uti
 export const getFormFieldFromRelationship = ({
   relationshipSchema,
   relationshipData,
+  objectTemplate,
   isFilterForm = false,
   schema,
   auth,
@@ -21,16 +23,22 @@ export const getFormFieldFromRelationship = ({
   isFilterForm: boolean;
   relationshipSchema: RelationshipSchema;
   relationshipData: RelationshipType | undefined;
+  objectTemplate: NodeObject | null | undefined;
   schema: ModelSchema;
 }): DynamicRelationshipFieldProps => {
   const label = relationshipSchema.label ?? relationshipSchema.name;
+  const relationshipTemplate = objectTemplate?.[relationshipSchema.name] as
+    | NodeRelationship
+    | undefined;
   return {
     type: "relationship",
     name: relationshipSchema.name,
     label,
     defaultValue: getRelationshipDefaultValue({
       relationshipData,
+      objectTemplate,
       isFilterForm,
+      relationshipName: relationshipSchema.name,
     }),
     description: relationshipSchema.description ?? undefined,
     disabled: isFieldDisabled({
@@ -40,7 +48,7 @@ export const getFormFieldFromRelationship = ({
       permissions: undefined, // Permissions are not supported for relationships yet
       isReadOnly: relationshipSchema.read_only,
     }),
-    parent: getRelationshipParent(relationshipData),
+    parent: getRelationshipParent(relationshipData ?? relationshipTemplate),
     relationship: relationshipSchema,
     rules: {
       required: !isFilterForm && !relationshipSchema.optional,

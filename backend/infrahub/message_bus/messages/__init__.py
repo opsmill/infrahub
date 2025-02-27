@@ -1,9 +1,6 @@
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
 from .check_generator_run import CheckGeneratorRun
-from .check_repository_checkdefinition import CheckRepositoryCheckDefinition
-from .check_repository_mergeconflicts import CheckRepositoryMergeConflicts
-from .check_repository_usercheck import CheckRepositoryUserCheck
 from .event_branch_create import EventBranchCreate
 from .event_branch_delete import EventBranchDelete
 from .event_branch_merge import EventBranchMerge
@@ -20,15 +17,10 @@ from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
 from .request_generatordefinition_check import RequestGeneratorDefinitionCheck
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
-from .request_repository_checks import RequestRepositoryChecks
-from .request_repository_userchecks import RequestRepositoryUserChecks
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "check.generator.run": CheckGeneratorRun,
-    "check.repository.check_definition": CheckRepositoryCheckDefinition,
-    "check.repository.merge_conflicts": CheckRepositoryMergeConflicts,
-    "check.repository.user_check": CheckRepositoryUserCheck,
     "event.branch.create": EventBranchCreate,
     "event.branch.delete": EventBranchDelete,
     "event.branch.merge": EventBranchMerge,
@@ -45,8 +37,6 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "request.generator_definition.check": RequestGeneratorDefinitionCheck,
     "request.proposed_change.pipeline": RequestProposedChangePipeline,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
-    "request.repository.checks": RequestRepositoryChecks,
-    "request.repository.user_checks": RequestRepositoryUserChecks,
     "send.echo.request": SendEchoRequest,
 }
 

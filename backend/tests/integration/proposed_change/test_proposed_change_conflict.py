@@ -251,7 +251,10 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         for _ in range(10):
             merge_event = await client.execute_graphql(
-                query=QUERY_EVENT, variables={"branch": happy_data_branch, "event_type": "infrahub.branch.merged"}
+                query=QUERY_EVENT,
+                variables={
+                    "event_type_filter": {"branch_merged": {"branches": happy_data_branch}},
+                },
             )
             if merge_event["InfrahubEvent"]["count"] == 1:
                 break
@@ -322,11 +325,13 @@ query(
     $branch: [String!],
     $parent__ids: [String!],
     $event_type: [String!]
+    $event_type_filter: EventTypeFilter
 ) {
   InfrahubEvent(
     branches: $branch,
     parent__ids: $parent__ids
     event_type: $event_type
+    event_type_filter: $event_type_filter
   ) {
     count
     edges {

@@ -1,7 +1,7 @@
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list";
 import { NodeObject } from "@/entities/nodes/types";
-import { ModelSchema } from "@/entities/schema/types";
+import { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
   addAttributesToRequest,
@@ -19,13 +19,15 @@ export const OBJECTS_PER_PAGE = 40;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export type GetObjects = (
-  args: ContextParams &
-    PaginationParams & {
-      schema: ModelSchema;
-      filters?: Array<Filter>;
-    }
-) => Promise<Array<NodeObject>>;
+export type GetObjectsParams = ContextParams &
+  PaginationParams & {
+    schema: ModelSchema;
+    filters?: Array<Filter>;
+    getAttributesVisible?: (attributes: AttributeSchema[]) => AttributeSchema[];
+    getRelationshipsVisible?: (relationships: RelationshipSchema[]) => RelationshipSchema[];
+  };
+
+export type GetObjects = (args: GetObjectsParams) => Promise<Array<NodeObject>>;
 
 export const getObjects: GetObjects = async ({
   schema,
@@ -34,9 +36,11 @@ export const getObjects: GetObjects = async ({
   branchName,
   atDate,
   filters,
+  getAttributesVisible = getAttributesVisibleInListView,
+  getRelationshipsVisible = getRelationshipsVisibleInListView,
 }) => {
-  const attributesVisible = getAttributesVisibleInListView(schema.attributes ?? []);
-  const relationshipsVisible = getRelationshipsVisibleInListView(schema.relationships ?? []);
+  const attributesVisible = getAttributesVisible(schema.attributes ?? []);
+  const relationshipsVisible = getRelationshipsVisible(schema.relationships ?? []);
 
   const schemaKind = schema.kind as string;
   const kindFilter = filters?.find((filter) => filter.name === "kind__value");
