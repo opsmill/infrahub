@@ -6,10 +6,10 @@ from infrahub.database import InfrahubDatabase
 from ..model.path import TrackingId
 
 
-class DiffSummaryCountsEnricherQuery(Query):
-    """Update summary counters for a given diff"""
+class DiffFieldsSummaryCountsEnricherQuery(Query):
+    """Update summary counters for the attributes and relationshipsin in a diff"""
 
-    name = "diff_summary_count_enricher"
+    name = "diff_fields_summary_count_enricher"
     type = QueryType.WRITE
     insert_return = False
 
@@ -23,7 +23,9 @@ class DiffSummaryCountsEnricherQuery(Query):
     ) -> None:
         super().__init__(**kwargs)
         if (diff_id is None and tracking_id is None) or (diff_id and tracking_id):
-            raise ValueError("EnrichedDiffAllConflictsQuery requires one and only one of `tracking_id` or `diff_id`")
+            raise ValueError(
+                "DiffFieldsSummaryCountsEnricherQuery requires one and only one of `tracking_id` or `diff_id`"
+            )
         self.diff_branch_name = diff_branch_name
         self.tracking_id = tracking_id
         self.diff_id = diff_id
@@ -138,6 +140,51 @@ CALL {
         SET dr.num_removed = num_removed
     }
 }
+        """
+        self.add_to_query(query)
+
+
+class DiffNodesSummaryCountsEnricherQuery(Query):
+    """Update summary counters for the nodes and root in a diff"""
+
+    name = "diff_nodes_summary_count_enricher"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+        node_uuids: list[str] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        if (diff_id is None and tracking_id is None) or (diff_id and tracking_id):
+            raise ValueError(
+                "DiffNodesSummaryCountsEnricherQuery requires one and only one of `tracking_id` or `diff_id`"
+            )
+        self.diff_branch_name = diff_branch_name
+        self.tracking_id = tracking_id
+        self.diff_id = diff_id
+        if self.tracking_id is None and self.diff_id is None:
+            raise RuntimeError("tracking_id or diff_id is required")
+        self.node_uuids = node_uuids
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.params = {
+            "diff_branch_name": self.diff_branch_name,
+            "diff_id": self.diff_id,
+            "tracking_id": self.tracking_id.serialize() if self.tracking_id else None,
+            "node_uuids": self.node_uuids,
+        }
+
+        query = """
+MATCH (root:DiffRoot)
+WHERE ($diff_id IS NOT NULL AND root.uuid = $diff_id)
+OR ($tracking_id IS NOT NULL AND root.tracking_id = $tracking_id AND root.diff_branch = $diff_branch_name)
+MATCH (root)-[:DIFF_HAS_NODE]->(dn:DiffNode)
+WHERE $node_uuids IS NULL OR dn.uuid IN $node_uuids
 // ----------------------
 // handle node count updates
 // ----------------------

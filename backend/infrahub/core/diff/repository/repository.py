@@ -6,7 +6,10 @@ from neo4j.exceptions import TransientError
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.diff.query.field_summary import EnrichedDiffNodeFieldSummaryQuery
-from infrahub.core.diff.query.summary_counts_enricher import DiffSummaryCountsEnricherQuery
+from infrahub.core.diff.query.summary_counts_enricher import (
+    DiffFieldsSummaryCountsEnricherQuery,
+    DiffNodesSummaryCountsEnricherQuery,
+)
 from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
@@ -468,7 +471,6 @@ class DiffRepository:
             offset += limit
         return specifiers
 
-    @retry_db_transaction(name="enriched_diff_summary_counts")
     async def add_summary_counts(
         self,
         diff_branch_name: str,
@@ -476,8 +478,29 @@ class DiffRepository:
         diff_id: str | None = None,
         node_uuids: list[str] | None = None,
     ) -> None:
-        log.info("Updating summary counts...")
-        query = await DiffSummaryCountsEnricherQuery.init(
+        await self._add_field_summary_counts(
+            diff_branch_name=diff_branch_name,
+            tracking_id=tracking_id,
+            diff_id=diff_id,
+            node_uuids=node_uuids,
+        )
+        await self._add_node_summary_counts(
+            diff_branch_name=diff_branch_name,
+            tracking_id=tracking_id,
+            diff_id=diff_id,
+            node_uuids=node_uuids,
+        )
+
+    @retry_db_transaction(name="enriched_diff_field_summary_counts")
+    async def _add_field_summary_counts(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+        node_uuids: list[str] | None = None,
+    ) -> None:
+        log.info("Updating field summary counts...")
+        query = await DiffFieldsSummaryCountsEnricherQuery.init(
             db=self.db,
             diff_branch_name=diff_branch_name,
             tracking_id=tracking_id,
@@ -485,4 +508,23 @@ class DiffRepository:
             node_uuids=node_uuids,
         )
         await query.execute(db=self.db)
-        log.info("Summary counts updated.")
+        log.info("Field summary counts updated.")
+
+    @retry_db_transaction(name="enriched_diff_node_summary_counts")
+    async def _add_node_summary_counts(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+        node_uuids: list[str] | None = None,
+    ) -> None:
+        log.info("Updating node summary counts...")
+        query = await DiffNodesSummaryCountsEnricherQuery.init(
+            db=self.db,
+            diff_branch_name=diff_branch_name,
+            tracking_id=tracking_id,
+            diff_id=diff_id,
+            node_uuids=node_uuids,
+        )
+        await query.execute(db=self.db)
+        log.info("node summary counts updated.")
