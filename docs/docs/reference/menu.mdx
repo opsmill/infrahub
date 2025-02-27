@@ -11,6 +11,7 @@ The menu definition file is a YAML file that follows a particular structure or s
 At the top of the file we define a bit of boilerplate statements, to define the version of the schema of the file and the kind of content that it contains. We also define a spec mapping with a data key.
 
 ```yaml
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/menu/latest.json
 ---
 apiversion: infrahub.app/v1
 kind: Menu
@@ -37,6 +38,7 @@ A menu item is a mapping in which you can define the following key/value pairs:
 ## Example
 
 ```yaml
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/menu/latest.json
 ---
 apiversion: infrahub.app/v1
 kind: Menu

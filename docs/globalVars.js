@@ -1,3 +1,3 @@
 export default {
-    local_base_url_1: 'https://docs.infrahub.app/',
+    base_url: 'https://docs.infrahub.app/',
   };
