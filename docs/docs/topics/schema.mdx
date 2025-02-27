@@ -342,7 +342,7 @@ Here's an example schema that uses the identifier `device__interfaces` in a bidi
 By including `bgppeergroup__local_as` and `bgppeergroup__remote_as`, we can clearly represent each relationship role.
 
 ```yaml {5-6,11-12} showLineNumbers
-* name: BGPGroup
+- name: BGPGroup
   namespace: Infra
   relationships:
     - name: local_as
