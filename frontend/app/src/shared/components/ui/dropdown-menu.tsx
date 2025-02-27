@@ -75,7 +75,7 @@ export const DropdownMenuSubTrigger = forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={classNames(
-      "flex cursor-default select-none items-center rounded-lg p-2 text-sm outline-none focus:bg-neutral-100 data-[state=open]:bg-neutral-100",
+      "flex gap-1.5 cursor-default select-none items-center rounded-lg p-2 text-sm outline-none focus:bg-neutral-100 data-[state=open]:bg-neutral-100",
       className
     )}
     {...props}
