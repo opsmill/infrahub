@@ -1837,12 +1837,13 @@ class SchemaBranch:
                 RelationshipKind.COMPONENT,
                 RelationshipKind.PARENT,
                 RelationshipKind.ATTRIBUTE,
+                RelationshipKind.GENERIC,
             ]:
                 continue
 
             rel_template_peer = (
                 self._get_object_template_kind(node_kind=relationship.peer)
-                if relationship.kind != RelationshipKind.ATTRIBUTE
+                if relationship.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
                 else relationship.peer
             )
             template_schema.relationships.append(
@@ -1850,7 +1851,8 @@ class SchemaBranch:
                     name=relationship.name,
                     peer=rel_template_peer,
                     kind=relationship.kind,
-                    optional=relationship.kind in [RelationshipKind.COMPONENT, RelationshipKind.ATTRIBUTE],
+                    optional=relationship.kind
+                    in [RelationshipKind.COMPONENT, RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC],
                     cardinality=relationship.cardinality,
                     branch=relationship.branch,
                     identifier=self._generate_identifier_string(template_schema.kind, rel_template_peer),
