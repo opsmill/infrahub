@@ -265,27 +265,49 @@ class DiffRepository:
                 raise
             log.exception("Database memory error during save. Trying smaller transactions")
             for node_request in node_create_batch:
+                log.info(
+                    f"Updating node {node_request.node.uuid}, num_properties={node_request.node.num_properties}..."
+                )
                 single_node_query = await EnrichedNodeBatchCreateQuery.init(
                     db=self.db, node_create_batch=[node_request]
                 )
                 await single_node_query.execute(db=self.db)
 
     async def save(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata, do_summary_counts: bool = True) -> None:
+        if isinstance(enriched_diffs, EnrichedDiffs):
+            count_nodes_remaining = len(enriched_diffs.base_branch_diff.nodes) + len(
+                enriched_diffs.diff_branch_diff.nodes
+            )
+            log.info(f"Saving diff (num_nodes={count_nodes_remaining})...")
+            for batch_num, node_create_batch in enumerate(
+                self._get_node_create_request_batch(enriched_diffs=enriched_diffs)
+            ):
+                log.info(f"Saving node batch #{batch_num}...")
+                await self._save_node_batch(node_create_batch=node_create_batch)
+                count_nodes_remaining -= len(node_create_batch)
+                log.info(f"Batch saved. {count_nodes_remaining=}")
+            for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
+                nodes_to_update = []
+                for node in diff_root.nodes:
+                    if any(r.nodes for r in node.relationships):
+                        nodes_to_update.append(node)
+                    if len(nodes_to_update) > config.SETTINGS.database.query_size_limit:
+                        log.info(f"Updating diff hierarchy links, num_nodes={len(nodes_to_update)}")
+                        link_query = await EnrichedNodesLinkQuery.init(
+                            db=self.db, diff_root_uuid=diff_root.uuid, diff_nodes=nodes_to_update
+                        )
+                        await link_query.execute(db=self.db)
+                        nodes_to_update = []
+                if nodes_to_update:
+                    log.info(f"Updating diff hierarchy links, num_nodes={len(nodes_to_update)}")
+                    link_query = await EnrichedNodesLinkQuery.init(
+                        db=self.db, diff_root_uuid=diff_root.uuid, diff_nodes=nodes_to_update
+                    )
+                    await link_query.execute(db=self.db)
+
         await self._save_root_metadata(enriched_diffs=enriched_diffs)
-        if not isinstance(enriched_diffs, EnrichedDiffs):
-            return
-        num_nodes = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
-        log.info(f"Saving diff (num_nodes={num_nodes})...")
-        for batch_num, node_create_batch in enumerate(
-            self._get_node_create_request_batch(enriched_diffs=enriched_diffs)
-        ):
-            log.info(f"Saving node batch #{batch_num}...")
-            await self._save_node_batch(node_create_batch=node_create_batch)
-            log.info(f"Batch saved. num_nodes={len(node_create_batch)}")
-        link_query = await EnrichedNodesLinkQuery.init(db=self.db, enriched_diffs=enriched_diffs)
-        await link_query.execute(db=self.db)
-        log.info("Diff saved.")
-        if do_summary_counts:
+
+        if isinstance(enriched_diffs, EnrichedDiffs) and do_summary_counts:
             node_uuids: list[str] | None = None
             if enriched_diffs.diff_branch_diff.exists_on_database:
                 node_uuids = list(enriched_diffs.branch_node_uuids)
