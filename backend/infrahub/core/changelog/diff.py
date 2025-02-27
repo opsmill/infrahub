@@ -92,29 +92,33 @@ class DiffChangelogCollector:
                         changelog_attribute.value = attr_property.new_value
                         changelog_attribute.value_previous = attr_property.previous_value
                 case DatabaseEdgeType.IS_PROTECTED:
-                    changelog_attribute.add_property(
-                        name="is_protected",
-                        value_current=self._convert_string_boolean_value(value=attr_property.new_value),
-                        value_previous=self._convert_string_boolean_value(value=attr_property.previous_value),
-                    )
+                    if _keep_branch_update(diff_property=attr_property):
+                        changelog_attribute.add_property(
+                            name="is_protected",
+                            value_current=self._convert_string_boolean_value(value=attr_property.new_value),
+                            value_previous=self._convert_string_boolean_value(value=attr_property.previous_value),
+                        )
                 case DatabaseEdgeType.IS_VISIBLE:
-                    changelog_attribute.add_property(
-                        name="is_visible",
-                        value_current=self._convert_string_boolean_value(value=attr_property.new_value),
-                        value_previous=self._convert_string_boolean_value(value=attr_property.previous_value),
-                    )
+                    if _keep_branch_update(diff_property=attr_property):
+                        changelog_attribute.add_property(
+                            name="is_visible",
+                            value_current=self._convert_string_boolean_value(value=attr_property.new_value),
+                            value_previous=self._convert_string_boolean_value(value=attr_property.previous_value),
+                        )
                 case DatabaseEdgeType.HAS_SOURCE:
-                    changelog_attribute.add_property(
-                        name="source",
-                        value_current=attr_property.new_value,
-                        value_previous=attr_property.previous_value,
-                    )
+                    if _keep_branch_update(diff_property=attr_property):
+                        changelog_attribute.add_property(
+                            name="source",
+                            value_current=attr_property.new_value,
+                            value_previous=attr_property.previous_value,
+                        )
                 case DatabaseEdgeType.HAS_OWNER:
-                    changelog_attribute.add_property(
-                        name="owner",
-                        value_current=attr_property.new_value,
-                        value_previous=attr_property.previous_value,
-                    )
+                    if _keep_branch_update(diff_property=attr_property):
+                        changelog_attribute.add_property(
+                            name="owner",
+                            value_current=attr_property.new_value,
+                            value_previous=attr_property.previous_value,
+                        )
 
         node.add_attribute(attribute=changelog_attribute)
 

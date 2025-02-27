@@ -1,5 +1,5 @@
 ---
-# yamllint disable rule:truthy
+# yamllint disable rule:truthy rule:line-length
 name: Update Docker Compose & helm chart on Pyproject update in Stable
 
 # This will bump the infrahub docker image in the docker-compose.yml
@@ -43,11 +43,20 @@ jobs:
       - name: "Install Package"
         run: "poetry install --all-extras"
 
+      - name: "Check prerelease type"
+        id: release
+        run: |
+          echo is_prerelease=$(poetry run python -c "from packaging.version import Version; print(int(Version('$(poetry version -s)').is_prerelease))") >> "$GITHUB_OUTPUT"
+          echo is_devrelease=$(poetry run python -c "from packaging.version import Version; print(int(Version('$(poetry version -s)').is_devrelease))") >> "$GITHUB_OUTPUT"
+
       - name: "Update Docker Env variable in docker-compose.yml file"
+        if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
         run: "poetry run invoke release.gen-config-env -u"
       - name: "Update Infrahub Image Version in docker-compose.yml file"
+        if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
         run: "poetry run invoke release.update-docker-compose"
       - name: "Update AppVersion in helm/chart.yaml file"
+        if: steps.release.outputs.is_prerelease == 0 && steps.release.outputs.is_devrelease == 0
         run: "poetry run invoke release.update-helm-chart"
       - name: "Update Versions in python_testcontainers/pyproject.toml"
         run: "poetry run invoke release.update-test-containers"

@@ -8,12 +8,27 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from tests.adapters.cache import MemoryCache
+from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql
 
 DIFF_UPDATE_MUTATION = """
-    mutation($branch: String!, $name: String, $from_time: DateTime, $to_time: DateTime) {
-        DiffUpdate(data: {branch: $branch, name: $name, from_time: $from_time, to_time: $to_time, wait_for_completion: true}) {
+    mutation($branch: String!, $name: String, $from_time: DateTime, $to_time: DateTime, $wait_until_completion: Boolean = true) {
+        DiffUpdate(
+            data: {
+                branch: $branch,
+                name: $name,
+                from_time: $from_time,
+                to_time: $to_time
+            },
+            wait_until_completion: $wait_until_completion
+        ) {
             ok
+            task {
+                id
+            }
         }
     }
 """
@@ -23,15 +38,27 @@ class TestDiffUpdateMutation:
     diff_name = "CountDiffula"
 
     @pytest.fixture
+    async def service_testing(self, db: InfrahubDatabase) -> InfrahubServices:
+        return await InfrahubServices.new(
+            database=db, message_bus=BusRecorder(), workflow=WorkflowLocalExecution(), cache=MemoryCache()
+        )
+
+    @pytest.fixture
     async def diff_branch(self, db: InfrahubDatabase) -> Branch:
         return await create_branch(db=db, branch_name="branch")
 
     @pytest.fixture
     async def named_diff(
-        self, db: InfrahubDatabase, default_branch: Branch, criticality_schema, diff_branch: Branch
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        prefect_test_fixture,
+        service_testing: InfrahubServices,
+        criticality_schema,
+        diff_branch: Branch,
     ) -> EnrichedDiffRootMetadata:
         params = await prepare_graphql_params(
-            db=db, include_mutation=True, include_subscription=False, branch=default_branch
+            db=db, include_mutation=True, include_subscription=False, branch=default_branch, service=service_testing
         )
         result = await graphql(
             schema=params.schema,
@@ -53,11 +80,17 @@ class TestDiffUpdateMutation:
         )[0]
 
     async def test_create_diff_before_branched_from_fails(
-        self, db: InfrahubDatabase, default_branch: Branch, criticality_schema, diff_branch: Branch
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        prefect_test_fixture,
+        service_testing: InfrahubServices,
+        criticality_schema,
+        diff_branch: Branch,
     ):
         branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
         params = await prepare_graphql_params(
-            db=db, include_mutation=True, include_subscription=False, branch=default_branch
+            db=db, include_mutation=True, include_subscription=False, branch=default_branch, service=service_testing
         )
         result = await graphql(
             schema=params.schema,
@@ -74,11 +107,17 @@ class TestDiffUpdateMutation:
         assert result.data["DiffUpdate"]["ok"] is True
 
     async def test_create_time_range_diff_without_name_fails(
-        self, db: InfrahubDatabase, default_branch: Branch, criticality_schema, diff_branch: Branch
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        prefect_test_fixture,
+        service_testing: InfrahubServices,
+        criticality_schema,
+        diff_branch: Branch,
     ):
         branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
         params = await prepare_graphql_params(
-            db=db, include_mutation=True, include_subscription=False, branch=default_branch
+            db=db, include_mutation=True, include_subscription=False, branch=default_branch, service=service_testing
         )
         result = await graphql(
             schema=params.schema,
@@ -99,12 +138,14 @@ class TestDiffUpdateMutation:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
+        prefect_test_fixture,
+        service_testing: InfrahubServices,
         criticality_schema,
         diff_branch: Branch,
         named_diff: EnrichedDiffRootMetadata,
     ):
         params = await prepare_graphql_params(
-            db=db, include_mutation=True, include_subscription=False, branch=default_branch
+            db=db, include_mutation=True, include_subscription=False, branch=default_branch, service=service_testing
         )
         result = await graphql(
             schema=params.schema,
@@ -140,13 +181,15 @@ class TestDiffUpdateMutation:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
+        prefect_test_fixture,
+        service_testing: InfrahubServices,
         criticality_schema,
         diff_branch: Branch,
         named_diff: EnrichedDiffRootMetadata,
     ):
         branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
         params = await prepare_graphql_params(
-            db=db, include_mutation=True, include_subscription=False, branch=default_branch
+            db=db, include_mutation=True, include_subscription=False, branch=default_branch, service=service_testing
         )
         result = await graphql(
             schema=params.schema,
@@ -162,3 +205,34 @@ class TestDiffUpdateMutation:
         )
         assert result.errors is None
         assert result.data["DiffUpdate"]["ok"] is True
+
+    async def test_retrieve_task_id(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        prefect_test_fixture,
+        service_testing: InfrahubServices,
+        criticality_schema,
+        diff_branch: Branch,
+        named_diff: EnrichedDiffRootMetadata,
+    ):
+        branched_from_timestamp = Timestamp(diff_branch.get_branched_from())
+        params = await prepare_graphql_params(
+            db=db, include_mutation=True, include_subscription=False, branch=default_branch, service=service_testing
+        )
+        result = await graphql(
+            schema=params.schema,
+            source=DIFF_UPDATE_MUTATION,
+            context_value=params.context,
+            root_value=None,
+            variable_values={
+                "branch": diff_branch.name,
+                "from_time": branched_from_timestamp.to_string(),
+                "to_time": Timestamp().to_string(),
+                "name": self.diff_name,
+                "wait_until_completion": False,
+            },
+        )
+        assert result.errors is None
+        assert result.data["DiffUpdate"]["ok"] is True
+        assert result.data["DiffUpdate"]["task"]["id"] is not None

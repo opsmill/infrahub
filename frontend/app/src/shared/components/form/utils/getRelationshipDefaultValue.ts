@@ -1,24 +1,50 @@
 import { RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-import { FormRelationshipValue } from "@/shared/components/form/type";
+import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
+import {
+  EmptyFieldValue,
+  FormRelationshipValue,
+  RelationshipValueFromPool,
+  RelationshipValueFromTemplate,
+  RelationshipValueFromUser,
+  TemplateSource,
+} from "@/shared/components/form/type";
 import { store } from "@/shared/stores";
 
 type GetRelationshipDefaultValueParams = {
   relationshipData: RelationshipType | undefined;
+  objectTemplate: NodeObject | null | undefined;
   isFilterForm?: boolean;
-  peerField?: string;
+  relationshipName?: string;
 };
 
 export const getRelationshipDefaultValue = ({
   isFilterForm,
   relationshipData,
-  peerField,
+  objectTemplate,
+  relationshipName,
 }: GetRelationshipDefaultValueParams): FormRelationshipValue => {
-  if (!relationshipData) {
+  if (isFilterForm) {
     return { source: null, value: null };
   }
 
+  if (relationshipData) {
+    return getRelationshipDefaultValueFromData(relationshipData, relationshipName);
+  }
+
+  return (
+    getRelationshipDefaultValueFromTemplate(objectTemplate, relationshipName) ??
+    DEFAULT_FORM_FIELD_VALUE
+  );
+};
+
+export const getRelationshipDefaultValueFromData = (
+  relationshipData: RelationshipType,
+  peerField?: string
+): RelationshipValueFromUser | RelationshipValueFromPool | EmptyFieldValue => {
   if ("edges" in relationshipData) {
     return {
       source: {
@@ -46,11 +72,6 @@ export const getRelationshipDefaultValue = ({
       },
       value: relationshipData.node,
     };
-  }
-
-  // if filter form, we should only display user input
-  if (isFilterForm) {
-    return { source: null, value: null };
   }
 
   const source = relationshipData.properties.source;
@@ -81,5 +102,51 @@ export const getRelationshipDefaultValue = ({
       type: "user",
     },
     value: relationshipData.node,
+  };
+};
+
+export const getRelationshipDefaultValueFromTemplate = (
+  objectTemplate: NodeObject | null | undefined,
+  relationshipName: string | undefined
+): RelationshipValueFromTemplate | null => {
+  if (!objectTemplate || !relationshipName) return null;
+
+  const relationshipTemplate = objectTemplate[relationshipName] as NodeRelationship | undefined;
+  if (!relationshipTemplate) return null;
+
+  const source: TemplateSource = {
+    type: "template",
+    label: getNodeLabel(objectTemplate),
+    kind: objectTemplate.__typename,
+    id: objectTemplate.id,
+  };
+
+  if ("edges" in relationshipTemplate) {
+    return {
+      source,
+      value: relationshipTemplate.edges
+        .map(({ node }) =>
+          node
+            ? {
+                id: node.id,
+                display_label: getNodeLabel(node),
+                __typename: node.__typename,
+              }
+            : null
+        )
+        .filter((n) => !!n),
+    };
+  }
+
+  const { node } = relationshipTemplate;
+  if (!node) return null;
+
+  return {
+    source,
+    value: {
+      id: node.id,
+      display_label: getNodeLabel(node),
+      __typename: node.__typename,
+    },
   };
 };

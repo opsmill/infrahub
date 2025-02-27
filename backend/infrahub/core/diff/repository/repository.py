@@ -154,18 +154,23 @@ class DiffRepository:
             diff_branch_names=[base_branch_name],
             max_depth=max_depth,
             batch_size_limit=batch_size_limit,
-            diff_ids=[d.partner_uuid for d in diffs_by_uuid.values()],
+            diff_ids=[d.partner_uuid for d in diffs_by_uuid.values() if d.partner_uuid],
         )
         diffs_by_uuid.update({bbr.uuid: bbr for bbr in base_branch_roots})
-        return [
-            EnrichedDiffs(
-                base_branch_name=base_branch_name,
-                diff_branch_name=diff_branch_name,
-                base_branch_diff=diffs_by_uuid[dbr.partner_uuid],
-                diff_branch_diff=dbr,
+        diff_pairs = []
+        for dbr in diff_branch_roots:
+            if dbr.partner_uuid is None:
+                continue
+            base_branch_diff = diffs_by_uuid[dbr.partner_uuid]
+            diff_pairs.append(
+                EnrichedDiffs(
+                    base_branch_name=base_branch_name,
+                    diff_branch_name=diff_branch_name,
+                    base_branch_diff=base_branch_diff,
+                    diff_branch_diff=dbr,
+                )
             )
-            for dbr in diff_branch_roots
-        ]
+        return diff_pairs
 
     async def hydrate_diff_pair(
         self,
@@ -325,7 +330,7 @@ class DiffRepository:
         roots_by_id = {root.uuid: root for root in empty_roots}
         pairs: list[EnrichedDiffsMetadata] = []
         for branch_root in empty_roots:
-            if branch_root.base_branch_name == branch_root.diff_branch_name:
+            if branch_root.base_branch_name == branch_root.diff_branch_name or branch_root.partner_uuid is None:
                 continue
             base_root = roots_by_id[branch_root.partner_uuid]
             pairs.append(

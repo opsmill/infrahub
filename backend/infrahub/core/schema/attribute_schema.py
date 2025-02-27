@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pydantic import field_validator, model_validator
@@ -35,6 +36,13 @@ class AttributeSchema(GeneratedAttributeSchema):
     @property
     def is_deprecated(self) -> bool:
         return bool(self.deprecation)
+
+    def to_dict(self) -> dict:
+        data = self.model_dump(exclude_unset=True, exclude_none=True, exclude_defaults=True)
+        for field_name, value in data.items():
+            if isinstance(value, Enum):
+                data[field_name] = value.value
+        return data
 
     @field_validator("kind")
     @classmethod

@@ -32,8 +32,8 @@ if TYPE_CHECKING:
 BRANCH_NAME = "branch1"
 PROPOSED_CHANGE_NAME = "branch1-pc"
 DIFF_UPDATE_QUERY = """
-mutation DiffUpdate($branch_name: String!, $wait_for_completion: Boolean) {
-    DiffUpdate(data: { branch: $branch_name, wait_for_completion: $wait_for_completion }) {
+mutation DiffUpdate($branch_name: String!, $wait_for_completion: Boolean = true) {
+    DiffUpdate(data: { branch: $branch_name }, wait_until_completion: $wait_for_completion) {
         ok
     }
 }

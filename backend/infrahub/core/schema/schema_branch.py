@@ -1824,6 +1824,10 @@ class SchemaBranch:
 
     def add_relationships_to_template(self, node: NodeSchema) -> None:
         template_schema = self.get(name=self._get_object_template_kind(node_kind=node.kind), duplicate=False)
+        # Remove previous relationships to account for new ones
+        template_schema.relationships = [
+            r for r in template_schema.relationships if r.kind == RelationshipKind.TEMPLATE
+        ]
 
         for relationship in node.relationships:
             if relationship.peer in [

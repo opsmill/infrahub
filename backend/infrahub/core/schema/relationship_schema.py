@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pydantic import BaseModel
@@ -33,6 +34,13 @@ class RelationshipSchema(GeneratedRelationshipSchema):
     @property
     def is_deprecated(self) -> bool:
         return bool(self.deprecation)
+
+    def to_dict(self) -> dict:
+        data = self.model_dump(exclude_unset=True, exclude_none=True, exclude_defaults=True)
+        for field_name, value in data.items():
+            if isinstance(value, Enum):
+                data[field_name] = value.value
+        return data
 
     def get_class(self) -> type[Relationship]:
         return Relationship

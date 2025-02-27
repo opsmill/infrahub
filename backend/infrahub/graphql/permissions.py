@@ -15,16 +15,7 @@ async def get_permissions(schema: MainSchemaTypes, graphql_context: GraphqlConte
     schema_objects = [schema]
     if isinstance(schema, GenericSchema):
         for node_name in schema.used_by:
-            schema_object: MainSchemaTypes
-            try:
-                schema_object = registry.schema.get_node_schema(
-                    name=node_name, branch=graphql_context.branch, duplicate=False
-                )
-            except ValueError:
-                schema_object = registry.schema.get_profile_schema(
-                    name=node_name, branch=graphql_context.branch, duplicate=False
-                )
-            schema_objects.append(schema_object)
+            schema_objects.append(registry.schema.get(name=node_name, branch=graphql_context.branch, duplicate=False))
 
     response: dict[str, Any] = {"count": len(schema_objects), "edges": []}
 
