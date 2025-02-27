@@ -7,14 +7,18 @@ title: Infrahub Events
 This document provides detailed documentation for all events used in the Infrahub event system.
 
 :::info
-For more detailed explanations on how to use these events within Infrahub, see the [activity](../topics/activity-log) topic.
+
+For more detailed explanations on how these events are used within Infrahub, see the [infrahub event](../topics/infrahub-event) topic.
+
 :::
 
 ## Node events
 
 <!-- vale off -->
-### Event `NodeMutatedEvent`
+### Node Mutated Event
 <!-- vale on -->
+
+**Type**: infrahub.node.mutated
 **Description**: Event generated when a node has been mutated
 <!-- vale off -->
 | Key | Description |
@@ -36,8 +40,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **fields** | Fields provided in the mutation |
 <!-- vale on -->
 <!-- vale off -->
-### Event `NodeCreatedEvent`
+### Node Created Event
 <!-- vale on -->
+
+**Type**: infrahub.node.created
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|
@@ -58,8 +64,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **fields** | Fields provided in the mutation |
 <!-- vale on -->
 <!-- vale off -->
-### Event `NodeUpdatedEvent`
+### Node Updated Event
 <!-- vale on -->
+
+**Type**: infrahub.node.updated
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|
@@ -80,8 +88,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **fields** | Fields provided in the mutation |
 <!-- vale on -->
 <!-- vale off -->
-### Event `NodeDeletedEvent`
+### Node Deleted Event
 <!-- vale on -->
+
+**Type**: infrahub.node.deleted
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|
@@ -104,8 +114,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 ## Branch events
 
 <!-- vale off -->
-### Event `BranchDeletedEvent`
+### Branch Deleted Event
 <!-- vale on -->
+
+**Type**: infrahub.branch.deleted
 **Description**: Event generated when a branch has been deleted
 <!-- vale off -->
 | Key | Description |
@@ -125,8 +137,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **sync_with_git** | Indicates if the branch was extended to Git |
 <!-- vale on -->
 <!-- vale off -->
-### Event `BranchCreatedEvent`
+### Branch Created Event
 <!-- vale on -->
+
+**Type**: infrahub.branch.created
 **Description**: Event generated when a branch has been created
 <!-- vale off -->
 | Key | Description |
@@ -146,8 +160,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **sync_with_git** | Indicates if the branch was extended to Git |
 <!-- vale on -->
 <!-- vale off -->
-### Event `BranchMergedEvent`
+### Branch Merged Event
 <!-- vale on -->
+
+**Type**: infrahub.branch.merged
 **Description**: Event generated when a branch has been merged
 <!-- vale off -->
 | Key | Description |
@@ -162,10 +178,14 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
+| **branch_name** | The name of the branch |
+| **branch_id** | The ID of the branch |
 <!-- vale on -->
 <!-- vale off -->
-### Event `BranchRebasedEvent`
+### Branch Rebased Event
 <!-- vale on -->
+
+**Type**: infrahub.branch.rebased
 **Description**: Event generated when a branch has been rebased
 <!-- vale off -->
 | Key | Description |
@@ -186,8 +206,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 ## Group events
 
 <!-- vale off -->
-### Event `GroupMutatedEvent`
+### Group Mutated Event
 <!-- vale on -->
+
+**Type**: infrahub.group.mutated
 **Description**: Event generated when a node has been mutated
 <!-- vale off -->
 | Key | Description |
@@ -206,31 +228,13 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **node_id** | The ID of the updated group |
 | **action** | The action taken on the node |
 | **members** | Updated members during this event. |
+| **ancestors** | A list of groups that are ancestors of this group. |
 <!-- vale on -->
 <!-- vale off -->
-### Event `GroupMemberAddedEvent`
+### Group Member Added Event
 <!-- vale on -->
-<!-- vale off -->
-| Key | Description |
-|-----|-------------|
-| **meta.branch** | The branch on which originate this event |
-| **meta.request_id** | N/A |
-| **meta.account_id** | The ID of the account triggering this event |
-| **meta.initiator_id** | The worker identity of the initial sender of this message |
-| **meta.context** | The context used when originating this event |
-| **meta.level** | N/A |
-| **meta.has_children** | Indicates if this event might potentially have child events under it. |
-| **meta.id** | UUID of the event |
-| **meta.parent** | The UUID of the parent event if applicable |
-| **meta.ancestors** | Any event used to trigger this event |
-| **kind** | The type of updated group |
-| **node_id** | The ID of the updated group |
-| **action** | N/A |
-| **members** | Updated members during this event. |
-<!-- vale on -->
-<!-- vale off -->
-### Event `GroupMemberRemovedEvent`
-<!-- vale on -->
+
+**Type**: infrahub.group.member.added
 <!-- vale off -->
 | Key | Description |
 |-----|-------------|
@@ -248,12 +252,39 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **node_id** | The ID of the updated group |
 | **action** | N/A |
 | **members** | Updated members during this event. |
+| **ancestors** | A list of groups that are ancestors of this group. |
+<!-- vale on -->
+<!-- vale off -->
+### Group Member Removed Event
+<!-- vale on -->
+
+**Type**: infrahub.group.member.removed
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of updated group |
+| **node_id** | The ID of the updated group |
+| **action** | N/A |
+| **members** | Updated members during this event. |
+| **ancestors** | A list of groups that are ancestors of this group. |
 <!-- vale on -->
 ## Commit events
 
 <!-- vale off -->
-### Event `CommitUpdatedEvent`
+### Commit Updated Event
 <!-- vale on -->
+
+**Type**: infrahub.commit.updated
 **Description**: Event generated when the the commit within a repository has been updated.
 <!-- vale off -->
 | Key | Description |
@@ -275,8 +306,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 ## Schema events
 
 <!-- vale off -->
-### Event `SchemaUpdatedEvent`
+### Schema Updated Event
 <!-- vale on -->
+
+**Type**: infrahub.schema.updated
 **Description**: Event generated when the schema within a branch has been updated.
 <!-- vale off -->
 | Key | Description |

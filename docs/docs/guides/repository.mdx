@@ -38,7 +38,7 @@ If your repository is private you might want to have a personal token to access 
 {/*TODO: Generate this screen*/}
 
 1. Log in to the Infrahub UI
-2. Go to `Unified Storage` > `Repository`
+2. Go to `Integrations` > `Git Repositories`
 3. Click on the `+ Add Git Repository` button
 4. Select the repository type
 5. Complete the required information:
@@ -149,7 +149,7 @@ Using the GraphQL Interface, it is possible to add a `Repository` or `Read-only 
 
 :::success Validate that everything is correct
 
-The repository should be visible under [Unified Storage / Repository](http://localhost:8000/objects/CoreGenericRepository). If the repository you added has `Unknown` as Operational Status it means that Infrahub didn't managed to reach your repository. Verify the location and credentials.
+The repository should be visible under [Integrations / Git Repositories](http://localhost:8000/objects/CoreGenericRepository). If the repository you added has `Unknown` as Operational Status it means that Infrahub didn't managed to reach your repository. Verify the location and credentials.
 
 :::
 
@@ -226,7 +226,7 @@ Unlike `Repository`, Infrahub does not automatically update `Read-only Repositor
 ### Via the web interface
 
 1. Log in to the Infrahub UI
-2. Go to `Unified Storage` > `Repository`
+2. Go to `Integrations` > `Git Repositories`
 3. Click on the `CoreReadOnlyRepository` record
 4. Click on the `Edit Read-Only Repository` button
 5. Change the required information:
@@ -266,7 +266,7 @@ Various issues could affect repositories. The [Repository Status](../topics/repo
 Also, directly from the UI you can access the output of low level repository operations:
 
 1. Log in to the Infrahub UI
-2. Go to `Unified Storage` > `Repository`
+2. Go to `Integrations` > `Git Repositories`
 3. Click on the `CoreReadOnlyRepository` record
 4. Click on the `Tasks` tab
 

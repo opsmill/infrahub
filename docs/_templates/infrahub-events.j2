@@ -7,7 +7,9 @@ title: Infrahub Events
 This document provides detailed documentation for all events used in the Infrahub event system.
 
 :::info
-For more detailed explanations on how to use these events within Infrahub, see the [activity](../topics/activity-log) topic.
+
+For more detailed explanations on how these events are used within Infrahub, see the [infrahub event](../topics/infrahub-event) topic.
+
 :::
 
 {% for primary, events in event_groups.items() %}
@@ -15,8 +17,10 @@ For more detailed explanations on how to use these events within Infrahub, see t
 
 {% for event in events %}
 <!-- vale off -->
-### Event `{{ event.event_name }}`
+### {{ event.event_name }}
 <!-- vale on -->
+
+**Type**: {{ event.event_type }}
 {% if event.description -%}
 **Description**: {{ event.description }}
 {% endif -%}

@@ -32,8 +32,8 @@ The activity log can be accessed in any of two ways: globally or at the object l
 The activity log's date and time are determined by the local time in your browser.
 :::
 
-:::info Color-coding
-Standalone events are grey in the global list, while events containing child events are blue.
+:::info Child Events
+Events containing child events have an extra (blue) icon on the left of the branch column
 :::
 
 2. **Object-level activity log**:
@@ -46,7 +46,7 @@ Standalone events are grey in the global list, while events containing child eve
 There are several ways to hone your view in the global activity log:
 
 * **Branch**: Select the branch you wish to view the events in, such as `main`.
-* **Event type**: Filter by categories such as `node.updated`, `group.member_added`.
+* **Event type**: Filter by categories such as `Node Created`, `Node xxx`. You can find more information in the [Infrahub Events](../reference/infrahub-events) topic.
 * **Account / user**: Only display events that have been initiated by a certain account.
 * **Primary / related node**: Highlight activities associated with a specific node.
 * **Has children**: Whether a certain occurrence led to other smaller ones.
@@ -57,7 +57,7 @@ There are several ways to hone your view in the global activity log:
 If you choose **View more** from the global or object-level list, a separate detail page or popover will show up. Additional details are shown in this view, such as:
 
 * **Event ID**: A unique UUID referencing the event.
-* **Event type**: The type of the event, for example, `infrahub.node.updated`. You can find more information in the reference page for [Infrahub Events](../reference/infrahub-events)
+* **Event type**: The type of the event, for example, `infrahub.node.updated`. You can find more information in the [Infrahub Events](../reference/infrahub-events) topic.
 * **Occurred at**: The exact moment the incident took place
 * **Account**: The account that carried out the activity.
 * **Primary node**: The primary object that the event affects.

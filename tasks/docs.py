@@ -172,7 +172,7 @@ def _generate_infrahub_cli_documentation(context: Context) -> None:
 def _generate(context: Context) -> None:
     """Generate documentation output from code."""
     _generate_infrahub_cli_documentation(context=context)
-    _generate_infrahubctl_documentation(context=context)
+    #_generate_infrahubctl_documentation(context=context)
     _generate_infrahub_schema_documentation()
     _generate_infrahub_repository_configuration_documentation()
     # _generate_infrahub_sdk_configuration_documentation()
@@ -458,8 +458,6 @@ def _generate_infrahub_events_documentation() -> None:
     import jinja2
 
     import infrahub.events
-
-    # Import the base event type and the EventMeta model.
     from infrahub.events.models import EventMeta, InfrahubEvent
 
     def load_all_event_modules(package: Any) -> None:  # noqa: ANN401
@@ -475,9 +473,25 @@ def _generate_infrahub_events_documentation() -> None:
             subclasses.extend(get_all_event_subclasses(subclass))
         return subclasses
 
-    # Group events by a primary category derived from the class name.
-    # For example, "NodeMutatedEvent" will be grouped under "Node".
-    def group_events_by_category(event_classes: list[type]) -> dict[str, list[dict[str, any]]]:
+    def format_event_name(raw_name: str) -> str:
+        """
+        Insert spaces before capitals and remove a trailing "Event", if present.
+        For example: "NodeCreatedEvent" becomes "Node Created Event".
+        """
+        formatted = re.sub(r"(?<!^)(?=[A-Z])", " ", raw_name)
+        return formatted.strip()
+
+    def get_event_type(raw_name: str) -> str:
+        """
+        Convert a CamelCase event name into a dotted, lowercase event type string.
+        Removes a trailing "Event", then splits the name into parts.
+        For example: "NodeCreatedEvent" becomes "infrahub.node.created".
+        """
+        raw_name = raw_name.removesuffix("Event")
+        parts = re.findall(r"[A-Z][a-z]*", raw_name)
+        return "infrahub." + ".".join(part.lower() for part in parts)
+
+    def group_events_by_category(event_classes: list[type]) -> dict[str, list[dict[str, Any]]]:
         grouped = defaultdict(list)
         for cls in event_classes:
             if cls is InfrahubEvent:
@@ -489,7 +503,9 @@ def _generate_infrahub_events_documentation() -> None:
                 continue
             primary = category.group(1)
             description = cls.__doc__.strip() if cls.__doc__ else ""
-            event_name = cls.__name__
+            # Use helper functions to produce a friendly event name and an event type
+            event_name_formatted = format_event_name(cls.__name__)
+            event_type = get_event_type(cls.__name__)
 
             schema = cls.model_json_schema().get("properties", {})
             fields = []
@@ -513,7 +529,8 @@ def _generate_infrahub_events_documentation() -> None:
                 )
 
             event_info = {
-                "event_name": event_name,
+                "event_name": event_name_formatted,
+                "event_type": event_type,
                 "description": description,
                 "fields": fields,
             }
