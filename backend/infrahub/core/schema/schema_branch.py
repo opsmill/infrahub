@@ -55,6 +55,7 @@ from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
+from ..constants.schema import PARENT_CHILD_IDENTIFIER
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .schema_branch_computed import ComputedAttributes
 
@@ -1535,7 +1536,7 @@ class SchemaBranch:
     def _get_hierarchy_child_rel(self, peer: str, hierarchical: str | None, read_only: bool) -> RelationshipSchema:
         return RelationshipSchema(
             name="children",
-            identifier="parent__child",
+            identifier=PARENT_CHILD_IDENTIFIER,
             peer=peer,
             kind=RelationshipKind.HIERARCHY,
             cardinality=RelationshipCardinality.MANY,
@@ -1550,7 +1551,7 @@ class SchemaBranch:
     ) -> RelationshipSchema:
         return RelationshipSchema(
             name="parent",
-            identifier="parent__child",
+            identifier=PARENT_CHILD_IDENTIFIER,
             peer=peer,
             kind=RelationshipKind.HIERARCHY,
             cardinality=RelationshipCardinality.ONE,

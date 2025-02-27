@@ -7,23 +7,16 @@ from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
-<<<<<<< HEAD
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
     OBJECT_TEMPLATE_NAME_ATTR,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
-=======
-from infrahub.core.constants import (
-    GLOBAL_BRANCH_NAME,
->>>>>>> stable
     BranchSupportType,
     ComputedAttributeKind,
     InfrahubKind,
     RelationshipCardinality,
-<<<<<<< HEAD
     RelationshipKind,
-=======
->>>>>>> stable
 )
 from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
@@ -659,7 +652,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 processed_relationships.append(name)
                 rel: RelationshipManager = getattr(self, name)
                 updated_relationship = await rel.save(at=update_at, db=db)
-                node_changelog.add_relationship(relationship=updated_relationship)
+                node_changelog.add_relationship(relationship_changelog=updated_relationship)
 
         if len(processed_relationships) != len(self._relationships):
             # Analyze if the node has a parent and add it to the changelog if missing
@@ -699,23 +692,16 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if deleted_attribute:
                 node_changelog.add_attribute(attribute=deleted_attribute)
 
-<<<<<<< HEAD
-        # Go over the list of relationships and update them one by one
-        for name in self._relationships:
-            rel: RelationshipManager = getattr(self, name)
-            updated_relationship = await rel.delete(at=delete_at, db=db)
-            node_changelog.add_relationship(relationship=updated_relationship)
-
-        # Need to check if there are some unidirectional relationship as well
-        # For example, if we delete a tag, we must check the permissions and update all the relationships pointing at it
-=======
->>>>>>> stable
         branch = self.get_branch_based_on_support_type()
 
         delete_query = await RelationshipDeleteAllQuery.init(
             db=db, node_id=self.get_id(), branch=branch, at=delete_at, branch_agnostic=branch.name == GLOBAL_BRANCH_NAME
         )
         await delete_query.execute(db=db)
+
+        deleted_relationships_changelogs = delete_query.get_deleted_relationships_changelog(self._schema)
+        for relationship_changelog in deleted_relationships_changelogs:
+            node_changelog.add_relationship(relationship_changelog=relationship_changelog)
 
         # Update the relationship to the branch itself
         query = await NodeGetListQuery.init(
