@@ -45,82 +45,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **proposed_change** | The unique ID of the Proposed Change | N/A | None |
 <!-- vale on -->
 
-<!-- vale off -->
-### Check Repository
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event check.repository.check_definition
-<!-- vale on -->
-
-**Description**: Triggers user defined checks to run based on a Check Definition.
-
-**Priority**: 2
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **check_definition_id** | The unique ID of the check definition | string | None |
-| **commit** | The commit to target | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **file_path** | The path and filename of the check | string | None |
-| **class_name** | The name of the class containing the check | string | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event check.repository.merge_conflicts
-<!-- vale on -->
-
-**Description**: Runs a check to validate if there are merge conflicts for a proposed change between two branches.
-
-**Priority**: 2
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **validator_id** | The id of the validator associated with this check | string | None |
-| **validator_execution_id** | The id of current execution of the associated validator | string | None |
-| **check_execution_id** | The unique ID for the current execution of this check | string | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **source_branch** | The source branch | string | None |
-| **target_branch** | The target branch | string | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event check.repository.user_check
-<!-- vale on -->
-
-**Description**: Runs a check as defined within a CoreCheckDefinition within a repository.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **validator_id** | The id of the validator associated with this check | string | None |
-| **validator_execution_id** | The id of current execution of the associated validator | string | None |
-| **check_execution_id** | The unique ID for the current execution of this check | string | None |
-| **check_definition_id** | The unique ID of the check definition | string | None |
-| **commit** | The commit to target | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **file_path** | The path and filename of the check | string | None |
-| **class_name** | The name of the class containing the check | string | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **variables** | Input variables when running the check | object | None |
-| **name** | The name of the check | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-| **timeout** | The timeout for the check | integer | None |
-<!-- vale on -->
-
 
 <!-- vale off -->
 ### Event Branch
@@ -438,48 +362,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **source_branch** | The source branch of the proposed change | string | None |
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **destination_branch** | The destination branch of the proposed change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Request Repository
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.repository.checks
-<!-- vale on -->
-
-**Description**: Sent to trigger the checks for a repository to be executed.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository** | The unique ID of the Repository | string | None |
-| **source_branch** | The source branch | string | None |
-| **target_branch** | The target branch | string | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event request.repository.user_checks
-<!-- vale on -->
-
-**Description**: Sent to trigger the user defined checks on a repository.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **source_branch** | The source branch | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **target_branch** | The target branch | string | None |
 | **branch_diff** | The calculated diff between the two branches | N/A | None |
 <!-- vale on -->
 
@@ -540,85 +422,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **proposed_change** | The unique ID of the Proposed Change | N/A | None |
 <!-- vale on -->
 
-<!-- vale off -->
-### Check Repository
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event check.repository.check_definition
-<!-- vale on -->
-
-**Description**: Triggers user defined checks to run based on a Check Definition.
-
-**Priority**: 2
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **check_definition_id** | The unique ID of the check definition | string | None |
-| **commit** | The commit to target | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **file_path** | The path and filename of the check | string | None |
-| **class_name** | The name of the class containing the check | string | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event check.repository.merge_conflicts
-<!-- vale on -->
-
-**Description**: Runs a check to validate if there are merge conflicts for a proposed change between two branches.
-
-**Priority**: 2
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **validator_id** | The id of the validator associated with this check | string | None |
-| **validator_execution_id** | The id of current execution of the associated validator | string | None |
-| **check_execution_id** | The unique ID for the current execution of this check | string | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **source_branch** | The source branch | string | None |
-| **target_branch** | The target branch | string | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event check.repository.user_check
-<!-- vale on -->
-
-**Description**: Runs a check as defined within a CoreCheckDefinition within a repository.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **validator_id** | The id of the validator associated with this check | string | None |
-| **validator_execution_id** | The id of current execution of the associated validator | string | None |
-| **check_execution_id** | The unique ID for the current execution of this check | string | None |
-| **check_definition_id** | The unique ID of the check definition | string | None |
-| **commit** | The commit to target | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **branch_name** | The branch where the check is run | string | None |
-| **file_path** | The path and filename of the check | string | None |
-| **class_name** | The name of the class containing the check | string | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **variables** | Input variables when running the check | object | None |
-| **name** | The name of the check | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-| **timeout** | The timeout for the check | integer | None |
-<!-- vale on -->
-
 
 <!-- vale off -->
 ### Event Branch
@@ -952,50 +755,6 @@ For more detailed explanations on how to use these events within Infrahub, see t
 | **source_branch** | The source branch of the proposed change | string | None |
 | **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
 | **destination_branch** | The destination branch of the proposed change | string | None |
-| **branch_diff** | The calculated diff between the two branches | N/A | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Request Repository
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event request.repository.checks
-<!-- vale on -->
-
-**Description**: Sent to trigger the checks for a repository to be executed.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository** | The unique ID of the Repository | string | None |
-| **source_branch** | The source branch | string | None |
-| **target_branch** | The target branch | string | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event request.repository.user_checks
-<!-- vale on -->
-
-**Description**: Sent to trigger the user defined checks on a repository.
-
-**Priority**: 3
-
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **proposed_change** | The unique ID of the Proposed Change | string | None |
-| **repository_id** | The unique ID of the Repository | string | None |
-| **repository_name** | The name of the Repository | string | None |
-| **source_branch** | The source branch | string | None |
-| **source_branch_sync_with_git** | Indicates if the source branch should sync with git | boolean | None |
-| **target_branch** | The target branch | string | None |
 | **branch_diff** | The calculated diff between the two branches | N/A | None |
 <!-- vale on -->
 

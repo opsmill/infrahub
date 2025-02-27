@@ -36,6 +36,7 @@ from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import MergeFailedError
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
+from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
@@ -54,6 +55,8 @@ from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefec
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
+    GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
+    GIT_REPOSITORY_USER_CHECKS_TRIGGER,
     REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
 )
 from infrahub.workflows.utils import add_tags
@@ -414,36 +417,34 @@ async def _get_proposed_change_schema_integrity_constraints(
 async def repository_checks(model: RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
-    events: list[InfrahubMessage] = []
     for repository in model.branch_diff.repositories:
         if (
             model.source_branch_sync_with_git
             and not repository.read_only
             and repository.internal_status == RepositoryInternalStatus.ACTIVE.value
         ):
-            events.append(
-                messages.RequestRepositoryChecks(
-                    proposed_change=model.proposed_change,
-                    repository=repository.repository_id,
-                    source_branch=model.source_branch,
-                    target_branch=model.destination_branch,
-                )
+            trigger_internal_checks_model = TriggerRepositoryInternalChecks(
+                proposed_change=model.proposed_change,
+                repository=repository.repository_id,
+                source_branch=model.source_branch,
+                target_branch=model.destination_branch,
+            )
+            await service.workflow.submit_workflow(
+                workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER, parameters={"model": trigger_internal_checks_model}
             )
 
-        events.append(
-            messages.RequestRepositoryUserChecks(
-                proposed_change=model.proposed_change,
-                repository_id=repository.repository_id,
-                repository_name=repository.repository_name,
-                source_branch=model.source_branch,
-                source_branch_sync_with_git=model.source_branch_sync_with_git,
-                target_branch=model.destination_branch,
-                branch_diff=model.branch_diff,
-            )
+        trigger_user_checks_model = TriggerRepositoryUserChecks(
+            proposed_change=model.proposed_change,
+            repository_id=repository.repository_id,
+            repository_name=repository.repository_name,
+            source_branch=model.source_branch,
+            source_branch_sync_with_git=model.source_branch_sync_with_git,
+            target_branch=model.destination_branch,
+            branch_diff=model.branch_diff,
         )
-    for event in events:
-        event.assign_meta(parent=model)
-        await service.message_bus.send(message=event)
+        await service.workflow.submit_workflow(
+            workflow=GIT_REPOSITORY_USER_CHECKS_TRIGGER, parameters={"model": trigger_user_checks_model}
+        )
 
 
 @flow(
