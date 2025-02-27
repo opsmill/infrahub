@@ -1,4 +1,3 @@
-import pendulum
 import pytest
 
 from infrahub.core.query import (
@@ -11,6 +10,7 @@ from infrahub.core.query import (
     cleanup_return_labels,
     sort_results_by_time,
 )
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 
@@ -148,7 +148,7 @@ async def test_query_count(db: InfrahubDatabase, simple_dataset_01):
 
 
 async def test_query_result_getters(neo4j_factory):
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
 
     n1 = neo4j_factory.hydrate_node(111, {"Car"}, {"uuid": "n1"}, "111")
     n2 = neo4j_factory.hydrate_node(222, {"AttributeValue"}, {"uuid": "n1a1", "name": "name"}, "222")
@@ -159,8 +159,8 @@ async def test_query_result_getters(neo4j_factory):
         "HAS_ATTRIBUTE",
         {
             "branch": "main",
-            "from": time0.subtract(seconds=60).to_iso8601_string(),
-            "to": time0.subtract(seconds=30).to_iso8601_string(),
+            "from": time0.subtract(seconds=60).to_string(),
+            "to": time0.subtract(seconds=30).to_string(),
             "status": "active",
         },
     )
@@ -169,7 +169,7 @@ async def test_query_result_getters(neo4j_factory):
         111,
         222,
         "HAS_ATTRIBUTE",
-        {"branch": "main", "from": time0.subtract(seconds=30).to_iso8601_string(), "to": None, "status": "active"},
+        {"branch": "main", "from": time0.subtract(seconds=30).to_string(), "to": None, "status": "active"},
     )
 
     qr = QueryResult(
@@ -194,7 +194,7 @@ async def test_query_result_getters(neo4j_factory):
 
 
 async def test_sort_results_by_time(neo4j_factory):
-    time0 = pendulum.now(tz="UTC")
+    time0 = Timestamp()
 
     n1 = neo4j_factory.hydrate_node(111, {"Car"}, {"uuid": "n1"}, "111")
     n2 = neo4j_factory.hydrate_node(222, {"AttributeValue"}, {"uuid": "n1a1", "name": "name"}, "222")
@@ -205,8 +205,8 @@ async def test_sort_results_by_time(neo4j_factory):
         "HAS_ATTRIBUTE",
         {
             "branch": "main",
-            "from": time0.subtract(seconds=60).to_iso8601_string(),
-            "to": time0.subtract(seconds=30).to_iso8601_string(),
+            "from": time0.subtract(seconds=60).to_string(),
+            "to": time0.subtract(seconds=30).to_string(),
             "status": "active",
         },
     )
@@ -215,7 +215,7 @@ async def test_sort_results_by_time(neo4j_factory):
         111,
         222,
         "HAS_ATTRIBUTE",
-        {"branch": "main", "from": time0.subtract(seconds=30).to_iso8601_string(), "to": None, "status": "active"},
+        {"branch": "main", "from": time0.subtract(seconds=30).to_string(), "to": None, "status": "active"},
     )
     r3 = neo4j_factory.hydrate_relationship(
         1112223,
@@ -224,8 +224,8 @@ async def test_sort_results_by_time(neo4j_factory):
         "HAS_ATTRIBUTE",
         {
             "branch": "main",
-            "from": time0.subtract(seconds=90).to_iso8601_string(),
-            "to": time0.subtract(seconds=60).to_iso8601_string(),
+            "from": time0.subtract(seconds=90).to_string(),
+            "to": time0.subtract(seconds=60).to_string(),
             "status": "active",
         },
     )

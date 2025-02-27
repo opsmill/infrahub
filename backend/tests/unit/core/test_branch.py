@@ -1,4 +1,5 @@
 import pytest
+from infrahub_sdk.exceptions import TimestampFormatError
 from pydantic import ValidationError as PydanticValidationError
 
 from infrahub.core.branch import Branch
@@ -111,7 +112,7 @@ async def test_branch_branched_form_format_validator(db: InfrahubDatabase):
     time1 = Timestamp().to_string()
     assert Branch(name="cr1234", branched_from=time1).branched_from == time1
 
-    with pytest.raises(PydanticValidationError):
+    with pytest.raises(TimestampFormatError):
         Branch(name="cr1234", branched_from="not a date")
 
 

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 import netaddr
 import ujson
-from infrahub_sdk.timestamp import TimestampFormatError
+from infrahub_sdk.exceptions import TimestampFormatError
 from infrahub_sdk.utils import is_valid_url
 from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel, Field

@@ -1,6 +1,5 @@
 from unittest.mock import patch
 
-import pendulum
 import pytest
 from deepdiff import DeepDiff
 from pydantic import Field
@@ -710,7 +709,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
     p1_main = car_person_data_generic["p1"]
     p2_main = car_person_data_generic["p2"]
 
-    time_minus1 = pendulum.now(tz="UTC")
+    time_minus1 = Timestamp()
 
     await c1_main.previous_owner.update(data=p2_main, db=db)
     await c1_main.save(db=db, at=time_minus1)
@@ -721,12 +720,12 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
     p1_branch = await NodeManager.get_one(db=db, id=p1_main.id, branch=branch2)
 
     # Change previous owner of C1 from P2 to P1 in branch
-    time11 = pendulum.now(tz="UTC")
+    time11 = Timestamp()
     await c1_branch.previous_owner.update(data=p1_branch, db=db)
     await c1_branch.save(db=db, at=time11)
 
     # Change previous owner of C1 from P2 to Null in main
-    time12 = pendulum.now(tz="UTC")
+    time12 = Timestamp()
     c1_main = await NodeManager.get_one(db=db, id=c1_main.id)
     await c1_main.previous_owner.update(data=[], db=db)
     await c1_main.save(db=db, at=time12)
