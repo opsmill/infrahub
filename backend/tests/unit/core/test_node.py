@@ -749,16 +749,22 @@ async def test_node_create_with_object_template(
     assert device.db_id
     assert device.node_changelog.attributes["name"].value == "par-th2-br01"
     assert device.node_changelog.attributes["name"].value_update_status == DiffAction.ADDED
+    assert "source" not in device.node_changelog.attributes["name"].properties
     assert device.node_changelog.attributes["manufacturer"].value == "Juniper"
     assert device.node_changelog.attributes["manufacturer"].value_update_status == DiffAction.ADDED
+    assert device.node_changelog.attributes["manufacturer"].properties["source"].value == template.id
     assert device.node_changelog.attributes["height"].value == 1
     assert device.node_changelog.attributes["height"].value_update_status == DiffAction.ADDED
+    assert device.node_changelog.attributes["height"].properties["source"].value == template.id
     assert device.node_changelog.attributes["weight"].value == 8
     assert device.node_changelog.attributes["weight"].value_update_status == DiffAction.ADDED
+    assert device.node_changelog.attributes["weight"].properties["source"].value == template.id
     assert device.node_changelog.attributes["airflow"].value.value == "Front to rear"
     assert device.node_changelog.attributes["airflow"].value_update_status == DiffAction.ADDED
+    assert device.node_changelog.attributes["airflow"].properties["source"].value == template.id
     assert device.node_changelog.attributes["part_number"].value == "MX204"
     assert device.node_changelog.attributes["part_number"].value_update_status == DiffAction.ADDED
+    assert device.node_changelog.attributes["part_number"].properties["source"].value == template.id
 
 
 # --------------------------------------------------------------------------
