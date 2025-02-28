@@ -5,7 +5,7 @@ import time
 import uuid
 from asyncio import Lock as LocalLock
 from asyncio import sleep
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 import redis.asyncio as redis
 from prometheus_client import Histogram
@@ -47,7 +47,7 @@ GLOBAL_GRAPH_LOCK = "global.graph"
 class InfrahubMultiLock:
     """Context manager to allow multiple locks to be reserved together"""
 
-    def __init__(self, lock_registry: InfrahubLockRegistry, locks: Optional[list[str]] = None) -> None:
+    def __init__(self, lock_registry: InfrahubLockRegistry, locks: list[str] | None = None) -> None:
         self.registry = lock_registry
         self.locks = locks or []
 
@@ -56,9 +56,9 @@ class InfrahubMultiLock:
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ):
         await self.release()
 
@@ -84,9 +84,9 @@ class NATSLock:
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ):
         await self.release()
 
@@ -117,18 +117,18 @@ class InfrahubLock:
     def __init__(
         self,
         name: str,
-        connection: Optional[Union[redis.Redis, InfrahubServices]] = None,
-        local: Optional[bool] = None,
+        connection: redis.Redis | InfrahubServices | None = None,
+        local: bool | None = None,
         in_multi: bool = False,
     ) -> None:
         self.use_local: bool = local
         self.local: LocalLock = None
         self.remote: GlobalLock = None
         self.name: str = name
-        self.connection: Optional[redis.Redis] = connection
+        self.connection: redis.Redis | None = connection
         self.in_multi: bool = in_multi
         self.lock_type: str = "multi" if self.in_multi else "individual"
-        self.acquire_time: Optional[int] = None
+        self.acquire_time: int | None = None
         self.event = asyncio.Event()
 
         if not self.connection or (self.use_local is None and name.startswith("local.")):
@@ -146,9 +146,9 @@ class InfrahubLock:
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ):
         await self.release()
 
@@ -179,7 +179,7 @@ class InfrahubLock:
 
 class InfrahubLockRegistry:
     def __init__(
-        self, token: Optional[str] = None, local_only: bool = False, service: Optional[InfrahubServices] = None
+        self, token: str | None = None, local_only: bool = False, service: InfrahubServices | None = None
     ) -> None:
         if config.SETTINGS.cache.enable and not local_only:
             if config.SETTINGS.cache.driver == config.CacheDriver.Redis:
@@ -201,7 +201,7 @@ class InfrahubLockRegistry:
         self.locks: dict[str, InfrahubLock] = {}
 
     @classmethod
-    def _generate_name(cls, name: str, namespace: Optional[str] = None, local: Optional[bool] = None) -> str:
+    def _generate_name(cls, name: str, namespace: str | None = None, local: bool | None = None) -> str:
         if namespace is None and local is None:
             return name
 
@@ -221,7 +221,7 @@ class InfrahubLockRegistry:
         self,
         name: str,
         namespace: str | None,
-        local: Optional[bool] = None,
+        local: bool | None = None,
     ) -> InfrahubLock | None:
         lock_name = self._generate_name(name=name, namespace=namespace, local=local)
         if lock_name not in self.locks:
@@ -229,7 +229,7 @@ class InfrahubLockRegistry:
         return self.locks[lock_name]
 
     def get(
-        self, name: str, namespace: Optional[str] = None, local: Optional[bool] = None, in_multi: bool = False
+        self, name: str, namespace: str | None = None, local: bool | None = None, in_multi: bool = False
     ) -> InfrahubLock:
         lock_name = self._generate_name(name=name, namespace=namespace, local=local)
         if lock_name not in self.locks:
@@ -252,7 +252,7 @@ class InfrahubLockRegistry:
         return InfrahubMultiLock(lock_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK])
 
 
-def initialize_lock(local_only: bool = False, service: Optional[InfrahubServices] = None) -> None:
+def initialize_lock(local_only: bool = False, service: InfrahubServices | None = None) -> None:
     global registry
     registry = InfrahubLockRegistry(local_only=local_only, service=service)
 
