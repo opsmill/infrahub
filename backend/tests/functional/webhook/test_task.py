@@ -60,7 +60,7 @@ class TestWebhookTasks(TestInfrahubApp):
         register_core_schema: SchemaBranch,
         client: InfrahubClient,
         git_repos_source_dir_module_scope: Path,
-        prefect_test_fixture,
+        prefect_server_in_memory,
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
 
@@ -95,7 +95,7 @@ class TestWebhookTasks(TestInfrahubApp):
         await client_repository.save()
 
     @pytest.fixture(scope="class")
-    async def prefect_client(self, prefect_test_fixture) -> AsyncGenerator[PrefectClient, None]:
+    async def prefect_client(self, prefect_server_in_memory) -> AsyncGenerator[PrefectClient, None]:
         async with get_client(sync_client=False) as client:
             yield client
 

@@ -42,7 +42,7 @@ class TestComputedAttribute(TestInfrahubApp):
         client: InfrahubClient,
         default_branch: Branch,
         bus_simulator: BusSimulator,
-        prefect_test_fixture: None,
+        prefect_server_in_memory: None,
         git_repos_source_dir_module_scope: Path,
     ) -> dict[str, Node]:
         await load_schema(db, schema=SchemaRoot(nodes=[COLOR, TSHIRT]), update_db=True)

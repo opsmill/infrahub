@@ -25,7 +25,7 @@ class TestPreviousVersions(TestInfrahubApp):
         initialize_registry: None,
         client: InfrahubClient,
         bus_simulator: BusSimulator,
-        prefect_test_fixture: None,
+        prefect_server_in_memory: None,
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA, update_db=True)
 
