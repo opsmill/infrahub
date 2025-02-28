@@ -12,6 +12,14 @@ node_indexes: list[IndexItem] = [
     IndexItem(name="attr_iphost_bin", label="AttributeIPHost", properties=["binary_address"], type=IndexType.RANGE),
     IndexItem(name="rel_uuid", label="Relationship", properties=["uuid"], type=IndexType.RANGE),
     IndexItem(name="rel_identifier", label="Relationship", properties=["name"], type=IndexType.RANGE),
+    # diff indices
+    IndexItem(name="diff_uuid", label="DiffRoot", properties=["uuid"], type=IndexType.TEXT),
+    IndexItem(name="diff_node_uuid", label="DiffNode", properties=["uuid"], type=IndexType.TEXT),
+    IndexItem(name="diff_attr_name", label="DiffAttribute", properties=["name"], type=IndexType.TEXT),
+    IndexItem(name="diff_rel_name", label="DiffRelationship", properties=["name"], type=IndexType.TEXT),
+    IndexItem(
+        name="diff_rel_element_peer", label="DiffRelationshipElement", properties=["peer_id"], type=IndexType.TEXT
+    ),
 ]
 
 rel_indexes: list[IndexItem] = [
