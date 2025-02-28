@@ -17,7 +17,7 @@ export const Event = ({ __typename, ...props }: EventType) => {
         "rounded-md shadow-sm transition-all border bg-gray-50"
       )}
     >
-      <div className="col-span-3 flex item-center gap-4 p-2.5">
+      <div className="col-span-3 flex item-center gap-4 p-2.5 overflow-hidden">
         <div className="flex items-center text-xs font-medium text-gray-500 whitespace-nowrap">
           <Tooltip enabled content={props.occurred_at}>
             <span>{format(new Date(props.occurred_at), "MMM dd, HH:mm:ss")}</span>
