@@ -1151,7 +1151,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     @task(name="python-transform-execute", task_run_name="Execute Python Transform", cache_policy=NONE)  # type: ignore[arg-type]
     async def execute_python_transform(
-        self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: Optional[dict] = None
+        self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: dict | None = None
     ) -> Any:
         """Execute A Python Transform stored in the repository."""
         log = get_run_logger()
