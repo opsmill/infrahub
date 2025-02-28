@@ -82,9 +82,12 @@ class EnrichedNodeBatchCreateQuery(Query):
         self.params = self._build_node_batch_params()
         query = """
 UNWIND $node_details_list AS node_details
-WITH node_details.root_uuid AS root_uuid, node_details.node_map AS node_map
+WITH
+    node_details.root_uuid AS root_uuid,
+    node_details.node_map AS node_map,
+    toString(node_details.node_map.node_properties.uuid) AS node_uuid
 MERGE (diff_root:DiffRoot {uuid: root_uuid})
-MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_map.node_properties.uuid})
+MERGE (diff_root)-[:DIFF_HAS_NODE]->(diff_node:DiffNode {uuid: node_uuid})
 WITH root_uuid, node_map, diff_node, (node_map.conflict_params IS NOT NULL) AS has_node_conflict
 SET
     diff_node.kind = node_map.node_properties.kind,
@@ -438,32 +441,26 @@ class EnrichedNodesLinkQuery(Query):
         self.diff_nodes = diff_nodes
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
-        parent_links_list = []
+        parent_node_map: dict[str, dict[str, str]] = {}
         for diff_node in self.diff_nodes:
+            if diff_node.uuid not in parent_node_map:
+                parent_node_map[diff_node.uuid] = {}
             for relationship in diff_node.relationships:
                 for parent_node in relationship.nodes:
-                    parent_links_list.append(
-                        {
-                            "child_uuid": diff_node.uuid,
-                            "child_relationship_name": relationship.name,
-                            "parent_uuid": parent_node.uuid,
-                        }
-                    )
-
-        self.params = {"root_uuid": self.diff_root_uuid, "node_links_list": parent_links_list}
+                    parent_node_map[diff_node.uuid][relationship.name] = parent_node.uuid
+        self.params = {"root_uuid": self.diff_root_uuid, "parent_node_map": parent_node_map}
         query = """
-UNWIND $node_links_list AS node_link_details
-WITH
-    toString(node_link_details.parent_uuid) AS parent_uuid,
-    toString(node_link_details.child_uuid) AS child_uuid,
-    toString(node_link_details.child_relationship_name) AS relationship_name
+WITH keys($parent_node_map) AS child_node_uuids
 MATCH (diff_root:DiffRoot {uuid: $root_uuid})
+MATCH (diff_root)-[:DIFF_HAS_NODE]->(child_node:DiffNode)
+WHERE child_node.uuid IN child_node_uuids
 CALL {
-    WITH diff_root, parent_uuid, child_uuid, relationship_name
-    MATCH (diff_root)-[:DIFF_HAS_NODE]->(child_node:DiffNode {uuid: child_uuid})
-        -[:DIFF_HAS_RELATIONSHIP]->(diff_rel_group:DiffRelationship {name: relationship_name})
-    WITH diff_root, child_node, diff_rel_group, parent_uuid
-    LIMIT 1
+    WITH diff_root, child_node
+    WITH diff_root, child_node, $parent_node_map[child_node.uuid] AS sub_map
+    WITH diff_root, child_node, sub_map, keys(sub_map) AS relationship_names
+    MATCH (child_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_rel_group:DiffRelationship)
+    WHERE diff_rel_group.name IN relationship_names
+    WITH diff_root, diff_rel_group, toString(sub_map[diff_rel_group.name]) AS parent_uuid
     MATCH (diff_root)-[:DIFF_HAS_NODE]->(parent_node:DiffNode {uuid: parent_uuid})
     MERGE (diff_rel_group)-[:DIFF_HAS_NODE]->(parent_node)
 }
