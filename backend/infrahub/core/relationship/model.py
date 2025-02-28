@@ -1208,7 +1208,9 @@ class RelationshipManager:
         await self._fetch_relationships(at=delete_at, db=db, force_refresh=True)
 
         for rel in await self.get_relationships(db=db):
-            relationship_mapper.delete_relationship(relationship=rel)
+            relationship_mapper.delete_relationship(
+                peer_kind=rel.get_peer_kind(), peer_id=rel.get_peer_id(), rel_schema=rel.schema
+            )
             await rel.delete(at=delete_at, db=db)
 
         return relationship_mapper.changelog

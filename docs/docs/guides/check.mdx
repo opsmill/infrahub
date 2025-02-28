@@ -4,7 +4,7 @@ title: Creating a Check
 <!-- vale off -->
 ## Creating a Check
 <!-- vale on -->
-Within Infrahub a [Check](../topics/check) is defined in an [external repository](../topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the check using [infrahubctl check](../infrahubctl/infrahubctl-check).
+Within Infrahub a [Check](../topics/check) is defined in an [external repository](../topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the check using [infrahubctl check]($(base_url)infrahubctl/infrahubctl-check).
 
 The goal of this guide is to develop a `Check` and add it to Infrahub, we will achieve this by following these steps.
 
@@ -110,7 +110,7 @@ Then save the `TagsQuery` as a text file named `tags_check.gql`.
 
 ### 2. Create the Python check file
 
-The next step is to create the Check Python business logic. The check is a Python class that inherits from `InfrahubCheck` from the [Python SDK]($(local_base_url_1)python-sdk). Create a file called `tags_check.py`:
+The next step is to create the Check Python business logic. The check is a Python class that inherits from `InfrahubCheck` from the [Python SDK]($(base_url)python-sdk/introduction). Create a file called `tags_check.py`:
 
 ```python
 import re
