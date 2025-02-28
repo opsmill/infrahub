@@ -113,6 +113,28 @@ class PrefectEventData(PrefectEventModel):
     def _get_branch_name_from_resource(self) -> str:
         return self.resource.get("infrahub.branch.name") or ""
 
+    def _return_artifact_event(self) -> dict[str, Any]:
+        checksum = ""
+        checksum_previous: str | None = None
+        storage_id = ""
+        storage_id_previous: str | None = None
+        artifact_definition_id = ""
+        for resource in self.related:
+            if resource.role == "infrahub.artifact":
+                checksum = resource.get("infrahub.artifact.checksum") or ""
+                checksum_previous = resource.get("infrahub.artifact.checksum_previous")
+                storage_id = resource.get("infrahub.artifact.storage_id") or ""
+                storage_id_previous = resource.get("infrahub.artifact.storage_id_previous")
+                artifact_definition_id = resource.get("infrahub.artifact.artifact_definition_id") or ""
+
+        return {
+            "checksum": checksum,
+            "checksum_previous": checksum_previous,
+            "storage_id": storage_id,
+            "storage_id_previous": storage_id_previous,
+            "artifact_definition_id": artifact_definition_id,
+        }
+
     def _return_branch_created(self) -> dict[str, Any]:
         return {"created_branch": self._get_branch_name_from_resource()}
 
@@ -143,6 +165,8 @@ class PrefectEventData(PrefectEventModel):
         event_specifics = {}
 
         match self.event:
+            case "infrahub.artifact.created" | "infrahub.artifact.updated":
+                event_specifics = self._return_artifact_event()
             case "infrahub.node.created" | "infrahub.node.updated" | "infrahub.node.deleted":
                 event_specifics = self._return_node_mutation()
             case "infrahub.branch.created":
