@@ -412,23 +412,16 @@ async def test_query_NodeGetHierarchyQuery_ancestors(
     europe = hierarchical_location_data["europe"]
     paris = hierarchical_location_data["paris"]
     paris_r1 = hierarchical_location_data["paris-r1"]
-    north_america = hierarchical_location_data["north-america"]
-    seattle = hierarchical_location_data["seattle"]
-    seattle_r1 = hierarchical_location_data["seattle-r1"]
 
     query = await NodeGetHierarchyQuery.init(
         db=db,
         direction=RelationshipHierarchyDirection.ANCESTORS,
-        node_ids=[paris_r1.id, seattle_r1.id],
+        node_id=paris_r1.id,
         node_schema=node_schema,
         branch=default_branch,
     )
-
     await query.execute(db=db)
-    peer_node_map = query.get_peer_ids_by_node()
-    assert set(peer_node_map.keys()) == {paris_r1.id, seattle_r1.id}
-    assert set(peer_node_map[paris_r1.id]) == {paris.id, europe.id}
-    assert set(peer_node_map[seattle_r1.id]) == {seattle.id, north_america.id}
+    assert sorted(list(query.get_peer_ids())) == sorted([paris.id, europe.id])
 
 
 async def test_query_NodeGetHierarchyQuery_filters(
@@ -445,16 +438,14 @@ async def test_query_NodeGetHierarchyQuery_filters(
     query = await NodeGetHierarchyQuery.init(
         db=db,
         direction=RelationshipHierarchyDirection.DESCENDANTS,
-        node_ids=[europe.id],
+        node_id=europe.id,
         filters={"descendants__status__value": "online"},
         node_schema=node_schema,
         branch=default_branch,
     )
 
     await query.execute(db=db)
-    descendants_id_map = query.get_peer_ids_by_node()
-    assert len(descendants_id_map) == 1
-    assert europe.id in descendants_id_map
-    descendants_names = [ids_to_names[descendants_id].name.value for descendants_id in descendants_id_map[europe.id]]
+    descendants_ids = list(query.get_peer_ids())
+    descendants_names = [ids_to_names[descendants_id].name.value for descendants_id in descendants_ids]
 
     assert sorted(descendants_names) == ["london", "london-r1", "paris", "paris-r1"]

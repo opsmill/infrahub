@@ -30,6 +30,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
         # A hierarchy can be defined in 2 ways
         # - A node has a relationship of kind parent
         # - A node is part of a hierarchy
+
         log.info("Beginning hierarchical diff enrichment...")
         node_rel_parent_map: dict[str, list[str]] = defaultdict(list)
         node_hierarchy_map: dict[str, list[str]] = defaultdict(list)
@@ -67,23 +68,22 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
 
         # Retrieve the ID of all ancestors
         for kind, node_ids in node_map.items():
-            log.info(f"Beginning enrichment for {kind} node, num_nodes={len(node_ids)}...")
+            log.info(f"Beginning hierarchy enrichment for {kind} node, num_nodes={len(node_ids)}...")
             hierarchy_schema = self.db.schema.get(
                 name=kind, branch=enriched_diff_root.diff_branch_name, duplicate=False
             )
-            query = await NodeGetHierarchyQuery.init(
-                db=self.db,
-                direction=RelationshipHierarchyDirection.ANCESTORS,
-                node_ids=node_ids,
-                node_schema=hierarchy_schema,
-                branch=diff_branch,
-                hierarchical_ordering=True,
-            )
-            await query.execute(db=self.db)
-
-            ancestors_map = query.get_relatives_by_node()
             for node_id in node_ids:
-                ancestors = ancestors_map.get(node_id)
+                query = await NodeGetHierarchyQuery.init(
+                    db=self.db,
+                    direction=RelationshipHierarchyDirection.ANCESTORS,
+                    node_id=node_id,
+                    node_schema=hierarchy_schema,
+                    branch=diff_branch,
+                    hierarchical_ordering=True,
+                )
+                await query.execute(db=self.db)
+
+                ancestors = list(query.get_relatives())
 
                 if not ancestors:
                     continue
@@ -120,6 +120,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
 
         # Query the UUID of the parent
         for kind, ids in node_map.items():
+            log.info(f"Beginning parent enrichment for {kind} node, num_nodes={len(ids)}...")
             schema_node = self.db.schema.get(name=kind, branch=enriched_diff_root.diff_branch_name, duplicate=False)
 
             parent_rel = [rel for rel in schema_node.relationships if rel.kind == RelationshipKind.PARENT][0]
