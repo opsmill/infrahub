@@ -52,8 +52,8 @@ test.describe("/ipam - Ipam Tree", () => {
 
   test("verify tree count", async ({ page }) => {
     await page.goto("/ipam/prefixes/");
-    await expect(page.getByRole("link", { name: "/8 19" })).toBeVisible();
-    await page.getByRole("treeitem", { name: "/8 19" }).getByTestId("tree-item-toggle").click();
+    await expect(page.getByRole("link", { name: "/8 21" })).toBeVisible();
+    await page.getByRole("treeitem", { name: "/8 21" }).getByTestId("tree-item-toggle").click();
     await expect(page.getByRole("link", { name: "/16 16" })).toBeVisible();
     await expect(page.getByRole("link", { name: "10.0.0.0/16" })).toBeVisible();
     await expect(page.getByRole("link", { name: "10.2.0.0/" })).toBeVisible();

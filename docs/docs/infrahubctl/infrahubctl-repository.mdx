@@ -41,9 +41,10 @@ $ infrahubctl repository add [OPTIONS] NAME LOCATION
 * `--description TEXT`
 * `--username TEXT`
 * `--password TEXT`
-* `--ref TEXT`
+* `--commit TEXT`
 * `--read-only / --no-read-only`: [default: no-read-only]
 * `--debug / --no-debug`: [default: no-debug]
+* `--branch TEXT`: Branch on which to add the repository.  [default: main]
 * `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--help`: Show this message and exit.
 
@@ -57,7 +58,7 @@ $ infrahubctl repository list [OPTIONS]
 
 **Options**:
 
-* `--branch TEXT`: Branch on which to list repositories.
+* `--branch TEXT`
 * `--debug / --no-debug`: [default: no-debug]
 * `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--help`: Show this message and exit.

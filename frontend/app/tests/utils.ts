@@ -1,4 +1,4 @@
-import { Page, expect } from "@playwright/test";
+import { type Page, expect } from "@playwright/test";
 
 export const saveScreenshotForDocs = async (page: Page, filename: string) => {
   if (!process.env.UPDATE_DOCS_SCREENSHOTS) return;
