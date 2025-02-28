@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, Optional, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, TypeVar
 
 import aio_pika
 import opentelemetry.instrumentation.aio_pika.span_builder
@@ -66,7 +66,7 @@ async def _add_request_id(message: InfrahubMessage) -> None:
 
 class RabbitMQMessageBus(InfrahubMessageBus):
     def __init__(
-        self, component_type: ComponentType = ComponentType.NONE, settings: Optional[BrokerSettings] = None
+        self, component_type: ComponentType = ComponentType.NONE, settings: BrokerSettings | None = None
     ) -> None:
         self.settings = settings or config.SETTINGS.broker
         self.channel: AbstractChannel
@@ -85,7 +85,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.component_type: ComponentType = component_type
 
     @classmethod
-    async def new(cls, component_type: ComponentType, settings: Optional[BrokerSettings] = None) -> RabbitMQMessageBus:
+    async def new(cls, component_type: ComponentType, settings: BrokerSettings | None = None) -> RabbitMQMessageBus:
         message_bus = cls(component_type=component_type, settings=settings)
         await message_bus._initialize()
         return message_bus
@@ -221,7 +221,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self,
         message: InfrahubMessage,
         routing_key: str,
-        delay: Optional[MessageTTL] = None,
+        delay: MessageTTL | None = None,
         is_retry: bool = False,  # noqa: ARG002
     ) -> None:
         for enricher in self.message_enrichers:
