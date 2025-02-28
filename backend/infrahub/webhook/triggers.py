@@ -16,10 +16,11 @@ TRIGGER_WEBHOOK_SETUP_UPDATE = BuiltinTriggerDefinition(
         ExecuteWorkflow(
             workflow=WEBHOOK_CONFIGURE_ONE,
             parameters={
+                "event_type": "{{ event.event }}",
                 "event_data": {
                     "__prefect_kind": "json",
                     "value": {"__prefect_kind": "jinja", "template": "{{ event.payload['data'] | tojson }}"},
-                }
+                },
             },
         ),
     ],

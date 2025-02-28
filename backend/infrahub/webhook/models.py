@@ -6,7 +6,6 @@ import hmac
 from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import UUID, uuid4
 
-from infrahub_sdk.protocols import CoreCustomWebhook, CoreStandardWebhook, CoreTransformPython, CoreWebhook
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing_extensions import Self
 
@@ -14,12 +13,12 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.timestamp import Timestamp
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
-from infrahub.transformations.constants import DEFAULT_TRANSFORM_TIMEOUT
 from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerDefinition, TriggerType
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
 if TYPE_CHECKING:
     from httpx import Response
+    from infrahub_sdk.protocols import CoreCustomWebhook, CoreStandardWebhook, CoreTransformPython, CoreWebhook
 
     from infrahub.services import InfrahubServices
 
@@ -79,7 +78,7 @@ class EventContext(BaseModel):
 
     @classmethod
     def from_event(cls, event_id: str, event_type: str, event_occured_at: str, event_payload: dict[str, Any]) -> Self:
-        """Extract the context from the raw  eventwe are getting from Prefect."""
+        """Extract the context from the raw event we are getting from Prefect."""
 
         infrahub_context: dict[str, Any] = event_payload.get("context", {})
         account_info: dict[str, Any] = infrahub_context.get("account", {})
@@ -87,7 +86,9 @@ class EventContext(BaseModel):
 
         return cls(
             id=event_id,
-            branch=branch_info.get("name") if branch_info else None,
+            branch=branch_info.get("name")
+            if branch_info and branch_info.get("name") != registry.get_global_branch().name
+            else None,
             account_id=account_info.get("account_id"),
             occured_at=event_occured_at,
             event=event_type,
@@ -114,10 +115,16 @@ class Webhook(BaseModel):
     def webhook_type(self) -> str:
         return self.__class__.__name__
 
-    async def send(self, data: dict[str, Any], context: EventContext, service: InfrahubServices) -> Response:
+    async def prepare(self, data: dict[str, Any], context: EventContext, service: InfrahubServices) -> None:
         await self._prepare_payload(data=data, context=context, service=service)
         self._assign_headers()
-        return await service.http.post(url=self.url, json=self._payload, headers=self._headers)
+
+    async def send(self, data: dict[str, Any], context: EventContext, service: InfrahubServices) -> Response:
+        await self.prepare(data=data, context=context, service=service)
+        return await service.http.post(url=self.url, json=self.get_payload(), headers=self._headers)
+
+    def get_payload(self) -> dict[str, Any]:
+        return self._payload
 
     def to_cache(self) -> dict[str, Any]:
         return self.model_dump()
@@ -179,6 +186,7 @@ class TransformWebhook(Webhook):
     transform_name: str = Field(...)
     transform_class: str = Field(...)
     transform_file: str = Field(...)
+    transform_timeout: int = Field(...)
 
     async def _prepare_payload(self, data: dict[str, Any], context: EventContext, service: InfrahubServices) -> None:
         repo: Union[InfrahubReadOnlyRepository, InfrahubRepository]
@@ -197,17 +205,11 @@ class TransformWebhook(Webhook):
                 service=service,
             )
 
-        default_branch = repo.default_branch
-        commit = repo.get_commit_value(branch_name=default_branch)
+        branch = context.branch or repo.default_branch
+        commit = repo.get_commit_value(branch_name=branch)
 
-        timeout = DEFAULT_TRANSFORM_TIMEOUT
-        if transform := await service.client.get(
-            kind=CoreTransformPython, name__value=self.transform_name, raise_when_missing=False
-        ):
-            timeout = transform.timeout.value
-
-        self._payload = await repo.execute_python_transform.with_options(timeout_seconds=timeout)(
-            branch_name=default_branch,
+        self._payload = await repo.execute_python_transform.with_options(timeout_seconds=self.transform_timeout)(
+            branch_name=branch,
             commit=commit,
             location=f"{self.transform_file}::{self.transform_class}",
             data={"data": data, **context.model_dump()},
@@ -227,4 +229,5 @@ class TransformWebhook(Webhook):
             transform_name=transform.name.value,
             transform_class=transform.class_name.value,
             transform_file=transform.file_path.value,
+            transform_timeout=transform.timeout.value,
         )

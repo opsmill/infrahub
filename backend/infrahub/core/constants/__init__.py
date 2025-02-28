@@ -63,6 +63,9 @@ class EventType(InfrahubStringEnum):
 
     REPOSITORY_UPDATE_COMMIT = f"{EVENT_NAMESPACE}.repository.update_commit"
 
+    ARTIFACT_CREATED = f"{EVENT_NAMESPACE}.artifact.created"
+    ARTIFACT_UPDATED = f"{EVENT_NAMESPACE}.artifact.updated"
+
 
 class PermissionLevel(enum.Flag):
     READ = 1

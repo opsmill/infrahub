@@ -120,13 +120,13 @@ async def configure_webhook_all(service: InfrahubServices) -> None:
 
 
 @flow(name="webhook-setup-automation-one", flow_run_name="Configuration webhook automation for one webhook")
-async def configure_webhook_one(event_data: dict, service: InfrahubServices) -> None:
+async def configure_webhook_one(event_type: str, event_data: dict, service: InfrahubServices) -> None:
     log = get_run_logger()
 
     webhook = await service.client.get(kind=CoreWebhook, id=event_data["node_id"])
     trigger = WebhookTriggerDefinition.from_object(webhook)
 
-    # TODO: Need to check in the event if the node was created, updated or deleted
+    delete_automation: bool = "infrahub.node.deleted" in event_type
 
     async with get_client(sync_client=False) as prefect_client:
         # Query the deployment associated with the trigger to have its ID
@@ -143,10 +143,14 @@ async def configure_webhook_one(event_data: dict, service: InfrahubServices) -> 
 
         existing_automations = await prefect_client.read_automations_by_name(trigger.generate_name())
 
-        if existing_automations:
-            automation = existing_automations[0]
-            await prefect_client.update_automation(automation_id=automation.id, automation=automation)
+        if existing_automations and not delete_automation:
+            existing_automation = existing_automations[0]
+            await prefect_client.update_automation(automation_id=existing_automation.id, automation=automation)
             log.info(f"Automation {trigger.generate_name()} updated")
+        elif existing_automations and delete_automation:
+            existing_automation = existing_automations[0]
+            await prefect_client.delete_automation(automation_id=existing_automation.id)
+            log.info(f"Automation {trigger.generate_name()} deleted")
         else:
             await prefect_client.create_automation(automation=automation)
             log.info(f"Automation {trigger.generate_name()} created")
