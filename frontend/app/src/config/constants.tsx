@@ -129,14 +129,14 @@ export const relationshipsForListView = {
   many: ["Attribute"],
 };
 
-export const relationshipsForDetailsView = {
+export const relationshipsForDetailsView: { one: RelationshipKind[]; many: RelationshipKind[] } = {
   one: ["Generic", "Attribute", "Component", "Parent", "Hierarchy"],
   many: ["Attribute", "Parent"],
 };
 
-export const relationshipsForTabs = {
+export const relationshipsForTabs: { one: RelationshipKind[]; many: RelationshipKind[] } = {
   one: [],
-  many: ["Generic", "Component", "Hierarchy"],
+  many: ["Generic", "Component", "Hierarchy", "Template"],
 };
 
 export const RELATIONSHIP_VIEW_BLACKLIST = [

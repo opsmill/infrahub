@@ -1,0 +1,60 @@
+from infrahub.core.constants import (
+    BranchSupportType,
+    InfrahubKind,
+)
+
+core_check_definition = {
+    "name": "CheckDefinition",
+    "namespace": "Core",
+    "include_in_menu": False,
+    "icon": "mdi:check-all",
+    "label": "Check Definition",
+    "default_filter": "name__value",
+    "order_by": ["name__value"],
+    "display_labels": ["name__value"],
+    "branch": BranchSupportType.AWARE.value,
+    "uniqueness_constraints": [["name__value"]],
+    "generate_profile": False,
+    "inherit_from": [InfrahubKind.TASKTARGET],
+    "attributes": [
+        {"name": "name", "kind": "Text", "unique": True},
+        {"name": "description", "kind": "Text", "optional": True},
+        {"name": "file_path", "kind": "Text"},
+        {"name": "class_name", "kind": "Text"},
+        {"name": "timeout", "kind": "Number", "default_value": 10},
+        {"name": "parameters", "kind": "JSON", "optional": True},
+    ],
+    "relationships": [
+        {
+            "name": "repository",
+            "peer": InfrahubKind.GENERICREPOSITORY,
+            "kind": "Attribute",
+            "cardinality": "one",
+            "identifier": "check_definition__repository",
+            "optional": False,
+        },
+        {
+            "name": "query",
+            "peer": InfrahubKind.GRAPHQLQUERY,
+            "kind": "Attribute",
+            "identifier": "check_definition__graphql_query",
+            "cardinality": "one",
+            "optional": True,
+        },
+        {
+            "name": "targets",
+            "peer": InfrahubKind.GENERICGROUP,
+            "kind": "Attribute",
+            "identifier": "check_definition___group",
+            "cardinality": "one",
+            "optional": True,
+        },
+        {
+            "name": "tags",
+            "peer": InfrahubKind.TAG,
+            "kind": "Attribute",
+            "optional": True,
+            "cardinality": "many",
+        },
+    ],
+}

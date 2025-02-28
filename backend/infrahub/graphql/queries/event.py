@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, DateTime, Field, Int, List, NonNull, ObjectType, String
+from graphene import Argument, Boolean, DateTime, Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.exceptions import ValidationError
-from infrahub.graphql.types.event import EventNodes
+from infrahub.graphql.types.event import EventNodes, EventTypeFilter
 from infrahub.task_manager.event import PrefectEvent
 from infrahub.task_manager.models import InfrahubEventFilter
 
@@ -32,6 +32,7 @@ class Events(ObjectType):
         ids: list[str] | None = None,
         branches: list[str] | None = None,
         event_type: list[str] | None = None,
+        event_type_filter: dict[str, Any] | None = None,
         related_node__ids: list[str] | None = None,
         primary_node__ids: list[str] | None = None,
         parent__ids: list[str] | None = None,
@@ -49,6 +50,7 @@ class Events(ObjectType):
             account__ids=account__ids,
             has_children=has_children,
             event_type=event_type,
+            event_type_filter=event_type_filter,
             related_node__ids=related_node__ids,
             primary_node__ids=primary_node__ids,
             parent__ids=parent__ids,
@@ -93,6 +95,7 @@ Event = Field(
     level=Int(required=False),
     has_children=Boolean(required=False, description="Filter events based on if they can have children or not"),
     event_type=List(NonNull(String), description="Filter events that match a specific type"),
+    event_type_filter=Argument(EventTypeFilter, required=False, description="Filters specific to a given event_type"),
     primary_node__ids=List(
         NonNull(String), description="Filter events where the primary node id is within indicated node ids"
     ),

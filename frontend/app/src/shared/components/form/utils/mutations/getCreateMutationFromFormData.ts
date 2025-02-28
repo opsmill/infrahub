@@ -3,6 +3,7 @@ import {
   DynamicFieldProps,
   FormFieldValue,
   isFormFieldValueFromPool,
+  isFormFieldValueFromTemplate,
 } from "@/shared/components/form/type";
 
 export const getCreateMutationFromFormData = (
@@ -18,6 +19,10 @@ export const getCreateMutationFromFormData = (
 
     if (isFormFieldValueFromPool(fieldData)) {
       return { ...acc, [field.name]: fieldData.value };
+    }
+
+    if (isFormFieldValueFromTemplate(fieldData)) {
+      return { ...acc, object_template: { id: fieldData.source.id } };
     }
 
     if (fieldData.source?.type === "user") {

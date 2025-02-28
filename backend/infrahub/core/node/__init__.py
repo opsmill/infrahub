@@ -308,13 +308,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for attribute_name in template._attributes:
             if attribute_name in list(fields) + [OBJECT_TEMPLATE_NAME_ATTR]:
                 continue
-            fields[attribute_name] = {"value": getattr(template, attribute_name).value}
+            fields[attribute_name] = {"value": getattr(template, attribute_name).value, "source": template.id}
 
         for relationship_name in template._relationships:
             relationship_schema = template._schema.get_relationship(name=relationship_name)
             if (
                 relationship_name in list(fields)
-                or relationship_schema.kind != RelationshipKind.ATTRIBUTE
+                or relationship_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
                 or relationship_name == OBJECT_TEMPLATE_RELATIONSHIP_NAME
             ):
                 continue

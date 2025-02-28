@@ -161,12 +161,10 @@ class TestProposedChange(TestInfrahubApp):
 
         assert sorted(bus_pre_data_changes.seen_routing_keys) == [
             "request.proposed_change.refresh_artifacts",
-            "request.repository.user_checks",
         ]
 
         assert sorted(bus_post_data_changes.seen_routing_keys) == [
             "request.proposed_change.refresh_artifacts",
-            "request.repository.user_checks",
         ]
 
     async def test_run_generators_validate_requested_jobs(

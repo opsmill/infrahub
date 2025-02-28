@@ -4,6 +4,7 @@ import { currentBranchAtom } from "@/entities/branches/stores";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { GET_FORM_REQUIREMENTS } from "@/entities/nodes/api/getFormRequirements";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NodeObject } from "@/entities/nodes/types";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
 import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { CREATE_ACCOUNT_TOKEN } from "@/entities/user-profile/api/createAccountToken";
@@ -37,6 +38,7 @@ export type NodeFormProps = {
   profiles?: ProfileData[];
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType | RelationshipType>;
+  objectTemplate?: NodeObject | null;
   isFilterForm?: boolean;
   isUpdate?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
@@ -45,6 +47,7 @@ export type NodeFormProps = {
 export const NodeForm = ({
   className,
   currentObject,
+  objectTemplate,
   schema,
   profiles,
   onSuccess,
@@ -78,6 +81,7 @@ export const NodeForm = ({
     schema,
     profiles,
     initialObject: currentObject,
+    objectTemplate,
     auth,
     isFilterForm,
     filters,

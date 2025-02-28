@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
     from neo4j.graph import Path as Neo4jPath
     from neo4j.graph import Relationship as Neo4jRelationship
-    from pendulum import Interval
+    from whenever import TimeDelta
 
     from infrahub.graphql.initialization import GraphqlContext
 
@@ -417,8 +417,8 @@ class EnrichedDiffRootMetadata(BaseSummary):
         return hash(self.uuid)
 
     @property
-    def time_range(self) -> Interval:
-        return self.to_time.obj - self.from_time.obj
+    def time_range(self) -> TimeDelta:
+        return self.to_time.get_obj() - self.from_time.get_obj()
 
     def update_metadata(
         self,
@@ -447,8 +447,8 @@ class EnrichedDiffRoot(EnrichedDiffRootMetadata):
         return hash(self.uuid)
 
     @property
-    def time_range(self) -> Interval:
-        return self.to_time.obj - self.from_time.obj
+    def time_range(self) -> TimeDelta:
+        return self.to_time.get_obj() - self.from_time.get_obj()
 
     def get_nodes_without_parents(self) -> set[EnrichedDiffNode]:
         nodes_with_parent_uuids = set()

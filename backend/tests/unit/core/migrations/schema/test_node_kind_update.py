@@ -5,9 +5,13 @@ from infrahub.core.migrations.schema.node_kind_update import (
     NodeKindUpdateMigration,
     NodeKindUpdateMigrationQuery01,
 )
+from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
+from tests.helpers.db_validation import validate_node_relationships
+from tests.helpers.schema import load_schema
 
 
 async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
@@ -51,7 +55,9 @@ async def test_query_default_branch(db: InfrahubDatabase, default_branch: Branch
     assert await count_nodes(db=db, label="Test2NewCar") == 2
 
 
-async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main):
+async def test_migration_aware_relationship(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+):
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     car_schema = candidate_schema.get(name="TestCar")
@@ -78,3 +84,47 @@ async def test_migration(db: InfrahubDatabase, default_branch: Branch, car_accor
     assert await count_relationships(db=db) == count_rels + 28
     assert await count_nodes(db=db, label="TestCar") == 2
     assert await count_nodes(db=db, label="Test2NewCar") == 2
+
+    await validate_node_relationships(node=car_accord_main, db=db, branch=default_branch)
+    await validate_node_relationships(node=car_camry_main, db=db, branch=default_branch)
+
+
+async def test_migration_agnostic_relationship(
+    db: InfrahubDatabase, default_branch: Branch, car_person_branch_agnostic_schema
+):
+    await load_schema(db=db, schema=SchemaRoot(**car_person_branch_agnostic_schema))
+
+    person_john = await Node.init(db=db, schema="TestPerson")
+    await person_john.new(db=db, name={"value": "John"})
+    await person_john.save(db=db)
+
+    car = await Node.init(db=db, schema="TestCar")
+    await car.new(db=db, name="yaris", owner=person_john.id)
+    await car.save(db=db)
+
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate_schema = schema.duplicate()
+    car_schema = candidate_schema.get(name="TestCar")
+    candidate_schema.delete(name="TestCar")
+    car_schema.name = "NewCar"
+    car_schema.namespace = "Test2"
+    candidate_schema.set(name="Test2NewCar", schema=car_schema)
+    assert car_schema.kind == "Test2NewCar"
+
+    assert await count_nodes(db=db, label="TestCar") == 1
+    assert await count_nodes(db=db, label="Test2NewCar") == 0
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestCar"),
+        new_node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="namespace"),
+    )
+
+    execution_result = await migration.execute(db=db, branch=default_branch)
+    assert not execution_result.errors
+    assert execution_result.nbr_migrations_executed == 1
+    assert await count_nodes(db=db, label="TestCar") == 1
+    assert await count_nodes(db=db, label="Test2NewCar") == 1
+
+    await validate_node_relationships(node=person_john, db=db, branch=registry.get_global_branch())
+    await validate_node_relationships(node=car, db=db, branch=registry.get_global_branch())

@@ -10,6 +10,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     OBJECT_TEMPLATE_NAME_ATTR,
+    OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     AllowOverrideType,
     BranchSupportType,
     HashableModelState,
@@ -2832,10 +2833,12 @@ async def test_hierarchical_validate_parent_children(
     await uk.save(db=db)
 
 
-async def test_manage_object_templates():
+@pytest.mark.parametrize("relationship_kind", (RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC))
+async def test_manage_object_templates(relationship_kind: RelationshipKind):
     schema_branch = SchemaBranch(cache={}, name="test")
     THING_WITH_TEMPLATE = copy.deepcopy(THING)
     THING_WITH_TEMPLATE.generate_template = True
+    THING_WITH_TEMPLATE.relationships[0].kind = relationship_kind
     schema_branch.load_schema(
         schema=SchemaRoot(**core_models).merge(schema=SchemaRoot(nodes=[THING_WITH_TEMPLATE, CHILD]))
     )
@@ -2851,8 +2854,15 @@ async def test_manage_object_templates():
     # Verify the generated template
     test_object_template_thing = schema_branch.get_template("TemplateTestingThing", duplicate=False)
     assert sorted(
-        [attr.name for attr in test_object_template_thing.attributes if attr.name != OBJECT_TEMPLATE_NAME_ATTR]
-    ) == sorted([attr.name for attr in THING_WITH_TEMPLATE.attributes if not attr.unique])
+        [a.name for a in test_object_template_thing.attributes if a.name != OBJECT_TEMPLATE_NAME_ATTR]
+    ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique])
+    assert sorted(
+        [
+            r.name
+            for r in test_object_template_thing.relationships
+            if r.name not in (OBJECT_TEMPLATE_RELATIONSHIP_NAME, "related_nodes")
+        ]
+    ) == sorted([r.name for r in THING_WITH_TEMPLATE.relationships])
 
 
 async def test_manage_object_templates_with_component_relationships():

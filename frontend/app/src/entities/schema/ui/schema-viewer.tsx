@@ -9,6 +9,7 @@ import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { isNodeSchema } from "@/entities/schema/utils/is-node-schema";
 import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
+import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
@@ -209,8 +210,14 @@ const Properties = ({ schema }: { schema: ModelSchema }) => {
         <PropertyRow title="Default filter" value={schema.default_filter} />
         <PropertyRow title="Order by" value={schema.order_by} />
         <PropertyRow title="Uniqueness constraints" value={schema.uniqueness_constraints} />
+      </div>
+
+      <div>
         {!isProfileSchema(schema) && (
           <PropertyRow title="Generate profile" value={schema.generate_profile} />
+        )}
+        {!isTemplateSchema(schema) && (
+          <PropertyRow title="Generate template" value={schema.generate_template} />
         )}
       </div>
 

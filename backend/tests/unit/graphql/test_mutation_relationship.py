@@ -16,6 +16,7 @@ from infrahub.core.node import Node
 from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
+from infrahub.events.models import EventNode
 from infrahub.events.node_action import NodeMutatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.permissions import LocalPermissionBackend
@@ -385,7 +386,7 @@ async def test_relationship_wrong_node(
 async def test_relationship_groups_add(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_generics_data,
+    car_person_generics_data: dict[str, Node],
     enable_broker_config: None,
     session_first_account: AccountSession,
     first_account: Node,
@@ -424,6 +425,10 @@ async def test_relationship_groups_add(
     g2 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g2.new(db=db, name="group2", members=[c2, c3])
     await g2.save(db=db)
+
+    g1_root = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await g1_root.new(db=db, name="group1_root", children=[g1])
+    await g1_root.save(db=db)
 
     query = """
     mutation {
@@ -464,8 +469,13 @@ async def test_relationship_groups_add(
     assert len(memory_event.events) == 1
     group_event = memory_event.events[0]
     assert isinstance(group_event, GroupMemberAddedEvent)
-
     assert [member.id for member in group_event.members] == [c2.id]
+    assert group_event.members == [EventNode(id=c2.id, kind=c2.get_kind())]
+    assert group_event.ancestors == [EventNode(id=g1_root.id, kind=g1_root.get_kind())]
+
+    g_root = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await g_root.new(db=db, name="root-group", children=[g2, g1_root])
+    await g_root.save(db=db)
 
     query = """
     mutation {
@@ -515,6 +525,9 @@ async def test_relationship_groups_add(
     # group as c3 was already a member of g2 we don't see an event for that entry
     assert group_event.node_id == g1.id
     assert [member.id for member in group_event.members] == [c3.id]
+    assert len(group_event.ancestors) == 2
+    assert EventNode(id=g1_root.id, kind=g1_root.get_kind()) in group_event.ancestors
+    assert EventNode(id=g_root.id, kind=g_root.get_kind()) in group_event.ancestors
 
 
 async def test_relationship_groups_remove(
@@ -560,6 +573,10 @@ async def test_relationship_groups_remove(
     await g2.new(db=db, name="group2", members=[c2, c3])
     await g2.save(db=db)
 
+    g_root = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await g_root.new(db=db, name="group1_root", children=[g1])
+    await g_root.save(db=db)
+
     query = """
     mutation {
         RelationshipRemove(data: {
@@ -602,6 +619,7 @@ async def test_relationship_groups_remove(
     group_event = memory_event.events[0]
     assert isinstance(group_event, GroupMemberRemovedEvent)
     assert [member.id for member in group_event.members] == [c1.id]
+    assert group_event.ancestors == [EventNode(id=g_root.id, kind=g_root.get_kind())]
 
     query = """
     mutation {
@@ -652,6 +670,7 @@ async def test_relationship_groups_remove(
     # The c3 node is not member of g1 so we only expect to see a group event for the g2 group
     assert group_event.node_id == g2.id
     assert [member.id for member in group_event.members] == [c3.id]
+    assert group_event.ancestors == []
 
 
 async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):

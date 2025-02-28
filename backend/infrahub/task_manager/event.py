@@ -6,6 +6,7 @@ from prefect.client.orchestration import PrefectClient, get_client
 from prefect.events.schemas.events import Event as PrefectEventModel
 from pydantic import BaseModel, Field, TypeAdapter
 
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.log import get_logger
 from infrahub.utils import get_nested_dict
 
@@ -22,6 +23,8 @@ class PrefectEventData(PrefectEventModel):
                 continue
             if "infrahub.resource.label" not in resource:
                 continue
+            if resource.get("infrahub.resource.label") == GLOBAL_BRANCH_NAME:
+                return None
             return resource.get("infrahub.resource.label")
         return None
 
@@ -107,12 +110,53 @@ class PrefectEventData(PrefectEventModel):
 
         return {"attributes": attributes}
 
+    def _get_branch_name_from_resource(self) -> str:
+        return self.resource.get("infrahub.branch.name") or ""
+
+    def _return_branch_created(self) -> dict[str, Any]:
+        return {"created_branch": self._get_branch_name_from_resource()}
+
+    def _return_branch_deleted(self) -> dict[str, Any]:
+        return {"deleted_branch": self._get_branch_name_from_resource()}
+
+    def _return_branch_merged(self) -> dict[str, Any]:
+        return {"source_branch": self._get_branch_name_from_resource()}
+
+    def _return_branch_rebased(self) -> dict[str, Any]:
+        return {"rebased_branch": self._get_branch_name_from_resource()}
+
+    def _return_group_event(self) -> dict[str, Any]:
+        members = []
+        ancestors = []
+
+        for resource in self.related:
+            if resource.role == "infrahub.group.member" and resource.get("infrahub.node.kind"):
+                members.append({"id": resource.id, "kind": resource.get("infrahub.node.kind")})
+            elif resource.role == "infrahub.group.ancestor" and resource.get("infrahub.node.kind"):
+                ancestors.append({"id": resource.id, "kind": resource.get("infrahub.node.kind")})
+
+        return {"members": members, "ancestors": ancestors}
+
     def _return_event_specifics(self) -> dict[str, Any]:
+        """Return event specific data based on the type of event being processed"""
+
+        event_specifics = {}
+
         match self.event:
             case "infrahub.node.created" | "infrahub.node.updated" | "infrahub.node.deleted":
-                return self._return_node_mutation()
+                event_specifics = self._return_node_mutation()
+            case "infrahub.branch.created":
+                event_specifics = self._return_branch_created()
+            case "infrahub.branch.deleted":
+                event_specifics = self._return_branch_deleted()
+            case "infrahub.branch.merged":
+                event_specifics = self._return_branch_merged()
+            case "infrahub.branch.rebased":
+                event_specifics = self._return_branch_rebased()
+            case "infrahub.group.member_added" | "infrahub.group.member_removed":
+                event_specifics = self._return_group_event()
 
-        return {}
+        return event_specifics
 
     def to_graphql(self) -> dict[str, Any]:
         response = {
