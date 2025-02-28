@@ -274,7 +274,7 @@ class DiffRepository:
                 )
                 await single_node_query.execute(db=self.db)
 
-    @retry_db_transaction(name="enriched_diff_hierarhcy_update")
+    @retry_db_transaction(name="enriched_diff_hierarchy_update")
     async def _run_hierarchy_links_update_query(self, diff_root_uuid: str, diff_nodes: list[EnrichedDiffNode]) -> None:
         log.info(f"Updating diff hierarchy links, num_nodes={len(diff_nodes)}")
         link_query = await EnrichedNodesLinkQuery.init(db=self.db, diff_root_uuid=diff_root_uuid, diff_nodes=diff_nodes)
