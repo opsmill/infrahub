@@ -1,4 +1,5 @@
 import { nodeSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { ComboboxEmpty, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { useAtomValue } from "jotai";
 import { forwardRef } from "react";
@@ -12,6 +13,8 @@ export const KindComboboxList = forwardRef<HTMLDivElement, KindComboboxListProps
   ({ value, onSelect }, ref) => {
     const nodeSchemas = useAtomValue(nodeSchemasAtom);
     const profileSchemas = useAtomValue(profileSchemasAtom);
+    const schemaKindLabel = useAtomValue(schemaKindLabelState);
+
 
     const kindList: Array<string> = [
       ...nodeSchemas.map((schema) => {
@@ -31,10 +34,9 @@ export const KindComboboxList = forwardRef<HTMLDivElement, KindComboboxListProps
             <ComboboxItem
               key={kind}
               value={kind}
-              selectedValue={value}
               onSelect={() => onSelect(kind)}
             >
-              <span className="truncate">{kind}</span>
+              <span className="truncate">{schemaKindLabel[kind]}</span>
             </ComboboxItem>
           )
         })}

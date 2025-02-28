@@ -35,7 +35,7 @@ export function GlobalKindFilterForm({ name, onSuccess }: GlobalKindFilterFormPr
   };
 
   return (
-    <div className="flex items-center gap-4 min-w-64">
+    <div className="flex items-center gap-2">
       <FilterKindSelect
         value={kind}
         onChange={(value) => setKind(value)}

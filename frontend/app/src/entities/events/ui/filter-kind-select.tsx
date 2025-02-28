@@ -1,13 +1,18 @@
 import { KindComboboxList } from "@/entities/nodes/object/ui/filters/kind-combobox-list";
+import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai";
 
 export function FilterKindSelect({ value, onChange }: { value: string | null; onChange: (value: string) => void }) {
+  const schemaKindLabel = useAtomValue(schemaKindLabelState);
+
   return (
     <Combobox defaultOpen>
+      Kind:
       <PopoverTrigger asChild>
         <div
           className={classNames(
@@ -17,7 +22,7 @@ export function FilterKindSelect({ value, onChange }: { value: string | null; on
           )}
         >
           <div className="flex-grow flex flex-wrap gap-2">
-            {value}
+            {value && schemaKindLabel[value]}
           </div>
 
           <button type="button" className="text-gray-600 outline-none w-3.5 h-3.5">
