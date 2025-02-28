@@ -454,14 +454,16 @@ class EnrichedNodesLinkQuery(Query):
         query = """
 UNWIND $node_links_list AS node_link_details
 WITH
-    node_link_details.parent_uuid AS parent_uuid,
-    node_link_details.child_uuid AS child_uuid,
-    node_link_details.child_relationship_name AS relationship_name
+    toString(node_link_details.parent_uuid) AS parent_uuid,
+    toString(node_link_details.child_uuid) AS child_uuid,
+    toString(node_link_details.child_relationship_name) AS relationship_name
+MATCH (diff_root:DiffRoot {uuid: $root_uuid})
 CALL {
-    WITH parent_uuid, child_uuid, relationship_name
-    MATCH (diff_root {uuid: $root_uuid})
+    WITH diff_root, parent_uuid, child_uuid, relationship_name
     MATCH (diff_root)-[:DIFF_HAS_NODE]->(child_node:DiffNode {uuid: child_uuid})
         -[:DIFF_HAS_RELATIONSHIP]->(diff_rel_group:DiffRelationship {name: relationship_name})
+    WITH diff_root, child_node, diff_rel_group, parent_uuid
+    LIMIT 1
     MATCH (diff_root)-[:DIFF_HAS_NODE]->(parent_node:DiffNode {uuid: parent_uuid})
     MERGE (diff_rel_group)-[:DIFF_HAS_NODE]->(parent_node)
 }
