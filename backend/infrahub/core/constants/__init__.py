@@ -43,6 +43,26 @@ RESERVED_ATTR_GEN_NAMES = ["type"]
 
 NULL_VALUE = "NULL"
 
+EVENT_NAMESPACE = "infrahub"
+
+
+class EventType(InfrahubStringEnum):
+    BRANCH_CREATED = f"{EVENT_NAMESPACE}.branch.created"
+    BRANCH_DELETED = f"{EVENT_NAMESPACE}.branch.deleted"
+    BRANCH_MERGED = f"{EVENT_NAMESPACE}.branch.merged"
+    BRANCH_REBASED = f"{EVENT_NAMESPACE}.branch.rebased"
+
+    SCHEMA_UPDATED = f"{EVENT_NAMESPACE}.schema.update"
+
+    NODE_CREATED = f"{EVENT_NAMESPACE}.node.created"
+    NODE_UPDATED = f"{EVENT_NAMESPACE}.node.updated"
+    NODE_DELETED = f"{EVENT_NAMESPACE}.node.deleted"
+
+    GROUP_MEMBER_ADDED = f"{EVENT_NAMESPACE}.group.member_added"
+    GROUP_MEMBER_REMOVED = f"{EVENT_NAMESPACE}.group.member_removed"
+
+    REPOSITORY_UPDATE_COMMIT = f"{EVENT_NAMESPACE}.repository.update_commit"
+
 
 class PermissionLevel(enum.Flag):
     READ = 1
