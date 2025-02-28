@@ -24,10 +24,10 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.10, < 3.13"
-neo4j = "~5.27"
-neo4j-rust-ext = "^5.27.0.0"
-pydantic = "~2.9"
-pydantic-settings = "~2.7"
+neo4j = "~5.28"
+neo4j-rust-ext = "~5.28"
+pydantic = "~2.10"
+pydantic-settings = "~2.8"
 pytest = "~7.4"
 aio-pika = "~9.4"
 structlog = "24.1.0"
