@@ -49,6 +49,15 @@ class DatabaseError(Error):
         super().__init__(self.message)
 
 
+class ServiceUnavailableError(Error):
+    HTTP_CODE: int = 503
+    DESCRIPTION = "Service unavailable"
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(self.message)
+
+
 class LockError(Error):
     pass
 

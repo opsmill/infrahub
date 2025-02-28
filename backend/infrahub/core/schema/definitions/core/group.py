@@ -35,6 +35,7 @@ core_group = {
             "optional": True,
             "identifier": "group_member",
             "cardinality": "many",
+            "branch": BranchSupportType.AWARE,
         },
         {
             "name": "subscribers",

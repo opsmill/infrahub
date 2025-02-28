@@ -177,7 +177,7 @@ class DiffChangelogCollector:
                             value_previous=rel_prop.previous_value,
                         )
 
-        node.add_relationship(relationship=changelog_rel)
+        node.add_relationship(relationship_changelog=changelog_rel)
 
     def _convert_string_boolean_value(self, value: str | None) -> bool | None:
         """Convert string based boolean for is_protected and is_visible."""
@@ -227,7 +227,7 @@ class DiffChangelogCollector:
 
             changelog_rel.peers.append(peer_log)
 
-        node.add_relationship(relationship=changelog_rel)
+        node.add_relationship(relationship_changelog=changelog_rel)
 
     def collect_changelogs(self) -> Sequence[tuple[DiffAction, NodeChangelog]]:
         self._populate_diff_nodes()

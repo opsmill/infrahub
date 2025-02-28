@@ -12,7 +12,7 @@ TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_BRANCH = BuiltinTriggerDefinition(
     trigger=EventTrigger(events={"infrahub.branch.created"}),
     actions=[
         ExecuteWorkflow(
-            name=COMPUTED_ATTRIBUTE_SETUP_PYTHON.name,
+            workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON,
             parameters={
                 "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
                 "trigger_updates": False,
@@ -31,7 +31,7 @@ TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_SETUP_COMMIT = BuiltinTriggerDefinition(
     trigger=EventTrigger(events={"infrahub.repository.update_commit"}),
     actions=[
         ExecuteWorkflow(
-            name=COMPUTED_ATTRIBUTE_SETUP_PYTHON.name,
+            workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON,
             parameters={
                 "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
                 "commit": "{{ event.payload['commit'] }}",
@@ -50,7 +50,7 @@ TRIGGER_COMPUTED_ATTRIBUTE_PYTHON_CLEAN_BRANCH = BuiltinTriggerDefinition(
     trigger=EventTrigger(events={"infrahub.branch.deleted"}),
     actions=[
         ExecuteWorkflow(
-            name=COMPUTED_ATTRIBUTE_REMOVE_PYTHON.name,
+            workflow=COMPUTED_ATTRIBUTE_REMOVE_PYTHON,
             parameters={
                 "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
                 "context": {
@@ -67,7 +67,7 @@ TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA = BuiltinTriggerDefinition(
     trigger=EventTrigger(events={"infrahub.schema.update"}),
     actions=[
         ExecuteWorkflow(
-            name=COMPUTED_ATTRIBUTE_SETUP.name,
+            workflow=COMPUTED_ATTRIBUTE_SETUP,
             parameters={
                 "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
                 "context": {
@@ -77,7 +77,7 @@ TRIGGER_COMPUTED_ATTRIBUTE_ALL_SCHEMA = BuiltinTriggerDefinition(
             },
         ),
         ExecuteWorkflow(
-            name=COMPUTED_ATTRIBUTE_SETUP_PYTHON.name,
+            workflow=COMPUTED_ATTRIBUTE_SETUP_PYTHON,
             parameters={
                 "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
                 "context": {

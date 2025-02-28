@@ -39,6 +39,7 @@ from typing_extensions import Self
 
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositorySyncStatus
 from infrahub.core.registry import registry
+from infrahub.events.artifact_action import ArtifactEvent
 from infrahub.events.models import EventMeta
 from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.exceptions import CheckError, RepositoryInvalidFileSystemError, TransformError
@@ -54,7 +55,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.schema.repository import InfrahubRepositoryArtifactDefinitionConfig
     from infrahub_sdk.transforms import InfrahubTransform
 
-    from infrahub.core.checks.models import CheckArtifactCreate
+    from infrahub.artifacts.models import CheckArtifactCreate
     from infrahub.git.models import RequestArtifactGenerate
     from infrahub.services import InfrahubServices
 
@@ -1150,7 +1151,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     @task(name="python-transform-execute", task_run_name="Execute Python Transform", cache_policy=NONE)  # type: ignore[arg-type]
     async def execute_python_transform(
-        self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: Optional[dict] = None
+        self, branch_name: str, commit: str, location: str, client: InfrahubClient, data: dict | None = None
     ) -> Any:
         """Execute A Python Transform stored in the repository."""
         log = get_run_logger()
@@ -1266,7 +1267,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
     async def render_artifact(
-        self, artifact: CoreArtifact, message: Union[CheckArtifactCreate, RequestArtifactGenerate]
+        self,
+        artifact: CoreArtifact,
+        artifact_created: bool,
+        message: Union[CheckArtifactCreate, RequestArtifactGenerate],
     ) -> ArtifactGenerateResult:
         response = await self.sdk.query_gql_query(
             name=message.query,
@@ -1277,6 +1281,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             branch_name=message.branch_name,
             timeout=message.timeout,
         )
+        branch = registry.get_branch_from_registry(branch=message.branch_name)
+
+        previous_checksum = artifact.checksum.value
+        previous_storage_id = artifact.storage_id.value
 
         if message.transform_type == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template.with_options(timeout_seconds=message.timeout)(
@@ -1315,4 +1323,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if artifact.name.value != message.artifact_name:
             artifact.name.value = message.artifact_name
         await artifact.save()
+
+        event = ArtifactEvent(
+            node_id=artifact.id,
+            target_id=message.target_id,
+            target_kind=message.target_kind,
+            artifact_definition_id=message.artifact_definition,
+            meta=EventMeta.from_context(context=message.context, branch=branch),
+            checksum=checksum,
+            checksum_previous=previous_checksum,
+            storage_id=storage_id,
+            storage_id_previous=previous_storage_id,
+            created=artifact_created,
+        )
+
+        await self.service.event.send(event=event)
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)

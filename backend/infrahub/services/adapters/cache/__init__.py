@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from infrahub.message_bus.types import KVTTL
@@ -16,12 +16,12 @@ class InfrahubCache(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         """Retrieve a value from the cache."""
         raise NotImplementedError()
 
     @abstractmethod
-    async def get_values(self, keys: list[str]) -> list[Optional[str]]:
+    async def get_values(self, keys: list[str]) -> list[str | None]:
         """Return a list the values for requested keys."""
         raise NotImplementedError()
 
@@ -31,8 +31,6 @@ class InfrahubCache(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def set(
-        self, key: str, value: str, expires: Optional[KVTTL] = None, not_exists: bool = False
-    ) -> Optional[bool]:
+    async def set(self, key: str, value: str, expires: KVTTL | None = None, not_exists: bool = False) -> bool | None:
         """Set a value in the cache."""
         raise NotImplementedError()

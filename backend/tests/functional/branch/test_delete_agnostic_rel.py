@@ -31,13 +31,13 @@ class TestDeleteAgnosticRel(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def car(self, client: InfrahubClient, load_schema, owner_1: InfrahubNode) -> InfrahubNode:
-        car = await client.create(kind="TestCar", name="car_name", owner=owner_1)
+        car = await client.create(kind="TestCar", name="car_name", agnostic_owner=owner_1)
         await car.save()
         return car
 
     @pytest.fixture(scope="class")
     async def car_2(self, client: InfrahubClient, load_schema, owner_2: InfrahubNode) -> InfrahubNode:
-        car = await client.create(kind="TestCar", name="car_name_2", owner=owner_2)
+        car = await client.create(kind="TestCar", name="car_name_2", agnostic_owner=owner_2)
         await car.save()
         return car
 
@@ -64,11 +64,11 @@ class TestDeleteAgnosticRel(TestInfrahubApp):
         See https://github.com/opsmill/infrahub/issues/5559.
         """
         car = await client.get(kind="TestCar", name__value="car_name", prefetch_relationships=True)
-        car.owner = owner_2
+        car.agnostic_owner = owner_2
         await car.save()
 
         car = await client.get(kind="TestCar", name__value="car_name", prefetch_relationships=True)
-        assert car.owner.peer.name.value == "owner_2"
+        assert car.agnostic_owner.peer.name.value == "owner_2"
 
     async def test_delete_aware_mandatory_node_blocked(
         self, client: InfrahubClient, owner_2: InfrahubNode, car: InfrahubNode
@@ -79,7 +79,7 @@ class TestDeleteAgnosticRel(TestInfrahubApp):
             await owner_2.delete()
 
         assert (
-            f"Cannot delete TestPerson '{owner_2.id}'. It is linked to mandatory relationship owner on node TestCar '{car.id}'"
+            f"Cannot delete TestPerson '{owner_2.id}'. It is linked to mandatory relationship agnostic_owner on node TestCar '{car.id}'"
             in exc.value.message
         )
 

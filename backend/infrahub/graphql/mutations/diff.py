@@ -9,7 +9,6 @@ from infrahub.core.diff.model.path import NameTrackingId
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import ValidationError
 from infrahub.workflows.catalogue import DIFF_UPDATE
@@ -37,7 +36,6 @@ class DiffUpdateMutation(Mutation):
     task = Field(TaskInfo, required=False)
 
     @classmethod
-    @retry_db_transaction(name="diff_update")
     async def mutate(
         cls,
         root: dict,  # noqa: ARG003

@@ -6,7 +6,7 @@ import TabItem from '@theme/TabItem';
 
 # Creating a Python transform
 
-Within Infrahub a [Transform](../topics/transformation) is defined in an [external repository](../topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the transform using [infrahubctl transform](../infrahubctl/infrahubctl-transform).
+Within Infrahub a [Transform](../topics/transformation) is defined in an [external repository](../topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the transform using [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform).
 
 The goal of this guide is to develop a Python Transform and add it to Infrahub, we will achieve this by following these steps.
 
@@ -166,7 +166,7 @@ Here the query will require an input parameter called `$name` what will refer to
 
 ## 2. Create the Python transform file
 
-The next step is to create the actual Python transform. The transform is a Python class that inherits from InfrahubTransform from the [Python SDK]($(local_base_url_1)python-sdk). Create a file called `device_config.py`:
+The next step is to create the actual Python transform. The transform is a Python class that inherits from InfrahubTransform from the [Python SDK]($(base_url)python-sdk/introduction). Create a file called `device_config.py`:
 
 ```python
 from infrahub_sdk.transforms import InfrahubTransform

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import ssl
-from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, Optional, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, TypeVar
 
 import nats
 import ujson
@@ -33,7 +33,7 @@ async def _add_request_id(message: InfrahubMessage) -> None:
 
 
 class NATSMessageBus(InfrahubMessageBus):
-    def __init__(self, component_type: ComponentType, settings: Optional[BrokerSettings] = None) -> None:
+    def __init__(self, component_type: ComponentType, settings: BrokerSettings | None = None) -> None:
         self.settings = settings or config.SETTINGS.broker
 
         self.service: InfrahubServices
@@ -49,7 +49,7 @@ class NATSMessageBus(InfrahubMessageBus):
         self.component_type: ComponentType = component_type
 
     @classmethod
-    async def new(cls, component_type: ComponentType, settings: Optional[BrokerSettings] = None) -> NATSMessageBus:
+    async def new(cls, component_type: ComponentType, settings: BrokerSettings | None = None) -> NATSMessageBus:
         message_bus = cls(component_type=component_type, settings=settings)
         await message_bus._initialize()
         return message_bus
@@ -213,7 +213,7 @@ class NATSMessageBus(InfrahubMessageBus):
         await self.publish(message, routing_key)
 
     async def publish(
-        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+        self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
     ) -> None:
         with trace.get_tracer(__name__).start_as_current_span("publish_message") as span:
             span.set_attribute("routing_key", routing_key)

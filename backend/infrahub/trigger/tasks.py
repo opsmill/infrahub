@@ -1,22 +1,27 @@
 from typing import TYPE_CHECKING
 
-from infrahub_sdk.utils import compare_lists
 from prefect import get_run_logger, task
 from prefect.automations import AutomationCore
 from prefect.cache_policies import NONE
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.filters import DeploymentFilter, DeploymentFilterName
 
-from .catalogue import triggers
-from .constants import DEPRECATED_STATIC_TRIGGER_NAMES
+from infrahub.trigger.models import TriggerDefinition
+
+# from .catalogue import triggers
 from .models import TriggerType
 
 if TYPE_CHECKING:
     from uuid import UUID
 
 
-@task(name="trigger-setup", task_run_name="Setup triggers in task-manager", cache_policy=NONE)  # type: ignore[arg-type]
-async def setup_triggers(client: PrefectClient) -> None:
+@task(name="trigger-setup", task_run_name="Setup triggers of type {trigger_type.value}", cache_policy=NONE)  # type: ignore[arg-type]
+async def setup_triggers(
+    client: PrefectClient,
+    triggers: list[TriggerDefinition],
+    trigger_type: TriggerType = TriggerType.BUILTIN,
+    deprecated_triggers: list[str] | None = None,
+) -> None:
     log = get_run_logger()
 
     # -------------------------------------------------------------
@@ -32,15 +37,15 @@ async def setup_triggers(client: PrefectClient) -> None:
     deployments_mapping: dict[str, UUID] = {name: item.id for name, item in deployments.items()}
     existing_automations = {item.name: item for item in await client.read_automations()}
 
-    builtin_automations = [
-        item.name for item in await client.read_automations() if item.name.startswith(TriggerType.BUILTIN.value)
+    trigger_automations = [
+        item.name for item in await client.read_automations() if item.name.startswith(trigger_type.value)
     ]
     trigger_names = [trigger.generate_name() for trigger in triggers]
 
-    _, to_delete, _ = compare_lists(list1=builtin_automations, list2=trigger_names)
+    to_delete = set(trigger_automations) - set(trigger_names)
 
     # -------------------------------------------------------------
-    # Create or Update all builtin triggers
+    # Create or Update all triggers
     # -------------------------------------------------------------
     for trigger in triggers:
         automation = AutomationCore(
@@ -61,7 +66,7 @@ async def setup_triggers(client: PrefectClient) -> None:
             log.info(f"{trigger.name} Created")
 
     # -------------------------------------------------------------
-    # Delete Builtin Triggers that shouldn't be there
+    # Delete Triggers that shouldn't be there
     # -------------------------------------------------------------
     for item_to_delete in to_delete:
         existing_automation = existing_automations.get(item_to_delete)
@@ -75,11 +80,12 @@ async def setup_triggers(client: PrefectClient) -> None:
     # -------------------------------------------------------------
     # Delete Deprecated triggers
     # -------------------------------------------------------------
-    for trigger_name in DEPRECATED_STATIC_TRIGGER_NAMES:
-        existing_automation = existing_automations.get(trigger_name)
+    if deprecated_triggers:
+        for trigger_name in deprecated_triggers:
+            existing_automation = existing_automations.get(trigger_name)
 
-        if not existing_automation:
-            continue
+            if not existing_automation:
+                continue
 
-        await client.delete_automation(automation_id=existing_automation.id)
-        log.info(f"{trigger_name} Deleted")
+            await client.delete_automation(automation_id=existing_automation.id)
+            log.info(f"{trigger_name} Deleted")
