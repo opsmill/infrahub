@@ -13,6 +13,7 @@ from ..model.path import (
     CalculatedDiffs,
     EnrichedDiffRoot,
 )
+from ..parent_node_adder import DiffParentNodeAdder, ParentNodeAddRequest
 from .interface import DiffEnricherInterface
 
 log = get_logger()
@@ -21,8 +22,9 @@ log = get_logger()
 class DiffHierarchyEnricher(DiffEnricherInterface):
     """Add hierarchy and parent/component nodes to diff even if the higher-level nodes are unchanged"""
 
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase, parent_adder: DiffParentNodeAdder):
         self.db = db
+        self.parent_adder = parent_adder
 
     async def enrich(
         self, enriched_diff_root: EnrichedDiffRoot, calculated_diffs: CalculatedDiffs | None = None
@@ -32,6 +34,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
         # - A node is part of a hierarchy
 
         log.info("Beginning hierarchical diff enrichment...")
+        self.parent_adder.initialize(enriched_diff_root=enriched_diff_root)
         node_rel_parent_map: dict[str, list[str]] = defaultdict(list)
         node_hierarchy_map: dict[str, list[str]] = defaultdict(list)
 
@@ -93,7 +96,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
 
                 current_node = node
                 for ancestor in ancestors:
-                    parent = enriched_diff_root.add_parent(
+                    parent_request = ParentNodeAddRequest(
                         node_id=current_node.uuid,
                         parent_id=str(ancestor.uuid),
                         parent_kind=ancestor.kind,
@@ -103,6 +106,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                         parent_rel_cardinality=parent_rel.cardinality,
                         parent_rel_label=parent_rel.label or "",
                     )
+                    parent = self.parent_adder.add_parent(parent_request=parent_request)
 
                     current_node = parent
 
@@ -145,15 +149,16 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
         # Check if the parent are already present
         # If parent is already in the list of node we need to add a relationship
         # If parent is not in the list of node, we need to add it
+        diff_node_map = enriched_diff_root.get_node_map(node_uuids=set(parent_peers.keys()))
         for node_id, peer_parent in parent_peers.items():
             # TODO check if we can optimize this part to avoid querying this multiple times
-            node = enriched_diff_root.get_node(node_uuid=node_id)
+            node = diff_node_map[node_id]
             schema_node = self.db.schema.get(
                 name=node.kind, branch=enriched_diff_root.diff_branch_name, duplicate=False
             )
             parent_rel = [rel for rel in schema_node.relationships if rel.kind == RelationshipKind.PARENT][0]
 
-            enriched_diff_root.add_parent(
+            parent_request = ParentNodeAddRequest(
                 node_id=node.uuid,
                 parent_id=str(peer_parent.peer_id),
                 parent_kind=peer_parent.peer_kind,
@@ -163,6 +168,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
                 parent_rel_cardinality=parent_rel.cardinality,
                 parent_rel_label=parent_rel.label or "",
             )
+            self.parent_adder.add_parent(parent_request=parent_request)
 
         if node_parent_with_parent_map:
             await self._enrich_nodes_with_parent(
