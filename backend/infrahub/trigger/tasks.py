@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING
 
-from infrahub_sdk.utils import compare_lists
 from prefect import get_run_logger, task
 from prefect.automations import AutomationCore
 from prefect.cache_policies import NONE
