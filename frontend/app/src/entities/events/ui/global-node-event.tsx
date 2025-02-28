@@ -37,7 +37,7 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
   const { schema } = useSchema(props.payload.data.node_kind);
 
   return (
-    <div className="flex items-center gap-2 text-sm whitespace-nowrap">
+    <div className="flex items-center gap-2 text-sm">
       <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="text-gray-400" />
 
       <NodeLabel
@@ -47,7 +47,7 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
 
       <div className="text-gray-500">{NODE_EVENTS_MAPPING[event] ?? "-"}</div>
 
-      <div className="font-semibold">{schemaLabels[props.payload.data.node_kind] ?? "-"}</div>
+      <div className="font-semibold whitespace-nowrap">{schemaLabels[props.payload.data.node_kind] ?? "-"}</div>
 
       <Link
         to={constructPath(
@@ -64,7 +64,7 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
         <NodeLabel
           id={props.primary_node.id}
           kind={props.primary_node?.kind}
-          className="overflow-hidden text-ellipsis"
+          className="overflow-hidden text-ellipsis whitespace-nowrap"
         />
       </Link>
     </div>

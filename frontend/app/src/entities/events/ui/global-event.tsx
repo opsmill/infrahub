@@ -17,14 +17,11 @@ export const Event = ({ __typename, ...props }: EventType) => {
         "rounded-md shadow-sm transition-all border bg-gray-50"
       )}
     >
-
       <div className="col-span-3 flex item-center gap-4 p-2.5">
-        <div className="flex text-xs font-medium text-gray-500 whitespace-nowrap">
-          {props.occurred_at && (
-            <Tooltip enabled content={props.occurred_at}>
-              <span>{format(new Date(props.occurred_at), "MMM dd, HH:mm:ss")}</span>
-            </Tooltip>
-          )}
+        <div className="flex items-center text-xs font-medium text-gray-500 whitespace-nowrap">
+          <Tooltip enabled content={props.occurred_at}>
+            <span>{format(new Date(props.occurred_at), "MMM dd, HH:mm:ss")}</span>
+          </Tooltip>
         </div>
 
         {"attributes" in props && <NodeEvent {...props} />}
@@ -46,6 +43,7 @@ export const Event = ({ __typename, ...props }: EventType) => {
           )}
 
           <Icon icon={"mdi:source-branch"} />
+
           {props.branch}
         </div>
 
