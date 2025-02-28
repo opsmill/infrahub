@@ -892,6 +892,8 @@ class RelationshipManager:
         """If the attribute is branch aware, return the Branch object associated with this attribute
         If the attribute is branch agnostic return the Global Branch
 
+        Note that if this relationship is Aware and source node is Agnostic, it will return -global- branch.
+
         Returns:
             Branch:
         """
@@ -967,7 +969,7 @@ class RelationshipManager:
         self.has_fetched_relationships = True
 
         for peer_id in details.peer_ids_present_local_only:
-            await self.remove(peer_id=peer_id, db=db)
+            await self.remove_locally(peer_id=peer_id, db=db)
 
     async def get(self, db: InfrahubDatabase) -> Relationship | list[Relationship] | None:
         rels = await self.get_relationships(db=db)
@@ -1098,21 +1100,16 @@ class RelationshipManager:
         for rel in self._relationships:
             await rel.resolve(db=db)
 
-    async def remove(
+    async def remove_locally(
         self,
         peer_id: Union[str, UUID],
         db: InfrahubDatabase,
-        update_db: bool = False,
     ) -> bool:
-        """Remove a peer id from the local relationships list,
-        need to investigate if and when we should update the relationship in the database."""
+        """Remove a peer id from the local relationships list"""
 
         for idx, rel in enumerate(await self.get_relationships(db=db)):
             if str(rel.peer_id) != str(peer_id):
                 continue
-
-            if update_db:
-                await rel.delete(db=db)
 
             self._relationships.pop(idx)
             return True
@@ -1130,14 +1127,13 @@ class RelationshipManager:
 
         # - Update the existing relationship if we are on the same branch
         rel_ids_per_branch = peer_data.rel_ids_per_branch()
+
+        # In which cases do we end up here and do not want to set `to` time?
         if branch.name in rel_ids_per_branch:
             await update_relationships_to([str(ri) for ri in rel_ids_per_branch[branch.name]], to=remove_at, db=db)
 
         # - Create a new rel of type DELETED if the existing relationship is on a different branch
-        rel_branches: set[str] = set()
-        if peer_data.rels:
-            rel_branches = {r.branch for r in peer_data.rels}
-        if rel_branches == {peer_data.branch}:
+        if peer_data.rels and {r.branch for r in peer_data.rels} == {peer_data.branch}:
             return
 
         query = await RelationshipDataDeleteQuery.init(
