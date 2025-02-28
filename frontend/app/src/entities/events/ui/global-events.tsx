@@ -34,7 +34,7 @@ export const GlobalEvents = () => {
       },
     });
 
-  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+  const flatData = React.useMemo(() => data?.pages?.flat()?.filter(Boolean) ?? [], [data]);
 
   if (error) {
     return <ErrorScreen message={error.message} />;
