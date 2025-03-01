@@ -87,7 +87,7 @@ class InfrahubResponse(InfrahubMessage):
 
     passed: bool = True
     routing_key: str
-    data: dict | InfrahubResponseData = Field(default_factory=dict)
+    data: dict | InfrahubResponseData = Field(default_factory=dict)  # type: ignore[arg-type]
     errors: list[str] = Field(default_factory=list)
     initial_message: dict | None = Field(
         default=None,
