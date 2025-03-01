@@ -151,138 +151,131 @@ CALL {
     // -------------------------
     // add attributes for this node
     // -------------------------
+    UNWIND node_map.attributes AS node_attribute
+    MERGE (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(diff_attribute:DiffAttribute {name: node_attribute.node_properties.name})
+    SET diff_attribute = node_attribute.node_properties
+    // -------------------------
+    // add properties for this attribute
+    // -------------------------
+    WITH diff_attribute, node_attribute
+    // -------------------------
+    // remove stale properties for this attribute
+    // -------------------------
     CALL {
-        WITH diff_node, node_map
-        UNWIND node_map.attributes AS node_attribute
-        MERGE (diff_node)-[:DIFF_HAS_ATTRIBUTE]->(diff_attribute:DiffAttribute {name: node_attribute.node_properties.name})
-        SET diff_attribute = node_attribute.node_properties
-        // -------------------------
-        // add properties for this attribute
-        // -------------------------
         WITH diff_attribute, node_attribute
-            // -------------------------
-            // remove stale properties for this attribute
-            // -------------------------
-            CALL {
-            WITH diff_attribute, node_attribute
-            WITH diff_attribute, %(attr_props_list_comp)s AS prop_types
-            OPTIONAL MATCH (diff_attribute)-[:DIFF_HAS_PROPERTY]->(prop_to_delete:DiffProperty)
-            WHERE NOT (prop_to_delete.property_type IN prop_types)
-            OPTIONAL MATCH (prop_to_delete)-[*..4]->(next_to_delete)
-            DETACH DELETE next_to_delete
-            DETACH DELETE prop_to_delete
-        }
-        UNWIND node_attribute.properties AS attr_property
-        MERGE (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_prop:DiffProperty {property_type: attr_property.node_properties.property_type})
-        SET diff_attr_prop = attr_property.node_properties
-        // -------------------------
-        // add/remove conflict for this property
-        // -------------------------
-        WITH diff_attr_prop, attr_property
-        OPTIONAL MATCH (diff_attr_prop)-[:DIFF_HAS_CONFLICT]->(current_attr_prop_conflict:DiffConflict)
-        WITH diff_attr_prop, attr_property, current_attr_prop_conflict, (attr_property.conflict_params IS NOT NULL) AS has_prop_conflict
-        FOREACH (i in CASE WHEN has_prop_conflict = FALSE THEN [1] ELSE [] END |
-            DETACH DELETE current_attr_prop_conflict
-        )
-        FOREACH (i in CASE WHEN has_prop_conflict = TRUE THEN [1] ELSE [] END |
-            MERGE (diff_attr_prop)-[:DIFF_HAS_CONFLICT]->(diff_attr_prop_conflict:DiffConflict)
-            SET diff_attr_prop_conflict = attr_property.conflict_params
-        )
-    }
-    // -------------------------
-    // remove stale relationships for this node
-    // -------------------------
-    WITH diff_node, node_map
-    CALL {
-        WITH diff_node, node_map
-        WITH diff_node, %(rel_name_list_comp)s AS rel_names
-        OPTIONAL MATCH (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(rel_to_delete:DiffRelationship)
-        WHERE NOT (rel_to_delete.name IN rel_names)
-        OPTIONAL MATCH (rel_to_delete)-[*..8]->(next_to_delete)
+        WITH diff_attribute, %(attr_props_list_comp)s AS prop_types
+        OPTIONAL MATCH (diff_attribute)-[:DIFF_HAS_PROPERTY]->(prop_to_delete:DiffProperty)
+        WHERE NOT (prop_to_delete.property_type IN prop_types)
+        OPTIONAL MATCH (prop_to_delete)-[*..4]->(next_to_delete)
         DETACH DELETE next_to_delete
-        DETACH DELETE rel_to_delete
+        DETACH DELETE prop_to_delete
     }
+    UNWIND node_attribute.properties AS attr_property
+    MERGE (diff_attribute)-[:DIFF_HAS_PROPERTY]->(diff_attr_prop:DiffProperty {property_type: attr_property.node_properties.property_type})
+    SET diff_attr_prop = attr_property.node_properties
     // -------------------------
-    // add relationships for this node
+    // add/remove conflict for this property
     // -------------------------
-    WITH diff_node, node_map
-    CALL {
-        WITH diff_node, node_map
-        UNWIND node_map.relationships as node_relationship
-        MERGE (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_relationship:DiffRelationship {name: node_relationship.node_properties.name})
-        SET diff_relationship = node_relationship.node_properties
-        // -------------------------
-        // remove stale elements for this relationship group
-        // -------------------------
-        WITH diff_relationship, node_relationship
-        CALL {
-            WITH diff_relationship, node_relationship
-            WITH diff_relationship, %(rel_peers_list_comp)s AS rel_peers
-            OPTIONAL MATCH (diff_relationship)-[:DIFF_HAS_ELEMENT]->(element_to_delete:DiffRelationshipElement)
-            WHERE NOT (element_to_delete.peer_id IN rel_peers)
-            OPTIONAL MATCH (element_to_delete)-[*..6]->(next_to_delete)
-            DETACH DELETE next_to_delete
-            DETACH DELETE element_to_delete
-        }
-        // -------------------------
-        // add elements for this relationship group
-        // -------------------------
-        WITH diff_relationship, node_relationship
-        UNWIND node_relationship.relationships as node_single_relationship
-        MERGE (diff_relationship)-[:DIFF_HAS_ELEMENT]
-            ->(diff_relationship_element:DiffRelationshipElement {peer_id: node_single_relationship.node_properties.peer_id})
-        SET diff_relationship_element = node_single_relationship.node_properties
-        // -------------------------
-        // add/remove conflict for this relationship element
-        // -------------------------
-        WITH diff_relationship_element, node_single_relationship
-        OPTIONAL MATCH (diff_relationship_element)-[:DIFF_HAS_CONFLICT]->(current_element_conflict:DiffConflict)
-        WITH diff_relationship_element, node_single_relationship, current_element_conflict,
-            (node_single_relationship.conflict_params IS NOT NULL) AS has_element_conflict
-        FOREACH (i in CASE WHEN has_element_conflict = FALSE THEN [1] ELSE [] END |
-            DETACH DELETE current_element_conflict
-        )
-        FOREACH (i in CASE WHEN has_element_conflict = TRUE THEN [1] ELSE [] END |
-            MERGE (diff_relationship_element)-[:DIFF_HAS_CONFLICT]->(element_conflict:DiffConflict)
-            SET element_conflict = node_single_relationship.conflict_params
-        )
-        // -------------------------
-        // remove stale properties for this relationship element
-        // -------------------------
-        WITH diff_relationship_element, node_single_relationship
-        CALL {
-            WITH diff_relationship_element, node_single_relationship
-            WITH diff_relationship_element, %(element_props_list_comp)s AS element_props
-            OPTIONAL MATCH (diff_relationship_element)-[:DIFF_HAS_PROPERTY]->(property_to_delete:DiffProperty)
-            WHERE NOT (property_to_delete.property_type IN element_props)
-            OPTIONAL MATCH (property_to_delete)-[*..4]->(next_to_delete)
-            DETACH DELETE next_to_delete
-            DETACH DELETE property_to_delete
-        }
-        // -------------------------
-        // add properties for this relationship element
-        // -------------------------
-        WITH diff_relationship_element, node_single_relationship
-        UNWIND node_single_relationship.properties as node_relationship_property
-        MERGE (diff_relationship_element)-[:DIFF_HAS_PROPERTY]
-            ->(diff_relationship_property:DiffProperty {property_type: node_relationship_property.node_properties.property_type})
-        SET diff_relationship_property = node_relationship_property.node_properties
-        // -------------------------
-        // add conflict for this relationship element
-        // -------------------------
-        WITH diff_relationship_property, node_relationship_property
-        OPTIONAL MATCH (diff_relationship_property)-[:DIFF_HAS_CONFLICT]->(diff_relationship_property_conflict:DiffConflict)
-        WITH diff_relationship_property, node_relationship_property, diff_relationship_property_conflict,
-            (node_relationship_property.conflict_params IS NOT NULL) AS has_property_conflict
-        FOREACH (i in CASE WHEN has_property_conflict = FALSE THEN [1] ELSE [] END |
-            DETACH DELETE diff_relationship_property_conflict
-        )
-        FOREACH (i in CASE WHEN has_property_conflict = TRUE THEN [1] ELSE [] END |
-            MERGE (diff_relationship_property)-[:DIFF_HAS_CONFLICT]->(property_conflict:DiffConflict)
-            SET property_conflict = node_relationship_property.conflict_params
-        )
-    }
+    WITH diff_attr_prop, attr_property
+    OPTIONAL MATCH (diff_attr_prop)-[:DIFF_HAS_CONFLICT]->(current_attr_prop_conflict:DiffConflict)
+    WITH diff_attr_prop, attr_property, current_attr_prop_conflict, (attr_property.conflict_params IS NOT NULL) AS has_prop_conflict
+    FOREACH (i in CASE WHEN has_prop_conflict = FALSE THEN [1] ELSE [] END |
+        DETACH DELETE current_attr_prop_conflict
+    )
+    FOREACH (i in CASE WHEN has_prop_conflict = TRUE THEN [1] ELSE [] END |
+        MERGE (diff_attr_prop)-[:DIFF_HAS_CONFLICT]->(diff_attr_prop_conflict:DiffConflict)
+        SET diff_attr_prop_conflict = attr_property.conflict_params
+    )
 }
+// -------------------------
+// remove stale relationships for this node
+// -------------------------
+CALL {
+    WITH diff_node, node_map
+    WITH diff_node, %(rel_name_list_comp)s AS rel_names
+    OPTIONAL MATCH (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(rel_to_delete:DiffRelationship)
+    WHERE NOT (rel_to_delete.name IN rel_names)
+    OPTIONAL MATCH (rel_to_delete)-[*..8]->(next_to_delete)
+    DETACH DELETE next_to_delete
+    DETACH DELETE rel_to_delete
+}
+// -------------------------
+// add relationships for this node
+// -------------------------
+WITH diff_node, node_map
+UNWIND node_map.relationships as node_relationship
+MERGE (diff_node)-[:DIFF_HAS_RELATIONSHIP]->(diff_relationship:DiffRelationship {name: node_relationship.node_properties.name})
+SET diff_relationship = node_relationship.node_properties
+// -------------------------
+// remove stale elements for this relationship group
+// -------------------------
+WITH diff_relationship, node_relationship
+CALL {
+    WITH diff_relationship, node_relationship
+    WITH diff_relationship, %(rel_peers_list_comp)s AS rel_peers
+    OPTIONAL MATCH (diff_relationship)-[:DIFF_HAS_ELEMENT]->(element_to_delete:DiffRelationshipElement)
+    WHERE NOT (element_to_delete.peer_id IN rel_peers)
+    OPTIONAL MATCH (element_to_delete)-[*..6]->(next_to_delete)
+    DETACH DELETE next_to_delete
+    DETACH DELETE element_to_delete
+}
+// -------------------------
+// add elements for this relationship group
+// -------------------------
+WITH diff_relationship, node_relationship
+UNWIND node_relationship.relationships as node_single_relationship
+MERGE (diff_relationship)-[:DIFF_HAS_ELEMENT]
+    ->(diff_relationship_element:DiffRelationshipElement {peer_id: node_single_relationship.node_properties.peer_id})
+SET diff_relationship_element = node_single_relationship.node_properties
+// -------------------------
+// add/remove conflict for this relationship element
+// -------------------------
+WITH diff_relationship_element, node_single_relationship
+OPTIONAL MATCH (diff_relationship_element)-[:DIFF_HAS_CONFLICT]->(current_element_conflict:DiffConflict)
+WITH diff_relationship_element, node_single_relationship, current_element_conflict,
+    (node_single_relationship.conflict_params IS NOT NULL) AS has_element_conflict
+FOREACH (i in CASE WHEN has_element_conflict = FALSE THEN [1] ELSE [] END |
+    DETACH DELETE current_element_conflict
+)
+FOREACH (i in CASE WHEN has_element_conflict = TRUE THEN [1] ELSE [] END |
+    MERGE (diff_relationship_element)-[:DIFF_HAS_CONFLICT]->(element_conflict:DiffConflict)
+    SET element_conflict = node_single_relationship.conflict_params
+)
+// -------------------------
+// remove stale properties for this relationship element
+// -------------------------
+WITH diff_relationship_element, node_single_relationship
+CALL {
+    WITH diff_relationship_element, node_single_relationship
+    WITH diff_relationship_element, %(element_props_list_comp)s AS element_props
+    OPTIONAL MATCH (diff_relationship_element)-[:DIFF_HAS_PROPERTY]->(property_to_delete:DiffProperty)
+    WHERE NOT (property_to_delete.property_type IN element_props)
+    OPTIONAL MATCH (property_to_delete)-[*..4]->(next_to_delete)
+    DETACH DELETE next_to_delete
+    DETACH DELETE property_to_delete
+}
+// -------------------------
+// add properties for this relationship element
+// -------------------------
+WITH diff_relationship_element, node_single_relationship
+UNWIND node_single_relationship.properties as node_relationship_property
+MERGE (diff_relationship_element)-[:DIFF_HAS_PROPERTY]
+    ->(diff_relationship_property:DiffProperty {property_type: node_relationship_property.node_properties.property_type})
+SET diff_relationship_property = node_relationship_property.node_properties
+// -------------------------
+// add conflict for this relationship element
+// -------------------------
+WITH diff_relationship_property, node_relationship_property
+OPTIONAL MATCH (diff_relationship_property)-[:DIFF_HAS_CONFLICT]->(diff_relationship_property_conflict:DiffConflict)
+WITH diff_relationship_property, node_relationship_property, diff_relationship_property_conflict,
+    (node_relationship_property.conflict_params IS NOT NULL) AS has_property_conflict
+FOREACH (i in CASE WHEN has_property_conflict = FALSE THEN [1] ELSE [] END |
+    DETACH DELETE diff_relationship_property_conflict
+)
+FOREACH (i in CASE WHEN has_property_conflict = TRUE THEN [1] ELSE [] END |
+    MERGE (diff_relationship_property)-[:DIFF_HAS_CONFLICT]->(property_conflict:DiffConflict)
+    SET property_conflict = node_relationship_property.conflict_params
+)
         """ % {
             "attr_name_list_comp": db.render_list_comprehension(
                 items="node_map.attributes", item_name="node_properties.name"
