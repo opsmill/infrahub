@@ -20,6 +20,7 @@ export const generateObjectEditFormQuery = ({
         edges: {
           node: {
             id: true,
+            hfid: true,
             display_label: true,
             ...addAttributesToRequest(schema.attributes ?? [], {
               withMetadata: true,
