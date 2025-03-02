@@ -1,25 +1,15 @@
-import { generateRelationshipListQuery } from "@/entities/nodes/api/generateRelationshipListQuery";
-import { Node, RelationshipManyType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
-import { useLazyQuery } from "@/shared/api/graphql/useQuery";
+import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxItem,
-  ComboboxList,
-} from "@/shared/components/ui/combobox";
+import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
-import { useDebounce } from "@/shared/hooks/useDebounce";
 import { classNames } from "@/shared/utils/common";
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 export interface RelationshipManyInputProps
   extends Omit<PopoverTriggerProps, "value" | "onChange"> {
@@ -28,69 +18,25 @@ export interface RelationshipManyInputProps
   peer: string;
   value: Array<Node> | null;
   peerField?: string;
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
-const PAGINATION = 20;
-
-export const RelationshipManyInput = React.forwardRef<
-  React.ElementRef<typeof PopoverTrigger>,
-  RelationshipManyInputProps
->(({ id, className, peer, peerField, value, onChange, ...props }, ref) => {
-  const [open, setOpen] = React.useState(false);
-  const [count, setCount] = useState(0);
-  const [offset, setOffset] = useState(0);
-  const [results, setResults] = useState([]);
-  const [search, setSearch] = useState("");
-  const [shouldAggregate, setShouldAggregate] = useState(true);
-  const searchQuery = useDebounce(search, 500);
-
-  const [loadComboboxList, { loading, data }] = useLazyQuery(
-    gql(
-      generateRelationshipListQuery({
-        peer,
-        peerField,
-        limit: PAGINATION,
-        offset,
-        search: searchQuery,
-      })
-    )
-  );
-
+export const RelationshipManyInput = ({
+  id,
+  className,
+  peer,
+  peerField,
+  value,
+  onChange,
+  ref,
+  ...props
+}: RelationshipManyInputProps) => {
   const handleSelect = (relationship: Node) => {
     onChange(value ? [...value, relationship] : [relationship]);
   };
 
-  useEffect(() => {
-    const newResults =
-      data &&
-      (data[peer] as RelationshipManyType).edges
-        .map((edge) => edge.node)
-        .filter((node): node is Node => !!node);
-
-    const dataCount = data && (data[peer] as RelationshipManyType).count;
-
-    setCount(dataCount);
-
-    if (!shouldAggregate) {
-      setResults(newResults);
-      return;
-    }
-
-    if (!newResults) {
-      return;
-    }
-
-    setResults([...results, ...newResults]);
-  }, [data]);
-
   return (
-    <Combobox
-      open={open}
-      onOpenChange={(newOpen) => {
-        setSearch("");
-        setOpen(newOpen);
-      }}
-    >
+    <Combobox>
       <PopoverTrigger asChild>
         <div
           className={classNames(
@@ -122,8 +68,6 @@ export const RelationshipManyInput = React.forwardRef<
             ))}
           </div>
 
-          {loading && <Spinner className="ml-auto" />}
-
           <PopoverTrigger ref={ref} asChild {...props}>
             <button id={id} type="button" className="text-gray-600 outline-none w-3.5 h-3.5">
               <Icon icon="mdi:unfold-more-horizontal" />
@@ -132,57 +76,14 @@ export const RelationshipManyInput = React.forwardRef<
         </div>
       </PopoverTrigger>
 
-      <ComboboxContent
-        onOpenAutoFocus={() => {
-          setOffset(0);
-          setShouldAggregate(false);
-          loadComboboxList();
-        }}
-      >
-        <ComboboxList
-          shouldFilter={false}
-          onValueChange={(newValue) => {
-            setOffset(0);
-            setShouldAggregate(false);
-            setSearch(newValue);
-          }}
-        >
-          {!loading && <ComboboxEmpty>No results found</ComboboxEmpty>}
-
-          {results
-            ?.filter((node) => !!node && !value?.some((v) => v.id === node.id))
-            .map((relationship) => (
-              <ComboboxItem
-                key={relationship.id}
-                value={relationship.id}
-                onSelect={() => handleSelect(relationship)}
-              >
-                <span className="truncate">
-                  {peerField ? relationship[peerField]?.value : relationship.display_label}
-                </span>
-              </ComboboxItem>
-            ))}
-
-          {loading && <Spinner className="flex justify-center m-2" />}
-
-          {results?.length < count && (
-            <div className="pt-2">
-              <Button
-                variant={"ghost"}
-                className="w-full border-custom-blue-500/10 text-custom-blue-700 enabled:hover:bg-custom-blue-500/10 font-normal"
-                onClick={() => {
-                  setOffset(offset + PAGINATION);
-                  setShouldAggregate(true);
-                }}
-              >
-                Load more
-              </Button>
-            </div>
-          )}
-        </ComboboxList>
-
+      <ComboboxContent>
+        <RelationshipComboboxList
+          peer={peer}
+          onSelect={handleSelect}
+          filterItem={(node) => !value?.some((v) => v.id === node.id)}
+        />
         <AddRelationshipAction peer={peer} onSuccess={handleSelect} />
       </ComboboxContent>
     </Combobox>
   );
-});
+};
