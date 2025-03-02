@@ -5,11 +5,11 @@ import {
 } from "@/shared/components/form/type";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
+import { NodeCore } from "@/entities/nodes/types";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { classNames } from "@/shared/utils/common";
-import { NodeCore } from "@/entities/nodes/types";
 
 export interface RelationshipManyInputProps extends Omit<DynamicRelationshipFieldProps, "type"> {}
 
