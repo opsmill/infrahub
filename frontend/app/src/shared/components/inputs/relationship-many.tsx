@@ -1,7 +1,7 @@
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { NodeCore } from "@/entities/nodes/types";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
@@ -15,10 +15,9 @@ import React from "react";
 export interface RelationshipManyInputProps
   extends Omit<PopoverTriggerProps, "value" | "onChange"> {
   className?: string;
-  onChange: (value: Array<Node>) => void;
+  onChange: (value: Array<NodeCore>) => void;
   peer: string;
-  value: Array<Node> | null;
-  peerField?: string;
+  value: Array<NodeCore> | null;
   ref?: React.Ref<HTMLButtonElement>;
 }
 
@@ -31,7 +30,7 @@ export function RelationshipManyInput({
   ...props
 }: RelationshipManyInputProps) {
   const [open, setOpen] = React.useState(false);
-  const handleSelect = (relationship: Node) => {
+  const handleSelect = (relationship: NodeCore) => {
     onChange(value ? [...value, relationship] : [relationship]);
   };
 
