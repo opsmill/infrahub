@@ -87,7 +87,7 @@ export function PermissionCombobox({
         </div>
       </PopoverTrigger>
 
-      <ComboboxContent portal>
+      <ComboboxContent>
         <PermissionComboboxList onSelect={handleSelect} value={value} />
         <AddRelationshipAction peer={ACCOUNT_PERMISSION_OBJECT} onSuccess={handleSelect} />
       </ComboboxContent>
@@ -127,7 +127,7 @@ export const PermissionComboboxList = forwardRef<HTMLDivElement, RelationshipCom
 
             {data.pages.map((page) => {
               return page
-                .filter((node) => value && !value.some((v) => v.id === node.id))
+                .filter((node) => !value?.some((v) => v.id === node.id))
                 .map((n) => {
                   const node = n as unknown as PermissionNode;
                   return (
