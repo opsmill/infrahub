@@ -22,7 +22,6 @@ export interface RelationshipManyInputProps
 }
 
 export const RelationshipManyInput = ({
-  id,
   className,
   peer,
   peerField,
@@ -31,12 +30,13 @@ export const RelationshipManyInput = ({
   ref,
   ...props
 }: RelationshipManyInputProps) => {
+  const [open, setOpen] = React.useState(false);
   const handleSelect = (relationship: Node) => {
     onChange(value ? [...value, relationship] : [relationship]);
   };
 
   return (
-    <Combobox>
+    <Combobox open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div
           className={classNames(
@@ -68,11 +68,15 @@ export const RelationshipManyInput = ({
             ))}
           </div>
 
-          <PopoverTrigger ref={ref} asChild {...props}>
-            <button id={id} type="button" className="text-gray-600 outline-none w-3.5 h-3.5">
-              <Icon icon="mdi:unfold-more-horizontal" />
-            </button>
-          </PopoverTrigger>
+          <button
+            ref={ref}
+            type="button"
+            className="text-gray-600 outline-none w-3.5 h-3.5"
+            onClick={() => setOpen(!open)}
+            {...props}
+          >
+            <Icon icon="mdi:unfold-more-horizontal" />
+          </button>
         </div>
       </PopoverTrigger>
 
