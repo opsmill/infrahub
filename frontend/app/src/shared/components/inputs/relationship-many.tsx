@@ -1,4 +1,5 @@
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 import { Button } from "@/shared/components/buttons/button-primitive";
@@ -21,15 +22,14 @@ export interface RelationshipManyInputProps
   ref?: React.Ref<HTMLButtonElement>;
 }
 
-export const RelationshipManyInput = ({
+export function RelationshipManyInput({
   className,
   peer,
-  peerField,
   value,
   onChange,
   ref,
   ...props
-}: RelationshipManyInputProps) => {
+}: RelationshipManyInputProps) {
   const [open, setOpen] = React.useState(false);
   const handleSelect = (relationship: Node) => {
     onChange(value ? [...value, relationship] : [relationship]);
@@ -47,16 +47,16 @@ export const RelationshipManyInput = ({
           )}
         >
           <div className="flex-grow flex flex-wrap gap-2">
-            {value?.map(({ id, display_label, ...data }) => (
-              <Badge key={id} className="flex items-center gap-1 pr-0.5">
-                {peerField ? (data[peerField]?.value ?? display_label) : display_label}
+            {value?.map((node) => (
+              <Badge key={node.id} className="flex items-center gap-1 pr-0.5">
+                {getNodeLabel(node)}
 
                 <Button
                   size="icon"
                   variant="ghost"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onChange(value.filter((item) => item.id !== id));
+                    onChange(value.filter((item) => item.id !== node.id));
                   }}
                   className="text-gray-500 hover:text-gray-800 h-4 w-4"
                   aria-label="Remove"
@@ -90,4 +90,4 @@ export const RelationshipManyInput = ({
       </ComboboxContent>
     </Combobox>
   );
-};
+}

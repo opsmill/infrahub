@@ -7,12 +7,10 @@ export const generateRelationshipListQuery = ({
   limit = 0,
   offset = 0,
   search = "",
-  peerField,
 }: PaginationParams & {
   peer: string;
   parent?: { name?: string; value?: string };
   search?: string;
-  peerField?: string;
 }): string => {
   const defaultArgs = { limit, offset, any__value: search, partial_match: true };
 
@@ -31,8 +29,9 @@ export const generateRelationshipListQuery = ({
         edges: {
           node: {
             id: true,
+            hfid: true,
             display_label: true,
-            ...(peerField ? { [peerField]: { value: true } } : {}),
+            __typename: true,
           },
         },
       },
