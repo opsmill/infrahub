@@ -1,6 +1,7 @@
 from infrahub.core.constants import (
     AllowOverrideType,
     BranchSupportType,
+    ComputedAttributeKind,
     GlobalPermissions,
     InfrahubKind,
     PermissionAction,
@@ -15,16 +16,7 @@ core_base_permission = {
     "icon": "mdi:user-key",
     "include_in_menu": False,
     "generate_profile": False,
-    "attributes": [
-        {"name": "description", "kind": "Text", "optional": True},
-        {
-            "name": "identifier",
-            "kind": "Text",
-            "read_only": True,
-            "optional": True,
-            "allow_override": AllowOverrideType.NONE,
-        },
-    ],
+    "attributes": [{"name": "description", "kind": "Text", "optional": True}],
     "relationships": [
         {
             "name": "roles",
@@ -70,6 +62,18 @@ core_object_permission = {
                 "branches"
             ),
         },
+        {
+            "name": "identifier",
+            "kind": "Text",
+            "computed_attribute": {
+                "kind": ComputedAttributeKind.JINJA2,
+                "jinja2_template": (
+                    "object:{{ namespace__value }}:{{ name__value }}:{{ action__value.name|lower }}:{% if decision__value.value == 1 %}deny{% elif decision__value.value == 2 %}allow_default{% elif decision__value.value == 4 %}allow_other{% else %}allow_all{% endif %}"
+                ),
+            },
+            "read_only": True,
+            "allow_override": AllowOverrideType.NONE,
+        },
     ],
 }
 
@@ -99,6 +103,16 @@ core_global_permission = {
             "default_value": PermissionDecision.ALLOW_ALL.value,
             "order_weight": 3000,
             "description": "Decide to deny or allow the action at a global level",
+        },
+        {
+            "name": "identifier",
+            "kind": "Text",
+            "computed_attribute": {
+                "kind": ComputedAttributeKind.JINJA2,
+                "jinja2_template": "global:{{ action__value|lower }}:{% if decision__value.value == 1 %}deny{% elif decision__value.value == 2 %}allow_default{% elif decision__value.value == 4 %}allow_other{% else %}allow_all{% endif %}",
+            },
+            "read_only": True,
+            "allow_override": AllowOverrideType.NONE,
         },
     ],
 }
