@@ -3641,6 +3641,24 @@ snowflake = ["prefect-snowflake (>=0.28.0)"]
 sqlalchemy = ["prefect-sqlalchemy (>=0.5.0)"]
 
 [[package]]
+name = "prefect-redis"
+version = "0.2.2"
+description = "Prefect integrations with Redis."
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "prefect_redis-0.2.2-py3-none-any.whl", hash = "sha256:11c17c69231cecbed78a501694d318dafe92ad53fdfbd8fbab4451576186700d"},
+    {file = "prefect_redis-0.2.2.tar.gz", hash = "sha256:8185c2eb5d6ccb371f7d83461f5dac0bb490c7f0fbf7232092e15d14e0e85a28"},
+]
+
+[package.dependencies]
+prefect = ">=3.0.0"
+redis = ">=5.0.1"
+
+[package.extras]
+dev = ["coverage", "interrogate", "mkdocs", "mkdocs-gen-files", "mkdocs-material", "mkdocstrings[python]", "mypy", "pillow", "pre-commit", "pytest (>=8.3)", "pytest-asyncio", "pytest-env", "pytest-timeout", "pytest-xdist"]
+
+[[package]]
 name = "prometheus-client"
 version = "0.21.1"
 description = "Python client for the Prometheus monitoring system."
@@ -5999,4 +6017,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10, < 3.13"
-content-hash = "c0a51eb302eae68f4116146bade7b11c1b475008dd56a3d480a2bc9b31d9c1ab"
+content-hash = "6187e6e17aa41d028f48941a483b7063a91faefa56458e4931f778f4309bcfc9"
