@@ -137,8 +137,8 @@ default_menu = [
             ),
             MenuItemDefinition(
                 namespace="Builtin",
-                name="ObjectTemplates",
-                label="Object Templates",
+                name="Templates",
+                label="Templates",
                 kind=InfrahubKind.OBJECTTEMPLATE,
                 icon=_extract_node_icon(infrahub_schema.get(InfrahubKind.OBJECTTEMPLATE)),
                 protected=True,
