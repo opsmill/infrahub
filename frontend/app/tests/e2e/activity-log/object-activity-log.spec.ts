@@ -34,7 +34,8 @@ test.describe("Object Activity Log - Timeline and Details", () => {
       const popoverContent = page.getByRole("dialog");
       // Assert that the popover contains the expected text "Primary Node"
       await expect(popoverContent).toContainText("Primary Node");
-      await popoverContent.locator("text=atl1-edge1").waitFor({ state: "visible" });
+      // To be sure we load the data, checking if we do have a link to the device
+      await popoverContent.getByRole('link', { name: 'atl1-edge1' }).waitFor({ state: 'visible' });
       await saveScreenshotForDocs(page, "activity_log_device_popover");
     });
   });
