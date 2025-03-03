@@ -346,14 +346,16 @@ const RelationshipField = ({
 
           const peer = relationship?.peer;
           const { schema, isNode } = useSchema(peer);
-          const canRequestPools =
-            isNode &&
-            !!schema?.inherit_from?.map((from) => POOLS_PEER.includes(from))?.filter(Boolean)
-              ?.length;
+          const canSelectFromPool =
+            isNode && !!schema.inherit_from?.some((from) => POOLS_PEER.includes(from));
           const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
+
           const onChange = (newValue: Node | PoolValue | null) => {
             field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
           };
+
+          const value =
+            fieldData?.value && !Array.isArray(fieldData.value) ? (fieldData.value as Node) : null;
 
           return (
             <div className="relative flex flex-col space-y-2">
@@ -362,7 +364,7 @@ const RelationshipField = ({
                 unique={unique}
                 required={!!rules?.required}
                 description={description}
-                variant={parentRelationship && "small"}
+                variant={parentRelationship ? "small" : undefined}
                 fieldData={fieldData}
               />
 
@@ -371,13 +373,13 @@ const RelationshipField = ({
                   <RelationshipInput
                     {...field}
                     {...props}
-                    value={fieldData?.value}
+                    value={value}
                     onChange={onChange}
                     peer={peer}
                     parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
                   />
                 </FormInput>
-                {canRequestPools && (
+                {canSelectFromPool && (
                   <PoolSelect peer={peer} selectedPoolId={selectedPoolId} onChange={onChange} />
                 )}
               </div>
