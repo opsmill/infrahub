@@ -4,7 +4,7 @@ import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("Resource Managers guide", () => {
   test.describe.configure({ mode: "parallel" });
-  test.slow()
+  test.slow();
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("IP Address Pool", async ({ page }) => {
@@ -58,7 +58,10 @@ test.describe("Resource Managers guide", () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Prefix *").fill("10.100.1.0/24");
       await page.getByRole("combobox", { name: "Member Type" }).click();
-      await page.locator("div").filter({ hasText: /^Prefix$/ }).click();
+      await page
+        .locator("div")
+        .filter({·hasText:·/^Prefix$/·})
+        .click();
       await saveScreenshotForDocs(page, "guides/resource_manager_rss_prefix_10_100_1");
       await page.getByRole("button", { name: "Save" }).click();
       await page.getByText("IPPrefix created").waitFor({ state: "visible" });
