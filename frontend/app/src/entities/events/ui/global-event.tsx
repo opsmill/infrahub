@@ -9,7 +9,23 @@ import { BranchEvent } from "./global-branch-event";
 import { NodeEvent } from "./global-node-event";
 import { StandardEvent } from "./global-standard-event";
 
-export const Event = ({ __typename, ...props }: EventType) => {
+const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
+  if ("attributes" in props) {
+    return <NodeEvent {...props} />;
+  }
+
+  if (BRANCH_EVENTS.includes(__typename)) {
+    return <BranchEvent {...props} />;
+  }
+
+  if (STANDARD_EVENTS.includes(__typename)) {
+    return <StandardEvent {...props} />;
+  }
+
+  return <span className="flex items-center text-sm text-gray-500 ">{props.event}</span>;
+};
+
+export const Event = (props: EventType) => {
   return (
     <div
       className={classNames(
@@ -24,11 +40,7 @@ export const Event = ({ __typename, ...props }: EventType) => {
       </div>
 
       <div className="col-span-5 flex item-center gap-4 overflow-hidden">
-        {"attributes" in props && <NodeEvent {...props} />}
-
-        {BRANCH_EVENTS.includes(__typename) && <BranchEvent {...props} />}
-
-        {STANDARD_EVENTS.includes(__typename) && <StandardEvent {...props} />}
+        <GlobalEventDisplay {...props} />
       </div>
 
       <div className="text-xs font-medium text-gray-500 flex items-center gap-1">
