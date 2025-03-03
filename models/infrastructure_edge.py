@@ -5,7 +5,7 @@ import uuid
 from collections import defaultdict
 from enum import Enum
 from ipaddress import IPv4Network, IPv6Network
-from typing import Optional, cast
+from typing import cast
 
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.batch import InfrahubBatch
@@ -23,6 +23,7 @@ from infrahub_sdk.protocols import (
 )
 from infrahub_sdk.protocols_base import CoreNode
 from infrahub_sdk.store import NodeStore
+from infrahub_sdk.types import Order
 from infrahub_sdk.uuidt import UUIDT
 from protocols import (
     InfraAutonomousSystem,
@@ -139,7 +140,6 @@ def translate_str_to_bool(key: str, value: str) -> bool:
     raise TypeError(f"Value for {key} should be 'True' or 'False'")
 
 
-# pylint: skip-file
 class AccountRole(BaseModel):
     name: str
     global_permissions: list[str] | str | None = None
@@ -185,7 +185,7 @@ class BgpPeerGroup(BaseModel):
     import_policies: str
     export_policies: str
     local_as: str
-    remote_as: Optional[str] = Field(default=None)
+    remote_as: str | None = Field(default=None)
 
 
 class Device(BaseModel):
@@ -262,7 +262,7 @@ class P2pNetwork(BaseModel):
     site2: str
     edge: int
     circuit: str
-    pool: Optional[IpamIPPrefix] = None
+    pool: IpamIPPrefix | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -709,8 +709,10 @@ ACCOUNT_GROUPS = {
 GROUPS = (
     Group(name="edge_router", label="Edge Router"),
     Group(name="core_router", label="Core Router"),
+    # Group(name="leaf_switch", label="Leaf Switch"),
     Group(name="cisco_devices", label="Cisco Devices"),
     Group(name="arista_devices", label="Arista Devices"),
+    # Group(name="juniper_devices", label="Juniper Devices"),
     Group(name="upstream_interfaces", label="Upstream Interfaces"),
     Group(name="backbone_interfaces", label="Backbone Interfaces"),
     Group(name="maintenance_circuits", label="Circuits in Maintenance"),
@@ -795,16 +797,64 @@ async def find_and_connect_interfaces(
     )
 
 
-async def apply_interface_profiles(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
-    # ------------------------------------------
-    # Add profile on interfaces upstream/backbone
-    # ------------------------------------------
-    log.info("Starting to apply profiles to interfaces")
-    upstream_interfaces = await client.filters(branch=branch, kind=InfraInterfaceL3, role__value="upstream")
-    backbone_interfaces = await client.filters(branch=branch, kind=InfraInterfaceL3, role__value="backbone")
+# async def apply_interface_profiles(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
+#     # ------------------------------------------
+#     # Add profile on interfaces upstream/backbone
+#     # ------------------------------------------
+#     log.info("Starting to apply profiles to interfaces")
+#     upstream_interfaces = await client.filters(branch=branch, kind=InfraInterfaceL3, role__value="upstream")
+#     backbone_interfaces = await client.filters(branch=branch, kind=InfraInterfaceL3, role__value="backbone")
+#     upstream_profile = store.get(key="upstream_profile", kind="ProfileInfraInterfaceL3", raise_when_missing=True)
+#     backbone_profile = store.get(key="backbone_profile", kind="ProfileInfraInterfaceL3", raise_when_missing=True)
+
+#     batch = await client.create_batch()
+#     for interface in upstream_interfaces:
+#         batch.add(
+#             task=interface.add_relationships,
+#             node=interface,
+#             relation_to_update="profiles",
+#             related_nodes=[upstream_profile.id],
+#         )
+
+#     for interface in backbone_interfaces:
+#         batch.add(
+#             task=interface.add_relationships,
+#             node=interface,
+#             relation_to_update="profiles",
+#             related_nodes=[backbone_profile.id],
+#         )
+
+#     async for _, response in batch.execute():
+#         log.debug(f"{response} - Creation Completed")
+
+#     log.info("Done applying profiles to interfaces")
+
+
+async def apply_interface_profiles_and_groups(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
+    """
+    Apply profiles to upstream/backbone L3 interfaces and add them to their respective groups.
+    """
+    log.info("Applying profiles to interfaces and update interface groups")
+
+    # Fetch upstream and backbone interfaces.
+    upstream_interfaces = await client.filters(
+        branch=branch,
+        kind=InfraInterfaceL3,
+        role__value="upstream",
+        order=Order(disable=True),
+    )
+    backbone_interfaces = await client.filters(
+        branch=branch,
+        kind=InfraInterfaceL3,
+        role__value="backbone",
+        order=Order(disable=True),
+    )
+
+    # Retrieve profiles from the store.
     upstream_profile = store.get(key="upstream_profile", kind="ProfileInfraInterfaceL3", raise_when_missing=True)
     backbone_profile = store.get(key="backbone_profile", kind="ProfileInfraInterfaceL3", raise_when_missing=True)
 
+    # Apply profiles using batch processing.
     batch = await client.create_batch()
     for interface in upstream_interfaces:
         batch.add(
@@ -813,7 +863,6 @@ async def apply_interface_profiles(client: InfrahubClient, log: logging.Logger, 
             relation_to_update="profiles",
             related_nodes=[upstream_profile.id],
         )
-
     for interface in backbone_interfaces:
         batch.add(
             task=interface.add_relationships,
@@ -821,11 +870,143 @@ async def apply_interface_profiles(client: InfrahubClient, log: logging.Logger, 
             relation_to_update="profiles",
             related_nodes=[backbone_profile.id],
         )
-
     async for _, response in batch.execute():
-        log.debug(f"{response} - Creation Completed")
+        log.debug(f"{response} - Profile applied")
+    log.info("Completed applying profiles to interfaces")
 
-    log.info("Done applying profiles to interfaces")
+    # Update interface groups.
+    if upstream_interfaces:
+        group_upstream_interfaces = await client.get(
+            kind=CoreStandardGroup,
+            name__value="upstream_interfaces",
+            branch=branch,
+            include=["members"],
+            prefetch_relationships=True,
+        )
+        upstream_interface_ids = [interface.id for interface in upstream_interfaces]
+        await group_upstream_interfaces.add_relationships(
+            relation_to_update="members", related_nodes=upstream_interface_ids
+        )
+    if backbone_interfaces:
+        group_backbone_interfaces = await client.get(
+            kind=CoreStandardGroup,
+            name__value="backbone_interfaces",
+            branch=branch,
+            include=["members"],
+            prefetch_relationships=True,
+        )
+        backbone_interface_ids = [interface.id for interface in backbone_interfaces]
+        await group_backbone_interfaces.add_relationships(
+            relation_to_update="members", related_nodes=backbone_interface_ids
+        )
+    log.info("Completed updating interface groups")
+
+
+async def apply_devices_groups(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
+    """
+    Fetch devices from Infrahub, group them based on their role and manufacturer,
+    and update the corresponding device groups.
+    """
+    log.info("Adding devices to groups")
+
+    devices = await client.filters(
+        branch=branch,
+        kind="InfraDevice",
+        include=["name", "role", "platform"],
+        prefetch_relationships=True,
+        order=Order(disable=True),
+    )
+
+    # Initialize lists for grouping by role.
+    group_core_router_members: list[str] = []
+    group_edge_router_members: list[str] = []
+    group_leaf_switch_members: list[str] = []
+
+    # Initialize lists for grouping by manufacturer/platform.
+    group_arista_devices_members: list[str] = []
+    group_cisco_devices_members: list[str] = []
+    group_juniper_devices_members: list[str] = []
+
+    # Build lists of device names to add to groups.
+    for device in devices:
+        device_role = device.role.value
+        if "edge" in device_role:
+            group_edge_router_members.append(device.id)
+        elif "core" in device_role:
+            group_core_router_members.append(device.id)
+        # elif "leaf" in device_role:
+        #     group_leaf_switch_members.append(device.id)
+
+        if "Arista" in device.platform.peer.name.value:
+            group_arista_devices_members.append(device.id)
+        elif "Cisco" in device.platform.peer.name.value:
+            group_cisco_devices_members.append(device.id)
+        # elif "Juniper" in device.platform.peer.name.value:
+        #     group_juniper_devices_members.append(device.id)
+
+    # Update device groups.
+    log.info("Updating device groups")
+    if group_edge_router_members:
+        group_edge_router = await client.get(
+            kind=CoreStandardGroup,
+            name__value="edge_router",
+            branch=branch,
+            include=["members"],
+            prefetch_relationships=True,
+        )
+        await group_edge_router.add_relationships(relation_to_update="members", related_nodes=group_edge_router_members)
+    if group_core_router_members:
+        group_core_router = await client.get(
+            kind=CoreStandardGroup,
+            name__value="core_router",
+            branch=branch,
+            include=["members"],
+            prefetch_relationships=True,
+        )
+        await group_core_router.add_relationships(relation_to_update="members", related_nodes=group_core_router_members)
+    if group_leaf_switch_members:
+        group_leaf_switch = await client.get(
+            kind=CoreStandardGroup,
+            name__value="leaf_switch",
+            branch=branch,
+            include=["members"],
+            prefetch_relationships=True,
+        )
+        await group_leaf_switch.add_relationships(relation_to_update="members", related_nodes=group_leaf_switch_members)
+    if group_arista_devices_members:
+        group_arista_devices = await client.get(
+            kind=CoreStandardGroup,
+            name__value="arista_devices",
+            branch=branch,
+            include=["members"],
+            prefetch_relationships=True,
+        )
+        await group_arista_devices.add_relationships(
+            relation_to_update="members", related_nodes=group_arista_devices_members
+        )
+    if group_cisco_devices_members:
+        group_cisco_devices = await client.get(
+            kind=CoreStandardGroup,
+            name__value="cisco_devices",
+            branch=branch,
+            include=["members"],
+            prefetch_relationships=True,
+        )
+        await group_cisco_devices.add_relationships(
+            relation_to_update="members", related_nodes=group_cisco_devices_members
+        )
+    if group_juniper_devices_members:
+        group_juniper_devices = await client.get(
+            kind=CoreStandardGroup,
+            name__value="juniper_devices",
+            branch=branch,
+            include=["members"],
+            prefetch_relationships=True,
+        )
+        await group_juniper_devices.add_relationships(
+            relation_to_update="members", related_nodes=group_juniper_devices_members
+        )
+    log.info("Devices have been added to groups")
 
 
 async def create_backbone_connectivity(
@@ -838,43 +1019,50 @@ async def create_backbone_connectivity(
     account_pop = store.get("pop-builder", kind=CoreAccount, raise_when_missing=True)
     interconnection_pool = store.get("interconnection_pool", kind=CoreAccount, raise_when_missing=True)
 
-    networks: list[P2pNetwork] = []
+    p2p_networks: list[P2pNetwork] = []
 
     if num_sites > 1:
-        networks.append(P2pNetwork(site1="atl1", site2="ord1", edge=1, circuit="DUFF-1543451"))
-        networks.append(P2pNetwork(site1="atl1", site2="ord1", edge=2, circuit="DUFF-8263953"))
+        p2p_networks.append(P2pNetwork(site1="atl1", site2="ord1", edge=1, circuit="DUFF-1543451"))
+        p2p_networks.append(P2pNetwork(site1="atl1", site2="ord1", edge=2, circuit="DUFF-8263953"))
     if num_sites > 2:
-        networks.append(P2pNetwork(site1="atl1", site2="jfk1", edge=1, circuit="DUFF-6535773"))
-        networks.append(P2pNetwork(site1="atl1", site2="jfk1", edge=2, circuit="DUFF-7324064"))
-        networks.append(P2pNetwork(site1="jfk1", site2="ord1", edge=1, circuit="DUFF-5826854"))
-        networks.append(P2pNetwork(site1="jfk1", site2="ord1", edge=2, circuit="DUFF-4867430"))
+        p2p_networks.append(P2pNetwork(site1="atl1", site2="jfk1", edge=1, circuit="DUFF-6535773"))
+        p2p_networks.append(P2pNetwork(site1="atl1", site2="jfk1", edge=2, circuit="DUFF-7324064"))
+        p2p_networks.append(P2pNetwork(site1="jfk1", site2="ord1", edge=1, circuit="DUFF-5826854"))
+        p2p_networks.append(P2pNetwork(site1="jfk1", site2="ord1", edge=2, circuit="DUFF-4867430"))
 
-    for network in networks:
+    for network in p2p_networks:
         network.pool = await client.allocate_next_ip_prefix(
             resource_pool=interconnection_pool, kind=IpamIPPrefix, branch=branch, identifier=network.identifier
         )
 
     log.info("- Done allocating addresses")
 
-    for backbone_link in networks:
-        intf1 = INTERFACE_OBJS[backbone_link.site1_device].pop(0)
-        intf2 = INTERFACE_OBJS[backbone_link.site2_device].pop(0)
+    circuit_batch = await client.create_batch()
+    endpoint_batch = await client.create_batch()
+    interface_ip_batch = await client.create_batch()
+    for backbone_link in p2p_networks:
+        # intf1 = INTERFACE_OBJS[backbone_link.site1_device].pop(0)
+        # intf2 = INTERFACE_OBJS[backbone_link.site2_device].pop(0)
+        intf_site1 = INTERFACE_OBJS[backbone_link.site1_device].pop(0)
+        intf_site1_obj = await client.get(id=intf_site1.id, include=["device"], kind=intf_site1.get_kind())
+        intf_site2 = INTERFACE_OBJS[backbone_link.site2_device].pop(0)
+        intf_site2_obj = await client.get(id=intf_site2.id, include=["device"], kind=intf_site2.get_kind())
 
         backbone_link_ips = backbone_link.get_pool().prefix.value.hosts()
 
         provider = store.get(kind="OrganizationProvider", key=backbone_link.provider_name)
-        obj = await client.create(
+        vendor_id = f"{backbone_link.provider_name}-{UUIDT().short()}"
+        bkb_circuit = await client.create(
             branch=branch,
             kind=InfraCircuit,
-            description=f"Backbone {backbone_link.site1} <-> {backbone_link.site2}",
+            description=f"BKB: {backbone_link.site1} <-> {backbone_link.site2}",
             circuit_id=backbone_link.circuit,
-            vendor_id=f"{backbone_link.provider_name.upper()}-{UUIDT().short()}",
+            vendor_id=vendor_id.upper(),
             provider=provider,
             status=ACTIVE_STATUS,
             role=BACKBONE_ROLE,
         )
-        await obj.save()
-        log.info(f"- Created {obj._schema.kind} - {backbone_link.provider_name} [{obj.vendor_id.value}]")
+        circuit_batch.add(task=bkb_circuit.save, node=bkb_circuit)
 
         # Create Circuit Endpoints
         endpoint1 = await client.create(
@@ -882,51 +1070,64 @@ async def create_backbone_connectivity(
             kind=InfraCircuitEndpoint,
             description=f"Endpoint {backbone_link.circuit} to {backbone_link.site1_device}",
             site=backbone_link.site1,
-            circuit=obj,
-            connected_endpoint=intf1,
+            circuit=bkb_circuit,
+            connected_endpoint=intf_site1,
         )
-        await endpoint1.save()
+        endpoint_batch.add(task=endpoint1.save, node=endpoint1)
 
         endpoint2 = await client.create(
             branch=branch,
             kind=InfraCircuitEndpoint,
             description=f"Endpoint {backbone_link.circuit} to {backbone_link.site2_device}",
             site=backbone_link.site2,
-            circuit=obj,
-            connected_endpoint=intf2,
+            circuit=bkb_circuit,
+            connected_endpoint=intf_site2,
         )
-        await endpoint2.save()
+        endpoint_batch.add(task=endpoint2.save, node=endpoint2)
 
         # Create IP Address
-        intf11_address = f"{str(next(backbone_link_ips))}/31"
-        intf21_address = f"{str(next(backbone_link_ips))}/31"
-        intf11_ip = await client.create(
+        intf_site1_address = f"{str(next(backbone_link_ips))}/31"
+        intf_site2_address = f"{str(next(backbone_link_ips))}/31"
+        intf_site1_identifier = f"{intf_site1.name.value.lower()}.{intf_site1_obj.device.peer.name.value}"
+        intf_site2_identifier = f"{intf_site2.name.value.lower()}.{intf_site2_obj.device.peer.name.value}"
+        intf_site1_ip = await client.create(
             branch=branch,
             kind=IpamIPAddress,
-            interface={"id": intf1.id, "source": account_pop.id},
-            address={"value": intf11_address, "source": account_pop.id},
+            interface={"id": intf_site1.id, "source": account_pop.id},
+            address={"value": intf_site1_address, "source": account_pop.id},
+            description={"value": intf_site1_identifier, "source": account_pop.id},
         )
-        await intf11_ip.save()
-        intf21_ip = await client.create(
+        interface_ip_batch.add(task=intf_site1_ip.save, node=intf_site1_ip)
+
+        intf_site2_ip = await client.create(
             branch=branch,
             kind=IpamIPAddress,
-            interface={"id": intf2.id, "source": account_pop.id},
-            address={"value": intf21_address, "source": account_pop.id},
+            interface={"id": intf_site2.id, "source": account_pop.id},
+            address={"value": intf_site2_address, "source": account_pop.id},
+            description={"value": intf_site2_identifier, "source": account_pop.id},
         )
-        await intf21_ip.save()
+        interface_ip_batch.add(task=intf_site2_ip.save, node=intf_site2_ip)
 
         # Update Interface
-        intf11 = await client.get(branch=branch, kind=InfraInterfaceL3, id=intf1.id)
-        intf11.description.value = f"Backbone: Connected to {backbone_link.site2_device} via {backbone_link.circuit}"
-        await intf11.save()
-
-        intf21 = await client.get(branch=branch, kind=InfraInterfaceL3, id=intf2.id)
-        intf21.description.value = f"Backbone: Connected to {backbone_link.site1_device} via {backbone_link.circuit}"
-        await intf21.save()
-
-        log.info(
-            f" - Connected '{backbone_link.site1_device}::{intf1.name.value}' <> '{backbone_link.site2_device}::{intf2.name.value}'"
+        intf_site1_obj.description.value = (
+            f"Backbone: Connected to {backbone_link.site2_device} via {backbone_link.circuit}"
         )
+        await intf_site1_obj.save()
+
+        intf_site2_obj.description.value = (
+            f"Backbone: Connected to {backbone_link.site1_device} via {backbone_link.circuit}"
+        )
+        await intf_site2_obj.save()
+
+        log.debug(
+            f" - Connected '{backbone_link.site1_device}::{intf_site1.name.value}' <> '{backbone_link.site2_device}::{intf_site2.name.value}'"
+        )
+    async for node, _ in circuit_batch.execute():
+        log.info(f"Created {node._schema.kind} - {node.get_human_friendly_id()}")
+    async for node, _ in endpoint_batch.execute():
+        log.info(f"Created {node._schema.kind} - ['{node.id}']")
+    async for node, _ in interface_ip_batch.execute():
+        log.info(f"Created {node._schema.kind} - {node.get_human_friendly_id()}")
 
 
 async def create_bgp_mesh(client: InfrahubClient, log: logging.Logger, branch: str, sites: list[Site]) -> None:
@@ -977,12 +1178,17 @@ async def create_bgp_mesh(client: InfrahubClient, log: logging.Logger, branch: s
 
 
 async def generate_site_vlans(
-    client: InfrahubClient, log: logging.Logger, branch: str, site: Site, site_id: int
+    client: InfrahubClient,
+    log: logging.Logger,  # noqa: ARG001
+    branch: str,
+    site: Site,
+    site_id: int,
 ) -> None:
     account_pop = store.get("pop-builder", kind=CoreAccount, raise_when_missing=True)
     group_eng = store.get("eng-team", kind=CoreAccountGroup, raise_when_missing=True)
     group_ops = store.get("ops-team", kind=CoreAccountGroup, raise_when_missing=True)
 
+    vlan_batch = await client.create_batch()
     for vlan in VLANS:
         vlan_name = f"{site.name}_{vlan.role}"
         obj = await client.create(
@@ -994,11 +1200,14 @@ async def generate_site_vlans(
             status={"value": ACTIVE_STATUS, "owner": group_ops.id},
             role={"value": vlan.role, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
         )
-        await obj.save()
+        vlan_batch.add(task=obj.save, node=obj)
         store.set(key=vlan_name, node=obj)
 
+    async for node, _ in vlan_batch.execute():
+        log.debug(f"Created {node._schema.kind} - {node.name.value}")
 
-async def generate_site_mlag_domain(client: InfrahubClient, log: logging.Logger, branch: str, site: Site) -> None:
+
+async def generate_site_mlag_domain(client: InfrahubClient, log: logging.Logger, branch: str, site: Site) -> None:  # noqa: ARG001
     # --------------------------------------------------
     # Set up MLAG domains
     # --------------------------------------------------
@@ -1096,7 +1305,7 @@ async def generate_site(
     }
 
     # Here we need as much prefix as we have edge device
-    for i in range(site_design.num_edge_device):
+    for _ in range(site_design.num_edge_device):
         peer_networks.append(
             await client.allocate_next_ip_prefix(resource_pool=interconnection_pool, kind=IpamIPPrefix, branch=branch)
         )
@@ -1113,12 +1322,12 @@ async def generate_site(
             1: peer_networks[i].prefix.value.hosts(),
         }
 
-    group_core_router_members: list[str] = []
-    group_edge_router_members: list[str] = []
-    group_cisco_devices_members: list[str] = []
-    group_arista_devices_members: list[str] = []
-    group_upstream_interfaces_members = []
-    group_backbone_interfaces_members = []
+    # group_core_router_members: list[str] = []
+    # group_edge_router_members: list[str] = []
+    # group_cisco_devices_members: list[str] = []
+    # group_arista_devices_members: list[str] = []
+    # group_upstream_interfaces_members = []
+    # group_backbone_interfaces_members = []
 
     # --------------------------------------------------
     # Create devices
@@ -1126,7 +1335,7 @@ async def generate_site(
     # Craft the list of devices
     devices: list[Device] = site_design.implement()
 
-    # TODO: There is room for improvement here, batch those device together
+    device_batch = await client.create_batch()
     for device in devices:
         device_name = f"{site.name}-{device.name}"
         platform_id = store.get(kind=InfraPlatform, key=device.platform).id
@@ -1143,20 +1352,19 @@ async def generate_site(
             tags=[store.get(kind="BuiltinTag", key=tag_name, raise_when_missing=True).id for tag_name in device.tags],
             platform={"id": platform_id, "source": account_pop.id, "is_protected": True},
         )
-        await obj.save()
+        device_batch.add(task=obj.save, node=obj)
         store.set(key=device_name, node=obj)
-        log.info(f"- Created {obj._schema.kind} - {obj.name.value}")
 
-        # Add device to groups
-        if "edge" in device.role:
-            group_edge_router_members.append(obj.id)
-        elif "core" in device.role:
-            group_core_router_members.append(obj.id)
+    async for node, _ in device_batch.execute():
+        log.info(f"- Created {node._schema.kind} - {node.get_human_friendly_id()}")
 
-        if "Arista" in device.platform:
-            group_arista_devices_members.append(obj.id)
-        elif "Cisco" in device.platform:
-            group_cisco_devices_members.append(obj.id)
+    # --------------------------------------------------
+    # Create interfaces for each device
+    # --------------------------------------------------
+    log.info(f"[{site.name}] Creating Interfaces, IPs, Circuits & BGP Sessions")
+    for device in devices:
+        device_name = f"{site.name}-{device.name}"
+        obj = store.get(key=device_name, kind=InfraDevice)
 
         # Loopback Interface
         intf = await client.create(
@@ -1198,7 +1406,13 @@ async def generate_site(
         await obj.save()
 
         # L3 Interfaces
-        # TODO: There is room for improvement here
+        l3_interface_batch = await client.create_batch()
+        address_batch = await client.create_batch()
+        circuit_batch = await client.create_batch()
+        cable_batch = await client.create_batch()
+        endpoint_batch = await client.create_batch()
+        bgp_session_batch = await client.create_batch()
+
         for intf_idx, intf_name in enumerate(device.l3_interface_names):
             intf_role = INTERFACE_L3_ROLES_MAPPING[device.role][intf_idx]
 
@@ -1212,79 +1426,68 @@ async def generate_site(
                 status={"value": ACTIVE_STATUS, "owner": group_ops.id},
                 role={"value": intf_role, "source": account_pop.id},
             )
-            await intf.save()
-
+            # Instead of immediate saving, add the interface creation to the batch.
+            l3_interface_batch.add(task=intf.save, node=intf)
+            # Store the interface for later reference.
             store.set(key=f"{device_name}-l3-{intf_idx}", node=intf)
-            if intf_role == "backbone":
-                INTERFACE_OBJS[device_name].append(intf)
-                group_backbone_interfaces_members.append(intf.id)
 
+            interface_identifier = f"{intf.name.value.lower()}.{device_name}"
+
+            # Determine the IP address (if any) for this interface.
             subnet = None
             address = None
-            if intf_role == "peer":
-                # TODO: Refactor that part for the sake of readability
-                address = f"{str(next(peer_network_hosts[device._idx][intf_idx]))}/31"
+            peer_address = None  # For roles that require a peer IP
 
-            if intf_role == "upstream":
-                group_upstream_interfaces_members.append(intf.id)
+            if "edge" in device.role:
+                if intf_role == "backbone":
+                    INTERFACE_OBJS[device_name].append(intf)
 
-            if intf_role in ["upstream", "peering"] and "edge" in device.role:
-                subnet = await client.allocate_next_ip_prefix(
-                    kind=IpamIPPrefix,
-                    resource_pool=external_pool,
-                    identifier=f"{device_name}__{intf_role}__{intf_idx}",
-                    branch=branch,
-                )
-                subnet_hosts = subnet.prefix.value.hosts()
-                address = f"{str(next(subnet_hosts))}/29"
-                peer_address = f"{str(next(subnet_hosts))}/29"
+                if intf_role == "peer":
+                    # TODO: Refactor that part for the sake of readability
+                    address = f"{str(next(peer_network_hosts[device._idx][intf_idx]))}/31"
+
+                if intf_role in ["upstream", "peering"]:
+                    prefix_identifier = f"{intf_role}: {intf.name.value}.{device_name}"
+                    subnet = await client.allocate_next_ip_prefix(
+                        kind=IpamIPPrefix,
+                        resource_pool=external_pool,
+                        identifier=prefix_identifier,
+                        data={
+                            "description": {
+                                "value": prefix_identifier,
+                                "source": account_pop.id,
+                            }
+                        },
+                        branch=branch,
+                    )
+                    subnet_hosts = subnet.prefix.value.hosts()
+                    address = f"{str(next(subnet_hosts))}/29"
+                    peer_address = f"{str(next(subnet_hosts))}/29"
 
             if address:
                 ip = await client.create(
                     branch=branch,
                     kind=IpamIPAddress,
-                    interface={"id": intf.id, "source": account_pop.id},
+                    interface=intf,
                     address={"value": address, "source": account_pop.id},
+                    description={
+                        "value": interface_identifier,
+                        "source": account_pop.id,
+                    },
                 )
-                await ip.save()
+                address_batch.add(task=ip.save, node=ip)
 
             # Create Circuit and BGP session for upstream and peering
             if intf_role in ["upstream", "peering"]:
                 circuit_id_unique = str(uuid.UUID(int=abs(hash(f"{device_name}-{intf_role}-{address}"))))[24:]
                 circuit_id = f"DUFF-{circuit_id_unique}"
                 upstream_providers = ["Arelion", "Colt Technology Services"]
+                bgp_session = None
 
                 if intf_role == "upstream":
                     provider_name = upstream_providers[intf_idx % 2]
-                elif intf_role == "peering":
-                    provider_name = "Equinix"
+                    provider = store.get(kind=OrganizationProvider, key=provider_name, raise_when_missing=True)
 
-                provider = store.get(kind=OrganizationProvider, key=provider_name, raise_when_missing=True)
-
-                circuit = await client.create(
-                    branch=branch,
-                    kind=InfraCircuit,
-                    circuit_id=circuit_id,
-                    vendor_id=f"{provider_name.upper()}-{UUIDT().short()}",
-                    provider=provider.id,
-                    status={"value": ACTIVE_STATUS, "owner": group_ops.id},
-                    role={"value": intf_role, "source": account_pop.id, "owner": group_eng.id},
-                )
-                await circuit.save()
-                log.info(f" - Created {circuit._schema.kind} - {provider_name} [{circuit.vendor_id.value}]")
-
-                endpoint1 = await client.create(
-                    branch=branch,
-                    kind=InfraCircuitEndpoint,
-                    site=site_obj,
-                    circuit=circuit.id,
-                    connected_endpoint=intf.id,
-                )
-                await endpoint1.save()
-
-                intf.description.value = f"Connected to {provider_name} via {circuit_id}"
-
-                if intf_role == "upstream":
                     peer_group_name = (
                         "UPSTREAM_ARELION" if "arelion" in provider.name.value.lower() else "UPSTREAM_DEFAULT"
                     )
@@ -1294,31 +1497,75 @@ async def generate_site(
                         kind=IpamIPAddress,
                         address=peer_address,
                     )
-                    await peer_ip.save()
-
-                    peer_as = store.get(kind=InfraAutonomousSystem, key=provider_name)
+                    address_batch.add(task=peer_ip.save, node=peer_ip)
+                    session_description = f"external-{ip.address.value.ip}-{peer_ip.address.value.ip}"
                     bgp_session = await client.create(
                         branch=branch,
                         kind=InfraBGPSession,
                         type="EXTERNAL",
+                        description=session_description,
                         local_as=internal_as.id,
-                        local_ip=ip.id,
-                        remote_as=peer_as.id,
-                        remote_ip=peer_ip.id,
+                        local_ip=ip,
+                        remote_as=store.get(kind="InfraAutonomousSystem", key=provider_name).id,
+                        remote_ip=peer_ip,
                         peer_group=store.get(key=peer_group_name, raise_when_missing=True).id,
                         device=store.get(key=device_name, raise_when_missing=True).id,
                         status=ACTIVE_STATUS,
                         role=intf_role,
                     )
-                    await bgp_session.save()
+                    bgp_session_batch.add(task=bgp_session.save, node=bgp_session)
 
-                    await circuit.add_relationships(relation_to_update="bgp_sessions", related_nodes=[bgp_session.id])
-                    log.debug(
-                        f" - Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
-                    )
+                elif intf_role == "peering":
+                    provider_name = "Equinix"
+
+                    # await circuit.add_relationships(relation_to_update="bgp_sessions", related_nodes=[bgp_session.id])
+                    # log.debug(
+                    #     f" - Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
+                    # )
+
+                circuit_data = {
+                    "circuit_id": circuit_id,
+                    "vendor_id": f"{provider_name.upper()}-{UUIDT().short()}",
+                    "provider": provider.id,
+                    "status": {"value": ACTIVE_STATUS, "owner": group_ops.id},
+                    "role": {
+                        "value": intf_role,
+                        "source": account_pop.id,
+                        "owner": group_eng.id,
+                    },
+                }
+                if bgp_session:
+                    circuit_data["bgp_sessions"] = [bgp_session]
+
+                circuit = await client.create(branch=branch, kind=InfraCircuit, data=circuit_data)
+                circuit_batch.add(task=circuit.save, node=circuit)
+
+                endpoint1 = await client.create(
+                    branch=branch,
+                    kind=InfraCircuitEndpoint,
+                    site=site_obj,
+                    circuit=circuit,
+                    connected_endpoint=intf,
+                )
+                endpoint_batch.add(task=endpoint1.save, node=endpoint1)
+
+                intf.description.value = f"Connected to {provider_name} via {circuit_id}"
+
+        async for node, _ in l3_interface_batch.execute():
+            log.info(f" - Created {node._schema.kind} - ['{node.name.value}']")
+        async for node, _ in address_batch.execute():
+            log.info(f" - Created {node._schema.kind} - ['{node.address.value}']")
+        async for node, _ in bgp_session_batch.execute():
+            log.info(f" - Created {node._schema.kind} - {node.get_human_friendly_id()}")
+        async for node, _ in circuit_batch.execute():
+            log.info(f" - Created {node._schema.kind} - {node.get_human_friendly_id()}")
+        async for node, _ in cable_batch.execute():
+            log.info(f" - Created {node._schema.kind} - {node.get_human_friendly_id()}")
+        async for node, _ in endpoint_batch.execute():
+            log.info(f" - Created {node._schema.kind} - ['{node.id}']")
 
         # L2 Interfaces
-        batch = await client.create_batch()
+        l2_interface_batch = await client.create_batch()
 
         for intf_idx, intf_name in enumerate(device.l2_interface_names):
             try:
@@ -1345,10 +1592,10 @@ async def generate_site(
                 untagged_vlan=untagged_vlan,
             )
 
-            batch.add(task=intf.save, node=intf)
+            l2_interface_batch.add(task=intf.save, node=intf)
             store.set(key=f"{device_name}-l2-{intf_name}", node=intf)
 
-        async for node, _ in batch.execute():
+        async for node, _ in l2_interface_batch.execute():
             log.debug(f"- Created {node._schema.kind} - {node.name.value}")
 
         for lag_intf in LAG_INTERFACE_L2.get(device.type, []):
@@ -1453,37 +1700,37 @@ async def generate_site(
     # --------------------------------------------------
     # Update all the group we may have touched during the site creation
     # --------------------------------------------------
-    if group_edge_router_members:
-        group_edge_router = store.get(kind=CoreStandardGroup, key="edge_router")
-        await group_edge_router.add_relationships(relation_to_update="members", related_nodes=group_edge_router_members)
+    # if group_edge_router_members:
+    #     group_edge_router = store.get(kind=CoreStandardGroup, key="edge_router")
+    #     await group_edge_router.add_relationships(relation_to_update="members", related_nodes=group_edge_router_members)
 
-    if group_core_router_members:
-        group_core_router = store.get(kind=CoreStandardGroup, key="core_router")
-        await group_core_router.add_relationships(relation_to_update="members", related_nodes=group_core_router_members)
+    # if group_core_router_members:
+    #     group_core_router = store.get(kind=CoreStandardGroup, key="core_router")
+    #     await group_core_router.add_relationships(relation_to_update="members", related_nodes=group_core_router_members)
 
-    if group_cisco_devices_members:
-        group_cisco_devices = store.get(kind=CoreStandardGroup, key="cisco_devices")
-        await group_cisco_devices.add_relationships(
-            relation_to_update="members", related_nodes=group_cisco_devices_members
-        )
+    # if group_cisco_devices_members:
+    #     group_cisco_devices = store.get(kind=CoreStandardGroup, key="cisco_devices")
+    #     await group_cisco_devices.add_relationships(
+    #         relation_to_update="members", related_nodes=group_cisco_devices_members
+    #     )
 
-    if group_arista_devices_members:
-        group_arista_devices = store.get(kind=CoreStandardGroup, key="arista_devices")
-        await group_arista_devices.add_relationships(
-            relation_to_update="members", related_nodes=group_arista_devices_members
-        )
+    # if group_arista_devices_members:
+    #     group_arista_devices = store.get(kind=CoreStandardGroup, key="arista_devices")
+    #     await group_arista_devices.add_relationships(
+    #         relation_to_update="members", related_nodes=group_arista_devices_members
+    #     )
 
-    if group_upstream_interfaces_members:
-        group_upstream_interfaces = store.get(kind=CoreStandardGroup, key="upstream_interfaces")
-        await group_upstream_interfaces.add_relationships(
-            relation_to_update="members", related_nodes=group_upstream_interfaces_members
-        )
+    # if group_upstream_interfaces_members:
+    #     group_upstream_interfaces = store.get(kind=CoreStandardGroup, key="upstream_interfaces")
+    #     await group_upstream_interfaces.add_relationships(
+    #         relation_to_update="members", related_nodes=group_upstream_interfaces_members
+    #     )
 
-    if group_backbone_interfaces_members:
-        group_backbone_interfaces = store.get(kind=CoreStandardGroup, key="backbone_interfaces")
-        await group_backbone_interfaces.add_relationships(
-            relation_to_update="members", related_nodes=group_backbone_interfaces_members
-        )
+    # if group_backbone_interfaces_members:
+    #     group_backbone_interfaces = store.get(kind=CoreStandardGroup, key="backbone_interfaces")
+    #     await group_backbone_interfaces.add_relationships(
+    #         relation_to_update="members", related_nodes=group_backbone_interfaces_members
+    #     )
 
     return site.name
 
@@ -1830,7 +2077,7 @@ async def generate_continents_countries(client: InfrahubClient, log: logging.Log
     log.info("Created continents and countries")
 
 
-async def prepare_permissions(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_permissions(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     for p in GLOBAL_PERMISSIONS:
         obj = await client.get(
             branch=branch, kind="CoreGlobalPermission", hfid=[p.action, str(p.decision)], raise_when_missing=True
@@ -1848,7 +2095,7 @@ async def prepare_permissions(client: InfrahubClient, log: logging.Logger, branc
         store.set(key=name, node=obj)
 
 
-async def prepare_account_roles(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_account_roles(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     for role in ACCOUNT_ROLES:
         obj = await client.create(
             branch=branch,
@@ -1859,7 +2106,7 @@ async def prepare_account_roles(client: InfrahubClient, log: logging.Logger, bra
         store.set(key=role.name, node=obj)
 
 
-async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     for account in ACCOUNTS:
         obj = await client.create(branch=branch, kind="CoreAccount", data=account.model_dump(exclude={"groups"}))
         batch.add(task=obj.save, node=obj)
@@ -1874,7 +2121,10 @@ async def prepare_accounts(client: InfrahubClient, log: logging.Logger, branch: 
 
 
 async def map_permissions_to_roles(
-    client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch
+    client: InfrahubClient,  # noqa: ARG001
+    log: logging.Logger,  # noqa: ARG001
+    branch: str,  # noqa: ARG001
+    batch: InfrahubBatch,
 ) -> None:
     for role in ACCOUNT_ROLES:
         if not role.global_permissions and not role.object_permissions:
@@ -1920,7 +2170,10 @@ async def map_permissions_to_roles(
 
 
 async def map_user_and_roles_to_groups(
-    client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch
+    client: InfrahubClient,  # noqa: ARG001
+    log: logging.Logger,  # noqa: ARG001
+    branch: str,  # noqa: ARG001
+    batch: InfrahubBatch,
 ) -> None:
     for group_name, group in ACCOUNT_GROUPS.items():
         updated = False
@@ -1943,7 +2196,7 @@ async def map_user_and_roles_to_groups(
             batch.add(task=obj.save, node=obj)
 
 
-async def prepare_asns(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_asns(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     account_chloe = store.get("cobrian", kind=CoreAccount, raise_when_missing=True)
     account_crm = store.get("crm-sync", kind=CoreAccount, raise_when_missing=True)
     organizations_dict = {org.name: org.type for org in ORGANIZATIONS}
@@ -2006,7 +2259,7 @@ async def prepare_bgp_peer_groups(
         store.set(key=peer_group.name, node=obj)
 
 
-async def prepare_groups(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_groups(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     for group in GROUPS:
         obj = await client.create(branch=branch, kind=CoreStandardGroup, data=group.model_dump())
 
@@ -2015,7 +2268,10 @@ async def prepare_groups(client: InfrahubClient, log: logging.Logger, branch: st
 
 
 async def prepare_interface_profiles(
-    client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch
+    client: InfrahubClient,
+    log: logging.Logger,  # noqa: ARG001
+    branch: str,
+    batch: InfrahubBatch,
 ) -> None:
     for intf_profile in INTERFACE_PROFILES:
         data_profile = {
@@ -2027,7 +2283,7 @@ async def prepare_interface_profiles(
         store.set(key=intf_profile.name, node=profile)
 
 
-async def prepare_organizations(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_organizations(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     for org in ORGANIZATIONS:
         data_org = {
             "name": {"value": org.name, "is_protected": True},
@@ -2037,7 +2293,7 @@ async def prepare_organizations(client: InfrahubClient, log: logging.Logger, bra
         store.set(key=org.name, node=obj)
 
 
-async def prepare_platforms(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:
+async def prepare_platforms(client: InfrahubClient, log: logging.Logger, branch: str, batch: InfrahubBatch) -> None:  # noqa: ARG001
     for platform in PLATFORMS:
         obj = await client.create(
             branch=branch,
@@ -2082,6 +2338,8 @@ async def run(
 ) -> None:
     # Create timer to keep track of time elapsed
     start: float = time.time()
+
+    branch = branch or "main"
 
     # ------------------------------------------
     # Config
@@ -2339,7 +2597,17 @@ async def run(
         )
         log.info(f"{response} - Creation Completed")
 
-    await apply_interface_profiles(
+    # await apply_interface_profiles(
+    #     client=client,
+    #     branch=branch,
+    #     log=log,
+    # )
+    await apply_interface_profiles_and_groups(
+        client=client,
+        branch=branch,
+        log=log,
+    )
+    await apply_devices_groups(
         client=client,
         branch=branch,
         log=log,
@@ -2359,13 +2627,36 @@ async def run(
     #  Scenario 5 - Create some Node ADD and DELETE conflicts on some platform objects
     # --------------------------------------------------
     if branch == "main" and config.has_branch:
-        await branch_scenario_add_upstream(site_name=sites[1].name, client=client, log=log, external_pool=external_pool)
-        await branch_scenario_replace_ip_addresses(
-            site_name=sites[2].name, client=client, log=log, interconnection_pool=interconnection_pool
+        # await branch_scenario_add_upstream(site_name=sites[1].name, client=client, log=log,
+        # await branch_scenario_replace_ip_addresses(
+        #     site_name=sites[2].name, client=client, log=log
+        # )
+        # await branch_scenario_remove_colt(site_name=sites[0].name, client=client, log=log)
+        # await branch_scenario_conflict_device(site_name=sites[3].name, client=client, log=log)
+        # await branch_scenario_conflict_platform(client=client, log=log)
+        batch = await client.create_batch()
+
+        batch.add(
+            task=branch_scenario_add_upstream,
+            site_name=sites[1].name,
+            client=client,
+            log=log,
+            external_pool=external_pool,  # Could be load from store
         )
-        await branch_scenario_remove_colt(site_name=sites[0].name, client=client, log=log)
-        await branch_scenario_conflict_device(site_name=sites[3].name, client=client, log=log)
-        await branch_scenario_conflict_platform(client=client, log=log)
+
+        batch.add(
+            task=branch_scenario_replace_ip_addresses,
+            site_name=sites[2].name,
+            client=client,
+            log=log,
+            interconnection_pool=interconnection_pool,  # Could be load from store
+        )
+        batch.add(task=branch_scenario_remove_colt, site_name=sites[0].name, client=client, log=log)
+        batch.add(task=branch_scenario_conflict_device, site_name=sites[3].name, client=client, log=log)
+        batch.add(task=branch_scenario_conflict_platform, client=client, log=log)
+
+        async for node, _ in batch.execute():
+            log.debug(f"Branch scenario {node} completed")
 
     # Stop the timer and display elapsed time
     log.info(f"Data loaded in {round(time.time() - start)}s")
