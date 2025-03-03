@@ -15,7 +15,7 @@ export const BranchEvent = (props: EventNodeInterface) => {
           <NodeLabel id={account_id} />
         </div>
 
-        {BRANCH_EVENTS_MAPPING[event] && BRANCH_EVENTS_MAPPING[event](props)}
+        {(BRANCH_EVENTS_MAPPING[event] && BRANCH_EVENTS_MAPPING[event](props)) ?? event}
       </div>
     </div>
   );

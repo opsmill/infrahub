@@ -45,7 +45,7 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
         className="overflow-hidden text-ellipsis whitespace-nowrap font-semibold"
       />
 
-      <div className="text-gray-500">{NODE_EVENTS_MAPPING[event] ?? "-"}</div>
+      <div className="text-gray-500">{NODE_EVENTS_MAPPING[event] ?? event}</div>
 
       <div className="font-semibold whitespace-nowrap">
         {schemaLabels[props.payload.data.node_kind] ?? "-"}
