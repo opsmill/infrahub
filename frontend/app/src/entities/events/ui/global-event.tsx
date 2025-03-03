@@ -39,7 +39,7 @@ export const Event = (props: EventType) => {
       )}
     >
       <div className="flex items-center text-xs font-medium text-gray-500 whitespace-nowrap">
-        <Tooltip enabled content={props.occurred_at}>
+        <Tooltip enabled content={format(new Date(props.occurred_at), "yyyy-MM-dd HH:mm:ss (O)")}>
           <span>{format(new Date(props.occurred_at), "MMM dd, HH:mm:ss")}</span>
         </Tooltip>
       </div>
