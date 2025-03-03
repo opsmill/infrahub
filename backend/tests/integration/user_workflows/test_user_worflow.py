@@ -1,6 +1,6 @@
-import pendulum
 import pytest
 from deepdiff import DeepDiff
+from whenever import Instant
 
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
@@ -251,7 +251,7 @@ class TestUserWorkflow01(TestInfrahubApp):
             if device["node"]["name"]["value"] == "spine1":
                 state.data["spine1_id"] = device["node"]["id"]
         # Initialize the start time
-        state.data["time_start"] = pendulum.now(tz="UTC")
+        state.data["time_start"] = Instant.now()
 
     async def test_query_spine1_loobpack0(self, test_client, integration_helper):
         """
@@ -374,7 +374,7 @@ class TestUserWorkflow01(TestInfrahubApp):
 
         assert intfs[0]["node"]["description"]["value"] == new_description
 
-        state.data["time_after_intf_update_branch1"] = pendulum.now("UTC").to_iso8601_string()
+        state.data["time_after_intf_update_branch1"] = Instant.now().format_common_iso()
 
     async def test_update_intf_description_main(self, test_client, integration_helper):
         """
@@ -781,7 +781,7 @@ class TestUserWorkflow01(TestInfrahubApp):
                     "intf_name": intf_name,
                 },
             },
-            params={"at": state.data["time_start"].to_iso8601_string()},
+            params={"at": state.data["time_start"].format_common_iso()},
             headers=headers,
         )
         assert response.status_code == 200

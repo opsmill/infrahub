@@ -31,7 +31,7 @@ class RelatedNodeInfo(BaseModel):
 
 
 class RelatedNodesInfo(BaseModel):
-    flows: dict[UUID, dict[str, RelatedNodeInfo]] = Field(default_factory=lambda: defaultdict(dict))
+    flows: dict[UUID, dict[str, RelatedNodeInfo]] = Field(default_factory=lambda: defaultdict(dict))  # type: ignore[arg-type]
     nodes: dict[str, RelatedNodeInfo] = Field(default_factory=dict)
 
     def add_nodes(self, flow_id: UUID, node_ids: list[str]) -> None:
@@ -64,7 +64,7 @@ class RelatedNodesInfo(BaseModel):
 
 
 class FlowLogs(BaseModel):
-    logs: defaultdict[UUID, list[PrefectLog]] = Field(default_factory=lambda: defaultdict(list))
+    logs: defaultdict[UUID, list[PrefectLog]] = Field(default_factory=lambda: defaultdict(list))  # type: ignore[arg-type]
 
     def to_graphql(self, flow_id: UUID) -> list[dict]:
         return [
@@ -180,10 +180,10 @@ class InfrahubEventFilter(EventFilter):
     ) -> InfrahubEventFilter:
         occurred_filter = {}
         if since:
-            occurred_filter["since"] = Timestamp(since.isoformat()).obj
+            occurred_filter["since"] = Timestamp(since.isoformat()).to_datetime()
 
         if until:
-            occurred_filter["until"] = Timestamp(until.isoformat()).obj
+            occurred_filter["until"] = Timestamp(until.isoformat()).to_datetime()
 
         if occurred_filter:
             filters = cls(occurred=EventOccurredFilter(**occurred_filter))

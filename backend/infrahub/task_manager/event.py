@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 from prefect.client.orchestration import PrefectClient, get_client
@@ -7,6 +8,7 @@ from prefect.events.schemas.events import Event as PrefectEventModel
 from pydantic import BaseModel, Field, TypeAdapter
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.exceptions import ServiceUnavailableError
 from infrahub.log import get_logger
 from infrahub.utils import get_nested_dict
 
@@ -113,6 +115,28 @@ class PrefectEventData(PrefectEventModel):
     def _get_branch_name_from_resource(self) -> str:
         return self.resource.get("infrahub.branch.name") or ""
 
+    def _return_artifact_event(self) -> dict[str, Any]:
+        checksum = ""
+        checksum_previous: str | None = None
+        storage_id = ""
+        storage_id_previous: str | None = None
+        artifact_definition_id = ""
+        for resource in self.related:
+            if resource.role == "infrahub.artifact":
+                checksum = resource.get("infrahub.artifact.checksum") or ""
+                checksum_previous = resource.get("infrahub.artifact.checksum_previous")
+                storage_id = resource.get("infrahub.artifact.storage_id") or ""
+                storage_id_previous = resource.get("infrahub.artifact.storage_id_previous")
+                artifact_definition_id = resource.get("infrahub.artifact.artifact_definition_id") or ""
+
+        return {
+            "checksum": checksum,
+            "checksum_previous": checksum_previous,
+            "storage_id": storage_id,
+            "storage_id_previous": storage_id_previous,
+            "artifact_definition_id": artifact_definition_id,
+        }
+
     def _return_branch_created(self) -> dict[str, Any]:
         return {"created_branch": self._get_branch_name_from_resource()}
 
@@ -143,6 +167,8 @@ class PrefectEventData(PrefectEventModel):
         event_specifics = {}
 
         match self.event:
+            case "infrahub.artifact.created" | "infrahub.artifact.updated":
+                event_specifics = self._return_artifact_event()
             case "infrahub.node.created" | "infrahub.node.updated" | "infrahub.node.deleted":
                 event_specifics = self._return_node_mutation()
             case "infrahub.branch.created":
@@ -192,8 +218,17 @@ class PrefectEvent:
     ) -> PrefectEventResponse:
         body = {"limit": limit, "filter": filters.model_dump(mode="json", exclude_none=True), "offset": offset}
 
-        response = await client._client.post("/infrahub/events/filter", json=body)
-        response.raise_for_status()
+        # Retry due to https://github.com/PrefectHQ/prefect/issues/16299
+        for _ in range(1, 5):
+            response = await client._client.post("/infrahub/events/filter", json=body)
+            if response.status_code == 200:
+                break
+            await asyncio.sleep(0.1)
+
+        if response.status_code != 200:
+            raise ServiceUnavailableError(
+                message=f"Unable to query prefect due to invalid response from the server (status_code={response.status_code})"
+            )
         data: dict[str, Any] = response.json()
 
         return PrefectEventResponse(

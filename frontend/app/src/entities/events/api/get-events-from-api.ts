@@ -90,6 +90,16 @@ const EVENTS_QUERY = gql`
           ... on BranchRebasedEvent {
             payload
           }
+          ... on GroupEvent {
+            ancestors {
+              id
+              kind
+            }
+            members {
+              id
+              kind
+            }
+          }
         }
       }
     }

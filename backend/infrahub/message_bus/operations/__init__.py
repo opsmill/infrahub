@@ -1,5 +1,3 @@
-from typing import Optional
-
 import ujson
 from prefect import Flow
 
@@ -38,7 +36,7 @@ COMMAND_MAP = {
 
 async def execute_message(
     routing_key: str, message_body: bytes, service: InfrahubServices, skip_flow: bool = False
-) -> Optional[MessageTTL]:
+) -> MessageTTL | None:
     message_data = ujson.loads(message_body)
     message = messages.MESSAGE_MAP[routing_key](**message_data)
     message.set_log_data(routing_key=routing_key)

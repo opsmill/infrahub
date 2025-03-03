@@ -1,7 +1,7 @@
 import { QSP } from "@/config/qsp";
 import { useNodeLabel } from "@/entities/nodes/object/api/get-display-label.query";
 import { constructPath } from "@/shared/api/rest/fetch";
-import ErrorFallback from "@/shared/components/errors/error-fallback";
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { Link } from "@/shared/components/ui/link";
 import { Spinner } from "@/shared/components/ui/spinner";
@@ -44,7 +44,7 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
   }
 
   if (error || displayLabelError) {
-    return <ErrorFallback error={error} />;
+    return <ErrorScreen message={error?.message || displayLabelError?.message} />;
   }
 
   if (!flatData?.length) {

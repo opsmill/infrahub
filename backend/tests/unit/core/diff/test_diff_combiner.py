@@ -1,10 +1,9 @@
 from dataclasses import replace
-from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-from pendulum.datetime import DateTime
+from whenever import Instant
 
 from infrahub.core import registry
 from infrahub.core.constants import DiffAction, RelationshipCardinality
@@ -36,10 +35,10 @@ from .factories import (
 
 class TestDiffCombiner:
     def setup_method(self):
-        self.diff_from_1 = Timestamp(DateTime(2024, 3, 5, 7, 9, 11, tzinfo=UTC))
-        self.diff_to_1 = Timestamp(DateTime(2024, 3, 5, 9, 11, 13, tzinfo=UTC))
-        self.diff_from_2 = Timestamp(DateTime(2024, 3, 5, 7, 9, 14, tzinfo=UTC))
-        self.diff_to_2 = Timestamp(DateTime(2024, 3, 5, 11, 13, 15, tzinfo=UTC))
+        self.diff_from_1 = Timestamp(Instant.from_utc(2024, 3, 5, 7, 9, 11))
+        self.diff_to_1 = Timestamp(Instant.from_utc(2024, 3, 5, 9, 11, 13))
+        self.diff_from_2 = Timestamp(Instant.from_utc(2024, 3, 5, 7, 9, 14))
+        self.diff_to_2 = Timestamp(Instant.from_utc(2024, 3, 5, 11, 13, 15))
         self.base_branch = "main"
         self.diff_branch = "branch"
         self.diff_root_1 = EnrichedRootFactory.build(

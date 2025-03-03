@@ -14,7 +14,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from infrahub_sdk.timestamp import TimestampFormatError
+from infrahub_sdk.exceptions import TimestampFormatError
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.trace import Span
 from pydantic import ValidationError

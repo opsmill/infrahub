@@ -5,6 +5,7 @@ import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
 import { ReactRouter7Adapter } from "@/shared/lib/use-query-params";
 import queryString from "query-string";
 import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router";
@@ -13,6 +14,7 @@ import { QueryParamProvider } from "use-query-params";
 export const router = createBrowserRouter([
   {
     path: "",
+    errorElement: <ErrorBoundaryRouter />,
     element: (
       <QueryParamProvider
         adapter={ReactRouter7Adapter}

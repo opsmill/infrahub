@@ -15,7 +15,7 @@ from infrahub.core.constants import InfrahubKind, MutationAction, RelationshipCa
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema, RelationshipSchema
+from infrahub.core.schema import MainSchemaTypes, NodeSchema, RelationshipSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.profile_schema import ProfileSchema
 from infrahub.core.schema.template_schema import TemplateSchema
@@ -24,6 +24,7 @@ from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta, NodeMutatedEvent
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.context import apply_external_context
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_log_data, get_logger
 from infrahub.worker import WORKER_IDENTITY
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
     from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.graphql.types.context import ContextInput
 
     from ..initialization import GraphqlContext
     from .node_getter.interface import MutationNodeGetterInterface
@@ -66,8 +68,17 @@ class InfrahubMutationOptions(MutationOptions):
 
 class InfrahubMutationMixin:
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: InputObjectType, *args: Any, **kwargs):  # noqa: ARG003
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        context: ContextInput | None = None,
+        *args: Any,  # noqa: ARG003
+        **kwargs,
+    ):
         graphql_context: GraphqlContext = info.context
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         obj = None
         mutation = None
@@ -232,7 +243,7 @@ class InfrahubMutationMixin:
         cls,
         db: InfrahubDatabase,
         template_peer: Node,
-        obj_peer_schema,
+        obj_peer_schema: MainSchemaTypes,
         parent_obj: Node,
         current_template: CoreObjectTemplate,
     ) -> Mapping[str, Any]:
@@ -241,7 +252,7 @@ class InfrahubMutationMixin:
         for attr in template_peer.get_schema().attribute_names:
             if attr not in obj_peer_schema.attribute_names:
                 continue
-            obj_peer_data[attr] = {"value": getattr(template_peer, attr).value}
+            obj_peer_data[attr] = {"value": getattr(template_peer, attr).value, "source": template_peer.id}
 
         for rel in template_peer.get_schema().relationship_names:
             rel_manager: RelationshipManager = getattr(template_peer, rel)

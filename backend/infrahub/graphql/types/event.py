@@ -113,6 +113,17 @@ class NodeMutatedEvent(ObjectType):
     attributes = Field(List(of_type=NonNull(InfrahubMutatedAttribute), required=True), required=True)
 
 
+class ArtifactEvent(ObjectType):
+    class Meta:
+        interfaces = (EventNodeInterface,)
+
+    checksum = String(required=True, description="The current checksum of the artifact")
+    checksum_previous = String(required=False, description="The previous checksum of the artifact")
+    storage_id = String(required=True, description="The current storage_id of the artifact")
+    storage_id_previous = String(required=False, description="The previous storage_id of the artifact")
+    artifact_definition_id = String(required=True, description="Artifact definition ID")
+
+
 class GroupEvent(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
@@ -129,6 +140,8 @@ class StandardEvent(ObjectType):
 
 
 EVENT_TYPES: dict[str, type[ObjectType]] = {
+    "infrahub.artifact.created": ArtifactEvent,
+    "infrahub.artifact.updated": ArtifactEvent,
     "infrahub.node.created": NodeMutatedEvent,
     "infrahub.node.updated": NodeMutatedEvent,
     "infrahub.node.deleted": NodeMutatedEvent,

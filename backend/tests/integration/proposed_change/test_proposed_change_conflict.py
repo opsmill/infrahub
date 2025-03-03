@@ -115,6 +115,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         john = await NodeManager.get_one_by_id_or_default_filter(
             db=db, id="John", kind=TestKind.PERSON, branch=branch1.name
         )
+        john.name.value = "Johnny"  # type: ignore[attr-defined]
         john.age.value = 26  # type: ignore[attr-defined]
         await john.save(db=db)
         return branch_name
@@ -237,8 +238,8 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         tags = await client.all(kind="BuiltinTag", branch=happy_data_branch)
         # The Generator defined in the repository is expected to have created this tag during the pipeline
-        assert "john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
-        assert "InfrahubNode-john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
+        assert "johnny-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
+        assert "InfrahubNode-johnny-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
 
         # -------------------------------------------------
         # Merge the proposed change and ensure everything looks good
@@ -265,7 +266,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         secondary_events = await client.execute_graphql(query=QUERY_EVENT, variables={"parent__ids": merge_event_id})
 
-        john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="John", kind=TestKind.PERSON)
+        john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="Johnny", kind=TestKind.PERSON)
         richard = await NodeManager.get_one_by_id_or_default_filter(db=db, id="Richard", kind=TestKind.PERSON)
         assert secondary_events["InfrahubEvent"]["count"] >= 2
         johns_events = [
@@ -283,6 +284,31 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         assert johns_events[0]["node"]["event"] == "infrahub.node.updated"
         assert richards_events[0]["node"]["event"] == "infrahub.node.created"
+
+        artifact_events = await client.execute_graphql(
+            query=QUERY_EVENT,
+            variables={"branch": [happy_data_branch], "event_type": ["infrahub.artifact.updated"]},
+        )
+        assert artifact_events["InfrahubEvent"]["count"] > 0
+        latest_artifact_event = artifact_events["InfrahubEvent"]["edges"][0]["node"]
+        assert sorted(latest_artifact_event.keys()) == [
+            "artifact_definition_id",
+            "branch",
+            "checksum",
+            "checksum_previous",
+            "event",
+            "has_children",
+            "id",
+            "level",
+            "occurred_at",
+            "parent_id",
+            "primary_node",
+            "related_nodes",
+            "storage_id",
+            "storage_id_previous",
+        ]
+        assert len(latest_artifact_event["related_nodes"]) == 1
+        assert latest_artifact_event["related_nodes"][0]["kind"] == "TestingPerson"
 
     async def test_merge_failure(
         self,
@@ -350,6 +376,14 @@ query(
         related_nodes {
             id
             kind
+        }
+        ... on ArtifactEvent {
+          id
+          artifact_definition_id
+          storage_id
+          storage_id_previous
+          checksum_previous
+          checksum
         }
       }
     }

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Awaitable, Callable, Optional
+from typing import TYPE_CHECKING, Awaitable, Callable
 
 from infrahub.components import ComponentType
 from infrahub.exceptions import InitializationError
@@ -182,7 +182,7 @@ class InfrahubServices:
         await self.scheduler.shutdown()
         await self.message_bus.shutdown()
 
-    async def send(self, message: InfrahubMessage, delay: Optional[MessageTTL] = None, is_retry: bool = False) -> None:
+    async def send(self, message: InfrahubMessage, delay: MessageTTL | None = None, is_retry: bool = False) -> None:
         routing_key = ROUTING_KEY_MAP.get(type(message))
         if not routing_key:
             raise ValueError("Unable to determine routing key")

@@ -13,6 +13,8 @@ from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.context import apply_external_context
+from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_log_data, get_logger
 from infrahub.worker import WORKER_IDENTITY
 
@@ -51,6 +53,7 @@ class SchemaDropdownAddInput(SchemaDropdownRemoveInput):
 class SchemaDropdownAdd(Mutation):
     class Arguments:
         data = SchemaDropdownAddInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
     object = Field(DropdownFields)
@@ -62,8 +65,11 @@ class SchemaDropdownAdd(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: SchemaDropdownAddInput,
+        context: ContextInput | None = None,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
+
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
         attribute = str(data.attribute)
@@ -109,6 +115,7 @@ class SchemaDropdownAdd(Mutation):
 class SchemaDropdownRemove(Mutation):
     class Arguments:
         data = SchemaDropdownRemoveInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
 
@@ -119,10 +126,12 @@ class SchemaDropdownRemove(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: SchemaDropdownRemoveInput,
+        context: ContextInput | None = None,
     ) -> dict[str, bool]:
         graphql_context: GraphqlContext = info.context
 
         kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
@@ -161,6 +170,7 @@ class SchemaDropdownRemove(Mutation):
 class SchemaEnumAdd(Mutation):
     class Arguments:
         data = SchemaEnumInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
 
@@ -171,10 +181,12 @@ class SchemaEnumAdd(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: SchemaEnumInput,
+        context: ContextInput | None = None,
     ) -> dict[str, bool]:
         graphql_context: GraphqlContext = info.context
 
         kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)
         enum = str(data.enum)
@@ -203,6 +215,7 @@ class SchemaEnumAdd(Mutation):
 class SchemaEnumRemove(Mutation):
     class Arguments:
         data = SchemaEnumInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
 
@@ -213,10 +226,12 @@ class SchemaEnumRemove(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: SchemaEnumInput,
+        context: ContextInput | None = None,
     ) -> dict[str, bool]:
         graphql_context: GraphqlContext = info.context
 
         kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)
         enum = str(data.enum)

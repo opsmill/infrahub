@@ -65,11 +65,13 @@ describe("addAttributesToRequest", () => {
         is_visible: true,
         source: {
           id: true,
+          hfid: true,
           display_label: true,
           __typename: true,
         },
         owner: {
           id: true,
+          hfid: true,
           display_label: true,
           __typename: true,
         },
@@ -122,11 +124,13 @@ describe("addAttributesToRequest", () => {
         is_visible: true,
         source: {
           id: true,
+          hfid: true,
           display_label: true,
           __typename: true,
         },
         owner: {
           id: true,
+          hfid: true,
           display_label: true,
           __typename: true,
         },
@@ -206,11 +210,13 @@ describe("addRelationshipsToRequest", () => {
           updated_at: true,
           source: {
             id: true,
+            hfid: true,
             display_label: true,
             __typename: true,
           },
           owner: {
             id: true,
+            hfid: true,
             display_label: true,
             __typename: true,
           },

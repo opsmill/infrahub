@@ -1,0 +1,96 @@
+from infrahub.core.constants import (
+    BranchSupportType,
+    GeneratorInstanceStatus,
+    InfrahubKind,
+)
+
+core_generator_definition = {
+    "name": "GeneratorDefinition",
+    "namespace": "Core",
+    "include_in_menu": False,
+    "icon": "mdi:state-machine",
+    "label": "Generator Definition",
+    "default_filter": "name__value",
+    "order_by": ["name__value"],
+    "display_labels": ["name__value"],
+    "branch": BranchSupportType.AWARE.value,
+    "uniqueness_constraints": [["name__value"]],
+    "generate_profile": False,
+    "inherit_from": [InfrahubKind.TASKTARGET],
+    "documentation": "/topics/generator",
+    "attributes": [
+        {"name": "name", "kind": "Text", "unique": True},
+        {"name": "description", "kind": "Text", "optional": True},
+        {"name": "parameters", "kind": "JSON"},
+        {"name": "file_path", "kind": "Text"},
+        {"name": "class_name", "kind": "Text"},
+        {"name": "convert_query_response", "kind": "Boolean", "optional": True, "default_value": False},
+    ],
+    "relationships": [
+        {
+            "name": "query",
+            "peer": InfrahubKind.GRAPHQLQUERY,
+            "identifier": "generator_definition__graphql_query",
+            "kind": "Attribute",
+            "cardinality": "one",
+            "optional": False,
+        },
+        {
+            "name": "repository",
+            "peer": InfrahubKind.GENERICREPOSITORY,
+            "kind": "Attribute",
+            "cardinality": "one",
+            "identifier": "generator_definition__repository",
+            "optional": False,
+        },
+        {
+            "name": "targets",
+            "peer": InfrahubKind.GENERICGROUP,
+            "kind": "Attribute",
+            "identifier": "generator_definition___group",
+            "cardinality": "one",
+            "optional": False,
+        },
+    ],
+}
+
+core_generator_instance = {
+    "name": "GeneratorInstance",
+    "namespace": "Core",
+    "label": "Generator Instance",
+    "include_in_menu": False,
+    "icon": "mdi:file-document-outline",
+    "default_filter": "name__value",
+    "order_by": ["name__value"],
+    "display_labels": ["name__value"],
+    "branch": BranchSupportType.LOCAL.value,
+    "generate_profile": False,
+    "inherit_from": [InfrahubKind.TASKTARGET],
+    "documentation": "/topics/generator",
+    "attributes": [
+        {"name": "name", "kind": "Text"},
+        {
+            "name": "status",
+            "kind": "Text",
+            "enum": GeneratorInstanceStatus.available_types(),
+        },
+    ],
+    "relationships": [
+        {
+            "name": "object",
+            "peer": InfrahubKind.NODE,
+            "kind": "Attribute",
+            "identifier": "generator__node",
+            "cardinality": "one",
+            "optional": False,
+        },
+        {
+            "name": "definition",
+            "peer": InfrahubKind.GENERATORDEFINITION,
+            "kind": "Attribute",
+            "identifier": "generator__generator_definition",
+            "cardinality": "one",
+            "optional": False,
+        },
+    ],
+}

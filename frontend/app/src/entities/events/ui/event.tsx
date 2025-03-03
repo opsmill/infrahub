@@ -1,4 +1,8 @@
-import { EventNodeInterface, NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
+import {
+  EventNodeInterface,
+  GroupEvent,
+  NodeMutatedEvent,
+} from "@/shared/api/graphql/generated/graphql";
 import { DateDisplay } from "@/shared/components/display/date-display";
 
 import { ACCOUNT_OBJECT } from "@/config/constants";
@@ -33,7 +37,7 @@ export type NodeEventType = NodeMutatedEvent & {
   __typename: typeof NODE_MUTATED_EVENT;
 };
 
-export type EventType = BranchEventType | NodeEventType;
+export type EventType = BranchEventType | NodeEventType | GroupEvent;
 
 export const EventDetails = ({
   id,
@@ -42,6 +46,8 @@ export const EventDetails = ({
   account_id,
   primary_node,
   related_nodes,
+  ancestors,
+  members,
   ...props
 }: EventType) => {
   return (
@@ -90,6 +96,48 @@ export const EventDetails = ({
           value={
             <div className="flex flex-col items-end gap-1">
               {related_nodes.map((node) => {
+                return (
+                  <Link
+                    key={node.id}
+                    to={constructPath(`/${node.kind}/${node.id}`, [
+                      { name: QSP.BRANCH, value: props.branch },
+                    ])}
+                  >
+                    <NodeLabel id={node?.id} />
+                  </Link>
+                );
+              })}
+            </div>
+          }
+        />
+      )}
+      {!!ancestors?.length && (
+        <PropertyRow
+          title="Related Nodes"
+          value={
+            <div className="flex flex-col items-end gap-1">
+              {ancestors.map((node) => {
+                return (
+                  <Link
+                    key={node.id}
+                    to={constructPath(`/${node.kind}/${node.id}`, [
+                      { name: QSP.BRANCH, value: props.branch },
+                    ])}
+                  >
+                    <NodeLabel id={node?.id} />
+                  </Link>
+                );
+              })}
+            </div>
+          }
+        />
+      )}
+      {!!members?.length && (
+        <PropertyRow
+          title="Related Nodes"
+          value={
+            <div className="flex flex-col items-end gap-1">
+              {members.map((node) => {
                 return (
                   <Link
                     key={node.id}

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
 from prefect.logging import get_run_logger
@@ -128,7 +126,7 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
         await service.message_bus.send(message=event)
 
 
-def _run_generator(instance_id: Optional[str], managed_branch: bool, impacted_instances: list[str]) -> bool:
+def _run_generator(instance_id: str | None, managed_branch: bool, impacted_instances: list[str]) -> bool:
     """Returns a boolean to indicate if a generator instance needs to be executed
     Will return true if:
         * The instance_id wasn't set which could be that it's a new object that doesn't have a previous generator instance
