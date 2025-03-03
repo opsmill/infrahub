@@ -100,7 +100,12 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
         SchemaNode: "Node",
       };
 
-      const schemaLabels = [...schema.map((s) => s.label), ...generics.map((s) => s.label)];
+      const schemaLabels = [
+        ...schema.map((s) => s.label),
+        ...generics.map((s) => s.label),
+        ...profiles.map((s) => s.label),
+        ...templates.map((s) => s.label),
+      ];
       const schemaKindLabelTuples = R.zip(schemaKinds, schemaLabels);
       const schemaKindLabelMap = R.fromPairs(schemaKindLabelTuples);
 
