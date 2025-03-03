@@ -78,18 +78,23 @@ const EVENTS_QUERY = gql`
             }
             payload
           }
-          ... on BranchCreatedEvent {
-            payload
-            created_branch
-          }
           ... on StandardEvent {
             payload
           }
+            ... on BranchCreatedEvent {
+            payload
+            created_branch
+          }
           ... on BranchDeletedEvent {
             payload
+            deleted_branch
           }
           ... on BranchRebasedEvent {
             payload
+            rebased_branch
+          }
+            ... on BranchMergedEvent {
+            source_branch
           }
           ... on GroupEvent {
             ancestors {
