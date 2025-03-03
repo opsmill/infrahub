@@ -31,7 +31,8 @@ test.describe("Resource Managers guide", () => {
         .getByRole("dialog")
         .filter({ hasText: "IP Address Pool CoreIP Prefix" })
         .getByPlaceholder("Filter...");
-      await filterInput.fill("10.100.0.0/24");
+      await filterInput.fill("10.100.0.0");
+      await page.getByText("10.100.0.0/24").click();
       await page.getByLabel("Resources *").click();
 
       await page.getByLabel("IPAM Namespace *").click();
@@ -83,7 +84,11 @@ test.describe("Resource Managers guide", () => {
       await page.getByLabel("Default Prefix Length").fill("31");
 
       await page.getByLabel("Resources *").click();
-      const filterInput = page.getByPlaceholder("Filter...");
+      const filterInput = page
+        .getByTestId("side-panel-container")
+        .getByRole("dialog")
+        .filter({ hasText: "IP Address Pool CoreIP Prefix" })
+        .getByPlaceholder("Filter...");
       await filterInput.fill("10.100.1.0");
       await page.getByText("10.100.1.0/24").click();
       await page.getByLabel("Resources *").click();
