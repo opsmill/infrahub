@@ -68,7 +68,6 @@ class CoreArtifactTarget(CoreNode):
 
 class CoreBasePermission(CoreNode):
     description: StringOptional
-    identifier: StringOptional
     roles: RelationshipManager
 
 
@@ -351,6 +350,7 @@ class CoreGeneratorValidator(CoreValidator):
 class CoreGlobalPermission(CoreBasePermission):
     action: Dropdown
     decision: Enum
+    identifier: String
 
 
 class CoreGraphQLQuery(CoreNode):
@@ -402,6 +402,7 @@ class CoreObjectPermission(CoreBasePermission):
     name: String
     action: Enum
     decision: Enum
+    identifier: String
 
 
 class CoreObjectThread(CoreThread):
