@@ -9,6 +9,8 @@ from typing_extensions import Self
 
 from infrahub.core.branch import Branch
 from infrahub.database import retry_db_transaction
+from infrahub.graphql.context import apply_external_context
+from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import (
     BRANCH_CREATE,
@@ -44,6 +46,7 @@ class BranchCreateInput(InputObjectType):
 class BranchCreate(Mutation):
     class Arguments:
         data = BranchCreateInput(required=True)
+        context = ContextInput(required=False)
         background_execution = Boolean(required=False, deprecation_reason="Please use `wait_until_completion` instead")
         wait_until_completion = Boolean(required=False)
 
@@ -58,6 +61,7 @@ class BranchCreate(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: BranchCreateInput,
+        context: ContextInput | None = None,
         background_execution: bool = False,
         wait_until_completion: bool = True,
     ) -> Self:
@@ -65,6 +69,7 @@ class BranchCreate(Mutation):
         task: dict | None = None
 
         model = BranchCreateModel(**data)
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         if background_execution or not wait_until_completion:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
@@ -96,6 +101,7 @@ class BranchUpdateInput(InputObjectType):
 class BranchDelete(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
+        context = ContextInput(required=False)
         wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
@@ -107,10 +113,12 @@ class BranchDelete(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: BranchNameInput,
+        context: ContextInput | None = None,
         wait_until_completion: bool = True,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
@@ -127,15 +135,23 @@ class BranchDelete(Mutation):
 class BranchUpdate(Mutation):
     class Arguments:
         data = BranchUpdateInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
 
     @classmethod
     @retry_db_transaction(name="branch_update")
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:  # noqa: ARG003
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: BranchNameInput,
+        context: ContextInput | None = None,
+    ) -> Self:
         graphql_context: GraphqlContext = info.context
 
         obj = await Branch.get_by_name(db=graphql_context.db, name=data["name"])
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         to_extract = ["description"]
         for field_name in to_extract:
@@ -151,6 +167,7 @@ class BranchUpdate(Mutation):
 class BranchRebase(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
+        context = ContextInput(required=False)
         wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
@@ -163,11 +180,13 @@ class BranchRebase(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: BranchNameInput,
+        context: ContextInput | None = None,
         wait_until_completion: bool = True,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
 
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
         task: dict | None = None
 
         if wait_until_completion:
@@ -192,6 +211,7 @@ class BranchRebase(Mutation):
 class BranchValidate(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
+        context = ContextInput(required=False)
         wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
@@ -205,11 +225,13 @@ class BranchValidate(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: BranchNameInput,
+        context: ContextInput | None = None,
         wait_until_completion: bool = True,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
 
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
         task: dict | None = None
         ok = True
 
@@ -231,6 +253,7 @@ class BranchValidate(Mutation):
 class BranchMerge(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
+        context = ContextInput(required=False)
         wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
@@ -243,11 +266,13 @@ class BranchMerge(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: BranchNameInput,
+        context: ContextInput | None = None,
         wait_until_completion: bool = True,
     ) -> Self:
         branch_name = data["name"]
         task: dict | None = None
         graphql_context: GraphqlContext = info.context
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(

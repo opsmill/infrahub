@@ -1,17 +1,18 @@
 import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
-import { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 import { FormFieldValue } from "@/shared/components/form/type";
 import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
 import useFilters from "@/shared/hooks/useFilters";
+import { useState } from "react";
+import { FilterKindSelect } from "./filter-kind-select";
 
-export type GlobalFilterFormProps = {
+export type GlobalKindFilterFormProps = {
   name: string;
-  fieldSchema: AttributeSchema | RelationshipSchema;
   onSuccess?: () => void;
 };
 
-export function GlobalFilterForm({ name, fieldSchema, onSuccess }: GlobalFilterFormProps) {
+export function GlobalKindFilterForm({ name, onSuccess }: GlobalKindFilterFormProps) {
   const [filters, setFilters] = useFilters();
+  const [kind, setKind] = useState<string | null>(null);
 
   const currentFilter = filters.find((filter) => filter.name.startsWith(name));
 
@@ -34,23 +35,27 @@ export function GlobalFilterForm({ name, fieldSchema, onSuccess }: GlobalFilterF
   };
 
   return (
-    <div className="flex items-center gap-4 min-w-64">
-      <Form
-        className="space-y-0 flex items-center gap-2"
-        onSubmit={(formData) => {
-          handleSubmit(formData);
-        }}
-      >
-        <FormField
-          name="filter"
-          defaultValue={currentFilter?.value}
-          render={({ field }) => {
-            return <DynamicFilterInput {...field} fieldSchema={fieldSchema} />;
-          }}
-        />
+    <div className="flex items-center gap-2">
+      <FilterKindSelect value={kind} onChange={(value) => setKind(value)} />
 
-        <FormSubmit>Apply</FormSubmit>
-      </Form>
+      {kind && (
+        <Form
+          className="space-y-0 flex items-center gap-2"
+          onSubmit={(formData) => {
+            handleSubmit(formData);
+          }}
+        >
+          <FormField
+            name="filter"
+            defaultValue={currentFilter?.value}
+            render={({ field }) => {
+              return <DynamicFilterInput {...field} fieldSchema={{ peer: kind }} />;
+            }}
+          />
+
+          <FormSubmit>Apply</FormSubmit>
+        </Form>
+      )}
     </div>
   );
 }

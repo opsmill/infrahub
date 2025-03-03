@@ -11,7 +11,9 @@ from infrahub.core.manager import NodeManager
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import ProcessingError
+from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.enums import ConflictSelection as GraphQlConflictSelection
+from infrahub.graphql.types.context import ContextInput
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -29,6 +31,7 @@ class ResolveDiffConflictInput(InputObjectType):
 class ResolveDiffConflict(Mutation):
     class Arguments:
         data = ResolveDiffConflictInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
 
@@ -39,8 +42,10 @@ class ResolveDiffConflict(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: ResolveDiffConflictInput,
+        context: ContextInput | None = None,
     ) -> ResolveDiffConflict:
         graphql_context: GraphqlContext = info.context
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         component_registry = get_component_registry()
         diff_repo = await component_registry.get_component(

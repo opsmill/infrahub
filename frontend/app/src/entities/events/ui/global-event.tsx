@@ -13,11 +13,17 @@ export const Event = ({ __typename, ...props }: EventType) => {
   return (
     <div
       className={classNames(
-        "grid grid-cols-3 relative gap-8 rounded-md shadow-sm transition-all border",
-        "bg-gray-50"
+        "grid grid-cols-8 relative gap-2 p-2",
+        "rounded-md shadow-sm transition-all border bg-gray-50"
       )}
     >
-      <div className="col-span-2 p-2.5">
+      <div className="flex items-center text-xs font-medium text-gray-500 whitespace-nowrap">
+        <Tooltip enabled content={props.occurred_at}>
+          <span>{format(new Date(props.occurred_at), "MMM dd, HH:mm:ss")}</span>
+        </Tooltip>
+      </div>
+
+      <div className="col-span-5 flex item-center gap-4 overflow-hidden">
         {"attributes" in props && <NodeEvent {...props} />}
 
         {BRANCH_EVENTS.includes(__typename) && <BranchEvent {...props} />}
@@ -25,32 +31,25 @@ export const Event = ({ __typename, ...props }: EventType) => {
         {STANDARD_EVENTS.includes(__typename) && <StandardEvent {...props} />}
       </div>
 
-      <div className="grid grid-cols-3 col-span-1 items-center text-right p-2.5 relative">
-        <div className="text-xs font-medium text-gray-500 flex items-center gap-1">
-          {props.has_children && (
-            <Tooltip enabled content="Contains sub activities">
-              <Icon
-                icon={"mdi:subtasks"}
-                className="absolute -left-8 rounded-full text-custom-blue-500 bg-custom-blue-500/10 p-1.5"
-              />
-            </Tooltip>
-          )}
+      <div className="text-xs font-medium text-gray-500 flex items-center gap-1">
+        <Icon icon={"mdi:source-branch"} />
 
-          <Icon icon={"mdi:source-branch"} />
-          {props.branch}
-        </div>
+        {props.branch}
+      </div>
 
-        <div className="flex text-xs font-medium text-gray-500 whitespace-nowrap">
-          {props.occurred_at && (
-            <Tooltip enabled content={props.occurred_at}>
-              <span>{format(new Date(props.occurred_at), "MMM dd - HH:mm:ss")}</span>
-            </Tooltip>
-          )}
-        </div>
-
+      <div className="relative">
         <Link to={`/activities/${props.id}`} className="text-xs text-gray-500">
           View more
         </Link>
+
+        {props.has_children && (
+          <Tooltip enabled content="Contains sub activities">
+            <Icon
+              icon={"mdi:subtasks"}
+              className="absolute right-2 rounded-full text-custom-blue-500 bg-custom-blue-500/10 p-1.5"
+            />
+          </Tooltip>
+        )}
       </div>
     </div>
   );
