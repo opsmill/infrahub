@@ -34,6 +34,7 @@ export const KindComboboxList = forwardRef<HTMLDivElement, KindComboboxListProps
             <ComboboxItem
               key={kind}
               value={kind}
+              selectedValue={value}
               onSelect={() => onSelect(kind)}
             >
               <span className="truncate">{schemaKindLabel[kind]}</span>
