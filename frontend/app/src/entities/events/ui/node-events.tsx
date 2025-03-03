@@ -70,7 +70,7 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
             ])}
             className="p-1 text-sm text-gray-400 text-center"
           >
-            More events...
+            More activities...
           </Link>
         </div>
       )}
