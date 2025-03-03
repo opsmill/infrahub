@@ -68,7 +68,8 @@ core_object_permission = {
             "computed_attribute": {
                 "kind": ComputedAttributeKind.JINJA2,
                 "jinja2_template": (
-                    "object:{{ namespace__value }}:{{ name__value }}:{{ action__value.name|lower }}:{% if decision__value.value == 1 %}deny{% elif decision__value.value == 2 %}allow_default{% elif decision__value.value == 4 %}allow_other{% else %}allow_all{% endif %}"
+                    "object:{{ namespace__value }}:{{ name__value }}:{{ action__value.name|lower }}:{% if decision__value.value == 1 %}deny"
+                    "{% elif decision__value.value == 2 %}allow_default{% elif decision__value.value == 4 %}allow_other{% else %}allow_all{% endif %}"
                 ),
             },
             "read_only": True,
@@ -109,7 +110,8 @@ core_global_permission = {
             "kind": "Text",
             "computed_attribute": {
                 "kind": ComputedAttributeKind.JINJA2,
-                "jinja2_template": "global:{{ action__value|lower }}:{% if decision__value.value == 1 %}deny{% elif decision__value.value == 2 %}allow_default{% elif decision__value.value == 4 %}allow_other{% else %}allow_all{% endif %}",
+                "jinja2_template": "global:{{ action__value|lower }}:{% if decision__value.value == 1 %}deny{% elif decision__value.value == 2 %}"
+                "allow_default{% elif decision__value.value == 4 %}allow_other{% else %}allow_all{% endif %}",
             },
             "read_only": True,
             "allow_override": AllowOverrideType.NONE,
