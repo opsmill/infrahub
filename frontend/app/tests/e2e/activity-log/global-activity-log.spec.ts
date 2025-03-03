@@ -31,13 +31,13 @@ test.describe("Global Activity Log - List view and filter usage", () => {
     });
 
     await test.step("Choose filters", async () => {
-      await page.getByRole('button', { name: 'Primary Node' }).click();
-      await page.getByPlaceholder('Filter...').fill('tag');
-      await page.getByRole('option', { name: 'Tag' }).click();
-      await page.getByRole('option', { name: 'blue' }).click();
-      await page.getByRole('button', { name: 'Apply' }).click();
+      await page.getByRole("button", { name: "Primary Node" }).click();
+      await page.getByPlaceholder("Filter...").fill("tag");
+      await page.getByRole("option", { name: "Tag" }).click();
+      await page.getByRole("option", { name: "blue" }).click();
+      await page.getByRole("button", { name: "Apply" }).click();
 
-      await expect(page.getByLabel('Primary Node contains [object').getByRole('button')).toContainText('blue');
+      await expect(page.getByLabel("Primary Node contains [object").getByRole("button")).toContainText("blue");
       await saveScreenshotForDocs(page, "activity_log_global_filters_primary");
     });
   });
