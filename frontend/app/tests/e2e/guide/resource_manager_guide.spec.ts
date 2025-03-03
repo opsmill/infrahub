@@ -60,7 +60,7 @@ test.describe("Resource Managers guide", () => {
       await page.getByRole("combobox", { name: "Member Type" }).click();
       await page
         .locator("div")
-        .filter({·hasText:·/^Prefix$/·})
+        .filter({ hasText: /^Prefix$/ })
         .click();
       await saveScreenshotForDocs(page, "guides/resource_manager_rss_prefix_10_100_1");
       await page.getByRole("button", { name: "Save" }).click();
