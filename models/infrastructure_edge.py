@@ -830,9 +830,7 @@ async def find_and_connect_interfaces(
 #     log.info("Done applying profiles to interfaces")
 
 
-async def apply_interface_profiles_and_groups(
-    client: InfrahubClient, log: logging.Logger, branch: str
-) -> None:
+async def apply_interface_profiles_and_groups(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
     """
     Apply profiles to upstream/backbone L3 interfaces and add them to their respective groups.
     """
@@ -853,12 +851,8 @@ async def apply_interface_profiles_and_groups(
     )
 
     # Retrieve profiles from the store.
-    upstream_profile = store.get(
-        key="upstream_profile", kind="ProfileInfraInterfaceL3", raise_when_missing=True
-    )
-    backbone_profile = store.get(
-        key="backbone_profile", kind="ProfileInfraInterfaceL3", raise_when_missing=True
-    )
+    upstream_profile = store.get(key="upstream_profile", kind="ProfileInfraInterfaceL3", raise_when_missing=True)
+    backbone_profile = store.get(key="backbone_profile", kind="ProfileInfraInterfaceL3", raise_when_missing=True)
 
     # Apply profiles using batch processing.
     batch = await client.create_batch()
@@ -908,9 +902,7 @@ async def apply_interface_profiles_and_groups(
     log.info("Completed updating interface groups")
 
 
-async def apply_devices_groups(
-    client: InfrahubClient, log: logging.Logger, branch: str
-) -> None:
+async def apply_devices_groups(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
     """
     Fetch devices from Infrahub, group them based on their role and manufacturer,
     and update the corresponding device groups.
@@ -962,9 +954,7 @@ async def apply_devices_groups(
             include=["members"],
             prefetch_relationships=True,
         )
-        await group_edge_router.add_relationships(
-            relation_to_update="members", related_nodes=group_edge_router_members
-        )
+        await group_edge_router.add_relationships(relation_to_update="members", related_nodes=group_edge_router_members)
     if group_core_router_members:
         group_core_router = await client.get(
             kind=CoreStandardGroup,
@@ -973,9 +963,7 @@ async def apply_devices_groups(
             include=["members"],
             prefetch_relationships=True,
         )
-        await group_core_router.add_relationships(
-            relation_to_update="members", related_nodes=group_core_router_members
-        )
+        await group_core_router.add_relationships(relation_to_update="members", related_nodes=group_core_router_members)
     if group_leaf_switch_members:
         group_leaf_switch = await client.get(
             kind=CoreStandardGroup,
@@ -984,9 +972,7 @@ async def apply_devices_groups(
             include=["members"],
             prefetch_relationships=True,
         )
-        await group_leaf_switch.add_relationships(
-            relation_to_update="members", related_nodes=group_leaf_switch_members
-        )
+        await group_leaf_switch.add_relationships(relation_to_update="members", related_nodes=group_leaf_switch_members)
     if group_arista_devices_members:
         group_arista_devices = await client.get(
             kind=CoreStandardGroup,
@@ -1058,19 +1044,13 @@ async def create_backbone_connectivity(
         # intf1 = INTERFACE_OBJS[backbone_link.site1_device].pop(0)
         # intf2 = INTERFACE_OBJS[backbone_link.site2_device].pop(0)
         intf_site1 = INTERFACE_OBJS[backbone_link.site1_device].pop(0)
-        intf_site1_obj = await client.get(
-            id=intf_site1.id, include=["device"], kind=intf_site1.get_kind()
-        )
+        intf_site1_obj = await client.get(id=intf_site1.id, include=["device"], kind=intf_site1.get_kind())
         intf_site2 = INTERFACE_OBJS[backbone_link.site2_device].pop(0)
-        intf_site2_obj = await client.get(
-            id=intf_site2.id, include=["device"], kind=intf_site2.get_kind()
-        )
+        intf_site2_obj = await client.get(id=intf_site2.id, include=["device"], kind=intf_site2.get_kind())
 
         backbone_link_ips = backbone_link.get_pool().prefix.value.hosts()
 
-        provider = store.get(
-            kind="OrganizationProvider", key=backbone_link.provider_name
-        )
+        provider = store.get(kind="OrganizationProvider", key=backbone_link.provider_name)
         vendor_id = f"{backbone_link.provider_name}-{UUIDT().short()}"
         bkb_circuit = await client.create(
             branch=branch,
@@ -1108,12 +1088,8 @@ async def create_backbone_connectivity(
         # Create IP Address
         intf_site1_address = f"{str(next(backbone_link_ips))}/31"
         intf_site2_address = f"{str(next(backbone_link_ips))}/31"
-        intf_site1_identifier = (
-            f"{intf_site1.name.value.lower()}.{intf_site1_obj.device.peer.name.value}"
-        )
-        intf_site2_identifier = (
-            f"{intf_site2.name.value.lower()}.{intf_site2_obj.device.peer.name.value}"
-        )
+        intf_site1_identifier = f"{intf_site1.name.value.lower()}.{intf_site1_obj.device.peer.name.value}"
+        intf_site2_identifier = f"{intf_site2.name.value.lower()}.{intf_site2_obj.device.peer.name.value}"
         intf_site1_ip = await client.create(
             branch=branch,
             kind=IpamIPAddress,
@@ -1133,10 +1109,14 @@ async def create_backbone_connectivity(
         interface_ip_batch.add(task=intf_site2_ip.save, node=intf_site2_ip)
 
         # Update Interface
-        intf_site1_obj.description.value = f"Backbone: Connected to {backbone_link.site2_device} via {backbone_link.circuit}"
+        intf_site1_obj.description.value = (
+            f"Backbone: Connected to {backbone_link.site2_device} via {backbone_link.circuit}"
+        )
         await intf_site1_obj.save()
 
-        intf_site2_obj.description.value = f"Backbone: Connected to {backbone_link.site1_device} via {backbone_link.circuit}"
+        intf_site2_obj.description.value = (
+            f"Backbone: Connected to {backbone_link.site1_device} via {backbone_link.circuit}"
+        )
         await intf_site2_obj.save()
 
         log.debug(
@@ -1509,9 +1489,7 @@ async def generate_site(
                     provider = store.get(kind=OrganizationProvider, key=provider_name, raise_when_missing=True)
 
                     peer_group_name = (
-                        "UPSTREAM_ARELION"
-                        if "arelion" in provider.name.value.lower()
-                        else "UPSTREAM_DEFAULT"
+                        "UPSTREAM_ARELION" if "arelion" in provider.name.value.lower() else "UPSTREAM_DEFAULT"
                     )
 
                     peer_ip = await client.create(
@@ -1519,12 +1497,8 @@ async def generate_site(
                         kind=IpamIPAddress,
                         address=peer_address,
                     )
-                    address_batch.add(
-                        task=peer_ip.save, node=peer_ip
-                    )
-                    session_description = (
-                        f"external-{ip.address.value.ip}-{peer_ip.address.value.ip}"
-                    )
+                    address_batch.add(task=peer_ip.save, node=peer_ip)
+                    session_description = f"external-{ip.address.value.ip}-{peer_ip.address.value.ip}"
                     bgp_session = await client.create(
                         branch=branch,
                         kind=InfraBGPSession,
@@ -1532,20 +1506,14 @@ async def generate_site(
                         description=session_description,
                         local_as=internal_as.id,
                         local_ip=ip,
-                        remote_as=store.get(
-                            kind="InfraAutonomousSystem", key=provider_name
-                        ).id,
+                        remote_as=store.get(kind="InfraAutonomousSystem", key=provider_name).id,
                         remote_ip=peer_ip,
-                        peer_group=store.get(
-                            key=peer_group_name, raise_when_missing=True
-                        ).id,
+                        peer_group=store.get(key=peer_group_name, raise_when_missing=True).id,
                         device=store.get(key=device_name, raise_when_missing=True).id,
                         status=ACTIVE_STATUS,
                         role=intf_role,
                     )
-                    bgp_session_batch.add(
-                        task=bgp_session.save, node=bgp_session
-                    )
+                    bgp_session_batch.add(task=bgp_session.save, node=bgp_session)
 
                 elif intf_role == "peering":
                     provider_name = "Equinix"
@@ -1569,9 +1537,7 @@ async def generate_site(
                 if bgp_session:
                     circuit_data["bgp_sessions"] = [bgp_session]
 
-                circuit = await client.create(
-                    branch=branch, kind=InfraCircuit, data=circuit_data
-                )
+                circuit = await client.create(branch=branch, kind=InfraCircuit, data=circuit_data)
                 circuit_batch.add(task=circuit.save, node=circuit)
 
                 endpoint1 = await client.create(
@@ -1581,9 +1547,7 @@ async def generate_site(
                     circuit=circuit,
                     connected_endpoint=intf,
                 )
-                endpoint_batch.add(
-                    task=endpoint1.save, node=endpoint1
-                )
+                endpoint_batch.add(task=endpoint1.save, node=endpoint1)
 
                 intf.description.value = f"Connected to {provider_name} via {circuit_id}"
 
@@ -2639,10 +2603,10 @@ async def run(
     #     log=log,
     # )
     await apply_interface_profiles_and_groups(
-            client=client,
-            branch=branch,
-            log=log,
-        )
+        client=client,
+        branch=branch,
+        log=log,
+    )
     await apply_devices_groups(
         client=client,
         branch=branch,
@@ -2663,7 +2627,7 @@ async def run(
     #  Scenario 5 - Create some Node ADD and DELETE conflicts on some platform objects
     # --------------------------------------------------
     if branch == "main" and config.has_branch:
-        # await branch_scenario_add_upstream(site_name=sites[1].name, client=client, log=log, 
+        # await branch_scenario_add_upstream(site_name=sites[1].name, client=client, log=log,
         # await branch_scenario_replace_ip_addresses(
         #     site_name=sites[2].name, client=client, log=log
         # )
@@ -2677,7 +2641,7 @@ async def run(
             site_name=sites[1].name,
             client=client,
             log=log,
-            external_pool=external_pool     # Could be load from store
+            external_pool=external_pool,  # Could be load from store
         )
 
         batch.add(
@@ -2685,7 +2649,7 @@ async def run(
             site_name=sites[2].name,
             client=client,
             log=log,
-            interconnection_pool=interconnection_pool     # Could be load from store
+            interconnection_pool=interconnection_pool,  # Could be load from store
         )
         batch.add(task=branch_scenario_remove_colt, site_name=sites[0].name, client=client, log=log)
         batch.add(task=branch_scenario_conflict_device, site_name=sites[3].name, client=client, log=log)
