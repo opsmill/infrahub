@@ -28,7 +28,7 @@ class DiffParentNodeAdder:
 
     def get_root(self) -> EnrichedDiffRoot:
         if not self._diff_root:
-            raise RuntimeError("Must call initialize before calling add_parent")
+            raise RuntimeError("Must call initialize before using")
         return self._diff_root
 
     def get_node(self, node_uuid: str) -> EnrichedDiffNode:
@@ -45,7 +45,7 @@ class DiffParentNodeAdder:
 
     def add_parent(self, parent_request: ParentNodeAddRequest) -> EnrichedDiffNode:
         if not self._diff_root:
-            raise RuntimeError("Must call initialize before calling add_parent")
+            raise RuntimeError("Must call initialize before using")
         node = self.get_node(node_uuid=parent_request.node_id)
         if not self.has_node(node_uuid=parent_request.parent_id):
             parent = EnrichedDiffNode(
