@@ -8,6 +8,7 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffNode,
     EnrichedDiffRoot,
 )
+from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.database import InfrahubDatabase
@@ -22,7 +23,7 @@ from .base import DiffRepositoryTestBase
 class TestDiffSummaryCountsQuery(DiffRepositoryTestBase):
     @pytest.fixture
     def diff_repository(self, db: InfrahubDatabase) -> DiffRepository:
-        return DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
+        return DiffRepository(db=db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()))
 
     async def __save_and_update_diff(
         self, diff_repository: DiffRepository, enriched_diff: EnrichedDiffRoot
