@@ -1,6 +1,9 @@
 import { AttributeType, FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { NodeAttribute, NodeObject } from "@/entities/nodes/types";
+import { NodeAttribute, NodeCore, NodeObject } from "@/entities/nodes/types";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
+import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 import { LineageSource } from "@/shared/api/graphql/generated/graphql";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
@@ -44,7 +47,7 @@ export const getFieldDefaultValue = ({
 export const getCurrentFieldValue = (
   fieldName: string,
   objectData?: Record<string, AttributeType>
-): AttributeValueFromUser | null => {
+): AttributeValueFromUser | AttributeValueFromTemplate | null => {
   if (!objectData) return null;
 
   const currentField = objectData[fieldName];
@@ -55,11 +58,42 @@ export const getCurrentFieldValue = (
     return null;
   }
 
-  if (currentField.source?.__typename?.match(/Pool$/g)) {
-    return null;
+  if (currentField.source && "__typename" in currentField.source) {
+    const sourceKind = currentField.source.__typename as string;
+    const { schema: sourceSchema } = getSchema(sourceKind);
+
+    if (!sourceSchema) {
+      return {
+        source: { type: "user" },
+        value: currentField.value,
+      };
+    }
+
+    if (isPoolSchema(sourceSchema)) {
+      return null;
+    }
+
+    if (isTemplateSchema(sourceSchema)) {
+      return {
+        source: {
+          type: "template",
+          label: getNodeLabel(currentField.source as NodeCore),
+          kind: sourceKind,
+          id: currentField.source.id as string,
+        },
+        value: currentField.value,
+      };
+    }
+
+    if (sourceKind.includes("Pool")) {
+      return null;
+    }
   }
 
-  return { source: { type: "user" }, value: currentField.value };
+  return {
+    source: { type: "user" },
+    value: currentField.value,
+  };
 };
 
 const getDefaultValueFromProfiles = (
