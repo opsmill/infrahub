@@ -49,9 +49,13 @@ export const Event = (props: EventType) => {
       </div>
 
       <div className="text-xs font-medium text-gray-500 flex items-center gap-1">
-        <Icon icon={"mdi:source-branch"} />
+        {props.branch && (
+          <>
+            <Icon icon={"mdi:source-branch"} />
 
-        {props.branch}
+            {props.branch}
+          </>
+        )}
       </div>
 
       <div className="relative">

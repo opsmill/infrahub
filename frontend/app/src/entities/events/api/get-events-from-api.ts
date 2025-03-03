@@ -80,6 +80,7 @@ const EVENTS_QUERY = gql`
           }
           ... on BranchCreatedEvent {
             payload
+            created_branch
           }
           ... on StandardEvent {
             payload

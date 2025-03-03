@@ -5,17 +5,20 @@ import { ReactNode } from "react";
 export const BRANCH_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) => ReactNode> = {
   "infrahub.branch.created": (props) => (
     <div>
-      created the branch <span className="text-black font-semibold">{props.branch}</span>{" "}
+      created the branch{" "}
+      <span className="text-black font-semibold">{props.created_branch ?? "-"}</span>{" "}
     </div>
   ),
   "infrahub.branch.rebased": (props) => (
     <div>
-      rebased the branch <span className="text-black font-semibold">{props.branch}</span>{" "}
+      rebased the branch{" "}
+      <span className="text-black font-semibold">{props.created_branch ?? "-"}</span>{" "}
     </div>
   ),
   "infrahub.branch.deleted": (props) => (
     <div>
-      deleted the branch <span className="text-black font-semibold">{props.branch}</span>{" "}
+      deleted the branch{" "}
+      <span className="text-black font-semibold">{props.created_branch ?? "-"}</span>{" "}
     </div>
   ),
 };
