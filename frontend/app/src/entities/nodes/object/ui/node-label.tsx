@@ -17,7 +17,7 @@ export const NodeLabel = ({ id, kind = NODE_OBJECT, className }: NodeLabelProps)
   }
 
   if (!id) {
-    return <div className="italic">Name id provided</div>;
+    return <div className="italic">No id provided</div>;
   }
 
   if (error || !data?.display_label) {
