@@ -115,7 +115,7 @@ async def process_transform(
             service=service,
             repository_kind=str(transform.repository.peer.typename),
             commit=repo_node.commit.value,
-        )
+        )  # type: ignore[misc]
 
         data = await service.client.query_gql_query(
             name=transform.query.peer.name.value,
@@ -131,7 +131,7 @@ async def process_transform(
             location=f"{transform.file_path.value}::{transform.class_name.value}",
             data=data,
             client=service.client,
-        )
+        )  # type: ignore[misc]
 
         await service.client.execute_graphql(
             query=UPDATE_ATTRIBUTE,
