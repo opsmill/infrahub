@@ -31,8 +31,9 @@ test.describe("Resource Managers guide", () => {
       await page.getByLabel("Resources *").click();
       await page.getByLabel("IPAM Namespace *").click();
       await page.getByRole("option", { name: "default" }).click();
-      await page.getByRole("button", { name: "Save" }).click();
+
       await saveScreenshotForDocs(page, "guides/resource_manager_pool_ip");
+      await page.getByRole("button", { name: "Save" }).click();
     });
 
     await test.step("Use Pool to allocate IP on Device", async () => {
@@ -72,12 +73,17 @@ test.describe("Resource Managers guide", () => {
       // FIXME: Will change after #5889
       await page.getByLabel("Default Prefix Type").fill("IpamIPPrefix");
       await page.getByLabel("Default Prefix Length").fill("31");
+
       await page.getByLabel("Resources *").click();
-      await page.locator("div:nth-child(6) > .min-h-10").click();
-      await page.getByPlaceholder("Filter...").fill("10.100.1.0");
+      const filterInput = page.getByPlaceholder("Filter...");
+      await filterInput.fill("10.100.1.0");
       await page.getByText("10.100.1.0/24").click();
+
+      await page.getByLabel("Resources *").click();
+
       await page.getByLabel("IPAM Namespace *").click();
       await page.getByRole("option", { name: "default" }).click();
+
       await saveScreenshotForDocs(page, "guides/resource_manager_pool_prefix");
       await page.getByRole("button", { name: "Save" }).click();
     });
