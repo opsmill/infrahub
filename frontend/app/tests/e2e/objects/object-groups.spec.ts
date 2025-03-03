@@ -42,6 +42,7 @@ test.describe("Object groups update", () => {
       await page.getByLabel("Add groups *").click(); // to close the combobox
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("2 groups added")).toBeVisible();
+      await expect(page.getByText("2 groups added")).toBeHidden();
     });
 
     await test.step("auto-generated toggle button not visible if there is no auto-generated groups", async () => {
