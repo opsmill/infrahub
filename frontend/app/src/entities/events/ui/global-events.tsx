@@ -34,7 +34,7 @@ export const GlobalEvents = () => {
       },
     });
 
-  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+  const flatData = React.useMemo(() => data?.pages?.flat()?.filter(Boolean) ?? [], [data]);
 
   if (error) {
     return <ErrorScreen message={error.message} />;
@@ -43,9 +43,18 @@ export const GlobalEvents = () => {
   return (
     <Content.Card className="relative">
       <Content.CardTitle title="Activities" isReloadLoading={isLoading} reload={() => refetch()} />
-      <div className="flex items-center gap-2 sticky top-0 bg-white z-10 p-2">
-        <GlobalEventsFilters />
-        {filters.length > 0 && <FilterResetButton />}
+      <div className="flex flex-col gap-2 sticky top-0 bg-white z-10 p-2">
+        <div className="flex items-center gap-2">
+          <GlobalEventsFilters />
+          {filters.length > 0 && <FilterResetButton />}
+        </div>
+
+        <div className="grid grid-cols-8 gap-2 text-xs text-gray-500 font-semibold px-2">
+          <span>Date</span>
+          <span className="col-span-5">Event</span>
+          <span>Branch</span>
+          <span>Action</span>
+        </div>
       </div>
 
       <div className="flex flex-col flex-grow gap-2 p-2 bg-white z-30">
