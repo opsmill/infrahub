@@ -486,6 +486,13 @@ class EnrichedDiffRoot(EnrichedDiffRootMetadata):
         except ValueError:
             return False
 
+    def get_node_map(self, node_uuids: set[str] | None = None) -> dict[str, EnrichedDiffNode]:
+        node_map = {}
+        for node in self.nodes:
+            if node_uuids is None or node.uuid in node_uuids:
+                node_map[node.uuid] = node
+        return node_map
+
     def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
         all_conflicts: dict[str, EnrichedDiffConflict] = {}
         for node in self.nodes:

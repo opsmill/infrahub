@@ -18,10 +18,12 @@ from ..model.path import (
     EnrichedDiffSingleRelationship,
     deserialize_tracking_id,
 )
+from ..parent_node_adder import DiffParentNodeAdder, ParentNodeAddRequest
 
 
 class EnrichedDiffDeserializer:
-    def __init__(self) -> None:
+    def __init__(self, parent_adder: DiffParentNodeAdder) -> None:
+        self.parent_adder = parent_adder
         self._diff_root_map: dict[str, EnrichedDiffRoot] = {}
         self._diff_node_map: dict[tuple[str, str], EnrichedDiffNode] = {}
         self._diff_node_attr_map: dict[tuple[str, str, str], EnrichedDiffAttribute] = {}
@@ -127,6 +129,7 @@ class EnrichedDiffDeserializer:
 
     def _deserialize_parents(self) -> None:
         for enriched_root, node_path_tuples in self._parents_path_map.items():
+            self.parent_adder.initialize(enriched_diff_root=enriched_root)
             for node_uuid, parents_path in node_path_tuples:
                 # Remove the node itself from the path
                 parents_path_slice = parents_path.nodes[1:]
@@ -134,7 +137,7 @@ class EnrichedDiffDeserializer:
                 # TODO Ensure the list is even
                 current_node_uuid = node_uuid
                 for rel, parent in zip(parents_path_slice[::2], parents_path_slice[1::2]):
-                    enriched_root.add_parent(
+                    parent_request = ParentNodeAddRequest(
                         node_id=current_node_uuid,
                         parent_id=parent.get("uuid"),
                         parent_kind=parent.get("kind"),
@@ -144,6 +147,7 @@ class EnrichedDiffDeserializer:
                         parent_rel_cardinality=RelationshipCardinality(rel.get("cardinality")),
                         parent_rel_label=rel.get("label"),
                     )
+                    self.parent_adder.add_parent(parent_request=parent_request)
                     current_node_uuid = parent.get("uuid")
 
     @classmethod

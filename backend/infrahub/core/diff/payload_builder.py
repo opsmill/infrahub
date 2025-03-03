@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub import config
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.exceptions import SchemaNotFoundError
@@ -26,8 +27,18 @@ async def get_display_labels_per_kind(
         if skip_missing_schema:
             return {}
         raise
-    nodes = await NodeManager.get_many(ids=ids, fields=fields, db=db, branch=branch)
-    return {node_id: await node.render_display_label(db=db) for node_id, node in nodes.items()}
+    display_label_map: dict[str, str] = {}
+    offset = 0
+    limit = config.SETTINGS.database.query_size_limit
+    while True:
+        limited_ids = ids[offset : offset + limit]
+        if not limited_ids:
+            break
+        node_map = await NodeManager.get_many(ids=limited_ids, fields=fields, db=db, branch=branch)
+        for node_id, node in node_map.items():
+            display_label_map[node_id] = await node.render_display_label(db=db)
+        offset += limit
+    return display_label_map
 
 
 async def get_display_labels(nodes: dict[str, dict[str, list[str]]], db: InfrahubDatabase) -> dict[str, dict[str, str]]:

@@ -1,9 +1,12 @@
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath
 from infrahub.database import InfrahubDatabase
+from infrahub.log import get_logger
 
 from ..model.path import CalculatedDiffs, EnrichedDiffRoot
 from .interface import DiffEnricherInterface
+
+log = get_logger()
 
 
 class DiffPathIdentifierEnricher(DiffEnricherInterface):
@@ -20,6 +23,7 @@ class DiffPathIdentifierEnricher(DiffEnricherInterface):
         return self._diff_branch_name
 
     async def enrich(self, enriched_diff_root: EnrichedDiffRoot, calculated_diffs: CalculatedDiffs) -> None:
+        log.info("Beginning path identifier diff enrichment...")
         self._diff_branch_name = enriched_diff_root.diff_branch_name
         for node in enriched_diff_root.nodes:
             node_path = DataPath(
@@ -62,3 +66,4 @@ class DiffPathIdentifierEnricher(DiffEnricherInterface):
                         relationship_property_path = relationship_element_path.model_copy()
                         relationship_property_path.property_name = relationship_property.property_type.value
                         relationship_property.path_identifier = relationship_property_path.get_path(with_peer=False)
+        log.info("Path identifier diff enrichment complete.")
