@@ -299,8 +299,8 @@ async def test_node_changelog_delete_with_cardinality_many_relationship(
     await person1_update.delete(db=db)
 
     animals = person1_update.node_changelog.relationships["animals"].peers
-    assert RelationshipPeerChangelog(peer_id=dog1.id, peer_kind="TestAnimal", peer_status=DiffAction.REMOVED) in animals
-    assert RelationshipPeerChangelog(peer_id=dog2.id, peer_kind="TestAnimal", peer_status=DiffAction.REMOVED) in animals
+    assert RelationshipPeerChangelog(peer_id=dog1.id, peer_kind="TestDog", peer_status=DiffAction.REMOVED) in animals
+    assert RelationshipPeerChangelog(peer_id=dog2.id, peer_kind="TestDog", peer_status=DiffAction.REMOVED) in animals
 
 
 async def test_node_changelog_parent(db: InfrahubDatabase, default_branch, car_person_schema: None) -> None:

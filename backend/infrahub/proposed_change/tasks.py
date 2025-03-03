@@ -289,6 +289,7 @@ async def run_generators(
     if model.refresh_artifacts:
         next_messages.append(
             messages.RequestProposedChangeRefreshArtifacts(
+                context=context,
                 proposed_change=model.proposed_change,
                 source_branch=model.source_branch,
                 source_branch_sync_with_git=model.source_branch_sync_with_git,
@@ -587,6 +588,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, s
             log.info(f"Trigger Artifact processing for {member.display_label}")
 
             check_model = CheckArtifactCreate(
+                context=model.context,
                 artifact_name=model.artifact_definition.artifact_name,
                 artifact_id=artifact_id,
                 artifact_definition=model.artifact_definition.definition_id,
@@ -601,6 +603,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, s
                 query=model.artifact_definition.query_name,
                 variables=member.extract(params=artifact_definition.parameters.value),
                 target_id=member.id,
+                target_kind=member.get_kind(),
                 target_name=member.display_label,
                 timeout=model.artifact_definition.timeout,
                 validator_id=validator.id,

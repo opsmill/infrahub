@@ -7,11 +7,18 @@ from typing import TYPE_CHECKING, Generator, Optional, Union
 
 from infrahub_sdk.uuidt import UUIDT
 
+from infrahub.core.changelog.models import (
+    ChangelogRelationshipMapper,
+    RelationshipCardinalityManyChangelog,
+    RelationshipCardinalityOneChangelog,
+)
 from infrahub.core.constants import RelationshipDirection, RelationshipStatus
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import extract_field_filters
+from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -21,8 +28,12 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.relationship import Relationship
-    from infrahub.core.schema import RelationshipSchema
+    from infrahub.core.schema import NodeSchema, RelationshipSchema
     from infrahub.database import InfrahubDatabase
+
+# pylint: disable=redefined-builtin,too-many-lines
+
+log = get_logger()
 
 
 @dataclass
@@ -948,3 +959,162 @@ class RelationshipCountPerNodeQuery(Query):
                 data[node_id] = 0
 
         return data
+
+
+class RelationshipDeleteAllQuery(Query):
+    """
+    Delete all relationships linked to a given node on a given branch at a given time. For every IS_RELATED edge:
+    - Set `to` time if an active edge exist on the same branch.
+    - Create `deleted` edge.
+    - Apply above to every edges linked to any connected Relationship node.
+    This query returns node uuids/kinds and corresponding relationship identifiers of deleted nodes,
+    that are later used to update node changelog.
+    """
+
+    name = "node_delete_all_relationships"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(self, node_id: str, **kwargs):
+        self.node_id = node_id
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+        self.params["source_id"] = kwargs["node_id"]
+        self.params["branch"] = self.branch.name
+
+        self.params["rel_prop"] = {
+            "branch": self.branch.name,
+            "branch_level": self.branch.hierarchy_level,
+            "status": RelationshipStatus.DELETED.value,
+            "from": self.at.to_string(),
+        }
+
+        self.params["at"] = self.at.to_string()
+
+        active_rel_filter, rel_params = self.branch.get_query_filter_path(
+            at=self.at, variable_name="active_edge", branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(rel_params)
+
+        query = """
+        MATCH (s:Node { uuid: $source_id })-[active_edge:IS_RELATED]-(rl:Relationship)
+        WHERE %(active_rel_filter)s AND active_edge.status = "active"
+        WITH DISTINCT rl
+        """ % {"active_rel_filter": active_rel_filter}
+
+        edge_types = [
+            DatabaseEdgeType.IS_VISIBLE.value,
+            DatabaseEdgeType.IS_PROTECTED.value,
+            DatabaseEdgeType.HAS_OWNER.value,
+            DatabaseEdgeType.HAS_SOURCE.value,
+        ]
+
+        for arrow_left, arrow_right in (("<-", "-"), ("-", "->")):
+            for edge_type in edge_types:
+                sub_query = """
+                    CALL {
+                        WITH rl
+                        MATCH (rl)%(arrow_left)s[active_edge:%(edge_type)s]%(arrow_right)s(n)
+                        WHERE %(active_rel_filter)s AND active_edge.status ="active"
+                        CREATE (rl)%(arrow_left)s[deleted_edge:%(edge_type)s $rel_prop]%(arrow_right)s(n)
+                        SET deleted_edge.hierarchy = active_edge.hierarchy
+                        WITH active_edge, n
+                        WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+                        SET active_edge.to = $at
+                    }
+                """ % {
+                    "arrow_left": arrow_left,
+                    "arrow_right": arrow_right,
+                    "active_rel_filter": active_rel_filter,
+                    "edge_type": edge_type,
+                }
+
+                query += sub_query
+
+        # We only want to return uuid/kind of `Node` connected through `IS_RELATED` edges.
+        query += """
+        CALL {
+            WITH rl
+            MATCH (rl)-[active_edge:IS_RELATED]->(n)
+            WHERE %(active_rel_filter)s AND active_edge.status ="active"
+            CREATE (rl)-[deleted_edge:IS_RELATED $rel_prop]->(n)
+            SET deleted_edge.hierarchy = active_edge.hierarchy
+            WITH rl, active_edge, n
+            WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+            SET active_edge.to = $at
+            RETURN
+                n.uuid as uuid,
+                n.kind as kind,
+                rl.name as rel_identifier,
+                "outbound" as rel_direction
+
+            UNION
+
+            WITH rl
+            MATCH (rl)<-[active_edge:IS_RELATED]-(n)
+            WHERE %(active_rel_filter)s AND active_edge.status ="active"
+            CREATE (rl)<-[deleted_edge:IS_RELATED $rel_prop]-(n)
+            SET deleted_edge.hierarchy = active_edge.hierarchy
+            WITH rl, active_edge, n
+            WHERE active_edge.branch = $branch AND active_edge.to IS NULL
+            SET active_edge.to = $at
+            RETURN
+                n.uuid as uuid,
+                n.kind as kind,
+                rl.name as rel_identifier,
+                "inbound" as rel_direction
+        }
+        RETURN DISTINCT uuid, kind, rel_identifier, rel_direction
+        """ % {
+            "active_rel_filter": active_rel_filter,
+        }
+
+        self.add_to_query(query)
+
+    def get_deleted_relationships_changelog(
+        self, node_schema: NodeSchema
+    ) -> list[RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog]:
+        rel_identifier_to_changelog_mapper = {}
+
+        for result in self.get_results():
+            peer_uuid = result.data["uuid"]
+            if peer_uuid == self.node_id:
+                continue
+
+            rel_identifier = result.data["rel_identifier"]
+            kind = result.data["kind"]
+            deleted_rel_schemas = [
+                rel_schema for rel_schema in node_schema.relationships if rel_schema.identifier == rel_identifier
+            ]
+
+            if len(deleted_rel_schemas) == 0:
+                continue  # TODO Unidirectional relationship changelog should be handled, cf IFC-1319.
+
+            if len(deleted_rel_schemas) > 2:
+                log.error(f"Duplicated relationship schema with identifier {rel_identifier}")
+                continue
+
+            if len(deleted_rel_schemas) == 2:
+                # Hierarchical schema nodes have 2 relationships with `parent_child` identifiers,
+                # which are differentiated by their direction within the database.
+                # assert rel_identifier != PARENT_CHILD_IDENTIFIER
+
+                rel_direction = result.data["rel_direction"]
+                deleted_rel_schema = (
+                    deleted_rel_schemas[0]
+                    if deleted_rel_schemas[0].direction.value == rel_direction
+                    else deleted_rel_schemas[1]
+                )
+            else:
+                deleted_rel_schema = deleted_rel_schemas[0]
+
+            try:
+                changelog_mapper = rel_identifier_to_changelog_mapper[rel_identifier]
+            except KeyError:
+                changelog_mapper = ChangelogRelationshipMapper(schema=deleted_rel_schema)
+                rel_identifier_to_changelog_mapper[rel_identifier] = changelog_mapper
+
+            changelog_mapper.delete_relationship(peer_id=peer_uuid, peer_kind=kind, rel_schema=deleted_rel_schema)
+
+        return [changelog_mapper.changelog for changelog_mapper in rel_identifier_to_changelog_mapper.values()]

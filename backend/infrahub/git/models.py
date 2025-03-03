@@ -2,6 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from infrahub.context import InfrahubContext
 from infrahub.message_bus.types import ProposedChangeBranchDiff
 
 
@@ -31,11 +32,13 @@ class RequestArtifactGenerate(BaseModel):
     repository_kind: str = Field(..., description="The kind of the Repository")
     branch_name: str = Field(..., description="The branch where the check is run")
     target_id: str = Field(..., description="The ID of the target object for this artifact")
+    target_kind: str = Field(..., description="The kind of the target object for this artifact")
     target_name: str = Field(..., description="Name of the artifact target")
     artifact_id: Optional[str] = Field(default=None, description="The id of the artifact if it previously existed")
     query: str = Field(..., description="The name of the query to use when collecting data")
     timeout: int = Field(..., description="Timeout for requests used to generate this artifact")
     variables: dict = Field(..., description="Input variables when generating the artifact")
+    context: InfrahubContext = Field(..., description="The context of the task")
 
 
 class GitRepositoryAdd(BaseModel):

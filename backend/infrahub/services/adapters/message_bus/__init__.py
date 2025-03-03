@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
 
@@ -36,7 +36,7 @@ class InfrahubMessageBus(ABC):
 
     @abstractmethod
     async def publish(
-        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+        self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
     ) -> None:
         raise NotImplementedError()
 
@@ -48,7 +48,7 @@ class InfrahubMessageBus(ABC):
     async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
         raise NotImplementedError()
 
-    async def send(self, message: InfrahubMessage, delay: Optional[MessageTTL] = None, is_retry: bool = False) -> None:
+    async def send(self, message: InfrahubMessage, delay: MessageTTL | None = None, is_retry: bool = False) -> None:
         routing_key = ROUTING_KEY_MAP.get(type(message))
         if not routing_key:
             raise ValueError("Unable to determine routing key")

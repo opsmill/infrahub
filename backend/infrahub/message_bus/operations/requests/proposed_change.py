@@ -105,6 +105,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
     if message.check_type is CheckType.ARTIFACT:
         events.append(
             messages.RequestProposedChangeRefreshArtifacts(
+                context=message.context,
                 proposed_change=message.proposed_change,
                 source_branch=message.source_branch,
                 source_branch_sync_with_git=message.source_branch_sync_with_git,
@@ -243,6 +244,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
         if select:
             log.info(f"Trigger processing of {artifact_definition.definition_name}")
             model = RequestArtifactDefinitionCheck(
+                context=message.context,
                 artifact_definition=artifact_definition,
                 branch_diff=message.branch_diff,
                 proposed_change=message.proposed_change,

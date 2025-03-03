@@ -7,6 +7,9 @@ from prefect.exceptions import ObjectAlreadyExists
 from prefect.logging import get_run_logger
 
 from infrahub import config
+from infrahub.trigger.catalogue import builtin_triggers
+from infrahub.trigger.constants import DEPRECATED_STATIC_TRIGGER_NAMES
+from infrahub.trigger.models import TriggerType
 from infrahub.trigger.tasks import setup_triggers
 
 from .catalogue import worker_pools, workflows
@@ -68,4 +71,9 @@ async def setup_task_manager() -> None:
         await setup_blocks()
         await setup_worker_pools(client=client)
         await setup_deployments(client=client)
-        await setup_triggers(client=client)
+        await setup_triggers(
+            client=client,
+            triggers=builtin_triggers,
+            trigger_type=TriggerType.BUILTIN,
+            deprecated_triggers=DEPRECATED_STATIC_TRIGGER_NAMES,
+        )

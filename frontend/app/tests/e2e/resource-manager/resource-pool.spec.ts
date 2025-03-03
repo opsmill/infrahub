@@ -6,16 +6,8 @@ test.describe("/resource-manager - Resource Manager", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("create a new pool", async ({ page }) => {
-    await Promise.all([
-      page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
-
-        return reqData?.operationName === "CoreResourcePool" && status === 200;
-      }),
-
-      page.goto("/resource-manager"),
-    ]);
+    await page.goto("/resource-manager");
+    await expect(page.getByRole("link", { name: "External prefixes pool" })).toBeVisible();
     await page.getByTestId("create-object-button").click();
 
     await page.getByLabel("Select an object type").click();

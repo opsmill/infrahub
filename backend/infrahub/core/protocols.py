@@ -197,6 +197,8 @@ class CoreValidator(CoreNode):
 
 class CoreWebhook(CoreNode):
     name: String
+    event_type: Enum
+    branch_scope: Dropdown
     description: StringOptional
     url: URL
     validate_certificates: BooleanOptional
