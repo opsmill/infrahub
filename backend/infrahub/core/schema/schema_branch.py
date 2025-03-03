@@ -55,6 +55,7 @@ from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
+from ..constants.schema import PARENT_CHILD_IDENTIFIER
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .schema_branch_computed import ComputedAttributes
 
@@ -1535,7 +1536,7 @@ class SchemaBranch:
     def _get_hierarchy_child_rel(self, peer: str, hierarchical: str | None, read_only: bool) -> RelationshipSchema:
         return RelationshipSchema(
             name="children",
-            identifier="parent__child",
+            identifier=PARENT_CHILD_IDENTIFIER,
             peer=peer,
             kind=RelationshipKind.HIERARCHY,
             cardinality=RelationshipCardinality.MANY,
@@ -1550,7 +1551,7 @@ class SchemaBranch:
     ) -> RelationshipSchema:
         return RelationshipSchema(
             name="parent",
-            identifier="parent__child",
+            identifier=PARENT_CHILD_IDENTIFIER,
             peer=peer,
             kind=RelationshipKind.HIERARCHY,
             cardinality=RelationshipCardinality.ONE,
@@ -1837,12 +1838,13 @@ class SchemaBranch:
                 RelationshipKind.COMPONENT,
                 RelationshipKind.PARENT,
                 RelationshipKind.ATTRIBUTE,
+                RelationshipKind.GENERIC,
             ]:
                 continue
 
             rel_template_peer = (
                 self._get_object_template_kind(node_kind=relationship.peer)
-                if relationship.kind != RelationshipKind.ATTRIBUTE
+                if relationship.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
                 else relationship.peer
             )
             template_schema.relationships.append(
@@ -1850,7 +1852,8 @@ class SchemaBranch:
                     name=relationship.name,
                     peer=rel_template_peer,
                     kind=relationship.kind,
-                    optional=relationship.kind in [RelationshipKind.COMPONENT, RelationshipKind.ATTRIBUTE],
+                    optional=relationship.kind
+                    in [RelationshipKind.COMPONENT, RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC],
                     cardinality=relationship.cardinality,
                     branch=relationship.branch,
                     identifier=self._generate_identifier_string(template_schema.kind, rel_template_peer),

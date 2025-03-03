@@ -5,12 +5,6 @@ from .models import WorkerPoolDefinition, WorkflowDefinition
 
 INFRAHUB_WORKER_POOL = WorkerPoolDefinition(name="infrahub-worker", description="Default Pool for internal tasks")
 
-WEBHOOK_SEND = WorkflowDefinition(
-    name="event-send-webhook",
-    type=WorkflowType.USER,
-    module="infrahub.webhook.tasks",
-    function="send_webhook",
-)
 
 TRANSFORM_JINJA2_RENDER = WorkflowDefinition(
     name="transform_render_jinja2_template",
@@ -356,18 +350,26 @@ REQUEST_ARTIFACT_DEFINITION_CHECK = WorkflowDefinition(
     function="validate_artifacts_generation",
 )
 
-WEBHOOK_CONFIGURE = WorkflowDefinition(
-    name="webhook-setup-automations",
+WEBHOOK_PROCESS = WorkflowDefinition(
+    name="webhook-process",
     type=WorkflowType.USER,
     module="infrahub.webhook.tasks",
-    function="configure_webhooks",
+    function="webhook_process",
 )
 
-WEBHOOK_TRIGGER = WorkflowDefinition(
-    name="webhook-trigger-actions",
-    type=WorkflowType.USER,
+WEBHOOK_CONFIGURE_ONE = WorkflowDefinition(
+    name="webhook-setup-automation-one",
+    type=WorkflowType.CORE,
     module="infrahub.webhook.tasks",
-    function="trigger_webhooks",
+    function="configure_webhook_one",
+)
+
+WEBHOOK_CONFIGURE_ALL = WorkflowDefinition(
+    name="webhook-setup-automation-all",
+    type=WorkflowType.CORE,
+    cron=f"{random.randint(0, 59)} 3 * * *",
+    module="infrahub.webhook.tasks",
+    function="configure_webhook_all",
 )
 
 GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE = WorkflowDefinition(
@@ -468,7 +470,7 @@ workflows = [
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
-    WEBHOOK_CONFIGURE,
-    WEBHOOK_SEND,
-    WEBHOOK_TRIGGER,
+    WEBHOOK_CONFIGURE_ALL,
+    WEBHOOK_CONFIGURE_ONE,
+    WEBHOOK_PROCESS,
 ]

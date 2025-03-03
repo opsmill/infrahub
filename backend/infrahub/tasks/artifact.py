@@ -14,7 +14,9 @@ from infrahub.services import InfrahubServices
 @task(name="define-artifact", task_run_name="Define Artifact", cache_policy=NONE)  # type: ignore[arg-type]
 async def define_artifact(
     model: Union[CheckArtifactCreate, RequestArtifactGenerate], service: InfrahubServices
-) -> InfrahubNode:
+) -> tuple[InfrahubNode, bool]:
+    """Return an artifact together with a flag to indicate if the artifact is created now or already existed."""
+    created = False
     if model.artifact_id:
         artifact = await service.client.get(kind=InfrahubKind.ARTIFACT, id=model.artifact_id, branch=model.branch_name)
     else:
@@ -40,4 +42,5 @@ async def define_artifact(
                     },
                 )
                 await artifact.save()
-    return artifact
+                created = True
+    return artifact, created

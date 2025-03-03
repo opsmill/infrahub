@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from attr import dataclass
 
@@ -84,7 +84,7 @@ class InfrahubComponent:
             hash_value = schema_branch.get_hash()
 
             # Use branch name if we cannot find branch id in cache
-            branch_id: Optional[str] = None
+            branch_id: str | None = None
             if branch_obj := await registry.get_branch(branch=branch, db=self.db):
                 branch_id = str(branch_obj.uuid)
 
@@ -129,10 +129,10 @@ class WorkerInfo:
     def __init__(self, identity: str) -> None:
         self.id = identity
         self.active = False
-        self._schema_hash: Optional[str] = None
+        self._schema_hash: str | None = None
 
     @property
-    def schema_hash(self) -> Optional[str]:
+    def schema_hash(self) -> str | None:
         """Return schema hash provided that the worker is active."""
         if self.active:
             return self._schema_hash
@@ -143,7 +143,7 @@ class WorkerInfo:
         if "workers:active:" in key:
             self.active = True
 
-    def add_value(self, key: str, value: Optional[str] = None) -> None:
+    def add_value(self, key: str, value: str | None = None) -> None:
         if ":schema_hash:" in key:
             self._schema_hash = value
 

@@ -1,0 +1,77 @@
+from infrahub.core.constants import (
+    BranchSupportType,
+    InfrahubKind,
+)
+
+core_graphql_query = {
+    "name": "GraphQLQuery",
+    "namespace": "Core",
+    "description": "A pre-defined GraphQL Query",
+    "include_in_menu": False,
+    "icon": "mdi:graphql",
+    "label": "GraphQL Query",
+    "default_filter": "name__value",
+    "order_by": ["name__value"],
+    "display_labels": ["name__value"],
+    "generate_profile": False,
+    "branch": BranchSupportType.AWARE.value,
+    "uniqueness_constraints": [["name__value"]],
+    "documentation": "/topics/graphql",
+    "attributes": [
+        {"name": "name", "kind": "Text", "unique": True},
+        {"name": "description", "kind": "Text", "optional": True},
+        {"name": "query", "kind": "TextArea"},
+        {
+            "name": "variables",
+            "kind": "JSON",
+            "description": "variables in use in the query",
+            "optional": True,
+            "read_only": True,
+        },
+        {
+            "name": "operations",
+            "kind": "List",
+            "description": "Operations in use in the query, valid operations: 'query', 'mutation' or 'subscription'",
+            "read_only": True,
+            "optional": True,
+        },
+        {
+            "name": "models",
+            "kind": "List",
+            "description": "List of models associated with this query",
+            "read_only": True,
+            "optional": True,
+        },
+        {
+            "name": "depth",
+            "kind": "Number",
+            "description": "number of nested levels in the query",
+            "read_only": True,
+            "optional": True,
+        },
+        {
+            "name": "height",
+            "kind": "Number",
+            "description": "total number of fields requested in the query",
+            "read_only": True,
+            "optional": True,
+        },
+    ],
+    "relationships": [
+        {
+            "name": "repository",
+            "peer": InfrahubKind.GENERICREPOSITORY,
+            "kind": "Attribute",
+            "identifier": "graphql_query__repository",
+            "cardinality": "one",
+            "optional": True,
+        },
+        {
+            "name": "tags",
+            "peer": InfrahubKind.TAG,
+            "kind": "Attribute",
+            "optional": True,
+            "cardinality": "many",
+        },
+    ],
+}

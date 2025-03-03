@@ -30,6 +30,8 @@ from infrahub.events import EventMeta, NodeMutatedEvent
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
 from infrahub.events.models import EventNode
 from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.graphql.context import apply_external_context
+from infrahub.graphql.types.context import ContextInput
 from infrahub.permissions import get_global_permission_for_kind
 
 from ..types import RelatedNodeInput
@@ -64,6 +66,7 @@ class RelationshipNodesInput(InputObjectType):
 class RelationshipAdd(Mutation):
     class Arguments:
         data = RelationshipNodesInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
 
@@ -74,6 +77,7 @@ class RelationshipAdd(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: RelationshipNodesInput,
+        context: ContextInput | None = None,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
         relationship_name = str(data.name)
@@ -82,6 +86,9 @@ class RelationshipAdd(Mutation):
         nodes = await _validate_peers(info=info, data=data)
         await _validate_permissions(info=info, source_node=source, peers=nodes)
         await _validate_peer_types(info=info, data=data, source_node=source, peers=nodes)
+
+        # This has to be done after validating the permissions
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         rel_schema = source.get_schema().get_relationship(name=relationship_name)
         display_label: str = await source.render_display_label(db=graphql_context.db)
@@ -157,6 +164,7 @@ class RelationshipAdd(Mutation):
 class RelationshipRemove(Mutation):
     class Arguments:
         data = RelationshipNodesInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
 
@@ -167,6 +175,7 @@ class RelationshipRemove(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: RelationshipNodesInput,
+        context: ContextInput | None = None,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
         relationship_name = str(data.name)
@@ -175,6 +184,9 @@ class RelationshipRemove(Mutation):
         nodes = await _validate_peers(info=info, data=data)
         await _validate_permissions(info=info, source_node=source, peers=nodes)
         await _validate_peer_types(info=info, data=data, source_node=source, peers=nodes)
+
+        # This has to be done after validating the permissions
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         rel_schema = source.get_schema().get_relationship(name=relationship_name)
         display_label: str = await source.render_display_label(db=graphql_context.db)

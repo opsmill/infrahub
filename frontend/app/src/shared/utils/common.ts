@@ -6,21 +6,6 @@ export const classNames = (...classes: ClassValue[]) => {
   return twMerge(clsx(classes));
 };
 
-export const objectToString = (object: any) =>
-  Object.entries(object)
-    .map(([key, value]) => {
-      switch (typeof value) {
-        // Add quotes for string
-        case "string": {
-          return `${key}:"${value}"`;
-        }
-        default: {
-          return `${key}:${value}`;
-        }
-      }
-    })
-    .join(",");
-
 export const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 
 export const sortByOrderWeight = R.sortBy(R.compose(R.prop("order_weight")));

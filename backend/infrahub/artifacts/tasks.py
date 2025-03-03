@@ -32,7 +32,7 @@ async def create(model: CheckArtifactCreate, service: InfrahubServices) -> Valid
             service=service,
         )
 
-    artifact = await define_artifact(model=model, service=service)
+    artifact, artifact_created = await define_artifact(model=model, service=service)
 
     severity = "info"
     artifact_result: dict[str, Union[str, bool, None]] = {
@@ -44,7 +44,7 @@ async def create(model: CheckArtifactCreate, service: InfrahubServices) -> Valid
     check_message = "Failed to render artifact"
 
     try:
-        result = await repo.render_artifact(artifact=artifact, message=model)
+        result = await repo.render_artifact(artifact=artifact, artifact_created=artifact_created, message=model)
         artifact_result["changed"] = result.changed
         artifact_result["checksum"] = result.checksum
         artifact_result["artifact_id"] = result.artifact_id

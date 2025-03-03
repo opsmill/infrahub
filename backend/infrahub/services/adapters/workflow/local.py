@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from typing_extensions import TYPE_CHECKING
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class WorkflowLocalExecution(InfrahubWorkflow):
-    service: Optional[InfrahubServices] = None  # needed for local injections
+    service: InfrahubServices | None = None  # needed for local injections
 
     async def execute_workflow(
         self,

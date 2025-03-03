@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
     from neo4j.graph import Path as Neo4jPath
     from neo4j.graph import Relationship as Neo4jRelationship
-    from pendulum import Interval
+    from whenever import TimeDelta
 
     from infrahub.graphql.initialization import GraphqlContext
 
@@ -163,6 +163,10 @@ class EnrichedDiffAttribute(BaseSummary):
     def __hash__(self) -> int:
         return hash(self.name)
 
+    @property
+    def num_properties(self) -> int:
+        return len(self.properties)
+
     def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
         return {prop.path_identifier: prop.conflict for prop in self.properties if prop.conflict}
 
@@ -201,6 +205,10 @@ class EnrichedDiffSingleRelationship(BaseSummary):
 
     def __hash__(self) -> int:
         return hash(self.peer_id)
+
+    @property
+    def num_properties(self) -> int:
+        return len(self.properties)
 
     def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
         all_conflicts: dict[str, EnrichedDiffConflict] = {}
@@ -247,6 +255,10 @@ class EnrichedDiffRelationship(BaseSummary):
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+    @property
+    def num_properties(self) -> int:
+        return sum(r.num_properties for r in self.relationships)
 
     def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
         all_conflicts: dict[str, EnrichedDiffConflict] = {}
@@ -307,6 +319,10 @@ class EnrichedDiffNode(BaseSummary):
 
     def __hash__(self) -> int:
         return hash(self.uuid)
+
+    @property
+    def num_properties(self) -> int:
+        return sum(a.num_properties for a in self.attributes) + sum(r.num_properties for r in self.relationships)
 
     def get_all_conflicts(self) -> dict[str, EnrichedDiffConflict]:
         all_conflicts: dict[str, EnrichedDiffConflict] = {}
@@ -417,8 +433,8 @@ class EnrichedDiffRootMetadata(BaseSummary):
         return hash(self.uuid)
 
     @property
-    def time_range(self) -> Interval:
-        return self.to_time.obj - self.from_time.obj
+    def time_range(self) -> TimeDelta:
+        return self.to_time.get_obj() - self.from_time.get_obj()
 
     def update_metadata(
         self,
@@ -447,8 +463,8 @@ class EnrichedDiffRoot(EnrichedDiffRootMetadata):
         return hash(self.uuid)
 
     @property
-    def time_range(self) -> Interval:
-        return self.to_time.obj - self.from_time.obj
+    def time_range(self) -> TimeDelta:
+        return self.to_time.get_obj() - self.from_time.get_obj()
 
     def get_nodes_without_parents(self) -> set[EnrichedDiffNode]:
         nodes_with_parent_uuids = set()

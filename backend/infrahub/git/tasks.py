@@ -272,10 +272,10 @@ async def generate_artifact(model: RequestArtifactGenerate, service: InfrahubSer
         commit=model.commit,
     )
 
-    artifact = await define_artifact(model=model, service=service)
+    artifact, artifact_created = await define_artifact(model=model, service=service)
 
     try:
-        result = await repo.render_artifact(artifact=artifact, message=model)
+        result = await repo.render_artifact(artifact=artifact, artifact_created=artifact_created, message=model)
         log.debug(
             f"Generated artifact | changed: {result.changed} | {result.checksum} | {result.storage_id}",
         )
@@ -358,7 +358,9 @@ async def generate_request_artifact_definition(
             variables=member.extract(params=artifact_definition.parameters.value),
             target_id=member.id,
             target_name=member.display_label,
+            target_kind=member.get_kind(),
             timeout=transform.timeout.value,
+            context=context,
         )
 
         await service.workflow.submit_workflow(
