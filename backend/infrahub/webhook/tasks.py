@@ -114,7 +114,7 @@ async def configure_webhook_all(service: InfrahubServices) -> None:
             triggers=triggers,
             trigger_type=TriggerType.WEBHOOK,
             deprecated_triggers=[AUTOMATION_NAME_RUN],
-        )
+        )  # type: ignore[misc]
 
     log.info(f"{len(triggers)} Webhooks automation configuration completed")
 

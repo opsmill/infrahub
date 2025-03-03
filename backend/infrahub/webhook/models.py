@@ -214,7 +214,7 @@ class TransformWebhook(Webhook):
             location=f"{self.transform_file}::{self.transform_class}",
             data={"data": data, **context.model_dump()},
             client=service.client,
-        )
+        )  # type: ignore[misc]
 
     @classmethod
     def from_object(cls, obj: CoreCustomWebhook, transform: CoreTransformPython) -> Self:
