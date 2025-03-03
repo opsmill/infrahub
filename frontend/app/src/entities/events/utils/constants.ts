@@ -58,4 +58,4 @@ export const EVENT_TYPE_CHOICES = [
     label: "Commit updated",
     name: "infrahub.repository.update_commit",
   },
-]
+];

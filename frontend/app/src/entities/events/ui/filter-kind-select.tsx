@@ -7,7 +7,10 @@ import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 
-export function FilterKindSelect({ value, onChange }: { value: string | null; onChange: (value: string) => void }) {
+export function FilterKindSelect({
+  value,
+  onChange,
+}: { value: string | null; onChange: (value: string) => void }) {
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
   return (
@@ -21,16 +24,13 @@ export function FilterKindSelect({ value, onChange }: { value: string | null; on
             "cursor-pointer min-w-[132px] max-w-[300px]"
           )}
         >
-          <div className="flex-grow flex flex-wrap gap-2">
-            {value && schemaKindLabel[value]}
-          </div>
+          <div className="flex-grow flex flex-wrap gap-2">{value && schemaKindLabel[value]}</div>
 
           <button type="button" className="text-gray-600 outline-none w-3.5 h-3.5">
             <Icon icon="mdi:unfold-more-horizontal" />
           </button>
         </div>
       </PopoverTrigger>
-
       <ComboboxContent fitTriggerWidth={false}>
         <KindComboboxList
           onSelect={(kind) => {

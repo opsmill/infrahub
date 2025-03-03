@@ -2,8 +2,8 @@ import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-f
 import { FormFieldValue } from "@/shared/components/form/type";
 import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
 import useFilters from "@/shared/hooks/useFilters";
-import { FilterKindSelect } from "./filter-kind-select";
 import { useState } from "react";
+import { FilterKindSelect } from "./filter-kind-select";
 
 export type GlobalKindFilterFormProps = {
   name: string;
@@ -36,31 +36,26 @@ export function GlobalKindFilterForm({ name, onSuccess }: GlobalKindFilterFormPr
 
   return (
     <div className="flex items-center gap-2">
-      <FilterKindSelect
-        value={kind}
-        onChange={(value) => setKind(value)}
-      />
+      <FilterKindSelect value={kind} onChange={(value) => setKind(value)} />
 
-      {
-        kind && (
-          <Form
-            className="space-y-0 flex items-center gap-2"
-            onSubmit={(formData) => {
-              handleSubmit(formData);
+      {kind && (
+        <Form
+          className="space-y-0 flex items-center gap-2"
+          onSubmit={(formData) => {
+            handleSubmit(formData);
+          }}
+        >
+          <FormField
+            name="filter"
+            defaultValue={currentFilter?.value}
+            render={({ field }) => {
+              return <DynamicFilterInput {...field} fieldSchema={{ peer: kind }} />;
             }}
-          >
-            <FormField
-              name="filter"
-              defaultValue={currentFilter?.value}
-              render={({ field }) => {
-                return <DynamicFilterInput {...field} fieldSchema={{ peer: kind }} />;
-              }}
-            />
+          />
 
-            <FormSubmit>Apply</FormSubmit>
-          </Form>
-        )
-      }
+          <FormSubmit>Apply</FormSubmit>
+        </Form>
+      )}
     </div>
   );
 }

@@ -1,4 +1,8 @@
-import { EventNodeInterface, NodeMutatedEvent, GroupEvent } from "@/shared/api/graphql/generated/graphql";
+import {
+  EventNodeInterface,
+  GroupEvent,
+  NodeMutatedEvent,
+} from "@/shared/api/graphql/generated/graphql";
 import { DateDisplay } from "@/shared/components/display/date-display";
 
 import { ACCOUNT_OBJECT } from "@/config/constants";
@@ -24,9 +28,9 @@ import { StandardEvent } from "./standard-event";
 
 export type BranchEventType = EventNodeInterface & {
   __typename:
-  | typeof BRANCH_DELETED_EVENT
-  | typeof BRANCH_CREATED_EVENT
-  | typeof BRANCH_REBASEDED_EVENT;
+    | typeof BRANCH_DELETED_EVENT
+    | typeof BRANCH_CREATED_EVENT
+    | typeof BRANCH_REBASEDED_EVENT;
 };
 
 export type NodeEventType = NodeMutatedEvent & {

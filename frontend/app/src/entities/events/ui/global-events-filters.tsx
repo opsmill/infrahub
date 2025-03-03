@@ -33,47 +33,45 @@ export const GlobalEventsFilters = () => {
             label="Event Type"
             fieldSchema={{
               kind: "Dropdown",
-              choices: EVENT_TYPE_CHOICES
-            }} />
+              choices: EVENT_TYPE_CHOICES,
+            }}
+          />
 
           <GlobalFilter
             name="hasChildren"
             label="Has Children"
             fieldSchema={{
               kind: "Boolean",
-            }} />
-
-          <GlobalKindFilter
-            name="primaryNodeIds"
-            label="Primary Node"
+            }}
           />
 
-          <GlobalKindFilter
-            name="relatedNodeIds"
-            label="Related Node"
-          />
+          <GlobalKindFilter name="primaryNodeIds" label="Primary Node" />
+
+          <GlobalKindFilter name="relatedNodeIds" label="Related Node" />
 
           <GlobalFilter
             name="accountIds"
             label="Account"
             fieldSchema={{
               peer: "CoreAccount",
-            }} />
+            }}
+          />
 
           <GlobalFilter
             name="since"
             label="Start Date"
             fieldSchema={{
               kind: "DateTime",
-            }} />
+            }}
+          />
 
           <GlobalFilter
             name="until"
             label="End Date"
             fieldSchema={{
               kind: "DateTime",
-            }} />
-
+            }}
+          />
         </TagList>
       </TagGroup>
     </ScrollArea>

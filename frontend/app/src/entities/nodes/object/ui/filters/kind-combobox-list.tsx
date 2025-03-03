@@ -15,15 +15,14 @@ export const KindComboboxList = forwardRef<HTMLDivElement, KindComboboxListProps
     const profileSchemas = useAtomValue(profileSchemasAtom);
     const schemaKindLabel = useAtomValue(schemaKindLabelState);
 
-
     const kindList: Array<string> = [
       ...nodeSchemas.map((schema) => {
-        return schema.kind
+        return schema.kind;
       }),
       ...profileSchemas.map((schema) => {
-        return schema.kind
-      })
-    ]
+        return schema.kind;
+      }),
+    ];
 
     return (
       <ComboboxList ref={ref}>
@@ -39,7 +38,7 @@ export const KindComboboxList = forwardRef<HTMLDivElement, KindComboboxListProps
             >
               <span className="truncate">{schemaKindLabel[kind]}</span>
             </ComboboxItem>
-          )
+          );
         })}
       </ComboboxList>
     );
