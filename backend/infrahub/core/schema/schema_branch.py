@@ -1879,7 +1879,7 @@ class SchemaBranch:
             label=f"Object template {node.label}",
             description=f"Object template for {node.kind}",
             branch=node.branch,
-            include_in_menu=True,
+            include_in_menu=False,
             display_labels=["template_name__value"],
             inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.OBJECTTEMPLATE, InfrahubKind.NODE],
             human_friendly_id=["template_name__value"],
