@@ -23,12 +23,14 @@ test.describe("Resource Managers guide", () => {
       await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "IP Address Pool Core" }).click();
       await page.getByLabel("Name *").fill("My IP address pool");
+      await page.getByLabel("Default Prefix Length").fill("24");
+
       await page.getByLabel("Resources *").click();
-      const filterInput = page.getByPlaceholder("Filter...").nth(1);
+      const filterInput = page.getByPlaceholder("Filter...");
       await filterInput.fill("10.100.0.0/24");
       await page.getByText("10.100.0.0/24").click();
-      await page.getByLabel("Default Prefix Length").fill("24");
       await page.getByLabel("Resources *").click();
+
       await page.getByLabel("IPAM Namespace *").click();
       await page.getByRole("option", { name: "default" }).click();
 
@@ -81,7 +83,6 @@ test.describe("Resource Managers guide", () => {
       const filterInput = page.getByPlaceholder("Filter...");
       await filterInput.fill("10.100.1.0");
       await page.getByText("10.100.1.0/24").click();
-
       await page.getByLabel("Resources *").click();
 
       await page.getByLabel("IPAM Namespace *").click();
