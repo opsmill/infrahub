@@ -1,3 +1,4 @@
+import { POOLS_PEER } from "@/entities/ipam/constants";
 import { getRelationshipParent } from "@/entities/nodes/api/getRelationshipParent";
 import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import {
@@ -6,13 +7,16 @@ import {
   profileSchemasAtom,
   templateSchemasAtom,
 } from "@/entities/schema/stores/schema.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { LabelFormField } from "@/shared/components/form/fields/common";
+import { PoolValue } from "@/shared/components/form/pool-selector";
 import {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
 } from "@/shared/components/form/type";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
+import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -340,6 +344,17 @@ const RelationshipField = ({
         render={({ field }) => {
           const fieldData: FormRelationshipValue = field.value;
 
+          const peer = relationship?.peer;
+          const { schema, isNode } = useSchema(peer);
+          const canRequestPools =
+            isNode &&
+            !!schema?.inherit_from?.map((from) => POOLS_PEER.includes(from))?.filter(Boolean)
+              ?.length;
+          const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
+          const onChange = (newValue: Node | PoolValue | null) => {
+            field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
+          };
+
           return (
             <div className="relative flex flex-col space-y-2">
               <LabelFormField
@@ -351,18 +366,21 @@ const RelationshipField = ({
                 fieldData={fieldData}
               />
 
-              <FormInput>
-                <RelationshipInput
-                  {...field}
-                  {...props}
-                  value={fieldData?.value}
-                  onChange={(newValue) => {
-                    field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
-                  }}
-                  peer={relationship?.peer}
-                  parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
-                />
-              </FormInput>
+              <div className="flex gap-2">
+                <FormInput>
+                  <RelationshipInput
+                    {...field}
+                    {...props}
+                    value={fieldData?.value}
+                    onChange={onChange}
+                    peer={peer}
+                    parent={{ name: parentRelationship?.name, value: selectedParent?.id }}
+                  />
+                </FormInput>
+                {canRequestPools && (
+                  <PoolSelect peer={peer} selectedPoolId={selectedPoolId} onChange={onChange} />
+                )}
+              </div>
               <FormMessage />
             </div>
           );
