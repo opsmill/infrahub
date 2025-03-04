@@ -15,6 +15,7 @@ import PasswordInputField from "@/shared/components/form/fields/password-input.f
 import RelationshipHierarchicalField from "@/shared/components/form/fields/relationship-hierarchical.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationship-many.field";
 import RelationshipField from "@/shared/components/form/fields/relationship.field";
+import { SelectField } from "@/shared/components/form/fields/select.field";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { Form, FormProps, FormRef, FormSubmit } from "@/shared/components/ui/form";
@@ -111,6 +112,10 @@ export const DynamicInput = (props: DynamicFieldProps) => {
     case "enum": {
       const { type, ...otherProps } = props;
       return <EnumField {...otherProps} />;
+    }
+    case "select": {
+      const { type, ...otherProps } = props;
+      return <SelectField {...otherProps} />;
     }
     case "relationship": {
       const { schema: peerSchema } = getSchema(props.relationship.peer);
