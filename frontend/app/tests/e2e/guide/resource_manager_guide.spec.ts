@@ -22,20 +22,23 @@ test.describe("Resource Managers guide", () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "IP Address Pool Core" }).click();
-      await page.getByLabel("Name *").fill("My IP address pool");
-      await page.getByLabel("Default Prefix Length").fill("24");
 
-      await page.getByLabel("Resources *").click();
-      const filterInput = page
+      await page.getByRole("textbox", { name: "Name *" }).fill("My IP address pool");
+      await page.getByRole("spinbutton", { name: "Default Prefix Length" }).fill("24");
+      await page
         .getByTestId("side-panel-container")
-        .getByRole("dialog")
-        .filter({ hasText: "IP Address Pool CoreIP Prefix" })
-        .getByPlaceholder("Filter...");
-      await filterInput.fill("10.100.0.0");
-      await page.getByText("10.100.0.0/24").click();
-      await page.getByLabel("Resources *").click();
+        .locator("div")
+        .filter({ hasText: "Resources *" })
+        .nth(1)
+        .click();
+      await page.locator("form").getByPlaceholder("Filter...").fill("10.100.0");
+      await page.getByRole("option", { name: "10.100.0.0/" }).click();
+      await page
+        .locator("div")
+        .filter({ hasText: /^Resources \*$/ })
+        .click();
 
-      await page.getByLabel("IPAM Namespace *").click();
+      await page.getByRole("combobox", { name: "IPAM Namespace *" }).click();
       await page.getByRole("option", { name: "default" }).click();
 
       await saveScreenshotForDocs(page, "guides/resource_manager_pool_ip");
@@ -78,22 +81,26 @@ test.describe("Resource Managers guide", () => {
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "IP Prefix Pool Core" }).click();
-      await page.getByLabel("Name *").fill("Customer Service Pool");
+
+      await page.getByRole("textbox", { name: "Name *" }).fill("Customer Service Pool");
       // FIXME: Will change after #5889
       await page.getByLabel("Default Prefix Type").fill("IpamIPPrefix");
       await page.getByLabel("Default Prefix Length").fill("31");
 
-      await page.getByLabel("Resources *").click();
-      const filterInput = page
+      await page
         .getByTestId("side-panel-container")
-        .getByRole("dialog")
-        .filter({ hasText: "IP Address Pool CoreIP Prefix" })
-        .getByPlaceholder("Filter...");
-      await filterInput.fill("10.100.1.0");
-      await page.getByText("10.100.1.0/24").click();
-      await page.getByLabel("Resources *").click();
+        .locator("div")
+        .filter({ hasText: "Resources *" })
+        .first()
+        .click();
+      await page.locator("form").getByPlaceholder("Filter...").fill("10.100.1");
+      await page.getByRole("option", { name: "10.100.1.0/" }).click();
+      await page
+        .locator("div")
+        .filter({ hasText: /^Resources \*$/ })
+        .click();
 
-      await page.getByLabel("IPAM Namespace *").click();
+      await page.getByRole("combobox", { name: "IPAM Namespace *" }).click();
       await page.getByRole("option", { name: "default" }).click();
 
       await saveScreenshotForDocs(page, "guides/resource_manager_pool_prefix");
