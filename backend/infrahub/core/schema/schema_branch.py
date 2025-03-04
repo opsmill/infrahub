@@ -1859,6 +1859,9 @@ class SchemaBranch:
                     identifier=self._generate_identifier_string(template_schema.kind, rel_template_peer),
                     min_count=relationship.min_count,
                     max_count=relationship.max_count,
+                    label=f"{relationship.name} template".title()
+                    if relationship.kind in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]
+                    else relationship.name.title(),
                 )
             )
 
