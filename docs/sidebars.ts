@@ -117,6 +117,7 @@ const sidebars: SidebarsConfig = {
         'topics/transformation',
         'topics/auth',
         'topics/computed-attributes',
+        'topics/object-template',
       ],
     },
     {
