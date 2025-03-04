@@ -77,6 +77,7 @@ async def gather_anonymous_telemetry_data(service: InfrahubServices) -> dict:
     data: dict[str, Any] = {
         "deployment_id": registry.id,
         "execution_time": None,
+        "infrahub_type": "Community",
         "infrahub_version": __version__,
         "python_version": platform.python_version(),
         "platform": platform.machine(),
