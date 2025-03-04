@@ -49,7 +49,7 @@ export function SelectField({
                 <SelectTrigger />
 
                 <SelectList selectionMode="single" items={items}>
-                  {(item) => <SelectItem>{item.label}</SelectItem>}
+                  {(item) => <SelectItem textValue={item.label}>{item.label}</SelectItem>}
                 </SelectList>
               </Select>
             </FormInput>

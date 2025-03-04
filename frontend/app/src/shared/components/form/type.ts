@@ -154,7 +154,7 @@ export type DynamicEnumFieldProps = FormFieldProps & {
   schema?: ModelSchema;
 };
 
-export type DynamicSelectFieldProps = Omit<FormFieldProps, "defaultValue"> & {
+export type DynamicSelectFieldProps = FormFieldProps & {
   type: "select";
   items: Array<{ key: string; label: string }>;
 };

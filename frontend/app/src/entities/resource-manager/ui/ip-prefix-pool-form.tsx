@@ -1,4 +1,3 @@
-import { NUMBER_POOL_OBJECT } from "@/config/constants";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { createObject } from "@/entities/nodes/api/createObject";
@@ -42,36 +41,45 @@ export function IpPrefixPoolForm({
     // Replace default_prefix_type (text) field with a select
     return schemaFields.map((field) => {
       if (field.name === "default_prefix_type") {
-        const items = genericPrefixSchema.used_by?.map((kind) => {
-          const { schema } = getSchema(kind);
+        const items =
+          genericPrefixSchema.used_by?.map((kind) => {
+            const { schema } = getSchema(kind);
 
-          if (!schema) {
+            if (!schema) {
+              return {
+                key: kind,
+                label: kind,
+              };
+            }
+
             return {
               key: kind,
-              label: kind,
+              label: (
+                <div className="flex items-center justify-between w-full">
+                  <span>{schema.label}</span>
+                  <span className="text-xs text-gray-500">{schema.namespace}</span>
+                </div>
+              ),
             };
-          }
+          }) ?? [];
 
-          return {
-            key: kind,
-            label: (
-              <div className="flex items-center justify-between w-full">
-                <span>{schema.label}</span>
-                <span className="text-xs text-gray-500">{schema.namespace}</span>
-              </div>
-            ),
-          };
-        });
+        const defaultValue =
+          isUpdate && currentObject
+            ? field.defaultValue
+            : items.length === 1
+              ? { source: { type: "user" }, value: items[0]?.key }
+              : field.defaultValue;
 
         return {
           ...field,
           type: "select",
           items,
+          defaultValue,
         } as DynamicSelectFieldProps;
       }
       return field;
     });
-  }, [props]);
+  }, [props, genericPrefixSchema, isGeneric, currentObject, isUpdate]);
 
   async function handleSubmit(data: Record<string, FormFieldValue>) {
     try {
@@ -92,9 +100,7 @@ export function IpPrefixPoolForm({
             })
           : createObject({
               kind: IP_PREFIX_POOL,
-              data: stringifyWithoutQuotes({
-                ...newObject,
-              }),
+              data: stringifyWithoutQuotes(newObject),
             });
 
       const mutation = gql`
@@ -108,13 +114,21 @@ export function IpPrefixPoolForm({
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Number pool created"} />, {
-        toastId: "alert-success-number-pool-created",
+      const operationType = isUpdate ? "Update" : "Create";
+      const successMessage = isUpdate ? "IP prefix pool updated" : "IP prefix pool created";
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />, {
+        toastId: `alert-success-ip-prefix-pool-${operationType}`,
       });
 
-      if (onSuccess) await onSuccess(result?.data?.[`${NUMBER_POOL_OBJECT}Create`]);
+      if (onSuccess) {
+        const resultData = result?.data?.[`${IP_PREFIX_POOL}${operationType}`];
+        await onSuccess(resultData);
+      }
     } catch (error: unknown) {
-      console.error("An error occurred while creating the object: ", error);
+      console.error(
+        `An error occurred while ${isUpdate ? "updating" : "creating"} the IP prefix pool:`,
+        error
+      );
     }
   }
 
