@@ -157,6 +157,9 @@ class MainSettings(BaseSettings):
         default=None,
         description="Define the public URL of the Infrahub, might be required for OAuth2 and OIDC depending on your infrastructure.",
     )
+    infrahub_type: str = Field(
+        default="Community", description="Type of Infrahub installation (Community or Enterprise)"
+    )
 
     @field_validator("docs_index_path", mode="before")
     @classmethod
