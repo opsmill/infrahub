@@ -23,7 +23,6 @@ class Migration020(InternalSchemaMigration):
     def init(cls, **kwargs: dict[str, Any]) -> Self:
         internal_schema = cls.get_internal_schema()
         schema_node = internal_schema.get_node(name="SchemaNode")
-        schema_generic = internal_schema.get_node(name="SchemaGeneric")
 
         migrations = [
             NodeAttributeAddMigration(
@@ -32,14 +31,7 @@ class Migration020(InternalSchemaMigration):
                 schema_path=SchemaPath(
                     schema_kind="SchemaNode", path_type=SchemaPathType.ATTRIBUTE, field_name="generate_template"
                 ),
-            ),
-            NodeAttributeAddMigration(
-                new_node_schema=schema_generic,
-                previous_node_schema=schema_generic,
-                schema_path=SchemaPath(
-                    schema_kind="SchemaNode", path_type=SchemaPathType.ATTRIBUTE, field_name="generate_template"
-                ),
-            ),
+            )
         ]
         return cls(migrations=migrations, **kwargs)  # type: ignore[arg-type]
 

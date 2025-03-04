@@ -1779,7 +1779,7 @@ class SchemaBranch:
 
         This relationship allows to record from which template an object has been created.
         """
-        for node_name in self.node_names + self.generic_names:
+        for node_name in self.node_names:
             node = self.get(name=node_name, duplicate=False)
 
             if (
@@ -1933,7 +1933,7 @@ class SchemaBranch:
         need_templates: set[NodeSchema | GenericSchema] = set()
         template_schema_kinds: set[str] = set()
 
-        for node_name in self.node_names + self.generic_names:
+        for node_name in self.node_names:
             node = self.get(name=node_name, duplicate=False)
 
             # Delete old object templates if schemas were removed
