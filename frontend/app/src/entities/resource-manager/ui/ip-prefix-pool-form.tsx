@@ -1,22 +1,22 @@
-import { useMemo } from "react";
-import DynamicForm from "@/shared/components/form/dynamic-form";
-import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
-import { NodeFormProps } from "@/shared/components/form/node-form";
-import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { getSchema } from "@/entities/schema/domain/get-schema";
-import { DynamicSelectFieldProps, FormFieldValue } from "@/shared/components/form/type";
-import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
-import { IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
-import { createObject } from "@/entities/nodes/api/createObject";
-import { gql } from "@apollo/client";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "@/shared/components/ui/alert";
 import { NUMBER_POOL_OBJECT } from "@/config/constants";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
+import { createObject } from "@/entities/nodes/api/createObject";
+import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
+import { IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import DynamicForm from "@/shared/components/form/dynamic-form";
+import { NodeFormProps } from "@/shared/components/form/node-form";
+import { DynamicSelectFieldProps, FormFieldValue } from "@/shared/components/form/type";
+import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
+import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { stringifyWithoutQuotes } from "@/shared/utils/string";
+import { gql } from "@apollo/client";
+import { useMemo } from "react";
+import { toast } from "react-toastify";
 
 export interface IpPrefixPoolFormProps extends NodeFormProps {}
 
@@ -45,11 +45,12 @@ export function IpPrefixPoolForm({
         const items = genericPrefixSchema.used_by?.map((kind) => {
           const { schema } = getSchema(kind);
 
-          if (!schema)
+          if (!schema) {
             return {
               key: kind,
               label: kind,
             };
+          }
 
           return {
             key: kind,

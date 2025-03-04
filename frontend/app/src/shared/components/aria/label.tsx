@@ -1,5 +1,5 @@
-import { Label as AriaLabel, LabelProps as AriaLabelProps } from "react-aria-components";
 import { classNames } from "@/shared/utils/common";
+import { Label as AriaLabel, LabelProps as AriaLabelProps } from "react-aria-components";
 
 export function Label({ className, ...props }: AriaLabelProps) {
   return (

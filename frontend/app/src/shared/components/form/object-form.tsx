@@ -13,6 +13,7 @@ import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemD
 import { NodeObject } from "@/entities/nodes/types";
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
+import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
 import { NumberPoolForm } from "@/entities/resource-manager/ui/number-pool-form";
 import { AccountForm } from "@/entities/role-manager/ui/account-form";
 import { AccountGroupForm } from "@/entities/role-manager/ui/account-group-form";
@@ -28,7 +29,6 @@ import { NodeForm, NodeFormSubmitParams } from "@/shared/components/form/node-fo
 import { NodeWithProfileForm } from "@/shared/components/form/node-with-profile-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Suspense, lazy } from "react";
-import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
 
 export type ProfileData = {
   [key: string]: string | Pick<AttributeType, "value" | "__typename">;

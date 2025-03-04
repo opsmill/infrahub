@@ -15,12 +15,12 @@ import PasswordInputField from "@/shared/components/form/fields/password-input.f
 import RelationshipHierarchicalField from "@/shared/components/form/fields/relationship-hierarchical.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationship-many.field";
 import RelationshipField from "@/shared/components/form/fields/relationship.field";
+import { SelectField } from "@/shared/components/form/fields/select.field";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
 import { Form, FormProps, FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
 import { forwardRef } from "react";
-import { SelectField } from "@/shared/components/form/fields/select.field";
 
 export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   fields: Array<DynamicFieldProps>;

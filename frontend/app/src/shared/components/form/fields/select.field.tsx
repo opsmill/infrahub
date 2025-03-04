@@ -1,12 +1,12 @@
+import { Label } from "@/shared/components/aria/label";
+import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
 import {
   DynamicSelectFieldProps,
   FormAttributeValue,
   FormFieldProps,
 } from "@/shared/components/form/type";
-import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
-import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
-import { Label } from "@/shared/components/aria/label";
+import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
 export interface SelectFieldProps
   extends FormFieldProps,
