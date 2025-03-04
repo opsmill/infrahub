@@ -1,1 +1,1 @@
-- We made object list retrieval faster with an optimized query.
+Made object list retrieval faster with an optimized query.

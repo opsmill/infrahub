@@ -1,1 +1,1 @@
-Add activities logs in the nodes details view
+Added activities logs into the node details view.

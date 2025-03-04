@@ -24,35 +24,109 @@ title: Release 1.2.0
 
 # Release 1.2.0
 
-This release contains both new features and bug-fixes to resolve issues found in Infrahub v1.1.6 and prior.
+Infrahub 1.2 contains both highly anticipated new features as well as bug-fixes and performance improvements to resolve issues found in Infrahub v1.1.6 and prior.
 
 ## Main changes
 
-Infrahub 1.2 brings several highly anticipated features, such as the ability to define an Object Template, as well as a new detailed Activity Log.
+One of the key features in this release, is the ability to define a Template for an object in Infrahub.
+In addition, we've added a new detailed Activity Log, and enhanced the Webhook functionality.
 
-See the detailed changelog in the following sections for more information.
+We have also made several improvements to the UI for a cleaner look, including a more compact and reorganized builtin menu.
 
-### Object templates
+There are also quite a few performance improvements, including a faster object list retrieval and an optimized query for saving a diff.
 
-**Description to come.**
+See the detailed changelog in the following sections for more information on the above and more!
+
+### Templates
+
+One often-requested feature was the ability to define a Template for an object in Infrahub, which we are happy to introduce in this release.
+
+This feature allows you to define a Template for an object in Infrahub, which can then be used to create new objects with the same properties and relationships.
+
+To create a Template, you need to set the `generate_template` property to `true` in the schema of the object you want to create a Template for.
+Once the Template is created, you can use it to create new objects with the same properties and relationships.
 
 #### Documentation
 
-For more information on either style of computed attribute, please see the below documentation.
+For more information on Templates, please see the below documentation.
 
 - https://docs.infrahub.app/
 
 ### Activity log
 
-**Description to come.**
+The Activity Log is a powerful tool that allows you to see all the changes that have been made to an object,
+and to track the history of any object in Infrahub.
+This information is critical for auditing purposes, as well as for debugging and troubleshooting.
+While it has always been stored in the Infrahub database, it was not readily available in the UI until this release.
 
-### Webhook refactor
+The Activity Log includes all the changes that have been made to the object, as well as all the relationships that have been added or removed.
+This information is available on the right side of the node details view (for Activities related to a specific object), as well as under `Activity/Activity Log` in the menu (for all objects).
 
-**Description to come.**
+#### Screenshots
 
-### Menu reorganization
+Example of the Activity Log page:
 
-**Description to come.**
+!["Example screenshot of Infrahub 1.2 showing the Activity Log page."](../../media/release_notes/infrahub_1_2/activity_log.png)
+
+Each entry can be expanded to see more details, as well as any related child/sub-activities:
+
+!["Example screenshot of Infrahub 1.2 showing the Activity Log entry details."](../../media/release_notes/infrahub_1_2/activity_detail_sub_activity.png)
+
+Finally, for any given object, the right side of the detail view now shows related activities:
+
+!["Example screenshot of Infrahub 1.2 showing the Activity Log in the node details view."](../../media/release_notes/infrahub_1_2/activity_on_node_detail.png)
+
+### Webhook enhancements
+
+The Webhook functionality has been enhanced in this release to provide more flexibility and control over the Webhooks that are triggered in Infrahub.
+This work is closely tied to previous and ongoing work to provide a more flexible and powerful event system in Infrahub.
+
+Previously, Webhooks were only triggered based on node specific events.
+Webhooks can now be triggered based on the following events:
+
+- `infrahub.artifact.created`
+- `infrahub.artifact.updated`
+- `infrahub.node.created`
+- `infrahub.node.updated`
+- `infrahub.node.deleted`
+- `infrahub.branch.created`
+- `infrahub.branch.merged`
+- `infrahub.branch.rebased`
+- `infrahub.branch.deleted`
+- `infrahub.group.member_added`
+- `infrahub.group.member_removed`
+
+There remain two types of Webhooks available to users, Standard and Custom.
+Both can be triggered by the above events, but differ in the following ways:
+
+1. Standard Webhooks send a payload to the configured destination in response to one of the selected event types (or all events).
+2. Custom Webhooks trigger the same as Standard Webhooks, but are also able to execute a custom Infrahub Transformation to manipulate the data in the payload.
+
+Below are several screenshots of the new Webhook page. First is the list view for all configured Webhooks:
+
+!["Example screenshot of Infrahub 1.2 showing the new Webhook page."](../../media/release_notes/infrahub_1_2/webhook_example.png)
+
+And here is the view of editing or creating a Custom Webhook:
+
+!["Example screenshot of Infrahub 1.2 showing the new Webhook create menu."](../../media/release_notes/infrahub_1_2/webhook_create_example.png)
+
+#### Documentation
+
+For more information on Webhooks, please see the below documentation.
+
+- https://docs.infrahub.app/
+
+### UI enhancements
+
+The builtin menu has been reorganized and enhanced in this release, to provide a better user experience.
+
+The goal of this reorganization is to make it easier to find the objects you are looking for, and to provide a more consistent experience across the different objects.
+For example, the "Unified Storage" and "Change Control" sections have been deprecated, and their contents moved to either Object Management or Integrations to be more aligned with the purpose of each page.
+
+In addition to this reorganization, the sub-menus in the sidebar now support icons, which makes it easier to identify the objects you are looking for.
+The top menu has also been made more compact, to provide a cleaner look.
+
+!["Example screenshot of Infrahub 1.2 showing the new builtin menu."](../../media/release_notes/infrahub_1_2/menu_refresh.png)
 
 ## Changelog
 
@@ -60,35 +134,37 @@ The complete list of changes can always be found in the `CHANGELOG.md` file in t
 
 ### Added
 
-- Added Containerlab to the codespace base image. ([#458](https://github.com/opsmill/infrahub/issues/458))
-- - We added validation on UI for `min_count` and `max_count` in relationships fields. ([#5661](https://github.com/opsmill/infrahub/issues/5661))
-- - Improved Infrahub app layout for a cleaner look.
-  - Made the top menu more compact.
-- Add activities logs in the nodes details view
-- Add new feature to create object templates when setting `generate_template: true` in a schema on a node
+- Added Containerlab to the GitHub Codespace base image. ([#458](https://github.com/opsmill/infrahub/issues/458))
+- Added validation to the UI for `min_count` and `max_count` in relationships fields. ([#5661](https://github.com/opsmill/infrahub/issues/5661))
+- Added a new feature to create object templates when setting `generate_template: true` in a schema on a node.
+- Added activities logs into the node details view.
+- Added icon support to sub-menu items in the sidebar.
+- Improved Infrahub app layout for a cleaner look. Made the top menu more compact.
 
 ### Changed
 
-- Replace PrefixPool with netaddr.IPSet ([#3547](https://github.com/opsmill/infrahub/issues/3547))
-- Modified query analyzer to not list all potential meta data models when only querying for "source" or "owner" ID. The full models will still show up if a fragment is used under the meta data properties. This change makes it easier to setup fine grained permissions and also speeds up the permission lookup as it doesn't require as many checks. ([#4644](https://github.com/opsmill/infrahub/issues/4644))
-- - We made object list retrieval faster with an optimized query.
-- Improve typing of GraphQL schema by defining list as non-nullable and ensure that top level item are mandatory.
+- Replaced `PrefixPool` with `netaddr.IPSet`. ([#3547](https://github.com/opsmill/infrahub/issues/3547))
+- Modified the query analyzer to not list all potential meta data models when only querying for "source" or "owner" ID. The full models will still show up if a fragment is used under the meta data properties. This change makes it easier to setup fine grained permissions and also speeds up the permission lookup as it doesn't require as many checks. ([#4644](https://github.com/opsmill/infrahub/issues/4644))
+- Improved the performance of the cypher query that saves a diff.
+- Improved typing of GraphQL schema by defining list as non-nullable and ensure that top level item are mandatory.
+- Made object list retrieval faster with an optimized query.
 - Reorganized builtin/default menu to provide a better user experience.
 - Updated Infrahub account tokens view:
-
-  - Redesigned for a faster, cleaner experience
+  - Redesigned for a faster, cleaner experience.
   - Improved clarity and formatting of expiration dates.
   - Resolved an issue where expiration data was not being sent to the API.
+- Updated the `DiffUpdate` mutation to return the id of the task when `wait_until_completion` is False. Also the argument `wait_for_completion` under data is deprecated and it has been replaced with `wait_until_completion` at the root of the mutation instead to align with the format of the other mutations.
 
 ### Fixed
 
-- Set correct state in events after merging a proposed change, they were incorrectly set as "merging" instead of "merged" ([#5600](https://github.com/opsmill/infrahub/issues/5600))
+- Fixed an event error in event state after merging a proposed change, they were incorrectly set as "merging" instead of "merged". ([#5600](https://github.com/opsmill/infrahub/issues/5600))
+- Fixed an error in the query to count the number of peers for a given cardinality-many relationship. Previous logic could have resulted in the count being multiplied by a power of 2 if changes were made to the relationship during a merge.
 
 ### Housekeeping
 
-- Activate ruff B rules. ([#2193](https://github.com/opsmill/infrahub/issues/2193))
-- Activate ruff C4 rule. ([#2194](https://github.com/opsmill/infrahub/issues/2194))
-- Add basic integration test for the HTTP service adapter ([#5553](https://github.com/opsmill/infrahub/issues/5553))
+- Activated `ruff` B rules. ([#2193](https://github.com/opsmill/infrahub/issues/2193))
+- Activated `ruff` C4 rule. ([#2194](https://github.com/opsmill/infrahub/issues/2194))
+- Added a basic integration test for the HTTP service adapter. ([#5553](https://github.com/opsmill/infrahub/issues/5553))
 
 ## Migration guide
 
