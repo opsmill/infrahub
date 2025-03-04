@@ -106,6 +106,16 @@ const EVENTS_QUERY = gql`
               kind
             }
           }
+          ... on GroupEvent {
+            ancestors {
+              id
+              kind
+            }
+            members {
+              id
+              kind
+            }
+          }
         }
       }
     }

@@ -6,7 +6,10 @@ from neo4j.exceptions import TransientError
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.diff.query.field_summary import EnrichedDiffNodeFieldSummaryQuery
-from infrahub.core.diff.query.summary_counts_enricher import DiffSummaryCountsEnricherQuery
+from infrahub.core.diff.query.summary_counts_enricher import (
+    DiffFieldsSummaryCountsEnricherQuery,
+    DiffNodesSummaryCountsEnricherQuery,
+)
 from infrahub.core.query.diff import DiffCountChanges
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
@@ -16,6 +19,7 @@ from infrahub.log import get_logger
 from ..model.path import (
     ConflictSelection,
     EnrichedDiffConflict,
+    EnrichedDiffNode,
     EnrichedDiffRoot,
     EnrichedDiffRootMetadata,
     EnrichedDiffs,
@@ -262,35 +266,80 @@ class DiffRepository:
                 raise
             log.exception("Database memory error during save. Trying smaller transactions")
             for node_request in node_create_batch:
+                log.info(
+                    f"Updating node {node_request.node.uuid}, num_properties={node_request.node.num_properties}..."
+                )
                 single_node_query = await EnrichedNodeBatchCreateQuery.init(
                     db=self.db, node_create_batch=[node_request]
                 )
                 await single_node_query.execute(db=self.db)
 
-    async def save(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata, do_summary_counts: bool = True) -> None:
-        await self._save_root_metadata(enriched_diffs=enriched_diffs)
-        if not isinstance(enriched_diffs, EnrichedDiffs):
+    @retry_db_transaction(name="enriched_diff_hierarchy_update")
+    async def _run_hierarchy_links_update_query(self, diff_root_uuid: str, diff_nodes: list[EnrichedDiffNode]) -> None:
+        log.info(f"Updating diff hierarchy links, num_nodes={len(diff_nodes)}")
+        link_query = await EnrichedNodesLinkQuery.init(db=self.db, diff_root_uuid=diff_root_uuid, diff_nodes=diff_nodes)
+        await link_query.execute(db=self.db)
+
+    async def _update_hierarchy_links(self, enriched_diffs: EnrichedDiffs) -> None:
+        for diff_root in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
+            nodes_to_update = []
+            for node in diff_root.nodes:
+                if any(r.nodes for r in node.relationships):
+                    nodes_to_update.append(node)
+                if len(nodes_to_update) >= config.SETTINGS.database.query_size_limit:
+                    await self._run_hierarchy_links_update_query(
+                        diff_root_uuid=diff_root.uuid, diff_nodes=nodes_to_update
+                    )
+                    nodes_to_update = []
+            if nodes_to_update:
+                await self._run_hierarchy_links_update_query(diff_root_uuid=diff_root.uuid, diff_nodes=nodes_to_update)
+
+    async def _update_summary_counts(self, diff_root: EnrichedDiffRoot) -> None:
+        max_nodes_limit = config.SETTINGS.database.query_size_limit
+        num_nodes = len(diff_root.nodes)
+        if diff_root.exists_on_database and num_nodes < max_nodes_limit:
+            await self.add_summary_counts(
+                diff_branch_name=diff_root.diff_branch_name,
+                diff_id=diff_root.uuid,
+                node_uuids=None,
+            )
             return
-        num_nodes = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
-        log.info(f"Saving diff (num_nodes={num_nodes})...")
+        node_uuids: list[str] = []
+        for diff_node in diff_root.nodes:
+            node_uuids.append(diff_node.uuid)
+            if len(node_uuids) >= max_nodes_limit:
+                await self.add_summary_counts(
+                    diff_branch_name=diff_root.diff_branch_name,
+                    diff_id=diff_root.uuid,
+                    node_uuids=node_uuids,
+                )
+                node_uuids = []
+        if node_uuids:
+            await self.add_summary_counts(
+                diff_branch_name=diff_root.diff_branch_name,
+                diff_id=diff_root.uuid,
+                node_uuids=node_uuids,
+            )
+
+    async def save(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata, do_summary_counts: bool = True) -> None:
+        # metadata-only update
+        if not isinstance(enriched_diffs, EnrichedDiffs):
+            await self._save_root_metadata(enriched_diffs=enriched_diffs)
+            return
+
+        count_nodes_remaining = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
+        log.info(f"Saving diff (num_nodes={count_nodes_remaining})...")
         for batch_num, node_create_batch in enumerate(
             self._get_node_create_request_batch(enriched_diffs=enriched_diffs)
         ):
             log.info(f"Saving node batch #{batch_num}...")
             await self._save_node_batch(node_create_batch=node_create_batch)
-            log.info(f"Batch saved. num_nodes={len(node_create_batch)}")
-        link_query = await EnrichedNodesLinkQuery.init(db=self.db, enriched_diffs=enriched_diffs)
-        await link_query.execute(db=self.db)
-        log.info("Diff saved.")
+            count_nodes_remaining -= len(node_create_batch)
+            log.info(f"Batch saved. {count_nodes_remaining=}")
+        await self._update_hierarchy_links(enriched_diffs=enriched_diffs)
         if do_summary_counts:
-            node_uuids: list[str] | None = None
-            if enriched_diffs.diff_branch_diff.exists_on_database:
-                node_uuids = list(enriched_diffs.branch_node_uuids)
-            await self.add_summary_counts(
-                diff_branch_name=enriched_diffs.diff_branch_name,
-                diff_id=enriched_diffs.diff_branch_diff.uuid,
-                node_uuids=node_uuids,
-            )
+            await self._update_summary_counts(diff_root=enriched_diffs.diff_branch_diff)
+        await self._save_root_metadata(enriched_diffs=enriched_diffs)
 
     async def summary(
         self,
@@ -468,7 +517,6 @@ class DiffRepository:
             offset += limit
         return specifiers
 
-    @retry_db_transaction(name="enriched_diff_summary_counts")
     async def add_summary_counts(
         self,
         diff_branch_name: str,
@@ -476,8 +524,29 @@ class DiffRepository:
         diff_id: str | None = None,
         node_uuids: list[str] | None = None,
     ) -> None:
-        log.info("Updating summary counts...")
-        query = await DiffSummaryCountsEnricherQuery.init(
+        await self._add_field_summary_counts(
+            diff_branch_name=diff_branch_name,
+            tracking_id=tracking_id,
+            diff_id=diff_id,
+            node_uuids=node_uuids,
+        )
+        await self._add_node_summary_counts(
+            diff_branch_name=diff_branch_name,
+            tracking_id=tracking_id,
+            diff_id=diff_id,
+            node_uuids=node_uuids,
+        )
+
+    @retry_db_transaction(name="enriched_diff_field_summary_counts")
+    async def _add_field_summary_counts(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+        node_uuids: list[str] | None = None,
+    ) -> None:
+        log.info("Updating field summary counts...")
+        query = await DiffFieldsSummaryCountsEnricherQuery.init(
             db=self.db,
             diff_branch_name=diff_branch_name,
             tracking_id=tracking_id,
@@ -485,4 +554,23 @@ class DiffRepository:
             node_uuids=node_uuids,
         )
         await query.execute(db=self.db)
-        log.info("Summary counts updated.")
+        log.info("Field summary counts updated.")
+
+    @retry_db_transaction(name="enriched_diff_node_summary_counts")
+    async def _add_node_summary_counts(
+        self,
+        diff_branch_name: str,
+        tracking_id: TrackingId | None = None,
+        diff_id: str | None = None,
+        node_uuids: list[str] | None = None,
+    ) -> None:
+        log.info("Updating node summary counts...")
+        query = await DiffNodesSummaryCountsEnricherQuery.init(
+            db=self.db,
+            diff_branch_name=diff_branch_name,
+            tracking_id=tracking_id,
+            diff_id=diff_id,
+            node_uuids=node_uuids,
+        )
+        await query.execute(db=self.db)
+        log.info("node summary counts updated.")

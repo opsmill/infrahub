@@ -1,4 +1,4 @@
-import { Page, expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH, ADMIN_CREDENTIALS } from "../constants";
 
 const disableSSO = async (page: Page) => {
