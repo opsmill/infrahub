@@ -12,8 +12,8 @@ import { ListBoxItem } from "@/shared/components/aria/list-box";
 import { focusVisibleStyle } from "@/shared/components/style-rac";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
-import { Icon } from "@iconify-icon/react";
 import { Popover, PopoverProps } from "./popover";
+import { ChevronDownIcon } from "lucide-react";
 
 export const Select = AriaSelect;
 
@@ -26,14 +26,13 @@ export const SelectTrigger = ({ className, children, ...props }: AriaButtonProps
     )}
     {...props}
   >
-    <AriaSelectValue className={classNames("truncate data-[placeholder]:text-gray-400")} />
-    <Icon icon="mdi:chevron-down" className="ml-auto" />
+    <AriaSelectValue className="truncate data-[placeholder]:text-gray-400 grow" />
+    <ChevronDownIcon className="ml-auto size-4" />
   </AriaButton>
 );
 
 export const SelectPopover = ({ className, ...props }: PopoverProps) => (
   <Popover
-    isNonModal
     className={composeRenderProps(className, (className) =>
       classNames("min-w-[--trigger-width]", className)
     )}
