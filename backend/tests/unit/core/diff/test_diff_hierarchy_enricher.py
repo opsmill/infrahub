@@ -1,5 +1,6 @@
 from infrahub.core.diff.enricher.hierarchy import DiffHierarchyEnricher
 from infrahub.core.diff.model.path import DiffAction
+from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -15,7 +16,7 @@ async def test_node_no_parent_no_rel(db: InfrahubDatabase, default_branch, perso
     diff_root = EnrichedRootFactory.build(
         base_branch_name=default_branch.name, diff_branch_name=branch.name, nodes={diff_node}
     )
-    enricher = DiffHierarchyEnricher(db=db)
+    enricher = DiffHierarchyEnricher(db=db, parent_adder=DiffParentNodeAdder())
     await enricher.enrich(enriched_diff_root=diff_root, calculated_diffs=None)
 
     assert len(diff_root.nodes) == 2
@@ -42,7 +43,7 @@ async def test_node_no_parent_rel(db: InfrahubDatabase, default_branch, person_j
     diff_root = EnrichedRootFactory.build(
         base_branch_name=default_branch.name, diff_branch_name=branch.name, nodes={diff_node}
     )
-    enricher = DiffHierarchyEnricher(db=db)
+    enricher = DiffHierarchyEnricher(db=db, parent_adder=DiffParentNodeAdder())
     await enricher.enrich(enriched_diff_root=diff_root, calculated_diffs=None)
 
     assert len(diff_root.nodes) == 2
@@ -88,7 +89,7 @@ async def test_node_hierarchy(db: InfrahubDatabase, default_branch, hierarchical
     diff_root = EnrichedRootFactory.build(
         base_branch_name=default_branch.name, diff_branch_name=branch.name, nodes={diff_node1, diff_node2}
     )
-    enricher = DiffHierarchyEnricher(db=db)
+    enricher = DiffHierarchyEnricher(db=db, parent_adder=DiffParentNodeAdder())
     await enricher.enrich(enriched_diff_root=diff_root, calculated_diffs=None)
 
     assert len(diff_root.nodes) == 6

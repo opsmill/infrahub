@@ -154,11 +154,17 @@ export type DynamicEnumFieldProps = FormFieldProps & {
   schema?: ModelSchema;
 };
 
+export type DynamicSelectFieldProps = FormFieldProps & {
+  type: "select";
+  items: Array<{ key: string; label: string }>;
+};
+
 export type DynamicAttributeFieldProps =
   | DynamicInputFieldProps
   | DynamicNumberFieldProps
   | DynamicDropdownFieldProps
-  | DynamicEnumFieldProps;
+  | DynamicEnumFieldProps
+  | DynamicSelectFieldProps;
 
 export type DynamicRelationshipFieldProps = Omit<FormFieldProps, "defaultValue"> & {
   type: "relationship";

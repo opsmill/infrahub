@@ -7,6 +7,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
+from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.query.diff_summary import DiffSummaryCounters, DiffSummaryQuery, EnrichedDiffQueryFilters
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
@@ -236,7 +237,7 @@ class TestDiffReadQuery(TestInfrahub):
         assert summary == counters
 
     async def test_get_without_parent(self, db: InfrahubDatabase, default_branch: Branch, load_data):
-        repository = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
+        repository = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()))
         diffs_without = await repository.get(
             base_branch_name=default_branch.name,
             diff_branch_names=[load_data["diff_branch"].name],

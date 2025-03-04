@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import GlobalPermissions, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.permissions.globals import define_global_permission_from_branch
 
 if TYPE_CHECKING:
     from .initialization import GraphqlContext
@@ -15,6 +16,12 @@ async def apply_external_context(graphql_context: GraphqlContext, context_input:
     """Applies context provided by an external mutation to the GraphQL context"""
     if not context_input or not context_input.account:
         return
+
+    permission = define_global_permission_from_branch(
+        permission=GlobalPermissions.OVERRIDE_CONTEXT, branch_name=graphql_context.branch.name
+    )
+
+    graphql_context.active_permissions.raise_for_permission(permission=permission)
 
     try:
         account = await NodeManager.get_one_by_id_or_default_filter(

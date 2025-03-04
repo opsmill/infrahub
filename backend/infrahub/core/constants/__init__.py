@@ -83,6 +83,7 @@ class GlobalPermissions(InfrahubStringEnum):
     MANAGE_ACCOUNTS = "manage_accounts"
     MANAGE_PERMISSIONS = "manage_permissions"
     MANAGE_REPOSITORIES = "manage_repositories"
+    OVERRIDE_CONTEXT = "override_context"
 
 
 class PermissionAction(InfrahubStringEnum):

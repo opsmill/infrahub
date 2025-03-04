@@ -1859,6 +1859,9 @@ class SchemaBranch:
                     identifier=self._generate_identifier_string(template_schema.kind, rel_template_peer),
                     min_count=relationship.min_count,
                     max_count=relationship.max_count,
+                    label=f"{relationship.name} template".title()
+                    if relationship.kind in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]
+                    else relationship.name.title(),
                 )
             )
 
@@ -1876,7 +1879,7 @@ class SchemaBranch:
             label=f"Object template {node.label}",
             description=f"Object template for {node.kind}",
             branch=node.branch,
-            include_in_menu=True,
+            include_in_menu=False,
             display_labels=["template_name__value"],
             inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.OBJECTTEMPLATE, InfrahubKind.NODE],
             human_friendly_id=["template_name__value"],

@@ -1,3 +1,4 @@
+import { QSP } from "@/config/qsp";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { EventNodeInterface } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -6,62 +7,6 @@ import { ReactElement } from "react";
 
 export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) => ReactElement> =
   {
-    "infrahub.group.member_added": ({ related_nodes, primary_node }) => {
-      return (
-        <div className="flex items-center gap-2">
-          added{" "}
-          <div className="flex items-center gap-1 text-black">
-            {related_nodes.slice(0, 5).map(({ id, kind }) => {
-              return (
-                <Link key={id} to={constructPath(`/objects/${kind}/${id}`)}>
-                  <NodeLabel key={id} id={id} />
-                </Link>
-              );
-            })}
-            {related_nodes.slice(6).length > 0 && (
-              <span className="italic text-gray-500">(+{related_nodes.slice(6).length})</span>
-            )}
-          </div>{" "}
-          in group{" "}
-          <span className="text-black font-semibold">
-            <Link
-              key={primary_node?.id}
-              to={constructPath(`/objects/CoreGroup/${primary_node?.id}`)}
-            >
-              <NodeLabel key={primary_node?.id} id={primary_node?.id} kind={primary_node?.kind} />
-            </Link>
-          </span>
-        </div>
-      );
-    },
-    "infrahub.group.member_removed": ({ related_nodes, primary_node }) => {
-      return (
-        <div className="flex items-center gap-2">
-          removed{" "}
-          <div className="flex items-center gap-1 text-black">
-            {related_nodes.slice(0, 5).map(({ id, kind }) => {
-              return (
-                <Link key={id} to={constructPath(`/objects/${kind}/${id}`)}>
-                  <NodeLabel key={id} id={id} />
-                </Link>
-              );
-            })}
-            {related_nodes.slice(6).length > 0 && (
-              <span className="italic text-gray-500">(+{related_nodes.slice(6).length})</span>
-            )}
-          </div>{" "}
-          from group{" "}
-          <span className="text-black">
-            <Link
-              key={primary_node?.id}
-              to={constructPath(`/objects/CoreGroup/${primary_node?.id}`)}
-            >
-              <NodeLabel key={primary_node?.id} id={primary_node?.id} kind={primary_node?.kind} />
-            </Link>
-          </span>
-        </div>
-      );
-    },
     "infrahub.schema.update": () => {
       return <div className="flex items-center gap-2">updated the schema</div>;
     },
@@ -81,6 +26,23 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface)
           merged the branch
           <Link to={`/branches/${props.payload?.context?.branch?.name}`} className="text-black">
             {props.payload?.context?.branch?.name}
+          </Link>
+        </div>
+      );
+    },
+    "infrahub.repository.update_commit": (props) => {
+      return (
+        <div className="flex items-center gap-2">
+          updated the commit
+          <span className="text-black">{props.payload?.commit}</span>
+          from repository
+          <Link
+            className="text-black"
+            to={constructPath(`/objects/CoreRepository/${props.payload?.repository_id}`, [
+              { name: QSP.BRANCH, value: props.payload?.context?.branch?.name },
+            ])}
+          >
+            {props.payload?.repository_name}
           </Link>
         </div>
       );

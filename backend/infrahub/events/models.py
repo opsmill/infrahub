@@ -27,7 +27,7 @@ class ParentEvent(BaseModel):
 
 
 class EventMeta(BaseModel):
-    branch: Branch | None = Field(default=None)
+    branch: Branch | None = Field(default=None, description="The branch on which originate this event")
     request_id: str = ""
     account_id: str | None = Field(default=None, description="The ID of the account triggering this event")
     initiator_id: str = Field(
@@ -112,12 +112,17 @@ class EventMeta(BaseModel):
         )
 
     @classmethod
-    def from_parent(cls, parent: InfrahubEvent) -> EventMeta:
+    def from_parent(cls, parent: InfrahubEvent, branch: Branch | None = None) -> EventMeta:
         """Create the metadata from an existing event
 
         Note that this action will modify the existing event to indicate that children might be attached to the event
         """
         parent.meta.has_children = True
+        context = deepcopy(parent.meta.context)
+        if branch:
+            context.branch.name = branch.name
+            context.branch.id = str(branch.get_uuid())
+
         return cls(
             parent=parent.meta.id,
             branch=parent.meta.branch,
@@ -125,7 +130,7 @@ class EventMeta(BaseModel):
             initiator_id=parent.meta.initiator_id,
             account_id=parent.meta.account_id,
             level=parent.meta.level + 1,
-            context=deepcopy(parent.meta.context),
+            context=context,
             ancestors=[ParentEvent(id=parent.get_id(), name=parent.get_name())] + parent.meta.ancestors,
         )
 

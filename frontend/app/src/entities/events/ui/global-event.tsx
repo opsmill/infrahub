@@ -3,13 +3,34 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
-import { BRANCH_EVENTS, STANDARD_EVENTS } from "../utils/constants";
+import { BRANCH_EVENTS, GROUP_EVENTS, STANDARD_EVENTS } from "../utils/constants";
 import { EventType } from "./event";
 import { BranchEvent } from "./global-branch-event";
+import { GroupEvent } from "./global-group-event";
 import { NodeEvent } from "./global-node-event";
 import { StandardEvent } from "./global-standard-event";
 
-export const Event = ({ __typename, ...props }: EventType) => {
+const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
+  if ("attributes" in props) {
+    return <NodeEvent {...props} />;
+  }
+
+  if (BRANCH_EVENTS.includes(__typename)) {
+    return <BranchEvent {...props} />;
+  }
+
+  if (STANDARD_EVENTS.includes(__typename)) {
+    return <StandardEvent {...props} />;
+  }
+
+  if (GROUP_EVENTS.includes(__typename)) {
+    return <GroupEvent {...props} />;
+  }
+
+  return <span className="flex items-center text-sm text-gray-500 ">{props.event}</span>;
+};
+
+export const Event = (props: EventType) => {
   return (
     <div
       className={classNames(
@@ -18,23 +39,23 @@ export const Event = ({ __typename, ...props }: EventType) => {
       )}
     >
       <div className="flex items-center text-xs font-medium text-gray-500 whitespace-nowrap">
-        <Tooltip enabled content={props.occurred_at}>
+        <Tooltip enabled content={format(new Date(props.occurred_at), "yyyy-MM-dd HH:mm:ss (O)")}>
           <span>{format(new Date(props.occurred_at), "MMM dd, HH:mm:ss")}</span>
         </Tooltip>
       </div>
 
       <div className="col-span-5 flex item-center gap-4 overflow-hidden">
-        {"attributes" in props && <NodeEvent {...props} />}
-
-        {BRANCH_EVENTS.includes(__typename) && <BranchEvent {...props} />}
-
-        {STANDARD_EVENTS.includes(__typename) && <StandardEvent {...props} />}
+        <GlobalEventDisplay {...props} />
       </div>
 
       <div className="text-xs font-medium text-gray-500 flex items-center gap-1">
-        <Icon icon={"mdi:source-branch"} />
+        {props.branch && (
+          <>
+            <Icon icon={"mdi:source-branch"} />
 
-        {props.branch}
+            {props.branch}
+          </>
+        )}
       </div>
 
       <div className="relative">

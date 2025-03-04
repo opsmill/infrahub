@@ -4,6 +4,7 @@ from infrahub.core.diff.model.path import (
     BranchTrackingId,
     EnrichedDiffs,
 )
+from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.database import InfrahubDatabase
@@ -22,7 +23,7 @@ from .factories import (
 class TestDiffGetAllConflicts:
     @pytest.fixture
     def diff_repository(self, db: InfrahubDatabase) -> DiffRepository:
-        return DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
+        return DiffRepository(db=db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()))
 
     def _get_enriched_diffs(self) -> EnrichedDiffs:
         branch_diff_root = EnrichedRootFactory.build(
