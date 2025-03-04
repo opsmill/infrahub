@@ -17,7 +17,6 @@ import { DynamicFieldProps, FormFieldValue, NumberPoolData } from "@/shared/comp
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import useFilters from "@/shared/hooks/useFilters";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
@@ -58,7 +57,6 @@ export const NodeForm = ({
 }: NodeFormProps) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const [filters] = useFilters();
   const auth = useAuth();
 
   const { data, loading } = useQuery(GET_FORM_REQUIREMENTS, { variables: { kind: schema.kind } });
@@ -84,7 +82,6 @@ export const NodeForm = ({
     objectTemplate,
     auth,
     isFilterForm,
-    filters,
     pools: numberPools,
     isUpdate,
   });
