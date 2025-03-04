@@ -184,6 +184,7 @@ test.describe("/ipam - Ipam home page", () => {
       });
 
       await test.step("update ip address from summary", async () => {
+        await expect(page.getByText("IPAddress updated")).toBeHidden();
         await page
           .getByRole("row", { name: "10.0.0.1/16" })
           .getByRole("link", { name: "10.0.0.1/16" })

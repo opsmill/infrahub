@@ -16,6 +16,7 @@ from infrahub.core.diff.model.path import (
     NameTrackingId,
     NodeDiffFieldSummary,
 )
+from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
@@ -46,7 +47,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         original_size = config.SETTINGS.database.query_size_limit
         config.SETTINGS.database.max_depth_search_hierarchy = 10
         config.SETTINGS.database.query_size_limit = 50
-        diff_repository = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer(), max_save_batch_size=30)
+        diff_repository = DiffRepository(
+            db=db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()), max_save_batch_size=30
+        )
         yield diff_repository
         config.SETTINGS.database.max_depth_search_hierarchy = original_depth
         config.SETTINGS.database.query_size_limit = original_size

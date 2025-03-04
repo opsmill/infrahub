@@ -2,7 +2,6 @@ from typing import Any
 
 from pydantic import Field, computed_field
 
-from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import MutationAction
 from infrahub.message_bus import InfrahubMessage
@@ -94,10 +93,6 @@ class NodeMutatedEvent(InfrahubEvent):
             #     meta=self.get_message_meta(),
             # )
         ]
-
-    def set_context_branch(self, branch: Branch) -> None:
-        self.meta.context.branch.id = str(branch.get_uuid())
-        self.meta.context.branch.name = branch.name
 
 
 class NodeCreatedEvent(NodeMutatedEvent):
