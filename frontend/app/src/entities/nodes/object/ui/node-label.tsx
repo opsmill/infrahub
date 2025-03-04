@@ -6,11 +6,12 @@ import { useNodeLabel } from "../api/get-display-label.query";
 type NodeLabelProps = {
   id?: string;
   kind?: string;
+  branch?: string;
   className?: string;
 };
 
-export const NodeLabel = ({ id, kind = NODE_OBJECT, className }: NodeLabelProps) => {
-  const { isLoading, error, data } = useNodeLabel({ objectid: id, kind, enabled: !!id });
+export const NodeLabel = ({ id, kind = NODE_OBJECT, branch, className }: NodeLabelProps) => {
+  const { isLoading, error, data } = useNodeLabel({ objectid: id, kind, enabled: !!id, branch });
 
   if (isLoading) {
     return <Skeleton className="h-3 w-14" />;

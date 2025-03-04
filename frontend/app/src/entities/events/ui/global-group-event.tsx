@@ -13,7 +13,7 @@ export const GroupEvent = (props: EventNodeInterface) => {
           <Icon icon="mdi:group" className="text-gray-400" />
 
           <div className="text-black font-semibold">
-            <NodeLabel id={account_id} kind="CoreAccount" />
+            <NodeLabel id={account_id} kind="CoreAccount" branch={props.branch} />
           </div>
 
           {(GROUP_EVENTS_MAPPING[event] && GROUP_EVENTS_MAPPING[event](props)) ?? event}

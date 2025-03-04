@@ -53,6 +53,7 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
         <NodeLabel
           id={props.primary_node.id}
           kind={props.primary_node?.kind}
+          branch={props.branch}
           className="overflow-hidden text-ellipsis whitespace-nowrap"
         />
       ) : (
@@ -67,6 +68,7 @@ export const NodeEvent = (props: NodeMutatedEvent) => {
           <NodeLabel
             id={props.primary_node.id}
             kind={props.primary_node?.kind}
+            branch={props.branch}
             className="overflow-hidden text-ellipsis whitespace-nowrap"
           />
         </Link>
