@@ -75,6 +75,18 @@ class AttributeChangelog(BaseModel):
             return True
         return False
 
+    def set_value(self, value: Any) -> None:
+        if isinstance(value, str) and value == NULL_VALUE:
+            self.value = None
+            return
+        self.value = value
+
+    def set_value_previous(self, value: Any) -> None:
+        if isinstance(value, str) and value == NULL_VALUE:
+            self.value_previous = None
+            return
+        self.value_previous = value
+
     @field_validator("value", "value_previous")
     @classmethod
     def convert_null_values(cls, value: Any) -> Any:

@@ -26,6 +26,7 @@ if TYPE_CHECKING:
         EnrichedDiffRelationship,
         EnrichedDiffRoot,
     )
+    from infrahub.core.models import SchemaUpdateMigrationInfo
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.database import InfrahubDatabase
 
@@ -38,11 +39,18 @@ class NodeInDiff:
 
 
 class DiffChangelogCollector:
-    def __init__(self, diff: EnrichedDiffRoot, branch: Branch, db: InfrahubDatabase) -> None:
+    def __init__(
+        self,
+        diff: EnrichedDiffRoot,
+        branch: Branch,
+        db: InfrahubDatabase,
+        migration_tracker: MigrationTracker | None = None,
+    ) -> None:
         self._diff = diff
         self._branch = branch
         self._db = db
         self._diff_nodes: dict[str, NodeInDiff]
+        self.migration = migration_tracker or MigrationTracker()
 
     def _populate_diff_nodes(self) -> None:
         self._diff_nodes = {
@@ -83,14 +91,16 @@ class DiffChangelogCollector:
             # then we don't have access to the attribute kind
             attribute_kind = "n/a"
 
-        changelog_attribute = AttributeChangelog(name=attribute.name, kind=attribute_kind)
+        changelog_attribute = AttributeChangelog(
+            name=self.migration.get_attribute_name(node=node, attribute=attribute), kind=attribute_kind
+        )
         for attr_property in attribute.properties:
             match attr_property.property_type:
                 case DatabaseEdgeType.HAS_VALUE:
                     # TODO deserialize correct value type from string
                     if _keep_branch_update(diff_property=attr_property):
-                        changelog_attribute.value = attr_property.new_value
-                        changelog_attribute.value_previous = attr_property.previous_value
+                        changelog_attribute.set_value(value=attr_property.new_value)
+                        changelog_attribute.set_value_previous(value=attr_property.previous_value)
                 case DatabaseEdgeType.IS_PROTECTED:
                     if _keep_branch_update(diff_property=attr_property):
                         changelog_attribute.add_property(
@@ -243,3 +253,31 @@ def _keep_branch_update(diff_property: EnrichedDiffProperty) -> bool:
     if diff_property.conflict and diff_property.conflict.selected_branch == ConflictSelection.BASE_BRANCH:
         return False
     return True
+
+
+class MigrationTracker:
+    """Keeps track of schema updates that happened as part of a migration"""
+
+    def __init__(self, migrations: list[SchemaUpdateMigrationInfo] | None = None) -> None:
+        # A dictionary of Node kind, previous attribute name and new attribute
+        # {"TestPerson": {"old_attribute_name": "new_attribute_name"}}
+        self._migrations_attribute_map: dict[str, dict[str, str]] = {}
+
+        migrations = migrations or []
+        for migration in migrations:
+            if migration.migration_name == "attribute.name.update":
+                if migration.path.schema_kind not in self._migrations_attribute_map:
+                    self._migrations_attribute_map[migration.path.schema_kind] = {}
+                if migration.path.property_name and migration.path.field_name:
+                    self._migrations_attribute_map[migration.path.schema_kind][migration.path.property_name] = (
+                        migration.path.field_name
+                    )
+
+    def get_attribute_name(self, node: NodeChangelog, attribute: EnrichedDiffAttribute) -> str:
+        """Return the current name of the requested attribute"""
+        if node.node_kind not in self._migrations_attribute_map:
+            return attribute.name
+        if attribute.name not in self._migrations_attribute_map[node.node_kind]:
+            return attribute.name
+
+        return self._migrations_attribute_map[node.node_kind][attribute.name]
