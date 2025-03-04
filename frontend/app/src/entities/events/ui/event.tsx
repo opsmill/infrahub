@@ -42,6 +42,7 @@ export type EventType = BranchEventType | NodeEventType | GroupEvent;
 export const EventDetails = ({
   id,
   event,
+  branch,
   occurred_at,
   account_id,
   primary_node,
@@ -61,6 +62,7 @@ export const EventDetails = ({
         }
       />
       <PropertyRow title="Event" value={event} />
+      <PropertyRow title="Branch" value={branch} />
       <PropertyRow title="Occured at" value={<DateDisplay date={occurred_at} />} />
       {account_id && (
         <PropertyRow
