@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 from infrahub import config
 from infrahub.auth import AccountSession, authentication_token, validate_jwt_access_token, validate_jwt_refresh_token
+from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
@@ -133,3 +134,10 @@ async def get_permission_manager(
     await permission_manager.load_permissions(db=db, branch=branch_params.branch)
 
     return permission_manager
+
+
+async def get_context(
+    branch: Branch = Depends(get_branch_dep),
+    account_session: AccountSession = Depends(get_current_user),
+) -> InfrahubContext:
+    return InfrahubContext.init(branch=branch, account=account_session)

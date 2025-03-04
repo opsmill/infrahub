@@ -15,7 +15,7 @@ class DeleteAfterTimeQuery(Query):
         self.timestamp = timestamp
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {"timestamp": self.timestamp.to_string()}
         query_1 = """
         // ---------------------

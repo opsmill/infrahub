@@ -1,4 +1,4 @@
-import { focusStyle } from "@/shared/components/ui/style";
+import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { InputHTMLAttributes, forwardRef } from "react";
 
@@ -15,7 +15,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>((props, ref)
       onChange={onChange}
       className={classNames(
         "focus:ring-0 focus:ring-offset-0",
-        focusStyle,
+        focusVisibleStyle,
         "w-4 h-4 text-custom-blue-800 disabled:text-gray-300 bg-gray-100 border-gray-300 rounded cursor-pointer disabled:cursor-not-allowed",
         className
       )}

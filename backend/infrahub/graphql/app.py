@@ -76,8 +76,6 @@ if TYPE_CHECKING:
 
     from .auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
 
-# pylint: disable=unused-argument,raise-missing-from
-
 
 GQL_CONNECTION_ACK = "connection_ack"
 GQL_CONNECTION_ERROR = "connection_error"
@@ -208,19 +206,14 @@ class InfrahubGraphQLApp:
         graphql_params = await prepare_graphql_params(
             db=db, branch=branch, at=at, account_session=account_session, request=request
         )
+        schema_branch = db.schema.get_schema_branch(name=branch.name)
+
         analyzed_query = InfrahubGraphQLQueryAnalyzer(
             query=query,
+            schema_branch=schema_branch,
             query_variables=variable_values,
             schema=graphql_params.schema,
             operation_name=operation_name,
-            branch=branch,
-        )
-        await self._evaluate_permissions(
-            db=db,
-            request=request,
-            query=analyzed_query,
-            query_parameters=graphql_params,
-            account_session=account_session,
             branch=branch,
         )
 
@@ -230,6 +223,23 @@ class InfrahubGraphQLApp:
         elif at and branch.schema_changed_at and Timestamp(branch.schema_changed_at) > Timestamp(at):
             schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=Timestamp(at))
             db.add_schema(name=branch.name, schema=schema_branch)
+            analyzed_query = InfrahubGraphQLQueryAnalyzer(
+                query=query,
+                schema_branch=schema_branch,
+                query_variables=variable_values,
+                schema=graphql_params.schema,
+                operation_name=operation_name,
+                branch=branch,
+            )
+
+        await self._evaluate_permissions(
+            db=db,
+            request=request,
+            query=analyzed_query,
+            query_parameters=graphql_params,
+            account_session=account_session,
+            branch=branch,
+        )
 
         if operation_name == "IntrospectionQuery":
             nbr_object_in_schema = len(graphql_params.schema.type_map)
@@ -272,17 +282,15 @@ class InfrahubGraphQLApp:
         GRAPHQL_QUERY_HEIGHT_METRICS.labels(**labels).observe(await analyzed_query.calculate_height())
         # GRAPHQL_QUERY_VARS_METRICS.labels(**labels).observe(len(analyzed_query.variables))
         GRAPHQL_TOP_LEVEL_QUERIES_METRICS.labels(**labels).observe(analyzed_query.nbr_queries)
-        GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(
-            len(await analyzed_query.get_models_in_use(types=graphql_params.context.types))
-        )
+        GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(len(analyzed_query.query_report.impacted_models))
 
-        valid, errors = analyzed_query.is_valid
-        if not valid:
+        _, errors = analyzed_query.is_valid
+        if errors:
             GRAPHQL_QUERY_ERRORS_METRICS.labels(**labels).observe(len(errors))
 
         return json_response
 
-    def _set_labels(self, request: Request, branch: Branch, query: InfrahubGraphQLQueryAnalyzer) -> dict[str, Any]:
+    def _set_labels(self, request: Request, branch: Branch, query: InfrahubGraphQLQueryAnalyzer) -> dict[str, Any]:  # noqa: ARG002
         return {
             "type": "mutation" if query.contains_mutation else "query",
             "branch": branch.name,
@@ -293,7 +301,7 @@ class InfrahubGraphQLApp:
 
     async def _evaluate_permissions(
         self,
-        request: Request,
+        request: Request,  # noqa: ARG002
         db: InfrahubDatabase,
         query: InfrahubGraphQLQueryAnalyzer,
         query_parameters: GraphqlParams,
@@ -450,7 +458,7 @@ class InfrahubGraphQLApp:
             async for result in asyncgen:
                 payload = {"data": result.data}
                 await websocket.send_json({"type": GQL_DATA, "id": operation_id, "payload": payload})
-        except Exception as error:  # pylint: disable=broad-exception-caught
+        except Exception as error:
             if not isinstance(error, GraphQLError):
                 self.logger.error("An exception occurred in resolvers", exc_info=error)
                 error = GraphQLError(str(error), original_error=error)
@@ -471,8 +479,8 @@ async def _get_operation_from_request(request: Request) -> Union[dict[str, Any],
     if content_type == "application/json":
         try:
             return cast(Union[dict[str, Any], list[Any]], await request.json())
-        except (TypeError, ValueError):
-            raise ValueError("Request body is not a valid JSON")
+        except (TypeError, ValueError) as err:
+            raise ValueError("Request body is not a valid JSON") from err
     elif content_type == "multipart/form-data":
         return await _get_operation_from_multipart(request)
     else:
@@ -482,24 +490,24 @@ async def _get_operation_from_request(request: Request) -> Union[dict[str, Any],
 async def _get_operation_from_multipart(request: Request) -> Union[dict[str, Any], list[Any]]:
     try:
         request_body = await request.form()
-    except Exception:
-        raise ValueError("Request body is not a valid multipart/form-data")
+    except Exception as err:
+        raise ValueError("Request body is not a valid multipart/form-data") from err
 
     try:
         operations_value = request_body.get("operations")
         operations_data = operations_value if isinstance(operations_value, str) else ""
         operations = ujson.loads(operations_data)
-    except (TypeError, ValueError):
-        raise ValueError("'operations' must be a valid JSON")
-    if not isinstance(operations, (dict, list)):
+    except (TypeError, ValueError) as err:
+        raise ValueError("'operations' must be a valid JSON") from err
+    if not isinstance(operations, dict | list):
         raise ValueError("'operations' field must be an Object or an Array")
 
     try:
         map_value = request_body.get("map")
         map_data = map_value if isinstance(map_value, str) else ""
         name_path_map = ujson.loads(map_data)
-    except (TypeError, ValueError):
-        raise ValueError("'map' field must be a valid JSON")
+    except (TypeError, ValueError) as err:
+        raise ValueError("'map' field must be a valid JSON") from err
     if not isinstance(name_path_map, dict):
         raise ValueError("'map' field must be an Object")
 

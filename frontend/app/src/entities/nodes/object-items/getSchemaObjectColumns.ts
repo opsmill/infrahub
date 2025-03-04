@@ -1,18 +1,17 @@
 import {
   attributesKindForDetailsViewExclude,
-  attributesKindForListView,
   relationshipsForDetailsView,
   relationshipsForListView,
   relationshipsForTabs,
 } from "@/config/constants";
-import { iGenericSchema, iNodeSchema, profilesAtom } from "@/entities/schema/stores/schema.atom";
-import { isGenericSchema } from "@/entities/schema/utils";
-import { store } from "@/shared/stores";
+import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
+import { AttributeKind, GenericSchema, ModelSchema, NodeSchema } from "@/entities/schema/types";
+import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { sortByOrderWeight } from "@/shared/utils/common";
 import * as R from "ramda";
 
 type tgetObjectAttributes = {
-  schema: iNodeSchema | iGenericSchema | undefined;
+  schema: ModelSchema | undefined;
   forListView?: boolean;
   forQuery?: boolean;
   forProfiles?: boolean;
@@ -34,7 +33,7 @@ export const getObjectAttributes = ({
     .filter((attribute) => (forProfiles ? attribute.optional : true))
     .filter((attribute) =>
       forListView
-        ? attributesKindForListView.includes(attribute.kind)
+        ? ATTRIBUTE_KINDS_FOR_LIST_VIEW.includes(attribute.kind as AttributeKind)
         : !attributesKindForDetailsViewExclude.includes(attribute.kind)
     )
     .map((attribute) => ({
@@ -46,7 +45,7 @@ export const getObjectAttributes = ({
 };
 
 type tgetObjectRelationships = {
-  schema?: iNodeSchema | iGenericSchema;
+  schema?: NodeSchema | GenericSchema;
   forListView?: boolean;
   forQuery?: boolean;
 };
@@ -78,7 +77,7 @@ export const getObjectRelationships = ({
   return relationships;
 };
 
-export const getTabs = (schema?: iNodeSchema | iGenericSchema) => {
+export const getTabs = (schema?: NodeSchema | GenericSchema) => {
   if (!schema) {
     return [];
   }
@@ -99,7 +98,7 @@ export const getTabs = (schema?: iNodeSchema | iGenericSchema) => {
 };
 
 type tgetSchemaObjectColumns = {
-  schema?: iNodeSchema | iGenericSchema;
+  schema?: NodeSchema | GenericSchema;
   forListView?: boolean;
   forQuery?: boolean;
   limit?: number;
@@ -140,85 +139,4 @@ export const getObjectTabs = (tabs: any[], data: any) => {
     ...tab,
     count: data[tab.name]?.count,
   }));
-};
-
-// Include current value in the options to make it available in the select component
-export const getRelationshipOptions = (row: any, field: any, schemas: any[], generics: any[]) => {
-  const value = row && (row[field.name]?.node ?? row[field.name]);
-
-  if (value?.edges) {
-    return value.edges.map((edge: any) => ({
-      name: edge.node.display_label,
-      id: edge.node.id,
-    }));
-  }
-
-  const generic = generics.find((generic: any) => generic.kind === field.peer);
-
-  if (generic) {
-    const options = (generic.used_by || []).map((name: string) => {
-      const profiles = store.get(profilesAtom);
-
-      const relatedSchema = [...schemas, ...profiles].find((s: any) => s.kind === name);
-
-      if (relatedSchema) {
-        return {
-          id: name,
-          name: relatedSchema.name,
-        };
-      }
-    });
-
-    return options;
-  }
-
-  if (!value) {
-    return [];
-  }
-
-  const option = {
-    name: value.display_label,
-    id: value.id,
-  };
-
-  // Initial option for relationships to make the current value available
-  return [option];
-};
-
-type tgetOptionsFromRelationship = {
-  options: any[];
-  schemas?: any;
-  generic?: any;
-  peerField?: string;
-};
-
-export const getOptionsFromRelationship = ({
-  options,
-  schemas,
-  generic,
-  peerField,
-}: tgetOptionsFromRelationship) => {
-  if (!generic) {
-    return options.map((option: any) => ({
-      name: peerField ? (option[peerField]?.value ?? option[peerField]) : option.display_label,
-      id: option.id,
-      kind: option.__typename,
-    }));
-  }
-
-  if (generic) {
-    return (generic.used_by || []).map((name: string) => {
-      const relatedSchema = schemas.find((s: any) => s.kind === name);
-
-      if (relatedSchema) {
-        return {
-          name: relatedSchema.name,
-          id: name,
-          kind: relatedSchema.kind,
-        };
-      }
-    });
-  }
-
-  return [];
 };

@@ -13,7 +13,7 @@ from pydantic import (
 from starlette.responses import JSONResponse
 
 from infrahub import lock
-from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db, get_permission_manager
+from infrahub.api.dependencies import get_branch_dep, get_context, get_current_user, get_db, get_permission_manager
 from infrahub.api.exceptions import SchemaNotValidError
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
@@ -25,7 +25,7 @@ from infrahub.core.models import (  # noqa: TC001
     SchemaDiff,
     SchemaUpdateValidationResult,
 )
-from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, SchemaRoot
+from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, SchemaRoot, TemplateSchema
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
 from infrahub.core.validators.models.validate_migration import (
     SchemaValidateMigrationData,
@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.auth import AccountSession
+    from infrahub.context import InfrahubContext
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.permissions import PermissionManager
     from infrahub.services import InfrahubServices
@@ -86,11 +87,17 @@ class APIProfileSchema(ProfileSchema, APISchemaMixin):
     hash: str
 
 
+class APITemplateSchema(TemplateSchema, APISchemaMixin):
+    api_kind: str | None = Field(default=None, alias="kind", validate_default=True)
+    hash: str
+
+
 class SchemaReadAPI(BaseModel):
     main: str = Field(description="Main hash for the entire schema")
     nodes: list[APINodeSchema] = Field(default_factory=list)
     generics: list[APIGenericSchema] = Field(default_factory=list)
     profiles: list[APIProfileSchema] = Field(default_factory=list)
+    templates: list[APITemplateSchema] = Field(default_factory=list)
     namespaces: list[SchemaNamespace] = Field(default_factory=list)
 
 
@@ -190,6 +197,11 @@ async def get_schema(
             for value in all_schemas
             if isinstance(value, ProfileSchema) and value.namespace != "Internal"
         ],
+        templates=[
+            APITemplateSchema.from_schema(value)
+            for value in all_schemas
+            if isinstance(value, TemplateSchema) and value.namespace != "Internal"
+        ],
         namespaces=schema_branch.get_namespaces(),
     )
 
@@ -206,15 +218,16 @@ async def get_schema_summary(
 @router.get("/{schema_kind}")
 async def get_schema_by_kind(
     schema_kind: str, branch: Branch = Depends(get_branch_dep), _: AccountSession = Depends(get_current_user)
-) -> APIProfileSchema | APINodeSchema | APIGenericSchema:
+) -> APIProfileSchema | APINodeSchema | APIGenericSchema | APITemplateSchema:
     log.debug("schema_kind_request", branch=branch.name)
 
     schema = registry.schema.get(name=schema_kind, branch=branch, duplicate=False)
 
-    api_schema: dict[str, type[APIProfileSchema | APINodeSchema | APIGenericSchema]] = {
+    api_schema: dict[str, type[APIProfileSchema | APINodeSchema | APIGenericSchema | APITemplateSchema]] = {
         "profile": APIProfileSchema,
         "node": APINodeSchema,
         "generic": APIGenericSchema,
+        "template": APITemplateSchema,
     }
     key = ""
 
@@ -224,6 +237,8 @@ async def get_schema_by_kind(
         key = "node"
     if isinstance(schema, GenericSchema):
         key = "generic"
+    if isinstance(schema, TemplateSchema):
+        key = "template"
 
     return api_schema[key].from_schema(schema=schema)
 
@@ -269,6 +284,7 @@ async def load_schema(
     branch: Branch = Depends(get_branch_dep),
     account_session: AccountSession = Depends(get_current_user),
     permission_manager: PermissionManager = Depends(get_permission_manager),
+    context: InfrahubContext = Depends(get_context),
 ) -> SchemaUpdate:
     permission_manager.raise_for_permission(
         permission=GlobalPermission(
@@ -317,6 +333,7 @@ async def load_schema(
         )
         responses = await service.workflow.execute_workflow(
             workflow=SCHEMA_VALIDATE_MIGRATION,
+            context=context,
             expected_return=list[SchemaValidatorPathResponseData],
             parameters={"message": validate_migration_data},
         )
@@ -361,6 +378,7 @@ async def load_schema(
         )
         migration_error_msgs = await service.workflow.execute_workflow(
             workflow=SCHEMA_APPLY_MIGRATION,
+            context=context,
             expected_return=list[str],
             parameters={"message": apply_migration_data},
         )
@@ -373,9 +391,15 @@ async def load_schema(
     log_data = get_log_data()
     request_id = log_data.get("request_id", "")
     event = SchemaUpdatedEvent(
-        branch=branch.name,
+        branch_name=branch.name,
         schema_hash=branch.active_schema_hash.main,
-        meta=EventMeta(initiator_id=WORKER_IDENTITY, request_id=request_id, account_id=account_session.account_id),
+        meta=EventMeta(
+            initiator_id=WORKER_IDENTITY,
+            request_id=request_id,
+            account_id=account_session.account_id,
+            branch=branch,
+            context=context,
+        ),
     )
     await service.event.send(event=event)
 
@@ -387,6 +411,7 @@ async def check_schema(
     request: Request,
     schemas: SchemasLoadAPI,
     branch: Branch = Depends(get_branch_dep),
+    context: InfrahubContext = Depends(get_context),
     _: AccountSession = Depends(get_current_user),
 ) -> JSONResponse:
     service: InfrahubServices = request.app.state.service
@@ -413,6 +438,7 @@ async def check_schema(
     )
     responses = await service.workflow.execute_workflow(
         workflow=SCHEMA_VALIDATE_MIGRATION,
+        context=context,
         expected_return=list[SchemaValidatorPathResponseData],
         parameters={"message": validate_migration_data},
     )

@@ -117,6 +117,9 @@ const sidebars: SidebarsConfig = {
         'topics/transformation',
         'topics/auth',
         'topics/computed-attributes',
+        'topics/activity-log',
+        'topics/infrahub-event',
+        'topics/tasks',
       ],
     },
     {
@@ -159,7 +162,8 @@ const sidebars: SidebarsConfig = {
           ],
         },
         'reference/configuration',
-        'reference/git-agent',
+        'reference/task-worker',
+        'reference/infrahub-events',
         'reference/message-bus-events',
         'reference/api-server',
         'reference/dotinfrahub',
@@ -208,6 +212,7 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_2_0',
             'release-notes/infrahub/release-1_1_7',
             'release-notes/infrahub/release-1_1_6',
             'release-notes/infrahub/release-1_1_5',

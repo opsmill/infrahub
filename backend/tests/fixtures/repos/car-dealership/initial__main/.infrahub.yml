@@ -29,6 +29,9 @@ python_transforms:
   - name: CarSpecMarkdown
     class_name: CarSpecMarkdown
     file_path: "transforms/car_spec_markdown.py"
+  - name: WebhookTransformer
+    class_name: WebhookTransformer
+    file_path: "transforms/webhook_transformer.py"
 
 artifact_definitions:
   - name: "Ownership report"

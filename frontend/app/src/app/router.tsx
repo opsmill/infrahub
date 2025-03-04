@@ -5,17 +5,19 @@ import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_ROUTE, IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-router";
+import { ReactRouter7Adapter } from "@/shared/lib/use-query-params";
 import queryString from "query-string";
-import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router-dom";
+import { Navigate, Outlet, UIMatch, createBrowserRouter } from "react-router";
 import { QueryParamProvider } from "use-query-params";
-import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 
 export const router = createBrowserRouter([
   {
     path: "",
+    errorElement: <ErrorBoundaryRouter />,
     element: (
       <QueryParamProvider
-        adapter={ReactRouter6Adapter}
+        adapter={ReactRouter7Adapter}
         options={{
           searchStringToObject: queryString.parse,
           objectToSearchString: queryString.stringify,
@@ -67,6 +69,37 @@ export const router = createBrowserRouter([
                         return {
                           type: "branch",
                           value: match.params["*"],
+                        };
+                      },
+                    },
+                  },
+                ],
+              },
+              {
+                path: "/activities",
+                handle: {
+                  breadcrumb: () => {
+                    return {
+                      type: "link",
+                      label: "Activities",
+                      to: constructPath("/activities"),
+                    };
+                  },
+                },
+                children: [
+                  {
+                    index: true,
+                    lazy: () => import("@/pages/activities"),
+                  },
+                  {
+                    path: ":activityid",
+                    lazy: () => import("@/pages/activities/details"),
+                    handle: {
+                      breadcrumb: (match: UIMatch) => {
+                        return {
+                          type: "id",
+                          value: match.params.activityid,
+                          link: "/activities",
                         };
                       },
                     },

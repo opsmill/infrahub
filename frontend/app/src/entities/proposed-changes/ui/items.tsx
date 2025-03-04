@@ -17,11 +17,11 @@ import { ProposedChangesCounter } from "@/entities/proposed-changes/ui/counter";
 import { ProposedChangeDiffSummary } from "@/entities/proposed-changes/ui/diff-summary";
 import { ProposedChangesInfo } from "@/entities/proposed-changes/ui/item-info";
 import { ProposedChangesReviewers } from "@/entities/proposed-changes/ui/reviewers";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { TabsButtons } from "@/shared/components/buttons/tabs-buttons";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -29,7 +29,7 @@ import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-inp
 import { classNames, debounce } from "@/shared/utils/common";
 import { NetworkStatus } from "@apollo/client";
 import { useState } from "react";
-import { Link, LinkProps, useNavigate } from "react-router-dom";
+import { Link, LinkProps, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { getPermission } from "../../permission/utils";
@@ -79,7 +79,7 @@ export const ProposedChangesPage = () => {
   }
 
   if (networkStatus === NetworkStatus.loading && !data) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="h-full" />;
   }
 
   const proposedChangesData = data?.[PROPOSED_CHANGES_OBJECT];

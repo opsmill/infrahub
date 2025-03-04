@@ -2,11 +2,14 @@ import {
   RelationshipManyType,
   RelationshipOneType,
 } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NodeObject } from "@/entities/nodes/types";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema } from "@/entities/schema/types";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
 import { store } from "@/shared/stores";
-import { describe, expect } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { generateNodeSchema } from "../../../../../tests/fake/schema";
 
 const buildRelationshipOneData = (override: Partial<RelationshipOneType>): RelationshipOneType => ({
   node: {
@@ -25,14 +28,24 @@ const buildRelationshipOneData = (override: Partial<RelationshipOneType>): Relat
   ...override,
 });
 
+vi.mock("@/entities/schema/domain/get-schema", () => ({
+  getSchema: vi.fn(() => ({
+    schema: generateNodeSchema(),
+    isGeneric: false,
+    isNode: true,
+    isProfile: false,
+  })),
+}));
+
 describe("getRelationshipDefaultValue", () => {
   describe("when cardinality one", () => {
     it("returns null if there is no relationship", () => {
       // GIVEN
       const relationshipData = undefined;
+      const objectTemplate = null;
 
       // WHEN
-      const defaultValue = getRelationshipDefaultValue({ relationshipData });
+      const defaultValue = getRelationshipDefaultValue({ relationshipData, objectTemplate });
 
       // THEN
       expect(defaultValue).to.deep.equal({ source: null, value: null });
@@ -41,9 +54,10 @@ describe("getRelationshipDefaultValue", () => {
     it("returns user defined relationship", () => {
       // GIVEN
       const relationshipData = buildRelationshipOneData({ properties: { source: null } });
+      const objectTemplate = null;
 
       // WHEN
-      const defaultValue = getRelationshipDefaultValue({ relationshipData });
+      const defaultValue = getRelationshipDefaultValue({ relationshipData, objectTemplate });
 
       // THEN
       expect(defaultValue).to.deep.equal({
@@ -58,8 +72,8 @@ describe("getRelationshipDefaultValue", () => {
 
     it("returns relationship from pool", () => {
       // GIVEN
-      store.set(schemaState, [
-        { kind: "FakeResourcePool", inherit_from: [RESOURCE_GENERIC_KIND] } as iNodeSchema,
+      store.set(nodeSchemasAtom, [
+        { kind: "FakeResourcePool", inherit_from: [RESOURCE_GENERIC_KIND] } as NodeSchema,
       ]);
 
       const relationshipData = buildRelationshipOneData({
@@ -71,9 +85,10 @@ describe("getRelationshipDefaultValue", () => {
           },
         },
       });
+      const objectTemplate = null;
 
       // WHEN
-      const defaultValue = getRelationshipDefaultValue({ relationshipData });
+      const defaultValue = getRelationshipDefaultValue({ relationshipData, objectTemplate });
 
       // THEN
       expect(defaultValue).to.deep.equal({
@@ -90,15 +105,84 @@ describe("getRelationshipDefaultValue", () => {
         },
       });
     });
+
+    it("returns relationship from template when no relationship data is provided", () => {
+      // GIVEN
+      const relationshipData = undefined;
+      const relationshipName = "testRelationship";
+      const objectTemplate: NodeObject = {
+        id: "template-id" as any,
+        display_label: "Template Object" as any,
+        __typename: "TemplateType" as any,
+        testRelationship: {
+          node: {
+            id: "template-rel-id",
+            display_label: "Template Relationship",
+            __typename: "TemplateRelationship",
+          },
+        },
+      };
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        relationshipName,
+      });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "template",
+          label: "Template Object",
+          kind: "TemplateType",
+          id: "template-id",
+        },
+        value: {
+          id: "template-rel-id",
+          display_label: "Template Relationship",
+          __typename: "TemplateRelationship",
+        },
+      });
+    });
+
+    it("returns default form field value when template exists but relationship name is not found", () => {
+      // GIVEN
+      const relationshipData = undefined;
+      const relationshipName = "nonExistentRelationship";
+      const objectTemplate: NodeObject = {
+        id: "template-id" as any,
+        display_label: "Template Object" as any,
+        __typename: "TemplateType" as any,
+        testRelationship: {
+          node: {
+            id: "template-rel-id",
+            display_label: "Template Relationship",
+            __typename: "TemplateRelationship",
+          },
+        },
+      };
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        relationshipName,
+      });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({ source: null, value: null });
+    });
   });
 
   describe("when cardinality many", () => {
-    it("returns null is there is no relationship", () => {
+    it("returns empty array if there are no relationships", () => {
       // GIVEN
       const relationshipData: RelationshipManyType = { edges: [] };
+      const objectTemplate = null;
 
       // WHEN
-      const defaultValue = getRelationshipDefaultValue({ relationshipData });
+      const defaultValue = getRelationshipDefaultValue({ relationshipData, objectTemplate });
 
       // THEN
       expect(defaultValue).to.deep.equal({ source: { type: "user" }, value: [] });
@@ -109,9 +193,10 @@ describe("getRelationshipDefaultValue", () => {
       const relationshipData: RelationshipManyType = {
         edges: [buildRelationshipOneData({ properties: { source: null } })],
       };
+      const objectTemplate = null;
 
       // WHEN
-      const defaultValue = getRelationshipDefaultValue({ relationshipData });
+      const defaultValue = getRelationshipDefaultValue({ relationshipData, objectTemplate });
 
       // THEN
       expect(defaultValue).to.deep.equal({
@@ -124,6 +209,87 @@ describe("getRelationshipDefaultValue", () => {
           },
         ],
       });
+    });
+
+    it("returns relationships from template with cardinality many", () => {
+      // GIVEN
+      const relationshipData = undefined;
+      const relationshipName = "manyRelationship";
+      const objectTemplate: NodeObject = {
+        id: "template-id" as any,
+        display_label: "Template Object" as any,
+        __typename: "TemplateType" as any,
+        manyRelationship: {
+          edges: [
+            {
+              node: {
+                id: "template-rel-id-1",
+                display_label: "Template Relationship 1",
+                __typename: "TemplateRelationship",
+              },
+            },
+            {
+              node: {
+                id: "template-rel-id-2",
+                display_label: "Template Relationship 2",
+                __typename: "TemplateRelationship",
+              },
+            },
+          ],
+        },
+      };
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        relationshipName,
+      });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "template",
+          label: "Template Object",
+          kind: "TemplateType",
+          id: "template-id",
+        },
+        value: [
+          {
+            id: "template-rel-id-1",
+            display_label: "Template Relationship 1",
+            __typename: "TemplateRelationship",
+          },
+          {
+            id: "template-rel-id-2",
+            display_label: "Template Relationship 2",
+            __typename: "TemplateRelationship",
+          },
+        ],
+      });
+    });
+  });
+
+  describe("filter form", () => {
+    it("returns null values when isFilterForm is true", () => {
+      // GIVEN
+      const relationshipData = buildRelationshipOneData({ properties: { source: null } });
+      const objectTemplate = {
+        id: "template-id",
+        display_label: "Template Object",
+        __typename: "TemplateType",
+      } as NodeObject;
+      const isFilterForm = true;
+
+      // WHEN
+      const defaultValue = getRelationshipDefaultValue({
+        relationshipData,
+        objectTemplate,
+        isFilterForm,
+      });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({ source: null, value: null });
     });
   });
 });

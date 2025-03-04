@@ -33,12 +33,12 @@ class Migration014(GraphMigration):
             try:
                 ts.manager.index.init(nodes=[INDEX_TO_DELETE], rels=[])
                 await ts.manager.index.drop()
-            except Exception as exc:  # pylint: disable=broad-exception-caught
+            except Exception as exc:
                 result.errors.append(str(exc))
                 return result
 
         return result
 
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         result = MigrationResult()
         return result

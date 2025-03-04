@@ -1,12 +1,16 @@
 from uuid import uuid4
 
+from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
+from infrahub.events.node_action import NodeMutatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.services import InfrahubServices
+from tests.adapters.event import MemoryInfrahubEvent
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import TICKET
@@ -33,6 +37,7 @@ async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpsert"]["ok"] is True
 
     obj1 = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
@@ -60,11 +65,79 @@ async def test_upsert_existing_simple_object_by_default_filter(
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpsert"]["ok"] is True
 
     obj1 = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
     assert obj1.name.value == "John"
     assert obj1.height.value == 138
+
+
+async def test_upsert_event_on_no_change(
+    db: InfrahubDatabase,
+    car_person_schema: Node,
+    branch: Branch,
+    enable_broker_config: None,
+    session_first_account: AccountSession,
+) -> None:
+    query = """
+    mutation {
+        TestPersonUpsert(data: {name: { value: "Howard"}, height: {value: 174}}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch, service=service, account_session=session_first_account
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["TestPersonUpsert"]["ok"] is True
+    howard_id = result.data["TestPersonUpsert"]["object"]["id"]
+
+    obj1 = await NodeManager.get_one(db=db, id=howard_id, branch=branch)
+    assert obj1.name.value == "Howard"
+    assert obj1.height.value == 174
+
+    assert gql_params.context.background
+    await gql_params.context.background()
+    assert len(memory_event.events) == 1
+    event = memory_event.events[0]
+    assert isinstance(event, NodeMutatedEvent)
+    assert sorted(event.data.attributes.keys()) == ["height", "name"]
+
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    gql_params = await prepare_graphql_params(
+        db=db, include_subscription=False, branch=branch, service=service, account_session=session_first_account
+    )
+    result_second_time = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result_second_time.errors is None
+    assert result_second_time.data
+    assert result_second_time.data["TestPersonUpsert"]["ok"] is True
+
+    assert gql_params.context.background
+    await gql_params.context.background()
+    assert len(memory_event.events) == 0
 
 
 async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_john_main, branch: Branch):
@@ -89,6 +162,7 @@ async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_jo
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpsert"]["ok"] is True
 
     person_id = result.data["TestPersonUpsert"]["object"]["id"]
@@ -120,6 +194,7 @@ async def test_upsert_create_simple_object_with_id(db: InfrahubDatabase, person_
     )
 
     assert result.errors is None
+    assert result.data
     assert result.data["TestPersonUpsert"]["ok"] is True
 
     person_id = result.data["TestPersonUpsert"]["object"]["id"]
@@ -151,6 +226,7 @@ async def test_cannot_upsert_new_object_without_required_fields(db: InfrahubData
     )
 
     expected_error = "Field 'TestPersonUpsertInput.name' of required type 'TextAttributeUpdate!' was not provided."
+    assert result.errors
     assert any(expected_error in error.message for error in result.errors)
 
     assert await NodeManager.get_one(db=db, id=fresh_id, branch=branch) is None
@@ -179,6 +255,7 @@ async def test_id_for_other_schema_raises_error(
     )
 
     expected_error = f"Node with id {car_accord_main.id} exists, but it is a TestCar, not TestPerson"
+    assert result.errors
     assert any(expected_error in error.message for error in result.errors)
 
 
@@ -205,6 +282,7 @@ async def test_update_by_id_to_nonunique_value_raises_error(
     )
 
     expected_error = "Violates uniqueness constraint 'name' at name"
+    assert result.errors
     assert any(expected_error in error.message for error in result.errors)
 
 
@@ -251,6 +329,7 @@ async def test_with_hfid_existing(db: InfrahubDatabase, default_branch, animal_p
         variable_values={},
     )
     assert result.errors is None
+    assert result.data
     assert result.data["TestDogUpsert"]["ok"] is True
     assert result.data["TestDogUpsert"]["object"] == {"color": {"value": "black"}, "id": dog1.id}
 
@@ -305,6 +384,7 @@ async def test_with_hfid_new(db: InfrahubDatabase, default_branch, animal_person
         variable_values={},
     )
     assert result.errors is None
+    assert result.data
     assert result.data["TestDogUpsert"]["ok"] is True
     new_id = result.data["TestDogUpsert"]["object"]["id"]
     assert result.data["TestDogUpsert"]["object"] == {

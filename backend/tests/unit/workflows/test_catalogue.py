@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.workflows import catalogue
-from infrahub.workflows.catalogue import automation_setup_workflows, worker_pools, workflows
+from infrahub.workflows.catalogue import worker_pools, workflows
 
 if TYPE_CHECKING:
     from infrahub.workflows.models import WorkflowDefinition
@@ -15,13 +15,13 @@ if TYPE_CHECKING:
 @pytest.mark.parametrize("workflow", [pytest.param(workflow, id=workflow.name) for workflow in workflows])
 def test_workflow_definition(workflow: WorkflowDefinition) -> None:
     """Validate that we can import the function for each workflow."""
-    workflow.validate_workflow()
+    workflow.load_function()
 
 
 @pytest.mark.parametrize("workflow", [pytest.param(workflow, id=workflow.name) for workflow in workflows])
 def test_workflow_definition_matches(workflow: WorkflowDefinition) -> None:
     """Validate that the name of the workflow matches the name of the flow"""
-    flow = workflow.get_function()
+    flow = workflow.load_function()
     assert hasattr(flow, "name")
     assert workflow.name == flow.name
 
@@ -41,11 +41,3 @@ def test_workflows_sorted() -> None:
         if worker_pool in ordered_workflows:
             ordered_workflows.remove(worker_pool)
     assert ordered_workflows == workflows, "The list of workflows isn't sorted alphabetically"
-
-
-def test_automation_setup_workflows_sorted() -> None:
-    workflow_names = sorted(name for name in dir(catalogue) if name.isupper() and name.startswith("AUTOMATION_"))
-    ordered_workflows = [getattr(catalogue, name) for name in workflow_names]
-    assert (
-        ordered_workflows == automation_setup_workflows
-    ), "The list of automation workflows isn't sorted alphabetically"

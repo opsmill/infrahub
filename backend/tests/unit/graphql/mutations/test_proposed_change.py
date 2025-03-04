@@ -2,7 +2,7 @@ from uuid import uuid4
 
 from prefect.client.orchestration import get_client
 
-from infrahub.auth import AccountSession
+from infrahub.auth import AccountSession, AuthType
 from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind
 from infrahub.core.initialization import create_branch
@@ -19,9 +19,8 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workflows.initialization import setup_deployments, setup_worker_pools
 from tests.adapters.cache import MemoryCache
-from tests.adapters.message_bus import BusRecorder
+from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.graphql import graphql, graphql_mutation
-from tests.helpers.utils import init_global_service
 
 CREATE_PROPOSED_CHANGE = """
 mutation ProposedChange(
@@ -128,7 +127,9 @@ async def test_create_invalid_branch_combinations(db: InfrahubDatabase, default_
     )
 
 
-async def test_trigger_proposed_change(db: InfrahubDatabase, register_core_models_schema: None):
+async def test_trigger_proposed_change(
+    db: InfrahubDatabase, register_core_models_schema: None, create_test_admin: Node
+) -> None:
     branch_name = "triggered-proposed-change"
     source_branch = Branch(name=branch_name)
     await source_branch.save(db=db)
@@ -137,33 +138,46 @@ async def test_trigger_proposed_change(db: InfrahubDatabase, register_core_model
     await proposed_change.new(db=db, name="change123", destination_branch="main", source_branch=branch_name)
     await proposed_change.save(db=db)
     all_recorder = BusRecorder()
-    service = InfrahubServices(database=db, message_bus=all_recorder)
+    service = await InfrahubServices.new(database=db, message_bus=all_recorder)
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+    )
     all_result = await graphql_mutation(
-        query=RUN_CHECK, db=db, variables={"proposed_change": proposed_change.id}, service=service
+        query=RUN_CHECK,
+        db=db,
+        variables={"proposed_change": proposed_change.id},
+        service=service,
+        account_session=account_session,
     )
     assert all_result.data
     assert not all_result.errors
 
     artifact_recorder = BusRecorder()
-    service = InfrahubServices(database=db, message_bus=artifact_recorder)
+    service = await InfrahubServices.new(database=db, message_bus=artifact_recorder)
     artifact_result = await graphql_mutation(
         query=RUN_CHECK,
         db=db,
         variables={"proposed_change": proposed_change.id, "check_type": "ARTIFACT"},
         service=service,
+        account_session=account_session,
     )
 
     update_status = await graphql_mutation(
-        query=UPDATE_PROPOSED_CHANGE, db=db, variables={"proposed_change": proposed_change.id, "state": "canceled"}
+        query=UPDATE_PROPOSED_CHANGE,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "canceled"},
+        service=service,
+        account_session=account_session,
     )
 
     cancelled_recorder = BusRecorder()
-    service = InfrahubServices(database=db, message_bus=cancelled_recorder)
+    service = await InfrahubServices.new(database=db, message_bus=cancelled_recorder)
     canceled_result = await graphql_mutation(
         query=RUN_CHECK,
         db=db,
         variables={"proposed_change": proposed_change.id, "check_type": "DATA"},
         service=service,
+        account_session=account_session,
     )
 
     assert len(all_recorder.messages) == 1
@@ -195,8 +209,13 @@ async def test_update_merged_proposed_change(db: InfrahubDatabase, register_core
     )
     await proposed_change.save(db=db)
 
+    service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
+
     update_status = await graphql_mutation(
-        query=UPDATE_PROPOSED_CHANGE, db=db, variables={"proposed_change": proposed_change.id, "state": "canceled"}
+        query=UPDATE_PROPOSED_CHANGE,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "canceled"},
+        service=service,
     )
 
     assert update_status.errors
@@ -209,52 +228,52 @@ async def test_merge_proposed_change_permission_failure(
     session_first_account: AccountSession,
     session_admin: AccountSession,
 ):
-    service = InfrahubServices(
+    service = await InfrahubServices.new(
         database=db, message_bus=BusRecorder(), workflow=WorkflowLocalExecution(), cache=MemoryCache()
     )
-    await service.component.initialize(service=service)
     async with get_client(sync_client=False) as client:
         await setup_worker_pools(client=client)
         await setup_deployments(client)
 
-    with init_global_service(service):
-        registry.permission_backends = [LocalPermissionBackend()]
+    registry.permission_backends = [LocalPermissionBackend()]
 
-        branch_name = "merge-proposed-change-perm"
-        branch = await create_branch(branch_name=branch_name, db=db)
-        await service.cache.set(
-            key=f"workers:schema_hash:branch:{str(branch.get_uuid)}:{service.component_type.value}:worker:{WORKER_IDENTITY}",
-            value=branch.active_schema_hash.main,
-            expires=KVTTL.TWO_HOURS,
-        )
-        await service.cache.set(
-            key=f"workers:active:{service.component_type.value}:worker:{WORKER_IDENTITY}",
-            value=Timestamp().to_string(),
-            expires=KVTTL.FIFTEEN,
-        )
-        await service.component.refresh_heartbeat()
+    branch_name = "merge-proposed-change-perm"
+    branch = await create_branch(branch_name=branch_name, db=db)
+    await service.cache.set(
+        key=f"workers:schema_hash:branch:{str(branch.get_uuid)}:{service.component_type.value}:worker:{WORKER_IDENTITY}",
+        value=branch.active_schema_hash.main,
+        expires=KVTTL.TWO_HOURS,
+    )
+    await service.cache.set(
+        key=f"workers:active:{service.component_type.value}:worker:{WORKER_IDENTITY}",
+        value=Timestamp().to_string(),
+        expires=KVTTL.FIFTEEN,
+    )
+    await service.component.refresh_heartbeat()
 
-        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
-        await proposed_change.new(
-            db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
-        )
-        await proposed_change.save(db=db)
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(
+        db=db, name="pc-merge-perm-1234", destination_branch="main", source_branch=branch_name, state="open"
+    )
+    await proposed_change.save(db=db)
 
-        update_status = await graphql_mutation(
-            query=UPDATE_PROPOSED_CHANGE,
-            db=db,
-            variables={"proposed_change": proposed_change.id, "state": "merged"},
-            account_session=session_first_account,
-        )
+    update_status = await graphql_mutation(
+        query=UPDATE_PROPOSED_CHANGE,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "merged"},
+        account_session=session_first_account,
+        service=service,
+    )
 
-        assert update_status.errors
-        assert update_status.errors[0].message == "You are not allowed to merge proposed changes"
+    assert update_status.errors
+    assert update_status.errors[0].message == "You are not allowed to merge proposed changes"
 
-        update_status = await graphql_mutation(
-            query=UPDATE_PROPOSED_CHANGE,
-            db=db,
-            variables={"proposed_change": proposed_change.id, "state": "merged"},
-            account_session=session_admin,
-        )
+    update_status = await graphql_mutation(
+        query=UPDATE_PROPOSED_CHANGE,
+        db=db,
+        variables={"proposed_change": proposed_change.id, "state": "merged"},
+        account_session=session_admin,
+        service=service,
+    )
 
-        assert not update_status.errors
+    assert not update_status.errors

@@ -2,7 +2,7 @@ import IpNamespaceSelector from "@/entities/ipam/ip-namespace-selector";
 import IpamTree from "@/entities/ipam/ipam-tree/ipam-tree";
 import Content from "@/shared/components/layout/content";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { Outlet } from "react-router-dom";
+import { Outlet } from "react-router";
 
 function IpamLayout() {
   return (

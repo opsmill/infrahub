@@ -13,14 +13,14 @@ from infrahub.core import registry, utils
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GRAPH_SCHEMA
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 
 TELEMETRY_KIND: str = "community"
 TELEMETRY_VERSION: str = "20240524"
 
 
-@task(name="telemetry-gather-db", task_run_name="Gather Database Information", cache_policy=NONE)
-async def gather_database_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
+@task(name="telemetry-gather-db", task_run_name="Gather Database Information", cache_policy=NONE)  # type: ignore[arg-type]
+async def gather_database_information(service: InfrahubServices) -> dict:
     async with service.database.start_session() as db:
         data: dict[str, Any] = {
             "database_type": db.db_type.value,
@@ -37,8 +37,8 @@ async def gather_database_information(service: InfrahubServices, branch: Branch)
         return data
 
 
-@task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)
-async def gather_schema_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
+@task(name="telemetry-schema-information", task_run_name="Gather Schema Information", cache_policy=NONE)  # type: ignore[arg-type]
+async def gather_schema_information(branch: Branch) -> dict:
     data: dict[str, Any] = {}
     main_schema = registry.schema.get_schema_branch(name=branch.name)
     data["node_count"] = len(main_schema.node_names)
@@ -48,8 +48,8 @@ async def gather_schema_information(service: InfrahubServices, branch: Branch) -
     return data
 
 
-@task(name="telemetry-feature-information", task_run_name="Gather Feature Information", cache_policy=NONE)
-async def gather_feature_information(service: InfrahubServices, branch: Branch) -> dict:  # pylint: disable=unused-argument
+@task(name="telemetry-feature-information", task_run_name="Gather Feature Information", cache_policy=NONE)  # type: ignore[arg-type]
+async def gather_feature_information(service: InfrahubServices) -> dict:
     async with service.database.start_session() as db:
         data = {}
         features_to_count = [
@@ -67,7 +67,7 @@ async def gather_feature_information(service: InfrahubServices, branch: Branch) 
         return data
 
 
-@task(name="telemetry-gather-data", task_run_name="Gather Anonynous Data", cache_policy=NONE)
+@task(name="telemetry-gather-data", task_run_name="Gather Anonynous Data", cache_policy=NONE)  # type: ignore[arg-type]
 async def gather_anonymous_telemetry_data(service: InfrahubServices) -> dict:
     start_time = time.time()
 
@@ -87,9 +87,9 @@ async def gather_anonymous_telemetry_data(service: InfrahubServices) -> dict:
         "branches": {
             "total": len(registry.branch),
         },
-        "features": await gather_feature_information(service=service, branch=default_branch),
-        "schema": await gather_schema_information(service=service, branch=default_branch),
-        "database": await gather_database_information(service=service, branch=default_branch),
+        "features": await gather_feature_information(service=service),
+        "schema": await gather_schema_information(branch=default_branch),
+        "database": await gather_database_information(service=service),
     }
 
     data["execution_time"] = time.time() - start_time
@@ -97,7 +97,7 @@ async def gather_anonymous_telemetry_data(service: InfrahubServices) -> dict:
     return data
 
 
-@task(name="telemetry-post-data", task_run_name="Upload data", retries=5, cache_policy=NONE)
+@task(name="telemetry-post-data", task_run_name="Upload data", retries=5, cache_policy=NONE)  # type: ignore[arg-type]
 async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict[str, Any]) -> None:
     """Send the telemetry data to the specified URL, using HTTP POST."""
     response = await service.http.post(url=url, json=payload)
@@ -105,8 +105,7 @@ async def post_telemetry_data(service: InfrahubServices, url: str, payload: dict
 
 
 @flow(name="anonymous_telemetry_send", flow_run_name="Send anonymous telemetry")
-async def send_telemetry_push() -> None:
-    service = services.service
+async def send_telemetry_push(service: InfrahubServices) -> None:
     log = get_run_logger()
     if config.SETTINGS.main.telemetry_optout:
         log.info("Skipping, User opted out of this service.")

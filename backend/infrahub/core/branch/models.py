@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Branch(StandardNode):  # pylint: disable=too-many-public-methods
+class Branch(StandardNode):
     name: str = Field(
         max_length=250, min_length=3, description="Name of the branch (git ref standard)", validate_default=True
     )
@@ -274,7 +274,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
 
         for rel in rel_labels:
             filters_per_rel = []
-            for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
+            for idx in range(len(branches_times)):
                 filters_per_rel.append(
                     f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to IS NULL)"
                 )
@@ -324,7 +324,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
             params[f"time{idx}"] = time_to_query
 
         filters = []
-        for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
+        for idx in range(len(branches_times)):
             filters.append(
                 f"({variable_name}.branch IN $branch{idx} AND {variable_name}.from <= $time{idx} AND {variable_name}.to IS NULL)"
             )
@@ -404,7 +404,7 @@ class Branch(StandardNode):  # pylint: disable=too-many-public-methods
 
         for rel in rel_labels:
             filters_per_rel = []
-            for idx, branch_name in enumerate(start_times.keys()):
+            for idx in range(len(start_times)):
                 filters_per_rel.extend(
                     [
                         f"""({rel}.branch = $branch{idx}

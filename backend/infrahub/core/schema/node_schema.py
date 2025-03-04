@@ -25,6 +25,10 @@ class NodeSchema(GeneratedNodeSchema):
     def is_profile_schema(self) -> bool:
         return False
 
+    @property
+    def is_template_schema(self) -> bool:
+        return False
+
     def validate_inheritance(self, interface: GenericSchema) -> None:
         """Perform checks specific to inheritance from Generics.
 

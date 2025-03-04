@@ -148,6 +148,10 @@ class CoreMenu(CoreNode):
     children: RelationshipManager
 
 
+class CoreObjectTemplate(CoreNode):
+    template_name: String
+
+
 class CoreProfile(CoreNode):
     profile_name: String
     profile_priority: IntegerOptional
@@ -193,6 +197,8 @@ class CoreValidator(CoreNode):
 
 class CoreWebhook(CoreNode):
     name: String
+    event_type: Enum
+    branch_scope: Dropdown
     description: StringOptional
     url: URL
     validate_certificates: BooleanOptional

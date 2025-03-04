@@ -1,33 +1,38 @@
 import { QSP } from "@/config/qsp";
 import { ADD_RELATIONSHIP } from "@/entities/nodes/relationships/api/addRelationship";
 import { Permission } from "@/entities/permission/types";
-import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { useMutation } from "@/shared/api/graphql/useQuery";
+import { queryClient } from "@/shared/api/rest/client";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
-import { SelectOption } from "@/shared/components/inputs/select";
+import { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 
 interface RelationshipsButtonsProps {
   permission: Permission;
+  schema: ModelSchema;
 }
 
-export function RelationshipsButtons({ permission }: RelationshipsButtonsProps) {
+export function RelationshipsButtons({
+  permission,
+  schema: parentSchema,
+}: RelationshipsButtonsProps) {
   const { objectKind, objectid } = useParams();
   const [addRelationship] = useMutation(ADD_RELATIONSHIP);
-  const generics = useAtomValue(genericsState);
-  const schemaList = useAtomValue(schemaState);
+  const generics = useAtomValue(genericSchemasAtom);
+  const schemaList = useAtomValue(nodeSchemasAtom);
   const [relationshipTab] = useQueryParam(QSP.TAB, StringParam);
 
-  const parentSchema = schemaList.find((s) => s.kind === objectKind);
   const parentGeneric = generics.find((s) => s.kind === objectKind);
   const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipTab);
   const relationshipGeneric = parentGeneric?.relationships?.find(
@@ -76,6 +81,9 @@ export function RelationshipsButtons({ permission }: RelationshipsButtonsProps) 
 
       await graphqlClient.refetchQueries({
         include: [objectKind!, `GetObjectRelationships_${objectKind}`],
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey.includes("objects"),
       });
 
       toast(

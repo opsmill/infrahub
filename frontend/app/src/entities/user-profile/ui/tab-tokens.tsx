@@ -1,48 +1,22 @@
-import { ACCOUNT_TOKEN_OBJECT } from "@/config/constants";
-import ObjectItems from "@/entities/nodes/object-items/object-items-paginated";
-import { schemaState } from "@/entities/schema/stores/schema.atom";
-import { useAtomValue } from "jotai";
-import { useState } from "react";
-import LoadingScreen from "../../../shared/components/loading-screen";
-
-import { TokenInput } from "@/shared/components/display/token-input";
-import ModalSuccess from "@/shared/components/modals/modal-success";
+import { AccountTokenCreateAction } from "@/entities/user-profile/ui/account-token-create-action";
+import { AccountTokenList } from "@/entities/user-profile/ui/account-token-list";
 
 export default function TabTokens() {
-  const [open, setOpen] = useState(false);
-  const [result, setResult] = useState();
-  const schemaList = useAtomValue(schemaState);
-  const schema = schemaList.find((schema) => schema.kind === ACCOUNT_TOKEN_OBJECT);
-
-  if (!schema) return <LoadingScreen />;
-
-  const handleSuccess = (result: any) => {
-    setOpen(true);
-    setResult(result);
-  };
-
   return (
-    <>
-      <ObjectItems schema={schema} onSuccess={handleSuccess} preventLinks />
-
-      <ModalSuccess
-        open={open}
-        title="Your API key"
-        setOpen={setOpen}
-        onConfirm={() => setOpen(false)}
-        icon="mdi:information-slab-circle-outline"
-        description={
-          <>
-            Make sure to copy your API key now.
-            <br />
-            <b>You won&apos;t be able to see it again!</b>
-          </>
-        }
-      >
-        <div className="mt-2">
-          <TokenInput value={result?.object?.token?.value} />
+    <main className="p-4">
+      <div className="flex justify-between mb-4 p-2">
+        <div>
+          <h1 className="text-xl font-semibold">Infrahub account tokens</h1>
+          <p className="text-gray-600 text-sm">
+            Account tokens can be used as an authentication mechanism for Infrahub's REST- and
+            GraphQL API, the Python SDK and infrahubctl.
+          </p>
         </div>
-      </ModalSuccess>
-    </>
+
+        <AccountTokenCreateAction />
+      </div>
+
+      <AccountTokenList />
+    </main>
   );
 }

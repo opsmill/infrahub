@@ -1,4 +1,5 @@
-import { iGenericSchema, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom, profileSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { GenericSchema } from "@/entities/schema/types";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
@@ -15,10 +16,13 @@ import useFilters from "@/shared/hooks/useFilters";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 
-export const FilterKindSelector = ({ genericSchema }: { genericSchema: iGenericSchema }) => {
+export const FilterKindSelector = ({
+  genericSchema,
+  showLabel = true,
+}: { genericSchema: GenericSchema; showLabel?: boolean }) => {
   const [activeFilters] = useFilters();
-  const availableNodes = useAtomValue(schemaState);
-  const availableProfiles = useAtomValue(profilesAtom);
+  const availableNodes = useAtomValue(nodeSchemasAtom);
+  const availableProfiles = useAtomValue(profileSchemasAtom);
   const allAvailableSchemas = [...availableNodes, ...availableProfiles];
 
   const selectedKindFilter = activeFilters.find((filter) => filter.name === "kind__value");
@@ -47,15 +51,11 @@ export const FilterKindSelector = ({ genericSchema }: { genericSchema: iGenericS
 
         return (
           <div className="flex flex-col gap-2">
-            <LabelFormField
-              label="Kind"
-              description="Select a kind to filter nodes"
-              fieldData={currentFieldValue}
-            />
+            {showLabel && <LabelFormField label="Kind" fieldData={currentFieldValue} />}
 
             <Combobox open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
               <FormInput>
-                <ComboboxTrigger>
+                <ComboboxTrigger aria-label="kind">
                   {selectedSchema && (
                     <div className="w-full flex justify-between">
                       {selectedSchema.label} <Badge>{selectedSchema.namespace}</Badge>

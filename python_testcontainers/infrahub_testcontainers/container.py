@@ -3,7 +3,6 @@ import uuid
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from typing import Optional
 
 from testcontainers.compose import DockerCompose
 from typing_extensions import Self
@@ -52,10 +51,10 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
 
 @dataclass
 class InfrahubDockerCompose(DockerCompose):
-    project_name: Optional[str] = None
+    project_name: str | None = None
 
     @classmethod
-    def init(cls, directory: Optional[Path] = None, version: Optional[str] = None) -> Self:
+    def init(cls, directory: Path | None = None, version: str | None = None) -> Self:
         if not directory:
             directory = Path.cwd()
 

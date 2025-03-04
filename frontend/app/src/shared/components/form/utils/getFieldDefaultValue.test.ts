@@ -1,13 +1,43 @@
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NodeObject } from "@/entities/nodes/types";
+import {
+  genericSchemasAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
+  templateSchemasAtom,
+} from "@/entities/schema/stores/schema.atom";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
   GetFieldDefaultValue,
   getFieldDefaultValue,
 } from "@/shared/components/form/utils/getFieldDefaultValue";
-import { describe, expect, it } from "vitest";
+import { store } from "@/shared/stores";
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  generateGenericSchema,
+  generateNodeSchema,
+  generateProfileSchema,
+  generateTemplateSchema,
+} from "../../../../../tests/fake/schema";
 import { buildAttributeSchema, buildRelationshipSchema } from "./getFormFieldsFromSchema.test";
 
 describe("getFieldDefaultValue", () => {
+  beforeEach(() => {
+    // Initialize schema store with necessary schemas for type checking
+    const nodeSchema = generateNodeSchema({ kind: "Node" });
+    const genericSchema = generateGenericSchema({ kind: "Generic" });
+    const profileSchema = generateProfileSchema({ kind: "Profile" });
+    const templateSchema = generateTemplateSchema({ kind: "Template" });
+    const fakeProfileSchema = generateProfileSchema({ kind: "FakeProfileKind" });
+    const poolSchema = generateGenericSchema({ kind: "FakePool" });
+    const fakeTemplateSchema = generateTemplateSchema({ kind: "FakeTemplateKind" });
+
+    store.set(nodeSchemasAtom, [nodeSchema]);
+    store.set(genericSchemasAtom, [genericSchema, poolSchema]);
+    store.set(profileSchemasAtom, [profileSchema, fakeProfileSchema]);
+    store.set(templateSchemasAtom, [templateSchema, fakeTemplateSchema]);
+  });
+
   describe("when source is the user", () => {
     it("returns current object field's value when value is not from profile", () => {
       // GIVEN
@@ -472,28 +502,113 @@ describe("getFieldDefaultValue", () => {
     expect(defaultValue).to.deep.equal({ source: null, value: null });
   });
 
-  it("returns object value when assigned from a pool", () => {
-    // GIVEN
-    const fieldSchema = buildAttributeSchema({ default_value: "my-default-value" });
-
-    const initialObject: Record<string, AttributeType> = {
-      field1: {
-        value: "my-default-value",
-        source: {
-          id: "pool-id",
-          display_label: "Fake pool",
-          __typename: "FakePool",
+  describe("when source is template", () => {
+    it("returns template value when provided", () => {
+      // GIVEN
+      const fieldSchema = buildAttributeSchema({ name: "field1" });
+      const objectTemplate: NodeObject = {
+        id: "template-id" as any,
+        __typename: "FakeTemplate" as any,
+        field1: {
+          id: "field1-id",
+          value: "template-value",
         },
-      },
-    };
+      };
 
-    // WHEN
-    const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, objectTemplate });
 
-    // THEN
-    expect(defaultValue).to.deep.equal({
-      source: { type: "pool", id: "pool-id", label: "Fake pool", kind: "FakePool" },
-      value: "my-default-value",
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "template",
+          id: "template-id",
+          label: "template-id",
+          kind: "FakeTemplate",
+        },
+        value: "template-value",
+      });
+    });
+
+    it("returns null value when template field value is null", () => {
+      // GIVEN
+      const fieldSchema = buildAttributeSchema({ name: "field1" });
+      const objectTemplate: NodeObject = {
+        id: "template-id" as any,
+        __typename: "FakeTemplate" as any,
+        field1: {
+          id: "field1-id",
+          value: null,
+        },
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, objectTemplate });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "schema",
+        },
+        value: null,
+      });
+    });
+
+    it("retuns template when source is template", () => {
+      // GIVEN
+      const fieldSchema = buildAttributeSchema({ default_value: "my-default-value" });
+
+      const initialObject: Record<string, AttributeType> = {
+        field1: {
+          value: "my-value",
+          source: {
+            id: "template-id",
+            display_label: "Template",
+            __typename: "FakeTemplateKind",
+          },
+        },
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          id: "template-id",
+          kind: "FakeTemplateKind",
+          label: "Template",
+          type: "template",
+        },
+        value: "my-value",
+      });
+    });
+  });
+
+  describe("when source is pool", () => {
+    it("returns object value when assigned from a pool", () => {
+      // GIVEN
+      const fieldSchema = buildAttributeSchema({ default_value: "my-default-value" });
+
+      const initialObject: Record<string, AttributeType> = {
+        field1: {
+          value: "my-default-value",
+          source: {
+            id: "pool-id",
+            display_label: "Fake pool",
+            __typename: "FakePool",
+          },
+        },
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: { type: "pool", id: "pool-id", label: "Fake pool", kind: "FakePool" },
+        value: "my-default-value",
+      });
     });
   });
 });

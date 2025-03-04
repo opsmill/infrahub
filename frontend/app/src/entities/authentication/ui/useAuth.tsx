@@ -8,8 +8,8 @@ import { components } from "@/shared/api/rest/types.generated";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { parseJwt } from "@/shared/utils/common";
 import { ObservableQuery } from "@apollo/client";
-import { ReactElement, ReactNode, createContext, useContext, useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { ReactElement, ReactNode, createContext, use, useState } from "react";
+import { Navigate, useLocation } from "react-router";
 import { toast } from "react-toastify";
 
 type User = {
@@ -164,11 +164,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: data?.sub ? { id: data?.sub } : null,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext value={value}>{children}</AuthContext>;
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+  return use(AuthContext);
 }
 
 export function RequireAuth({ children }: { children: ReactElement }) {

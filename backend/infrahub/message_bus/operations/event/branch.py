@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from prefect import flow
 
 from infrahub.core import registry
@@ -7,7 +9,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
-from infrahub.services import InfrahubServices
+from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.catalogue import (
     DIFF_UPDATE,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
@@ -33,11 +35,13 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
 
         await service.workflow.submit_workflow(
             workflow=TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+            context=message.context,
             parameters={"branch": message.target_branch},
         )
 
         await service.workflow.submit_workflow(
             workflow=TRIGGER_GENERATOR_DEFINITION_RUN,
+            context=message.context,
             parameters={"branch": message.target_branch},
         )
 
@@ -49,9 +53,9 @@ async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -
             ):
                 request_diff_update_model = RequestDiffUpdate(branch_name=diff_root.diff_branch_name)
                 await service.workflow.submit_workflow(
-                    workflow=DIFF_UPDATE, parameters={"model": request_diff_update_model}
+                    workflow=DIFF_UPDATE, context=message.context, parameters={"model": request_diff_update_model}
                 )
 
         for event in events:
             event.assign_meta(parent=message)
-            await service.send(message=event)
+            await service.message_bus.send(message=event)

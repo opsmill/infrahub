@@ -18,7 +18,6 @@ test.describe("Object groups update", () => {
     await test.step("access the tags and create a new one", async () => {
       await page.goto("/objects/BuiltinTag");
       await expect(page.getByTestId("create-object-button")).toBeVisible();
-      await expect(page.getByText("Just a moment")).not.toBeVisible();
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Name *").fill(NEW_TAG);
       await page.getByRole("button", { name: "Save" }).click();

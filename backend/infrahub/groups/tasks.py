@@ -4,12 +4,12 @@ from prefect import flow
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
-from infrahub.services import services
+from infrahub.services import InfrahubServices
 from infrahub.workflows.utils import add_tags
 
 
 @flow(name="graphql-query-group-update", flow_run_name="Update GraphQLQuery Group '{model.query_name}'")
-async def update_graphql_query_group(model: RequestGraphQLQueryGroupUpdate) -> None:
+async def update_graphql_query_group(model: RequestGraphQLQueryGroupUpdate, service: InfrahubServices) -> None:
     """Create or Update a GraphQLQueryGroup."""
 
     # If there is only one subscriber, associate the task to it
@@ -19,7 +19,6 @@ async def update_graphql_query_group(model: RequestGraphQLQueryGroupUpdate) -> N
         related_nodes.append(model.subscribers[0])
 
     await add_tags(branches=[model.branch], nodes=related_nodes)
-    service = services.service
 
     params_hash = dict_hash(model.params)
     group_name = f"{model.query_name}__{params_hash}"

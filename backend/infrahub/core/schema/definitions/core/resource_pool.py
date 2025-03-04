@@ -1,0 +1,180 @@
+from infrahub.core.constants import (
+    BranchSupportType,
+    InfrahubKind,
+)
+
+core_resource_pool = {
+    "name": "ResourcePool",
+    "namespace": "Core",
+    "label": "Resource Pool",
+    "description": "The resource manager contains pools of resources to allow for automatic assignments.",
+    "include_in_menu": False,
+    "default_filter": "name__value",
+    "order_by": ["name__value"],
+    "display_labels": ["name__value"],
+    "human_friendly_id": ["name__value"],
+    "icon": "mdi:view-grid-outline",
+    "branch": BranchSupportType.AGNOSTIC.value,
+    "uniqueness_constraints": [["name__value"]],
+    "generate_profile": False,
+    "attributes": [
+        {
+            "name": "name",
+            "kind": "Text",
+            "order_weight": 1000,
+            "unique": True,
+        },
+        {
+            "name": "description",
+            "kind": "Text",
+            "optional": True,
+            "order_weight": 2000,
+        },
+    ],
+}
+
+core_ip_prefix_pool = {
+    "name": "IPPrefixPool",
+    "namespace": "Core",
+    "description": "A pool of IP prefix resources",
+    "label": "IP Prefix Pool",
+    "include_in_menu": False,
+    "branch": BranchSupportType.AGNOSTIC.value,
+    "generate_profile": False,
+    "inherit_from": [InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
+    "attributes": [
+        {
+            "name": "default_prefix_length",
+            "kind": "Number",
+            "description": "The default prefix length as an integer for prefixes allocated from this pool.",
+            "optional": True,
+            "order_weight": 5000,
+        },
+        {
+            "name": "default_member_type",
+            "kind": "Text",
+            "enum": ["prefix", "address"],
+            "default_value": "prefix",
+            "optional": True,
+            "order_weight": 3000,
+        },
+        {
+            "name": "default_prefix_type",
+            "kind": "Text",
+            "optional": True,
+            "order_weight": 4000,
+        },
+    ],
+    "relationships": [
+        {
+            "name": "resources",
+            "peer": "BuiltinIPPrefix",
+            "kind": "Attribute",
+            "identifier": "prefixpool__resource",
+            "cardinality": "many",
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "optional": False,
+            "order_weight": 6000,
+        },
+        {
+            "name": "ip_namespace",
+            "peer": "BuiltinIPNamespace",
+            "kind": "Attribute",
+            "identifier": "prefixpool__ipnamespace",
+            "cardinality": "one",
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "optional": False,
+            "order_weight": 7000,
+        },
+    ],
+}
+
+core_ip_address_pool = {
+    "name": "IPAddressPool",
+    "namespace": "Core",
+    "description": "A pool of IP address resources",
+    "label": "IP Address Pool",
+    "include_in_menu": False,
+    "branch": BranchSupportType.AGNOSTIC.value,
+    "generate_profile": False,
+    "inherit_from": [InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
+    "attributes": [
+        {
+            "name": "default_address_type",
+            "kind": "Text",
+            "optional": False,
+            "description": "The object type to create when reserving a resource in the pool",
+            "order_weight": 3000,
+        },
+        {
+            "name": "default_prefix_length",
+            "kind": "Number",
+            "description": "The default prefix length as an integer for addresses allocated from this pool.",
+            "optional": True,
+            "order_weight": 4000,
+        },
+    ],
+    "relationships": [
+        {
+            "name": "resources",
+            "peer": "BuiltinIPPrefix",
+            "kind": "Attribute",
+            "identifier": "ipaddresspool__resource",
+            "cardinality": "many",
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "optional": False,
+            "order_weight": 5000,
+        },
+        {
+            "name": "ip_namespace",
+            "peer": "BuiltinIPNamespace",
+            "kind": "Attribute",
+            "identifier": "ipaddresspool__ipnamespace",
+            "cardinality": "one",
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "optional": False,
+            "order_weight": 6000,
+        },
+    ],
+}
+
+core_number_pool = {
+    "name": "NumberPool",
+    "namespace": "Core",
+    "description": "A pool of number resources",
+    "label": "Number Pool",
+    "include_in_menu": False,
+    "branch": BranchSupportType.AGNOSTIC.value,
+    "generate_profile": False,
+    "inherit_from": [InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
+    "attributes": [
+        {
+            "name": "node",
+            "kind": "Text",
+            "optional": False,
+            "description": "The model of the object that requires integers to be allocated",
+            "order_weight": 3000,
+        },
+        {
+            "name": "node_attribute",
+            "kind": "Text",
+            "description": "The attribute of the selected model",
+            "optional": False,
+            "order_weight": 4000,
+        },
+        {
+            "name": "start_range",
+            "kind": "Number",
+            "optional": False,
+            "description": "The start range for the pool",
+            "order_weight": 5000,
+        },
+        {
+            "name": "end_range",
+            "kind": "Number",
+            "optional": False,
+            "description": "The end range for the pool",
+            "order_weight": 6000,
+        },
+    ],
+}

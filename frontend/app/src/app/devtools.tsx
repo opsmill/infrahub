@@ -7,3 +7,8 @@ export const TanStackQueryDevtools = import.meta.env.VITE_DEVTOOLS
       }))
     )
   : () => null;
+
+if (import.meta.env.VITE_DEVTOOLS) {
+  const { scan } = await import("react-scan");
+  scan({ enabled: true });
+}

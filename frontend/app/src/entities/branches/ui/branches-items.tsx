@@ -8,7 +8,7 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { sortByName } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 const BranchesItems = () => {
   const navigate = useNavigate();

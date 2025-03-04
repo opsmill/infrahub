@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
-from infrahub.core.schema import NodeSchema, ProfileSchema
+from infrahub.core.schema import NodeSchema, ProfileSchema, TemplateSchema
 
 if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
@@ -12,12 +12,12 @@ if TYPE_CHECKING:
 
 
 def find_node_schema(
-    db: InfrahubDatabase, node: Neo4jNode, branch: Union[Branch, str], duplicate: bool = False
-) -> Optional[Union[NodeSchema, ProfileSchema]]:
+    db: InfrahubDatabase, node: Neo4jNode, branch: Branch | str, duplicate: bool = False
+) -> NodeSchema | ProfileSchema | TemplateSchema | None:
     for label in node.labels:
         if db.schema.has(name=label, branch=branch):
             schema = db.schema.get(name=label, branch=branch, duplicate=duplicate)
-            if isinstance(schema, (NodeSchema, ProfileSchema)):
+            if isinstance(schema, NodeSchema | ProfileSchema | TemplateSchema):
                 return schema
 
     return None

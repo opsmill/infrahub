@@ -1,5 +1,3 @@
-from typing import Optional
-
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -13,7 +11,7 @@ from tests.helpers.utils import start_neo4j_container
 
 
 async def start_db_and_create_default_branch(
-    neo4j_image: str, load_indexes: bool, queries_names_to_config: Optional[dict[str, QueryConfig]] = None
+    neo4j_image: str, load_indexes: bool, queries_names_to_config: dict[str, QueryConfig] | None = None
 ) -> tuple[InfrahubDatabaseProfiler, Branch]:
     # Start database and create db profiler
     neo4j_container = start_neo4j_container(neo4j_image)

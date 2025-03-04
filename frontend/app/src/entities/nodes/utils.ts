@@ -6,10 +6,8 @@ import {
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/constants";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
-import { isGenericSchema } from "@/entities/schema/utils";
-import { store } from "@/shared/stores";
-import { constructPath, overrideQueryParams } from "../../shared/api/rest/fetch";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { constructPath, overrideQueryParams } from "@/shared/api/rest/fetch";
 
 const regex = /^Related/; // starts with Related
 
@@ -35,13 +33,10 @@ export const getObjectDetailsUrl2 = (
     ]);
   }
 
-  const nodes = store.get(schemaState);
-  const generics = store.get(genericsState);
-  const profiles = store.get(profilesAtom);
-  const schema = [...nodes, ...generics, ...profiles].find(({ kind }) => kind === objectKind);
+  const { schema, isGeneric } = getSchema(objectKind);
   if (!schema) return "#";
 
-  if (!isGenericSchema(schema)) {
+  if (!isGeneric) {
     const inheritFrom = schema.inherit_from;
 
     if (inheritFrom?.includes(IP_PREFIX_GENERIC)) {

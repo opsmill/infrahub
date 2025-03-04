@@ -23,7 +23,14 @@ from infrahub.core.query.node import (
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship, RelationshipManager
-from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema, ProfileSchema, RelationshipSchema
+from infrahub.core.schema import (
+    GenericSchema,
+    MainSchemaTypes,
+    NodeSchema,
+    ProfileSchema,
+    RelationshipSchema,
+    TemplateSchema,
+)
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, ProcessingError, SchemaNotFoundError
 from infrahub.graphql.models import OrderModel
@@ -34,8 +41,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 SchemaProtocol = TypeVar("SchemaProtocol")
-
-# pylint: disable=redefined-builtin,too-many-lines
 
 
 def identify_node_class(node: NodeToProcess) -> type[Node]:
@@ -61,7 +66,7 @@ def get_schema(
 ) -> MainSchemaTypes:
     if isinstance(node_schema, str):
         return db.schema.get(name=node_schema, branch=branch.name)
-    if hasattr(node_schema, "_is_runtime_protocol") and getattr(node_schema, "_is_runtime_protocol"):
+    if hasattr(node_schema, "_is_runtime_protocol") and node_schema._is_runtime_protocol:
         return db.schema.get(name=node_schema.__name__, branch=branch.name)
     if not isinstance(node_schema, (MainSchemaTypes)):
         raise ValueError(f"Invalid schema provided {node_schema}")
@@ -129,7 +134,7 @@ class NodeManager:
     async def query(
         cls,
         db: InfrahubDatabase,
-        schema: Union[NodeSchema, GenericSchema, ProfileSchema, str],
+        schema: Union[NodeSchema, GenericSchema, ProfileSchema, TemplateSchema, str],
         filters: dict | None = ...,
         fields: dict | None = ...,
         offset: int | None = ...,
@@ -267,11 +272,11 @@ class NodeManager:
     async def count(
         cls,
         db: InfrahubDatabase,
-        schema: Union[type[SchemaProtocol], NodeSchema, GenericSchema, ProfileSchema, str],
+        schema: Union[type[SchemaProtocol], NodeSchema, GenericSchema, ProfileSchema, TemplateSchema, str],
         filters: Optional[dict] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
-        account=None,  # pylint: disable=unused-argument
+        account=None,  # noqa: ARG003
         partial_match: bool = False,
         branch_agnostic: bool = False,
     ) -> int:
@@ -446,7 +451,7 @@ class NodeManager:
         limit: Optional[int] = None,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Node]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -489,7 +494,7 @@ class NodeManager:
         kind: type[SchemaProtocol],
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        id: str | None = ...,  # pylint: disable=redefined-builtin
+        id: str | None = ...,
         hfid: list[str] | None = ...,
     ) -> SchemaProtocol: ...
 
@@ -501,7 +506,7 @@ class NodeManager:
         kind: str,
         at: Timestamp | str | None = ...,
         branch: Branch | str | None = ...,
-        id: str | None = ...,  # pylint: disable=redefined-builtin
+        id: str | None = ...,
         hfid: list[str] | None = ...,
     ) -> Any: ...
 
@@ -512,7 +517,7 @@ class NodeManager:
         kind: type[SchemaProtocol] | str,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
-        id: str | None = None,  # pylint: disable=redefined-builtin
+        id: str | None = None,
         hfid: list[str] | None = None,
     ) -> Any:
         if not id and not hfid:
@@ -802,7 +807,7 @@ class NodeManager:
             raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=hfid_str)
 
         filters = {}
-        for key, item in zip(node_schema.human_friendly_id, hfid):
+        for key, item in zip(node_schema.human_friendly_id, hfid, strict=False):
             path = node_schema.parse_schema_path(path=key, schema=registry.schema.get_schema_branch(name=branch.name))
 
             if path.is_type_relationship:
@@ -1007,7 +1012,7 @@ class NodeManager:
         cls,
         id: str,
         db: InfrahubDatabase,
-        kind: Literal[None] = ...,
+        kind: None = ...,
         raise_on_error: bool = ...,
         fields: dict | None = ...,
         at: Timestamp | str | None = ...,
@@ -1148,7 +1153,7 @@ class NodeManager:
 
         nodes: dict[str, Node] = {}
 
-        for node_id in ids:  # pylint: disable=too-many-nested-blocks
+        for node_id in ids:
             if node_id not in nodes_info_by_id:
                 continue
 
@@ -1310,7 +1315,7 @@ class NodeManager:
         nodes: list[Node],
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
-    ) -> list[Any]:
+    ) -> list[Node]:
         """Returns list of deleted nodes because of cascading deletes"""
         branch = await registry.get_branch(branch=branch, db=db)
         node_delete_validator = NodeDeleteValidator(db=db, branch=branch)

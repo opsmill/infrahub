@@ -2,10 +2,10 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router";
 import { proposedChangedState } from "../../../src/entities/proposed-changes/stores/proposedChanges.atom";
 import { Conversations } from "../../../src/entities/proposed-changes/ui/conversations";
-import { schemaState } from "../../../src/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "../../../src/entities/schema/stores/schema.atom";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
   conversationMocksData,
@@ -39,7 +39,7 @@ const ConversationsProvider = () => {
   return (
     <TestProvider
       initialValues={[
-        [schemaState, [...conversationMocksSchema, ...accountDetailsMocksSchema]],
+        [nodeSchemasAtom, [...conversationMocksSchema, ...accountDetailsMocksSchema]],
         [proposedChangedState, proposedChangesDetails],
       ]}
     >

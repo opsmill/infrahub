@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
     from neo4j.graph import Path as Neo4jPath
     from neo4j.graph import Relationship as Neo4jRelationship
-    from pendulum import Interval
+    from whenever import TimeDelta
 
     from infrahub.graphql.initialization import GraphqlContext
 
@@ -341,18 +341,18 @@ class EnrichedDiffNode(BaseSummary):
             rel.clear_conflicts()
         self.conflict = None
 
-    def get_parent_info(self, context: GraphqlContext | None = None) -> ParentNodeInfo | None:
+    def get_parent_info(self, graphql_context: GraphqlContext | None = None) -> ParentNodeInfo | None:
         for r in self.relationships:
             for n in r.nodes:
                 relationship_name: str = "undefined"
 
-                if not context:
+                if not graphql_context:
                     return ParentNodeInfo(node=n, relationship_name=relationship_name)
 
-                node_schema = context.db.schema.get(name=self.kind)
+                node_schema = graphql_context.db.schema.get(name=self.kind)
                 rel_schema = node_schema.get_relationship(name=r.name)
 
-                parent_schema = context.db.schema.get(name=n.kind)
+                parent_schema = graphql_context.db.schema.get(name=n.kind)
                 rels_parent = parent_schema.get_relationships_by_identifier(id=rel_schema.get_identifier())
 
                 if rels_parent and len(rels_parent) == 1:
@@ -433,8 +433,8 @@ class EnrichedDiffRootMetadata(BaseSummary):
         return hash(self.uuid)
 
     @property
-    def time_range(self) -> Interval:
-        return self.to_time.obj - self.from_time.obj
+    def time_range(self) -> TimeDelta:
+        return self.to_time.get_obj() - self.from_time.get_obj()
 
     def update_metadata(
         self,
@@ -463,8 +463,8 @@ class EnrichedDiffRoot(EnrichedDiffRootMetadata):
         return hash(self.uuid)
 
     @property
-    def time_range(self) -> Interval:
-        return self.to_time.obj - self.from_time.obj
+    def time_range(self) -> TimeDelta:
+        return self.to_time.get_obj() - self.from_time.get_obj()
 
     def get_nodes_without_parents(self) -> set[EnrichedDiffNode]:
         nodes_with_parent_uuids = set()
@@ -715,7 +715,7 @@ class DiffRoot:
 
 
 @dataclass
-class DatabasePath:  # pylint: disable=too-many-public-methods
+class DatabasePath:
     root_node: Neo4jNode
     path_to_node: Neo4jRelationship
     node_node: Neo4jNode

@@ -206,10 +206,10 @@ test.describe("/ipam - IP Namespace", () => {
 
   test("delete ip namespace", async ({ page }) => {
     await page.goto("/objects/BuiltinIPNamespace");
-    await page
-      .getByRole("row", { name: "test-namespace" })
-      .getByTestId("delete-row-button")
-      .click();
+
+    await page.getByTestId("actions-cell-test-namespace").click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+    await expect(page.getByText("Are you sure you want to remove test-namespace?")).toBeVisible();
     await page.getByTestId("modal-delete-confirm").click();
 
     await expect(page.getByText("Object test-namespace deleted")).toBeVisible();

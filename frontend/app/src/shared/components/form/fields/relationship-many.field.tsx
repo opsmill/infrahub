@@ -5,7 +5,7 @@ import {
 } from "@/shared/components/form/type";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
-import { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NodeCore } from "@/entities/nodes/types";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
@@ -51,7 +51,7 @@ export default function RelationshipManyField({
                     "has-[>:last-child:focus]:ring-red-500/25 has-[>:last-child:focus]:border-red-500"
                 )}
                 peer={props.relationship.peer}
-                value={fieldData.value as Node[] | null}
+                value={fieldData.value as NodeCore[] | null}
                 onChange={(newValue) => {
                   field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
                 }}

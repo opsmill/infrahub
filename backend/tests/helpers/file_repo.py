@@ -1,7 +1,6 @@
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from git.repo import Repo
 
@@ -20,8 +19,8 @@ class FileRepo:
     # when https://github.com/opsmill/infrahub/issues/4296 is fixed.
     local_repo_base_path: Path = get_fixtures_dir() / "repos"
 
-    _repo: Optional[Repo] = None
-    _initial_branch: Optional[str] = None
+    _repo: Repo | None = None
+    _initial_branch: str | None = None
     _branches: list[str] = field(default_factory=list)
 
     @property
@@ -42,7 +41,7 @@ class FileRepo:
         return initial_directory
 
     def _apply_pull_requests(self, repo_base: Path) -> None:
-        pull_requests = sorted(list(repo_base.glob("pr*")))
+        pull_requests = sorted(repo_base.glob("pr*"))
         for pull_request in pull_requests:
             branch = str(pull_request).split("__")[-1]
             if branch in self._branches:
@@ -98,7 +97,7 @@ class MultipleStagesFileRepo(FileRepo):
             self.repo.create_tag(f"{self._initial_branch}-step{i}")
 
     def _apply_pull_requests(self, repo_base: Path) -> None:
-        pull_requests = sorted(list(repo_base.glob("pr*")))
+        pull_requests = sorted(repo_base.glob("pr*"))
         for pull_request in pull_requests:
             branch = str(pull_request).split("__")[-1]
             base_commit_path = pull_request / "base_commit"

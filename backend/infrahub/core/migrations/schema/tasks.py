@@ -10,7 +10,7 @@ from prefect.logging import get_run_logger
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.migrations import MIGRATION_MAP
 from infrahub.core.path import SchemaPath  # noqa: TC001
-from infrahub.services import services
+from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.utils import add_branch_tag
 
 from .models import SchemaApplyMigrationData, SchemaMigrationPathResponseData
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 @flow(name="schema_apply_migrations", flow_run_name="Apply schema migrations", persist_result=True)
-async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str]:
+async def schema_apply_migrations(message: SchemaApplyMigrationData, service: InfrahubServices) -> list[str]:
     await add_branch_tag(branch_name=message.branch.name)
     log = get_run_logger()
 
@@ -34,7 +34,6 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
         log.info(f"Preparing migration for {migration.migration_name!r} ({migration.routing_key})")
 
         new_node_schema: Optional[MainSchemaTypes] = None
-        previous_node_schema: Optional[MainSchemaTypes] = None
 
         if message.new_schema.has(name=migration.path.schema_kind):
             new_node_schema = message.new_schema.get(name=migration.path.schema_kind)
@@ -56,6 +55,7 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
             new_node_schema=new_node_schema,
             previous_node_schema=previous_node_schema,
             schema_path=migration.path,
+            service=service,
         )
 
     async for _, result in batch.execute():
@@ -64,7 +64,7 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
     return error_messages
 
 
-@task(
+@task(  # type: ignore[arg-type]
     name="schema-path-migrate",
     task_run_name="Migrate Schema Path {migration_name} on {branch.name}",
     description="Apply a given migration to the database",
@@ -75,10 +75,10 @@ async def schema_path_migrate(
     branch: Branch,
     migration_name: str,
     schema_path: SchemaPath,
+    service: InfrahubServices,
     new_node_schema: MainSchemaTypes | None = None,
     previous_node_schema: MainSchemaTypes | None = None,
 ) -> SchemaMigrationPathResponseData:
-    service = services.service
     log = get_run_logger()
 
     async with service.database.start_session() as db:

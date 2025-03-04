@@ -1,6 +1,6 @@
 import { fetchStream } from "@/shared/api/rest/fetch";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
@@ -42,7 +42,7 @@ export const File = ({ url, contentType }: tFile) => {
   }, []);
 
   if (isLoading) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="p-4" />;
   }
 
   if (!fileContent) {

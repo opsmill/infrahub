@@ -1,6 +1,6 @@
 import { format, formatDistance } from "date-fns";
 
-export const formatFullDate = (date: number | Date) => {
+export const formatFullDate = (date: string | number | Date) => {
   return format(date, "dd/MM/yyyy HH:mm");
 };
 

@@ -28,7 +28,7 @@ class DiffMergeQuery(Query):
         self.target_branch = target_branch
         self.source_branch_name = self.branch.name
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "node_diff_dicts": self.node_diff_dicts,
             "at": self.at.to_string(),
@@ -339,7 +339,7 @@ class DiffMergePropertiesQuery(Query):
         self.target_branch = target_branch
         self.source_branch_name = self.branch.name
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "property_diff_dicts": self.property_diff_dicts,
             "at": self.at.to_string(),
@@ -514,7 +514,7 @@ class DiffMergeRollbackQuery(Query):
         self.target_branch = target_branch
         self.source_branch_name = self.branch.name
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "at": self.at.to_string(),
             "target_branch": self.target_branch.name,

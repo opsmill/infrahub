@@ -1,5 +1,5 @@
 import { updateGroupsQuery } from "@/entities/groups/api/updateGroupsQuery";
-import { iNodeSchema } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema } from "@/entities/schema/types";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import DynamicForm, { DynamicFormProps } from "@/shared/components/form/dynamic-form";
@@ -14,7 +14,7 @@ import { toast } from "react-toastify";
 interface AddGroupFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   objectId: string;
   defaultGroupIds?: FormRelationshipValue;
-  schema: iNodeSchema;
+  schema: NodeSchema;
   onUpdateCompleted?: () => void;
 }
 

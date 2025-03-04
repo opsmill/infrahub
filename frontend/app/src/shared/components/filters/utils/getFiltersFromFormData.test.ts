@@ -53,7 +53,7 @@ describe("getFiltersFromFormData - test", () => {
     expect(filters).toHaveLength(1);
     expect(filters[0]).toEqual({
       name: "relationship1__ids",
-      value: ["relationship-id"],
+      value: [{ id: "relationship-id", display_label: "label", __typename: "peer" }],
     });
   });
 

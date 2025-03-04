@@ -2,16 +2,16 @@ import { ACCOUNT_GENERIC_OBJECT } from "@/config/constants";
 import { ACCESS_TOKEN_KEY } from "@/config/localStorage";
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
 import ObjectItemDetails from "@/entities/nodes/object-item-details/object-item-details-paginated";
-import { genericsState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { parseJwt } from "@/shared/utils/common";
 import { NetworkStatus } from "@apollo/client";
 import { useAtomValue } from "jotai";
 
 export default function TabProfile() {
-  const nodes = useAtomValue(genericsState);
+  const nodes = useAtomValue(genericSchemasAtom);
   const schema = nodes.find(({ kind }) => kind === ACCOUNT_GENERIC_OBJECT);
 
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -27,7 +27,7 @@ export default function TabProfile() {
   }
 
   if (networkStatus === NetworkStatus.loading) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="h-[244px]" />;
   }
 
   if (!objectDetailsData) {

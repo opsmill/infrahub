@@ -7,15 +7,13 @@ import time
 from contextlib import ExitStack
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, AsyncGenerator, Generator, Optional, TypeVar
+from typing import Any, AsyncGenerator, Generator, TypeVar
 
 import pytest
 import ujson
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 from prefect import settings as prefect_settings
-from prefect.logging.loggers import disable_run_logger
-from prefect.testing.utilities import prefect_test_harness
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
@@ -43,7 +41,7 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
-from infrahub.services import services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder, BusSimulator
@@ -78,7 +76,7 @@ def pytest_configure(config):
         markexpr = f"not neo4j and ({markexpr})"
 
     if not config.option.neo4j:
-        setattr(config.option, "markexpr", markexpr)
+        config.option.markexpr = markexpr
 
     log_level = config.option.log_level
     log_level = log_level if log_level is not None else DEFAULT_TESTING_LOG_LEVEL
@@ -106,7 +104,7 @@ def event_loop():
 
 @pytest.fixture(scope="module")
 async def db(
-    neo4j: Optional[dict[int, int]], memgraph: Optional[dict[int, int]], reload_settings_before_each_module
+    neo4j: dict[int, int] | None, memgraph: dict[int, int] | None, reload_settings_before_each_module
 ) -> AsyncGenerator[InfrahubDatabase, None]:
     if INFRAHUB_USE_TEST_CONTAINERS:
         config.SETTINGS.database.address = "localhost"
@@ -155,7 +153,7 @@ async def do_default_branch(db: InfrahubDatabase) -> Branch:
 
 
 @pytest.fixture
-async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Optional[Node]:
+async def default_ipnamespace(db: InfrahubDatabase, register_core_models_schema) -> Node | None:
     if not registry._default_ipnamespace:
         ip_namespace = await create_ipam_namespace(db=db)
         registry.default_ipnamespace = ip_namespace.id
@@ -203,19 +201,7 @@ async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
 
 
 @pytest.fixture(scope="session")
-def prefect_test_fixture():
-    with prefect_test_harness():
-        yield
-
-
-@pytest.fixture(scope="session")
-def prefect_test(prefect_test_fixture):
-    with disable_run_logger():
-        yield
-
-
-@pytest.fixture(scope="session")
-def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
+def neo4j(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
         return None
 
@@ -311,7 +297,7 @@ def wait_for_memgraph_ready(host, port, timeout=15):
 
 
 @pytest.fixture(scope="session")
-def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
+def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type != "memgraph":
         return None
 
@@ -337,7 +323,7 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session) -> Op
 
 
 @pytest.fixture(scope="session")
-def nats_container(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
+def nats_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.cache.driver != config.CacheDriver.NATS:
         return None
 
@@ -366,7 +352,7 @@ def nats(nats_container: dict[int, int] | None, reload_settings_before_each_modu
 
 
 @pytest.fixture(scope="session")
-def prefect_container(request: pytest.FixtureRequest, load_settings_before_session) -> Optional[dict[int, int]]:
+def prefect_container(request: pytest.FixtureRequest, load_settings_before_session) -> dict[int, int] | None:
     return start_prefect_server_container(request)
 
 
@@ -414,6 +400,17 @@ def reload_settings_before_each_module(tmpdir_factory):
     config.OVERRIDE.message_bus = BusRecorder()
 
     initialize_lock(local_only=True)
+
+
+@pytest.fixture
+def enable_broker_config():
+    # This is required for situations where we need the broker to be enabled.
+    # We should really remove this setting as it doesn't make any sense to have
+    # outside of the test environment
+    original_config = config.SETTINGS.broker.enable
+    config.SETTINGS.broker.enable = True
+    yield
+    config.SETTINGS.broker.enable = original_config
 
 
 @pytest.fixture
@@ -841,6 +838,24 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
+@pytest.fixture
+async def standard_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
+    SCHEMA: dict[str, Any] = {
+        "nodes": [
+            {
+                "name": "StandardGroup",
+                "namespace": "Core",
+                "inherit_from": [InfrahubKind.GENERICGROUP],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                ],
+            }
+        ]
+    }
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
 @pytest.fixture(scope="module")
 def tmp_path_module_scope() -> Generator[Path, None, None]:
     """Fixture similar to tmp_path but with scope=module"""
@@ -881,7 +896,7 @@ class BusRPCMock(InfrahubMessageBus):
         self.messages: list[InfrahubMessage] = []
 
     async def publish(
-        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+        self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
     ) -> None:
         self.messages.append(message)
 
@@ -893,6 +908,9 @@ class BusRPCMock(InfrahubMessageBus):
         response = self.response.pop()
         data = ujson.loads(response.body)
         return response_class(**data)
+
+    async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
+        raise ValueError("BusRPCMock.reply should not be called")
 
 
 class TestHelper:
@@ -924,33 +942,25 @@ class TestHelper:
         return BusRecorder()
 
     @staticmethod
-    def get_message_bus_simulator(db: Optional[InfrahubDatabase] = None) -> BusSimulator:
-        return BusSimulator(database=db)
+    async def get_message_bus_simulator(db: InfrahubDatabase | None = None) -> BusSimulator:
+        service = await InfrahubServices.new(database=db, message_bus=BusSimulator())
+        message_bus = service.message_bus
+        assert isinstance(message_bus, BusSimulator)
+        return message_bus
 
     @staticmethod
     def get_message_bus_rpc() -> BusRPCMock:
         return BusRPCMock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def fake_log() -> FakeLogger:
     return FakeLogger()
 
 
-@pytest.fixture()
+@pytest.fixture
 def helper() -> TestHelper:
     return TestHelper()
-
-
-@pytest.fixture
-def patch_services(helper):
-    original = services.service.message_bus
-    bus = helper.get_message_bus_rpc()
-    services.service.message_bus = bus
-    services.prepare(service=services.service)
-    yield bus
-    services.service.message_bus = original
-    services.prepare(service=services.service)
 
 
 @pytest.fixture(scope="class")

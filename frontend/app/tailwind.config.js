@@ -1,7 +1,5 @@
-/* eslint-disable no-undef */
 /** @type {import('tailwindcss').Config} */
 
-import forms from "@tailwindcss/forms";
 import animate from "tailwindcss-animate";
 
 const toRgba = (hexCode, opacity = 50) => {
@@ -67,7 +65,6 @@ export default {
     },
   },
   plugins: [
-    forms,
     animate,
     function ({ addUtilities, theme }) {
       const utilities = {

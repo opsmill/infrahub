@@ -9,8 +9,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.schema.schema_branch import SchemaBranch
 
-# pylint: disable=redefined-builtin
-
 
 @runtime_checkable
 class Timestamp(Protocol): ...
@@ -22,6 +20,10 @@ class NodeSchema(Protocol): ...
 
 @runtime_checkable
 class ProfileSchema(Protocol): ...
+
+
+@runtime_checkable
+class TemplateSchema(Protocol): ...
 
 
 @runtime_checkable

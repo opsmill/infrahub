@@ -6,16 +6,8 @@ test.describe("/resource-manager - Resource Manager", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("create a new pool", async ({ page }) => {
-    await Promise.all([
-      page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
-
-        return reqData?.operationName === "CoreResourcePool" && status === 200;
-      }),
-
-      page.goto("/resource-manager"),
-    ]);
+    await page.goto("/resource-manager");
+    await expect(page.getByRole("link", { name: "External prefixes pool" })).toBeVisible();
     await page.getByTestId("create-object-button").click();
 
     await page.getByLabel("Select an object type").click();
@@ -56,10 +48,10 @@ test.describe("/resource-manager - Resource Manager", () => {
 
   test("delete a pool", async ({ page }) => {
     await page.goto("/resource-manager");
-    await page
-      .getByRole("row", { name: "test prefix pool" })
-      .getByTestId("delete-row-button")
-      .click();
+
+    await page.getByTestId("actions-cell-test prefix pool").click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+    await expect(page.getByText("Are you sure you want to remove test prefix pool?")).toBeVisible();
     await page.getByTestId("modal-delete-confirm").click();
 
     await expect(page.getByText("Object test prefix pool")).toBeVisible();

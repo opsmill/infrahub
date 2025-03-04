@@ -12,7 +12,7 @@ import { Badge } from "@/shared/components/display/badge";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { List } from "@/shared/components/table/list";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -22,7 +22,7 @@ import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { toast } from "react-toastify";
 import {
   BRANCH_MERGE_WORKFLOW,
@@ -71,7 +71,7 @@ export const BranchDetails = () => {
   const { loading, error, data } = useQuery(getBranchDetailsQuery, { variables: { branchName } });
 
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="h-[239px]" />;
   }
 
   if (error) {

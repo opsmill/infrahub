@@ -7,7 +7,7 @@ import {
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { getPermission } from "@/entities/permission/utils";
-import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -16,21 +16,21 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
 import { File } from "@/shared/components/file";
 import Content from "@/shared/components/layout/content";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Link } from "@/shared/components/ui/link";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router";
 import ArtifactHeader from "./artifact-header";
 
 function ArtifactsDetails() {
   const { objectid } = useParams();
 
-  const [schemaList] = useAtom(schemaState);
+  const [schemaList] = useAtom(nodeSchemasAtom);
   const [schemaLabels] = useAtom(schemaKindLabelState);
-  const [genericList] = useAtom(genericsState);
+  const [genericList] = useAtom(genericSchemasAtom);
   const schema = schemaList.find((s) => s.kind === ARTIFACT_OBJECT);
   const generic = genericList.find((s) => s.kind === ARTIFACT_OBJECT);
   useTitle("Artifact details");
@@ -73,7 +73,7 @@ function ArtifactsDetails() {
   }
 
   if (loading || !schemaData) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="h-full" />;
   }
 
   if (!data || (data && !data[schemaData.kind]?.edges?.length)) {

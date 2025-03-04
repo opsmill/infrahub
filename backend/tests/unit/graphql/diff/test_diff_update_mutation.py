@@ -9,7 +9,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
@@ -39,16 +39,10 @@ class TestDiffUpdateMutation:
     diff_name = "CountDiffula"
 
     @pytest.fixture
-    def service_testing(self, db: InfrahubDatabase):
-        original = services.service
-        service = InfrahubServices(
+    async def service_testing(self, db: InfrahubDatabase) -> InfrahubServices:
+        return await InfrahubServices.new(
             database=db, message_bus=BusRecorder(), workflow=WorkflowLocalExecution(), cache=MemoryCache()
         )
-        services.service = service
-        services.prepare(service=services.service)
-        yield service
-        services.service = original
-        services.prepare(service=services.service)
 
     @pytest.fixture
     async def diff_branch(self, db: InfrahubDatabase) -> Branch:

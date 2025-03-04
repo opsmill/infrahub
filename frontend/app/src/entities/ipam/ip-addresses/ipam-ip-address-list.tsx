@@ -18,7 +18,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import SlideOver from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import ModalDelete from "@/shared/components/modals/modal-delete";
 import { Table } from "@/shared/components/table/table";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -30,7 +30,7 @@ import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { forwardRef, useImperativeHandle, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 
@@ -165,7 +165,7 @@ const IpamIPAddressesList = forwardRef((_, ref) => {
         </div>
       )}
 
-      {(loading || !defaultIpNamespace) && <LoadingScreen hideText />}
+      {(loading || !defaultIpNamespace) && <LoadingIndicator />}
 
       {data && (
         <Table

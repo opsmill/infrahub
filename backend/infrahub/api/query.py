@@ -7,6 +7,7 @@ from graphql import graphql
 from pydantic import BaseModel, Field
 
 from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
+from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.protocols import CoreGraphQLQuery
@@ -57,12 +58,21 @@ async def execute_query(
         db=db, id=query_id, kind=CoreGraphQLQuery, branch=branch_params.branch, at=branch_params.at
     )
 
+    context = InfrahubContext.init(branch=branch_params.branch, account=account_session)
+
     gql_params = await prepare_graphql_params(
-        db=db, branch=branch_params.branch, at=branch_params.at, account_session=account_session
+        db=db,
+        branch=branch_params.branch,
+        at=branch_params.at,
+        account_session=account_session,
+        service=request.app.state.service,
     )
+    schema_branch = db.schema.get_schema_branch(name=branch_params.branch.name)
+
     analyzed_query = InfrahubGraphQLQueryAnalyzer(
         query=gql_query.query.value,
         schema=gql_params.schema,
+        schema_branch=schema_branch,
         branch=branch_params.branch,
     )
     await permission_checker.check(
@@ -97,9 +107,7 @@ async def execute_query(
     GRAPHQL_QUERY_HEIGHT_METRICS.labels(**labels).observe(await analyzed_query.calculate_height())
     GRAPHQL_QUERY_VARS_METRICS.labels(**labels).observe(len(analyzed_query.variables))
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS.labels(**labels).observe(analyzed_query.nbr_queries)
-    GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(
-        len(await analyzed_query.get_models_in_use(types=gql_params.context.types))
-    )
+    GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(len(analyzed_query.query_report.impacted_models))
 
     response_payload: dict[str, Any] = {"data": data}
 
@@ -111,11 +119,13 @@ async def execute_query(
             branch=branch_params.branch.name,
             query_id=gql_query.id,
             query_name=gql_query.name.value,
-            related_node_ids=sorted(list(related_node_ids)),
+            related_node_ids=sorted(related_node_ids),
             subscribers=sorted(subscribers),
             params=params,
         )
-        await service.workflow.submit_workflow(workflow=GRAPHQL_QUERY_GROUP_UPDATE, parameters={"model": model})
+        await service.workflow.submit_workflow(
+            workflow=GRAPHQL_QUERY_GROUP_UPDATE, context=context, parameters={"model": model}
+        )
 
     return response_payload
 
@@ -124,7 +134,8 @@ async def execute_query(
 async def graphql_query_post(
     request: Request,
     payload: QueryPayload = Body(
-        QueryPayload(), description="Payload of the request, must be used to provide the variables"
+        QueryPayload(),  # noqa: B008
+        description="Payload of the request, must be used to provide the variables",
     ),
     query_id: str = Path(description="ID or Name of the GraphQL query to execute"),
     subscribers: list[str] = Query(

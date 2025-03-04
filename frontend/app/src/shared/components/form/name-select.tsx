@@ -1,4 +1,4 @@
-import { namespacesState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { namespacesAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { useFormContext } from "react-hook-form";
@@ -8,8 +8,8 @@ import { FormAttributeValue } from "./type";
 import { isRequired } from "./utils/validation";
 
 export const NameSelect = () => {
-  const namespaces = useAtomValue(namespacesState);
-  const nodes = useAtomValue(schemaState);
+  const namespaces = useAtomValue(namespacesAtom);
+  const nodes = useAtomValue(nodeSchemasAtom);
 
   const form = useFormContext();
   const selectedNamespaceField: FormAttributeValue = form.watch("namespace");

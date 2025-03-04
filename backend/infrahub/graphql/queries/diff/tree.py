@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from graphene import Argument, Boolean, DateTime, Field, InputObjectType, Int, List, ObjectType, String
+from graphene import Argument, Boolean, DateTime, Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphene import Enum as GrapheneEnum
 from infrahub_sdk.utils import extract_fields
 
@@ -75,7 +75,7 @@ class DiffAttribute(DiffSummaryCounts):
     last_changed_at = DateTime(required=True)
     status = Field(GrapheneDiffActionEnum, required=True)
     path_identifier = String(required=True)
-    properties = List(DiffProperty)
+    properties = List(NonNull(DiffProperty))
     contains_conflict = Boolean(required=True)
     conflict = Field(ConflictDetails, required=False)
 
@@ -88,7 +88,7 @@ class DiffSingleRelationship(DiffSummaryCounts):
     path_identifier = String(required=True)
     contains_conflict = Boolean(required=True)
     conflict = Field(ConflictDetails, required=False)
-    properties = List(DiffProperty)
+    properties = List(NonNull(DiffProperty))
 
 
 class DiffRelationship(DiffSummaryCounts):
@@ -98,7 +98,7 @@ class DiffRelationship(DiffSummaryCounts):
     cardinality = Field(GrapheneCardinalityEnum, required=True)
     status = Field(GrapheneDiffActionEnum, required=True)
     path_identifier = String(required=True)
-    elements = List(DiffSingleRelationship, required=True)
+    elements = List(NonNull(DiffSingleRelationship), required=True)
     contains_conflict = Boolean(required=True)
 
 
@@ -118,8 +118,8 @@ class DiffNode(DiffSummaryCounts):
     contains_conflict = Boolean(required=True)
     last_changed_at = DateTime(required=False)
     parent = Field(DiffNodeParent, required=False)
-    attributes = List(DiffAttribute, required=True)
-    relationships = List(DiffRelationship, required=True)
+    attributes = List(NonNull(DiffAttribute), required=True)
+    relationships = List(NonNull(DiffRelationship), required=True)
 
 
 class DiffTree(DiffSummaryCounts):
@@ -130,7 +130,7 @@ class DiffTree(DiffSummaryCounts):
     num_untracked_base_changes = Int(required=False)
     num_untracked_diff_changes = Int(required=False)
     name = String(required=False)
-    nodes = List(DiffNode)
+    nodes = List(NonNull(DiffNode))
 
 
 class DiffTreeSummary(DiffSummaryCounts):
@@ -145,10 +145,10 @@ class DiffTreeSummary(DiffSummaryCounts):
 
 class DiffTreeResolver:
     async def to_diff_tree(
-        self, enriched_diff_root: EnrichedDiffRoot, context: GraphqlContext | None = None
+        self, enriched_diff_root: EnrichedDiffRoot, graphql_context: GraphqlContext | None = None
     ) -> DiffTree:
         all_nodes = list(enriched_diff_root.nodes)
-        tree_nodes = [self.to_diff_node(enriched_node=e_node, context=context) for e_node in all_nodes]
+        tree_nodes = [self.to_diff_node(enriched_node=e_node, graphql_context=graphql_context) for e_node in all_nodes]
         name = None
         if enriched_diff_root.tracking_id and isinstance(enriched_diff_root.tracking_id, NameTrackingId):
             name = enriched_diff_root.tracking_id.name
@@ -165,21 +165,22 @@ class DiffTreeResolver:
             num_conflicts=enriched_diff_root.num_conflicts,
         )
 
-    def to_diff_node(self, enriched_node: EnrichedDiffNode, context: GraphqlContext | None = None) -> DiffNode:
+    def to_diff_node(self, enriched_node: EnrichedDiffNode, graphql_context: GraphqlContext | None = None) -> DiffNode:
         diff_attributes = [
-            self.to_diff_attribute(enriched_attribute=e_attr, context=context) for e_attr in enriched_node.attributes
+            self.to_diff_attribute(enriched_attribute=e_attr, graphql_context=graphql_context)
+            for e_attr in enriched_node.attributes
         ]
         diff_relationships = [
-            self.to_diff_relationship(enriched_relationship=e_rel, context=context)
+            self.to_diff_relationship(enriched_relationship=e_rel, graphql_context=graphql_context)
             for e_rel in enriched_node.relationships
             if e_rel.include_in_response
         ]
         conflict = None
         if enriched_node.conflict:
-            conflict = self.to_diff_conflict(enriched_conflict=enriched_node.conflict, context=context)
+            conflict = self.to_diff_conflict(enriched_conflict=enriched_node.conflict, graphql_context=graphql_context)
 
         parent = None
-        if parent_info := enriched_node.get_parent_info(context=context):
+        if parent_info := enriched_node.get_parent_info(graphql_context=graphql_context):
             parent = DiffNodeParent(
                 uuid=parent_info.node.uuid,
                 kind=parent_info.node.kind,
@@ -192,7 +193,7 @@ class DiffTreeResolver:
             label=enriched_node.label,
             status=enriched_node.action,
             parent=parent,
-            last_changed_at=enriched_node.changed_at.obj if enriched_node.changed_at else None,
+            last_changed_at=enriched_node.changed_at.to_datetime() if enriched_node.changed_at else None,
             path_identifier=enriched_node.path_identifier,
             attributes=diff_attributes,
             relationships=diff_relationships,
@@ -205,10 +206,11 @@ class DiffTreeResolver:
         )
 
     def to_diff_attribute(
-        self, enriched_attribute: EnrichedDiffAttribute, context: GraphqlContext | None = None
+        self, enriched_attribute: EnrichedDiffAttribute, graphql_context: GraphqlContext | None = None
     ) -> DiffAttribute:
         diff_properties = [
-            self.to_diff_property(enriched_property=e_prop, context=context) for e_prop in enriched_attribute.properties
+            self.to_diff_property(enriched_property=e_prop, graphql_context=graphql_context)
+            for e_prop in enriched_attribute.properties
         ]
         conflict = None
         for diff_prop in diff_properties:
@@ -217,7 +219,7 @@ class DiffTreeResolver:
                 diff_prop.conflict = None
         return DiffAttribute(
             name=enriched_attribute.name,
-            last_changed_at=enriched_attribute.changed_at.obj,
+            last_changed_at=enriched_attribute.changed_at.to_datetime(),
             status=enriched_attribute.action,
             path_identifier=enriched_attribute.path_identifier,
             properties=diff_properties,
@@ -230,16 +232,18 @@ class DiffTreeResolver:
         )
 
     def to_diff_relationship(
-        self, enriched_relationship: EnrichedDiffRelationship, context: GraphqlContext | None = None
+        self, enriched_relationship: EnrichedDiffRelationship, graphql_context: GraphqlContext | None = None
     ) -> DiffRelationship:
         diff_elements = [
-            self.to_diff_relationship_element(enriched_element=element, context=context)
+            self.to_diff_relationship_element(enriched_element=element, graphql_context=graphql_context)
             for element in enriched_relationship.relationships
         ]
         return DiffRelationship(
             name=enriched_relationship.name,
             label=enriched_relationship.label,
-            last_changed_at=enriched_relationship.changed_at.obj if enriched_relationship.changed_at else None,
+            last_changed_at=enriched_relationship.changed_at.to_datetime()
+            if enriched_relationship.changed_at
+            else None,
             status=enriched_relationship.action,
             cardinality=enriched_relationship.cardinality,
             path_identifier=enriched_relationship.path_identifier,
@@ -252,14 +256,16 @@ class DiffTreeResolver:
         )
 
     def to_diff_relationship_element(
-        self, enriched_element: EnrichedDiffSingleRelationship, context: GraphqlContext | None = None
+        self, enriched_element: EnrichedDiffSingleRelationship, graphql_context: GraphqlContext | None = None
     ) -> DiffSingleRelationship:
         diff_properties = [self.to_diff_property(e_prop) for e_prop in enriched_element.properties]
         conflict = None
         if enriched_element.conflict:
-            conflict = self.to_diff_conflict(enriched_conflict=enriched_element.conflict, context=context)
+            conflict = self.to_diff_conflict(
+                enriched_conflict=enriched_element.conflict, graphql_context=graphql_context
+            )
         return DiffSingleRelationship(
-            last_changed_at=enriched_element.changed_at.obj,
+            last_changed_at=enriched_element.changed_at.to_datetime(),
             status=enriched_element.action,
             peer_id=enriched_element.peer_id,
             peer_label=enriched_element.peer_label,
@@ -274,14 +280,16 @@ class DiffTreeResolver:
         )
 
     def to_diff_property(
-        self, enriched_property: EnrichedDiffProperty, context: GraphqlContext | None = None
+        self, enriched_property: EnrichedDiffProperty, graphql_context: GraphqlContext | None = None
     ) -> DiffProperty:
         conflict = None
         if enriched_property.conflict:
-            conflict = self.to_diff_conflict(enriched_conflict=enriched_property.conflict, context=context)
+            conflict = self.to_diff_conflict(
+                enriched_conflict=enriched_property.conflict, graphql_context=graphql_context
+            )
         return DiffProperty(
             property_type=enriched_property.property_type.value,
-            last_changed_at=enriched_property.changed_at.obj,
+            last_changed_at=enriched_property.changed_at.to_datetime(),
             previous_value=enriched_property.previous_value,
             new_value=enriched_property.new_value,
             previous_label=enriched_property.previous_label,
@@ -294,19 +302,19 @@ class DiffTreeResolver:
     def to_diff_conflict(
         self,
         enriched_conflict: EnrichedDiffConflict,
-        context: GraphqlContext | None = None,  # pylint: disable=unused-argument
+        graphql_context: GraphqlContext | None = None,  # noqa: ARG002
     ) -> ConflictDetails:
         return ConflictDetails(
             uuid=enriched_conflict.uuid,
             base_branch_action=enriched_conflict.base_branch_action,
             base_branch_value=enriched_conflict.base_branch_value,
-            base_branch_changed_at=enriched_conflict.base_branch_changed_at.obj
+            base_branch_changed_at=enriched_conflict.base_branch_changed_at.to_datetime()
             if enriched_conflict.base_branch_changed_at
             else None,
             base_branch_label=enriched_conflict.base_branch_label,
             diff_branch_action=enriched_conflict.diff_branch_action,
             diff_branch_value=enriched_conflict.diff_branch_value,
-            diff_branch_changed_at=enriched_conflict.diff_branch_changed_at.obj
+            diff_branch_changed_at=enriched_conflict.diff_branch_changed_at.to_datetime()
             if enriched_conflict.diff_branch_changed_at
             else None,
             diff_branch_label=enriched_conflict.diff_branch_label,
@@ -366,10 +374,9 @@ class DiffTreeResolver:
         if diff_branch_name:
             diff_response.num_untracked_diff_changes = branch_change_map.get(diff_branch_name, 0)
 
-    # pylint: disable=unused-argument
     async def resolve(
         self,
-        root: dict,
+        root: dict,  # noqa: ARG002
         info: GraphQLResolveInfo,
         branch: str | None = None,
         name: str | None = None,
@@ -382,10 +389,10 @@ class DiffTreeResolver:
         offset: int | None = None,
     ) -> Optional[Union[list[dict[str, Any]], dict[str, Any]]]:
         component_registry = get_component_registry()
-        context: GraphqlContext = info.context
-        base_branch = await registry.get_branch(db=context.db, branch=registry.default_branch)
-        diff_branch = await registry.get_branch(db=context.db, branch=branch)
-        diff_repo = await component_registry.get_component(DiffRepository, db=context.db, branch=diff_branch)
+        graphql_context: GraphqlContext = info.context
+        base_branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
+        diff_branch = await registry.get_branch(db=graphql_context.db, branch=branch)
+        diff_repo = await component_registry.get_component(DiffRepository, db=graphql_context.db, branch=diff_branch)
         branch_start_timestamp = Timestamp(diff_branch.get_branched_from())
         if from_time:
             from_timestamp = Timestamp(from_time.isoformat())
@@ -394,7 +401,7 @@ class DiffTreeResolver:
         if to_time:
             to_timestamp = Timestamp(to_time.isoformat())
         else:
-            to_timestamp = context.at or Timestamp()
+            to_timestamp = graphql_context.at or Timestamp()
 
         # Convert filters to dict and merge root_node_uuids for compatibility
         filters_dict = dict(filters or {})
@@ -421,19 +428,22 @@ class DiffTreeResolver:
             # take the one with the longest duration that covers multiple branches
             enriched_diff = sorted(
                 enriched_diffs,
-                key=lambda d: (d.base_branch_name != d.diff_branch_name, d.to_time.obj - d.from_time.obj),
+                key=lambda d: (
+                    d.base_branch_name != d.diff_branch_name,
+                    d.to_time.to_datetime() - d.from_time.to_datetime(),
+                ),
                 reverse=True,
             )[0]
         else:
             enriched_diff = enriched_diffs[0]
 
         full_fields = await extract_fields(info.field_nodes[0].selection_set)
-        diff_tree = await self.to_diff_tree(enriched_diff_root=enriched_diff, context=context)
+        diff_tree = await self.to_diff_tree(enriched_diff_root=enriched_diff, graphql_context=graphql_context)
         need_base_changes = "num_untracked_base_changes" in full_fields
         need_branch_changes = "num_untracked_diff_changes" in full_fields
         if need_base_changes or need_branch_changes:
             await self._add_untracked_fields(
-                db=context.db,
+                db=graphql_context.db,
                 diff_response=diff_tree,
                 from_time=enriched_diff.to_time,
                 base_branch_name=base_branch.name if need_base_changes else None,
@@ -441,10 +451,9 @@ class DiffTreeResolver:
             )
         return await self.to_graphql(fields=full_fields, diff_object=diff_tree)
 
-    # pylint: disable=unused-argument
     async def summary(
         self,
-        root: dict,
+        root: dict,  # noqa: ARG002
         info: GraphQLResolveInfo,
         branch: str | None = None,
         from_time: datetime | None = None,
@@ -452,10 +461,10 @@ class DiffTreeResolver:
         filters: dict | None = None,
     ) -> Optional[Union[list[dict[str, Any]], dict[str, Any]]]:
         component_registry = get_component_registry()
-        context: GraphqlContext = info.context
-        base_branch = await registry.get_branch(db=context.db, branch=registry.default_branch)
-        diff_branch = await registry.get_branch(db=context.db, branch=branch)
-        diff_repo = await component_registry.get_component(DiffRepository, db=context.db, branch=diff_branch)
+        graphql_context: GraphqlContext = info.context
+        base_branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
+        diff_branch = await registry.get_branch(db=graphql_context.db, branch=branch)
+        diff_repo = await component_registry.get_component(DiffRepository, db=graphql_context.db, branch=diff_branch)
         branch_start_timestamp = Timestamp(diff_branch.get_branched_from())
         if from_time:
             from_timestamp = Timestamp(from_time.isoformat())
@@ -464,7 +473,7 @@ class DiffTreeResolver:
         if to_time:
             to_timestamp = Timestamp(to_time.isoformat())
         else:
-            to_timestamp = context.at or Timestamp()
+            to_timestamp = graphql_context.at or Timestamp()
 
         filters_dict = dict(filters or {})
 
@@ -481,8 +490,8 @@ class DiffTreeResolver:
         diff_tree_summary = DiffTreeSummary(
             base_branch=base_branch.name,
             diff_branch=diff_branch.name,
-            from_time=summary.from_time.obj,
-            to_time=summary.to_time.obj,
+            from_time=summary.from_time.to_datetime(),
+            to_time=summary.to_time.to_datetime(),
             **summary.model_dump(exclude={"from_time", "to_time"}),
         )
         full_fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -490,7 +499,7 @@ class DiffTreeResolver:
         need_branch_changes = "num_untracked_diff_changes" in full_fields
         if need_base_changes or need_branch_changes:
             await self._add_untracked_fields(
-                db=context.db,
+                db=graphql_context.db,
                 diff_response=diff_tree_summary,
                 from_time=summary.to_time,
                 base_branch_name=base_branch.name if need_base_changes else None,
@@ -519,7 +528,6 @@ class DiffTreeQueryFilters(InputObjectType):
 DiffTreeQuery = Field(
     DiffTree,
     name=String(),
-    resolver=DiffTreeResolver().resolve,
     branch=String(),
     from_time=DateTime(),
     to_time=DateTime(),
@@ -528,14 +536,17 @@ DiffTreeQuery = Field(
     filters=DiffTreeQueryFilters(),
     limit=Int(),
     offset=Int(),
+    resolver=DiffTreeResolver().resolve,
+    required=False,
 )
 
 DiffTreeSummaryQuery = Field(
     DiffTreeSummary,
     name=String(),
-    resolver=DiffTreeResolver().summary,
     branch=String(),
     from_time=DateTime(),
     to_time=DateTime(),
     filters=DiffTreeQueryFilters(),
+    resolver=DiffTreeResolver().summary,
+    required=False,
 )

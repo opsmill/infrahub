@@ -2,7 +2,7 @@ import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
 import { AttributeType, ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { Permission } from "@/entities/permission/types";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { ModelSchema } from "@/entities/schema/types";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
 import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
@@ -12,7 +12,7 @@ import { CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 
 type tIpDetailsCard = {
-  schema: IModelSchema;
+  schema: ModelSchema;
   data: { id: string; display_label: string } & Record<string, AttributeType>;
   refetch: () => void;
   permission: Permission;

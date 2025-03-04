@@ -11,6 +11,7 @@ from infrahub.core.constants import CheckType, InfrahubKind, RepositoryInternalS
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.registry import registry
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.git.models import TriggerRepositoryInternalChecks
 from infrahub.git.repository import InfrahubRepository
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import (
@@ -20,6 +21,7 @@ from infrahub.message_bus.types import (
     ProposedChangeSubscriber,
 )
 from infrahub.proposed_change.models import (
+    RequestArtifactDefinitionCheck,
     RequestProposedChangeDataIntegrity,
     RequestProposedChangeRepositoryChecks,
     RequestProposedChangeRunGenerators,
@@ -28,6 +30,8 @@ from infrahub.proposed_change.models import (
 )
 from infrahub.services import InfrahubServices  # noqa: TC001
 from infrahub.workflows.catalogue import (
+    GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
+    REQUEST_ARTIFACT_DEFINITION_CHECK,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
     REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
@@ -74,17 +78,15 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
     ):
         for repo in repositories:
             if not repo.read_only and repo.internal_status == RepositoryInternalStatus.ACTIVE.value:
-                events.append(
-                    messages.RequestRepositoryChecks(
-                        proposed_change=message.proposed_change,
-                        repository=repo.repository_id,
-                        source_branch=repo.source_branch,
-                        target_branch=repo.destination_branch,
-                    )
+                model = TriggerRepositoryInternalChecks(
+                    proposed_change=message.proposed_change,
+                    repository=repo.repository_id,
+                    source_branch=repo.source_branch,
+                    target_branch=repo.destination_branch,
                 )
-        for event in events:
-            event.assign_meta(parent=message)
-            await service.send(message=event)
+                await service.workflow.submit_workflow(
+                    workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER, parameters={"model": model}
+                )
         return
 
     await _gather_repository_repository_diffs(repositories=repositories, service=service)
@@ -103,6 +105,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
     if message.check_type is CheckType.ARTIFACT:
         events.append(
             messages.RequestProposedChangeRefreshArtifacts(
+                context=message.context,
                 proposed_change=message.proposed_change,
                 source_branch=message.source_branch,
                 source_branch_sync_with_git=message.source_branch_sync_with_git,
@@ -122,7 +125,9 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             do_repository_checks=message.check_type is CheckType.ALL,
         )
         await service.workflow.submit_workflow(
-            workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS, parameters={"model": model_proposed_change_run_generator}
+            workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
+            context=message.context,
+            parameters={"model": model_proposed_change_run_generator},
         )
 
     if message.check_type in [CheckType.ALL, CheckType.DATA] and branch_diff.has_node_changes(
@@ -136,7 +141,9 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             branch_diff=branch_diff,
         )
         await service.workflow.submit_workflow(
-            workflow=REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY, parameters={"model": model_proposed_change_data_integrity}
+            workflow=REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
+            context=message.context,
+            parameters={"model": model_proposed_change_data_integrity},
         )
 
     if message.check_type in [CheckType.REPOSITORY, CheckType.USER]:
@@ -148,7 +155,9 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             branch_diff=branch_diff,
         )
         await service.workflow.submit_workflow(
-            workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS, parameters={"model": model_proposed_change_repo_checks}
+            workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
+            context=message.context,
+            parameters={"model": model_proposed_change_repo_checks},
         )
 
     if message.check_type in [CheckType.ALL, CheckType.SCHEMA] and branch_diff.has_data_changes(
@@ -156,6 +165,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
     ):
         await service.workflow.submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
+            context=message.context,
             parameters={
                 "model": RequestProposedChangeSchemaIntegrity(
                     proposed_change=message.proposed_change,
@@ -170,6 +180,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
     if message.check_type in [CheckType.ALL, CheckType.TEST]:
         await service.workflow.submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_USER_TESTS,
+            context=message.context,
             parameters={
                 "model": RequestProposedChangeUserTests(
                     proposed_change=message.proposed_change,
@@ -183,7 +194,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
 
     for event in events:
         event.assign_meta(parent=message)
-        await service.send(message=event)
+        await service.message_bus.send(message=event)
 
 
 @flow(
@@ -232,7 +243,8 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
 
         if select:
             log.info(f"Trigger processing of {artifact_definition.definition_name}")
-            msg = messages.RequestArtifactDefinitionCheck(
+            model = RequestArtifactDefinitionCheck(
+                context=message.context,
                 artifact_definition=artifact_definition,
                 branch_diff=message.branch_diff,
                 proposed_change=message.proposed_change,
@@ -241,8 +253,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
                 destination_branch=message.destination_branch,
             )
 
-            msg.assign_meta(parent=message)
-            await service.send(message=msg)
+            await service.workflow.submit_workflow(REQUEST_ARTIFACT_DEFINITION_CHECK, parameters={"model": model})
 
 
 GATHER_ARTIFACT_DEFINITIONS = """
@@ -520,7 +531,7 @@ async def _get_proposed_change_repositories(
     return _parse_proposed_change_repositories(message=message, source=source_all, destination=destination_all)
 
 
-@task(name="proposed-change-validate-repository-conflicts", task_run_name="Validate conflicts on repository")
+@task(name="proposed-change-validate-repository-conflicts", task_run_name="Validate conflicts on repository")  # type: ignore[arg-type]
 async def _validate_repository_merge_conflicts(
     repositories: list[ProposedChangeRepository], service: InfrahubServices
 ) -> bool:
@@ -529,7 +540,10 @@ async def _validate_repository_merge_conflicts(
     for repo in repositories:
         if repo.has_diff and not repo.is_staging:
             git_repo = await InfrahubRepository.init(
-                id=repo.repository_id, name=repo.repository_name, client=service.client
+                id=repo.repository_id,
+                name=repo.repository_name,
+                client=service.client,
+                service=service,
             )
             async with lock.registry.get(name=repo.repository_name, namespace="repository"):
                 repo.conflicts = await git_repo.get_conflicts(
@@ -551,7 +565,10 @@ async def _gather_repository_repository_diffs(
         if repo.has_diff and repo.source_commit and repo.destination_commit:
             # TODO we need to find a way to return all files in the repo if the repo is new
             git_repo = await InfrahubRepository.init(
-                id=repo.repository_id, name=repo.repository_name, client=service.client
+                id=repo.repository_id,
+                name=repo.repository_name,
+                client=service.client,
+                service=service,
             )
 
             files_changed: list[str] = []

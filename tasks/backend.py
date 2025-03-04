@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from invoke import Context, task
 from invoke.runners import Result
@@ -66,28 +66,16 @@ def mypy(context: Context) -> None:
 
 
 @task
-def pylint(context: Context) -> None:
-    """This will run pylint for the specified name and Python version."""
-
-    print(f" - [{NAMESPACE}] Check code with pylint")
-    exec_cmd = f"poetry run pylint --ignore-paths {MAIN_DIRECTORY}/tests {MAIN_DIRECTORY}"
-
-    with context.cd(ESCAPED_REPO_PATH):
-        context.run(exec_cmd)
-
-
-@task
 def lint(context: Context) -> None:
     """This will run all linters."""
     ruff(context)
     mypy(context)
-    pylint(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 
 
 @task(optional=["database"])
-def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
+def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         if database == "neo4j":
@@ -97,7 +85,7 @@ def test_unit(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[R
 
 
 @task(optional=["database"])
-def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
+def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit/core"
         if database == "neo4j":
@@ -107,7 +95,7 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[R
 
 
 @task(optional=["database"])
-def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
+def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
         if database == "neo4j":
@@ -117,7 +105,7 @@ def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Opt
 
 
 @task(optional=["database"])
-def test_functional(context: Context, database: str = INFRAHUB_DATABASE) -> Optional[Result]:
+def test_functional(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"poetry run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/functional"
         if database == "neo4j":
@@ -130,13 +118,13 @@ def test_functional(context: Context, database: str = INFRAHUB_DATABASE) -> Opti
 def test_scale(
     context: Context,
     schema: Path = f"{ESCAPED_REPO_PATH}/backend/tests/scale/schema.yml",
-    stager: Optional[str] = None,
-    amount: Optional[int] = None,
-    test: Optional[str] = None,
-    attrs: Optional[int] = None,
-    rels: Optional[int] = None,
-    changes: Optional[int] = None,
-) -> Optional[Result]:
+    stager: str | None = None,
+    amount: int | None = None,
+    test: str | None = None,
+    attrs: int | None = None,
+    rels: int | None = None,
+    changes: int | None = None,
+) -> Result | None:
     args = []
     if stager:
         args.extend(["--stager", stager])
@@ -185,7 +173,7 @@ def generate(context: Context) -> None:
 
 
 @task
-def validate_generated(context: Context, docker: bool = False) -> None:
+def validate_generated(context: Context, docker: bool = False) -> None:  # noqa: ARG001
     """Validate that the generated documentation is committed to Git."""
 
     _generate_schemas(context=context)
@@ -275,7 +263,7 @@ def _jinja2_filter_render_attribute(value: dict[str, Any], use_python_primitive:
 
 
 def _sort_and_filter_models(
-    models: list[dict[str, Any]], filters: Optional[list[tuple[str, str]]] = None
+    models: list[dict[str, Any]], filters: list[tuple[str, str]] | None = None
 ) -> list[dict[str, Any]]:
     if filters is None:
         filters = [("Core", "Node")]

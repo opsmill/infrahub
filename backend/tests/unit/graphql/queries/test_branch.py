@@ -3,14 +3,13 @@ import operator
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.services import services
 from tests.helpers.graphql import graphql
 from tests.helpers.test_app import TestInfrahubApp
 
 
 class TestBranchuQuery(TestInfrahubApp):
     async def test_branch_query(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, session_admin, client
+        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, session_admin, client, service
     ):
         create_branch_query = """
         mutation {
@@ -29,7 +28,7 @@ class TestBranchuQuery(TestInfrahubApp):
             include_subscription=False,
             branch=default_branch,
             account_session=session_admin,
-            service=services.service,
+            service=service,
         )
         branch3_result = await graphql(
             schema=gql_params.schema,
@@ -57,7 +56,7 @@ class TestBranchuQuery(TestInfrahubApp):
         }
         """
         gql_params = await prepare_graphql_params(
-            db=db, include_subscription=False, branch=default_branch, service=services.service
+            db=db, include_subscription=False, branch=default_branch, service=service
         )
         all_branches = await graphql(
             schema=gql_params.schema,
@@ -104,7 +103,7 @@ class TestBranchuQuery(TestInfrahubApp):
         }
         """ % branch3["name"]
         gql_params = await prepare_graphql_params(
-            db=db, include_subscription=False, branch=default_branch, service=services.service
+            db=db, include_subscription=False, branch=default_branch, service=service
         )
         name_response = await graphql(
             schema=gql_params.schema,
@@ -130,7 +129,7 @@ class TestBranchuQuery(TestInfrahubApp):
         id_query = id_query.replace("'", '"')
 
         gql_params = await prepare_graphql_params(
-            db=db, include_subscription=False, branch=default_branch, service=services.service
+            db=db, include_subscription=False, branch=default_branch, service=service
         )
         id_response = await graphql(
             schema=gql_params.schema,

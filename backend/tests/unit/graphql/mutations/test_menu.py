@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 async def test_menu_create(db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch):
-    service = InfrahubServices(database=db)
+    service = await InfrahubServices.new(database=db)
 
     CREATE_MENU = """
     mutation CoreMenuItemCreate {
@@ -37,7 +37,7 @@ async def test_menu_create(db: InfrahubDatabase, register_core_models_schema: No
 
 
 async def test_menu_update_protected(db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch):
-    service = InfrahubServices(database=db)
+    service = await InfrahubServices.new(database=db)
 
     menu_item = MenuItemDefinition(
         namespace="Builtin",
@@ -77,7 +77,7 @@ async def test_menu_update_protected(db: InfrahubDatabase, register_core_models_
 
 
 async def test_menu_delete_protected(db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch):
-    service = InfrahubServices(database=db)
+    service = await InfrahubServices.new(database=db)
 
     menu_item = MenuItemDefinition(
         namespace="Builtin",

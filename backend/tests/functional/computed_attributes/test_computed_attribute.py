@@ -4,11 +4,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.auth import AccountSession, AuthType
 from infrahub.computed_attribute.tasks import process_jinja2, process_transform, query_transform_targets
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
-from infrahub.database import InfrahubDatabase
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.schema import COLOR, TSHIRT, load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -20,10 +21,19 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubServices
     from tests.adapters.message_bus import BusSimulator
 
 
 class TestComputedAttribute(TestInfrahubApp):
+    @pytest.fixture(scope="class")
+    async def context(self, client: InfrahubClient, default_branch: Branch) -> InfrahubContext:
+        """Placeholder context for now, would be good to implement some auth and permissions here"""
+        return InfrahubContext(
+            account=AccountSession(authenticated=False, account_id="placeholder", auth_type=AuthType.NONE),
+            branch=BranchContext(name=default_branch.name, id=str(default_branch.uuid)),
+        )
+
     @pytest.fixture(scope="class")
     async def data(
         self,
@@ -72,7 +82,12 @@ class TestComputedAttribute(TestInfrahubApp):
         return {"c1": c1, "c2": c2, "c3": c3, "t1": t1, "t2": t2}
 
     async def test_description_after_color_change_jinja2(
-        self, data: dict[str, Node], client: InfrahubClient, default_branch: Branch
+        self,
+        data: dict[str, Node],
+        client: InfrahubClient,
+        default_branch: Branch,
+        context: InfrahubContext,
+        service: InfrahubServices,
     ) -> None:
         tshirt_1 = await client.get(kind="TestingTShirt", id=data["t1"].id)
         assert (
@@ -92,6 +107,8 @@ class TestComputedAttribute(TestInfrahubApp):
             computed_attribute_kind="TestingTShirt",
             computed_attribute_name="description",
             updated_fields='"color"',
+            context=context,
+            service=service,
         )
 
         tshirt_updated = await client.get(kind="TestingTShirt", id=data["t1"].id)
@@ -101,7 +118,12 @@ class TestComputedAttribute(TestInfrahubApp):
         )
 
     async def test_description_after_chainging_color_description_transform(
-        self, data: dict[str, Node], client: InfrahubClient, default_branch: Branch
+        self,
+        data: dict[str, Node],
+        client: InfrahubClient,
+        default_branch: Branch,
+        context: InfrahubContext,
+        service: InfrahubServices,
     ) -> None:
         # As we currently don't have a way to trigger on events within these tests we fire the automated workflow
         # manually
@@ -116,6 +138,8 @@ class TestComputedAttribute(TestInfrahubApp):
             node_kind="TestingTShirt",
             computed_attribute_name="pitch",
             computed_attribute_kind="TestingTShirt",
+            context=context,
+            service=service,
         )
 
         tshirt_first_pitch_allocation = await client.get(kind="TestingTShirt", id=tshirt_obj.id)
@@ -124,7 +148,13 @@ class TestComputedAttribute(TestInfrahubApp):
         color.description.value = "A soft off-white, smooth and timeless."
         await color.save()
 
-        await query_transform_targets(branch_name=default_branch.name, node_kind="TestingColor", object_id=color_obj.id)
+        await query_transform_targets(
+            branch_name=default_branch.name,
+            node_kind="TestingColor",
+            object_id=color_obj.id,
+            context=context,
+            service=service,
+        )
 
         tshirt_altered_pitch_allocation = await client.get(kind="TestingTShirt", id=tshirt_obj.id)
         assert not tshirt_initial.pitch.value

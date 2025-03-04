@@ -39,7 +39,6 @@ async def generate_restricted_menu(
     return menu
 
 
-# pylint: disable=too-many-branches,too-many-statements
 async def generate_menu(db: InfrahubDatabase, branch: Branch, menu_items: list[CoreMenuItem]) -> MenuDict:
     structure = MenuDict()
     full_schema = registry.schema.get_full(branch=branch, duplicate=False)

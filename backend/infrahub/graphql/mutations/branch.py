@@ -9,6 +9,8 @@ from typing_extensions import Self
 
 from infrahub.core.branch import Branch
 from infrahub.database import retry_db_transaction
+from infrahub.graphql.context import apply_external_context
+from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import (
     BRANCH_CREATE,
@@ -28,8 +30,6 @@ if TYPE_CHECKING:
     from ..initialization import GraphqlContext
 
 
-# pylint: disable=unused-argument
-
 log = get_logger()
 
 
@@ -46,6 +46,7 @@ class BranchCreateInput(InputObjectType):
 class BranchCreate(Mutation):
     class Arguments:
         data = BranchCreateInput(required=True)
+        context = ContextInput(required=False)
         background_execution = Boolean(required=False, deprecation_reason="Please use `wait_until_completion` instead")
         wait_until_completion = Boolean(required=False)
 
@@ -57,28 +58,32 @@ class BranchCreate(Mutation):
     @trace.get_tracer(__name__).start_as_current_span("branch_create")
     async def mutate(
         cls,
-        root: dict,
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: BranchCreateInput,
+        context: ContextInput | None = None,
         background_execution: bool = False,
         wait_until_completion: bool = True,
     ) -> Self:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
         task: dict | None = None
 
         model = BranchCreateModel(**data)
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         if background_execution or not wait_until_completion:
-            workflow = await context.active_service.workflow.submit_workflow(
-                workflow=BRANCH_CREATE, parameters={"model": model}
+            workflow = await graphql_context.active_service.workflow.submit_workflow(
+                workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model}
             )
             task = {"id": workflow.id}
             return cls(ok=True, task=task)
 
-        await context.active_service.workflow.execute_workflow(workflow=BRANCH_CREATE, parameters={"model": model})
+        await graphql_context.active_service.workflow.execute_workflow(
+            workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model}
+        )
 
         # Retrieve created branch
-        obj = await Branch.get_by_name(db=context.db, name=model.name)
+        obj = await Branch.get_by_name(db=graphql_context.db, name=model.name)
         fields = await extract_fields(info.field_nodes[0].selection_set)
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=True, task=task)
 
@@ -96,6 +101,7 @@ class BranchUpdateInput(InputObjectType):
 class BranchDelete(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
+        context = ContextInput(required=False)
         wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
@@ -103,19 +109,25 @@ class BranchDelete(Mutation):
 
     @classmethod
     async def mutate(
-        cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: BranchNameInput,
+        context: ContextInput | None = None,
+        wait_until_completion: bool = True,
     ) -> Self:
-        context: GraphqlContext = info.context
-        obj = await Branch.get_by_name(db=context.db, name=str(data.name))
+        graphql_context: GraphqlContext = info.context
+        obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         if wait_until_completion:
-            await context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_DELETE, parameters={"branch": obj.name}
+            await graphql_context.active_service.workflow.execute_workflow(
+                workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters={"branch": obj.name}
             )
             return cls(ok=True)
 
-        workflow = await context.active_service.workflow.submit_workflow(
-            workflow=BRANCH_DELETE, parameters={"branch": obj.name}
+        workflow = await graphql_context.active_service.workflow.submit_workflow(
+            workflow=BRANCH_DELETE, context=graphql_context.get_context(), parameters={"branch": obj.name}
         )
         return cls(ok=True, task={"id": str(workflow.id)})
 
@@ -123,22 +135,30 @@ class BranchDelete(Mutation):
 class BranchUpdate(Mutation):
     class Arguments:
         data = BranchUpdateInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
 
     @classmethod
     @retry_db_transaction(name="branch_update")
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
-        context: GraphqlContext = info.context
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: BranchNameInput,
+        context: ContextInput | None = None,
+    ) -> Self:
+        graphql_context: GraphqlContext = info.context
 
-        obj = await Branch.get_by_name(db=context.db, name=data["name"])
+        obj = await Branch.get_by_name(db=graphql_context.db, name=data["name"])
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         to_extract = ["description"]
         for field_name in to_extract:
             if field_name in data and data.get(field_name) is not None:
                 setattr(obj, field_name, data[field_name])
 
-        async with context.db.start_transaction() as db:
+        async with graphql_context.db.start_transaction() as db:
             await obj.save(db=db)
 
         return cls(ok=True)
@@ -147,6 +167,7 @@ class BranchUpdate(Mutation):
 class BranchRebase(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
+        context = ContextInput(required=False)
         wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
@@ -155,23 +176,29 @@ class BranchRebase(Mutation):
 
     @classmethod
     async def mutate(
-        cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: BranchNameInput,
+        context: ContextInput | None = None,
+        wait_until_completion: bool = True,
     ) -> Self:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
-        obj = await Branch.get_by_name(db=context.db, name=str(data.name))
+        obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
         task: dict | None = None
 
         if wait_until_completion:
-            await context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_REBASE, parameters={"branch": obj.name}
+            await graphql_context.active_service.workflow.execute_workflow(
+                workflow=BRANCH_REBASE, context=graphql_context.get_context(), parameters={"branch": obj.name}
             )
 
             # Pull the latest information about the branch from the database directly
-            obj = await Branch.get_by_name(db=context.db, name=str(data.name))
+            obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
         else:
-            workflow = await context.active_service.workflow.submit_workflow(
-                workflow=BRANCH_REBASE, parameters={"branch": obj.name}
+            workflow = await graphql_context.active_service.workflow.submit_workflow(
+                workflow=BRANCH_REBASE, context=graphql_context.get_context(), parameters={"branch": obj.name}
             )
             task = {"id": workflow.id}
 
@@ -184,6 +211,7 @@ class BranchRebase(Mutation):
 class BranchValidate(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
+        context = ContextInput(required=False)
         wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
@@ -193,21 +221,27 @@ class BranchValidate(Mutation):
     @classmethod
     @retry_db_transaction(name="branch_validate")
     async def mutate(
-        cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: BranchNameInput,
+        context: ContextInput | None = None,
+        wait_until_completion: bool = True,
     ) -> Self:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
-        obj = await Branch.get_by_name(db=context.db, name=str(data.name))
+        obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
         task: dict | None = None
         ok = True
 
         if wait_until_completion:
-            await context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_VALIDATE, parameters={"branch": obj.name}
+            await graphql_context.active_service.workflow.execute_workflow(
+                workflow=BRANCH_VALIDATE, context=graphql_context.get_context(), parameters={"branch": obj.name}
             )
         else:
-            workflow = await context.active_service.workflow.submit_workflow(
-                workflow=BRANCH_VALIDATE, parameters={"branch": obj.name}
+            workflow = await graphql_context.active_service.workflow.submit_workflow(
+                workflow=BRANCH_VALIDATE, context=graphql_context.get_context(), parameters={"branch": obj.name}
             )
             task = {"id": workflow.id}
 
@@ -219,6 +253,7 @@ class BranchValidate(Mutation):
 class BranchMerge(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
+        context = ContextInput(required=False)
         wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
@@ -227,23 +262,34 @@ class BranchMerge(Mutation):
 
     @classmethod
     async def mutate(
-        cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput, wait_until_completion: bool = True
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: BranchNameInput,
+        context: ContextInput | None = None,
+        wait_until_completion: bool = True,
     ) -> Self:
         branch_name = data["name"]
         task: dict | None = None
+        graphql_context: GraphqlContext = info.context
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         if wait_until_completion:
-            await info.context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_MERGE_MUTATION, parameters={"branch": branch_name}
+            await graphql_context.active_service.workflow.execute_workflow(
+                workflow=BRANCH_MERGE_MUTATION,
+                context=graphql_context.get_context(),
+                parameters={"branch": branch_name},
             )
         else:
-            workflow = await info.context.active_service.workflow.submit_workflow(
-                workflow=BRANCH_MERGE_MUTATION, parameters={"branch": branch_name}
+            workflow = await graphql_context.active_service.workflow.submit_workflow(
+                workflow=BRANCH_MERGE_MUTATION,
+                context=graphql_context.get_context(),
+                parameters={"branch": branch_name},
             )
             task = {"id": workflow.id}
 
         # Pull the latest information about the branch from the database directly
-        obj = await Branch.get_by_name(db=info.context.db, name=branch_name)
+        obj = await Branch.get_by_name(db=graphql_context.db, name=branch_name)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
         ok = True

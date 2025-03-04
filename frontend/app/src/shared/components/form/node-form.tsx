@@ -4,8 +4,9 @@ import { currentBranchAtom } from "@/entities/branches/stores";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { GET_FORM_REQUIREMENTS } from "@/entities/nodes/api/getFormRequirements";
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
+import { NodeObject } from "@/entities/nodes/types";
 import { NUMBER_POOL_KIND } from "@/entities/resource-manager/constants";
-import { IProfileSchema, iNodeSchema } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { CREATE_ACCOUNT_TOKEN } from "@/entities/user-profile/api/createAccountToken";
 import { CoreNumberPool } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -15,7 +16,6 @@ import { ProfileData } from "@/shared/components/form/object-form";
 import { DynamicFieldProps, FormFieldValue, NumberPoolData } from "@/shared/components/form/type";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
-import LoadingScreen from "@/shared/components/loading-screen";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import useFilters from "@/shared/hooks/useFilters";
 import { datetimeAtom } from "@/shared/stores/time.atom";
@@ -24,6 +24,7 @@ import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { toast } from "react-toastify";
+import { LoadingIndicator } from "../loading/loading-indicator";
 
 export type NodeFormSubmitParams = {
   fields: Array<DynamicFieldProps>;
@@ -33,10 +34,11 @@ export type NodeFormSubmitParams = {
 
 export type NodeFormProps = {
   className?: string;
-  schema: iNodeSchema | IProfileSchema;
+  schema: NodeSchema | ProfileSchema;
   profiles?: ProfileData[];
   onSuccess?: (newObject: any) => void;
   currentObject?: Record<string, AttributeType | RelationshipType>;
+  objectTemplate?: NodeObject | null;
   isFilterForm?: boolean;
   isUpdate?: boolean;
   onSubmit?: (data: NodeFormSubmitParams) => void;
@@ -45,6 +47,7 @@ export type NodeFormProps = {
 export const NodeForm = ({
   className,
   currentObject,
+  objectTemplate,
   schema,
   profiles,
   onSuccess,
@@ -60,7 +63,7 @@ export const NodeForm = ({
 
   const { data, loading } = useQuery(GET_FORM_REQUIREMENTS, { variables: { kind: schema.kind } });
 
-  if (loading) return <LoadingScreen hideText className="mt-4" />;
+  if (loading) return <LoadingIndicator className="mt-4" />;
 
   const numberPools: Array<NumberPoolData> = data?.[NUMBER_POOL_KIND].edges.map(
     ({ node }: { node: CoreNumberPool }): NumberPoolData => ({
@@ -78,6 +81,7 @@ export const NodeForm = ({
     schema,
     profiles,
     initialObject: currentObject,
+    objectTemplate,
     auth,
     isFilterForm,
     filters,
@@ -91,7 +95,8 @@ export const NodeForm = ({
         const result = await graphqlClient.mutate({
           mutation: CREATE_ACCOUNT_TOKEN,
           variables: {
-            name: data.name.value,
+            name: data.name?.value,
+            expiration: data.expiration?.value,
           },
           context: {
             branch: branch?.name,

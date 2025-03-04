@@ -5,12 +5,6 @@ from .models import WorkerPoolDefinition, WorkflowDefinition
 
 INFRAHUB_WORKER_POOL = WorkerPoolDefinition(name="infrahub-worker", description="Default Pool for internal tasks")
 
-WEBHOOK_SEND = WorkflowDefinition(
-    name="event-send-webhook",
-    type=WorkflowType.USER,
-    module="infrahub.webhook.tasks",
-    function="send_webhook",
-)
 
 TRANSFORM_JINJA2_RENDER = WorkflowDefinition(
     name="transform_render_jinja2_template",
@@ -319,27 +313,6 @@ REQUEST_PROPOSED_CHANGE_USER_TESTS = WorkflowDefinition(
     function="run_proposed_change_user_tests",
 )
 
-AUTOMATION_BRANCH_ACTIONS = WorkflowDefinition(
-    name="branch-actions-setup",
-    type=WorkflowType.CORE,
-    module="infrahub.core.branch.tasks",
-    function="branch_actions_setup",
-)
-
-AUTOMATION_SCHEMA_UPDATED = WorkflowDefinition(
-    name="schema-updated-setup",
-    type=WorkflowType.CORE,
-    module="infrahub.schema.tasks",
-    function="schema_updated_setup",
-)
-
-AUTOMATION_GIT_UPDATED = WorkflowDefinition(
-    name="git-commit-automation-setup",
-    type=WorkflowType.CORE,
-    module="infrahub.git.tasks",
-    function="setup_commit_automation",
-)
-
 GIT_REPOSITORIES_DIFF_NAMES_ONLY = WorkflowDefinition(
     name="git-repository-diff-names-only",
     type=WorkflowType.INTERNAL,
@@ -370,25 +343,75 @@ REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS = WorkflowDefinition(
     function="repository_checks",
 )
 
-WEBHOOK_CONFIGURE = WorkflowDefinition(
-    name="webhook-setup-automations",
-    type=WorkflowType.USER,
-    module="infrahub.webhook.tasks",
-    function="configure_webhooks",
+REQUEST_ARTIFACT_DEFINITION_CHECK = WorkflowDefinition(
+    name="artifacts-generation-validation",
+    type=WorkflowType.INTERNAL,
+    module="infrahub.proposed_change.tasks",
+    function="validate_artifacts_generation",
 )
 
-WEBHOOK_TRIGGER = WorkflowDefinition(
-    name="webhook-trigger-actions",
+WEBHOOK_PROCESS = WorkflowDefinition(
+    name="webhook-process",
     type=WorkflowType.USER,
     module="infrahub.webhook.tasks",
-    function="trigger_webhooks",
+    function="webhook_process",
 )
 
-AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER = WorkflowDefinition(
-    name="webhook-setup-configuration-trigger",
-    type=WorkflowType.USER,
+WEBHOOK_CONFIGURE_ONE = WorkflowDefinition(
+    name="webhook-setup-automation-one",
+    type=WorkflowType.CORE,
     module="infrahub.webhook.tasks",
-    function="trigger_webhook_configuration",
+    function="configure_webhook_one",
+)
+
+WEBHOOK_CONFIGURE_ALL = WorkflowDefinition(
+    name="webhook-setup-automation-all",
+    type=WorkflowType.CORE,
+    cron=f"{random.randint(0, 59)} 3 * * *",
+    module="infrahub.webhook.tasks",
+    function="configure_webhook_all",
+)
+
+GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE = WorkflowDefinition(
+    name="git-repository-check-artifact-create",
+    type=WorkflowType.USER,
+    module="infrahub.artifacts.tasks",
+    function="create",
+)
+
+GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER = WorkflowDefinition(
+    name="git-repository-user-checks-definition-trigger",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="trigger_repository_user_checks_definitions",
+)
+
+GIT_REPOSITORY_USER_CHECK_RUN = WorkflowDefinition(
+    name="git-repository-run-user-check",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="run_user_check",
+)
+
+GIT_REPOSITORY_USER_CHECKS_TRIGGER = WorkflowDefinition(
+    name="git-repository-trigger-user-checks",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="trigger_user_checks",
+)
+
+GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER = WorkflowDefinition(
+    name="git-repository-trigger-internal-checks",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="trigger_internal_checks",
+)
+
+GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN = WorkflowDefinition(
+    name="git-repository-check-merge-conflict",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="run_check_merge_conflicts",
 )
 
 
@@ -396,10 +419,6 @@ worker_pools = [INFRAHUB_WORKER_POOL]
 
 workflows = [
     ANONYMOUS_TELEMETRY_SEND,
-    AUTOMATION_BRANCH_ACTIONS,
-    AUTOMATION_GIT_UPDATED,
-    AUTOMATION_SCHEMA_UPDATED,
-    AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER,
     BRANCH_CANCEL_PROPOSED_CHANGES,
     BRANCH_CREATE,
     BRANCH_DELETE,
@@ -413,6 +432,7 @@ workflows = [
     DIFF_REFRESH,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
+    GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORIES_CREATE_BRANCH,
     GIT_REPOSITORIES_DIFF_NAMES_ONLY,
     GIT_REPOSITORIES_IMPORT_OBJECTS,
@@ -421,11 +441,17 @@ workflows = [
     GIT_REPOSITORIES_SYNC,
     GIT_REPOSITORY_ADD,
     GIT_REPOSITORY_ADD_READ_ONLY,
+    GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
+    GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
+    GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER,
+    GIT_REPOSITORY_USER_CHECKS_TRIGGER,
+    GIT_REPOSITORY_USER_CHECK_RUN,
     GRAPHQL_QUERY_GROUP_UPDATE,
     IPAM_RECONCILIATION,
     PROCESS_COMPUTED_MACRO,
     PROPOSED_CHANGE_MERGE,
     QUERY_COMPUTED_ATTRIBUTE_TRANSFORM_TARGETS,
+    REQUEST_ARTIFACT_DEFINITION_CHECK,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_ARTIFACT_GENERATE,
     REQUEST_GENERATOR_DEFINITION_RUN,
@@ -444,14 +470,7 @@ workflows = [
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
-    WEBHOOK_CONFIGURE,
-    WEBHOOK_SEND,
-    WEBHOOK_TRIGGER,
-]
-
-automation_setup_workflows = [
-    AUTOMATION_BRANCH_ACTIONS,
-    AUTOMATION_GIT_UPDATED,
-    AUTOMATION_SCHEMA_UPDATED,
-    AUTOMATION_SETUP_WEBHOOK_CONFIGURATION_TRIGGER,
+    WEBHOOK_CONFIGURE_ALL,
+    WEBHOOK_CONFIGURE_ONE,
+    WEBHOOK_PROCESS,
 ]

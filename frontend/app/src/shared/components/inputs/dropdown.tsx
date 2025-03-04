@@ -1,6 +1,5 @@
 import { DROPDOWN_ADD_MUTATION, DROPDOWN_REMOVE_MUTATION } from "@/entities/schema/api/dropdown";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { AttributeSchema } from "@/entities/schema/types";
+import { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -34,15 +33,16 @@ export interface DropdownProps extends Omit<HTMLAttributes<HTMLButtonElement>, "
   items: Array<DropdownOption>;
   className?: string;
   onChange: (value: DropdownOption["value"] | null) => void;
-  schema?: IModelSchema;
+  schema?: ModelSchema;
   field?: AttributeSchema;
+  defaultOpen?: boolean;
 }
 
 export interface DropdownItemProps extends React.ComponentPropsWithoutRef<typeof ComboboxItem> {
   fieldSchema?: {
     name: string;
   };
-  schema?: IModelSchema;
+  schema?: ModelSchema;
   onDelete: (item: DropdownOption) => void;
   item: DropdownOption;
 }
@@ -133,7 +133,7 @@ export const DropdownItem = React.forwardRef<
 });
 
 interface DropdownAddActionProps {
-  schema: IModelSchema;
+  schema: ModelSchema;
   field: AttributeSchema;
   addOption: (item: DropdownOption) => void;
 }
@@ -217,9 +217,9 @@ export const DropdownAddAction: React.FC<DropdownAddActionProps> = ({
 };
 
 export const Dropdown = forwardRef<HTMLButtonElement, DropdownProps>(
-  ({ items, onChange, value, schema, field, ...props }, ref) => {
+  ({ items, onChange, value, schema, field, defaultOpen, ...props }, ref) => {
     const [localItems, setLocalItems] = useState(items);
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(!!defaultOpen);
 
     const handleAddOption = (newOption: DropdownOption) => {
       setLocalItems([...localItems, newOption]);
@@ -245,7 +245,7 @@ export const Dropdown = forwardRef<HTMLButtonElement, DropdownProps>(
           </div>
         </ComboboxTrigger>
 
-        <ComboboxContent>
+        <ComboboxContent fitTriggerWidth={false}>
           <ComboboxList>
             <ComboboxEmpty>No dropdown found.</ComboboxEmpty>
             {localItems.map((item) => (

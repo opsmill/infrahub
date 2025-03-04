@@ -61,11 +61,11 @@ class IPPrefixPoolGetResource(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: InputObjectType,
     ) -> Self:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         member_type = data.get("member_type", None)
         allowed_member_types = [t.value for t in PrefixMemberType]
@@ -73,15 +73,15 @@ class IPPrefixPoolGetResource(Mutation):
             raise QueryValidationError(f"Invalid member_type value, allowed values are {allowed_member_types}")
 
         obj: CoreIPPrefixPool = await registry.manager.find_object(  # type: ignore[assignment]
-            db=context.db,
+            db=graphql_context.db,
             kind=InfrahubKind.IPPREFIXPOOL,
             id=data.get("id"),
             hfid=data.get("hfid"),
-            branch=context.branch,
+            branch=graphql_context.branch,
         )
         resource = await obj.get_resource(
-            db=context.db,
-            branch=context.branch,
+            db=graphql_context.db,
+            branch=graphql_context.branch,
             identifier=data.get("identifier", None),
             prefixlen=data.get("prefix_length", None),
             member_type=member_type,
@@ -95,8 +95,8 @@ class IPPrefixPoolGetResource(Mutation):
                 "id": resource.id,
                 "kind": resource.get_kind(),
                 "identifier": data.get("identifier", None),
-                "display_label": await resource.render_display_label(db=context.db),
-                "branch": context.branch.name,
+                "display_label": await resource.render_display_label(db=graphql_context.db),
+                "branch": graphql_context.branch.name,
             },
         }
 
@@ -113,26 +113,26 @@ class IPAddressPoolGetResource(Mutation):
     @classmethod
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: dict[str, Any],
     ) -> Self:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
         obj: CoreIPAddressPool = await registry.manager.find_object(
-            db=context.db,
+            db=graphql_context.db,
             kind=InfrahubKind.IPADDRESSPOOL,
             id=data.get("id"),
             hfid=data.get("hfid"),
-            branch=context.branch,
+            branch=graphql_context.branch,
         )
         resource = await obj.get_resource(
-            db=context.db,
-            branch=context.branch,
-            identifier=data.get("identifier", None),
-            prefixlen=data.get("prefix_length", None),
-            address_type=data.get("address_type", None),
-            data=data.get("data", None),
+            db=graphql_context.db,
+            branch=graphql_context.branch,
+            identifier=data.get("identifier"),
+            prefixlen=data.get("prefix_length"),
+            address_type=data.get("address_type"),
+            data=data.get("data"),
         )
 
         result = {
@@ -140,9 +140,9 @@ class IPAddressPoolGetResource(Mutation):
             "node": {
                 "id": resource.id,
                 "kind": resource.get_kind(),
-                "identifier": data.get("identifier", None),
-                "display_label": await resource.render_display_label(db=context.db),
-                "branch": context.branch.name,
+                "identifier": data.get("identifier"),
+                "display_label": await resource.render_display_label(db=graphql_context.db),
+                "branch": graphql_context.branch.name,
             },
         }
 
@@ -151,7 +151,7 @@ class IPAddressPoolGetResource(Mutation):
 
 class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls,
         schema: NodeSchema | None = None,
         _meta: InfrahubMutationOptions | None = None,
@@ -174,7 +174,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: InfrahubDatabase | None = None,
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
     ) -> Any:
         try:
             pool_node = registry.get_node_schema(name=data["node"].value)
@@ -204,16 +204,16 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: InfrahubDatabase | None = None,
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
         node: Node | None = None,
     ) -> tuple[Node, Self]:
         if (data.get("node") and data.get("node").value) or (
             data.get("node_attribute") and data.get("node_attribute").value
         ):
             raise ValidationError(input_value="The fields 'node' or 'node_attribute' can't be changed.")
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
-        async with context.db.start_transaction() as dbt:
+        async with graphql_context.db.start_transaction() as dbt:
             number_pool, result = await super().mutate_update(
                 info=info, data=data, branch=branch, database=dbt, node=node
             )

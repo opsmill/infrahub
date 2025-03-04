@@ -1,8 +1,4 @@
-import {
-  ACCOUNT_GROUP_OBJECT,
-  ACCOUNT_PERMISSION_OBJECT,
-  ACCOUNT_ROLE_OBJECT,
-} from "@/config/constants";
+import { ACCOUNT_GROUP_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/config/constants";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { createObject } from "@/entities/nodes/api/createObject";
 import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
@@ -14,7 +10,7 @@ import { FormFieldValue } from "@/shared/components/form/type";
 import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Form, FormSubmit } from "@/shared/components/ui/form";
+import { Form, FormField, FormInput, FormSubmit } from "@/shared/components/ui/form";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { stringifyWithoutQuotes } from "@/shared/utils/string";
 import { gql } from "@apollo/client";
@@ -22,9 +18,12 @@ import { useAtomValue } from "jotai";
 import { FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
+import { PermissionCombobox } from "@/entities/role-manager/ui/permission-combobox";
+import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationship-many.field";
 import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getRelationshipDefaultValue";
+import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { isRequired } from "@/shared/components/form/utils/validation";
 
 interface NumberPoolFormProps extends Pick<NodeFormProps, "onSuccess"> {
@@ -48,7 +47,7 @@ export const AccountRoleForm = ({
 
   const permissions = getRelationshipDefaultValue({
     relationshipData: currentObject?.permissions?.value,
-    peerField: "identifier",
+    relationshipName: "identifier",
   });
 
   const defaultValues = {
@@ -138,16 +137,26 @@ export const AccountRoleForm = ({
           options={groups.value}
         />
 
-        <RelationshipManyField
+        <FormField
           name="permissions"
-          label="Permissions"
-          relationship={{
-            name: "permissions",
-            peer: ACCOUNT_PERMISSION_OBJECT,
-            cardinality: "many",
+          render={({ field }) => {
+            const fieldData = field.value;
+            return (
+              <div className="flex flex-col gap-2">
+                <LabelFormField label="Permissions" fieldData={fieldData} />
+
+                <FormInput>
+                  <PermissionCombobox
+                    {...field}
+                    value={fieldData.value}
+                    onChange={(newValue) => {
+                      field.onChange(updateRelationshipFieldValue(newValue, permissions));
+                    }}
+                  />
+                </FormInput>
+              </div>
+            );
           }}
-          options={permissions.value}
-          peerField="identifier"
         />
 
         <div className="text-right">

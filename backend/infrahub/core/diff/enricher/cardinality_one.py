@@ -35,7 +35,7 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
         self.db = db
         self._node_schema_map: dict[str, MainSchemaTypes] = {}
 
-    async def enrich(self, enriched_diff_root: EnrichedDiffRoot, calculated_diffs: CalculatedDiffs) -> None:
+    async def enrich(self, enriched_diff_root: EnrichedDiffRoot, calculated_diffs: CalculatedDiffs) -> None:  # noqa: ARG002
         self._node_schema_map = {}
         log.info("Beginning cardinality-one diff enrichment...")
         for diff_node in enriched_diff_root.nodes:
