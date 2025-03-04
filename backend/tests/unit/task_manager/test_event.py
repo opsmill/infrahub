@@ -5,6 +5,7 @@ from prefect.client.orchestration import PrefectClient, get_client
 from tests.helpers.events import extract_expected_ids, send_events
 
 from infrahub.core.branch import Branch
+from infrahub.database import InfrahubDatabase
 from infrahub.events.branch_action import BranchCreatedEvent, BranchRebasedEvent
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.task_manager.event import PrefectEvent
@@ -86,32 +87,44 @@ async def event_ids_inscope(events_data: dict[str, InfrahubEvent]) -> list[str]:
     return [str(event.meta.id) for event in events_data.values()]
 
 
-async def test_query_no_filters(event_ids_inscope):
+async def test_query_no_filters(
+    event_ids_inscope: list[str], db: InfrahubDatabase, register_core_models_schema: None
+) -> None:
     fields = {"count": None, "edges": {"node": {"event": None, "branch": None}}}
-    events = await PrefectEvent.query(fields=fields, event_filter=InfrahubEventFilter())
+    events = await PrefectEvent.query(db=db, fields=fields, event_filter=InfrahubEventFilter())
     clean_events = filter_outofscope_events(events, event_ids_inscope)
     assert clean_events["count"] == 4
 
 
-async def test_query_branch_filter(events_data, event_ids_inscope):
+async def test_query_branch_filter(
+    events_data: dict[str, InfrahubEvent],
+    event_ids_inscope: list[str],
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+) -> None:
     expected_ids = extract_expected_ids(expected_events=["branch1_created", "branch1_rebased"], data=events_data)
     fields = {"count": None, "edges": {"node": {"event": None, "branch": None}}}
     event_filter = InfrahubEventFilter()
     event_filter.add_branch_filter(branches=["branch1"])
-    events = await PrefectEvent.query(fields=fields, event_filter=event_filter)
+    events = await PrefectEvent.query(db=db, fields=fields, event_filter=event_filter)
     clean_events = filter_outofscope_events(events, event_ids_inscope)
 
     received_ids = sorted([event["node"]["id"] for event in clean_events["edges"]])
     assert received_ids == expected_ids
 
 
-async def test_query_ids_filter(events_data, event_ids_inscope):
+async def test_query_ids_filter(
+    events_data: dict[str, InfrahubEvent],
+    event_ids_inscope: list[str],
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+) -> None:
     expected_ids = extract_expected_ids(expected_events=["branch1_created", "branch2_created"], data=events_data)
     fields = {"count": None, "edges": {"node": {"event": None, "branch": None}}}
     event_filter = InfrahubEventFilter()
     event_filter.add_event_id_filter(ids=expected_ids)
 
-    events = await PrefectEvent.query(fields=fields, event_filter=event_filter)
+    events = await PrefectEvent.query(db=db, fields=fields, event_filter=event_filter)
     clean_events = filter_outofscope_events(events, event_ids_inscope)
 
     received_ids = sorted([event["node"]["id"] for event in clean_events["edges"]])

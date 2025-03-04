@@ -10,3 +10,4 @@ class IdentifierInput(InputObjectType):
 class RelatedNode(ObjectType):
     id = String(required=True, description="The ID of the requested object")
     kind = String(required=True, description="The ID of the requested object")
+    display_label = String(required=False, description="The ID of the requested object")

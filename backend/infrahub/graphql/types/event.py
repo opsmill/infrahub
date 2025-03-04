@@ -24,6 +24,7 @@ class EventNodeInterface(Interface):
     id = String(required=True, description="The ID of the event.")
     event = String(required=True, description="The name of the event.")
     branch = String(required=False, description="The branch where the event occurred.")
+    account = Field(RelatedNode, required=False, description="The account that triggered the event.")
     account_id = String(required=False, description="The account ID that triggered the event.")
     occurred_at = DateTime(required=True, description="The timestamp when the event occurred.")
     level = Int(

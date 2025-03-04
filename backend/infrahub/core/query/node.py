@@ -678,6 +678,16 @@ class NodeGetKindQuery(Query):
             node_kind_map[str(result.get("node_id"))] = str(result.get("node_kind"))
         return node_kind_map
 
+    def get_id_by_kind(self) -> dict[str, set[str]]:
+        node_kind_map: dict[str, set[str]] = {}
+        for result in self.get_results():
+            kind = str(result.get("node_kind"))
+            node_id = str(result.get("node_id"))
+            if kind not in node_kind_map:
+                node_kind_map[kind] = set()
+            node_kind_map[kind].add(node_id)
+        return node_kind_map
+
 
 class NodeListGetInfoQuery(Query):
     name = "node_list_get_info"

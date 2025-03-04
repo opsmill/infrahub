@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
     from graphql import GraphQLResolveInfo
 
+    from infrahub.graphql.initialization import GraphqlContext
+
 
 class Events(ObjectType):
     edges = List(NonNull(EventNodes), required=True)
@@ -74,9 +76,11 @@ class Events(ObjectType):
         limit: int,
         offset: int | None = None,
     ) -> dict[str, Any]:
+        graphql_context: GraphqlContext = info.context
         fields = await extract_fields_first_node(info)
 
         prefect_tasks = await PrefectEvent.query(
+            db=graphql_context.db,
             fields=fields,
             event_filter=event_filter,
             limit=limit,

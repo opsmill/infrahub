@@ -1,4 +1,3 @@
-import uuid
 from typing import Any
 
 import pytest
@@ -9,6 +8,7 @@ from infrahub.auth import AccountSession, AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.constants import MutationAction
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -51,21 +51,34 @@ query(
         event
         branch
         has_children
+        account {
+            id
+            kind
+            display_label
+        }
         parent_id
         level
         occurred_at
+        primary_node {
+            id
+            kind
+            display_label
+        }
         related_nodes {
             id
             kind
+            display_label
         }
         ... on GroupEvent {
           ancestors {
             id
             kind
+            display_label
           }
           members {
             id
             kind
+            display_label
           }
         }
       }
@@ -99,6 +112,7 @@ query MutatedNodes($id: [String!]) {
           primary_node {
             id
             kind
+            display_label
           }
           attributes {
             action
@@ -122,31 +136,21 @@ ACCOUNT_SESSION_2 = AccountSession(authenticated=True, account_id=ACCOUNT2_ID, a
 
 
 @pytest.fixture
-async def branch1_id() -> uuid.UUID:
-    return uuid.uuid4()
-
-
-@pytest.fixture
-async def branch2_id() -> uuid.UUID:
-    return uuid.uuid4()
-
-
-@pytest.fixture
-async def branch3_id() -> uuid.UUID:
-    return uuid.uuid4()
-
-
-@pytest.fixture
 async def events_data(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
     car_person_schema: SchemaBranch,
     prefect_client: PrefectClient,
-    branch1_id: uuid.UUID,
-    branch2_id: uuid.UUID,
-    branch3_id: uuid.UUID,
 ) -> dict[str, InfrahubEvent]:
+    account1 = await Node.init(db=db, schema="CoreAccount")
+    await account1.new(db=db, name="first-account", account_type="User", password="something-secret", id=ACCOUNT1_ID)
+    await account1.save(db=db)
+
+    account2 = await Node.init(db=db, schema="CoreAccount")
+    await account2.new(db=db, name="second-account", account_type="User", password="something-secret", id=ACCOUNT2_ID)
+    await account2.save(db=db)
+
     tag1 = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
     await tag1.new(db=db, name="red", description="The red tag")
     await tag1.save(db=db)
@@ -195,36 +199,36 @@ async def events_data(
     await group_eu.new(db=db, name="Europe", children=[group_fr])
     await group_eu.save(db=db)
 
-    branch1 = Branch(uuid=branch1_id, name="branch1")
-    branch2 = Branch(uuid=branch2_id, name="branch2")
-    branch3 = Branch(uuid=branch3_id, name="branch3")
+    branch1 = await create_branch(branch_name="branch1", db=db)
+    branch2 = await create_branch(branch_name="branch2", db=db)
+    branch3 = await create_branch(branch_name="branch3", db=db)
 
     items: dict[str, InfrahubEvent] = {
         "branch1_created": BranchCreatedEvent(
             branch_name="branch1",
-            branch_id=str(branch1_id),
+            branch_id=str(branch1.get_uuid()),
             sync_with_git=True,
             meta=EventMeta.with_dummy_context(branch=branch1),
         ),
         "branch1_rebased": BranchRebasedEvent(
             branch_name="branch1",
-            branch_id=str(branch1_id),
+            branch_id=str(branch1.get_uuid()),
             meta=EventMeta.with_dummy_context(branch=branch1),
         ),
         "branch2_created": BranchCreatedEvent(
             branch_name="branch2",
-            branch_id=str(branch2_id),
+            branch_id=str(branch2.get_uuid()),
             sync_with_git=False,
             meta=EventMeta.with_dummy_context(branch=branch2),
         ),
         "branch2_rebased": BranchRebasedEvent(
             branch_name="branch2",
-            branch_id=str(branch2_id),
+            branch_id=str(branch2.get_uuid()),
             meta=EventMeta.with_dummy_context(branch=branch2),
         ),
         "branch3_created": BranchCreatedEvent(
             branch_name="branch3",
-            branch_id=str(branch3_id),
+            branch_id=str(branch3.get_uuid()),
             sync_with_git=True,
             meta=EventMeta.with_dummy_context(branch=branch3),
         ),
@@ -632,10 +636,22 @@ async def test_event_query_prefect(
     assert group_add_event.errors is None
     assert group_add_event.data
     assert group_add_event.data["InfrahubEvent"]["count"] == 1
-    members = [member["id"] for member in group_add_event.data["InfrahubEvent"]["edges"][0]["node"]["members"]]
+    member_ids = [member["id"] for member in group_add_event.data["InfrahubEvent"]["edges"][0]["node"]["members"]]
+    member_labels = [
+        member["display_label"] for member in group_add_event.data["InfrahubEvent"]["edges"][0]["node"]["members"]
+    ]
     ancestors = [member["id"] for member in group_add_event.data["InfrahubEvent"]["edges"][0]["node"]["ancestors"]]
-    assert len(members) == 2
+    assert len(member_ids) == 2
     assert len(ancestors) == 1
-    assert events_data["branch3_mutated1"].node_id in members
-    assert events_data["branch3_mutated2"].node_id in members
+    assert events_data["branch3_mutated1"].node_id in member_ids
+    assert events_data["branch3_mutated2"].node_id in member_ids
     assert events_data["branch1_mutated5"].node_id in ancestors
+    assert sorted(member_labels) == ["Alfred", "Sarah"]
+    assert group_add_event.data["InfrahubEvent"]["edges"][0]["node"]["ancestors"][0]["display_label"] == "Europe"
+    assert group_add_event.data["InfrahubEvent"]["edges"][0]["node"]["primary_node"]["display_label"] == "France"
+    assert len(group_add_event.data["InfrahubEvent"]["edges"][0]["node"]["related_nodes"]) == 3
+    related_node_labels = [
+        related["display_label"]
+        for related in group_add_event.data["InfrahubEvent"]["edges"][0]["node"]["related_nodes"]
+    ]
+    assert sorted(related_node_labels) == ["Alfred", "Europe", "Sarah"]
