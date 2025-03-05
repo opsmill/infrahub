@@ -1865,7 +1865,9 @@ class SchemaBranch:
                 )
             )
 
-    def generate_object_template_from_node(self, node: NodeSchema) -> TemplateSchema:
+    def generate_object_template_from_node(
+        self, node: NodeSchema | GenericSchema, need_templates: set[NodeSchema | GenericSchema]
+    ) -> TemplateSchema | GenericSchema:
         core_template_schema = self.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
         core_name_attr = core_template_schema.get_attribute(name=OBJECT_TEMPLATE_NAME_ATTR)
         template_name_attr = AttributeSchema(
@@ -1873,29 +1875,54 @@ class SchemaBranch:
         )
         template_name_attr.branch = node.branch
 
-        template = TemplateSchema(
-            name=node.kind,
-            namespace="Template",
-            label=f"Object template {node.label}",
-            description=f"Object template for {node.kind}",
-            branch=node.branch,
-            include_in_menu=False,
-            display_labels=["template_name__value"],
-            inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.OBJECTTEMPLATE, InfrahubKind.NODE],
-            human_friendly_id=["template_name__value"],
-            default_filter="template_name__value",
-            attributes=[template_name_attr],
-            relationships=[
-                RelationshipSchema(
-                    name="related_nodes",
-                    identifier="node__objecttemplate",
-                    peer=node.kind,
-                    kind=RelationshipKind.TEMPLATE,
-                    cardinality=RelationshipCardinality.MANY,
-                    branch=BranchSupportType.AWARE,
-                )
-            ],
-        )
+        template: TemplateSchema | GenericSchema
+        need_template_kinds = [n.kind for n in need_templates]
+
+        if isinstance(node, GenericSchema):
+            # When needing a template for a generic, we generate an empty shell mostly to make sure that schemas (including the GraphQL one) will
+            # look right. We don't really care about applying inheritance of fields as it was already processed and actual templates will have the
+            # correct attributes and relationships
+            template = GenericSchema(
+                name=node.kind,
+                namespace="Template",
+                label=f"Generic object template {node.label}",
+                description=f"Generic object template for generic {node.kind}",
+                generate_profile=False,
+                branch=node.branch,
+                include_in_menu=False,
+            )
+
+            for used in node.used_by:
+                if used in need_template_kinds:
+                    template.used_by.append(self._get_object_template_kind(node_kind=used))
+        else:
+            template = TemplateSchema(
+                name=node.kind,
+                namespace="Template",
+                label=f"Object template {node.label}",
+                description=f"Object template for {node.kind}",
+                branch=node.branch,
+                include_in_menu=False,
+                display_labels=["template_name__value"],
+                inherit_from=[InfrahubKind.LINEAGESOURCE, InfrahubKind.OBJECTTEMPLATE, InfrahubKind.NODE],
+                human_friendly_id=["template_name__value"],
+                default_filter="template_name__value",
+                attributes=[template_name_attr],
+                relationships=[
+                    RelationshipSchema(
+                        name="related_nodes",
+                        identifier="node__objecttemplate",
+                        peer=node.kind,
+                        kind=RelationshipKind.TEMPLATE,
+                        cardinality=RelationshipCardinality.MANY,
+                        branch=BranchSupportType.AWARE,
+                    )
+                ],
+            )
+
+            for inherited in node.inherit_from:
+                if inherited in need_template_kinds:
+                    template.inherit_from.append(self._get_object_template_kind(node_kind=inherited))
 
         for node_attr in node.attributes:
             if node_attr.unique:
@@ -1962,7 +1989,7 @@ class SchemaBranch:
 
         # Generate templates with their attributes
         for node in need_templates:
-            template = self.generate_object_template_from_node(node=node)
+            template = self.generate_object_template_from_node(node=node, need_templates=need_templates)
             self.set(name=template.kind, schema=template)
             template_schema_kinds.add(template.kind)
 
