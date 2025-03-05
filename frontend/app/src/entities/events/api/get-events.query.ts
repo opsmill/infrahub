@@ -3,23 +3,24 @@ import { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
-import { GlobalEventsFilters, OBJECTS_PER_PAGE, getEventsFromApi } from "./get-events-from-api";
+import { EventType } from "react-hook-form";
+import { getEvents } from "../domain/get-events";
+import { GlobalEventsFilters, OBJECTS_PER_PAGE } from "./get-events-from-api";
 
 export function getEventsQueryOptions({
   filters,
   branchName,
   atDate,
 }: { filters: GlobalEventsFilters } & ContextParams) {
-  return infiniteQueryOptions({
+  return infiniteQueryOptions<Array<EventType>>({
     queryKey: [branchName, atDate, "events", filters],
-    queryFn: ({ pageParam }) => {
-      return getEventsFromApi({
-        ...filters,
+    queryFn: ({ pageParam }) =>
+      getEvents({
+        filters,
         offset: pageParam,
         branchName,
         atDate,
-      });
-    },
+      }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
       if (lastPage?.length < OBJECTS_PER_PAGE) {
