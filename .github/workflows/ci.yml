@@ -158,7 +158,7 @@ jobs:
       directory: "./"
 
   infrahub-testcontainers-check:
-    if: needs.files-changed.outputs.python == 'true'
+    if: needs.files-changed.outputs.infrahub_poetry_files == 'true'
     needs: ["files-changed"]
     runs-on: ubuntu-latest
     timeout-minutes: 5

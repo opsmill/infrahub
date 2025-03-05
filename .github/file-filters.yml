@@ -17,8 +17,8 @@ sdk_files: &sdk_files
   - "python_sdk" # Catch updates to the submodule commit
 
 infrahub_poetry_files: &infrahub_poetry_files
-  - "pyproject.toml"
-  - "poetry.lock"
+  - "**/pyproject.toml"
+  - "**/poetry.lock"
 
 frontend_files: &frontend_files
   - "frontend/app/**"
