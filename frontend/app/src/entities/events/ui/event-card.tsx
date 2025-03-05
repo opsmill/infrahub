@@ -15,6 +15,7 @@ import { BRANCH_EVENTS, STANDARD_EVENTS } from "../constants";
 import { BranchEvent } from "./branch-events/branch-event";
 import { NodeEventTitle } from "./node-events/node-event-title";
 import { StandardEvent } from "./standard-event";
+import { ExternalLinkIcon, InfoIcon, SquareArrowOutUpRightIcon } from "lucide-react";
 
 export const EventDetails = ({
   id,
@@ -160,13 +161,10 @@ export const EventCard = ({ __typename, ...props }: EventType) => {
             </div>
 
             <Popover>
-              <PopoverTrigger>
-                <div className="flex flex-grow justify-end">
-                  <p className="text-sm underline text-gray-600 dark:text-neutral-400 mb-1">
-                    View more.
-                  </p>
-                </div>
+              <PopoverTrigger className="flex items-center gap-1 text-xs text-gray-600">
+                View all <InfoIcon className="size-3" />
               </PopoverTrigger>
+
               <PopoverContent className="w-full">
                 <EventDetails {...props} />
               </PopoverContent>

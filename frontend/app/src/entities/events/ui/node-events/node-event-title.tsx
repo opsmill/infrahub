@@ -43,7 +43,7 @@ export const NodeEventTitle = ({
     <div className="flex items-center gap-1 text-sm">
       <NodeLabel id={account_id} />
       <span className="text-gray-600">{NODE_EVENTS_MAPPING[event] ?? event}</span>
-      <div>{schemaLabels[payload.data.node_kind] ?? "-"}</div>
+      <div className="text-gray-600">{schemaLabels[payload.data.node_kind] ?? "-"}</div>
       {event.includes("deleted") ? (
         <NodeLabel
           id={primary_node.id}
