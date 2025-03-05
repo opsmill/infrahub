@@ -34,21 +34,23 @@ export function GlobalFilterForm({ name, fieldSchema, onSuccess }: GlobalFilterF
   };
 
   return (
-    <Form
-      className="space-y-0 flex items-center gap-2"
-      onSubmit={(formData) => {
-        handleSubmit(formData);
-      }}
-    >
-      <FormField
-        name="filter"
-        defaultValue={currentFilter?.value}
-        render={({ field }) => {
-          return <DynamicFilterInput {...field} fieldSchema={fieldSchema} />;
+    <div className="flex items-center gap-4 min-w-64">
+      <Form
+        className="space-y-0 flex items-center gap-2"
+        onSubmit={(formData) => {
+          handleSubmit(formData);
         }}
-      />
+      >
+        <FormField
+          name="filter"
+          defaultValue={currentFilter?.value}
+          render={({ field }) => {
+            return <DynamicFilterInput {...field} fieldSchema={fieldSchema} />;
+          }}
+        />
 
-      <FormSubmit>Apply</FormSubmit>
-    </Form>
+        <FormSubmit>Apply</FormSubmit>
+      </Form>
+    </div>
   );
 }

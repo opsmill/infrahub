@@ -24,6 +24,7 @@ from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta, NodeMutatedEvent
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.context import apply_external_context
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
 from infrahub.log import get_log_data, get_logger
 from infrahub.worker import WORKER_IDENTITY
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
     from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.graphql.types.context import ContextInput
 
     from ..initialization import GraphqlContext
     from .node_getter.interface import MutationNodeGetterInterface
@@ -66,8 +68,17 @@ class InfrahubMutationOptions(MutationOptions):
 
 class InfrahubMutationMixin:
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: InputObjectType, *args: Any, **kwargs):  # noqa: ARG003
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        context: ContextInput | None = None,
+        *args: Any,  # noqa: ARG003
+        **kwargs,
+    ):
         graphql_context: GraphqlContext = info.context
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         obj = None
         mutation = None

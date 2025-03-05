@@ -16,8 +16,8 @@ class IncExclFilterOptions(BaseModel):
 
 
 class IncExclActionFilterOptions(BaseModel):
-    includes: set[DiffAction] = Field(default_factory=list)
-    excludes: set[DiffAction] = Field(default_factory=list)
+    includes: set[DiffAction] = Field(default_factory=set)
+    excludes: set[DiffAction] = Field(default_factory=set)
 
     @property
     def is_empty(self) -> bool:

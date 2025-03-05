@@ -7,6 +7,7 @@ export const isHierarchicalSchema = (
 ): schema is ModelSchema & { hierarchy: string } => {
   return "hierarchy" in schema && !!schema.hierarchy;
 };
+
 export const getRootSchemaOfHierarchicalSchema = (schema: NodeSchema): NodeSchema => {
   const nodes = store.get(nodeSchemasAtom);
   const parentSchema = nodes.find(({ kind }) => kind === schema.parent);

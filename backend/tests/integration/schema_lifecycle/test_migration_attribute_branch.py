@@ -1,3 +1,5 @@
+import asyncio
+import uuid
 from typing import Any
 
 import pytest
@@ -77,7 +79,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         await red.save(db=db)
 
         # Create Branch1
-        branch1 = await create_branch(db=db, branch_name="branch1")
+        branch1 = await create_branch(db=db, branch_name=f"branch1-{uuid.uuid4()}")
         state.branch = branch1
 
         # Load data in BRANCH1
@@ -290,6 +292,39 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         jane = persons[0]
         assert not hasattr(jane, "height")
 
+        for _ in range(10):
+            parent_event = await client.execute_graphql(
+                query=QUERY_EVENT,
+                variables={
+                    "event_type_filter": {"branch_rebased": {"branches": self.branch1.name}},
+                },
+            )
+            if parent_event["InfrahubEvent"]["count"] == 1:
+                break
+            await asyncio.sleep(1)
+
+        assert parent_event["InfrahubEvent"]["count"] == 1
+        parent_id = parent_event["InfrahubEvent"]["edges"][0]["node"]["id"]
+
+        mutation_events = await client.execute_graphql(
+            query=QUERY_EVENT,
+            variables={
+                "parent__ids": [parent_id],
+            },
+        )
+        assert mutation_events["InfrahubEvent"]["count"] == 5
+
+        janes_events = [
+            event["node"]
+            for event in mutation_events["InfrahubEvent"]["edges"]
+            if event["node"]["primary_node"]["id"] == jane.id
+        ]
+        assert len(janes_events) == 1
+        janes_event = janes_events[0]
+        # Validate that the generated event for the name attribute is using the updated attribute name "firstname"
+        assert {"name": "firstname", "value": "Jane"} in janes_event["attributes"]
+        assert {"name": "description", "value": "The famous Jane Doe"} in janes_event["attributes"]
+
     async def test_merge(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset):
         branch = await client.branch.merge(branch_name=self.branch1.name)
         assert branch
@@ -310,3 +345,48 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         assert jane.lastname.value is None  # type: ignore[attr-defined]
         assert not hasattr(jane, "height")
         assert not hasattr(jane, "name")
+
+
+QUERY_EVENT = """
+query(
+    $branch: [String!],
+    $parent__ids: [String!],
+    $event_type: [String!]
+    $event_type_filter: EventTypeFilter
+) {
+  InfrahubEvent(
+    branches: $branch,
+    parent__ids: $parent__ids
+    event_type: $event_type
+    event_type_filter: $event_type_filter
+  ) {
+    count
+    edges {
+      node {
+        id
+        event
+        branch
+        has_children
+        parent_id
+        level
+        occurred_at
+        primary_node {
+          id
+          kind
+        }
+        related_nodes {
+            id
+            kind
+        }
+       ... on NodeMutatedEvent {
+          id
+          attributes {
+            name
+            value
+          }
+        }
+      }
+    }
+  }
+}
+"""

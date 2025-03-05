@@ -11,6 +11,8 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.context import apply_external_context
+from infrahub.graphql.types.context import ContextInput
 from infrahub.workflows.catalogue import DIFF_UPDATE
 
 from ..types.task import TaskInfo
@@ -30,6 +32,7 @@ class DiffUpdateInput(InputObjectType):
 class DiffUpdateMutation(Mutation):
     class Arguments:
         data = DiffUpdateInput(required=True)
+        context = ContextInput(required=False)
         wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
@@ -41,9 +44,11 @@ class DiffUpdateMutation(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: DiffUpdateInput,
+        context: ContextInput | None = None,
         wait_until_completion: bool = False,
     ) -> dict[str, bool | dict[str, str]]:
         graphql_context: GraphqlContext = info.context
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         if data.wait_for_completion is True:
             wait_until_completion = True

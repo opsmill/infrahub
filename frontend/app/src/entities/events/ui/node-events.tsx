@@ -62,7 +62,7 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
         <Event key={activity.id} {...activity} />
       ))}
 
-      {!parentId && flatData?.count > MAX_EVENTS && (
+      {!parentId && (
         <div className="flex items-center justify-center">
           <Link
             to={constructPath("/activities", [
@@ -70,7 +70,7 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
             ])}
             className="p-1 text-sm text-gray-400 text-center"
           >
-            More events...
+            More activities...
           </Link>
         </div>
       )}

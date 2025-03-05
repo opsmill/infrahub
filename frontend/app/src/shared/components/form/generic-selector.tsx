@@ -1,12 +1,8 @@
-import { PROFILE_KIND } from "@/config/constants";
+import { PROFILE_KIND, TEMPLATE_GENERIC_KIND } from "@/config/constants";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { PermissionData } from "@/entities/permission/types";
 import { getPermission } from "@/entities/permission/utils";
-import {
-  genericSchemasAtom,
-  nodeSchemasAtom,
-  profileSchemasAtom,
-} from "@/entities/schema/stores/schema.atom";
+import { getSchema } from "@/entities/schema/domain/get-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -21,7 +17,6 @@ import {
 } from "@/shared/components/ui/combobox";
 import Label from "@/shared/components/ui/label";
 import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai/index";
 import { useId, useState } from "react";
 
 type GenericSelectorProps = {
@@ -38,9 +33,6 @@ export const GenericSelector = ({
   onChange,
 }: GenericSelectorProps) => {
   const id = useId();
-  const nodeSchemas = useAtomValue(nodeSchemasAtom);
-  const nodeGenerics = useAtomValue(genericSchemasAtom);
-  const profileSchemas = useAtomValue(profileSchemasAtom);
   const { schema } = useSchema(value);
   const [open, setOpen] = useState(false);
   const { data, loading } = useQuery(gql(getObjectPermissionsQuery(currentKind)));
@@ -51,23 +43,17 @@ export const GenericSelector = ({
 
   const items = kindInheritingFromGeneric
     .map((usedByKind) => {
-      const relatedSchema = [...nodeSchemas, ...profileSchemas].find(
-        (schema) => schema.kind === usedByKind
-      );
+      const { schema: relatedSchema } = getSchema(usedByKind);
 
       if (!relatedSchema) return;
 
-      // When choosing a profile, display informations about the related node
-      if (currentKind === PROFILE_KIND) {
+      // When choosing a profile/template, display information about the related node instead
+      if (currentKind === PROFILE_KIND || currentKind === TEMPLATE_GENERIC_KIND) {
         const relationship = relatedSchema.relationships?.find(
           (relationship) => relationship.name === "related_nodes"
         );
 
-        const nodeSchema =
-          relationship?.peer &&
-          [...nodeSchemas, ...nodeGenerics, ...profileSchemas].find(
-            (schema) => schema.kind === relationship.peer
-          );
+        const { schema: nodeSchema } = getSchema(relationship?.peer);
 
         if (!nodeSchema) return;
 

@@ -31,7 +31,7 @@ class RelatedNodeInfo(BaseModel):
 
 
 class RelatedNodesInfo(BaseModel):
-    flows: dict[UUID, dict[str, RelatedNodeInfo]] = Field(default_factory=lambda: defaultdict(dict))
+    flows: dict[UUID, dict[str, RelatedNodeInfo]] = Field(default_factory=lambda: defaultdict(dict))  # type: ignore[arg-type]
     nodes: dict[str, RelatedNodeInfo] = Field(default_factory=dict)
 
     def add_nodes(self, flow_id: UUID, node_ids: list[str]) -> None:
@@ -64,7 +64,7 @@ class RelatedNodesInfo(BaseModel):
 
 
 class FlowLogs(BaseModel):
-    logs: defaultdict[UUID, list[PrefectLog]] = Field(default_factory=lambda: defaultdict(list))
+    logs: defaultdict[UUID, list[PrefectLog]] = Field(default_factory=lambda: defaultdict(list))  # type: ignore[arg-type]
 
     def to_graphql(self, flow_id: UUID) -> list[dict]:
         return [
@@ -132,6 +132,13 @@ class InfrahubEventFilter(EventFilter):
             branches: list[str] = branch_merged.get("branches") or []
             if "infrahub.branch.created" not in event_type:
                 event_type.append("infrahub.branch.merged")
+            if branches:
+                self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
+
+        if branch_rebased := event_type_filter.get("branch_rebased"):
+            branches = branch_rebased.get("branches") or []
+            if "infrahub.branch.created" not in event_type:
+                event_type.append("infrahub.branch.rebased")
             if branches:
                 self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
 

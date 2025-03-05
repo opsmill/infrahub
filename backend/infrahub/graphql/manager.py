@@ -60,6 +60,7 @@ from .types import (
 )
 from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
+from .types.context import ContextInput
 from .types.event import EVENT_TYPES
 
 if TYPE_CHECKING:
@@ -809,9 +810,7 @@ class GraphQLSchemaManager:
         meta_attrs: dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
         main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
 
-        args_attrs = {
-            "data": input_type(required=True),
-        }
+        args_attrs = {"data": input_type(required=True), "context": ContextInput(required=False)}
         main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
 
         return type(name, (base_class,), main_attrs)
@@ -832,9 +831,7 @@ class GraphQLSchemaManager:
         meta_attrs: dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
         main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
 
-        args_attrs = {
-            "data": input_type(required=True),
-        }
+        args_attrs = {"data": input_type(required=True), "context": ContextInput(required=False)}
         main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
 
         return type(name, (base_class,), main_attrs)
@@ -851,9 +848,7 @@ class GraphQLSchemaManager:
         meta_attrs = {"schema": schema, "name": name, "description": schema.description}
         main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
 
-        args_attrs: dict[str, Any] = {
-            "data": DeleteInput(required=True),
-        }
+        args_attrs: dict[str, Any] = {"data": DeleteInput(required=True), "context": ContextInput(required=False)}
         main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
 
         return type(name, (base_class,), main_attrs)
