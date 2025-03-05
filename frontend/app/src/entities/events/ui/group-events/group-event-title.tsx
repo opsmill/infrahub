@@ -7,7 +7,7 @@ import { ReactElement } from "react";
 export const GROUP_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) => ReactElement> = {
   "infrahub.group.member_added": ({ related_nodes, primary_node }) => {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 whitespace-nowrap">
         added{" "}
         <div className="flex items-center gap-1 text-black">
           {related_nodes.slice(0, 5).map(({ id, kind }) => {
@@ -32,7 +32,7 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) =>
   },
   "infrahub.group.member_removed": ({ related_nodes, primary_node }) => {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 whitespace-nowrap">
         removed{" "}
         <div className="flex items-center gap-1 text-black">
           {related_nodes.slice(0, 5).map(({ id, kind }) => {
