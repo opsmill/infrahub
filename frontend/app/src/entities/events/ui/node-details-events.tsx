@@ -35,7 +35,7 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
 
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
-  if (isPending || isLoadingNodeLabel) {
+  if (isPending) {
     return (
       <div className="flex items-center justify-center flex-grow">
         <Spinner />
@@ -43,7 +43,7 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
     );
   }
 
-  if (error || displayLabelError) {
+  if (error) {
     return <ErrorScreen message={error?.message || displayLabelError?.message} />;
   }
 
@@ -62,7 +62,7 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
         <EventCard key={activity.id} {...activity} />
       ))}
 
-      {!parentId && (
+      {!parentId && !isLoadingNodeLabel && (
         <div className="flex items-center justify-center">
           <Link
             to={constructPath("/activities", [
