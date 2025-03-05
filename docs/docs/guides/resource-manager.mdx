@@ -203,12 +203,13 @@ The `CoreIPAddressPool` can be created using the web interface, or by using this
         ok
         object {
           id
+          hfid
         }
       }
     }
   ```
 
-  Take note of the id of the `CoreIPAddressPool`, we will use it in the next steps.
+  Take note of the id and hfid of the `CoreIPAddressPool`, we will use it in the next steps.
   </TabItem>
 </Tabs>
 
@@ -227,25 +228,30 @@ Please refer to the [Resource Manager Topic](../topics/resource-manager) for fur
 
 Execute the following mutation to allocate an IP address out of the pool. Replace the id with the id of the `CoreIPAddressPool` we created previously.
 
-```graphql
-mutation {
-  IPAddressPoolGetResource(
-    data: {
-      id: "<id of resource pool>",
-      data: {
-        description: "my first allocated ip"
+<Tabs>
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+  ```graphql
+    mutation {
+      IPAddressPoolGetResource(
+        data: {
+          id: "<id of resource pool>",
+          data: {
+            description: "my first allocated ip"
+          }
+        }
+      )
+      {
+        ok
+        node {
+          id
+          display_label
+        }
       }
     }
-  )
-  {
-    ok
-    node {
-      id
-      display_label
-    }
-  }
-}
-```
+  ```
+  </TabItem>
+</Tabs>
 
 In the mutation we passed additional data to the allocated resource, in this case we passed a description attribute. This description attribute will be set on the IP address that was allocated. You can do this for any other attribute and relationship for the destination address type.
 
@@ -255,21 +261,26 @@ You can allocate resources in an idempotent way by specifying an identifier in t
 
 Execute this mutation twice, note the identifier. The resulting IP address should be the same, as well as the id. Replace the id with the id of the `CoreIPAddressPool` we created previously.
 
-```graphql
-mutation {
-  IPAddressPoolGetResource(data: {
-    id: "<id of resource pool>",
-    identifier: "my-allocated-ip",
-  })
-  {
-    ok
-    node {
-      id
-      display_label
+<Tabs>
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+  ```graphql
+    mutation {
+      IPAddressPoolGetResource(data: {
+        id: "<id of resource pool>",
+        identifier: "my-allocated-ip",
+      })
+      {
+        ok
+        node {
+          id
+          display_label
+        }
+      }
     }
-  }
-}
-```
+  ```
+  </TabItem>
+</Tabs>
 
 :::
 
@@ -295,7 +306,7 @@ Another way we can use resource managers is in situations where we create a node
     mutation {
       InfraDeviceCreate(data: {
         name: {value: "dev-123"},
-        primary_ip: {
+        primary_address: {
           from_pool: {
             id: "<id of resource pool>"
           }
@@ -305,7 +316,7 @@ Another way we can use resource managers is in situations where we create a node
         ok
         object {
           display_label
-          primary_ip {
+          primary_address {
             node {
               address {
                 value
@@ -390,12 +401,13 @@ The `CoreIPPrefixPool` can be created using the web interface, or by using this 
         ok
         object {
           id
+          hfid
         }
       }
     }
   ```
 
-  Take note of the id of the `CoreIPPrefixPool`, we will use it in the next steps.
+  Take note of the id and hfid of the `CoreIPPrefixPool`, we will use it in the next steps.
   </TabItem>
 </Tabs>
 
@@ -414,23 +426,28 @@ Please refer to the [Resource Manager Topic](../topics/resource-manager) for fur
 
 Execute the following mutation to allocate an IP prefix out of the pool. Replace the id with the id of the `CoreIPPrefixPool` we created previously.
 
-```graphql
-mutation {
-  IPPrefixPoolGetResource(data: {
-    id: "<id of resource pool>",
-    data: {
-      description: "prefix allocated to point to point connection"
+<Tabs>
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+  ```graphql
+    mutation {
+      IPPrefixPoolGetResource(data: {
+        id: "<id of resource pool>",
+        data: {
+          description: "prefix allocated to point to point connection"
+        }
+      })
+      {
+        ok
+        node {
+          id
+          display_label
+        }
+      }
     }
-  })
-  {
-    ok
-    node {
-      id
-      display_label
-    }
-  }
-}
-```
+  ```
+  </TabItem>
+</Tabs>
 
 In the mutation we passed additional data to the allocated resource, in this case we passed a description attribute. This description attribute will be set on the IP prefix that was allocated. You can do this for any other attribute and relationship for the destination address type.
 
@@ -480,21 +497,26 @@ You can allocate resources in an idempotent way by specifying an identifier in t
 
 Execute this mutation twice, note the identifier. The resulting IP prefix should be the same, as well as the id. Replace the id with the id of the `CoreIPPrefixPool` we created previously.
 
-```graphql
-mutation {
-  IPPrefixPoolGetResource(data: {
-    id: "<id of resource pool>",
-    identifier: "my-allocated-prefix",
-  })
-  {
-    ok
-    node {
-      id
-      display_label
+<Tabs>
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+  ```graphql
+    mutation {
+      IPPrefixPoolGetResource(data: {
+        id: "<id of resource pool>",
+        identifier: "my-allocated-prefix",
+      })
+      {
+        ok
+        node {
+          id
+          display_label
+        }
+      }
     }
-  }
-}
-```
+  ```
+  </TabItem>
+</Tabs>
 
 :::
 
@@ -542,7 +564,7 @@ The `CoreNumberPool` can be created using the web interface, or by using this Gr
     }
   ```
 
-  Take note of the id/hfid of the `CoreNumberPool`, we will use it in the next steps.
+  Take note of the id and hfid of the `CoreNumberPool`, we will use it in the next steps.
   </TabItem>
 </Tabs>
 
@@ -565,7 +587,10 @@ The `CoreNumberPool` can be created using the web interface, or by using this Gr
     mutation {
       IpamVLANCreate(data:{
         name: {value: "My vlan"},
-        vlan_id: {from_pool: {id: "My number pool"}} # Here we could either put the ID or HFID
+        # Using the HFID
+        vlan_id: {from_pool: {hfid: ["My VLAN ID Pool"]}}
+        # Using the ID
+        # vlan_id: {from_pool: {id: <id of resource pool> }}
       })
       {
         ok
@@ -599,22 +624,26 @@ Branch 'test' created successfully (17d28fe4-a2d7-93ec-35a4-c51c5c804f05).
 
 Allocate a new IP address in the `test` branch using this mutation. Replace the id with the id of the `CoreIPAddressPool` we created previously.
 
-```graphql
-mutation {
-  IPAddressPoolGetResource(
-    data: {
-      id: "<id of resource pool>",
-   }
-  )
-  {
-    ok
-    node {
-      id
-      display_label
+<Tabs>
+  <TabItem value="graphql" label="Via the GraphQL Interface">
+
+  ```graphql
+    mutation {
+      IPAddressPoolGetResource(
+        data: {
+          id: "<id of resource pool>",
+      })
+      {
+        ok
+        node {
+          id
+          display_label
+        }
+      }
     }
-  }
-}
-```
+  ```
+  </TabItem>
+</Tabs>
 
 We can now execute this query in the `main` branch. Replace the `pool_id` with the id of the `CoreIPAddressPool` and the `resource_id` with the id of the `IpamIPPrefix` we created previously.
 
