@@ -139,7 +139,7 @@ export const EventDetails = ({
   );
 };
 
-export const EventCard = ({ __typename, ...props }: EventType) => {
+export const EventCard = (props: EventType) => {
   return (
     <div className="flex gap-2">
       <TimelineBorder />
@@ -150,14 +150,12 @@ export const EventCard = ({ __typename, ...props }: EventType) => {
 
           {"attributes" in props && <EventAttributes attributes={props.attributes} />}
 
-          {BRANCH_EVENTS.includes(__typename) && <BranchEvent {...props} />}
+          {BRANCH_EVENTS.includes(props.__typename) && <BranchEvent {...props} />}
 
-          {STANDARD_EVENTS.includes(__typename) && <StandardEvent {...props} />}
+          {STANDARD_EVENTS.includes(props.__typename) && <StandardEvent {...props} />}
 
-          <div className="flex justify-between">
-            <div className="text-xs font-medium text-gray-500 dark:text-neutral-400">
-              <DateDisplay date={props.occurred_at} />
-            </div>
+          <div className="flex justify-between text-gray-500">
+            <DateDisplay date={props.occurred_at} />
 
             <EventDetailsPopover {...props} />
           </div>
