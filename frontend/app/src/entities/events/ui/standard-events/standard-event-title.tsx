@@ -49,16 +49,14 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface)
     },
   };
 
-export const StandardEvent = (props: EventNodeInterface) => {
+export const StandardEventTitle = (props: EventNodeInterface) => {
   const { event, account_id } = props;
 
   return (
     <>
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm">
-          <div className="font-semibold">
-            <NodeLabel id={account_id} />
-          </div>
+        <div className="flex items-center gap-1 text-sm">
+          <NodeLabel id={account_id} />
 
           <div className="text-gray-500">
             {STANDARD_EVENTS_MAPPING[event] && STANDARD_EVENTS_MAPPING[event](props)}

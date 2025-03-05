@@ -16,7 +16,7 @@ import { Icon } from "@iconify-icon/react";
 import { BRANCH_EVENTS, STANDARD_EVENTS } from "../constants";
 import { BranchEventTitle } from "./branch-events/branch-event-title";
 import { NodeEventTitle } from "./node-events/node-event-title";
-import { StandardEvent } from "./standard-events/standard-event";
+import { StandardEventTitle } from "./standard-events/standard-event-title";
 
 export const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attributes">) => {
   return (
@@ -176,7 +176,7 @@ export const EventCard = (props: EventType) => {
 
           {BRANCH_EVENTS.includes(props.__typename) && <BranchEventTitle {...props} />}
 
-          {STANDARD_EVENTS.includes(props.__typename) && <StandardEvent {...props} />}
+          {STANDARD_EVENTS.includes(props.__typename) && <StandardEventTitle {...props} />}
 
           <div className="flex justify-between text-gray-500">
             <DateDisplay date={props.occurred_at} />
