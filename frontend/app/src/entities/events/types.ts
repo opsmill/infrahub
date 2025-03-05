@@ -1,14 +1,14 @@
 import {
-  EventNodeInterface,
-  GroupEvent,
-  NodeMutatedEvent,
-} from "@/shared/api/graphql/generated/graphql";
-import {
   BRANCH_CREATED_EVENT,
   BRANCH_DELETED_EVENT,
   BRANCH_REBASEDED_EVENT,
   NODE_MUTATED_EVENT,
 } from "@/entities/events/constants";
+import {
+  EventNodeInterface,
+  GroupEvent,
+  NodeMutatedEvent,
+} from "@/shared/api/graphql/generated/graphql";
 
 export type BranchEventType = EventNodeInterface & {
   __typename:

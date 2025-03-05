@@ -2,6 +2,7 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 
 import { ACCOUNT_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
+import { EventType } from "@/entities/events/types";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { PropertyRow } from "@/entities/schema/ui/styled";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -13,7 +14,6 @@ import { BRANCH_EVENTS, STANDARD_EVENTS } from "../constants";
 import { BranchEvent } from "./branch-event";
 import { EventAttributes, NodeEvent } from "./node-event";
 import { StandardEvent } from "./standard-event";
-import { EventType } from "@/entities/events/types";
 
 export const EventDetails = ({
   id,

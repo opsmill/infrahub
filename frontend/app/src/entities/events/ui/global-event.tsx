@@ -1,3 +1,4 @@
+import { EventType } from "@/entities/events/types";
 import { Link } from "@/shared/components/ui/link";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
@@ -8,7 +9,6 @@ import { BranchEvent } from "./global-branch-event";
 import { GroupEvent } from "./global-group-event";
 import { NodeEvent } from "./global-node-event";
 import { StandardEvent } from "./global-standard-event";
-import { EventType } from "@/entities/events/types";
 
 const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
   if ("attributes" in props) {
