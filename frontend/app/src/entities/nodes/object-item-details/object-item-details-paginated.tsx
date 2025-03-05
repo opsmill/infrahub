@@ -34,7 +34,7 @@ import { useAtomValue } from "jotai/index";
 import { useRef } from "react";
 import { Navigate, useLocation, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
-import { NodeEvents } from "../../events/ui/node-events/node-events";
+import { NodeEvents } from "../../events/ui/node-events";
 import { ActionButtons } from "./action-buttons";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";

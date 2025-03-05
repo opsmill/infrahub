@@ -4,7 +4,7 @@ import { CardWithBorder } from "@/shared/components/ui/card";
 import { useParams } from "react-router";
 import { useEventDetails } from "../api/get-event-details.query";
 import { EventDetails } from "./event-card";
-import { NodeEvents } from "./node-events/node-events";
+import { NodeEvents } from "./node-events";
 
 const EventDetailsView = () => {
   const { activityid } = useParams();

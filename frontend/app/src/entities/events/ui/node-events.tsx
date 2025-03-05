@@ -7,8 +7,8 @@ import { Link } from "@/shared/components/ui/link";
 import { Spinner } from "@/shared/components/ui/spinner";
 import React from "react";
 import { useParams } from "react-router";
-import { useEvents } from "../../api/get-events.query";
-import { EventCard } from "../event-card";
+import { useEvents } from "../api/get-events.query";
+import { EventCard } from "./event-card";
 
 const MAX_EVENTS = 5;
 
