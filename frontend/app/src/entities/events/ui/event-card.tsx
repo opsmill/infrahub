@@ -4,17 +4,41 @@ import { ACCOUNT_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { EventType } from "@/entities/events/types";
 import { EventDetailsPopover } from "@/entities/events/ui/event-details-popover";
-import { EventAttributes } from "@/entities/events/ui/node-events/event-attributes";
+
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { PropertyRow } from "@/entities/schema/ui/styled";
+import { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Link } from "@/shared/components/ui/link";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
+import { Icon } from "@iconify-icon/react";
 import { BRANCH_EVENTS, STANDARD_EVENTS } from "../constants";
-import { BranchEvent } from "./branch-events/branch-event";
+import { BranchEventTitle } from "./branch-events/branch-event-title";
 import { NodeEventTitle } from "./node-events/node-event-title";
 import { StandardEvent } from "./standard-events/standard-event";
+
+export const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attributes">) => {
+  return (
+    <div className="flex flex-col gap-2 text-xs">
+      {attributes.map(({ action, name, value, value_previous }) => {
+        return (
+          <div className="grid grid-cols-2 gap-2 items-center" key={`${action}_${name}`}>
+            <div className="font-medium text-gray-500 flex items-center h-8">{name}</div>
+
+            <div className="flex items-center gap-4">
+              <div className="text-gray-400">{value_previous ?? "Ø"}</div>
+
+              <Icon icon={"mdi:chevron-right"} className="text-custom-blue-500" />
+
+              <div>{value ?? "Ø"}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 export const EventDetails = ({
   id,
@@ -150,7 +174,7 @@ export const EventCard = (props: EventType) => {
 
           {"attributes" in props && <EventAttributes attributes={props.attributes} />}
 
-          {BRANCH_EVENTS.includes(props.__typename) && <BranchEvent {...props} />}
+          {BRANCH_EVENTS.includes(props.__typename) && <BranchEventTitle {...props} />}
 
           {STANDARD_EVENTS.includes(props.__typename) && <StandardEvent {...props} />}
 

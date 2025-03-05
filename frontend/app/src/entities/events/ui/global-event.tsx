@@ -5,18 +5,18 @@ import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
 import { BRANCH_EVENTS, GROUP_EVENTS, STANDARD_EVENTS } from "../constants";
-import { BranchEvent } from "./branch-events/global-branch-event";
+import { BranchEventTitle } from "./branch-events/branch-event-title";
 import { GroupEvent } from "./group-events/global-group-event";
-import { NodeEvent } from "./node-events/global-node-event";
+import { NodeEventTitle } from "./node-events/node-event-title";
 import { StandardEvent } from "./standard-events/global-standard-event";
 
 const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
   if ("attributes" in props) {
-    return <NodeEvent {...props} />;
+    return <NodeEventTitle {...props} />;
   }
 
   if (BRANCH_EVENTS.includes(__typename)) {
-    return <BranchEvent {...props} />;
+    return <BranchEventTitle {...props} />;
   }
 
   if (STANDARD_EVENTS.includes(__typename)) {
