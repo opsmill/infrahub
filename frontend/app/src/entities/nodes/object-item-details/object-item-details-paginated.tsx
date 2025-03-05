@@ -213,7 +213,7 @@ export default function ObjectItemDetails({
           </CardWithBorder>
 
           <CardWithBorder className="p-0">
-            <CardWithBorder.Title>Activity Logs</CardWithBorder.Title>
+            <CardWithBorder.Title>Activities</CardWithBorder.Title>
             <NodeEvents />
           </CardWithBorder>
         </div>

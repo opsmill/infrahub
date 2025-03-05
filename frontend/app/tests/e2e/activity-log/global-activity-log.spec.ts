@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { saveScreenshotForDocs } from "../../utils";
 
-test.describe("Global Activity Log - List view and filter usage", () => {
+test.describe("Global Activities - List view and filter usage", () => {
   test.describe.configure({ mode: "parallel" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.slow();
@@ -20,7 +20,7 @@ test.describe("Global Activity Log - List view and filter usage", () => {
 
     await page.getByTestId("sidebar").getByRole("button", { name: "Activity" }).click();
     await page.getByRole("menuitem", { name: "Activities" }).click();
-    // Verify that clicking "Activity Log" navigates to the activities page
+    // Verify that clicking "Activities" navigates to the activities page
     const activitiesHeading = page.getByRole("heading", { name: "Activities" });
     await expect(activitiesHeading).toBeVisible();
   });
