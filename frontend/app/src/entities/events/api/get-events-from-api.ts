@@ -1,3 +1,4 @@
+import { Get_ActivitiesQuery } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
@@ -128,7 +129,7 @@ export async function getEventsFromApi({
   atDate,
   filters,
 }: GetEventsParams) {
-  return graphqlClient.query({
+  return graphqlClient.query<Get_ActivitiesQuery>({
     query: EVENTS_QUERY,
     variables: {
       limit,

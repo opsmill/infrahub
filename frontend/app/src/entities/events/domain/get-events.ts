@@ -7,7 +7,7 @@ export type GetEvents = (params: GetEventsParams) => Promise<Array<EventType>>;
 export const getEvents: GetEvents = async (params) => {
   const { data } = await getEventsFromApi(params);
 
-  return data?.[INFRAHUB_EVENT]?.edges?.map((edge) => {
+  return data[INFRAHUB_EVENT].edges.map((edge) => {
     return edge.node as EventType;
   });
 };

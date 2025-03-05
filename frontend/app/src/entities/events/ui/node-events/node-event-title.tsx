@@ -30,35 +30,38 @@ export const getLink = ({ kind, id, branch }: { kind: string; id: string; branch
   ]);
 };
 
-export const NodeEventTitle = (props: NodeMutatedEvent) => {
-  const { event, account_id } = props;
+export const NodeEventTitle = ({
+  event,
+  account_id,
+  payload,
+  primary_node,
+  branch,
+}: NodeMutatedEvent) => {
   const schemaLabels = useAtomValue(schemaKindLabelState);
 
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <div className="font-semibold">
-        <NodeLabel id={account_id} />
-      </div>
-      <div className="text-gray-500">{NODE_EVENTS_MAPPING[event] ?? "-"}</div>
-      <div className="font-semibold">{schemaLabels[props.payload.data.node_kind] ?? "-"}</div>
+    <div className="flex items-center gap-1 text-sm">
+      <NodeLabel id={account_id} />
+      <span className="text-gray-600">{NODE_EVENTS_MAPPING[event] ?? event}</span>
+      <div>{schemaLabels[payload.data.node_kind] ?? "-"}</div>
       {event.includes("deleted") ? (
         <NodeLabel
-          id={props.primary_node.id}
-          kind={props.primary_node?.kind}
+          id={primary_node.id}
+          kind={primary_node?.kind}
           className="overflow-hidden text-ellipsis whitespace-nowrap"
         />
       ) : (
         <Link
           to={getLink({
-            kind: props.primary_node?.kind,
-            id: props.primary_node.id,
-            branch: props.branch,
+            kind: primary_node?.kind,
+            id: primary_node.id,
+            branch,
           })}
           className="overflow-hidden text-ellipsis"
         >
           <NodeLabel
-            id={props.primary_node.id}
-            kind={props.primary_node?.kind}
+            id={primary_node.id}
+            kind={primary_node?.kind}
             className="overflow-hidden text-ellipsis whitespace-nowrap"
           />
         </Link>
