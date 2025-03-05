@@ -1,0 +1,188 @@
+---
+title: Creating an Object Template
+---
+
+This guide provides a structured approach to defining an object template and creating object instances based on that template.
+
+At a high level, the process consists of three key steps:
+- Enable template support within the schema.
+- Populate the template with data.
+- Create object instances using the predefined template.
+
+To illustrate this process, we will use a common use case involving devices and interfaces.
+
+For more details, refer to the [Object Template Topic](../topics/object-template).
+
+## Enable template support within the schema
+
+If you are already familiar with [Schema Development](../guides/create-schema) in Infrahub, enabling template support is straightforward.
+
+At the node level, the `generate_template` property allows users to enable template generation for a given node and its associated components.
+
+```yaml
+---
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+version: "1.0"
+
+nodes:
+  - name: Interface
+    namespace: Infra
+    label: "Interface"
+    include_in_menu: true
+    icon: "mdi:ethernet"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    uniqueness_constraints:
+      - ["device", "name__value"]
+    human_friendly_id: ["device__name__value", "name__value"]
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: enable
+        kind: Boolean
+        optional: false
+      - name: speed
+        kind: Number
+      - name: test
+        kind: Text
+    relationships:
+      - name: device
+        peer: InfraDevice
+        optional: false
+        cardinality: one
+        kind: Parent
+
+  - name: DeviceType
+    namespace: Infra
+    label: "Device Type"
+    icon: "mdi:server"
+    human_friendly_id: ["name__value"]
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: number_of_u
+        kind: Number
+        default_value: 1
+    relationships:
+      - name: devices
+        peer: InfraDevice
+        optional: true
+        cardinality: many
+
+  - name: Device
+    namespace: Infra
+    generate_template: true # This flag enables template for Device and Interfaces
+    label: "Device"
+    icon: "mdi:server"
+    human_friendly_id: ["name__value"]
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: serial
+        kind: Text
+        optional: true
+    relationships:
+      - name: device_type
+        label: device_type
+        peer: InfraDeviceType
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: interfaces # As this relationship's kind is component, it will automatically be covered by the template
+        peer: InfraInterface
+        optional: true
+        cardinality: many
+        kind: Component
+
+```
+
+You can now **load this schema into your Infrahub instance**. For more details, refer to the [Schema Creation Guide](../guides/create-schema).
+
+## Populate the template with data
+
+Heading back to Infrahub you will notice new entries in the left-hand menu. Before entering template information we will create a device type, this will be useful for later.
+
+### Create a device type
+
+1. Navigate to the left-hand menu and select `Device Type`
+2. Click the `+ Add new Device Type` button
+3. Then fill the form and hit save
+
+Now that the device type is created, we can proceed to work on the template itself. All template-related records can be found in the menu under the dedicated section `Object Management` > `Templates`.
+
+:::warning
+
+In Infrahub's implementation of object template, **the template doesn't hold any information about the device model** (for example the Number of U). This information is stored in the device type object. Fortunately we can link the template to a device type object, this will be transfer to the object.
+
+:::
+
+### Create a device template
+
+1. Click the `+ Add Object Templates` button
+2. In the drop-down list pick `Object template Device`
+3. Then fill-out the fields
+
+    :::note
+    In the device template, you specify the actual device type object. This means that **creating a device using your template will automatically set up a relationship between the new device and the specified device type**.
+    There are some fields that you can leave empty as device template isn't really relevant. Let's take serial for instance: by definition it will be different from one device to another.
+
+4. Hit the save button
+
+### Create an interface template
+
+1. Click the `+ Add Object Templates` button
+2. In the drop-down list pick `Object template Interface`
+3. Then fill-out the fields
+
+    :::note
+    Ensure you **reference the device template created in the previous step**. For demonstration purposes, you can create multiple interface templates.
+
+4. Hit the save button
+
+:::success
+
+With the device template and interface templates now set up, you are ready to create new instances based on these templates!
+
+:::
+
+## Create object instances using the predefined template
+
+Heading back to the main menu we will create a device object
+
+1. Click `Device` item in the left hand side menu
+2. Hit `+ Add Device` button
+
+    :::important
+    At this stage, you can either create your device from scratch, following the standard process, or **start from a predefined template!**
+
+3. Pick the template option and select the template you created in the previous step
+4. You can fill the missing information (for instance the `serial` field)
+
+    :::note
+    Information sourced from the template is indicated by a small chip above the form inputs. You can override this information at any time.
+
+5. Hit the save button
+
+:::success
+
+When viewing your newly created device object, navigate to the Interfaces tab to see a **list of interfaces pre-populated based on the template you defined**. Keep in mind that **any modifications made to the template will not retroactively apply to objects that have already been created from it**.
+
+:::

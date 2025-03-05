@@ -82,6 +82,7 @@ const sidebars: SidebarsConfig = {
         'guides/resource-manager',
         'guides/managing-api-tokens',
         'guides/computed-attributes',
+        'guides/object-template',
       ],
     },
     {
