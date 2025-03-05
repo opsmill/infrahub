@@ -1,1 +1,1 @@
-In the sidebar, sub-menu items now support icons.
+Added icon support to sub-menu items in the sidebar.
