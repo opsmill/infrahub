@@ -14,7 +14,7 @@ import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 import { BRANCH_EVENTS, STANDARD_EVENTS } from "../constants";
 import { BranchEvent } from "./branch-events/branch-event";
 import { NodeEventTitle } from "./node-events/node-event-title";
-import { StandardEvent } from "./standard-event";
+import { StandardEvent } from "./standard-events/standard-event";
 
 export const EventDetails = ({
   id,
