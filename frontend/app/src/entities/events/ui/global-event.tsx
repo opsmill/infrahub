@@ -3,12 +3,12 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
-import { BRANCH_EVENTS, GROUP_EVENTS, STANDARD_EVENTS } from "../utils/constants";
-import { EventType } from "./event";
+import { BRANCH_EVENTS, GROUP_EVENTS, STANDARD_EVENTS } from "../constants";
 import { BranchEvent } from "./global-branch-event";
 import { GroupEvent } from "./global-group-event";
 import { NodeEvent } from "./global-node-event";
 import { StandardEvent } from "./global-standard-event";
+import { EventType } from "@/entities/events/types";
 
 const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
   if ("attributes" in props) {

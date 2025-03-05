@@ -15,27 +15,27 @@ const MAX_EVENTS = 5;
 export const NodeEvents = ({ parentId }: { parentId?: string }) => {
   const { objectKind, objectid } = useParams();
 
-  const { isLoading, data, error } = useEvents({
+  const { isPending, data, error } = useEvents({
     filters: {
-      parentIds: parentId,
-      relatedNodeIds: objectid,
+      parentIds: parentId ? [parentId] : undefined,
+      relatedNodeIds: objectid ? [objectid] : undefined,
       limit: parentId ? 0 : MAX_EVENTS,
     },
   });
 
   const {
-    isLoading: isLoadingNodeLabel,
+    isPending: isLoadingNodeLabel,
     error: displayLabelError,
     data: displayLabelData,
   } = useNodeLabel({
     objectid: objectid,
-    kind: objectKind,
+    kind: objectKind as string,
     enabled: !parentId,
   });
 
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
 
-  if (isLoading || isLoadingNodeLabel) {
+  if (isPending || isLoadingNodeLabel) {
     return (
       <div className="flex items-center justify-center flex-grow">
         <Spinner />
@@ -47,7 +47,7 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
     return <ErrorScreen message={error?.message || displayLabelError?.message} />;
   }
 
-  if (!flatData?.length) {
+  if (!flatData.length) {
     return <NoDataFound message="No activity found for this object." />;
   }
 
@@ -58,7 +58,7 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
 
   return (
     <div className="flex flex-col gap-2 p-2">
-      {flatData?.map((activity) => (
+      {flatData.map((activity) => (
         <Event key={activity.id} {...activity} />
       ))}
 
@@ -70,7 +70,7 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
             ])}
             className="p-1 text-sm text-gray-400 text-center"
           >
-            More activities...
+            View all activities
           </Link>
         </div>
       )}

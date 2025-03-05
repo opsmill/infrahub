@@ -1,8 +1,3 @@
-import {
-  EventNodeInterface,
-  GroupEvent,
-  NodeMutatedEvent,
-} from "@/shared/api/graphql/generated/graphql";
 import { DateDisplay } from "@/shared/components/display/date-display";
 
 import { ACCOUNT_OBJECT } from "@/config/constants";
@@ -14,30 +9,11 @@ import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
-import {
-  BRANCH_CREATED_EVENT,
-  BRANCH_DELETED_EVENT,
-  BRANCH_EVENTS,
-  BRANCH_REBASEDED_EVENT,
-  NODE_MUTATED_EVENT,
-  STANDARD_EVENTS,
-} from "../utils/constants";
+import { BRANCH_EVENTS, STANDARD_EVENTS } from "../constants";
 import { BranchEvent } from "./branch-event";
 import { EventAttributes, NodeEvent } from "./node-event";
 import { StandardEvent } from "./standard-event";
-
-export type BranchEventType = EventNodeInterface & {
-  __typename:
-    | typeof BRANCH_DELETED_EVENT
-    | typeof BRANCH_CREATED_EVENT
-    | typeof BRANCH_REBASEDED_EVENT;
-};
-
-export type NodeEventType = NodeMutatedEvent & {
-  __typename: typeof NODE_MUTATED_EVENT;
-};
-
-export type EventType = BranchEventType | NodeEventType | GroupEvent;
+import { EventType } from "@/entities/events/types";
 
 export const EventDetails = ({
   id,

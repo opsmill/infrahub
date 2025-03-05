@@ -1,7 +1,7 @@
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
-import { EventType } from "../ui/event";
-import { INFRAHUB_EVENT } from "../utils/constants";
+import { INFRAHUB_EVENT } from "../constants";
+import { EventType } from "@/entities/events/types";
 
 export type EventDetailsFilters = {
   id: string;
