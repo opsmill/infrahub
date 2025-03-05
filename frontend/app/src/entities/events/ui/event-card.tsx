@@ -3,19 +3,18 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { ACCOUNT_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { EventType } from "@/entities/events/types";
+import { EventDetailsPopover } from "@/entities/events/ui/event-details-popover";
 import { EventAttributes } from "@/entities/events/ui/node-events/event-attributes";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { PropertyRow } from "@/entities/schema/ui/styled";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Link } from "@/shared/components/ui/link";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 import { BRANCH_EVENTS, STANDARD_EVENTS } from "../constants";
 import { BranchEvent } from "./branch-events/branch-event";
 import { NodeEventTitle } from "./node-events/node-event-title";
 import { StandardEvent } from "./standard-event";
-import { ExternalLinkIcon, InfoIcon, SquareArrowOutUpRightIcon } from "lucide-react";
 
 export const EventDetails = ({
   id,
@@ -160,15 +159,7 @@ export const EventCard = ({ __typename, ...props }: EventType) => {
               <DateDisplay date={props.occurred_at} />
             </div>
 
-            <Popover>
-              <PopoverTrigger className="flex items-center gap-1 text-xs text-gray-600">
-                View all <InfoIcon className="size-3" />
-              </PopoverTrigger>
-
-              <PopoverContent className="w-full">
-                <EventDetails {...props} />
-              </PopoverContent>
-            </Popover>
+            <EventDetailsPopover {...props} />
           </div>
         </div>
       </div>
