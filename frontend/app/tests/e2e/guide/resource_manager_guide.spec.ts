@@ -83,8 +83,6 @@ test.describe("Resource Managers guide", () => {
       await page.getByRole("option", { name: "IP Prefix Pool Core" }).click();
 
       await page.getByRole("textbox", { name: "Name *" }).fill("Customer Service Pool");
-      // FIXME: Will change after #5889
-      await page.getByLabel("Default Prefix Type").fill("IpamIPPrefix");
       await page.getByLabel("Default Prefix Length").fill("31");
 
       await page
