@@ -7,39 +7,16 @@ import { EventDetailsPopover } from "@/entities/events/ui/event-details-popover"
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { PropertyRow } from "@/entities/schema/ui/styled";
-import { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Link } from "@/shared/components/ui/link";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
-import { Icon } from "@iconify-icon/react";
 import { BRANCH_EVENTS, GROUP_EVENTS, STANDARD_EVENTS } from "../constants";
 import { BranchEventTitle } from "./branch-events/branch-event-title";
 import { GroupEventTitle } from "./group-events/group-event-title";
+import { EventAttributes } from "./node-events/event-attributes";
 import { NodeEventTitle } from "./node-events/node-event-title";
 import { StandardEventTitle } from "./standard-events/standard-event-title";
-
-export const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attributes">) => {
-  return (
-    <div className="flex flex-col gap-2 text-xs">
-      {attributes.map(({ action, name, value, value_previous }) => {
-        return (
-          <div className="grid grid-cols-2 gap-2 items-center" key={`${action}_${name}`}>
-            <div className="font-medium text-gray-500 flex items-center h-8">{name}</div>
-
-            <div className="flex items-center gap-4">
-              <div className="text-gray-400">{value_previous ?? "Ø"}</div>
-
-              <Icon icon={"mdi:chevron-right"} className="text-custom-blue-500" />
-
-              <div>{value ?? "Ø"}</div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
 
 export const EventDetails = ({
   id,
