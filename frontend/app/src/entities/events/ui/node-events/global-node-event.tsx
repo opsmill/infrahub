@@ -1,3 +1,4 @@
+import { NODE_EVENTS_MAPPING } from "@/entities/events/ui/node-events/constants";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -5,7 +6,7 @@ import { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { NODE_EVENTS_MAPPING, getLink } from "./node-event";
+import { getLink } from "./node-event-title";
 
 export const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attributes">) => {
   return (

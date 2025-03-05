@@ -7,8 +7,8 @@ import { Link } from "@/shared/components/ui/link";
 import { Spinner } from "@/shared/components/ui/spinner";
 import React from "react";
 import { useParams } from "react-router";
-import { useEvents } from "../api/get-events.query";
-import { Event } from "./event";
+import { useEvents } from "../../api/get-events.query";
+import { EventCard } from "../event-card";
 
 const MAX_EVENTS = 5;
 
@@ -59,7 +59,7 @@ export const NodeEvents = ({ parentId }: { parentId?: string }) => {
   return (
     <div className="flex flex-col gap-2 p-2">
       {flatData.map((activity) => (
-        <Event key={activity.id} {...activity} />
+        <EventCard key={activity.id} {...activity} />
       ))}
 
       {!parentId && (

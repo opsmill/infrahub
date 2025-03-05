@@ -3,6 +3,7 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { ACCOUNT_OBJECT } from "@/config/constants";
 import { QSP } from "@/config/qsp";
 import { EventType } from "@/entities/events/types";
+import { EventAttributes } from "@/entities/events/ui/node-events/event-attributes";
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { PropertyRow } from "@/entities/schema/ui/styled";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -11,8 +12,8 @@ import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 import { BRANCH_EVENTS, STANDARD_EVENTS } from "../constants";
-import { BranchEvent } from "./branch-event";
-import { EventAttributes, NodeEvent } from "./node-event";
+import { BranchEvent } from "./branch-events/branch-event";
+import { NodeEventTitle } from "./node-events/node-event-title";
 import { StandardEvent } from "./standard-event";
 
 export const EventDetails = ({
@@ -138,14 +139,14 @@ export const EventDetails = ({
   );
 };
 
-export const Event = ({ __typename, ...props }: EventType) => {
+export const EventCard = ({ __typename, ...props }: EventType) => {
   return (
     <div className="flex gap-2">
       <TimelineBorder />
 
       <div className="flex flex-grow gap-3 p-2 rounded-md shadow-sm border bg-white">
         <div className="flex flex-col gap-2 grow">
-          {"attributes" in props && <NodeEvent {...props} />}
+          {"attributes" in props && <NodeEventTitle {...props} />}
 
           {"attributes" in props && <EventAttributes attributes={props.attributes} />}
 

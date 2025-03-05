@@ -24,7 +24,7 @@ import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive"
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import SlideOver from "@/shared/components/display/slide-over";
 import { Tabs } from "@/shared/components/tabs";
-import { CardWithBorder } from "@/shared/components/ui/card";
+import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 import { useTitle } from "@/shared/hooks/useTitle";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
@@ -34,7 +34,7 @@ import { useAtomValue } from "jotai/index";
 import { useRef } from "react";
 import { Navigate, useLocation, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
-import { NodeEvents } from "../../events/ui/node-events";
+import { NodeEvents } from "../../events/ui/node-events/node-events";
 import { ActionButtons } from "./action-buttons";
 import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
@@ -126,8 +126,8 @@ export default function ObjectItemDetails({
 
       {!qspTab && (
         <div className="flex flex-col lg:items-start lg:grid lg:grid-cols-3 gap-2 p-2">
-          <CardWithBorder className="md:col-span-2 divide-y p-0 grow">
-            <CardWithBorder.Title>Details</CardWithBorder.Title>
+          <Card className="md:col-span-2 p-0 grow overflow-x-hidden">
+            <CardWithBorder.Title className="border-b">Details</CardWithBorder.Title>
 
             <div className="divide-y">
               {attributes.map((attribute) => {
@@ -210,12 +210,12 @@ export default function ObjectItemDetails({
                 );
               })}
             </div>
-          </CardWithBorder>
+          </Card>
 
-          <CardWithBorder className="p-0">
-            <CardWithBorder.Title>Activities</CardWithBorder.Title>
+          <Card className="p-0 overflow-x-hidden">
+            <CardWithBorder.Title className="border-b">Activities</CardWithBorder.Title>
             <NodeEvents />
-          </CardWithBorder>
+          </Card>
         </div>
       )}
 
