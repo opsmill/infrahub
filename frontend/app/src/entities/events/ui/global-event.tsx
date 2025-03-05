@@ -6,7 +6,7 @@ import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
 import { BRANCH_EVENTS, GROUP_EVENTS, STANDARD_EVENTS } from "../constants";
 import { BranchEventTitle } from "./branch-events/branch-event-title";
-import { GroupEvent } from "./group-events/global-group-event";
+import { GroupEventTitle } from "./group-events/group-event-title";
 import { NodeEventTitle } from "./node-events/node-event-title";
 import { StandardEvent } from "./standard-events/global-standard-event";
 
@@ -24,7 +24,7 @@ const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
   }
 
   if (GROUP_EVENTS.includes(__typename)) {
-    return <GroupEvent {...props} />;
+    return <GroupEventTitle {...props} />;
   }
 
   return <span className="flex items-center text-sm text-gray-500 ">{props.event}</span>;
