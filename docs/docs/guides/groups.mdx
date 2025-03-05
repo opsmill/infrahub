@@ -1,6 +1,10 @@
 ---
 title: Creating a Group
 ---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 <!-- vale off -->
 # Creating a Group in Infrahub
 <!-- vale on -->
@@ -10,92 +14,99 @@ Within Infrahub a [Group](../topics/groups) can be created in multiple ways: in 
 As the first step we need to create a group.
 We will be adding the `red` and `blue` tag to the `TagConfigGroup` group that we created in the previous step.
 
-- [Via the web interface](#via-the-web-interface)
-- [Via the GraphQL interface](#via-the-graphql-interface)
+<Tabs>
+  <TabItem value="Via the Web Interface" default>
+  ## Via the Web Interface
 
-## Via the web interface
+  In the web interface navigate to Object Management > Groups  in the menu on the left.
 
-As the first step we need to create a group.
-![New Group](../media/group_tagconfig_grp_new_grp.png)
+  As the first step we need to create a group.
+  ![New Group](../media/group_tagconfig_grp_new_grp.png)
 
-Then we will add members to the group.
-![Adding members in group](../media/group_tagconfig_grp_adding_members.png)
+  Then we will add members to the group.
+  ![Adding members in group](../media/group_tagconfig_grp_adding_members.png)
 
-## Via the GraphQL interface
+  </TabItem>
 
-### Creating a new group
+  <TabItem value="Via the GraphQL Interface">
+  ## Via the GraphQL Interface
 
-Execute this GraphQL mutation to create the group `TagConfigGroup`.
+  1. Open the [GraphQL Interface](http://localhost:8000/graphql).
+  2. Execute this GraphQL mutation to create the group `TagConfigGroup`.
 
-```graphql
-mutation CreateGroup {
-  CoreStandardGroupCreate (data: {name: {value: "TagConfigGroup"}}) {
-    ok
-    object {
-      hfid
-    }
-  }
-}
-```
-
-Take note of the returned `HFID`, we will need it when we add members to this group.
-
-### Adding members to the group
-
-We will be adding the `red` and `blue` tag to the `TagConfigGroup` group that we created in the previous step.
-
-We need to retrieve the ids of the `red` and `blue` tag. Execute the following GraphQL query and take note of the ids.
-
-```graphql
-query {
-  BuiltinTag (name__values: ["red","blue"]) {
-    edges {
-      node {
-        id
-        display_label
+  ```graphql
+  mutation CreateGroup {
+    CoreStandardGroupCreate (data: {name: {value: "TagConfigGroup"}}) {
+      ok
+      object {
+        hfid
       }
     }
   }
-}
-```
+  ```
 
-Next, we will be adding the tag nodes to the group. We will use the following GraphQL mutation.
-In the mutation, replace the `IDs`:
+  Take note of the returned `HFID`, we will need it when we add members to this group.
 
-- The first id needs to be replaced with the id of the group that we created in the first step
-- The second and third id need to be replaced with the ids of the tags from the previous step
+  3. Adding members to the group
 
-```graphql
-mutation UpdateGroupMembers {
-  CoreStandardGroupUpdate (
-    data: {
-      hfid: ["TagConfigGroup"],
-      members: [
-        {id: "<id of red tag>"},
-        {id: "<id of blue tag>"}]}
-  ) {
-    ok
+  We will be adding the `red` and `blue` tag to the `TagConfigGroup` group that we created in the previous step.
+
+  We need to retrieve the ids of the `red` and `blue` tag. Execute the following GraphQL query and take note of the ids.
+
+  ```graphql
+  query {
+    BuiltinTag (name__values: ["red","blue"]) {
+      edges {
+        node {
+          id
+          display_label
+        }
+      }
+    }
   }
-}
-```
+  ```
 
-The resulting mutation should look like this (note that the ids will be different in your case).
+  Next, we will be adding the tag nodes to the group. We will use the following GraphQL mutation.
+  In the mutation, replace the `IDs` with the ones from the tags retrieved in the previous step
 
-```graphql
-mutation UpdateGroupMembers {
-  CoreStandardGroupUpdate(
-    data: {
-      hfid: ["TagConfigGroup"],
-      members: [
-        {id: "17a8f438-fe39-d85f-3c3b-c51d66d0603f"},
-        {id: "17a8f437-157a-e023-3c3c-c51f788ddf91"}]}
-  ) {
-    ok
+  ```graphql
+  mutation UpdateGroupMembers {
+    CoreStandardGroupUpdate (
+      data: {
+        hfid: ["TagConfigGroup"],
+        members: [
+          {id: "<id of red tag>"},
+          {id: "<id of blue tag>"}]}
+    ) {
+      ok
+    }
   }
-}
-```
+  ```
 
-In the web interface navigate to Groups under Object Management in the menu on the left.
-Select the `TagConfigGroup` and navigate to the Members tab. We can confirm that the `red` and `blue` tag are now a member of the group.
+  The resulting mutation should look like this (note that the ids will be different in your case).
 
-![Group members](../media/group_tagconfig_grp_new_members.png)
+  ```graphql
+  mutation UpdateGroupMembers {
+    CoreStandardGroupUpdate(
+      data: {
+        hfid: ["TagConfigGroup"],
+        members: [
+          {id: "17a8f438-fe39-d85f-3c3b-c51d66d0603f"},
+          {id: "17a8f437-157a-e023-3c3c-c51f788ddf91"}]}
+    ) {
+      ok
+    }
+  }
+  ```
+
+  :::success Validate that everything is correct
+
+  In the web interface navigate to Object Management > Groups  in the menu on the left.
+  Select the `TagConfigGroup` and navigate to the Members tab. We can confirm that the `red` and `blue` tag are now a member of the group.
+
+  ![Group members](../media/group_tagconfig_grp_new_members.png)
+
+  :::
+
+  </TabItem>
+</Tabs>

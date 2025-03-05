@@ -12,7 +12,7 @@ test.describe("Resource Managers guide", () => {
       await page.goto("/ipam");
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Prefix *").fill("10.100.0.0/24");
-      await saveScreenshotForDocs(page, "guides/resource_manager_rss_prefix_10_100_0");
+      await saveScreenshotForDocs(page, "guides/resources-manager/resource_manager_rss_prefix_10_100_0");
       await page.getByRole("button", { name: "Save" }).click();
       await page.getByText("IPPrefix created").waitFor({ state: "visible" });
     });
@@ -41,7 +41,7 @@ test.describe("Resource Managers guide", () => {
       await page.getByRole("combobox", { name: "IPAM Namespace *" }).click();
       await page.getByRole("option", { name: "default" }).click();
 
-      await saveScreenshotForDocs(page, "guides/resource_manager_pool_ip");
+      await saveScreenshotForDocs(page, "guides/resources-manager/resource_manager_pool_ip");
       await page.getByRole("button", { name: "Save" }).click();
     });
 
@@ -54,9 +54,9 @@ test.describe("Resource Managers guide", () => {
       await page.getByRole("textbox", { name: "Type *" }).fill("MX204");
       await page.getByTestId("select-open-pool-option-button").click();
       await page.getByRole("option", { name: "My IP address pool" }).waitFor({ state: "visible" });
-      await saveScreenshotForDocs(page, "guides/resource_manager_pool_device_before");
+      await saveScreenshotForDocs(page, "guides/resources-manager/resource_manager_pool_device_before");
       await page.getByRole("option", { name: "My IP address pool" }).click();
-      await saveScreenshotForDocs(page, "guides/resource_manager_pool_device_after");
+      await saveScreenshotForDocs(page, "guides/resources-manager/resource_manager_pool_device_after");
       await page.getByRole("button", { name: "Save" }).click();
     });
   });
@@ -71,7 +71,7 @@ test.describe("Resource Managers guide", () => {
         .locator("div")
         .filter({ hasText: /^Prefix$/ })
         .click();
-      await saveScreenshotForDocs(page, "guides/resource_manager_rss_prefix_10_100_1");
+      await saveScreenshotForDocs(page, "guides/resources-manager/resource_manager_rss_prefix_10_100_1");
       await page.getByRole("button", { name: "Save" }).click();
       await page.getByText("IPPrefix created").waitFor({ state: "visible" });
     });
@@ -101,7 +101,7 @@ test.describe("Resource Managers guide", () => {
       await page.getByRole("combobox", { name: "IPAM Namespace *" }).click();
       await page.getByRole("option", { name: "default" }).click();
 
-      await saveScreenshotForDocs(page, "guides/resource_manager_pool_prefix");
+      await saveScreenshotForDocs(page, "guides/resources-manager/resource_manager_pool_prefix");
       await page.getByRole("button", { name: "Save" }).click();
     });
 
@@ -123,7 +123,7 @@ test.describe("Resource Managers guide", () => {
       await expect(page.getByLabel("Number Attribute *")).toContainText("Vlan Id");
       await page.getByRole("spinbutton", { name: "Start range *" }).fill("100");
       await page.getByRole("spinbutton", { name: "End range *" }).fill("1000");
-      await saveScreenshotForDocs(page, "guides/resource_manager_pool_vlan");
+      await saveScreenshotForDocs(page, "guides/resources-manager/resource_manager_pool_vlan");
       await page.getByRole("button", { name: "Save" }).click();
       await page.getByText("Number pool created").waitFor({ state: "visible" });
     });
@@ -134,9 +134,9 @@ test.describe("Resource Managers guide", () => {
       await page.getByRole("textbox", { name: "Name *" }).fill("My vlan");
       await page.getByTestId("number-pool-button").click();
       await page.getByRole("option", { name: "My VLAN ID Pool" }).waitFor({ state: "visible" });
-      await saveScreenshotForDocs(page, "guides/resource_manager_pool_vlan_before");
+      await saveScreenshotForDocs(page, "guides/resources-manager/resource_manager_pool_vlan_before");
       await page.getByRole("option", { name: "My VLAN ID Pool" }).click();
-      await saveScreenshotForDocs(page, "guides/resource_manager_pool_vlan_after");
+      await saveScreenshotForDocs(page, "guides/resources-manager/resource_manager_pool_vlan_after");
       await page.getByRole("button", { name: "Save" }).click();
     });
   });

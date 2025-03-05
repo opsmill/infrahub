@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("Role management - Roles CRUD", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
@@ -29,6 +30,7 @@ test.describe("Role management - Roles CRUD", () => {
         .getByText("global:manage_repositories:")
         .click();
       await page.getByTestId("side-panel-container").getByLabel("Permissions").click();
+      await saveScreenshotForDocs(page, "guides/permissions/permissions_roles");
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Role created!")).toBeVisible();
     });

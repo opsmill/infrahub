@@ -40,7 +40,7 @@ test.describe("Global Activity Log - List view and filter usage", () => {
       await expect(
         page.getByLabel("Primary Node contains [object").getByRole("button")
       ).toContainText("blue");
-      await saveScreenshotForDocs(page, "activity_log_global_filters_primary");
+      await saveScreenshotForDocs(page, "topics/activity-logs/activity_log_global_filters_primary");
     });
   });
   test("3. View the Activity log page with children", async ({ page }) => {
@@ -54,7 +54,7 @@ test.describe("Global Activity Log - List view and filter usage", () => {
       await page.getByRole("button", { name: "Has Children" }).click();
       await page.getByText("True").click();
       await page.getByRole("button", { name: "Apply" }).click();
-      await saveScreenshotForDocs(page, "activity_log_global_filters_children");
+      await saveScreenshotForDocs(page, "topics/activity-logs/activity_log_global_filters_children");
     });
 
     await test.step("View Event details with children", async () => {
@@ -63,7 +63,7 @@ test.describe("Global Activity Log - List view and filter usage", () => {
 
       // Check that at least one "View more." button is present in the details page
       await expect(page.locator("#root")).toContainText("View more.");
-      await saveScreenshotForDocs(page, "activity_log_global_details_children");
+      await saveScreenshotForDocs(page, "topics/activity-logs/activity_log_global_details_children");
     });
   });
 });
