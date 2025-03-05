@@ -40,7 +40,7 @@ export const NodeEventTitle = ({
   const schemaLabels = useAtomValue(schemaKindLabelState);
 
   return (
-    <div className="flex items-center gap-1 text-sm">
+    <div className="flex flex-wrap items-center gap-1 text-sm">
       <NodeLabel id={account_id} />
       <span className="text-gray-600 whitespace-nowrap">{NODE_EVENTS_MAPPING[event] ?? event}</span>
       <div className="text-gray-600 whitespace-nowrap">

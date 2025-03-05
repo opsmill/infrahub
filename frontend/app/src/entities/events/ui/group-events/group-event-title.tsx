@@ -61,18 +61,14 @@ export const GroupEventTitle = (props: EventNodeInterface) => {
   const { event, account_id } = props;
 
   return (
-    <>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 text-sm">
-          <NodeLabel id={account_id} />
+    <div className="flex items-center flex-wrap gap-1 text-sm">
+      <NodeLabel id={account_id} />
 
-          <div className="text-gray-500">
-            {GROUP_EVENTS_MAPPING[event] && GROUP_EVENTS_MAPPING[event](props)}
+      <div className="text-gray-500">
+        {GROUP_EVENTS_MAPPING[event] && GROUP_EVENTS_MAPPING[event](props)}
 
-            {!GROUP_EVENTS_MAPPING[event] && event}
-          </div>
-        </div>
+        {!GROUP_EVENTS_MAPPING[event] && event}
       </div>
-    </>
+    </div>
   );
 };
