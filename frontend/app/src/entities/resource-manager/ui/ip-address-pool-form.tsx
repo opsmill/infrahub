@@ -117,7 +117,7 @@ export const IpAddressPoolForm = ({
       });
 
       const operationType = isUpdate ? "update" : "create";
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`IP address pool ${operationType}`} />, {
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`IP address pool ${operationType}d`} />, {
         toastId: `alert-success-ip-prefix-pool-${operationType}`,
       });
 
