@@ -13,8 +13,9 @@ import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Link } from "@/shared/components/ui/link";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 import { Icon } from "@iconify-icon/react";
-import { BRANCH_EVENTS, STANDARD_EVENTS } from "../constants";
+import { BRANCH_EVENTS, GROUP_EVENTS, STANDARD_EVENTS } from "../constants";
 import { BranchEventTitle } from "./branch-events/branch-event-title";
+import { GroupEventTitle } from "./group-events/group-event-title";
 import { NodeEventTitle } from "./node-events/node-event-title";
 import { StandardEventTitle } from "./standard-events/standard-event-title";
 
@@ -177,6 +178,8 @@ export const EventCard = (props: EventType) => {
           {BRANCH_EVENTS.includes(props.__typename) && <BranchEventTitle {...props} />}
 
           {STANDARD_EVENTS.includes(props.__typename) && <StandardEventTitle {...props} />}
+
+          {GROUP_EVENTS.includes(props.__typename) && <GroupEventTitle {...props} />}
 
           <div className="flex justify-between text-gray-500">
             <DateDisplay date={props.occurred_at} />
