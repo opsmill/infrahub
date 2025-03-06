@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Boolean, Field, InputField, InputObjectType, Int, Mutation, String
+from graphene import Boolean, Field, InputField, InputObjectType, Int, List, Mutation, String
 from graphene.types.generic import GenericScalar
 from typing_extensions import Self
 
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 class IPPrefixPoolGetResourceInput(InputObjectType):
     id = InputField(String(required=False), description="ID of the pool to allocate from")
-    hfid = InputField(String(required=False), description="HFID of the pool to allocate from")
+    hfid = InputField(List(of_type=String, required=False), description="HFID of the pool to allocate from")
     identifier = InputField(String(required=False), description="Identifier for the allocated resource")
     prefix_length = InputField(Int(required=False), description="Size of the prefix to allocate")
     member_type = InputField(String(required=False), description="Type of members for the newly created prefix")
@@ -40,7 +40,7 @@ class IPPrefixPoolGetResourceInput(InputObjectType):
 
 class IPAddressPoolGetResourceInput(InputObjectType):
     id = InputField(String(required=False), description="ID of the pool to allocate from")
-    hfid = InputField(String(required=False), description="HFID of the pool to allocate from")
+    hfid = InputField(List(of_type=String, required=False), description="HFID of the pool to allocate from")
     identifier = InputField(String(required=False), description="Identifier for the allocated resource")
     prefix_length = InputField(
         Int(required=False), description="Size of the prefix mask to allocate on the new IP address"
