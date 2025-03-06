@@ -124,23 +124,27 @@ Heading back to Infrahub you will notice new entries in the left-hand menu. Befo
 
 <Tabs>
   <TabItem value="web" label="Via the Web Interface" default>
-    1. Navigate to the left-hand menu and select `Device Type`
-    2. Click the `+ Add new Device Type` button
-    3. Then fill the form
-        - **Name**: SwitchModel123
-        - **Number of U**: 2
-    4. Hit the save button
+
+  1. Navigate to the left-hand menu and select `Device Type`
+  2. Click the `+ Add new Device Type` button
+  3. Then fill the form
+      - **Name**: SwitchModel123
+      - **Number of U**: 2
+  4. Hit the save button
+
   </TabItem>
   <TabItem value="graphql" label="Via the GraphQL Interface">
-    ```graphql
-    mutation {
-      InfraDeviceTypeCreate(
-        data: {name: {value: "SwitchModel123"}, number_of_u: {value: 2}}
-      ) {
-        ok
-      }
+
+  ```graphql
+  mutation {
+    InfraDeviceTypeCreate(
+      data: {name: {value: "SwitchModel123"}, number_of_u: {value: 2}}
+    ) {
+      ok
     }
-    ```
+  }
+  ```
+
   </TabItem>
 </Tabs>
 
@@ -158,28 +162,30 @@ All template-related records can be found in the menu under the dedicated sectio
 
 <Tabs>
   <TabItem value="web" label="Via the Web Interface" default>
-    1. Go to `Object Management` > `Templates`
-    2. Click the `+ Add Object Templates` button
-    3. In the drop-down list pick `Device`
-    4. Then fill the form
-        - **Template Name**: Template-SwitchModel123
-        - **Device Type**: SwitchModel123
-    5. Hit the save button
+
+  1. Go to `Object Management` > `Templates`
+  2. Click the `+ Add Object Templates` button
+  3. In the drop-down list pick `Device`
+  4. Then fill the form
+      - **Template Name**: Template-SwitchModel123
+      - **Device Type**: SwitchModel123
+  5. Hit the save button
+
   </TabItem>
   <TabItem value="graphql" label="Via the GraphQL Interface">
-    ```graphql
-    mutation {
-      TemplateInfraDeviceCreate(
-        data: {template_name: {value: "Template-SwitchModel123"}, device_type: {hfid: ["SwitchModel123"]}}
-      ) {
-        ok
-      }
+  ```graphql
+  mutation {
+    TemplateInfraDeviceCreate(
+      data: {template_name: {value: "Template-SwitchModel123"}, device_type: {hfid: ["SwitchModel123"]}}
+    ) {
+      ok
     }
-    ```
+  }
+  ```
   </TabItem>
 </Tabs>
 
-:::note
+:::important
 
 In the device template, you specify the actual device type object. This means that **creating a device using your template will automatically set up a relationship between the new device and the specified device type**.
 Some fields can be left empty because the device template doesn't apply to them. Take the serial number, by definition it will be different from one device to another.
@@ -196,34 +202,36 @@ Ensure you **reference the device template created in the previous step**. For d
 
 <Tabs>
   <TabItem value="web" label="Via the Web Interface" default>
-    1. Click the `+ Add Object Templates` button
-    2. In the drop-down list pick `Object template Interface`
-    3. Then fill-out the fields
-        - **Template Name**: Template-SwitchModel123-Ethernet1; Template-SwitchModel123-Ethernet2; Template-SwitchModel123-Ethernet3
-        - **Device**: Template-SwitchModel123
-        - **Name**: Ethernet1; Ethernet2; Ethernet3
-    4. Hit the save button
+
+  1. Click the `+ Add Object Templates` button
+  2. In the drop-down list pick `Object template Interface`
+  3. Then fill-out the fields
+      - **Template Name**: Template-SwitchModel123-Ethernet1; Template-SwitchModel123-Ethernet2; Template-SwitchModel123-Ethernet3
+      - **Device**: Template-SwitchModel123
+      - **Name**: Ethernet1; Ethernet2; Ethernet3
+  4. Hit the save button
+
   </TabItem>
   <TabItem value="graphql" label="Via the GraphQL Interface">
-    ```graphql
-    mutation {
-      CreateTemplateEthernet1: TemplateInfraInterfaceCreate(
-        data: {name: {value: "Ethernet1"}, template_name: {value: "Template-SwitchModel123-Ethernet1"}, device: {hfid: ["Template-SwitchModel123"]}}
-      ) {
-        ok
-      }
-      CreateTemplateEthernet2: TemplateInfraInterfaceCreate(
-        data: {name: {value: "Ethernet2"}, template_name: {value: "Template-SwitchModel123-Ethernet2"}, device: {hfid: ["Template-SwitchModel123"]}}
-      ) {
-        ok
-      }
-      CreateTemplateEthernet3: TemplateInfraInterfaceCreate(
-        data: {name: {value: "Ethernet3"}, template_name: {value: "Template-SwitchModel123-Ethernet3"}, device: {hfid: ["Template-SwitchModel123"]}}
-      ) {
-        ok
-      }
+  ```graphql
+  mutation {
+    CreateTemplateEthernet1: TemplateInfraInterfaceCreate(
+      data: {name: {value: "Ethernet1"}, template_name: {value: "Template-SwitchModel123-Ethernet1"}, device: {hfid: ["Template-SwitchModel123"]}}
+    ) {
+      ok
     }
-    ```
+    CreateTemplateEthernet2: TemplateInfraInterfaceCreate(
+      data: {name: {value: "Ethernet2"}, template_name: {value: "Template-SwitchModel123-Ethernet2"}, device: {hfid: ["Template-SwitchModel123"]}}
+    ) {
+      ok
+    }
+    CreateTemplateEthernet3: TemplateInfraInterfaceCreate(
+      data: {name: {value: "Ethernet3"}, template_name: {value: "Template-SwitchModel123-Ethernet3"}, device: {hfid: ["Template-SwitchModel123"]}}
+    ) {
+      ok
+    }
+  }
+  ```
   </TabItem>
 </Tabs>
 
@@ -239,13 +247,27 @@ Heading back to the main menu we will create a device object.
 
 <Tabs>
   <TabItem value="web" label="Via the Web Interface" default>
-    1. Click `Device` item in the left hand side menu
-    2. Hit `+ Add Device` button
-    3. Pick the template option and select the template you created in the previous step
-      > At this stage, you can either create your device from scratch, following the standard process, or **start from a predefined template!**
-    4. You can fill the missing information (for instance the `serial` field)
-      > Information sourced from the template is indicated by a small chip above the form inputs. You can override this information at any time.
-    5. Hit the save button
+
+  1. Click `Device` item in the left hand side menu
+  2. Hit `+ Add Device` button
+  3. Pick the template option and select the template you created in the previous step
+
+  :::important
+
+  At this stage, you can either create your device from scratch, following the standard process, or **start from a predefined template!**
+
+  :::
+
+  4. You can fill the missing information (for instance the `serial` field)
+
+  :::note
+
+  Information sourced from the template is indicated by a small chip above the form inputs. You can override this information at any time.
+
+  :::
+
+  5. Hit the save button
+
   </TabItem>
   <TabItem value="graphql" label="Via the GraphQL Interface">
     ```graphql
