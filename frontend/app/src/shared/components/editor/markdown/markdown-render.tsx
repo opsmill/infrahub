@@ -10,7 +10,7 @@ type MarkdownRenderProps = {
 };
 
 export const MarkdownRender: FC<MarkdownRenderProps> = ({ className = "", markdownText = "" }) => (
-  <Markdown remarkPlugins={[remarkGfm]} className={classNames("markdown", className)}>
-    {markdownText}
-  </Markdown>
+  <div className={classNames("markdown", className)}>
+    <Markdown remarkPlugins={[remarkGfm]}>{markdownText}</Markdown>
+  </div>
 );
