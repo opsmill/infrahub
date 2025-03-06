@@ -2,7 +2,7 @@ import { branchesState } from "@/entities/branches/stores";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { useAtomValue } from "jotai";
 import { TagGroup, TagList } from "react-aria-components";
-import { EVENT_TYPE_CHOICES } from "../utils/constants";
+import { EVENT_TYPE_CHOICES } from "../../constants";
 import { GlobalBranchFilter } from "./global-branch-filter";
 import { GlobalFilter } from "./global-filter";
 import { GlobalKindFilter } from "./global-kind-filter";
