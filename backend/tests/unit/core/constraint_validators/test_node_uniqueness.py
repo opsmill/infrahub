@@ -42,8 +42,8 @@ async def test_hierarchical_uniqueness_constraint(
     site_schema.uniqueness_constraints = [["parent", "name__value"]]
 
     rack_schema = hierarchical_location_schema_simple_unregistered.get(name="LocationRack")
-    rack_schema.human_friendly_id = ["parent__name__value", "name__value"]
-    rack_schema.uniqueness_constraints = [["parent", "name__value"]]
+    rack_schema.human_friendly_id = ["parent__name__value", "status__value"]
+    rack_schema.uniqueness_constraints = [["parent", "status__value"]]
 
     registry.schema.register_schema(schema=hierarchical_location_schema_simple_unregistered, branch=default_branch.name)
     constraint = NodeGroupedUniquenessConstraint(db=db, branch=default_branch)
@@ -67,7 +67,7 @@ async def test_hierarchical_uniqueness_constraint(
     await ld6.save(db=db)
     await constraint.check(ld6)
 
-    ld6 = await Node.init(db=db, schema="LocationRack", branch=default_branch)
-    await ld6.new(db=db, name="ld6-ldn", parent=uk)
-    with pytest.raises(ValidationError, match=r"Violates uniqueness constraint 'parent-name' at parent"):
-        await constraint.check(ld6)
+    ld62 = await Node.init(db=db, schema="LocationRack", branch=default_branch)
+    await ld62.new(db=db, name="ld6-ldn2", parent=uk)
+    with pytest.raises(ValidationError, match=r"Violates uniqueness constraint 'parent-status' at status"):
+        await constraint.check(ld62)
