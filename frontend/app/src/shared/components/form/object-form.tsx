@@ -111,7 +111,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
   }
 
   if (kind === IP_ADDRESS_POOL) {
-    return <IpAddressPoolForm {...props} />;
+    return <IpAddressPoolForm schema={schema} {...props} />;
   }
 
   if (kind === IP_PREFIX_POOL) {
