@@ -10,26 +10,6 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface)
     "infrahub.schema.update": () => {
       return <div className="flex flex-wrap items-center gap-2">updated the schema</div>;
     },
-    "infrahub.branch.create": (props) => {
-      return (
-        <div className="flex flex-wrap items-center gap-2">
-          merged the branch
-          <Link to={`/branches/${props.payload?.context?.branch?.name}`} className="text-black">
-            {props.payload?.context?.branch?.name}
-          </Link>
-        </div>
-      );
-    },
-    "infrahub.branch.merged": (props) => {
-      return (
-        <div className="flex flex-wrap items-center gap-2">
-          merged the branch
-          <Link to={`/branches/${props.payload?.context?.branch?.name}`} className="text-black">
-            {props.payload?.context?.branch?.name}
-          </Link>
-        </div>
-      );
-    },
     "infrahub.repository.update_commit": (props) => {
       return (
         <div className="flex flex-wrap items-center gap-2">
@@ -50,11 +30,11 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface)
   };
 
 export const StandardEventTitle = (props: EventNodeInterface) => {
-  const { event, account_id } = props;
+  const { event, account_id, branch } = props;
 
   return (
     <div className="flex items-center flex-wrap gap-1 text-sm">
-      <NodeLabel id={account_id} />
+      <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />
 
       <div className="text-gray-500">
         {STANDARD_EVENTS_MAPPING[event] && STANDARD_EVENTS_MAPPING[event](props)}

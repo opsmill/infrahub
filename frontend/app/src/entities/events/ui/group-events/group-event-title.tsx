@@ -5,51 +5,67 @@ import { Link } from "@/shared/components/ui/link";
 import { ReactElement } from "react";
 
 export const GROUP_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) => ReactElement> = {
-  "infrahub.group.member_added": ({ related_nodes, primary_node }) => {
+  "infrahub.group.member_added": (props) => {
     return (
       <div className="flex flex-wrap items-center gap-1 whitespace-nowrap">
         added{" "}
         <div className="flex items-center gap-1 text-black">
-          {related_nodes.slice(0, 5).map(({ id, kind }) => {
+          {props.related_nodes.slice(0, 5).map(({ id, kind }) => {
             return (
               <Link key={id} to={constructPath(`/objects/${kind}/${id}`)}>
-                <NodeLabel key={id} id={id} />
+                <NodeLabel key={id} id={id} branch={props.branch} />
               </Link>
             );
           })}
-          {related_nodes.slice(6).length > 0 && (
-            <span className="italic text-gray-500">(+{related_nodes.slice(6).length})</span>
+          {props.related_nodes.slice(6).length > 0 && (
+            <span className="italic text-gray-500">(+{props.related_nodes.slice(6).length})</span>
           )}
         </div>{" "}
         in group{" "}
         <span className="text-black font-semibold">
-          <Link key={primary_node?.id} to={constructPath(`/objects/CoreGroup/${primary_node?.id}`)}>
-            <NodeLabel key={primary_node?.id} id={primary_node?.id} kind={primary_node?.kind} />
+          <Link
+            key={props.primary_node?.id}
+            to={constructPath(`/objects/CoreGroup/${props.primary_node?.id}`)}
+          >
+            <NodeLabel
+              key={props.primary_node?.id}
+              id={props.primary_node?.id}
+              kind={props.primary_node?.kind}
+              branch={props.branch}
+            />
           </Link>
         </span>
       </div>
     );
   },
-  "infrahub.group.member_removed": ({ related_nodes, primary_node }) => {
+  "infrahub.group.member_removed": (props) => {
     return (
       <div className="flex flex-wrap items-center gap-1 whitespace-nowrap">
         removed{" "}
         <div className="flex items-center gap-1 text-black">
-          {related_nodes.slice(0, 5).map(({ id, kind }) => {
+          {props.related_nodes.slice(0, 5).map(({ id, kind }) => {
             return (
               <Link key={id} to={constructPath(`/objects/${kind}/${id}`)}>
-                <NodeLabel key={id} id={id} />
+                <NodeLabel key={id} id={id} branch={props.branch} />
               </Link>
             );
           })}
-          {related_nodes.slice(6).length > 0 && (
-            <span className="italic text-gray-500">(+{related_nodes.slice(6).length})</span>
+          {props.related_nodes.slice(6).length > 0 && (
+            <span className="italic text-gray-500">(+{props.related_nodes.slice(6).length})</span>
           )}
         </div>{" "}
         from group{" "}
         <span className="text-black">
-          <Link key={primary_node?.id} to={constructPath(`/objects/CoreGroup/${primary_node?.id}`)}>
-            <NodeLabel key={primary_node?.id} id={primary_node?.id} kind={primary_node?.kind} />
+          <Link
+            key={props.primary_node?.id}
+            to={constructPath(`/objects/CoreGroup/${props.primary_node?.id}`)}
+          >
+            <NodeLabel
+              key={props.primary_node?.id}
+              id={props.primary_node?.id}
+              kind={props.primary_node?.kind}
+              branch={props.branch}
+            />
           </Link>
         </span>
       </div>
@@ -62,7 +78,7 @@ export const GroupEventTitle = (props: EventNodeInterface) => {
 
   return (
     <div className="flex items-center flex-wrap gap-1 text-sm">
-      <NodeLabel id={account_id} />
+      <NodeLabel id={account_id} kind="CoreAccount" branch={props.branch} />
 
       <div className="text-gray-500">
         {GROUP_EVENTS_MAPPING[event] && GROUP_EVENTS_MAPPING[event](props)}

@@ -41,7 +41,7 @@ export const NodeEventTitle = ({
 
   return (
     <div className="flex flex-wrap items-center gap-1 text-sm">
-      <NodeLabel id={account_id} />
+      <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />
       <span className="text-gray-600 whitespace-nowrap">{NODE_EVENTS_MAPPING[event] ?? event}</span>
       <div className="text-gray-600 whitespace-nowrap">
         {schemaLabels[payload.data.node_kind] ?? "-"}
@@ -50,6 +50,7 @@ export const NodeEventTitle = ({
         <NodeLabel
           id={primary_node.id}
           kind={primary_node?.kind}
+          branch={branch}
           className="overflow-hidden text-ellipsis whitespace-nowrap"
         />
       ) : (
@@ -64,6 +65,7 @@ export const NodeEventTitle = ({
           <NodeLabel
             id={primary_node.id}
             kind={primary_node?.kind}
+            branch={branch}
             className="overflow-hidden text-ellipsis whitespace-nowrap"
           />
         </Link>
