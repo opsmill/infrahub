@@ -4,21 +4,15 @@ import {
   getSchemaObjectColumns,
   getTabs,
 } from "@/entities/nodes/object-items/getSchemaObjectColumns";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
-import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
+import { ObjectInlineDisplay } from "@/entities/nodes/object/ui/object-inline-display";
 import { ModelSchema } from "@/entities/schema/types";
 import useQuery from "@/shared/api/graphql/useQuery";
-import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { File } from "@/shared/components/file";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { PropertyList } from "@/shared/components/table/property-list";
-import { Link } from "@/shared/components/ui/link";
 import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai";
 import ArtifactHeader from "./artifact-header";
 
 export interface ArtifactsDetailsProps {
@@ -27,7 +21,6 @@ export interface ArtifactsDetailsProps {
 }
 
 export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetailsProps) {
-  const schemaLabels = useAtomValue(schemaKindLabelState);
   const schemaKind: string = artifactSchema.kind as string;
 
   const columns = getSchemaObjectColumns({ schema: artifactSchema });
@@ -65,41 +58,8 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
   const fileUrl = CONFIG.ARTIFACTS_CONTENT_URL(objectDetailsData?.storage_id?.value);
   const contentType = objectDetailsData.content_type?.value;
 
-  const properties = [
-    {
-      name: schemaLabels[objectDetailsData?.object?.node?.__typename],
-      value: (
-        <Link
-          to={constructPath(
-            getObjectDetailsUrl2(
-              objectDetailsData.object?.node?.id,
-              objectDetailsData.object?.node?.__typename
-            )
-          )}
-        >
-          {getNodeLabel(objectDetailsData.object?.node)}
-        </Link>
-      ),
-    },
-    {
-      name: schemaLabels[objectDetailsData?.definition?.node?.__typename],
-      value: (
-        <Link
-          to={constructPath(
-            getObjectDetailsUrl2(
-              objectDetailsData?.definition?.node?.id,
-              objectDetailsData?.definition?.node?.__typename
-            )
-          )}
-        >
-          {getNodeLabel(objectDetailsData.definition?.node)}
-        </Link>
-      ),
-    },
-  ];
-
   return (
-    <Content.Card className="p-4">
+    <Content.Card className="flex flex-col gap-4 p-4">
       <ArtifactHeader
         name={objectDetailsData?.display_label}
         status={objectDetailsData?.status?.value}
@@ -110,11 +70,12 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
         definitionId={objectDetailsData?.definition?.node?.id}
       />
 
-      <div className="flex flex-col gap-4">
-        <PropertyList properties={properties} />
-
-        <File url={fileUrl} contentType={contentType} />
+      <div className="flex flex-wrap gap-6">
+        <ObjectInlineDisplay node={objectDetailsData.definition?.node} />
+        <ObjectInlineDisplay node={objectDetailsData.object?.node} />
       </div>
+
+      <File url={fileUrl} contentType={contentType} />
     </Content.Card>
   );
 }
