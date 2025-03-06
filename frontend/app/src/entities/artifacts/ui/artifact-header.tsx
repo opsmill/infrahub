@@ -1,10 +1,7 @@
-import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
-import { ObjectDetailsButton } from "@/shared/components/menu/object-details-button";
-import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
-import { ArtifactReGenerateButton } from "./artifact-re-generate-button";
-import { ArtifactStatusBadge } from "@/entities/artifacts/ui/artifact-status-badge";
 import { ArtifactStatus } from "@/entities/artifacts/types";
 import { ArtifactDetailsMenu } from "@/entities/artifacts/ui/artifact-details-menu";
+import { ArtifactStatusBadge } from "@/entities/artifacts/ui/artifact-status-badge";
+import { ArtifactReGenerateButton } from "./artifact-re-generate-button";
 
 type ArtifactHeaderProps = {
   id: string;

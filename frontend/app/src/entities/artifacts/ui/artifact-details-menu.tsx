@@ -1,9 +1,9 @@
+import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import {
   ObjectDetailsButton,
   ObjectDetailsButtonProps,
 } from "@/shared/components/menu/object-details-button";
 import { DropdownMenuItem } from "@/shared/components/ui/dropdown-menu";
-import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 
 export interface ArtifactDetailsMenuProps extends ObjectDetailsButtonProps {
   checksum?: string;
