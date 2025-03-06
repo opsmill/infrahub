@@ -24,7 +24,7 @@ def inject_service_parameter(func: Flow, parameters: dict[str, Any], service: In
 
     if service_parameter_name := get_parameter_name(func=func, types=[InfrahubServices.__name__, InfrahubServices]):
         if any(isinstance(param_value, InfrahubServices) for param_value in parameters):
-            raise ValueError(f"{func} parameters contains an InfrahubServices object while it should be injected")
+            raise ValueError(f"{func.name} parameters contains an InfrahubServices object while it should be injected")
         parameters[service_parameter_name] = service
         return
 
@@ -37,7 +37,7 @@ def inject_context_parameter(func: Flow, parameters: dict[str, Any], context: In
 
     if service_parameter_name and not context:
         raise ValueError(
-            f"{func} has a {service_parameter_name} parameter of type InfrahubContext, while context is not provided"
+            f"{func.name} has a {service_parameter_name} parameter of type InfrahubContext, while context is not provided"
         )
 
 
