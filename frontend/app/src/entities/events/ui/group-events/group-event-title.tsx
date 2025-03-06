@@ -7,7 +7,7 @@ import { ReactElement } from "react";
 export const GROUP_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) => ReactElement> = {
   "infrahub.group.member_added": ({ related_nodes, primary_node }) => {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1 whitespace-nowrap">
         added{" "}
         <div className="flex items-center gap-1 text-black">
           {related_nodes.slice(0, 5).map(({ id, kind }) => {
@@ -32,7 +32,7 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) =>
   },
   "infrahub.group.member_removed": ({ related_nodes, primary_node }) => {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1 whitespace-nowrap">
         removed{" "}
         <div className="flex items-center gap-1 text-black">
           {related_nodes.slice(0, 5).map(({ id, kind }) => {
@@ -57,24 +57,18 @@ export const GROUP_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) =>
   },
 };
 
-export const GroupEvent = (props: EventNodeInterface) => {
+export const GroupEventTitle = (props: EventNodeInterface) => {
   const { event, account_id } = props;
 
   return (
-    <>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm">
-          <div className="font-semibold">
-            <NodeLabel id={account_id} />
-          </div>
+    <div className="flex items-center flex-wrap gap-1 text-sm">
+      <NodeLabel id={account_id} />
 
-          <div className="text-gray-500">
-            {GROUP_EVENTS_MAPPING[event] && GROUP_EVENTS_MAPPING[event](props)}
+      <div className="text-gray-500">
+        {GROUP_EVENTS_MAPPING[event] && GROUP_EVENTS_MAPPING[event](props)}
 
-            {!GROUP_EVENTS_MAPPING[event] && event}
-          </div>
-        </div>
+        {!GROUP_EVENTS_MAPPING[event] && event}
       </div>
-    </>
+    </div>
   );
 };

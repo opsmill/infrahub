@@ -7,8 +7,8 @@ import { Spinner } from "@/shared/components/ui/spinner";
 import useFilters from "@/shared/hooks/useFilters";
 import React from "react";
 import { useEvents } from "../api/get-events.query";
+import { GlobalEventsFilters } from "./filters/global-events-filters";
 import { Event } from "./global-event";
-import { GlobalEventsFilters } from "./global-events-filters";
 
 export const GlobalEvents = () => {
   const [filters] = useFilters();

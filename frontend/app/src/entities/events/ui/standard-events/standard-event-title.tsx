@@ -8,11 +8,11 @@ import { ReactElement } from "react";
 export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) => ReactElement> =
   {
     "infrahub.schema.update": () => {
-      return <div className="flex items-center gap-2">updated the schema</div>;
+      return <div className="flex flex-wrap items-center gap-2">updated the schema</div>;
     },
     "infrahub.branch.create": (props) => {
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           merged the branch
           <Link to={`/branches/${props.payload?.context?.branch?.name}`} className="text-black">
             {props.payload?.context?.branch?.name}
@@ -22,7 +22,7 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface)
     },
     "infrahub.branch.merged": (props) => {
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           merged the branch
           <Link to={`/branches/${props.payload?.context?.branch?.name}`} className="text-black">
             {props.payload?.context?.branch?.name}
@@ -32,7 +32,7 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface)
     },
     "infrahub.repository.update_commit": (props) => {
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           updated the commit
           <span className="text-black">{props.payload?.commit}</span>
           from repository
@@ -49,24 +49,18 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface)
     },
   };
 
-export const StandardEvent = (props: EventNodeInterface) => {
+export const StandardEventTitle = (props: EventNodeInterface) => {
   const { event, account_id } = props;
 
   return (
-    <>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm">
-          <div className="font-semibold">
-            <NodeLabel id={account_id} />
-          </div>
+    <div className="flex items-center flex-wrap gap-1 text-sm">
+      <NodeLabel id={account_id} />
 
-          <div className="text-gray-500">
-            {STANDARD_EVENTS_MAPPING[event] && STANDARD_EVENTS_MAPPING[event](props)}
+      <div className="text-gray-500">
+        {STANDARD_EVENTS_MAPPING[event] && STANDARD_EVENTS_MAPPING[event](props)}
 
-            {!STANDARD_EVENTS_MAPPING[event] && event}
-          </div>
-        </div>
+        {!STANDARD_EVENTS_MAPPING[event] && event}
       </div>
-    </>
+    </div>
   );
 };

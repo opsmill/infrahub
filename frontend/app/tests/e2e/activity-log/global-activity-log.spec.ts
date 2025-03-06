@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { saveScreenshotForDocs } from "../../utils";
 
-test.describe("Global Activity Log - List view and filter usage", () => {
+test.describe("Global Activities - List view and filter usage", () => {
   test.describe.configure({ mode: "parallel" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.slow();
@@ -20,7 +20,7 @@ test.describe("Global Activity Log - List view and filter usage", () => {
 
     await page.getByTestId("sidebar").getByRole("button", { name: "Activity" }).click();
     await page.getByRole("menuitem", { name: "Activities" }).click();
-    // Verify that clicking "Activity Log" navigates to the activities page
+    // Verify that clicking "Activities" navigates to the activities page
     const activitiesHeading = page.getByRole("heading", { name: "Activities" });
     await expect(activitiesHeading).toBeVisible();
   });
@@ -61,8 +61,8 @@ test.describe("Global Activity Log - List view and filter usage", () => {
       const viewMoreLink = page.getByRole("link", { name: /View more/i }).first();
       await viewMoreLink.click();
 
-      // Check that at least one "View more." button is present in the details page
-      await expect(page.locator("#root")).toContainText("View more.");
+      // Check that at least one "View all" button is present in the details page
+      await expect(page.locator("#root")).toContainText("View all");
       await saveScreenshotForDocs(page, "activity_log_global_details_children");
     });
   });
