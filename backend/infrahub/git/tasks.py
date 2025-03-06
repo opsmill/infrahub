@@ -822,7 +822,7 @@ async def run_user_check(model: UserCheckData, service: InfrahubServices) -> Val
             client=service.client,
             commit=model.commit,
             params=model.variables,
-        )
+        )  # type: ignore[misc]
         if check_run.passed:
             conclusion = ValidatorConclusion.SUCCESS
             severity = "info"
