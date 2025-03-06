@@ -158,7 +158,7 @@ jobs:
       directory: "./"
 
   infrahub-testcontainers-check:
-    if: needs.files-changed.outputs.python == 'true'
+    if: needs.files-changed.outputs.infrahub_poetry_files == 'true'
     needs: ["files-changed"]
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -438,6 +438,8 @@ jobs:
         run: |
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+      - name: "Install dependencies"
+        run: "poetry install --no-interaction --no-ansi"
       - name: "Run tests"
         run: "poetry run pytest backend/tests/integration_docker/"
 
@@ -611,7 +613,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      (needs.files-changed.outputs.python == 'true') || (needs.files-changed.outputs.documentation_generated == 'true')
+      (needs.files-changed.outputs.python == 'true') || (needs.files-changed.outputs.documentation == 'true')
     needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
