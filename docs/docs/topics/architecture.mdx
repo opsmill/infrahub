@@ -1,6 +1,8 @@
 ---
 title: Architecture
 ---
+import CodeBlock from '@theme/CodeBlock';
+import import_deployTf from '!!raw-loader!../../../development/deploy.tf';
 
 # Infrahub architecture
 
@@ -127,3 +129,8 @@ NEO4J_dbms_connector_bolt_tls__level=REQUIRED
 Infrahub may be deployed with no single-point of failure, and horizontally scaled architectures can be deployed. An example of a HA deployment is below:
 
 ![Infrahub Architecture](../media/high_level_architecture_ha.excalidraw.svg)
+
+<details>
+  <summary>An example of HA deployment using Terraform on a 3-nodes Kubernetes cluster</summary>
+  <CodeBlock language="hcl" title="deploy.tf">{import_deployTf}</CodeBlock>
+</details>
