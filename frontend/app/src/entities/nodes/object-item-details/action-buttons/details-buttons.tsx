@@ -2,6 +2,8 @@ import { ARTIFACT_DEFINITION_OBJECT, GENERIC_REPOSITORY_KIND } from "@/config/co
 import { Generate } from "@/entities/artifacts/ui/generate";
 import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-trigger-button";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
+import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { Permission } from "@/entities/permission/types";
 import RepositoryActionMenu from "@/entities/repository/ui/repository-action-menu";
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
@@ -11,19 +13,16 @@ import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-ove
 import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 
 type DetailsButtonsProps = {
   schema: ModelSchema;
   objectDetailsData: any;
+  permission: Permission;
 };
 
 export function DetailsButtons({ schema, objectDetailsData, permission }: DetailsButtonsProps) {
-  const location = useLocation();
-  const { objectid } = useParams();
   const navigate = useNavigate();
-
-  const redirect = location.pathname.replace(objectid ?? "", "");
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -94,7 +93,7 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
         rowToDelete={objectDetailsData}
         open={!!showDeleteModal}
         close={() => setShowDeleteModal(false)}
-        onDelete={() => navigate(redirect)}
+        onDelete={() => navigate(getObjectDetailsUrl2(schema.kind as string))}
       />
     </>
   );
