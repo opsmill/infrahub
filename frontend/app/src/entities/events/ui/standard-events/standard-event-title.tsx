@@ -8,11 +8,11 @@ import { ReactElement } from "react";
 export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface) => ReactElement> =
   {
     "infrahub.schema.update": () => {
-      return <div className="flex items-center gap-2">updated the schema</div>;
+      return <div className="flex flex-wrap items-center gap-2">updated the schema</div>;
     },
     "infrahub.branch.create": (props) => {
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           merged the branch
           <Link to={`/branches/${props.payload?.context?.branch?.name}`} className="text-black">
             {props.payload?.context?.branch?.name}
@@ -22,7 +22,7 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface)
     },
     "infrahub.branch.merged": (props) => {
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           merged the branch
           <Link to={`/branches/${props.payload?.context?.branch?.name}`} className="text-black">
             {props.payload?.context?.branch?.name}
@@ -32,7 +32,7 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: EventNodeInterface)
     },
     "infrahub.repository.update_commit": (props) => {
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           updated the commit
           <span className="text-black">{props.payload?.commit}</span>
           from repository

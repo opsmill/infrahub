@@ -13,12 +13,12 @@ export const EventAttributes = ({ attributes }: Pick<NodeMutatedEvent, "attribut
           <React.Fragment key={`${action}_${name}`}>
             <div className="truncate text-left text-gray-600 mr-2">{name}</div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-hidden">
               <div className="text-gray-400">{value_previous ?? "-"}</div>
 
               <ChevronRightIcon className="text-custom-blue-500 size-3" />
 
-              <div>{value ?? "-"}</div>
+              <div className="overflow-hidden text-ellipsis">{value ?? "-"}</div>
             </div>
           </React.Fragment>
         );
