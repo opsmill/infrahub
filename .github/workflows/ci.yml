@@ -438,6 +438,8 @@ jobs:
         run: |
           poetry config virtualenvs.create true --local
           poetry env use 3.12
+      - name: "Install dependencies"
+        run: "poetry install --no-interaction --no-ansi"
       - name: "Run tests"
         run: "poetry run pytest backend/tests/integration_docker/"
 
