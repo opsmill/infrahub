@@ -125,7 +125,7 @@ export default function ObjectItemDetails({
       )}
 
       {!qspTab && (
-        <div className="flex flex-col lg:items-start lg:grid lg:grid-cols-3 gap-2 p-2">
+        <div className="flex flex-col xl:items-start xl:grid xl:grid-cols-3 gap-2 p-2">
           <Card className="md:col-span-2 p-0 grow overflow-x-hidden">
             <CardWithBorder.Title className="border-b">Details</CardWithBorder.Title>
 
