@@ -30,7 +30,7 @@ async def transform_python(message: TransformPythonData, service: InfrahubServic
         location=message.transform_location,
         data=message.data,
         client=service.client,
-    )
+    )  # type: ignore[misc]
 
     return transformed_data
 
@@ -49,6 +49,6 @@ async def transform_render_jinja2_template(message: TransformJinjaTemplateData, 
 
     rendered_template = await repo.render_jinja2_template.with_options(timeout_seconds=message.timeout)(
         commit=message.commit, location=message.template_location, data={"data": message.data}
-    )
+    )  # type: ignore[misc]
 
     return rendered_template
