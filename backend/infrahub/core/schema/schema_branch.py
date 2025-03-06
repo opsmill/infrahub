@@ -1971,6 +1971,10 @@ class SchemaBranch:
         template_schema_kinds: set[str] = set()
 
         for node_name in self.node_names + self.generic_names:
+            # FIXME: not sure why we need this to avoid lookup failure
+            if node_name.startswith("Template"):
+                continue
+
             node = self.get(name=node_name, duplicate=False)
 
             # Delete old object templates if schemas were removed
