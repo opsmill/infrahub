@@ -3,6 +3,7 @@ import { Generate } from "@/entities/artifacts/ui/generate";
 import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-trigger-button";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
+import { Permission } from "@/entities/permission/types";
 import RepositoryActionMenu from "@/entities/repository/ui/repository-action-menu";
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
@@ -13,7 +14,6 @@ import ModalDeleteObject from "@/shared/components/modals/modal-delete-object";
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Permission } from "@/entities/permission/types";
 
 type DetailsButtonsProps = {
   schema: ModelSchema;
