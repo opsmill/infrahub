@@ -19,7 +19,7 @@ type tGenerateProps = {
   definitionid?: string;
 };
 
-export const Generate = (props: tGenerateProps) => {
+export const ArtifactReGenerateButton = (props: tGenerateProps) => {
   const { label, artifactid, definitionid } = props;
 
   const { objectid } = useParams();
