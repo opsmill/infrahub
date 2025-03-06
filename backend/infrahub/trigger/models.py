@@ -93,6 +93,9 @@ class TriggerDefinition(BaseModel):
         """Return the name of all deployments used by this trigger"""
         return [action.name for action in self.actions]
 
+    def get_description(self) -> str:
+        return f"Automation for Trigger {self.name} of type {self.type.value}"
+
     def generate_name(self) -> str:
         return f"{self.type.value}{NAME_SEPARATOR}{self.name}"
 

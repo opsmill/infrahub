@@ -14,6 +14,7 @@ from infrahub.webhook.tasks import (
     configure_webhook_all,
     configure_webhook_one,
     convert_node_to_webhook,
+    delete_webhook_automation,
     webhook_process,
 )
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS, worker_pools
@@ -155,11 +156,9 @@ class TestWebhookTasks(TestInfrahubApp):
     async def test_configure_one(
         self, db: InfrahubDatabase, service, prefect_client: PrefectClient, webhook1: Node, webhook_deployment
     ) -> None:
-        await configure_webhook_one(
-            event_type="infrahub.node.created", event_data={"node_id": webhook1.id}, service=service
-        )
+        await configure_webhook_one(webhook_name="Webhook1", event_data={"node_id": webhook1.id}, service=service)
 
-        name = "webhook::Webhook1"
+        name = f"webhook::{webhook1.id}"
         automations = await prefect_client.read_automations_by_name(name=name)
         assert len(automations) == 1
         automation = automations[0]
@@ -172,15 +171,13 @@ class TestWebhookTasks(TestInfrahubApp):
         assert action.parameters["webhook_kind"] == "CoreStandardWebhook"
 
         # Configure it a second time to ensure the function is idempotent
-        await configure_webhook_one(
-            event_type="infrahub.node.created", event_data={"node_id": webhook1.id}, service=service
-        )
+        await configure_webhook_one(webhook_name="Webhook1", event_data={"node_id": webhook1.id}, service=service)
         automations = await prefect_client.read_automations_by_name(name=name)
         assert len(automations) == 1
 
         # Delete the webhook automation
-        await configure_webhook_one(
-            event_type="infrahub.node.deleted", event_data={"node_id": webhook1.id}, service=service
+        await delete_webhook_automation(
+            webhook_id=webhook1.id, webhook_name="Webhook1", event_data={"node_id": webhook1.id}, service=service
         )
         automations = await prefect_client.read_automations_by_name(name=name)
         assert len(automations) == 0
@@ -199,10 +196,10 @@ class TestWebhookTasks(TestInfrahubApp):
         automations = await prefect_client.read_automations()
         automations_by_name = {automation.name: automation for automation in automations}
 
-        assert "webhook::Webhook1" in automations_by_name.keys()
-        assert "webhook::Webhook2" in automations_by_name.keys()
+        assert f"webhook::{webhook1.id}" in automations_by_name.keys()
+        assert f"webhook::{webhook2.id}" in automations_by_name.keys()
 
-        automation = automations_by_name["webhook::Webhook2"]
+        automation = automations_by_name[f"webhook::{webhook2.id}"]
         assert len(automation.actions) == 1
         action: RunDeployment = automation.actions[0]  # type: ignore[assignment]
         assert action.parameters

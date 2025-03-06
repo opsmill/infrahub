@@ -119,14 +119,16 @@ async def configure_webhook_all(service: InfrahubServices) -> None:
     log.info(f"{len(triggers)} Webhooks automation configuration completed")
 
 
-@flow(name="webhook-setup-automation-one", flow_run_name="Configuration webhook automation for one webhook")
-async def configure_webhook_one(event_type: str, event_data: dict, service: InfrahubServices) -> None:
+@flow(name="webhook-setup-automation-one", flow_run_name="Configuration webhook automation for {webhook_name}")
+async def configure_webhook_one(
+    webhook_name: str,  # noqa: ARG001
+    event_data: dict,
+    service: InfrahubServices,
+) -> None:
     log = get_run_logger()
 
     webhook = await service.client.get(kind=CoreWebhook, id=event_data["node_id"])
     trigger = WebhookTriggerDefinition.from_object(webhook)
-
-    delete_automation: bool = "infrahub.node.deleted" in event_type
 
     async with get_client(sync_client=False) as prefect_client:
         # Query the deployment associated with the trigger to have its ID
@@ -135,22 +137,42 @@ async def configure_webhook_one(event_type: str, event_data: dict, service: Infr
 
         automation = AutomationCore(
             name=trigger.generate_name(),
-            description=trigger.description,
+            description=trigger.get_description(),
             enabled=True,
             trigger=trigger.trigger.get_prefect(),
             actions=[action.get(deployment.id) for action in trigger.actions],
         )
 
         existing_automations = await prefect_client.read_automations_by_name(trigger.generate_name())
+        existing_automation = existing_automations[0] if existing_automations else None
 
-        if existing_automations and not delete_automation:
-            existing_automation = existing_automations[0]
+        if existing_automation:
             await prefect_client.update_automation(automation_id=existing_automation.id, automation=automation)
             log.info(f"Automation {trigger.generate_name()} updated")
-        elif existing_automations and delete_automation:
-            existing_automation = existing_automations[0]
-            await prefect_client.delete_automation(automation_id=existing_automation.id)
-            log.info(f"Automation {trigger.generate_name()} deleted")
         else:
             await prefect_client.create_automation(automation=automation)
             log.info(f"Automation {trigger.generate_name()} created")
+
+        await service.cache.delete(key=f"webhook:{webhook.id}")
+
+
+@flow(name="webhook-delete-automation", flow_run_name="Delete webhook automation for {webhook_name}")
+async def delete_webhook_automation(
+    webhook_id: str,
+    webhook_name: str,  # noqa: ARG001
+    event_data: dict,  # noqa: ARG001
+    service: InfrahubServices,
+) -> None:
+    log = get_run_logger()
+
+    async with get_client(sync_client=False) as prefect_client:
+        automation_name = WebhookTriggerDefinition.generate_name_from_id(id=webhook_id)
+
+        existing_automations = await prefect_client.read_automations_by_name(automation_name)
+        existing_automation = existing_automations[0] if existing_automations else None
+
+        if existing_automation:
+            await prefect_client.delete_automation(automation_id=existing_automation.id)
+            log.info(f"Automation {automation_name} deleted")
+
+        await service.cache.delete(key=f"webhook:{webhook_id}")

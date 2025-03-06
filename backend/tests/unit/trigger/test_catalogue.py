@@ -20,4 +20,4 @@ def test_builtin_trigger_definition(trigger: TriggerDefinition) -> None:
 def test_builtin_triggers_sorted() -> None:
     names = sorted(name for name in dir(catalogue) if name.isupper())
     ordered_triggers = [getattr(catalogue, name) for name in names]
-    assert ordered_triggers == builtin_triggers, "The list of workflows isn't sorted alphabetically"
+    assert ordered_triggers == builtin_triggers, "The list of triggers isn't sorted alphabetically"
