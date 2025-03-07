@@ -366,10 +366,17 @@ WEBHOOK_CONFIGURE_ONE = WorkflowDefinition(
 
 WEBHOOK_CONFIGURE_ALL = WorkflowDefinition(
     name="webhook-setup-automation-all",
-    type=WorkflowType.CORE,
+    type=WorkflowType.INTERNAL,
     cron=f"{random.randint(0, 59)} 3 * * *",
     module="infrahub.webhook.tasks",
     function="configure_webhook_all",
+)
+
+WEBHOOK_DELETE_AUTOMATION = WorkflowDefinition(
+    name="webhook-delete-automation",
+    type=WorkflowType.CORE,
+    module="infrahub.webhook.tasks",
+    function="delete_webhook_automation",
 )
 
 GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE = WorkflowDefinition(
@@ -472,5 +479,6 @@ workflows = [
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
     WEBHOOK_CONFIGURE_ALL,
     WEBHOOK_CONFIGURE_ONE,
+    WEBHOOK_DELETE_AUTOMATION,
     WEBHOOK_PROCESS,
 ]

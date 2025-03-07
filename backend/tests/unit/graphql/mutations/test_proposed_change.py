@@ -277,3 +277,48 @@ async def test_merge_proposed_change_permission_failure(
     )
 
     assert not update_status.errors
+
+
+async def test_create_thread(
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    session_first_account: AccountSession,
+    session_admin: AccountSession,
+):
+    service = await InfrahubServices.new(
+        database=db, message_bus=BusRecorder(), workflow=WorkflowLocalExecution(), cache=MemoryCache()
+    )
+    branch_name = "branch-1234"
+    proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+    await proposed_change.new(db=db, name="pc-1234", destination_branch="main", source_branch=branch_name, state="open")
+    await proposed_change.save(db=db)
+
+    CREATE_THREAD = """
+    mutation CoreChangeThreadCreate($proposed_change: String!) {
+        CoreChangeThreadCreate(
+            data: {
+                change: { id: $proposed_change }
+                label: { value: "Conversation" }
+                created_at: { value: "2025-03-05T18:01:52+01:00" }
+                resolved: { value: false }
+            }
+        ) {
+            object {
+                id
+                display_label
+                __typename
+            }
+            ok
+            __typename
+        }
+    }
+    """
+    response = await graphql_mutation(
+        query=CREATE_THREAD,
+        db=db,
+        variables={"proposed_change": proposed_change.id},
+        account_session=session_first_account,
+        service=service,
+    )
+    assert not response.errors
+    assert response.data
