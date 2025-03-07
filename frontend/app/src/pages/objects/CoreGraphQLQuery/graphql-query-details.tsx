@@ -1,4 +1,5 @@
 import { GRAPHQL_QUERY_OBJECT } from "@/config/constants";
+import { GraphqlQueryActivities } from "@/entities/graphql/ui/graphql-query-activities";
 import GraphqlQueryDetailsCard from "@/entities/graphql/ui/graphql-query-details-card";
 import GraphQLQueryDetailsPageSkeleton from "@/entities/graphql/ui/graphql-query-details-page-skeleton";
 import GraphqlQueryViewerCard from "@/entities/graphql/ui/graphql-query-viewer-card";
@@ -66,15 +67,19 @@ const GraphqlQueryDetails = ({
   const graphqlQuery: CoreGraphQlQuery = graphqlQueries[0].node;
 
   return (
-    <section className="flex flex-wrap lg:flex-nowrap items-start gap-2 p-2">
-      <GraphqlQueryDetailsCard
-        data={graphqlQuery}
-        schema={graphqlQuerySchema}
-        refetch={refetch}
-        permission={permission}
-      />
-
+    <section className="grid grid-cols-2 gap-2 p-2">
       <GraphqlQueryViewerCard query={graphqlQuery.query.value ?? ""} />
+
+      <div className="flex flex-col gap-2">
+        <GraphqlQueryDetailsCard
+          data={graphqlQuery}
+          schema={graphqlQuerySchema}
+          refetch={refetch}
+          permission={permission}
+        />
+
+        <GraphqlQueryActivities id={graphqlQueryId} />
+      </div>
     </section>
   );
 };
