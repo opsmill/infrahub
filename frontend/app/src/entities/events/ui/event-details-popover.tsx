@@ -7,7 +7,7 @@ export function EventDetailsPopover(props: EventType) {
   return (
     <Popover>
       <PopoverTrigger className="flex items-center gap-1 text-xs text-gray-600">
-        View all <InfoIcon className="size-3" />
+        View more <InfoIcon className="size-3" />
       </PopoverTrigger>
 
       <PopoverContent className="w-full">
