@@ -1,6 +1,8 @@
 import { getCurrentBranchName } from "@/entities/branches/domain/get-current-branch";
-import { OBJECTS_PER_PAGE } from "@/entities/nodes/object/domain/get-objects";
-import { getObjectRelationships } from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships";
+import {
+  OBJECT_RELATIONSHIPS_PER_PAGE,
+  getObjectRelationships,
+} from "@/entities/nodes/relationships/domain/get-object-relationships/get-object-relationships";
 import { ModelSchema } from "@/entities/schema/types";
 import { Filter } from "@/shared/hooks/useFilters";
 import { store } from "@/shared/stores";
@@ -49,10 +51,10 @@ export function getObjectRelationshipsQueryOptions({
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
-      if (lastPage.length < OBJECTS_PER_PAGE) {
+      if (lastPage.length < OBJECT_RELATIONSHIPS_PER_PAGE) {
         return undefined;
       }
-      return lastPageParam + OBJECTS_PER_PAGE;
+      return lastPageParam + OBJECT_RELATIONSHIPS_PER_PAGE;
     },
   });
 }
