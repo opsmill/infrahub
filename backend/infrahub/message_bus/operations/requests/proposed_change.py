@@ -85,7 +85,9 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
                     target_branch=repo.destination_branch,
                 )
                 await service.workflow.submit_workflow(
-                    workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER, parameters={"model": model}
+                    workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
+                    context=message.context,
+                    parameters={"model": model},
                 )
         return
 

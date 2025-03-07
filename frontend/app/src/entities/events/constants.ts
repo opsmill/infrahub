@@ -64,4 +64,16 @@ export const EVENT_TYPE_CHOICES = [
     label: "Commit updated",
     name: "infrahub.repository.update_commit",
   },
+  {
+    label: "Validator failed",
+    name: "infrahub.validator.failed",
+  },
+  {
+    label: "Validator passed",
+    name: "infrahub.validator.passed",
+  },
+  {
+    label: "Validator started",
+    name: "infrahub.validator.started",
+  },
 ];
