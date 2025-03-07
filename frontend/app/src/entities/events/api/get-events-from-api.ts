@@ -1,10 +1,7 @@
+import { Get_ActivitiesQuery } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { ContextParams } from "@/shared/api/types";
+import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
-import { EventType } from "../ui/event";
-import { INFRAHUB_EVENT } from "../utils/constants";
-
-export const OBJECTS_PER_PAGE = 40;
 
 export type GlobalEventsFilters = {
   hasChildren?: boolean;
@@ -19,6 +16,10 @@ export type GlobalEventsFilters = {
   offset?: number;
   limit?: number;
 };
+
+export type GetEventsParams = ContextParams & PaginationParams & { filters: GlobalEventsFilters };
+
+export const OBJECTS_PER_PAGE = 40;
 
 const EVENTS_QUERY = gql`
   query GET_ACTIVITIES(
@@ -126,9 +127,9 @@ export async function getEventsFromApi({
   limit = OBJECTS_PER_PAGE,
   branchName,
   atDate,
-  ...filters
-}: GlobalEventsFilters & ContextParams) {
-  const { data } = await graphqlClient.query({
+  filters,
+}: GetEventsParams) {
+  return graphqlClient.query<Get_ActivitiesQuery>({
     query: EVENTS_QUERY,
     variables: {
       limit,
@@ -139,10 +140,4 @@ export async function getEventsFromApi({
       date: atDate,
     },
   });
-
-  const activities: EventType[] = data?.[INFRAHUB_EVENT]?.edges?.map((edge) => {
-    return edge.node;
-  });
-
-  return activities;
 }

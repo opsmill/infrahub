@@ -2,8 +2,8 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
 
 export const DIFF_UPDATE = gql`
-  mutation DIFF_UPDATE($branchName: String!, $waitForCompletion: Boolean) {
-    DiffUpdate(data: { branch: $branchName, wait_for_completion: $waitForCompletion }) {
+  mutation DIFF_UPDATE($branchName: String!, $waitUntilCompletion: Boolean) {
+    DiffUpdate(data: { branch: $branchName }, wait_until_completion: $waitUntilCompletion) {
       ok
     }
   }
@@ -11,15 +11,15 @@ export const DIFF_UPDATE = gql`
 
 export type UpdateDiffFromApiParams = {
   branchName: string;
-  waitForCompletion: boolean;
+  waitUntilCompletion: boolean;
 };
 
-export const updateDiffFromApi = ({ branchName, waitForCompletion }: UpdateDiffFromApiParams) => {
+export const updateDiffFromApi = ({ branchName, waitUntilCompletion }: UpdateDiffFromApiParams) => {
   return graphqlClient.mutate({
     mutation: DIFF_UPDATE,
     variables: {
       branchName,
-      waitForCompletion,
+      waitUntilCompletion,
     },
   });
 };

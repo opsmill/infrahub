@@ -13,6 +13,7 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.timestamp import Timestamp
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
+from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerDefinition, TriggerType
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
@@ -24,7 +25,15 @@ if TYPE_CHECKING:
 
 
 class WebhookTriggerDefinition(TriggerDefinition):
+    id: str
     type: TriggerType = TriggerType.WEBHOOK
+
+    def generate_name(self) -> str:
+        return f"{self.type.value}{NAME_SEPARATOR}{self.id}"
+
+    @classmethod
+    def generate_name_from_id(cls, id: str) -> str:
+        return f"{TriggerType.WEBHOOK.value}{NAME_SEPARATOR}{id}"
 
     @classmethod
     def from_object(cls, obj: CoreWebhook) -> Self:
@@ -46,6 +55,7 @@ class WebhookTriggerDefinition(TriggerDefinition):
             }
 
         definition = cls(
+            id=obj.id,
             name=obj.name.value,
             trigger=event_trigger,
             actions=[

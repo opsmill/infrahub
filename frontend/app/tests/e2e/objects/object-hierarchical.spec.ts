@@ -49,7 +49,7 @@ test.describe("Object hierarchical view", () => {
     });
 
     await test.step("open site selection and verify All tab", async () => {
-      await page.getByLabel("Site *").click();
+      await page.getByLabel("Site").click();
       await expect(page.getByRole("tab", { name: "All" })).toBeVisible();
       await expect(page.getByRole("option", { name: "atl1" })).toBeVisible();
     });
@@ -62,7 +62,7 @@ test.describe("Object hierarchical view", () => {
     });
 
     await test.step("verify selected site", async () => {
-      await expect(page.getByLabel("Site *")).toContainText("atl1");
+      await expect(page.getByLabel("Site")).toContainText("atl1");
     });
   });
 });

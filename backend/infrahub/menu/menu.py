@@ -185,16 +185,6 @@ default_menu = [
                 section=MenuSection.INTERNAL,
                 order_weight=3500,
             ),
-            MenuItemDefinition(
-                namespace="Builtin",
-                name="ActivityLogs",
-                label="Activity Logs",
-                path="/activities",
-                icon="mdi:format-list-bulleted",
-                protected=True,
-                section=MenuSection.INTERNAL,
-                order_weight=4000,
-            ),
         ],
     ),
     MenuItemDefinition(

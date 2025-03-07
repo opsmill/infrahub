@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { saveScreenshotForDocs } from "../../utils";
 
-test.describe("Object Activity Log - Timeline and Details", () => {
+test.describe("Object Activities - Timeline and Details", () => {
   test.describe.configure({ mode: "parallel" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.slow();
@@ -19,11 +19,11 @@ test.describe("Object Activity Log - Timeline and Details", () => {
     await test.step("Navigate to InfraDevice page", async () => {
       await page.goto("/objects/InfraDevice");
       await page.getByRole("link", { name: "atl1-edge1" }).click();
-      await saveScreenshotForDocs(page, "activity_log_device");
+      await saveScreenshotForDocs(page, "topics/activity-logs/activity_log_device");
     });
 
-    await test.step("Open additional details via the 'View more.' button", async () => {
-      const viewMoreButton = page.getByRole("button", { name: "View more." }).first();
+    await test.step("Open additional details via the 'View more' button", async () => {
+      const viewMoreButton = page.getByRole("button", { name: "View more" }).first();
       await expect(viewMoreButton).toBeVisible();
       await viewMoreButton.click();
 
@@ -36,7 +36,7 @@ test.describe("Object Activity Log - Timeline and Details", () => {
       await expect(popoverContent).toContainText("Primary Node");
       // To be sure we load the data, checking if we do have a link to the device
       await popoverContent.getByRole("link", { name: "atl1-edge1" }).waitFor({ state: "visible" });
-      await saveScreenshotForDocs(page, "activity_log_device_popover");
+      await saveScreenshotForDocs(page, "topics/activity-logs/activity_log_device_popover");
     });
   });
 });

@@ -1,30 +1,30 @@
+import { EventType } from "@/entities/events/types";
 import { Link } from "@/shared/components/ui/link";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
-import { BRANCH_EVENTS, GROUP_EVENTS, STANDARD_EVENTS } from "../utils/constants";
-import { EventType } from "./event";
-import { BranchEvent } from "./global-branch-event";
-import { GroupEvent } from "./global-group-event";
-import { NodeEvent } from "./global-node-event";
-import { StandardEvent } from "./global-standard-event";
+import { BRANCH_EVENTS, GROUP_EVENTS, STANDARD_EVENTS } from "../constants";
+import { BranchEventTitle } from "./branch-events/branch-event-title";
+import { GroupEventTitle } from "./group-events/group-event-title";
+import { NodeEventTitle } from "./node-events/node-event-title";
+import { StandardEventTitle } from "./standard-events/standard-event-title";
 
 const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
   if ("attributes" in props) {
-    return <NodeEvent {...props} />;
+    return <NodeEventTitle {...props} />;
   }
 
   if (BRANCH_EVENTS.includes(__typename)) {
-    return <BranchEvent {...props} />;
+    return <BranchEventTitle {...props} />;
   }
 
   if (STANDARD_EVENTS.includes(__typename)) {
-    return <StandardEvent {...props} />;
+    return <StandardEventTitle {...props} />;
   }
 
   if (GROUP_EVENTS.includes(__typename)) {
-    return <GroupEvent {...props} />;
+    return <GroupEventTitle {...props} />;
   }
 
   return <span className="flex items-center text-sm text-gray-500 ">{props.event}</span>;
@@ -48,7 +48,7 @@ export const Event = (props: EventType) => {
         <GlobalEventDisplay {...props} />
       </div>
 
-      <div className="text-xs font-medium text-gray-500 flex items-center gap-1">
+      <div className="text-xs font-medium text-gray-500 flex items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis">
         {props.branch && (
           <>
             <Icon icon={"mdi:source-branch"} />
@@ -60,7 +60,7 @@ export const Event = (props: EventType) => {
 
       <div className="relative">
         <Link to={`/activities/${props.id}`} className="text-xs text-gray-500">
-          View more
+          View details
         </Link>
 
         {props.has_children && (

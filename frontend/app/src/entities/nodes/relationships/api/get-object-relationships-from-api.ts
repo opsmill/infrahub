@@ -7,17 +7,16 @@ import {
   addFiltersToRequest,
   addRelationshipsToRequest,
 } from "@/shared/api/graphql/utils";
+import { ContextParams, PaginationParams } from "@/shared/api/types";
 import { Filter } from "@/shared/hooks/useFilters";
 import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
-type GenerateObjectRelationshipsQueryParams = {
+type GenerateObjectRelationshipsQueryParams = PaginationParams & {
   parentKind: string;
   parentId: string;
   relationshipName: string;
   relationshipSchema: ModelSchema;
-  limit?: number;
-  offset?: number;
   filters?: Array<Filter>;
 };
 
@@ -26,7 +25,7 @@ const generateObjectRelationshipsQuery = ({
   parentId,
   relationshipName,
   relationshipSchema,
-  limit,
+  limit = 0,
   offset = 0,
   filters,
 }: GenerateObjectRelationshipsQueryParams) => {
@@ -45,6 +44,8 @@ const generateObjectRelationshipsQuery = ({
           node: {
             [relationshipName]: {
               __args: {
+                limit,
+                offset,
                 ...(filters ? addFiltersToRequest(filters) : {}),
               },
               edges: {
@@ -73,10 +74,8 @@ const generateObjectRelationshipsQuery = ({
   return jsonToGraphQLQuery(request);
 };
 
-export type GetObjectRelationshipsFromApiParams = GenerateObjectRelationshipsQueryParams & {
-  branchName: string;
-  atDate: Date | null;
-};
+export type GetObjectRelationshipsFromApiParams = ContextParams &
+  GenerateObjectRelationshipsQueryParams;
 
 export const getObjectRelationshipsFromApi = ({
   branchName,

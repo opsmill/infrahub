@@ -309,6 +309,44 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         ]
         assert len(latest_artifact_event["related_nodes"]) == 1
         assert latest_artifact_event["related_nodes"][0]["kind"] == "TestingPerson"
+        validator_started_events = await client.execute_graphql(
+            query=QUERY_EVENT,
+            variables={"related_node__ids": [proposed_change_after.id], "event_type": ["infrahub.validator.started"]},
+        )
+        validator_passed_events = await client.execute_graphql(
+            query=QUERY_EVENT,
+            variables={"related_node__ids": [proposed_change_after.id], "event_type": ["infrahub.validator.passed"]},
+        )
+        assert validator_started_events["InfrahubEvent"]["count"] == 9
+        assert validator_passed_events["InfrahubEvent"]["count"] == 9
+        started_validators = [
+            event["node"]["primary_node"]["kind"] for event in validator_started_events["InfrahubEvent"]["edges"]
+        ]
+        passed_validators = [
+            event["node"]["primary_node"]["kind"] for event in validator_passed_events["InfrahubEvent"]["edges"]
+        ]
+        assert sorted(started_validators) == [
+            "CoreArtifactValidator",
+            "CoreArtifactValidator",
+            "CoreArtifactValidator",
+            "CoreArtifactValidator",
+            "CoreGeneratorValidator",
+            "CoreGeneratorValidator",
+            "CoreRepositoryValidator",
+            "CoreUserValidator",
+            "CoreUserValidator",
+        ]
+        assert sorted(passed_validators) == [
+            "CoreArtifactValidator",
+            "CoreArtifactValidator",
+            "CoreArtifactValidator",
+            "CoreArtifactValidator",
+            "CoreGeneratorValidator",
+            "CoreGeneratorValidator",
+            "CoreRepositoryValidator",
+            "CoreUserValidator",
+            "CoreUserValidator",
+        ]
 
     async def test_merge_failure(
         self,
@@ -351,6 +389,7 @@ query(
     $branch: [String!],
     $parent__ids: [String!],
     $event_type: [String!]
+    $related_node__ids: [String!],
     $event_type_filter: EventTypeFilter
 ) {
   InfrahubEvent(
@@ -358,6 +397,7 @@ query(
     parent__ids: $parent__ids
     event_type: $event_type
     event_type_filter: $event_type_filter
+    related_node__ids: $related_node__ids
   ) {
     count
     edges {
