@@ -49,7 +49,6 @@ test.describe("Global Activities - List view and filter usage", () => {
       const activitiesHeading = page.getByRole("heading", { name: "Activities" });
       await expect(activitiesHeading).toBeVisible();
     });
-
     await test.step("Choose filters", async () => {
       await page.getByRole("button", { name: "Has Children" }).click();
       await page.getByText("True").click();
@@ -65,7 +64,7 @@ test.describe("Global Activities - List view and filter usage", () => {
       await viewMoreLink.click();
 
       // Check that at least one "View more." button is present in the details page
-      await expect(page.locator("#root")).toContainText("View more.");
+      await expect(page.locator("#root")).toContainText("View all");
       await saveScreenshotForDocs(
         page,
         "topics/activity-logs/activity_log_global_details_children"

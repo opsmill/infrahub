@@ -32,7 +32,7 @@ test.describe("Resource Managers guide", () => {
         .getByTestId("side-panel-container")
         .locator("div")
         .filter({ hasText: "Resources *" })
-        .nth(1)
+        .first()
         .click();
       await page.locator("form").getByPlaceholder("Filter...").fill("10.100.0");
       await page.getByRole("option", { name: "10.100.0.0/" }).click();
