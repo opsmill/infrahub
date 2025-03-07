@@ -44,18 +44,25 @@ WITH attr_val, attr_default, the_one_av,
     details_item[0] AS a, details_item[1] AS branch, details_item[2] AS branch_level,
     details_item[3] AS status, details_item[4] AS from, details_item[5] AS to
 // -------------------
+// get/create the one edge to keep
+// -------------------
+CREATE (a)-[fresh_e:HAS_VALUE {branch: branch, branch_level: branch_level, status: status, from: from}]->(the_one_av)
+SET fresh_e.to = to
+WITH a, branch, status, from, to, attr_val, attr_default, %(id_func)s(fresh_e) AS e_id_to_keep
+// -------------------
 // get the identical edges for a given set of Attribute node, edge properties, AttributeValue.value
 // -------------------
 CALL {
-    WITH a, branch, status, from, to, attr_val, attr_default
+    // -------------------
+    // delete the duplicate edges a given set of Attribute node, edge properties, AttributeValue.value
+    // -------------------
+    WITH a, branch, status, from, to, attr_val, attr_default, e_id_to_keep
     MATCH (a)-[e:HAS_VALUE]->(av:AttributeValue {value: attr_val, is_default: attr_default})
-    WHERE e.branch = branch AND e.status = status AND e.from = from
+    WHERE %(id_func)s(e) <> e_id_to_keep
+    AND e.branch = branch AND e.status = status AND e.from = from
     AND (e.to = to OR (e.to IS NULL AND to IS NULL))
     DELETE e
 }
-WITH a, branch, branch_level, status, from, to, the_one_av
-MERGE (a)-[fresh_e:HAS_VALUE {branch: branch, branch_level: branch_level, status: status, from: from}]->(the_one_av)
-SET fresh_e.to = to
 // -------------------
 // delete any orphaned AttributeValue nodes
 // -------------------
@@ -85,16 +92,18 @@ WHERE num_duplicate_edges > 1
 // get the identical edges for a given set of Attribute node, edge properties, Boolean
 // -------------------
 WITH DISTINCT a, branch, branch_level, status, from, to, b
+CREATE (a)-[fresh_e:IS_VISIBLE {branch: branch, branch_level: branch_level, status: status, from: from}]->(b)
+SET fresh_e.to = to
+WITH a, branch, status, from, to, b, %(id_func)s(fresh_e) AS e_id_to_keep
 CALL {
-    WITH a, branch, status, from, to, b
+    WITH a, branch, status, from, to, b, e_id_to_keep
     MATCH (a)-[e:IS_VISIBLE]->(b)
-    WHERE e.branch = branch AND e.status = status AND e.from = from
+    WHERE %(id_func)s(e) <> e_id_to_keep
+    AND e.branch = branch AND e.status = status AND e.from = from
     AND (e.to = to OR (e.to IS NULL AND to IS NULL))
     DELETE e
 }
-MERGE (a)-[fresh_e:IS_VISIBLE {branch: branch, branch_level: branch_level, status: status, from: from}]->(b)
-SET fresh_e.to = to
-        """
+        """ % {"id_func": db.get_id_function_name()}
         self.add_to_query(query)
 
 
@@ -115,16 +124,18 @@ WHERE num_duplicate_edges > 1
 // get the identical edges for a given set of Attribute node, edge properties, Boolean
 // -------------------
 WITH DISTINCT a, branch, branch_level, status, from, to, b
+CREATE (a)-[fresh_e:IS_PROTECTED {branch: branch, branch_level: branch_level, status: status, from: from}]->(b)
+SET fresh_e.to = to
+WITH a, branch, status, from, to, b, %(id_func)s(fresh_e) AS e_id_to_keep
 CALL {
-    WITH a, branch, status, from, to, b
+    WITH a, branch, status, from, to, b, e_id_to_keep
     MATCH (a)-[e:IS_PROTECTED]->(b)
-    WHERE e.branch = branch AND e.status = status AND e.from = from
+    WHERE %(id_func)s(e) <> e_id_to_keep
+    AND e.branch = branch AND e.status = status AND e.from = from
     AND (e.to = to OR (e.to IS NULL AND to IS NULL))
     DELETE e
 }
-MERGE (a)-[fresh_e:IS_PROTECTED {branch: branch, branch_level: branch_level, status: status, from: from}]->(b)
-SET fresh_e.to = to
-        """
+        """ % {"id_func": db.get_id_function_name()}
         self.add_to_query(query)
 
 
