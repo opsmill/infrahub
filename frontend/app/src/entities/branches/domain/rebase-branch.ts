@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 
 export type RebaseBranchParams = {
   branchName: string;
-  waitForCompletion?: boolean;
+  waitUntilCompletion?: boolean;
 };
 
 export type RebaseBranch = (params: RebaseBranchParams) => Promise<{
@@ -14,9 +14,9 @@ export type RebaseBranch = (params: RebaseBranchParams) => Promise<{
 
 export const rebaseBranch: RebaseBranch = async ({
   branchName,
-  waitForCompletion = true,
+  waitUntilCompletion = true,
 }: RebaseBranchParams) => {
-  const { data } = await rebaseBranchFromApi({ branchName, waitForCompletion });
+  const { data } = await rebaseBranchFromApi({ branchName, waitUntilCompletion });
 
   return {
     branch: data.BranchRebase.object,
