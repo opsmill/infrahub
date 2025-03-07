@@ -10,12 +10,14 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipDirection,
 )
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.models import OrderModel
 from tests.helpers.schema import WIDGET
@@ -327,6 +329,51 @@ async def test_query_NodeGetListQuery_deleted_node_no_filter(
     query = await NodeGetListQuery.init(db=db, branch=branch, schema=schema)
     await query.execute(db=db)
     assert len(query.get_node_ids()) == 3
+
+
+async def test_query_NodeGetListQuery_deleted_node_no_filter_same_branch_name(
+    db: InfrahubDatabase,
+    car_accord_main,
+    car_camry_main: Node,
+    car_volt_main,
+    car_yaris_main,
+    default_branch: Branch,
+    branch: Branch,
+):
+    """Test deletion across same branch names
+    Delete a car in branch2, check if the car is effectively deleted from the branch
+    Then delete branch2, recreate branch2, check if all cars are present
+    Then check if all cars are also present at the car deletion time
+    """
+    node_to_delete = await NodeManager.get_one(id=car_camry_main.id, db=db, branch=branch)
+    await node_to_delete.delete(db=db)
+
+    deleted_time = Timestamp()
+
+    schema = registry.schema.get(name="TestCar", branch=branch)
+    schema.order_by = ["owner__name__value"]
+
+    if branch != default_branch:
+        query = await NodeGetListQuery.init(db=db, branch=branch, schema=schema, at=deleted_time)
+        await query.execute(db=db)
+
+        assert len(query.get_node_ids()) == 3
+
+        await branch.delete(db=db)
+        branch = await create_branch(branch_name=str(branch.name), db=db)
+
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=schema)
+    await query.execute(db=db)
+
+    if branch != default_branch:
+        assert len(query.get_node_ids()) == 4
+
+        query = await NodeGetListQuery.init(db=db, branch=branch, schema=schema, at=deleted_time)
+        await query.execute(db=db)
+
+        assert len(query.get_node_ids()) == 4
+    else:
+        assert len(query.get_node_ids()) == 3
 
 
 async def test_query_NodeGetListQuery_filter_relationship(

@@ -945,6 +945,9 @@ class NodeGetListQuery(Query):
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
+        branch_filter_deleted, _ = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic, variable_name="rfilter"
+        )
         self.params.update(branch_params)
 
         # The initial subquery is used to filter out deleted nodes because we can have multiple valid results per branch
@@ -952,18 +955,21 @@ class NodeGetListQuery(Query):
         # If we are on the default branch, the subquery is not required because only one valid result is expected at a given time
         if not self.branch.is_default:
             topquery = """
-            MATCH (n:%(node_kind)s)
-            CALL {
-                WITH n
-                MATCH (root:Root)<-[r:IS_PART_OF]-(n)
-                WHERE %(branch_filter)s
-                RETURN r
-                ORDER BY r.branch_level DESC, r.from DESC
-                LIMIT 1
-            }
+            MATCH (:Root)<-[rfilter:IS_PART_OF]-(nfilter:%(node_kind)s)
+            WHERE %(branch_filter_deleted)s
+            AND rfilter.branch_level = %(branch_level)d AND rfilter.status = "deleted"
+            WITH collect(nfilter.uuid) AS deleted_list
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n:%(node_kind)s)
+            WHERE %(branch_filter)s
+            AND NOT n.uuid IN deleted_list
             WITH n, r as rb
             WHERE rb.status = "active"
-            """ % {"branch_filter": branch_filter, "node_kind": self.schema.kind}
+            """ % {
+                "branch_filter": branch_filter,
+                "branch_filter_deleted": branch_filter_deleted,
+                "branch_level": self.branch.hierarchy_level,
+                "node_kind": self.schema.kind,
+            }
             self.add_to_query(topquery)
         else:
             topquery = """
