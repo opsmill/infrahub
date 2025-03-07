@@ -66,6 +66,10 @@ class EventType(InfrahubStringEnum):
     ARTIFACT_CREATED = f"{EVENT_NAMESPACE}.artifact.created"
     ARTIFACT_UPDATED = f"{EVENT_NAMESPACE}.artifact.updated"
 
+    VALIDATOR_STARTED = f"{EVENT_NAMESPACE}.validator.started"
+    VALIDATOR_PASSED = f"{EVENT_NAMESPACE}.validator.passed"
+    VALIDATOR_FAILED = f"{EVENT_NAMESPACE}.validator.failed"
+
 
 class PermissionLevel(enum.Flag):
     READ = 1

@@ -1,5 +1,12 @@
 from infrahub_sdk import InfrahubClient
-from infrahub_sdk.protocols import CoreArtifact, CoreArtifactDefinition, CoreCheckDefinition, CoreRepository
+from infrahub_sdk.protocols import (
+    CoreArtifact,
+    CoreArtifactDefinition,
+    CoreCheckDefinition,
+    CoreRepository,
+    CoreRepositoryValidator,
+    CoreUserValidator,
+)
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow, task
 from prefect.cache_policies import NONE
@@ -12,6 +19,7 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import CheckError, RepositoryError
 from infrahub.message_bus import Meta, messages
 from infrahub.services import InfrahubServices
+from infrahub.validators.events import send_start_validator
 from infrahub.worker import WORKER_IDENTITY
 
 from ..core.manager import NodeManager
@@ -509,7 +517,9 @@ async def git_repository_diff_names_only(
     name="git-repository-user-checks-definition-trigger",
     flow_run_name="Trigger user defined checks for repository {model.repository_name}",
 )
-async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionData, service: InfrahubServices) -> None:
+async def trigger_repository_user_checks_definitions(
+    model: UserCheckDefinitionData, context: InfrahubContext, service: InfrahubServices
+) -> None:
     await add_tags(branches=[model.branch_name], nodes=[model.proposed_change])
     log = get_run_logger()
 
@@ -520,7 +530,7 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
     validator_execution_id = str(UUIDT())
     check_execution_ids: list[str] = []
     await proposed_change.validations.fetch()
-    validator = None
+    validator: CoreUserValidator | None = None
 
     for relationship in proposed_change.validations.peers:
         existing_validator = relationship.peer
@@ -541,7 +551,7 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
         await validator.save()
     else:
         validator = await service.client.create(
-            kind=InfrahubKind.USERVALIDATOR,
+            kind=CoreUserValidator,
             data={
                 "label": f"Check: {definition.name.value}",
                 "proposed_change": model.proposed_change,
@@ -550,6 +560,10 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
             },
         )
         await validator.save()
+
+    await send_start_validator(
+        service=service, validator=validator, proposed_change_id=model.proposed_change, context=context
+    )
 
     if definition.targets.id:
         # Check against a group of targets
@@ -612,14 +626,22 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
         for model in check_models
     ]
 
-    await run_checks_and_update_validator(checks_coroutines, validator)
+    await run_checks_and_update_validator(
+        checks=checks_coroutines,
+        validator=validator,
+        context=context,
+        service=service,
+        proposed_change_id=model.proposed_change,
+    )
 
 
 @flow(
     name="git-repository-trigger-user-checks",
     flow_run_name="Evaluating user-defined checks on repository {model.repository_name}",
 )
-async def trigger_user_checks(model: TriggerRepositoryUserChecks, service: InfrahubServices) -> None:
+async def trigger_user_checks(
+    model: TriggerRepositoryUserChecks, service: InfrahubServices, context: InfrahubContext
+) -> None:
     """Request to start validation checks on a specific repository for User-defined checks."""
 
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
@@ -645,7 +667,9 @@ async def trigger_user_checks(model: TriggerRepositoryUserChecks, service: Infra
             branch_diff=model.branch_diff,
         )
         await service.workflow.submit_workflow(
-            workflow=GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER, parameters={"model": user_check_definition_model}
+            workflow=GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER,
+            context=context,
+            parameters={"model": user_check_definition_model},
         )
 
 
@@ -653,7 +677,9 @@ async def trigger_user_checks(model: TriggerRepositoryUserChecks, service: Infra
     name="git-repository-trigger-internal-checks",
     flow_run_name="Running repository checks for repository {model.repository}",
 )
-async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, service: InfrahubServices) -> None:
+async def trigger_internal_checks(
+    model: TriggerRepositoryInternalChecks, service: InfrahubServices, context: InfrahubContext
+) -> None:
     """Request to start validation checks on a specific repository."""
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
     log = get_run_logger()
@@ -669,7 +695,7 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, servic
     await repository.checks.fetch()
 
     validator_name = f"Repository Validator: {repository.name.value}"
-    validator = None
+    validator: CoreRepositoryValidator | None = None
     for relationship in proposed_change.validations.peers:
         existing_validator = relationship.peer
 
@@ -687,7 +713,7 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, servic
         await validator.save()
     else:
         validator = await service.client.create(
-            kind=InfrahubKind.REPOSITORYVALIDATOR,
+            kind=CoreRepositoryValidator,
             data={
                 "label": validator_name,
                 "proposed_change": model.proposed_change,
@@ -695,6 +721,10 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, servic
             },
         )
         await validator.save()
+
+    await send_start_validator(
+        service=service, validator=validator, proposed_change_id=model.proposed_change, context=context
+    )
 
     check_execution_id = str(UUIDT())
     check_execution_ids.append(check_execution_id)
@@ -718,7 +748,13 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, servic
         expected_return=ValidatorConclusion,
     )
 
-    await run_checks_and_update_validator(checks=[check_coroutine], validator=validator)
+    await run_checks_and_update_validator(
+        checks=[check_coroutine],
+        validator=validator,
+        context=context,
+        service=service,
+        proposed_change_id=model.proposed_change,
+    )
 
 
 @flow(

@@ -1,11 +1,22 @@
+from infrahub_sdk.protocols import (
+    CoreArtifactValidator,
+    CoreDataValidator,
+    CoreGeneratorValidator,
+    CoreRepositoryValidator,
+    CoreSchemaValidator,
+    CoreUserValidator,
+    CoreValidator,
+)
 from prefect import flow
 
 from infrahub import config
+from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.types import KVTTL, MessageTTL
 from infrahub.services import InfrahubServices
+from infrahub.validators.events import send_failed_validator, send_passed_validator
 
 log = get_logger()
 
@@ -20,7 +31,8 @@ async def execution(message: messages.FinalizeValidatorExecution, service: Infra
 
     The message will get rescheduled until the timeout has exceeded or until all checks are accounted for.
     """
-    validator = await service.client.get(kind=message.validator_type, id=message.validator_id)
+    validator_type = get_validator_type(validator_type=message.validator_type)
+    validator = await service.client.get(kind=validator_type, id=message.validator_id)
     checks_key = f"validator_execution_id:{message.validator_execution_id}:checks"
     current_conclusion = validator.conclusion.value
     if validator.state.value != "in_progress":
@@ -81,3 +93,41 @@ async def execution(message: messages.FinalizeValidatorExecution, service: Infra
     validator.completed_at.value = Timestamp().to_string()
     validator.conclusion.value = conclusion
     await validator.save()
+    if validator.conclusion.value == ValidatorConclusion.SUCCESS.value:
+        await send_passed_validator(
+            service=service, validator=validator, proposed_change_id=message.proposed_change, context=message.context
+        )
+    else:
+        await send_failed_validator(
+            service=service, validator=validator, proposed_change_id=message.proposed_change, context=message.context
+        )
+
+
+def get_validator_type(
+    validator_type: str,
+) -> (
+    type[CoreArtifactValidator]
+    | type[CoreDataValidator]
+    | type[CoreGeneratorValidator]
+    | type[CoreRepositoryValidator]
+    | type[CoreSchemaValidator]
+    | type[CoreUserValidator]
+    | type[CoreValidator]
+):
+    match validator_type:
+        case InfrahubKind.USERVALIDATOR:
+            validator_kind = CoreUserValidator
+        case InfrahubKind.SCHEMAVALIDATOR:
+            validator_kind = CoreSchemaValidator
+        case InfrahubKind.GENERATORVALIDATOR:
+            validator_kind = CoreGeneratorValidator
+        case InfrahubKind.REPOSITORYVALIDATOR:
+            validator_kind = CoreRepositoryValidator
+        case InfrahubKind.DATAVALIDATOR:
+            validator_kind = CoreDataValidator
+        case InfrahubKind.ARTIFACTVALIDATOR:
+            validator_kind = CoreArtifactValidator
+        case _:
+            validator_kind = CoreValidator
+
+    return validator_kind
