@@ -1,1 +1,0 @@
-Reduces the number of database queries we run when checking a uniqueness constraint during a node update or create mutation if that node uses a schema that inherits from a generic schema and the node schema's uniqueness constraints are contained within the generic schema's uniqueness constraints
