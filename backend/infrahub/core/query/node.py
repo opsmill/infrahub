@@ -870,6 +870,7 @@ class NodeGetListQuery(Query):
         order: OrderModel | None = None,
         **kwargs: Any,
     ) -> None:
+        self.use_profiles = not config.SETTINGS.experimental_features.no_profiles
         self.schema = schema
         self.filters = filters
         self.partial_match = partial_match
@@ -979,7 +980,7 @@ class NodeGetListQuery(Query):
             self.params["node_ids"] = self.filters["ids"]
 
         field_attribute_requirements = self._get_field_requirements(disable_order=disable_order)
-        use_profiles = any(far for far in field_attribute_requirements if far.supports_profile)
+        use_profiles = self.use_profiles and any(far for far in field_attribute_requirements if far.supports_profile)
         await self._add_node_filter_attributes(
             db=db, field_attribute_requirements=field_attribute_requirements, branch_filter=branch_filter
         )
@@ -991,7 +992,7 @@ class NodeGetListQuery(Query):
             for far in field_attribute_requirements:
                 if not far.is_order:
                     continue
-                if far.supports_profile:
+                if self.use_profiles and far.supports_profile:
                     self.order_by.append(far.final_value_query_variable)
                     continue
                 self.order_by.append(far.node_value_query_variable)
@@ -1023,7 +1024,7 @@ class NodeGetListQuery(Query):
 
         for far in field_attribute_requirements:
             extra_tail_properties = {far.node_value_query_variable: "value"}
-            if far.supports_profile:
+            if self.use_profiles and far.supports_profile:
                 extra_tail_properties[far.is_default_query_variable] = "is_default"
             subquery, subquery_params, subquery_result_name = await build_subquery_filter(
                 db=db,
@@ -1035,7 +1036,7 @@ class NodeGetListQuery(Query):
                 branch=self.branch,
                 subquery_idx=far.index,
                 partial_match=self.partial_match,
-                support_profiles=far.supports_profile,
+                support_profiles=self.use_profiles and far.supports_profile,
                 extra_tail_properties=extra_tail_properties,
             )
             for query_var in extra_tail_properties:
@@ -1076,7 +1077,7 @@ class NodeGetListQuery(Query):
             if far.field is None:
                 continue
             extra_tail_properties = {}
-            if far.supports_profile:
+            if self.use_profiles and far.supports_profile:
                 extra_tail_properties[far.is_default_query_variable] = "is_default"
 
             subquery, subquery_params, _ = await build_subquery_order(
@@ -1088,7 +1089,7 @@ class NodeGetListQuery(Query):
                 branch=self.branch,
                 subquery_idx=far.index,
                 result_prefix=far.node_value_query_variable,
-                support_profiles=far.supports_profile,
+                support_profiles=self.use_profiles and far.supports_profile,
                 extra_tail_properties=extra_tail_properties,
             )
             for query_var in extra_tail_properties:
@@ -1149,6 +1150,8 @@ class NodeGetListQuery(Query):
     async def _add_profile_attributes(
         self, db: InfrahubDatabase, field_attribute_requirements: list[FieldAttributeRequirement], branch_filter: str
     ) -> None:
+        if not self.use_profiles:
+            return
         attributes_queries: list[str] = []
         attributes_params: dict[str, Any] = {}
         profile_attributes = [far for far in field_attribute_requirements if far.supports_profile]
@@ -1181,6 +1184,8 @@ class NodeGetListQuery(Query):
         self.params.update(attributes_params)
 
     async def _add_profile_rollups(self, field_attribute_requirements: list[FieldAttributeRequirement]) -> None:
+        if not self.use_profiles:
+            return
         profile_attributes = [far for far in field_attribute_requirements if far.supports_profile]
         profile_value_collects = []
         for profile_attr in profile_attributes:
@@ -1226,18 +1231,17 @@ class NodeGetListQuery(Query):
             if not far.is_filter or not far.supports_profile:
                 continue
             var_name = f"final_attr_value{far.index}"
+            var_string = far.final_value_query_variable if self.use_profiles else far.node_value_query_variable
             self.params[var_name] = far.field_attr_comparison_value
             if self.partial_match:
                 if isinstance(far.field_attr_comparison_value, list):
                     # If the any filter is an array/list
                     var_array = f"{var_name}_array"
                     where_parts.append(
-                        f"any({var_array} IN ${var_name} WHERE toLower(toString({far.final_value_query_variable})) CONTAINS toLower({var_array}))"
+                        f"any({var_array} IN ${var_name} WHERE toLower(toString({var_string})) CONTAINS toLower({var_array}))"
                     )
                 else:
-                    where_parts.append(
-                        f"toLower(toString({far.final_value_query_variable})) CONTAINS toLower(toString(${var_name}))"
-                    )
+                    where_parts.append(f"toLower(toString({var_string})) CONTAINS toLower(toString(${var_name}))")
                 continue
             if far.field and isinstance(far.field, AttributeSchema) and far.field.kind == "List":
                 if isinstance(far.field_attr_comparison_value, list):
@@ -1245,10 +1249,10 @@ class NodeGetListQuery(Query):
                 else:
                     self.params[var_name] = build_regex_attrs(values=[far.field_attr_comparison_value])
 
-                where_parts.append(f"toString({far.final_value_query_variable}) =~ ${var_name}")
+                where_parts.append(f"toString({var_string}) =~ ${var_name}")
                 continue
 
-            where_parts.append(f"{far.final_value_query_variable} {far.comparison_operator} ${var_name}")
+            where_parts.append(f"{var_string} {far.comparison_operator} ${var_name}")
         if where_parts:
             where_str = "WHERE " + " AND ".join(where_parts)
         self.add_to_query(where_str)
