@@ -47,12 +47,7 @@ export const NodeEventTitle = ({
         {schemaLabels[payload.data.node_kind] ?? "-"}
       </div>
       {event.includes("deleted") ? (
-        <NodeLabel
-          id={primary_node.id}
-          kind={primary_node?.kind}
-          branch={branch}
-          className="overflow-hidden text-ellipsis whitespace-nowrap"
-        />
+        <NodeLabel id={primary_node.id} kind={primary_node?.kind} branch={branch} />
       ) : (
         <Link
           to={getLink({
@@ -60,14 +55,8 @@ export const NodeEventTitle = ({
             id: primary_node.id,
             branch,
           })}
-          className="overflow-hidden text-ellipsis"
         >
-          <NodeLabel
-            id={primary_node.id}
-            kind={primary_node?.kind}
-            branch={branch}
-            className="overflow-hidden text-ellipsis whitespace-nowrap"
-          />
+          <NodeLabel id={primary_node.id} kind={primary_node?.kind} branch={branch} />
         </Link>
       )}
     </div>

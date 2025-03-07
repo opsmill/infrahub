@@ -60,11 +60,11 @@ test.describe("Global Activities - List view and filter usage", () => {
     });
 
     await test.step("View Event details with children", async () => {
-      const viewMoreLink = page.getByRole("link", { name: /View more/i }).first();
+      const viewMoreLink = page.getByRole("link", { name: /View details/i }).first();
       await viewMoreLink.click();
 
       // Check that at least one "View more." button is present in the details page
-      await expect(page.locator("#root")).toContainText("View all");
+      await expect(page.getByRole("button", { name: "View more" }).first()).toBeVisible();
       await saveScreenshotForDocs(
         page,
         "topics/activity-logs/activity_log_global_details_children"
