@@ -61,8 +61,8 @@ test.describe("Global Activities - List view and filter usage", () => {
       const viewMoreLink = page.getByRole("link", { name: /View details/i }).first();
       await viewMoreLink.click();
 
-      // Check that at least one "View all" button is present in the details page
-      await expect(page.locator("#root")).toContainText("View all");
+      // Check that at least one "View more" button is present in the details page
+      await expect(page.getByRole("button", { name: "View more" }).first()).toBeVisible();
       await saveScreenshotForDocs(page, "activity_log_global_details_children");
     });
   });
