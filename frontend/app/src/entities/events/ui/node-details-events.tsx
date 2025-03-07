@@ -12,13 +12,18 @@ import { EventCard } from "./event-card";
 
 const MAX_EVENTS = 5;
 
-export const NodeEvents = ({ parentId }: { parentId?: string }) => {
+export const NodeEvents = ({
+  parentId,
+  relatedNodeId,
+}: { parentId?: string; relatedNodeId?: string }) => {
   const { objectKind, objectid } = useParams();
+
+  const relatedId = relatedNodeId || objectid;
 
   const { isPending, data, error } = useEvents({
     filters: {
       parentIds: parentId ? [parentId] : undefined,
-      relatedNodeIds: objectid ? [objectid] : undefined,
+      relatedNodeIds: relatedId ? [relatedId] : undefined,
       limit: parentId ? 0 : MAX_EVENTS,
     },
   });

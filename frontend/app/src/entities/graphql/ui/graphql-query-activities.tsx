@@ -6,7 +6,7 @@ export const GraphqlQueryActivities = ({ id }: { id: string }) => {
     <Card className="p-0 overflow-x-hidden">
       <CardWithBorder.Title>Activities</CardWithBorder.Title>
 
-      <NodeEvents parentId={id} />
+      <NodeEvents relatedNodeId={id} />
     </Card>
   );
 };
