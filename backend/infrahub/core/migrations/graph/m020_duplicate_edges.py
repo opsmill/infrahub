@@ -19,7 +19,7 @@ class DeleteDuplicateHasValueEdgesQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         query = """
 // -------------------
 // find Attribute nodes with multiple identical edges to AttributeValue nodes with the same value
@@ -82,7 +82,7 @@ class DeleteDuplicateBooleanEdgesQuery(Query):
     insert_return = False
     edge_type: DatabaseEdgeType | None = None
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         if not self.edge_type:
             raise RuntimeError("edge_type is required for this query")
         query = """
@@ -155,6 +155,6 @@ class Migration020(GraphMigration):
         # skip the transaction b/c it will run out of memory on a large database
         return await self.do_execute(db=db)
 
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         result = MigrationResult()
         return result
