@@ -10,6 +10,7 @@ Infrahub support two different types of webhooks:
 - `Custom Webhook` allows the ability to tie events to a [transformation](../topics/transformation.mdx) to configure the payload being sent to an external endpoint.
 
 # Managing webhooks
+
 <Tabs>
   <TabItem value="web" label="Via the Web Interface" default>
 
@@ -26,6 +27,7 @@ Infrahub support two different types of webhooks:
 ## Creating a new Webhook
 
 In the GraphQL sandbox, execute the following mutation,  edit values to be appropriate for your use case:
+
 ```graphql
 mutation {
   CoreStandardWebhookCreate(
@@ -42,5 +44,6 @@ mutation {
   }
 }
 ```
+
   </TabItem>
 </Tabs>

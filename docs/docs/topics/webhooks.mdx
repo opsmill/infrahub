@@ -1,14 +1,18 @@
 ---
 title: Webhooks
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 import CodeBlock from '@theme/CodeBlock';
+<!-- vale off -->
 import fastapi_webhook_reciever from '!!raw-loader!../media/fastapi_webhook_reciever.py';
+<!-- vale on -->
 
 # Webhooks
 
 The **Webhook System** enables external notifications based on the [Events](./infrahub-event.mdx) system within InfraHub, which also powers the [Activity Log](./activity-log.mdx).
 
-## Configuring Webhooks
+## Configuring webhooks
 
 Infrahub support two different types of webhooks:
 
@@ -17,7 +21,7 @@ Infrahub support two different types of webhooks:
 
 :::note
 
-Custom webhooks might be useful in situations where the endpoint needs a specic payload to be successful. A usecase that might need this would be triggering external actions in platforms like Github and Gitlab.
+Custom webhooks might be useful in situations where the endpoint needs a specific payload to be successful. A use-case that might need this would be triggering external actions in platforms like GitHub and Gitlab.
 
 :::
 
@@ -28,7 +32,7 @@ Webhooks can be configured to trigger on specific event types, such as:
 
 This allows you to tailor webhooks for specific use cases.
 
-### Configuring Branch Types
+### Configuring branch types
 
 Webhooks can also be configured to trigger based on branch types:
 
@@ -38,16 +42,17 @@ Webhooks can also be configured to trigger based on branch types:
 
 This flexibility ensures that webhooks only trigger when relevant, depending on the use case. For example, you might configure a webhook to notify an external system only when a user makes changes directly to the default branch.
 
-### Webhook Configuration Details
+### Webhook configuration details
 
-- **Description**: A description can be set to identify the webhook's purpose.
+- **Description**: A description can be set to identify the webhooks purpose.
 - **URL**: The destination URL can be configured, such as `http://ansible-eda:8080`.
 
-### Shared Key for security
+### Shared key for security
 
-A **shared key** can be configured to sign webhook requests. This key ensures the **authenticity** and **integrity** of the webhook message. 
+A **shared key** can be configured to sign webhook requests. This key ensures the **authenticity** and **integrity** of the webhook message.
 
 When a webhook is sent:
+
 1. The sender generates a signature using the shared key.
 2. The signature is included in the request headers.
 
@@ -58,7 +63,117 @@ The receiver then uses the same shared key to verify the signature, confirming t
   <CodeBlock language="python" title="webhook-reciever.py">{fastapi_webhook_reciever}</CodeBlock>
 
 </details>
-
+<!-- vale off -->
 ### Validating HTTPS certificates
+<!-- vale on -->
 
 When using webhooks over HTTPS, you can configure your system to validate certificates to ensure that the receiver has a valid HTTPS certificate, adding an extra layer of security.
+
+## Example payloads
+
+Here are some example payloads of some events that may be sent.
+<!-- vale off -->
+<Tabs>
+  <TabItem value="infrahub.node.created" label="infrahub.node.created" default>
+```json
+{
+  "data": {
+    "node_id": "182a9701-8a7f-1220-39ae-c5162d928280",
+    "node_kind": "OrganizationProvider",
+    "attributes": {
+      "name": {
+        "kind": "Text",
+        "name": "name",
+        "value": "Google Fibre",
+        "properties": {
+          "is_visible": {
+            "name": "is_visible",
+            "value": true,
+            "value_type": "Boolean",
+            "value_previous": null,
+            "value_update_status": "added"
+          },
+          "is_protected": {
+            "name": "is_protected",
+            "value": false,
+            "value_type": "Boolean",
+            "value_previous": null,
+            "value_update_status": "added"
+          }
+        },
+        "value_previous": null,
+        "value_update_status": "added"
+      },
+      "description": {
+        "kind": "Text",
+        "name": "description",
+        "value": "Google Fibre",
+        "properties": {
+          "is_visible": {
+            "name": "is_visible",
+            "value": true,
+            "value_type": "Boolean",
+            "value_previous": null,
+            "value_update_status": "added"
+          },
+          "is_protected": {
+            "name": "is_protected",
+            "value": false,
+            "value_type": "Boolean",
+            "value_previous": null,
+            "value_update_status": "added"
+          }
+        },
+        "value_previous": null,
+        "value_update_status": "added"
+      }
+    },
+    "display_label": "Google Fibre",
+    "relationships": {}
+  },
+  "id": "4fd61f4d-8eea-41a9-bd0f-cc886a33891f",
+  "branch": "main",
+  "account_id": "182a95e0-bafa-d2a4-39a9-c5150829bd4d",
+  "occured_at": "2025-03-07 17:57:19.354783+00:00",
+  "event": "infrahub.node.created"
+}
+```
+  </TabItem>
+
+  <TabItem value="infrahub.node.updated" label="infrahub.node.updated">
+```json
+{
+  "data": {
+    "node_id": "182a9602-a0ce-bb91-39a9-c514ed13d9e4",
+    "node_kind": "InfraInterfaceL3",
+    "attributes": {
+      "role": {
+        "kind": "Dropdown",
+        "name": "role",
+        "value": "peering",
+        "properties": {},
+        "value_previous": "peer",
+        "value_update_status": "updated"
+      },
+      "description": {
+        "kind": "Text",
+        "name": "description",
+        "value": "Connected to atl1-edge2::Ethernet2",
+        "properties": {},
+        "value_previous": "Connected to atl1-edge2::Ethernet1",
+        "value_update_status": "updated"
+      }
+    },
+    "display_label": "Ethernet1",
+    "relationships": {}
+  },
+  "id": "7f31954e-a34f-4f7c-815c-e15188c906c7",
+  "branch": "main",
+  "account_id": "182a95e0-bafa-d2a4-39a9-c5150829bd4d",
+  "occured_at": "2025-03-07 17:57:49.111950+00:00",
+  "event": "infrahub.node.updated"
+}
+```
+  </TabItem>
+</Tabs>
+<!-- vale on -->

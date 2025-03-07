@@ -47,6 +47,7 @@ generator_definition
 generator_definitions
 get_artifact
 github
+gitlab
 graphene
 graphiql
 graphql
