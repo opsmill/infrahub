@@ -1,0 +1,64 @@
+---
+title: Webhooks
+---
+import CodeBlock from '@theme/CodeBlock';
+import fastapi_webhook_reciever from '!!raw-loader!../media/fastapi_webhook_reciever.py';
+
+# Webhooks
+
+The **Webhook System** enables external notifications based on the [Events](./infrahub-event.mdx) system within InfraHub, which also powers the [Activity Log](./activity-log.mdx).
+
+## Configuring Webhooks
+
+Infrahub support two different types of webhooks:
+
+- `Standard Webhook` sends event information to an external endpoint.
+- `Custom Webhook` allows the ability to tie events to a [transformation](../topics/transformation.mdx) to configure the payload being sent to an external endpoint.
+
+:::note
+
+Custom webhooks might be useful in situations where the endpoint needs a specic payload to be successful. A usecase that might need this would be triggering external actions in platforms like Github and Gitlab.
+
+:::
+
+Webhooks can be configured to trigger on specific event types, such as:
+
+- `infrahub.branch.merged`
+- `infrahub.node.updated`
+
+This allows you to tailor webhooks for specific use cases.
+
+### Configuring Branch Types
+
+Webhooks can also be configured to trigger based on branch types:
+
+- **Other Branches** – All branches except the default branch.
+- **Default Branch** – Only the default branch.
+- **All Branches** – Every branch.
+
+This flexibility ensures that webhooks only trigger when relevant, depending on the use case. For example, you might configure a webhook to notify an external system only when a user makes changes directly to the default branch.
+
+### Webhook Configuration Details
+
+- **Description**: A description can be set to identify the webhook's purpose.
+- **URL**: The destination URL can be configured, such as `http://ansible-eda:8080`.
+
+### Shared Key for security
+
+A **shared key** can be configured to sign webhook requests. This key ensures the **authenticity** and **integrity** of the webhook message. 
+
+When a webhook is sent:
+1. The sender generates a signature using the shared key.
+2. The signature is included in the request headers.
+
+The receiver then uses the same shared key to verify the signature, confirming that the message has not been tampered with and that it is from a trusted source.
+
+<details>
+  <summary>Python FastAPI Example</summary>
+  <CodeBlock language="python" title="webhook-reciever.py">{fastapi_webhook_reciever}</CodeBlock>
+
+</details>
+
+### Validating HTTPS certificates
+
+When using webhooks over HTTPS, you can configure your system to validate certificates to ensure that the receiver has a valid HTTPS certificate, adding an extra layer of security.
