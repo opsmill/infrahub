@@ -2834,6 +2834,60 @@ async def test_hierarchical_validate_parent_children(
     await uk.save(db=db)
 
 
+async def test_schema_branch_add_object_template_schema():
+    core_template_schema = GenericSchema(**_get_schema_by_kind(core_models, kind=InfrahubKind.OBJECTTEMPLATE))
+    SIMPLE_DEVICE = copy.deepcopy(DEVICE)
+    SIMPLE_DEVICE.inherit_from = []
+    device_schema = SchemaRoot(generics=[core_template_schema], nodes=[SIMPLE_DEVICE])
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=device_schema)
+    schema.process_inheritance()
+    schema.manage_object_template_schemas()
+
+    node_template = schema.get(name=f"Template{TestKind.DEVICE}", duplicate=False)
+    assert node_template
+    core_template_schema = schema.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=False)
+    assert set(core_template_schema.used_by) == {f"Template{TestKind.DEVICE}"}
+
+
+async def test_schema_branch_diff_core_object_template():
+    core_template_schema = GenericSchema(**_get_schema_by_kind(core_models, kind=InfrahubKind.OBJECTTEMPLATE))
+    SIMPLE_DEVICE = copy.deepcopy(DEVICE)
+    SIMPLE_DEVICE.inherit_from = []
+    device_schema = SchemaRoot(generics=[core_template_schema], nodes=[SIMPLE_DEVICE])
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=device_schema)
+    schema.process_inheritance()
+    schema.manage_object_template_schemas()
+
+    new_schema = schema.duplicate()
+    template_schema = new_schema.get(name=InfrahubKind.OBJECTTEMPLATE, duplicate=True)
+    template_schema.description = "New description"
+    new_schema.set(name=InfrahubKind.OBJECTTEMPLATE, schema=template_schema)
+
+    diff = new_schema.diff(other=schema)
+    assert diff.all == [InfrahubKind.OBJECTTEMPLATE]
+
+    DEVICE_SCHEMA.generics.append(core_template_schema)
+    new_schema = SchemaBranch(cache={}, name="test")
+    new_schema.load_schema(schema=DEVICE_SCHEMA)
+    new_schema.process_inheritance()
+    new_schema.manage_object_template_schemas()
+
+    diff = schema.diff(other=new_schema)
+    # We must not see kinds from the Template namespace
+    assert diff.all == [
+        TestKind.DEVICE,
+        TestKind.INTERFACE,
+        TestKind.INTERFACE_HOLDER,
+        TestKind.PHYSICAL_INTERFACE,
+        TestKind.SFP,
+        TestKind.VIRTUAL_INTERFACE,
+    ]
+
+
 @pytest.mark.parametrize("relationship_kind", (RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC))
 async def test_manage_object_templates(relationship_kind: RelationshipKind):
     schema_branch = SchemaBranch(cache={}, name="test")

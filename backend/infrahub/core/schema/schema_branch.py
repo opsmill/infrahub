@@ -108,6 +108,10 @@ class SchemaBranch:
         return list(self.generics.keys())
 
     @property
+    def generic_names_without_templates(self) -> list[str]:
+        return [g for g in self.generic_names if not g.startswith("Template")]
+
+    @property
     def profile_names(self) -> list[str]:
         return list(self.profiles.keys())
 
@@ -115,10 +119,10 @@ class SchemaBranch:
     def template_names(self) -> list[str]:
         return list(self.templates.keys())
 
-    def get_all_kind_id_map(self, exclude_profiles: bool = False) -> dict[str, str]:
+    def get_all_kind_id_map(self, nodes_and_generics_only: bool = False) -> dict[str, str]:
         kind_id_map = {}
-        if exclude_profiles:
-            names = self.node_names + self.generic_names
+        if nodes_and_generics_only:
+            names = self.node_names + self.generic_names_without_templates
         else:
             names = self.all_names
         for name in names:
@@ -182,8 +186,8 @@ class SchemaBranch:
 
     def diff(self, other: SchemaBranch) -> SchemaDiff:
         # Identify the nodes or generics that have been added or removed
-        local_kind_id_map = self.get_all_kind_id_map(exclude_profiles=True)
-        other_kind_id_map = other.get_all_kind_id_map(exclude_profiles=True)
+        local_kind_id_map = self.get_all_kind_id_map(nodes_and_generics_only=True)
+        other_kind_id_map = other.get_all_kind_id_map(nodes_and_generics_only=True)
         clean_local_ids = [id for id in local_kind_id_map.values() if id is not None]
         clean_other_ids = [id for id in other_kind_id_map.values() if id is not None]
         shared_ids = intersection(list1=clean_local_ids, list2=clean_other_ids)
@@ -687,7 +691,7 @@ class SchemaBranch:
         return schema_attribute_path
 
     def sync_uniqueness_constraints_and_unique_attributes(self) -> None:
-        for name in self.generic_names + self.node_names:
+        for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.unique_attributes and not node_schema.uniqueness_constraints:
@@ -802,7 +806,7 @@ class SchemaBranch:
             )
 
     def validate_default_values(self) -> None:
-        for name in self.generic_names + self.node_names:
+        for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
             for node_attr in node_schema.local_attributes:
                 if node_attr.default_value is None:
@@ -822,7 +826,7 @@ class SchemaBranch:
                     ) from exc
 
     def validate_human_friendly_id(self) -> None:
-        for name in self.generic_names + self.node_names:
+        for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
             hf_attr_names = set()
 
@@ -843,7 +847,7 @@ class SchemaBranch:
 
     def validate_required_relationships(self) -> None:
         reverse_dependency_map: dict[str, set[str]] = {}
-        for name in self.node_names + self.generic_names:
+        for name in self.node_names + self.generic_names_without_templates:
             node_schema = self.get(name=name, duplicate=False)
             for relationship_schema in node_schema.relationships:
                 if relationship_schema.optional:
@@ -861,7 +865,7 @@ class SchemaBranch:
     def validate_parent_component(self) -> None:
         # {parent_kind: {component_kind_1, component_kind_2, ...}}
         dependency_map: dict[str, set[str]] = defaultdict(set)
-        for name in self.generic_names + self.node_names:
+        for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
 
             parent_relationships: list[RelationshipSchema] = []
@@ -1147,7 +1151,7 @@ class SchemaBranch:
                 self.set(name=schema_to_update.kind, schema=schema_to_update)
 
     def process_human_friendly_id(self) -> None:
-        for name in self.generic_names + self.node_names:
+        for name in self.generic_names_without_templates + self.node_names:
             node = self.get(name=name, duplicate=False)
 
             # If human_friendly_id IS NOT defined
@@ -1634,7 +1638,7 @@ class SchemaBranch:
             self.set(name=core_profile_schema.kind, schema=core_profile_schema)
 
         profile_schema_kinds = set()
-        for node_name in self.node_names + self.generic_names:
+        for node_name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=node_name, duplicate=False)
             if (
                 node.namespace in RESTRICTED_NAMESPACES
@@ -1970,11 +1974,7 @@ class SchemaBranch:
         need_templates: set[NodeSchema | GenericSchema] = set()
         template_schema_kinds: set[str] = set()
 
-        for node_name in self.node_names + self.generic_names:
-            # FIXME: not sure why we need this to avoid lookup failure
-            if node_name.startswith("Template"):
-                continue
-
+        for node_name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=node_name, duplicate=False)
 
             # Delete old object templates if schemas were removed
