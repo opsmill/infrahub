@@ -22,7 +22,7 @@ from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import merge_branch
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion, ValidatorState
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
@@ -52,7 +52,7 @@ from infrahub.proposed_change.models import (
 )
 from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
-from infrahub.validators.events import send_start_validator
+from infrahub.validators.tasks import start_validator
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
@@ -540,34 +540,25 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, s
 
     await proposed_change.validations.fetch()
 
-    validator: CoreArtifactValidator | None = None
+    previous_validator: CoreArtifactValidator | None = None
     for relationship in proposed_change.validations.peers:
         existing_validator = relationship.peer
         if (
             existing_validator.typename == InfrahubKind.ARTIFACTVALIDATOR
             and existing_validator.definition.id == model.artifact_definition.definition_id
         ):
-            validator = existing_validator
+            previous_validator = existing_validator
 
-    if validator:
-        validator.conclusion.value = ValidatorConclusion.UNKNOWN.value
-        validator.state.value = ValidatorState.QUEUED.value
-        validator.started_at.value = ""
-        validator.completed_at.value = ""
-        await validator.save()
-    else:
-        validator = await service.client.create(
-            kind=CoreArtifactValidator,
-            data={
-                "label": validator_name,
-                "proposed_change": model.proposed_change,
-                "definition": model.artifact_definition.definition_id,
-            },
-        )
-        await validator.save()
-
-    await send_start_validator(
-        service=service, validator=validator, proposed_change_id=model.proposed_change, context=model.context
+    validator = await start_validator(
+        service=service,
+        validator=previous_validator,
+        validator_type=CoreArtifactValidator,
+        proposed_change=model.proposed_change,
+        data={
+            "label": validator_name,
+            "definition": model.artifact_definition.definition_id,
+        },
+        context=model.context,
     )
 
     await artifact_definition.targets.fetch()
