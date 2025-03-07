@@ -288,8 +288,13 @@ class InfrahubMutationMixin:
             if not template_relationship_peers:
                 continue
 
-            obj_peer_schema = relationship.get_peer_schema(db=db, branch=branch)
             for template_relationship_peer in template_relationship_peers.values():
+                # We retrieve peer schema for each peer in case we are processing a relationship which is based on a generic
+                obj_peer_schema = registry.schema.get_node_schema(
+                    name=template_relationship_peer.get_schema().kind.removeprefix("Template"),
+                    branch=branch,
+                    duplicate=False,
+                )
                 obj_peer_data = await cls._extract_peer_data(
                     db=db,
                     template_peer=template_relationship_peer,
