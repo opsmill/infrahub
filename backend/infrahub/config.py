@@ -249,6 +249,12 @@ class DatabaseSettings(BaseSettings):
     retry_limit: int = Field(
         default=3, description="Maximum number of times a transient issue in a transaction should be retried."
     )
+    max_concurrent_queries: int = Field(
+        default=0, ge=0, description="Maximum number of concurrent queries that can run (0 means unlimited)."
+    )
+    max_concurrent_queries_delay: float = Field(
+        default=0.01, ge=0, description="Delay to add when max_concurrent_queries is reached."
+    )
 
     @property
     def database_name(self) -> str:
