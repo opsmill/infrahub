@@ -22,8 +22,8 @@ test.describe("Object Activities - Timeline and Details", () => {
       await saveScreenshotForDocs(page, "activity_log_device");
     });
 
-    await test.step("Open additional details via the 'View all' button", async () => {
-      const viewMoreButton = page.getByRole("button", { name: "View all" }).first();
+    await test.step("Open additional details via the 'View more' button", async () => {
+      const viewMoreButton = page.getByRole("button", { name: "View more" }).first();
       await expect(viewMoreButton).toBeVisible();
       await viewMoreButton.click();
 
