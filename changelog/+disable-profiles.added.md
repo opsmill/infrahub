@@ -1,0 +1,1 @@
+Add INFRAHUB_EXPERIMENTAL_NO_PROFILES flag that removes profiles from consideration when retrieving objects from the database to improve query performance

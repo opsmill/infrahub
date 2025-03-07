@@ -21,7 +21,7 @@ from infrahub.graphql.models import OrderModel
 from tests.helpers.schema import WIDGET
 
 
-@pytest.fixture(params=[False, True])
+@pytest.fixture(params=[True, False])
 async def use_profiles(request) -> None:
     config.SETTINGS.experimental_features.no_profiles = request.param
 
