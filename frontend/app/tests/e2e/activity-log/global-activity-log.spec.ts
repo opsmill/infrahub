@@ -58,7 +58,7 @@ test.describe("Global Activities - List view and filter usage", () => {
     });
 
     await test.step("View Event details with children", async () => {
-      const viewMoreLink = page.getByRole("link", { name: /View more/i }).first();
+      const viewMoreLink = page.getByRole("link", { name: /View details/i }).first();
       await viewMoreLink.click();
 
       // Check that at least one "View all" button is present in the details page

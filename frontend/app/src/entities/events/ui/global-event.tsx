@@ -48,7 +48,7 @@ export const Event = (props: EventType) => {
         <GlobalEventDisplay {...props} />
       </div>
 
-      <div className="text-xs font-medium text-gray-500 flex items-center gap-1">
+      <div className="text-xs font-medium text-gray-500 flex items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis">
         {props.branch && (
           <>
             <Icon icon={"mdi:source-branch"} />
@@ -60,7 +60,7 @@ export const Event = (props: EventType) => {
 
       <div className="relative">
         <Link to={`/activities/${props.id}`} className="text-xs text-gray-500">
-          View more
+          View details
         </Link>
 
         {props.has_children && (
