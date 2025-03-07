@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.migrations.shared import GraphMigration, MigrationResult
 from infrahub.log import get_logger
 
@@ -75,68 +76,53 @@ DELETE orphaned_av
         self.add_to_query(query)
 
 
-class DeleteDuplicateIsVisibleEdgesQuery(Query):
+class DeleteDuplicateBooleanEdgesQuery(Query):
+    name = "delete_duplicate_booleans_edges"
+    type = QueryType.WRITE
+    insert_return = False
+    edge_type: DatabaseEdgeType | None = None
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
+        if not self.edge_type:
+            raise RuntimeError("edge_type is required for this query")
+        query = """
+// -------------------
+// find Attribute nodes with multiple identical edges to Boolean nodes
+// -------------------
+MATCH (a:Attribute)-[e:%(edge_type)s]->(b)
+WITH a, e.branch AS branch, e.branch_level AS branch_level, e.status AS status, e.from AS from, e.to AS to, b, COUNT(*) AS num_duplicate_edges
+WHERE num_duplicate_edges > 1
+// -------------------
+// get the identical edges for a given set of Attribute node, edge properties, Boolean
+// -------------------
+WITH DISTINCT a, branch, branch_level, status, from, to, b
+CREATE (a)-[fresh_e:%(edge_type)s {branch: branch, branch_level: branch_level, status: status, from: from}]->(b)
+SET fresh_e.to = to
+WITH a, branch, status, from, to, b, %(id_func)s(fresh_e) AS e_id_to_keep
+CALL {
+    WITH a, branch, status, from, to, b, e_id_to_keep
+    MATCH (a)-[e:%(edge_type)s]->(b)
+    WHERE %(id_func)s(e) <> e_id_to_keep
+    AND e.branch = branch AND e.status = status AND e.from = from
+    AND (e.to = to OR (e.to IS NULL AND to IS NULL))
+    DELETE e
+}
+        """ % {"edge_type": self.edge_type.value, "id_func": db.get_id_function_name()}
+        self.add_to_query(query)
+
+
+class DeleteDuplicateIsVisibleEdgesQuery(DeleteDuplicateBooleanEdgesQuery):
     name = "delete_duplicate_is_visible_edges"
     type = QueryType.WRITE
     insert_return = False
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
-        query = """
-// -------------------
-// find Attribute nodes with multiple identical edges to Boolean nodes
-// -------------------
-MATCH (a:Attribute)-[e:IS_VISIBLE]->(b)
-WITH a, e.branch AS branch, e.branch_level AS branch_level, e.status AS status, e.from AS from, e.to AS to, b, COUNT(*) AS num_duplicate_edges
-WHERE num_duplicate_edges > 1
-// -------------------
-// get the identical edges for a given set of Attribute node, edge properties, Boolean
-// -------------------
-WITH DISTINCT a, branch, branch_level, status, from, to, b
-CREATE (a)-[fresh_e:IS_VISIBLE {branch: branch, branch_level: branch_level, status: status, from: from}]->(b)
-SET fresh_e.to = to
-WITH a, branch, status, from, to, b, %(id_func)s(fresh_e) AS e_id_to_keep
-CALL {
-    WITH a, branch, status, from, to, b, e_id_to_keep
-    MATCH (a)-[e:IS_VISIBLE]->(b)
-    WHERE %(id_func)s(e) <> e_id_to_keep
-    AND e.branch = branch AND e.status = status AND e.from = from
-    AND (e.to = to OR (e.to IS NULL AND to IS NULL))
-    DELETE e
-}
-        """ % {"id_func": db.get_id_function_name()}
-        self.add_to_query(query)
+    edge_type = DatabaseEdgeType.IS_VISIBLE
 
 
-class DeleteDuplicateIsProtectedEdgesQuery(Query):
+class DeleteDuplicateIsProtectedEdgesQuery(DeleteDuplicateBooleanEdgesQuery):
     name = "delete_duplicate_is_protected_edges"
     type = QueryType.WRITE
     insert_return = False
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:
-        query = """
-// -------------------
-// find Attribute nodes with multiple identical edges to Boolean nodes
-// -------------------
-MATCH (a:Attribute)-[e:IS_PROTECTED]->(b)
-WITH a, e.branch AS branch, e.branch_level AS branch_level, e.status AS status, e.from AS from, e.to AS to, b, COUNT(*) AS num_duplicate_edges
-WHERE num_duplicate_edges > 1
-// -------------------
-// get the identical edges for a given set of Attribute node, edge properties, Boolean
-// -------------------
-WITH DISTINCT a, branch, branch_level, status, from, to, b
-CREATE (a)-[fresh_e:IS_PROTECTED {branch: branch, branch_level: branch_level, status: status, from: from}]->(b)
-SET fresh_e.to = to
-WITH a, branch, status, from, to, b, %(id_func)s(fresh_e) AS e_id_to_keep
-CALL {
-    WITH a, branch, status, from, to, b, e_id_to_keep
-    MATCH (a)-[e:IS_PROTECTED]->(b)
-    WHERE %(id_func)s(e) <> e_id_to_keep
-    AND e.branch = branch AND e.status = status AND e.from = from
-    AND (e.to = to OR (e.to IS NULL AND to IS NULL))
-    DELETE e
-}
-        """ % {"id_func": db.get_id_function_name()}
-        self.add_to_query(query)
+    edge_type = DatabaseEdgeType.IS_PROTECTED
 
 
 class Migration020(GraphMigration):
