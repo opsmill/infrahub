@@ -177,12 +177,25 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         await self._check_results(updated_node=node, path_groups=path_groups, query_results=query.get_results())
 
     async def check(self, node: Node, at: Optional[Timestamp] = None, filters: Optional[list[str]] = None) -> None:
+        def _frozen_constraints(schema: MainSchemaTypes) -> frozenset[frozenset[str]]:
+            if not schema.uniqueness_constraints:
+                return frozenset()
+            return frozenset(frozenset(uc) for uc in schema.uniqueness_constraints)
+
         node_schema = node.get_schema()
-        schemas_to_check: list[MainSchemaTypes] = [node_schema]
+        include_node_schema = True
+        frozen_node_constraints = _frozen_constraints(node_schema)
+        schemas_to_check: list[MainSchemaTypes] = []
         if node_schema.inherit_from:
             for parent_schema_name in node_schema.inherit_from:
                 parent_schema = self.schema_branch.get(name=parent_schema_name, duplicate=False)
-                if parent_schema.uniqueness_constraints:
-                    schemas_to_check.append(parent_schema)
+                if not parent_schema.uniqueness_constraints:
+                    continue
+                schemas_to_check.append(parent_schema)
+                frozen_parent_constraints = _frozen_constraints(parent_schema)
+                if frozen_node_constraints <= frozen_parent_constraints:
+                    include_node_schema = False
+        if include_node_schema:
+            schemas_to_check.append(node_schema)
         for schema in schemas_to_check:
             await self._check_one_schema(node=node, node_schema=schema, at=at, filters=filters)
