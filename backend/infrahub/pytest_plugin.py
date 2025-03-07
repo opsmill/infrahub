@@ -1,5 +1,3 @@
-from typing import Optional
-
 from infrahub_sdk.client import Config as InfrahubClientConfig
 from infrahub_sdk.client import InfrahubClientSync
 from infrahub_sdk.node import InfrahubNodeSync
@@ -95,7 +93,7 @@ class InfrahubBackendPlugin:
                 check = relationship.peer
                 self.checks[check.origin.value] = check
 
-    def pytest_runtestloop(self, session: Session) -> Optional[object]:  # noqa: ARG002
+    def pytest_runtestloop(self, session: Session) -> object | None:  # noqa: ARG002
         """This function is called when the test loop is being run."""
         self.validator.conclusion.value = "unknown"
         self.validator.state.value = "in_progress"

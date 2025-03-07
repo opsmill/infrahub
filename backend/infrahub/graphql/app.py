@@ -13,7 +13,6 @@ from typing import (
     AsyncGenerator,
     Awaitable,
     Callable,
-    Optional,
     Sequence,
     Union,
     cast,
@@ -95,13 +94,13 @@ class InfrahubGraphQLApp:
     def __init__(
         self,
         permission_checker: GraphQLQueryPermissionChecker,
-        schema: Optional[graphene.Schema] = None,
+        schema: graphene.Schema | None = None,
         *,
-        on_get: Optional[Callable[[Request], Union[Response, Awaitable[Response]]]] = None,
+        on_get: Callable[[Request], Response | Awaitable[Response]] | None = None,
         root_value: RootValue = None,
-        middleware: Optional[Middleware] = None,
+        middleware: Middleware | None = None,
         error_formatter: Callable[[GraphQLError], GraphQLFormattedError] = format_error,
-        execution_context_class: Optional[type[ExecutionContext]] = None,
+        execution_context_class: type[ExecutionContext] | None = None,
     ) -> None:
         self._schema = schema
         self.on_get = on_get
@@ -116,7 +115,7 @@ class InfrahubGraphQLApp:
         db: InfrahubDatabase
         if scope["type"] == "http":
             request = Request(scope=scope, receive=receive)
-            response: Optional[Response] = None
+            response: Response | None = None
             jwt_auth = await jwt_scheme(request)
             api_key = await api_key_scheme(request)
             cookie_auth = await cookie_auth_scheme(request)
@@ -166,7 +165,7 @@ class InfrahubGraphQLApp:
         else:
             raise ValueError(f"Unsupported scope type: ${scope['type']}")
 
-    async def _get_on_get(self, request: Request) -> Optional[Response]:
+    async def _get_on_get(self, request: Request) -> Response | None:
         handler = self.on_get
 
         if handler is None:
@@ -388,8 +387,8 @@ class InfrahubGraphQLApp:
         graphql_params = await prepare_graphql_params(db=db, branch=branch)
 
         errors: list[GraphQLError] = []
-        operation: Optional[OperationDefinitionNode] = None
-        document: Optional[DocumentNode] = None
+        operation: OperationDefinitionNode | None = None
+        document: DocumentNode | None = None
 
         try:
             document = parse(query)
@@ -474,11 +473,11 @@ class InfrahubGraphQLApp:
             await websocket.send_json({"type": GQL_COMPLETE, "id": operation_id})
 
 
-async def _get_operation_from_request(request: Request) -> Union[dict[str, Any], list[Any]]:
+async def _get_operation_from_request(request: Request) -> dict[str, Any] | list[Any]:
     content_type = request.headers.get("Content-Type", "").split(";")[0]
     if content_type == "application/json":
         try:
-            return cast(Union[dict[str, Any], list[Any]], await request.json())
+            return cast(dict[str, Any] | list[Any], await request.json())
         except (TypeError, ValueError) as err:
             raise ValueError("Request body is not a valid JSON") from err
     elif content_type == "multipart/form-data":
@@ -487,7 +486,7 @@ async def _get_operation_from_request(request: Request) -> Union[dict[str, Any],
         raise ValueError("Content-type must be application/json or multipart/form-data")
 
 
-async def _get_operation_from_multipart(request: Request) -> Union[dict[str, Any], list[Any]]:
+async def _get_operation_from_multipart(request: Request) -> dict[str, Any] | list[Any]:
     try:
         request_body = await request.form()
     except Exception as err:
@@ -526,7 +525,7 @@ async def _get_operation_from_multipart(request: Request) -> Union[dict[str, Any
 
 def _inject_file_to_operations(ops_tree: Any, _file: UploadFile, path: Sequence[str]) -> None:
     k = path[0]
-    key: Union[str, int]
+    key: str | int
     try:
         key = int(k)
     except ValueError:

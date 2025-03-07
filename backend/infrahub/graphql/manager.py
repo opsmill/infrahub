@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Union
+from typing import TYPE_CHECKING, Any, Iterable, Union
 
 import graphene
 
@@ -682,7 +682,7 @@ class GraphQLSchemaManager:
                 slug = InputField(StringAttributeCreate, required=True)
                 description = InputField(StringAttributeCreate, required=False)
         """
-        attrs: dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=False)}
+        attrs: dict[str, graphene.String | graphene.InputField] = {"id": graphene.String(required=False)}
 
         for attr in schema.attributes:
             if attr.read_only:
@@ -718,7 +718,7 @@ class GraphQLSchemaManager:
                 slug = InputField(StringAttributeUpdate, required=False)
                 description = InputField(StringAttributeUpdate, required=False)
         """
-        attrs: dict[str, Union[graphene.String, graphene.InputField]] = {
+        attrs: dict[str, graphene.String | graphene.InputField] = {
             "id": graphene.String(required=False),
             "hfid": graphene.List(of_type=graphene.String, required=False),
         }
@@ -759,7 +759,7 @@ class GraphQLSchemaManager:
                 slug = InputField(StringAttributeUpdate, required=True)
                 description = InputField(StringAttributeUpdate, required=False)
         """
-        attrs: dict[str, Union[graphene.String, graphene.InputField]] = {
+        attrs: dict[str, graphene.String | graphene.InputField] = {
             "id": graphene.String(required=False),
             "hfid": graphene.List(of_type=graphene.String, required=False),
         }
@@ -855,7 +855,7 @@ class GraphQLSchemaManager:
 
     def generate_filters(
         self, schema: MainSchemaTypes, top_level: bool = False, include_properties: bool = True
-    ) -> dict[str, Union[graphene.Scalar, graphene.List]]:
+    ) -> dict[str, graphene.Scalar | graphene.List]:
         """Generate the GraphQL filters for a given Schema object.
 
         The generated filter will be different if we are at the top_level (query)
@@ -920,7 +920,7 @@ class GraphQLSchemaManager:
         self,
         schema: MainSchemaTypes,
         node: type[InfrahubObject],
-        relation_property: Optional[type[InfrahubObject]] = None,
+        relation_property: type[InfrahubObject] | None = None,
         populate_cache: bool = False,
     ) -> type[InfrahubObject]:
         """Generate a edged GraphQL object Type from a Infrahub NodeSchema for pagination."""

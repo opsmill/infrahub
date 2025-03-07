@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from graphene import ObjectType
 from graphene.types.objecttype import ObjectTypeOptions
@@ -16,7 +16,7 @@ class InfrahubObject(ObjectType):
     @classmethod
     def __init_subclass_with_meta__(
         cls,
-        schema: Optional[MainSchemaTypes] = None,
+        schema: MainSchemaTypes | None = None,
         interfaces: tuple = (),
         _meta: InfrahubObjectOptions | None = None,
         **options: Any,

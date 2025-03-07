@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Self, Union
+from typing import TYPE_CHECKING, Self
 
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 
@@ -267,21 +267,21 @@ class SchemaEnumRemove(Mutation):
         return {"ok": True}
 
 
-def validate_kind_dropdown(kind: Union[GenericSchema, NodeSchema], attribute: str) -> None:
+def validate_kind_dropdown(kind: GenericSchema | NodeSchema, attribute: str) -> None:
     validate_kind(kind=kind, attribute=attribute)
     matching_attribute = [attrib for attrib in kind.attributes if attrib.name == attribute]
     if matching_attribute and matching_attribute[0].kind != "Dropdown":
         raise ValidationError(f"Attribute {attribute} on {kind.kind} is not a Dropdown")
 
 
-def validate_kind_enum(kind: Union[GenericSchema, NodeSchema], attribute: str) -> None:
+def validate_kind_enum(kind: GenericSchema | NodeSchema, attribute: str) -> None:
     validate_kind(kind=kind, attribute=attribute)
     matching_attribute = [attrib for attrib in kind.attributes if attrib.name == attribute]
     if not matching_attribute[0].enum:
         raise ValidationError(f"Attribute {attribute} on {kind.kind} is not an enum")
 
 
-def validate_kind(kind: Union[GenericSchema, NodeSchema], attribute: str) -> None:
+def validate_kind(kind: GenericSchema | NodeSchema, attribute: str) -> None:
     if kind.namespace in RESTRICTED_NAMESPACES:
         raise ValidationError(f"Operation not allowed for {kind.kind} in restricted namespace {kind.namespace}")
     if attribute not in kind.attribute_names:
