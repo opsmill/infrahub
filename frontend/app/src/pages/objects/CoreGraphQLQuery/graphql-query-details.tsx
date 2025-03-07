@@ -67,7 +67,7 @@ const GraphqlQueryDetails = ({
   const graphqlQuery: CoreGraphQlQuery = graphqlQueries[0].node;
 
   return (
-    <section className="grid grid-cols-2 gap-2 p-2">
+    <section className="grid grid-cols-1 lg:grid-cols-2 gap-2 p-2">
       <GraphqlQueryViewerCard query={graphqlQuery.query.value ?? ""} />
 
       <div className="flex flex-col gap-2">
