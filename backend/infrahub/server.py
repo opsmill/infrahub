@@ -14,7 +14,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from infrahub_sdk.timestamp import TimestampFormatError
+from infrahub_sdk.exceptions import TimestampFormatError
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.trace import Span
 from pydantic import ValidationError
@@ -33,7 +33,7 @@ from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import InfrahubCORSMiddleware
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.nats import NATSCache
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.nats import NATSMessageBus
@@ -70,26 +70,27 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
         if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
         else WorkflowLocalExecution()
     )
-
+    component_type = ComponentType.API_SERVER
     message_bus = config.OVERRIDE.message_bus or (
-        NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
+        await NATSMessageBus.new(component_type=component_type)
+        if config.SETTINGS.broker.driver == config.BrokerDriver.NATS
+        else await RabbitMQMessageBus.new(component_type=component_type)
     )
     cache = config.OVERRIDE.cache or (
-        NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
+        await NATSCache.new() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
     )
-    service = InfrahubServices(
+    service = await InfrahubServices.new(
         cache=cache,
         database=database,
         message_bus=message_bus,
         workflow=workflow,
-        component_type=ComponentType.API_SERVER,
+        component_type=component_type,
     )
-    await service.initialize()
     initialize_lock(service=service)
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
     async with application.state.db.start_session() as db:
         await initialization(db=db)
-    services.prepare(service=service)
+
     application.state.service = service
     application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
     if enable_scheduler:
@@ -97,7 +98,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
 
 
 async def shutdown(application: FastAPI) -> None:
-    await services.service.shutdown()
+    await application.state.service.shutdown()
     await application.state.db.close()
 
 
@@ -118,7 +119,7 @@ app = FastAPI(
 )
 
 
-def server_request_hook(span: Span, scope: dict) -> None:  # pylint: disable=unused-argument
+def server_request_hook(span: Span, scope: dict) -> None:  # noqa: ARG001
     if span and span.is_recording():
         span.set_attribute("worker", WORKER_IDENTITY)
 
@@ -217,5 +218,5 @@ async def documentation() -> RedirectResponse:
 
 
 @app.get("/{rest_of_path:path}", include_in_schema=False)
-async def react_app(req: Request, rest_of_path: str) -> Response:  # pylint: disable=unused-argument
+async def react_app(req: Request, rest_of_path: str) -> Response:  # noqa: ARG001
     return templates.TemplateResponse("index.html", {"request": req})

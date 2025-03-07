@@ -13,7 +13,7 @@ import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { ProposedChangesChecksTab } from "@/entities/proposed-changes/ui/checks-tab";
 import { ProposedChangeDetails } from "@/entities/proposed-changes/ui/proposed-change-details";
-import { useSchema } from "@/entities/schema/hooks/useSchema";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 import { TaskItems } from "@/entities/tasks/ui/task-items";
 import { CoreProposedChange } from "@/shared/api/graphql/generated/graphql";
@@ -21,12 +21,12 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Badge } from "@/shared/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 
 export const PROPOSED_CHANGES_TABS = {
@@ -114,7 +114,7 @@ export function Component() {
   });
 
   if (loading) {
-    return <LoadingScreen className="m-auto h-auto" />;
+    return <LoadingIndicator className="h-full" />;
   }
 
   const proposedChangesData = data?.[PROPOSED_CHANGES_OBJECT]?.edges?.[0]?.node;
@@ -178,7 +178,7 @@ export function Component() {
   }
 
   return (
-    <Content.Card className="min-h-[calc(100%-1rem)] flex flex-col">
+    <Content.Card className="flex flex-col">
       <Content.CardTitle
         title={proposedChangesData.display_label}
         description={

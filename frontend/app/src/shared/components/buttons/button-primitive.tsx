@@ -1,32 +1,31 @@
 import { Spinner } from "@/shared/components/ui/spinner";
-import { focusStyle } from "@/shared/components/ui/style";
+import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { Tooltip, TooltipProps } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { type VariantProps, cva } from "class-variance-authority";
 import { ButtonHTMLAttributes, forwardRef } from "react";
-import { Link, LinkProps } from "react-router-dom";
+import { Link, LinkProps } from "react-router";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed",
+  "inline-flex items-center justify-center whitespace-nowrap rounded text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed border border-transparent",
   {
     variants: {
       variant: {
         primary: "text-white bg-custom-blue-700 shadow enabled:hover:bg-custom-blue-700/90",
         "primary-outline":
-          "text-custom-blue-700 border border-custom-blue-700 bg-custom-white shadow-sm enabled:hover:bg-gray-100",
+          "text-custom-blue-700 border-custom-blue-700 bg-custom-white shadow-sm enabled:hover:bg-gray-100",
         danger: "text-white bg-red-500 shadow enabled:hover:bg-red-500/90",
         warning: "text-white bg-yellow-500 shadow enabled:hover:bg-yellow-500/90",
         active: "text-white bg-green-600 shadow enabled:hover:bg-green-600/90",
-        "active-outline":
-          "bg-custom-white border border-green-600 shadow-sm enabled:hover:bg-gray-100",
-        outline: "border bg-custom-white shadow-sm enabled:hover:bg-gray-100",
-        dark: "border bg-gray-200 shadow-sm enabled:hover:bg-gray-300",
+        "active-outline": "bg-custom-white border-green-600 shadow-sm enabled:hover:bg-gray-100",
+        outline: "border-gray-200 bg-custom-white shadow-sm enabled:hover:bg-gray-100",
+        dark: "bg-gray-200 shadow-sm enabled:hover:bg-gray-300",
         ghost: "hover:bg-gray-100",
       },
       size: {
         default: "h-9 px-4 py-2",
         xs: "h-7 px-2 text-xs",
-        sm: "h-7 px-2 text-sm",
+        sm: "h-8 px-2 text-sm",
         icon: "h-7 w-7 rounded-full",
         square: "h-9 w-9",
       },
@@ -49,7 +48,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         type={type}
-        className={classNames(focusStyle, buttonVariants({ variant, size, className }))}
+        className={classNames(focusVisibleStyle, buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}
       >
@@ -81,7 +80,7 @@ export const LinkButton = forwardRef<HTMLAnchorElement, LinkButtonProps>(
     return (
       <Link
         ref={ref}
-        className={classNames(focusStyle, buttonVariants({ variant, size, className }))}
+        className={classNames(focusVisibleStyle, buttonVariants({ variant, size, className }))}
         {...props}
       />
     );

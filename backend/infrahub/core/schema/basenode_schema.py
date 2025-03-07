@@ -4,6 +4,7 @@ import hashlib
 import keyword
 import os
 from dataclasses import asdict, dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Optional, Union, overload
 
 from infrahub_sdk.utils import compare_lists, intersection
@@ -22,13 +23,11 @@ if TYPE_CHECKING:
     from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
 
-# pylint: disable=redefined-builtin
-
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
-class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-public-methods
+class BaseNodeSchema(GeneratedBaseNodeSchema):
     _exclude_from_hash: list[str] = ["attributes", "relationships"]
     _sort_by: list[str] = ["namespace", "name"]
 
@@ -63,6 +62,17 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):  # pylint: disable=too-many-publi
         """Return a hash of the object.
         Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
         return hash(self.get_hash())
+
+    def to_dict(self) -> dict:
+        data = self.model_dump(
+            exclude_unset=True, exclude_none=True, exclude_defaults=True, exclude={"attributes", "relationships"}
+        )
+        for field_name, value in data.items():
+            if isinstance(value, Enum):
+                data[field_name] = value.value
+        data["attributes"] = [attr.to_dict() for attr in self.attributes]
+        data["relationships"] = [rel.to_dict() for rel in self.relationships]
+        return data
 
     def get_hash(self, display_values: bool = False) -> str:
         """Extend the Hash Calculation to account for attributes and relationships."""

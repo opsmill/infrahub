@@ -1,9 +1,15 @@
 import { AttributeType, FieldSchema } from "@/entities/nodes/getObjectItemDisplayValue";
+import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import { NodeAttribute, NodeCore, NodeObject } from "@/entities/nodes/types";
+import { getSchema } from "@/entities/schema/domain/get-schema";
+import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
+import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 import { LineageSource } from "@/shared/api/graphql/generated/graphql";
 import { ProfileData } from "@/shared/components/form/object-form";
 import {
   AttributeValueFromPool,
   AttributeValueFromProfile,
+  AttributeValueFromTemplate,
   AttributeValueFromUser,
   FormAttributeValue,
 } from "@/shared/components/form/type";
@@ -12,6 +18,7 @@ import * as R from "ramda";
 export type GetFieldDefaultValue = {
   fieldSchema: FieldSchema;
   initialObject?: Record<string, AttributeType>;
+  objectTemplate?: NodeObject | null;
   profiles?: Array<ProfileData>;
   isFilterForm?: boolean;
 };
@@ -19,6 +26,7 @@ export type GetFieldDefaultValue = {
 export const getFieldDefaultValue = ({
   fieldSchema,
   initialObject,
+  objectTemplate,
   profiles = [],
   isFilterForm,
 }: GetFieldDefaultValue): FormAttributeValue => {
@@ -31,6 +39,7 @@ export const getFieldDefaultValue = ({
     getCurrentFieldValue(fieldSchema.name, initialObject) ??
     getDefaultValueFromProfiles(fieldSchema.name, profiles) ??
     getDefaultValueFromPool(fieldSchema.name, initialObject) ??
+    getDefaultValueFromTemplate(fieldSchema.name, objectTemplate) ??
     getDefaultValueFromSchema(fieldSchema) ?? { source: null, value: null }
   );
 };
@@ -38,7 +47,7 @@ export const getFieldDefaultValue = ({
 export const getCurrentFieldValue = (
   fieldName: string,
   objectData?: Record<string, AttributeType>
-): AttributeValueFromUser | null => {
+): AttributeValueFromUser | AttributeValueFromTemplate | null => {
   if (!objectData) return null;
 
   const currentField = objectData[fieldName];
@@ -49,11 +58,42 @@ export const getCurrentFieldValue = (
     return null;
   }
 
-  if (currentField.source?.__typename?.match(/Pool$/g)) {
-    return null;
+  if (currentField.source && "__typename" in currentField.source) {
+    const sourceKind = currentField.source.__typename as string;
+    const { schema: sourceSchema } = getSchema(sourceKind);
+
+    if (!sourceSchema) {
+      return {
+        source: { type: "user" },
+        value: currentField.value,
+      };
+    }
+
+    if (isPoolSchema(sourceSchema)) {
+      return null;
+    }
+
+    if (isTemplateSchema(sourceSchema)) {
+      return {
+        source: {
+          type: "template",
+          label: getNodeLabel(currentField.source as NodeCore),
+          kind: sourceKind,
+          id: currentField.source.id as string,
+        },
+        value: currentField.value,
+      };
+    }
+
+    if (sourceKind.includes("Pool")) {
+      return null;
+    }
   }
 
-  return { source: { type: "user" }, value: currentField.value };
+  return {
+    source: { type: "user" },
+    value: currentField.value,
+  };
 };
 
 const getDefaultValueFromProfiles = (
@@ -114,6 +154,28 @@ const getDefaultValueFromPool = (
       id: pool.id,
       label: pool.display_label || null,
       kind: pool.__typename,
+    },
+    value: currentField.value,
+  };
+};
+
+export const getDefaultValueFromTemplate = (
+  fieldName: string,
+  objectTemplate?: NodeObject | null
+): AttributeValueFromTemplate | null => {
+  if (!objectTemplate) return null;
+
+  const currentField = objectTemplate[fieldName] as NodeAttribute | undefined;
+  if (!currentField) return null;
+
+  if (currentField.value === null) return null;
+
+  return {
+    source: {
+      type: "template",
+      label: getNodeLabel(objectTemplate),
+      kind: objectTemplate.__typename,
+      id: objectTemplate.id,
     },
     value: currentField.value,
   };

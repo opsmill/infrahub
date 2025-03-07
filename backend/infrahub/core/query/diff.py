@@ -63,7 +63,7 @@ class DiffCountChanges(Query):
         self.diff_to = diff_to
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params = {
             "from_time": self.diff_from.to_string(),
             "to_time": self.diff_to.to_string(),
@@ -226,7 +226,7 @@ WITH reduce(
 class DiffNodePathsQuery(DiffCalculationQuery):
     name = "diff_node_paths"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         params_dict = self.get_params()
         self.params.update(params_dict)
         self.params.update(
@@ -365,7 +365,7 @@ CALL {
 class DiffFieldPathsQuery(DiffCalculationQuery):
     name = "diff_field_paths"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         params_dict = self.get_params()
         self.params.update(params_dict)
 
@@ -548,7 +548,7 @@ WHERE intra_branch_update = FALSE
 class DiffPropertyPathsQuery(DiffCalculationQuery):
     name = "diff_property_paths"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         params_dict = self.get_params()
         self.params.update(params_dict)
 

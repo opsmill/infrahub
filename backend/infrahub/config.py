@@ -718,7 +718,7 @@ class Override:
 
 
 @dataclass
-class ConfiguredSettings:  # pylint: disable=too-many-public-methods
+class ConfiguredSettings:
     settings: Optional[Settings] = None
 
     def initialize(self, config_file: Path | str | None = None) -> None:

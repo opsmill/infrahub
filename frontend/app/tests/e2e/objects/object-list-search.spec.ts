@@ -1,9 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-const OBJECT_NAME = "atl1-core1";
-const SEARCH = "atl";
-
 test.describe("Object list search", async () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
@@ -18,15 +15,16 @@ test.describe("Object list search", async () => {
   test("verify the search", async ({ page }) => {
     await page.goto("/objects/InfraDevice");
 
-    await test.step("should access object list and verify the total amount of results", async () => {
-      await expect(page.locator("tbody")).toContainText(OBJECT_NAME);
-      await expect(page.getByTestId("object-items")).toContainText("Showing 1 to 10 of 30 results");
+    await test.step("initial state", async () => {
+      await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
     });
 
     await test.step("should search an object and verify the total amount of results", async () => {
-      await page.getByTestId("object-list-search-bar").fill(SEARCH);
-      await expect(page.locator("tbody")).toContainText(OBJECT_NAME);
-      await expect(page.getByTestId("object-items")).toContainText("Showing 1 to 6 of 6 results");
+      await page.getByPlaceholder("Search Device").fill("core1");
+
+      await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "atl1-edge1" })).not.toBeVisible();
     });
   });
 });

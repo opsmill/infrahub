@@ -1,0 +1,1 @@
+Added activities logs into the node details view.

@@ -1,8 +1,7 @@
 import { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { currentBranchAtom } from "@/entities/branches/stores";
 import { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
-import { RelationshipSchema } from "@/entities/schema/types";
+import { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { components } from "@/shared/api/rest/types.generated";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { store } from "@/shared/stores";
@@ -62,7 +61,7 @@ export const buildRelationshipSchema = (
 describe("getFormFieldsFromSchema", () => {
   it("returns no fields if schema has no attributes nor relationships", () => {
     // GIVEN
-    const schema = {} as IModelSchema;
+    const schema = {} as ModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -76,7 +75,7 @@ describe("getFormFieldsFromSchema", () => {
     const schema = {
       attributes: [buildAttributeSchema({ read_only: true })],
       relationships: [buildRelationshipSchema({ read_only: true })],
-    } as IModelSchema;
+    } as ModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -93,23 +92,23 @@ describe("getFormFieldsFromSchema", () => {
         buildAttributeSchema({ name: "first", order_weight: 1 }),
       ],
       relationships: [buildRelationshipSchema({ name: "second", order_weight: 2 })],
-    } as IModelSchema;
+    } as ModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
 
     // THEN
     expect(fields.length).to.equal(3);
-    expect(fields[0].name).to.equal("first");
-    expect(fields[1].name).to.equal("second");
-    expect(fields[2].name).to.equal("third");
+    expect(fields[0]!.name).to.equal("first");
+    expect(fields[1]!.name).to.equal("second");
+    expect(fields[2]!.name).to.equal("third");
   });
 
   it("should map a text attribute correctly", () => {
     // GIVEN
     const schema = {
       attributes: [buildAttributeSchema({ kind: "Text" })],
-    } as IModelSchema;
+    } as ModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -139,7 +138,7 @@ describe("getFormFieldsFromSchema", () => {
       attributes: [
         buildAttributeSchema({ label: "Password", name: "password", kind: "HashedPassword" }),
       ],
-    } as IModelSchema;
+    } as ModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -167,7 +166,7 @@ describe("getFormFieldsFromSchema", () => {
     // GIVEN
     const schema = {
       attributes: [buildAttributeSchema({ label: "Url", name: "url", kind: "URL" })],
-    } as IModelSchema;
+    } as ModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -195,7 +194,7 @@ describe("getFormFieldsFromSchema", () => {
     // GIVEN
     const schema = {
       attributes: [buildAttributeSchema({ label: "Parameters", name: "parameters", kind: "JSON" })],
-    } as IModelSchema;
+    } as ModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -248,7 +247,7 @@ describe("getFormFieldsFromSchema", () => {
           ],
         }),
       ],
-    } as IModelSchema;
+    } as ModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -299,7 +298,7 @@ describe("getFormFieldsFromSchema", () => {
           optional: false,
         }),
       ],
-    } as IModelSchema;
+    } as ModelSchema;
 
     // WHEN
     const fields = getFormFieldsFromSchema({ schema });
@@ -330,7 +329,7 @@ describe("getFormFieldsFromSchema", () => {
     // GIVEN
     const schema = {
       attributes: [buildAttributeSchema()],
-    } as IModelSchema;
+    } as ModelSchema;
 
     const initialObject: { field1: Partial<AttributeType> } = {
       field1: {
@@ -389,7 +388,7 @@ describe("getFormFieldsFromSchema", () => {
     // GIVEN
     const schema = {
       attributes: [buildAttributeSchema()],
-    } as IModelSchema;
+    } as ModelSchema;
 
     const initialObject: { field1: AttributeType } = {
       field1: {
@@ -448,7 +447,7 @@ describe("getFormFieldsFromSchema", () => {
     // GIVEN
     const schema = {
       attributes: [buildAttributeSchema()],
-    } as IModelSchema;
+    } as ModelSchema;
 
     const initialObject: { field1: Partial<AttributeType> } = {
       field1: {
@@ -495,7 +494,7 @@ describe("getFormFieldsFromSchema", () => {
     // GIVEN
     const schema = {
       attributes: [buildAttributeSchema()],
-    } as IModelSchema;
+    } as ModelSchema;
 
     const initialObject: { field1: Partial<AttributeType> } = {
       field1: {
@@ -542,7 +541,7 @@ describe("getFormFieldsFromSchema", () => {
     // GIVEN
     const schema = {
       attributes: [buildAttributeSchema()],
-    } as IModelSchema;
+    } as ModelSchema;
 
     const initialObject: { field1: Partial<AttributeType> } = {
       field1: {
@@ -602,7 +601,7 @@ describe("getFormFieldsFromSchema", () => {
     // GIVEN
     const schema = {
       attributes: [buildAttributeSchema()],
-    } as IModelSchema;
+    } as ModelSchema;
 
     const initialObject: { field1: Partial<AttributeType> } = {
       field1: {
@@ -662,7 +661,7 @@ describe("getFormFieldsFromSchema", () => {
     // GIVEN
     const schema = {
       attributes: [buildAttributeSchema()],
-    } as IModelSchema;
+    } as ModelSchema;
 
     const initialObject: { field1: Partial<AttributeType> } = {
       field1: {
@@ -722,7 +721,7 @@ describe("getFormFieldsFromSchema", () => {
     // GIVEN
     const schema = {
       attributes: [buildAttributeSchema()],
-    } as IModelSchema;
+    } as ModelSchema;
 
     const initialObject: { field1: Partial<AttributeType> } = {
       field1: {

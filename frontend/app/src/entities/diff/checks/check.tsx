@@ -2,15 +2,15 @@ import { GET_CHECKS } from "@/entities/diff/api/getCheckDetails";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
-import { MoreButton } from "@/shared/components/buttons/more-button";
+import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
-import { PopOver } from "@/shared/components/display/popover";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Skeleton } from "@/shared/components/skeleton";
 import { List } from "@/shared/components/table/list";
 import { Badge } from "@/shared/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
@@ -147,9 +147,15 @@ export const Check = ({ id }: tCheckProps) => {
                 created_at?.value && <DateDisplay date={created_at?.value} />
               )}
 
-              <PopOver buttonComponent={MoreButton}>
-                <List columns={columns} row={row} />
-              </PopOver>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <InfoButton />
+                </PopoverTrigger>
+
+                <PopoverContent>
+                  <List columns={columns} row={row} />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 

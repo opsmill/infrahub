@@ -4,5 +4,5 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 
 class DiffCombinerDependency(DependencyBuilder[DiffCombiner]):
     @classmethod
-    def build(cls, context: DependencyBuilderContext) -> DiffCombiner:
+    def build(cls, context: DependencyBuilderContext) -> DiffCombiner:  # noqa: ARG003
         return DiffCombiner()

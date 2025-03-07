@@ -4,13 +4,13 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { ITreeViewOnLoadDataProps, NodeId } from "react-accessible-treeview";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router";
 
 import { GET_PREFIXES_ONLY } from "@/entities/ipam/api/prefixes";
 import { defaultIpNamespaceAtom } from "@/entities/ipam/common/namespace.state";
 import { constructPathForIpam } from "@/entities/ipam/common/utils";
 import { IPAM_QSP, IPAM_ROUTE, TREE_ROOT_ID } from "@/entities/ipam/constants";
-import { genericsState, schemaState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { Badge } from "@/shared/components/ui/badge";
 import { SearchInput, SearchInputProps } from "@/shared/components/ui/search-input";
 import { debounce } from "@/shared/utils/common";
@@ -125,8 +125,8 @@ export default function IpamTree({ className }: { className?: string }) {
 }
 
 const IpamTreeItem = ({ element }: TreeItemProps) => {
-  const nodes = useAtomValue(schemaState);
-  const generics = useAtomValue(genericsState);
+  const nodes = useAtomValue(nodeSchemasAtom);
+  const generics = useAtomValue(genericSchemasAtom);
 
   const schema = [...nodes, ...generics].find(({ kind }) => kind === element.metadata?.kind);
   const url = constructPathForIpam(`${IPAM_ROUTE.PREFIXES}/${element.id}`);

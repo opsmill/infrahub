@@ -5,7 +5,8 @@ import { Id } from "@/shared/components/ui/id";
 import { classNames } from "@/shared/utils/common";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { Link } from "react-router-dom";
+
+import { Link } from "react-router";
 import { DiffRow } from "../node-diff/utils";
 import { BadgeConflict } from "../ui/diff-badge";
 

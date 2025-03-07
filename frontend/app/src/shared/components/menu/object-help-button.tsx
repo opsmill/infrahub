@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { Icon } from "@iconify-icon/react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 interface ObjectHelpButtonProps extends ButtonProps {
   className?: string;

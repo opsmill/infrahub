@@ -14,4 +14,4 @@ async def update(message: messages.EventSchemaUpdate, service: InfrahubServices)
     msg = messages.RefreshRegistryBranches()
 
     msg.assign_meta(parent=message)
-    await service.send(message=msg)
+    await service.message_bus.send(message=msg)

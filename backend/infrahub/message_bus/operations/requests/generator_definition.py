@@ -1,5 +1,4 @@
-from typing import Optional
-
+from infrahub_sdk.protocols import CoreGeneratorValidator
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
 from prefect.logging import get_run_logger
@@ -9,6 +8,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
+from infrahub.validators.events import send_start_validator
 from infrahub.workflows.utils import add_tags
 
 
@@ -29,7 +29,7 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
 
     await proposed_change.validations.fetch()
 
-    validator = None
+    validator: CoreGeneratorValidator | None = None
     for relationship in proposed_change.validations.peers:
         existing_validator = relationship.peer
         if (
@@ -46,7 +46,7 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
         await validator.save()
     else:
         validator = await service.client.create(
-            kind=InfrahubKind.GENERATORVALIDATOR,
+            kind=CoreGeneratorValidator,
             data={
                 "label": validator_name,
                 "proposed_change": message.proposed_change,
@@ -54,6 +54,9 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
             },
         )
         await validator.save()
+    await send_start_validator(
+        service=service, validator=validator, proposed_change_id=message.proposed_change, context=message.context
+    )
 
     group = await service.client.get(
         kind=InfrahubKind.GENERICGROUP,
@@ -121,14 +124,16 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
             validator_id=validator.id,
             validator_execution_id=validator_execution_id,
             validator_type=InfrahubKind.GENERATORVALIDATOR,
+            context=message.context,
+            proposed_change=message.proposed_change,
         )
     )
     for event in events:
         event.assign_meta(parent=message)
-        await service.send(message=event)
+        await service.message_bus.send(message=event)
 
 
-def _run_generator(instance_id: Optional[str], managed_branch: bool, impacted_instances: list[str]) -> bool:
+def _run_generator(instance_id: str | None, managed_branch: bool, impacted_instances: list[str]) -> bool:
     """Returns a boolean to indicate if a generator instance needs to be executed
     Will return true if:
         * The instance_id wasn't set which could be that it's a new object that doesn't have a previous generator instance

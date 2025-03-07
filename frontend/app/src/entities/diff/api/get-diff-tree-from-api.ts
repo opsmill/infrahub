@@ -1,5 +1,6 @@
 import { DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { PaginationParams } from "@/shared/api/types";
 import { gql } from "@apollo/client";
 
 export const DIFF_TREE_QUERY = gql`
@@ -127,11 +128,9 @@ export const DIFF_TREE_QUERY = gql`
   }
 `;
 
-export type GetDiffTreeFromApiParams = {
+export type GetDiffTreeFromApiParams = PaginationParams & {
   branchName: string;
   filters?: DiffTreeQueryFilters;
-  limit?: number;
-  offset?: number;
 };
 
 export const getDiffTreeFromApi = async ({

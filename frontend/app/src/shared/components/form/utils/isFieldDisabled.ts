@@ -33,7 +33,7 @@ export const isFieldDisabled = ({
     default: {
       if (isReadOnly) return true;
 
-      // Field is available if there is no owner and if is_protected is not set to true
+      // Field is enabled if there is no owner and if is_protected is not set to true
       if (!isProtected || !owner) return false;
 
       // Field is available only if is_protected is set to true and if the owner is the user

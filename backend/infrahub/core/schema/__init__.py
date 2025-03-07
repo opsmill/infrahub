@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Optional, TypeAlias, Union
+from typing import Any, TypeAlias
 
 from infrahub_sdk.utils import deep_merge_dict
 from pydantic import BaseModel, ConfigDict, Field
@@ -19,8 +19,9 @@ from .generic_schema import GenericSchema
 from .node_schema import NodeSchema
 from .profile_schema import ProfileSchema
 from .relationship_schema import RelationshipSchema
+from .template_schema import TemplateSchema
 
-MainSchemaTypes: TypeAlias = Union[NodeSchema, GenericSchema, ProfileSchema]
+MainSchemaTypes: TypeAlias = NodeSchema | GenericSchema | ProfileSchema | TemplateSchema
 
 
 # -----------------------------------------------------
@@ -44,7 +45,7 @@ class SchemaExtension(HashableModel):
 
 class SchemaRoot(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    version: Optional[str] = Field(default=None)
+    version: str | None = Field(default=None)
     generics: list[GenericSchema] = Field(default_factory=list)
     nodes: list[NodeSchema] = Field(default_factory=list)
     extensions: SchemaExtension = SchemaExtension()
@@ -59,7 +60,7 @@ class SchemaRoot(BaseModel):
 
         return True
 
-    def get(self, name: str) -> Union[NodeSchema, GenericSchema]:
+    def get(self, name: str) -> NodeSchema | GenericSchema:
         """Check if a schema exist locally as a node or as a generic."""
 
         for item in self.nodes + self.generics:
@@ -107,6 +108,7 @@ __all__ = [
     "SchemaAttributePath",
     "SchemaAttributePathValue",
     "SchemaRoot",
+    "TemplateSchema",
     "core_models",
     "internal_schema",
 ]

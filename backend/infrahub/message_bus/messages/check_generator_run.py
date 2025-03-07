@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import Field
 
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
@@ -10,7 +8,7 @@ class CheckGeneratorRun(InfrahubMessage):
     """A check that runs a generator."""
 
     generator_definition: ProposedChangeGeneratorDefinition = Field(..., description="The Generator definition")
-    generator_instance: Optional[str] = Field(
+    generator_instance: str | None = Field(
         default=None, description="The id of the generator instance if it previously existed"
     )
     commit: str = Field(..., description="The commit to target")

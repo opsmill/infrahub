@@ -19,8 +19,6 @@ from .shared import (
     TestSchemaLifecycleBase,
 )
 
-# pylint: disable=unused-argument
-
 
 class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")

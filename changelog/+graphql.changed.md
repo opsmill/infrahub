@@ -1,0 +1,1 @@
+Improved typing of GraphQL schema by defining list as non-nullable and ensure that top level item are mandatory.

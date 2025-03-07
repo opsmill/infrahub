@@ -1,23 +1,27 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Any, Optional, Sequence, TypeVar, Union, overload
 
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core import registry
+from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
+    OBJECT_TEMPLATE_NAME_ATTR,
+    OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     BranchSupportType,
     ComputedAttributeKind,
     InfrahubKind,
     RelationshipCardinality,
+    RelationshipKind,
 )
 from infrahub.core.constants.schema import SchemaElementPathType
-from infrahub.core.protocols import CoreNumberPool
+from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeGetListQuery
-from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema
+from infrahub.core.schema import AttributeSchema, NodeSchema, ProfileSchema, RelationshipSchema, TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.support.macro import MacroDefinition
@@ -49,21 +53,17 @@ SchemaProtocol = TypeVar("SchemaProtocol")
 #  -
 # ---------------------------------------------------------------------------------------
 
-# pylint: disable=redefined-builtin,too-many-branches
-
 
 class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
-        cls, _meta=None, default_filter=None, **options
-    ) -> None:
+    def __init_subclass_with_meta__(cls, _meta=None, default_filter=None, **options) -> None:
         if not _meta:
             _meta = BaseNodeOptions(cls)
 
         _meta.default_filter = default_filter
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
-    def get_schema(self) -> Union[NodeSchema, ProfileSchema]:
+    def get_schema(self) -> Union[NodeSchema, ProfileSchema, TemplateSchema]:
         return self._schema
 
     def get_kind(self) -> str:
@@ -137,7 +137,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 labels.append(InfrahubKind.NODE)
             return labels
 
-        if isinstance(self._schema, ProfileSchema):
+        if isinstance(self._schema, ProfileSchema | TemplateSchema):
             labels = [self.get_kind()] + self._schema.inherit_from
             return labels
 
@@ -160,8 +160,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return f"{self.get_kind()}(ID: {str(self.id)})"
 
-    def __init__(self, schema: Union[NodeSchema, ProfileSchema], branch: Branch, at: Timestamp):
-        self._schema: Union[NodeSchema, ProfileSchema] = schema
+    def __init__(self, schema: Union[NodeSchema, ProfileSchema, TemplateSchema], branch: Branch, at: Timestamp):
+        self._schema: Union[NodeSchema, ProfileSchema, TemplateSchema] = schema
         self._branch: Branch = branch
         self._at: Timestamp = at
         self._existing: bool = False
@@ -178,12 +178,20 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Lists of attributes and relationships names
         self._attributes: list[str] = []
         self._relationships: list[str] = []
+        self._node_changelog: NodeChangelog | None = None
+
+    @property
+    def node_changelog(self) -> NodeChangelog:
+        if self._node_changelog:
+            return self._node_changelog
+
+        raise InitializationError("The node has not been saved so no changelog exists")
 
     @overload
     @classmethod
     async def init(
         cls,
-        schema: Union[NodeSchema, ProfileSchema, str],
+        schema: Union[NodeSchema, ProfileSchema, TemplateSchema, str],
         db: InfrahubDatabase,
         branch: Optional[Union[Branch, str]] = ...,
         at: Optional[Union[Timestamp, str]] = ...,
@@ -202,7 +210,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
     async def init(
         cls,
-        schema: Union[NodeSchema, ProfileSchema, str, type[SchemaProtocol]],
+        schema: Union[NodeSchema, ProfileSchema, TemplateSchema, str, type[SchemaProtocol]],
         db: InfrahubDatabase,
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
@@ -211,15 +219,17 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         branch = await registry.get_branch(branch=branch, db=db)
 
-        if isinstance(schema, (NodeSchema, ProfileSchema)):
+        if isinstance(schema, NodeSchema | ProfileSchema | TemplateSchema):
             attrs["schema"] = schema
         elif isinstance(schema, str):
             # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
             attrs["schema"] = db.schema.get(name=schema, branch=branch)
-        elif hasattr(schema, "_is_runtime_protocol") and getattr(schema, "_is_runtime_protocol"):
+        elif hasattr(schema, "_is_runtime_protocol") and schema._is_runtime_protocol:
             attrs["schema"] = db.schema.get(name=schema.__name__, branch=branch)
         else:
-            raise ValueError(f"Invalid schema provided {type(schema)}, expected NodeSchema or ProfileSchema")
+            raise ValueError(
+                f"Invalid schema provided {type(schema)}, expected NodeSchema, ProfileSchema or TemplateSchema"
+            )
 
         attrs["branch"] = branch
         attrs["at"] = Timestamp(at)
@@ -268,6 +278,56 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 )
             )
 
+    async def handle_object_template(self, fields: dict, db: InfrahubDatabase, errors: list) -> None:
+        """Fill the `fields` parameters with values from an object template if one is in use."""
+        object_template_field = fields.get(OBJECT_TEMPLATE_RELATIONSHIP_NAME)
+        if not object_template_field:
+            return
+
+        try:
+            template: CoreObjectTemplate = await registry.manager.find_object(
+                db=db,
+                kind=self._schema.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME).peer,
+                id=object_template_field.get("id"),
+                hfid=object_template_field.get("hfid"),
+                branch=self.get_branch_based_on_support_type(),
+            )
+        except NodeNotFoundError:
+            errors.append(
+                ValidationError(
+                    {
+                        f"{OBJECT_TEMPLATE_RELATIONSHIP_NAME}": (
+                            "Unable to find the object template in the database "
+                            f"'{object_template_field.get('id') or object_template_field.get('hfid')}'"
+                        )
+                    }
+                )
+            )
+            return
+
+        # Handle attributes, copy values from template
+        # Relationships handling in performed in GraphQL mutation to create nodes for relationships
+        for attribute_name in template._attributes:
+            if attribute_name in list(fields) + [OBJECT_TEMPLATE_NAME_ATTR]:
+                continue
+            fields[attribute_name] = {"value": getattr(template, attribute_name).value, "source": template.id}
+
+        for relationship_name in template._relationships:
+            relationship_schema = template._schema.get_relationship(name=relationship_name)
+            if (
+                relationship_name in list(fields)
+                or relationship_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
+                or relationship_name == OBJECT_TEMPLATE_RELATIONSHIP_NAME
+            ):
+                continue
+
+            relationship: RelationshipManager = getattr(template, relationship_name)
+            if relationship_schema.cardinality == RelationshipCardinality.ONE:
+                if relationship_peer := await relationship.get_peer(db=db):
+                    fields[relationship_name] = {"id": relationship_peer.id}
+            elif relationship_peers := await relationship.get_peers(db=db):
+                fields[relationship_name] = [{"id": peer_id} for peer_id in relationship_peers]
+
     async def _process_fields(self, fields: dict, db: InfrahubDatabase) -> None:
         errors = []
 
@@ -285,6 +345,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         for field_name in fields.keys():
             if field_name not in self._schema.valid_input_names:
                 errors.append(ValidationError({field_name: f"{field_name} is not a valid input for {self.get_kind()}"}))
+
+        # Backfill fields with the ones from the template if there's one
+        await self.handle_object_template(fields=fields, db=db, errors=errors)
 
         # If the object is new, we need to ensure that all mandatory attributes and relationships have been provided
         if not self._existing:
@@ -447,7 +510,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     async def _generate_relationship_default(
         self,
-        name: str,  # pylint: disable=unused-argument
+        name: str,  # noqa: ARG002
         schema: RelationshipSchema,
         data: Any,
         db: InfrahubDatabase,
@@ -468,7 +531,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         name: str,
         schema: AttributeSchema,
         data: Any,
-        db: InfrahubDatabase,  # pylint: disable=unused-argument
+        db: InfrahubDatabase,  # noqa: ARG002
     ) -> BaseAttribute:
         attr_class = ATTRIBUTE_TYPES[schema.kind].get_infrahub_class()
         attr = attr_class(
@@ -483,10 +546,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         )
         return attr
 
-    async def process_label(self, db: Optional[InfrahubDatabase] = None) -> None:  # pylint: disable=unused-argument
+    async def process_label(self, db: Optional[InfrahubDatabase] = None) -> None:  # noqa: ARG002
         # If there label and name are both defined for this node
         #  if label is not define, we'll automatically populate it with a human friendy vesion of name
-        # pylint: disable=no-member
         if not self._existing and hasattr(self, "label") and hasattr(self, "name"):
             if self.label.value is None and self.name.value:
                 self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
@@ -533,7 +595,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         await self._process_fields(db=db, fields=kwargs)
         return self
 
-    async def _create(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
+    async def _create(self, db: InfrahubDatabase, at: Timestamp | None = None) -> NodeChangelog:
         create_at = Timestamp(at)
 
         query = await NodeCreateAllQuery.init(db=db, node=self, at=create_at)
@@ -545,44 +607,63 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._existing = True
 
         new_ids = query.get_ids()
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
         # Go over the list of Attribute and assign the new IDs one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
             attr.id, attr.db_id = new_ids[name]
             attr.at = create_at
+            node_changelog.create_attribute(attribute=attr)
 
         # Go over the list of relationships and assign the new IDs one by one
         for name in self._relationships:
             relm: RelationshipManager = getattr(self, name)
             for rel in relm._relationships:
                 identifier = f"{rel.schema.identifier}::{rel.peer_id}"
+
                 rel.id, rel.db_id = new_ids[identifier]
+
+                node_changelog.create_relationship(relationship=rel)
+
+        node_changelog.display_label = await self.render_display_label(db=db)
+        return node_changelog
 
     async def _update(
         self, db: InfrahubDatabase, at: Optional[Timestamp] = None, fields: list[str] | None = None
-    ) -> None:
+    ) -> NodeChangelog:
         """Update the node in the database if needed."""
 
         update_at = Timestamp(at)
+        node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
-            if fields and name in fields:
+            if (fields and name in fields) or not fields:
                 attr: BaseAttribute = getattr(self, name)
-                await attr.save(at=update_at, db=db)
-            else:
-                attr: BaseAttribute = getattr(self, name)
-                await attr.save(at=update_at, db=db)
+                updated_attribute = await attr.save(at=update_at, db=db)
+                if updated_attribute:
+                    node_changelog.add_attribute(attribute=updated_attribute)
 
         # Go over the list of relationships and update them one by one
+        processed_relationships: list[str] = []
         for name in self._relationships:
-            if fields and name in fields:
+            if (fields and name in fields) or not fields:
+                processed_relationships.append(name)
                 rel: RelationshipManager = getattr(self, name)
-                await rel.save(at=update_at, db=db)
-            else:
-                attr: BaseAttribute = getattr(self, name)
-                await attr.save(at=update_at, db=db)
+                updated_relationship = await rel.save(at=update_at, db=db)
+                node_changelog.add_relationship(relationship_changelog=updated_relationship)
+
+        if len(processed_relationships) != len(self._relationships):
+            # Analyze if the node has a parent and add it to the changelog if missing
+            if parent_relationship := self._get_parent_relationship_name():
+                if parent_relationship not in processed_relationships:
+                    rel: RelationshipManager = getattr(self, parent_relationship)
+                    if parent := await rel.get_parent(db=db):
+                        node_changelog.add_parent_from_relationship(parent=parent)
+
+        node_changelog.display_label = await self.render_display_label(db=db)
+        return node_changelog
 
     async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None, fields: list[str] | None = None) -> Self:
         """Create or Update the Node in the database."""
@@ -590,10 +671,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         save_at = Timestamp(at)
 
         if self._existing:
-            await self._update(at=save_at, db=db, fields=fields)
+            self._node_changelog = await self._update(at=save_at, db=db, fields=fields)
             return self
 
-        await self._create(at=save_at, db=db)
+        self._node_changelog = await self._create(at=save_at, db=db)
         return self
 
     async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> None:
@@ -601,10 +682,15 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         delete_at = Timestamp(at)
 
+        node_changelog = NodeChangelog(
+            node_id=self.get_id(), node_kind=self.get_kind(), display_label=await self.render_display_label(db=db)
+        )
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
-            await attr.delete(at=delete_at, db=db)
+            deleted_attribute = await attr.delete(at=delete_at, db=db)
+            if deleted_attribute:
+                node_changelog.add_attribute(attribute=deleted_attribute)
 
         branch = self.get_branch_based_on_support_type()
 
@@ -612,6 +698,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             db=db, node_id=self.get_id(), branch=branch, at=delete_at, branch_agnostic=branch.name == GLOBAL_BRANCH_NAME
         )
         await delete_query.execute(db=db)
+
+        deleted_relationships_changelogs = delete_query.get_deleted_relationships_changelog(self._schema)
+        for relationship_changelog in deleted_relationships_changelogs:
+            node_changelog.add_relationship(relationship_changelog=relationship_changelog)
 
         # Update the relationship to the branch itself
         query = await NodeGetListQuery.init(
@@ -630,6 +720,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at)
         await query.execute(db=db)
+        self._node_changelog = node_changelog
 
     async def to_graphql(
         self,
@@ -741,7 +832,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return changed
 
-    async def render_display_label(self, db: Optional[InfrahubDatabase] = None) -> str:  # pylint: disable=unused-argument
+    async def render_display_label(self, db: Optional[InfrahubDatabase] = None) -> str:  # noqa: ARG002
         if not self._schema.display_labels:
             return repr(self)
 
@@ -767,3 +858,26 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if not display_label.strip():
             return repr(self)
         return display_label.strip()
+
+    def _get_parent_relationship_name(self) -> str | None:
+        """Return the name of the parent relationship is one is present"""
+        for relationship in self._schema.relationships:
+            if relationship.kind == RelationshipKind.PARENT:
+                return relationship.name
+
+    async def get_object_template(self, db: InfrahubDatabase) -> Node | None:
+        object_template: RelationshipManager = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
+        return await object_template.get_peer(db=db) if object_template is not None else None
+
+    def get_relationships(
+        self, kind: RelationshipKind, exclude: Sequence[str] | None = None
+    ) -> list[RelationshipSchema]:
+        """Return relationships of a given kind with the possiblity to exclude some of them by name."""
+        if exclude is None:
+            exclude = []
+
+        return [
+            relationship
+            for relationship in self.get_schema().relationships
+            if relationship.name not in exclude and relationship.kind == kind
+        ]

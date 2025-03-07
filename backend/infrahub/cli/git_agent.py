@@ -36,7 +36,7 @@ log = get_logger()
 shutdown_event = asyncio.Event()
 
 
-def signal_handler(*args: Any, **kwargs: Any) -> None:  # pylint: disable=unused-argument
+def signal_handler(*args: Any, **kwargs: Any) -> None:  # noqa: ARG001
     shutdown_event.set()
 
 
@@ -99,7 +99,7 @@ async def start(
         await client.branch.all()
     except SdkError as exc:
         log.error(f"Error in communication with Infrahub: {exc.message}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     # Initialize trace
     if config.SETTINGS.trace.enable:
@@ -119,22 +119,24 @@ async def start(
         else WorkflowLocalExecution()
     )
 
+    component_type = ComponentType.GIT_AGENT
     message_bus = config.OVERRIDE.message_bus or (
-        NATSMessageBus() if config.SETTINGS.broker.driver == config.BrokerDriver.NATS else RabbitMQMessageBus()
+        await NATSMessageBus.new(component_type=component_type)
+        if config.SETTINGS.broker.driver == config.BrokerDriver.NATS
+        else await RabbitMQMessageBus.new(component_type=component_type)
     )
     cache = config.OVERRIDE.cache or (
-        NATSCache() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
+        await NATSCache.new() if config.SETTINGS.cache.driver == config.CacheDriver.NATS else RedisCache()
     )
 
-    service = InfrahubServices(
+    service = await InfrahubServices.new(
         cache=cache,
         client=client,
         database=database,
         workflow=workflow,
         message_bus=message_bus,
-        component_type=ComponentType.GIT_AGENT,
+        component_type=component_type,
     )
-    await service.initialize()
 
     # Initialize the lock
     initialize_lock(service=service)

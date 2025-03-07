@@ -1,14 +1,13 @@
 import { getDiffTreeFromApi } from "@/entities/diff/api/get-diff-tree-from-api";
 import { DiffTree, DiffTreeQueryFilters } from "@/shared/api/graphql/generated/graphql";
+import { PaginationParams } from "@/shared/api/types";
 import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 
 export const DIFF_TREE_PER_PAGE = 300;
 
-export type GetDiffTreeParams = {
+export type GetDiffTreeParams = PaginationParams & {
   branchName: string;
   filters?: DiffTreeQueryFilters;
-  limit?: number;
-  offset: number;
 };
 
 export type GetDiffTree = (params: GetDiffTreeParams) => Promise<DiffTree>;

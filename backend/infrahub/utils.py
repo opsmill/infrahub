@@ -36,7 +36,7 @@ def format_label(slug: str) -> str:
 class MetaEnum(EnumMeta):
     def __contains__(cls, item: Any) -> bool:
         try:
-            cls(item)  # pylint: disable=no-value-for-parameter
+            cls(item)
         except ValueError:
             return False
         return True

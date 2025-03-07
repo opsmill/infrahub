@@ -1,4 +1,5 @@
 from pathlib import Path
+from uuid import uuid4
 
 import anyio
 import pytest
@@ -9,7 +10,9 @@ from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx._httpx_mock import HTTPXMock
 
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
@@ -28,6 +31,7 @@ from infrahub.git.integrator import (
     CheckDefinitionInformation,
 )
 from infrahub.git.worktree import Worktree
+from infrahub.services import InfrahubServices
 from infrahub.utils import find_first_file_in_directory
 from tests.conftest import TestHelper
 from tests.helpers.file_repo import MultipleStagesFileRepo
@@ -46,6 +50,7 @@ async def test_directories_props(git_upstream_repo_01: dict[str, str | Path], gi
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     assert repo.directory_root == git_repos_dir / str(repo.id)
@@ -60,6 +65,7 @@ async def test_new_empty_dir(git_upstream_repo_01: dict[str, str | Path], git_re
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     # Check if all the directories are present
@@ -79,6 +85,7 @@ async def test_new_existing_directory(git_upstream_repo_01: dict[str, str | Path
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     # Check if all the directories are present
@@ -97,6 +104,7 @@ async def test_new_existing_file(git_upstream_repo_01: dict[str, str | Path], gi
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     # Check if all the directories are present
@@ -108,7 +116,12 @@ async def test_new_existing_file(git_upstream_repo_01: dict[str, str | Path], gi
 
 async def test_new_wrong_location(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path, tmp_path: Path):
     with pytest.raises(RepositoryError) as exc:
-        await InfrahubRepository.new(id=UUIDT.new(), name=git_upstream_repo_01["name"], location=str(tmp_path))
+        await InfrahubRepository.new(
+            id=UUIDT.new(),
+            name=git_upstream_repo_01["name"],
+            location=str(tmp_path),
+            service=await InfrahubServices.new(),
+        )
 
     assert f"fatal: repository '{tmp_path}' does not exist" in str(exc.value)
 
@@ -120,13 +133,14 @@ async def test_new_wrong_branch(git_upstream_repo_01: dict[str, str | Path], git
             name=git_upstream_repo_01["name"],
             location=str(git_upstream_repo_01["path"]),
             default_branch_name="notvalid",
+            service=await InfrahubServices.new(),
         )
 
     assert "isn't a valid branch" in str(exc.value)
 
 
 async def test_init_existing_repository(git_repo_01: InfrahubRepository):
-    repo = await InfrahubRepository.init(id=git_repo_01.id, name=git_repo_01.name)
+    repo = await InfrahubRepository.init(id=git_repo_01.id, name=git_repo_01.name, service=await InfrahubServices.new())
 
     # Check if all the directories are present
     assert repo.has_origin is True
@@ -229,7 +243,7 @@ async def test_get_branches_from_local(git_repo_01: InfrahubRepository):
 
     local_branches = repo.get_branches_from_local()
     assert isinstance(local_branches, dict)
-    assert sorted(list(local_branches.keys())) == ["main"]
+    assert sorted(local_branches.keys()) == ["main"]
 
 
 async def test_get_branches_from_remote(git_repo_01: InfrahubRepository):
@@ -237,7 +251,7 @@ async def test_get_branches_from_remote(git_repo_01: InfrahubRepository):
 
     remote_branches = repo.get_branches_from_remote()
     assert isinstance(remote_branches, dict)
-    assert sorted(list(remote_branches.keys())) == ["branch01", "branch02", "clean-branch", "main"]
+    assert sorted(remote_branches.keys()) == ["branch01", "branch02", "clean-branch", "main"]
 
 
 async def test_get_branches_from_graph(
@@ -446,7 +460,9 @@ async def test_sync_new_branch(
 
     await repo.fetch()
     # Mock update_commit_value query
-    commit = repo.get_commit_value(branch_name="branch01", remote=True)
+    branch = Branch(name="branch01", uuid=uuid4())
+    registry.branch[branch.name] = branch
+    commit = repo.get_commit_value(branch_name=branch.name, remote=True)
 
     commit_response = {"data": {"repository_update": {"ok": True, "object": {"commit": {"value": str(commit)}}}}}
     httpx_mock.add_response(
@@ -463,12 +479,15 @@ async def test_sync_new_branch(
     await repo.sync()
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name="branch01") == "92700512b5b16c0144f7fd2869669273577f1bd8"
+    assert repo.get_commit_value(branch_name=branch.name) == "92700512b5b16c0144f7fd2869669273577f1bd8"
     assert len(worktrees) == 4
 
 
 async def test_sync_updated_branch(prefect_test_fixture, git_repo_04: InfrahubRepository):
     repo = git_repo_04
+
+    branch = Branch(name="branch01", uuid=uuid4())
+    registry.branch[branch.name] = branch
 
     # Mock update_commit_value query
     commit = repo.get_commit_value(branch_name="branch01", remote=True)
@@ -939,7 +958,7 @@ async def test_create_python_check_definition(
     repo = git_repo_03_w_client
 
     module = helper.import_module_in_fixtures(module="checks/check01")
-    check_class = getattr(module, "Check01")
+    check_class = module.Check01
 
     gql_schema = await repo.client.schema.get(kind=InfrahubKind.GRAPHQLQUERY)
 
@@ -970,7 +989,7 @@ async def test_compare_python_check(
     repo = git_repo_03_w_client
 
     module = helper.import_module_in_fixtures(module="checks/check01")
-    check_class = getattr(module, "Check01")
+    check_class = module.Check01
 
     gql_schema = await repo.client.schema.get(kind=InfrahubKind.GRAPHQLQUERY)
     check_schema = await repo.client.schema.get(kind=InfrahubKind.CHECKDEFINITION)

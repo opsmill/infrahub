@@ -1,12 +1,12 @@
 import { BUTTON_TYPES, Button } from "@/shared/components/buttons/button";
 import { Dialog, Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
-import React, { Fragment, ReactNode, useRef } from "react";
+import { Fragment, ReactNode, useRef } from "react";
 
 interface iProps {
   open: boolean;
   isLoading?: boolean;
-  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setOpen: (b: boolean) => void;
   title: string;
   description: string | ReactNode;
   onDelete: () => void;

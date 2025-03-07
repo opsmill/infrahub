@@ -80,14 +80,16 @@ class UserTask:
 
     @classmethod
     def from_graphql_context(
-        cls, title: str, context: GraphqlContext, logger: Optional[Union[BoundLogger, InfrahubLogger]] = None
+        cls, title: str, graphql_context: GraphqlContext, logger: Optional[Union[BoundLogger, InfrahubLogger]] = None
     ) -> Self:
-        if not context.db or not context.account_session:
+        if not graphql_context.db or not graphql_context.account_session:
             raise ValueError("db and account_session must be provided to initialize a GraphQLTaskReport")
 
-        if not logger and context.service and context.service.log:
-            logger = context.service.log
-        return cls(title=title, account_id=context.account_session.account_id, db=context.db, logger=logger)
+        if not logger and graphql_context.service and graphql_context.service.log:
+            logger = graphql_context.service.log
+        return cls(
+            title=title, account_id=graphql_context.account_session.account_id, db=graphql_context.db, logger=logger
+        )
 
     async def __aenter__(self) -> Self:
         await self.create_task()

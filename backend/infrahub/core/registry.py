@@ -23,8 +23,6 @@ if TYPE_CHECKING:
     from infrahub.storage import InfrahubObjectStorage
     from infrahub.types import InfrahubDataType
 
-# pylint: disable=too-many-public-methods
-
 
 @dataclass
 class Registry:

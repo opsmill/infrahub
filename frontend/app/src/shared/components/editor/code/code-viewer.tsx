@@ -1,11 +1,11 @@
 import { classNames } from "@/shared/utils/common";
-import { Light as SyntaxHighlighter, SyntaxHighlighterProps } from "react-syntax-highlighter";
-import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { Prism as SyntaxHighlighter, SyntaxHighlighterProps } from "react-syntax-highlighter";
+import { darcula } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 export const CodeViewer = ({ className, children, ...props }: SyntaxHighlighterProps) => {
   return (
     <div className={classNames("rounded-md overflow-hidden text-sm", className)}>
-      <SyntaxHighlighter {...props} showLineNumbers style={atomOneDark}>
+      <SyntaxHighlighter {...props} showLineNumbers style={darcula}>
         {children}
       </SyntaxHighlighter>
     </div>

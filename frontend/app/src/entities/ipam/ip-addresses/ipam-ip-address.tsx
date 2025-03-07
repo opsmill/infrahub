@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import IpAddressSummary from "./ip-address-summary";
 import IpamIPAddressesList from "./ipam-ip-address-list";
 

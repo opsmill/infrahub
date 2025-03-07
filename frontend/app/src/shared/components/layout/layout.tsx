@@ -1,17 +1,20 @@
 import { QSP } from "@/config/qsp";
 import { branchesState } from "@/entities/branches/stores";
-import { SchemaContext, withSchemaContext } from "@/entities/schema/decorators/withSchemaContext";
+import {
+  SchemaContext,
+  withSchemaContext,
+} from "@/entities/schema/ui/decorators/withSchemaContext";
 import Sidebar from "@/shared/components/layout/sidebar";
 import { useAtomValue } from "jotai/index";
-import { useContext, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { use, useEffect } from "react";
+import { Outlet } from "react-router";
 import { StringParam, useQueryParam } from "use-query-params";
 import Header from "./header";
 
 function Layout() {
   const branches = useAtomValue(branchesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
-  const { checkSchemaUpdate } = useContext(SchemaContext);
+  const { checkSchemaUpdate } = use(SchemaContext);
 
   useEffect(() => {
     if (branches.length === 0) return;
@@ -19,15 +22,15 @@ function Layout() {
   }, [branches.length, branchInQueryString]);
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-stone-100 text-stone-800">
-      <Header />
-
-      <div className="flex items-stretch h-[calc(100vh-57px)]">
+    <div className="h-screen w-screen  text-stone-800 p-px bg-stone-100">
+      <div className="h-full w-full flex gap-px">
         <Sidebar />
 
-        <main className="flex-grow overflow-auto">
+        <div className="flex flex-col gap-px h-full grow overflow-hidden">
+          <Header />
+
           <Outlet />
-        </main>
+        </div>
       </div>
     </div>
   );

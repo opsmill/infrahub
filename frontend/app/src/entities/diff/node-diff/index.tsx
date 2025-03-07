@@ -12,7 +12,7 @@ import DiffTree from "@/entities/diff/ui/diff-tree";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { useAtomValue } from "jotai";
 import { createContext, useEffect } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -47,7 +47,9 @@ export const NodeDiff = ({ branchName, filters }: NodeDiffProps) => {
     }
   }, [hasNextPage, isFetchingNextPage]);
 
-  if (isPending) return <LoadingScreen message="Loading diff..." />;
+  if (isPending) {
+    return <LoadingIndicator className="p-4" />;
+  }
 
   if (error) {
     return <ErrorScreen message={error?.message} className="max-w-lg m-auto" />;

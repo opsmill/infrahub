@@ -4,5 +4,5 @@ from infrahub.dependencies.interface import DependencyBuilder, DependencyBuilder
 
 class DiffParentNodeAdderDependency(DependencyBuilder[DiffParentNodeAdder]):
     @classmethod
-    def build(cls, context: DependencyBuilderContext) -> DiffParentNodeAdder:
+    def build(cls, context: DependencyBuilderContext) -> DiffParentNodeAdder:  # noqa: ARG003
         return DiffParentNodeAdder()

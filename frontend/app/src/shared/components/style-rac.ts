@@ -1,0 +1,2 @@
+export const focusVisibleStyle =
+  "transition-colors data-[focus-visible]:outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-custom-blue-600/25 data-[focus-visible]:border-custom-blue-600";

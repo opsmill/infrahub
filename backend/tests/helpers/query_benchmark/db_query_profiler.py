@@ -2,7 +2,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Optional, Self
+from typing import Any, Self
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -10,8 +10,6 @@ from neo4j import Record
 
 from infrahub.config import SETTINGS
 from infrahub.core.query import QueryType
-
-# pylint: skip-file
 from infrahub.database import InfrahubDatabase
 from infrahub.database.constants import Neo4jRuntime
 from infrahub.log import get_logger
@@ -35,8 +33,8 @@ class QueryMeasurement:
     duration: float
     query_name: str
     start_time: float
-    nb_elements_loaded: Optional[int] = None
-    memory: Optional[float] = None
+    nb_elements_loaded: int | None = None
+    memory: float | None = None
 
 
 class GraphProfileGenerator:
@@ -91,7 +89,7 @@ class InfrahubDatabaseProfiler(InfrahubDatabase):
         self,
         profiling_enabled: bool = False,
         profile_memory: bool = False,
-        measurements: Optional[list[QueryMeasurement]] = None,
+        measurements: list[QueryMeasurement] | None = None,
         nb_elements_loaded: int = 0,
         **kwargs: Any,
     ) -> None:  # todo args in constructor only because of __class__ pattern
@@ -168,7 +166,7 @@ class InfrahubDatabaseProfiler(InfrahubDatabase):
         self.profile_memory = self.profile_memory
 
     def __exit__(
-        self, exc_type: Optional[type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None:
         self.profiling_enabled = False
         self.profile_memory = False

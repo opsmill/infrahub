@@ -6,19 +6,19 @@ import {
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { runCheck } from "@/entities/diff/api/runCheck";
 import { getValidatorsStats } from "@/entities/proposed-changes/ui/checks";
-import { genericsState } from "@/entities/schema/stores/schema.atom";
+import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { schemaKindLabelState } from "@/entities/schema/stores/schemaKindLabel.atom";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { Retry } from "@/shared/components/buttons/retry";
 import { PieChart } from "@/shared/components/display/pie-chart";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { toast } from "react-toastify";
 
 type tChecksSummaryProps = {
@@ -32,7 +32,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
 
   const { proposedChangeId } = useParams();
   const schemaKindLabel = useAtomValue(schemaKindLabelState);
-  const schemaList = useAtomValue(genericsState);
+  const schemaList = useAtomValue(genericSchemasAtom);
   const { isAuthenticated } = useAuth();
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_VALIDATOR_OBJECT);
@@ -95,7 +95,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
         </div>
 
         <div className="flex">
-          {!Object.entries(validatorsCount).length && <LoadingScreen hideText />}
+          {!Object.entries(validatorsCount).length && <LoadingIndicator />}
 
           {Object.entries(validatorsCount).map(([kind, data]: [string, any]) => (
             <div key={kind} className="flex items-center justify-center gap-2 p-2">

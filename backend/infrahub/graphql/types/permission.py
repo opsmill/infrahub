@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from graphene import Field, Int, List, ObjectType, String
+from graphene import Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.graphql.types.enums import BranchRelativePermissionDecision
 
@@ -39,4 +39,4 @@ class PaginatedObjectPermission(ObjectType):
         required=True,
         description="The number of permissions applicable, will be 1 for normal nodes or possibly more for generics",
     )
-    edges = Field(List(of_type=ObjectPermissionNode, required=True), required=True)
+    edges = Field(List(of_type=NonNull(ObjectPermissionNode), required=True), required=True)

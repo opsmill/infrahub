@@ -13,6 +13,8 @@ from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.exceptions import ValidationError
+from infrahub.graphql.context import apply_external_context
+from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_log_data, get_logger
 from infrahub.worker import WORKER_IDENTITY
 
@@ -21,6 +23,7 @@ from ..types import DropdownFields
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.services import InfrahubServices
 
@@ -50,6 +53,7 @@ class SchemaDropdownAddInput(SchemaDropdownRemoveInput):
 class SchemaDropdownAdd(Mutation):
     class Arguments:
         data = SchemaDropdownAddInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
     object = Field(DropdownFields)
@@ -58,13 +62,16 @@ class SchemaDropdownAdd(Mutation):
     @retry_db_transaction(name="schema_dropdown_add")
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: SchemaDropdownAddInput,
+        context: ContextInput | None = None,
     ) -> Self:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
-        kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
+
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
@@ -80,13 +87,14 @@ class SchemaDropdownAdd(Mutation):
 
         await update_registry(
             kind=kind,
-            branch=context.branch,
-            db=context.db,
-            account_id=context.active_account_session.account_id,
-            service=context.active_service,
+            branch=graphql_context.branch,
+            db=graphql_context.db,
+            account_id=graphql_context.active_account_session.account_id,
+            service=graphql_context.active_service,
+            context=graphql_context.get_context(),
         )
 
-        kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
         attrib = kind.get_attribute(attribute)
         dropdown_entry = {}
         success = False
@@ -107,6 +115,7 @@ class SchemaDropdownAdd(Mutation):
 class SchemaDropdownRemove(Mutation):
     class Arguments:
         data = SchemaDropdownRemoveInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
 
@@ -114,19 +123,24 @@ class SchemaDropdownRemove(Mutation):
     @retry_db_transaction(name="schema_dropdown_remove")
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: SchemaDropdownRemoveInput,
+        context: ContextInput | None = None,
     ) -> dict[str, bool]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
-        kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
         nodes_with_dropdown = await NodeManager.query(
-            db=context.db, schema=kind.kind, filters={f"{attribute}__value": dropdown}, branch=context.branch
+            db=graphql_context.db,
+            schema=kind.kind,
+            filters={f"{attribute}__value": dropdown},
+            branch=graphql_context.branch,
         )
         if nodes_with_dropdown:
             raise ValidationError(f"There are still {kind.kind} objects using this dropdown")
@@ -143,10 +157,11 @@ class SchemaDropdownRemove(Mutation):
 
         await update_registry(
             kind=kind,
-            branch=context.branch,
-            db=context.db,
-            account_id=context.active_account_session.account_id,
-            service=context.active_service,
+            branch=graphql_context.branch,
+            db=graphql_context.db,
+            account_id=graphql_context.active_account_session.account_id,
+            service=graphql_context.active_service,
+            context=graphql_context.get_context(),
         )
 
         return {"ok": True}
@@ -155,6 +170,7 @@ class SchemaDropdownRemove(Mutation):
 class SchemaEnumAdd(Mutation):
     class Arguments:
         data = SchemaEnumInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
 
@@ -162,13 +178,15 @@ class SchemaEnumAdd(Mutation):
     @retry_db_transaction(name="schema_dropdown_add")
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: SchemaEnumInput,
+        context: ContextInput | None = None,
     ) -> dict[str, bool]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
-        kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)
         enum = str(data.enum)
@@ -184,10 +202,11 @@ class SchemaEnumAdd(Mutation):
 
         await update_registry(
             kind=kind,
-            branch=context.branch,
-            db=context.db,
-            account_id=context.active_account_session.account_id,
-            service=context.active_service,
+            branch=graphql_context.branch,
+            db=graphql_context.db,
+            account_id=graphql_context.active_account_session.account_id,
+            service=graphql_context.active_service,
+            context=graphql_context.get_context(),
         )
 
         return {"ok": True}
@@ -196,6 +215,7 @@ class SchemaEnumAdd(Mutation):
 class SchemaEnumRemove(Mutation):
     class Arguments:
         data = SchemaEnumInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
 
@@ -203,19 +223,24 @@ class SchemaEnumRemove(Mutation):
     @retry_db_transaction(name="schema_enum_remove")
     async def mutate(
         cls,
-        root: dict,  # pylint: disable=unused-argument
+        root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: SchemaEnumInput,
+        context: ContextInput | None = None,
     ) -> dict[str, bool]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
-        kind = context.db.schema.get(name=str(data.kind), branch=context.branch.name)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name)
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)
         enum = str(data.enum)
         validate_kind_enum(kind=kind, attribute=attribute)
         nodes_with_enum = await NodeManager.query(
-            db=context.db, schema=kind.kind, filters={f"{attribute}__value": enum}, branch=context.branch
+            db=graphql_context.db,
+            schema=kind.kind,
+            filters={f"{attribute}__value": enum},
+            branch=graphql_context.branch,
         )
         if nodes_with_enum:
             raise ValidationError(f"There are still {kind.kind} objects using this enum")
@@ -232,10 +257,11 @@ class SchemaEnumRemove(Mutation):
 
         await update_registry(
             kind=kind,
-            branch=context.branch,
-            db=context.db,
-            account_id=context.active_account_session.account_id,
-            service=context.active_service,
+            branch=graphql_context.branch,
+            db=graphql_context.db,
+            account_id=graphql_context.active_account_session.account_id,
+            service=graphql_context.active_service,
+            context=graphql_context.get_context(),
         )
 
         return {"ok": True}
@@ -268,7 +294,12 @@ def validate_kind(kind: Union[GenericSchema, NodeSchema], attribute: str) -> Non
 
 
 async def update_registry(
-    kind: NodeSchema, db: InfrahubDatabase, branch: Branch, account_id: str, service: InfrahubServices
+    kind: NodeSchema,
+    db: InfrahubDatabase,
+    branch: Branch,
+    account_id: str,
+    service: InfrahubServices,
+    context: InfrahubContext,
 ) -> None:
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
@@ -296,12 +327,14 @@ async def update_registry(
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
             event = SchemaUpdatedEvent(
-                branch=branch.name,
+                branch_name=branch.name,
                 schema_hash=branch.active_schema_hash.main,
                 meta=EventMeta(
                     initiator_id=WORKER_IDENTITY,
                     request_id=request_id,
                     account_id=account_id,
+                    branch=branch,
+                    context=context,
                 ),
             )
             await service.event.send(event=event)

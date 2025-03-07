@@ -1,0 +1,1 @@
+Added a new feature to create object templates when setting `generate_template: true` in a schema on a node.

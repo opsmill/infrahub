@@ -26,7 +26,7 @@ class Migration018(InternalSchemaMigration):
     minimum_version: int = 17
     migrations: Sequence[SchemaMigration] = []
 
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         result = MigrationResult()
 
         return result
@@ -52,7 +52,7 @@ class Migration018(InternalSchemaMigration):
 
         for schema_kind in schema_branch.node_names + schema_branch.generic_names:
             schema = schema_branch.get(name=schema_kind, duplicate=False)
-            if not isinstance(schema, (NodeSchema, GenericSchema)):
+            if not isinstance(schema, NodeSchema | GenericSchema):
                 continue
 
             schema_constraint_path_groups = schema.get_unique_constraint_schema_attribute_paths(

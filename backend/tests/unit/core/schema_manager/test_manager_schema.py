@@ -9,6 +9,8 @@ from infrahub_sdk.utils import compare_lists
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
+    OBJECT_TEMPLATE_NAME_ATTR,
+    OBJECT_TEMPLATE_RELATIONSHIP_NAME,
     AllowOverrideType,
     BranchSupportType,
     HashableModelState,
@@ -33,7 +35,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
-from tests.helpers.schema import CHILD, THING
+from tests.helpers.schema import CHILD, DEVICE, DEVICE_SCHEMA, THING
 
 from .conftest import _get_schema_by_kind
 
@@ -518,7 +520,7 @@ async def test_schema_branch_generate_weight(schema_all_in_one):
     def extract_weights(schema: SchemaBranch):
         weights = []
         for node in schema.get_all().values():
-            if not isinstance(node, (NodeSchema, GenericSchema)):
+            if not isinstance(node, NodeSchema | GenericSchema):
                 continue
             for item in node.attributes + node.relationships:
                 weights.append(f"{node.name}__{item.name}__{item.order_weight}")
@@ -2829,3 +2831,66 @@ async def test_hierarchical_validate_parent_children(
 
     await uk.new(db=db, name="United Kingdom", parent=eu)
     await uk.save(db=db)
+
+
+@pytest.mark.parametrize("relationship_kind", (RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC))
+async def test_manage_object_templates(relationship_kind: RelationshipKind):
+    schema_branch = SchemaBranch(cache={}, name="test")
+    THING_WITH_TEMPLATE = copy.deepcopy(THING)
+    THING_WITH_TEMPLATE.generate_template = True
+    THING_WITH_TEMPLATE.relationships[0].kind = relationship_kind
+    schema_branch.load_schema(
+        schema=SchemaRoot(**core_models).merge(schema=SchemaRoot(nodes=[THING_WITH_TEMPLATE, CHILD]))
+    )
+
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name="TestingThing", duplicate=False), identified=set()
+    )
+    assert {n.kind for n in identified} == {"TestingThing"}
+
+    schema_branch.manage_object_template_schemas()
+    schema_branch.manage_object_template_relationships()
+
+    # Verify the generated template
+    test_object_template_thing = schema_branch.get_template("TemplateTestingThing", duplicate=False)
+    assert sorted(
+        [a.name for a in test_object_template_thing.attributes if a.name != OBJECT_TEMPLATE_NAME_ATTR]
+    ) == sorted([a.name for a in THING_WITH_TEMPLATE.attributes if not a.unique])
+    assert sorted(
+        [
+            r.name
+            for r in test_object_template_thing.relationships
+            if r.name not in (OBJECT_TEMPLATE_RELATIONSHIP_NAME, "related_nodes")
+        ]
+    ) == sorted([r.name for r in THING_WITH_TEMPLATE.relationships])
+
+
+async def test_manage_object_templates_with_component_relationships():
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models).merge(schema=DEVICE_SCHEMA))
+
+    identified = schema_branch.identify_required_object_templates(
+        node_schema=schema_branch.get(name="TestingDevice", duplicate=False), identified=set()
+    )
+    assert {n.kind for n in identified} == {"TestingDevice", "TestingInterface", "TestingSfp"}
+
+    schema_branch.manage_object_template_schemas()
+    schema_branch.manage_object_template_relationships()
+
+    # Verify the generated template
+    test_object_template_device = schema_branch.get_template("TemplateTestingDevice", duplicate=False)
+    for attr in DEVICE.attributes:
+        if attr.unique:
+            with pytest.raises(ValueError, match=r"Unable to find the attribute"):
+                test_object_template_device.get_attribute(name=attr.name)
+        else:
+            template_attr = test_object_template_device.get_attribute(name=attr.name)
+            assert template_attr.optional
+
+    # Check for the relationship from the object back to its template
+    test_device = schema_branch.get_node(name="TestingDevice", duplicate=False)
+    assert test_device.generate_template
+    assert test_device.get_relationship(name="object_template").peer == test_object_template_device.kind
+
+    # Make sure interfaces relationship is converted tp interface templates
+    assert test_object_template_device.get_relationship("interfaces").peer == "TemplateTestingInterface"

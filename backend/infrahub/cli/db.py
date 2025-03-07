@@ -44,7 +44,7 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
 from infrahub.log import get_logger
-from infrahub.services import InfrahubServices, services
+from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.local import BusSimulator
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 
@@ -193,7 +193,7 @@ async def migrate(
 
 
 @app.command()
-async def update_core_schema(  # pylint: disable=too-many-statements
+async def update_core_schema(
     ctx: typer.Context,
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
@@ -216,10 +216,9 @@ async def update_core_schema(  # pylint: disable=too-many-statements
             # ----------------------------------------------------------
             # Initialize Schema and Registry
             # ----------------------------------------------------------
-            service = InfrahubServices(
-                database=db, message_bus=BusSimulator(database=db), workflow=WorkflowLocalExecution()
+            service = await InfrahubServices.new(
+                database=db, message_bus=BusSimulator(), workflow=WorkflowLocalExecution()
             )
-            services.prepare(service)
             await initialize_registry(db=db)
 
             default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
@@ -269,7 +268,7 @@ async def update_core_schema(  # pylint: disable=too-many-statements
                 schema_branch=candidate_schema,
                 constraints=result.constraints,
             )
-            responses = await schema_validate_migrations(message=validate_migration_data)
+            responses = await schema_validate_migrations(message=validate_migration_data, service=service)
             error_messages = [violation.message for response in responses for violation in response.violations]
             if error_messages:
                 rprint(f"{error_badge} | Unable to update the schema, due to failed validations")
@@ -311,7 +310,7 @@ async def update_core_schema(  # pylint: disable=too-many-statements
                 previous_schema=origin_schema,
                 migrations=result.migrations,
             )
-            migration_error_msgs = await schema_apply_migrations(message=apply_migration_data)
+            migration_error_msgs = await schema_apply_migrations(message=apply_migration_data, service=service)
 
             if migration_error_msgs:
                 rprint(f"{error_badge} | Some error(s) happened while running the schema migrations")

@@ -8,9 +8,9 @@ export const NODE_OBJECT = "CoreNode";
 
 export const PROFILE_KIND = "CoreProfile";
 
-export const TASK_TARGET = "CoreTaskTarget";
+export const TEMPLATE_GENERIC_KIND = "CoreObjectTemplate";
 
-export const DATA_CHECK_OBJECT = "CoreDataCheck";
+export const TASK_TARGET = "CoreTaskTarget";
 
 export const ACCOUNT_GENERIC_OBJECT = "CoreGenericAccount";
 export const ACCOUNT_OBJECT = "CoreAccount";
@@ -53,19 +53,9 @@ export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";
 
 export const PROPOSED_CHANGES_VALIDATOR_OBJECT = "CoreValidator";
 
-export const SCHEMA_DROPDOWN_ADD = "SchemaDropdownAdd";
-
-export const SCHEMA_DROPDOWN_REMOVE = "SchemaDropdownRemove";
-
-export const SCHEMA_ENUM_ADD = "SchemaEnumAdd";
-
-export const SCHEMA_ENUM_REMOVE = "SchemaEnumRemove";
-
 export const NUMBER_POOL_OBJECT = "CoreNumberPool";
 
 export const TASK_OBJECT = "InfrahubTask";
-
-export const ADMIN_ROLES = ["admin"];
 
 export const MENU_EXCLUDELIST = [
   "CoreChangeComment",
@@ -113,20 +103,6 @@ export const VALIDATION_CONCLUSIONS = {
   SUCCESS: "success",
 };
 
-export const CHECK_SEVERITY = {
-  SUCCESS: "success",
-  INFO: "info",
-  WARNING: "warning",
-  ERROR: "error",
-  CRITICAL: "critical",
-};
-
-export const CHECK_CONCLUSIONS = {
-  UNKNOWN: "unknown",
-  FAILURE: "failure",
-  SUCCESS: "success",
-};
-
 export const CHECKS_LABEL = {
   EMPTY: "Empty",
   UNKOWN: "Unkown",
@@ -148,46 +124,6 @@ export const VALIDATIONS_ENUM_MAP: { [key: string]: string } = {
 export const MAX_VALUE_LENGTH_DISPLAY = 40;
 export const MAX_PASSWORD_DOTS_DISPLAY = 20;
 
-export const attributesKindForListView = [
-  "Text",
-  "Number",
-  "Boolean",
-  "Dropdown",
-  "Email",
-  "URL",
-  "File",
-  "MacAddress",
-  "Color",
-  "Bandwidth",
-  "IPHost",
-  "IPNetwork",
-  "DateTime",
-];
-
-export const SCHEMA_ATTRIBUTE_KIND = {
-  ID: "ID",
-  DROPDOWN: "Dropdown",
-  TEXT: "Text",
-  TEXTAREA: "TextArea",
-  DATETIME: "DateTime",
-  EMAIL: "Email",
-  PASSWORD: "Password",
-  HASHED_PASSWORD: "HashedPassword",
-  URL: "URL",
-  FILE: "File",
-  MAC_ADDRESS: "MacAddress",
-  COLOR: "Color",
-  NUMBER: "Number",
-  BANDWIDTH: "Bandwidth",
-  IP_HOST: "IPHost",
-  IP_NETWORK: "IPNetwork",
-  CHECKBOX: "Checkbox",
-  LIST: "List",
-  JSON: "JSON",
-  ANY: "Any",
-  BOOLEAN: "Boolean",
-} as const;
-
 export const attributesKindForDetailsViewExclude = ["HashedPassword"];
 
 export const relationshipsForListView = {
@@ -195,14 +131,14 @@ export const relationshipsForListView = {
   many: ["Attribute"],
 };
 
-export const relationshipsForDetailsView = {
+export const relationshipsForDetailsView: { one: RelationshipKind[]; many: RelationshipKind[] } = {
   one: ["Generic", "Attribute", "Component", "Parent", "Hierarchy"],
   many: ["Attribute", "Parent"],
 };
 
-export const relationshipsForTabs = {
+export const relationshipsForTabs: { one: RelationshipKind[]; many: RelationshipKind[] } = {
   one: [],
-  many: ["Generic", "Component", "Hierarchy"],
+  many: ["Generic", "Component", "Hierarchy", "Template"],
 };
 
 export const RELATIONSHIP_VIEW_BLACKLIST = [

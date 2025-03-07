@@ -1,4 +1,4 @@
-import LoadingScreen from "@/shared/components/loading-screen";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
 import { type VariantProps, cva } from "class-variance-authority";
 import { HTMLAttributes, forwardRef } from "react";
@@ -40,7 +40,7 @@ export const Avatar = forwardRef<HTMLDivElement, AvatarProps>((props: AvatarProp
   if (isLoading) {
     return (
       <div className={classNames(avatarVariants({ variant, size, className }), className ?? "")}>
-        <LoadingScreen colorClass={"custom-white"} size={16} hideText />
+        <Spinner />
       </div>
     );
   }

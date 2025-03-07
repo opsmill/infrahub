@@ -13,8 +13,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
   test.describe("when not logged in", () => {
     test("should not be able to edit object", async ({ page }) => {
       await page.goto("/objects/InfraBGPSession");
-      await expect(page.getByText("Just a moment")).not.toBeVisible();
-      await page.getByRole("cell", { name: "EXTERNAL" }).first().click();
+      await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       await expect(page.getByTestId("edit-button")).toBeDisabled();
       await expect(page.getByTestId("manage-groups")).toBeDisabled();
@@ -26,8 +25,7 @@ test.describe("/objects/:objectKind/:objectid", () => {
 
     test("should be able to edit object", async ({ page }) => {
       await page.goto("/objects/InfraBGPSession");
-      await expect(page.getByText("Just a moment")).not.toBeVisible();
-      await page.getByRole("link", { name: "EXTERNAL" }).first().click();
+      await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       await expect(page.getByTestId("edit-button")).toBeEnabled();
       await expect(page.getByTestId("manage-groups")).toBeEnabled();
@@ -35,34 +33,33 @@ test.describe("/objects/:objectKind/:objectid", () => {
 
     test("should display relationships correctly", async ({ page }) => {
       await page.goto("/objects/InfraBGPSession");
-      await expect(page.getByText("Just a moment")).not.toBeVisible();
-      await page.getByRole("cell", { name: "EXTERNAL" }).first().click();
+      await page.getByRole("link", { name: "203.111.0.2/29, atl1-edge1" }).click();
 
       // Attribute
-      await expect(page.locator("dl")).toContainText("Type");
-      await expect(page.locator("dl")).toContainText("Description");
-      await expect(page.locator("dl")).toContainText("Import Policies");
-      await expect(page.locator("dl")).toContainText("Export Policies");
-      await expect(page.locator("dl")).toContainText("Status");
-      await expect(page.locator("dl")).toContainText("Role");
+      await expect(page.getByText("Type", { exact: true })).toBeVisible();
+      await expect(page.getByText("Description", { exact: true })).toBeVisible();
+      await expect(page.getByText("Import Policies", { exact: true })).toBeVisible();
+      await expect(page.getByText("Export Policies", { exact: true })).toBeVisible();
+      await expect(page.getByText("Status", { exact: true })).toBeVisible();
+      await expect(page.getByText("Role", { exact: true })).toBeVisible();
 
       // Relationships Attributes
-      await expect(page.locator("dl")).toContainText("Local As");
-      await expect(page.locator("dl")).toContainText("Remote As");
-      await expect(page.locator("dl")).toContainText("Local Ip");
-      await expect(page.locator("dl")).toContainText("Remote Ip");
-      await expect(page.locator("dl")).toContainText("Peer Group");
-      await expect(page.locator("dl")).toContainText("Peer Session");
+      await expect(page.getByText("Local As", { exact: true })).toBeVisible();
+      await expect(page.getByText("Remote As", { exact: true })).toBeVisible();
+      await expect(page.getByText("Local Ip", { exact: true })).toBeVisible();
+      await expect(page.getByText("Remote Ip", { exact: true })).toBeVisible();
+      await expect(page.getByText("Peer Group", { exact: true })).toBeVisible();
+      await expect(page.getByText("Peer Session", { exact: true })).toBeVisible();
 
       // Relationships Generics
-      await expect(page.locator("dl")).toContainText("Device");
+      await expect(page.getByText("Device", { exact: true })).toBeVisible();
     });
 
     test("should display the select 2 steps correctly", async ({ page }) => {
       await page.goto("/objects/InfraDevice");
       await page.getByRole("link", { name: "atl1-edge1" }).click();
       await page.getByText("Interfaces15").click();
-      await page.getByRole("link", { name: "Backbone: Connected to jfk1-" }).click();
+      await page.getByRole("link", { name: "atl1-edge1, Ethernet4" }).click();
       await page.getByTestId("edit-button").click();
 
       const kindSelector = page.getByLabel("Kind").getByTestId("select-value");

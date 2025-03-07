@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Field, Int, List, ObjectType, String
+from graphene import Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core.manager import NodeManager
@@ -27,32 +27,32 @@ class AccountTokenEdge(ObjectType):
 
 class AccountTokenEdges(ObjectType):
     count = Field(Int, required=True)
-    edges = Field(List(of_type=AccountTokenEdge, required=True), required=True)
+    edges = Field(List(of_type=NonNull(AccountTokenEdge), required=True), required=True)
 
 
 async def resolve_account_tokens(
-    root: dict,  # pylint: disable=unused-argument
+    root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
     limit: int = 10,
     offset: int = 0,
 ) -> dict:
-    context: GraphqlContext = info.context
+    graphql_context: GraphqlContext = info.context
 
-    if not context.account_session:
+    if not graphql_context.account_session:
         raise ValueError("An account_session is mandatory to execute this query")
 
-    if not context.account_session.authenticated_by_jwt:
+    if not graphql_context.account_session.authenticated_by_jwt:
         raise PermissionDeniedError("This operation requires authentication with a JWT token")
 
     fields = await extract_fields_first_node(info)
 
-    filters = {"account__ids": [context.account_session.account_id]}
+    filters = {"account__ids": [graphql_context.account_session.account_id]}
     response: dict[str, Any] = {}
     if "count" in fields:
-        response["count"] = await NodeManager.count(db=context.db, schema=InternalAccountToken, filters=filters)
+        response["count"] = await NodeManager.count(db=graphql_context.db, schema=InternalAccountToken, filters=filters)
     if "edges" in fields:
         objs = await NodeManager.query(
-            db=context.db, schema=InternalAccountToken, filters=filters, limit=limit, offset=offset
+            db=graphql_context.db, schema=InternalAccountToken, filters=filters, limit=limit, offset=offset
         )
         response["edges"] = [
             {"node": {"id": obj.id, "name": obj.name.value, "expiration": obj.expiration.value}} for obj in objs
@@ -62,7 +62,11 @@ async def resolve_account_tokens(
 
 
 AccountToken = Field(
-    AccountTokenEdges, resolver=resolve_account_tokens, limit=Int(required=False), offset=Int(required=False)
+    AccountTokenEdges,
+    limit=Int(required=False),
+    offset=Int(required=False),
+    resolver=resolve_account_tokens,
+    required=True,
 )
 
 
@@ -95,12 +99,12 @@ class AccountObjectPermissionEdge(ObjectType):
 
 class AccountGlobalPermissionEdges(ObjectType):
     count = Field(Int, required=True)
-    edges = Field(List(of_type=AccountGlobalPermissionEdge, required=True), required=True)
+    edges = Field(List(of_type=NonNull(AccountGlobalPermissionEdge), required=True), required=True)
 
 
 class AccountObjectPermissionEdges(ObjectType):
     count = Field(Int, required=True)
-    edges = Field(List(of_type=AccountObjectPermissionEdge, required=True), required=True)
+    edges = Field(List(of_type=NonNull(AccountObjectPermissionEdge), required=True), required=True)
 
 
 class AccountPermissionsEdges(ObjectType):
@@ -109,19 +113,19 @@ class AccountPermissionsEdges(ObjectType):
 
 
 async def resolve_account_permissions(
-    root: dict,  # pylint: disable=unused-argument
+    root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
 ) -> dict:
-    context: GraphqlContext = info.context
+    graphql_context: GraphqlContext = info.context
 
-    if not context.account_session:
+    if not graphql_context.account_session:
         raise ValueError("An account_session is mandatory to execute this query")
 
     fields = await extract_fields_first_node(info)
 
     response: dict[str, dict[str, Any]] = {}
     if "global_permissions" in fields:
-        global_list = context.active_permissions.permissions["global_permissions"]
+        global_list = graphql_context.active_permissions.permissions["global_permissions"]
         response["global_permissions"] = {"count": len(global_list)}
         response["global_permissions"]["edges"] = [
             {
@@ -136,7 +140,7 @@ async def resolve_account_permissions(
             for obj in global_list
         ]
     if "object_permissions" in fields:
-        object_list = context.active_permissions.permissions["object_permissions"]
+        object_list = graphql_context.active_permissions.permissions["object_permissions"]
         response["object_permissions"] = {"count": len(object_list)}
         response["object_permissions"]["edges"] = [
             {
@@ -155,4 +159,4 @@ async def resolve_account_permissions(
     return response
 
 
-AccountPermissions = Field(AccountPermissionsEdges, resolver=resolve_account_permissions)
+AccountPermissions = Field(AccountPermissionsEdges, resolver=resolve_account_permissions, required=True)

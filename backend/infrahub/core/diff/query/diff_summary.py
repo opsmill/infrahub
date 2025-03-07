@@ -61,7 +61,7 @@ class DiffSummaryQuery(Query):
         self.to_time = to_time
         self.tracking_id = tracking_id
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         if (self.from_time is None or self.to_time is None) and self.tracking_id is None:
             raise ValueError("DiffSummaryQuery requires from_time and to_time or tracking_id ")
         self.params = {

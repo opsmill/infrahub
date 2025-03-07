@@ -34,10 +34,10 @@ class BranchType(InfrahubObjectType):
     async def get_list(
         cls,
         fields: dict,
-        context: GraphqlContext,
+        graphql_context: GraphqlContext,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
-        async with context.db.start_session() as db:
+        async with graphql_context.db.start_session() as db:
             objs = await Branch.get_list(db=db, **kwargs)
 
             if not objs:

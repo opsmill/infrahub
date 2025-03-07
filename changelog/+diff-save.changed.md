@@ -1,1 +1,1 @@
-Improve performance of cypher query that saves a diff
+Improved the performance of the cypher query that saves a diff.

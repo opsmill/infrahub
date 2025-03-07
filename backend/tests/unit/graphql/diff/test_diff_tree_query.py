@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
 import pytest
@@ -20,6 +20,8 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql.enums import ConflictSelection as GraphQLConfictSelection
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
+
+UTC = timezone.utc  # Required for older versions of Python
 
 ADDED_ACTION = "ADDED"
 UPDATED_ACTION = "UPDATED"
@@ -217,8 +219,8 @@ async def test_diff_tree_no_changes(
     enriched_diff_metadata = await diff_coordinator.update_branch_diff(
         base_branch=default_branch, diff_branch=diff_branch
     )
-    from_time = datetime.fromisoformat(diff_branch.branched_from)
-    to_time = datetime.fromisoformat(enriched_diff_metadata.to_time.to_string())
+    from_time = Timestamp(diff_branch.branched_from)
+    to_time = enriched_diff_metadata.to_time
 
     params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
@@ -235,8 +237,8 @@ async def test_diff_tree_no_changes(
     assert result.data["DiffTree"] == {
         "base_branch": default_branch.name,
         "diff_branch": diff_branch.name,
-        "from_time": from_time.isoformat(),
-        "to_time": to_time.isoformat(),
+        "from_time": from_time.to_datetime().isoformat(),
+        "to_time": to_time.to_datetime().isoformat(),
         "num_added": 0,
         "num_removed": 0,
         "num_updated": 0,
@@ -294,10 +296,10 @@ async def test_diff_tree_one_attr_change(
     main_crit.color.value = "#fedcba"
     branch_crit = await NodeManager.get_one(db=db, id=criticality_low.id, branch=diff_branch)
     branch_crit.color.value = "#abcdef"
-    before_change_datetime = datetime.now(tz=UTC)
+    before_change_datetime = Timestamp()
     await main_crit.save(db=db)
     await branch_crit.save(db=db)
-    after_change_datetime = datetime.now(tz=UTC)
+    after_change_datetime = Timestamp()
 
     enriched_diff_metadata = await diff_coordinator.update_branch_diff(
         base_branch=default_branch, diff_branch=diff_branch
@@ -329,8 +331,8 @@ async def test_diff_tree_one_attr_change(
         root_value=None,
         variable_values={"branch": diff_branch.name},
     )
-    from_time = datetime.fromisoformat(diff_branch.branched_from)
-    to_time = datetime.fromisoformat(enriched_diff_metadata.to_time.to_string())
+    from_time = Timestamp(diff_branch.branched_from)
+    to_time = enriched_diff_metadata.to_time
 
     assert result.errors is None
 
@@ -338,20 +340,20 @@ async def test_diff_tree_one_attr_change(
     assert result.data["DiffTree"]["nodes"]
     node_diff = result.data["DiffTree"]["nodes"][0]
     node_changed_at = node_diff["last_changed_at"]
-    assert datetime.fromisoformat(node_changed_at) < before_change_datetime
+    assert Timestamp(node_changed_at) < before_change_datetime
     assert node_diff["attributes"]
     attribute_diff = node_diff["attributes"][0]
     attribute_changed_at = attribute_diff["last_changed_at"]
-    assert datetime.fromisoformat(attribute_changed_at) < before_change_datetime
+    assert Timestamp(attribute_changed_at) < before_change_datetime
     assert attribute_diff["properties"]
     property_diff = attribute_diff["properties"][0]
     property_changed_at = property_diff["last_changed_at"]
-    assert before_change_datetime < datetime.fromisoformat(property_changed_at) < after_change_datetime
+    assert before_change_datetime < Timestamp(property_changed_at) < after_change_datetime
     assert result.data["DiffTree"] == {
         "base_branch": "main",
         "diff_branch": diff_branch.name,
-        "from_time": from_time.isoformat(),
-        "to_time": to_time.isoformat(),
+        "from_time": from_time.to_datetime().isoformat(),
+        "to_time": to_time.to_datetime().isoformat(),
         "num_added": 0,
         "num_removed": 0,
         "num_updated": 1,
@@ -426,9 +428,9 @@ async def test_diff_tree_one_relationship_change(
 ):
     branch_car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=diff_branch)
     await branch_car.owner.update(db=db, data=[person_jane_main])
-    before_change_datetime = datetime.now(tz=UTC)
+    before_change_datetime = Timestamp()
     await branch_car.save(db=db)
-    after_change_datetime = datetime.now(tz=UTC)
+    after_change_datetime = Timestamp()
     accord_label = await branch_car.render_display_label(db=db)
     john_label = await person_john_main.render_display_label(db=db)
     jane_label = await person_jane_main.render_display_label(db=db)
@@ -446,8 +448,8 @@ async def test_diff_tree_one_relationship_change(
         root_value=None,
         variable_values={"branch": diff_branch.name},
     )
-    from_time = datetime.fromisoformat(diff_branch.branched_from)
-    to_time = datetime.fromisoformat(enriched_diff_metadata.to_time.to_string())
+    from_time = Timestamp(diff_branch.branched_from)
+    to_time = enriched_diff_metadata.to_time
 
     assert result.errors is None
 
@@ -457,8 +459,8 @@ async def test_diff_tree_one_relationship_change(
     assert diff_tree_response == {
         "base_branch": "main",
         "diff_branch": diff_branch.name,
-        "from_time": from_time.isoformat(),
-        "to_time": to_time.isoformat(),
+        "from_time": from_time.to_datetime().isoformat(),
+        "to_time": to_time.to_datetime().isoformat(),
         "num_added": 0,
         "num_removed": 0,
         "num_updated": 3,
@@ -473,7 +475,7 @@ async def test_diff_tree_one_relationship_change(
     car_response = node_response_by_id[car_accord_main.id]
     car_relationship_response = car_response.pop("relationships")
     car_changed_at = car_response["last_changed_at"]
-    assert datetime.fromisoformat(car_changed_at) < before_change_datetime
+    assert Timestamp(car_changed_at) < before_change_datetime
     assert car_response == {
         "uuid": car_accord_main.id,
         "kind": car_accord_main.get_kind(),
@@ -492,7 +494,7 @@ async def test_diff_tree_one_relationship_change(
     assert set(car_relationships_by_name.keys()) == {"owner"}
     owner_rel = car_relationships_by_name["owner"]
     owner_changed_at = owner_rel["last_changed_at"]
-    assert before_change_datetime < datetime.fromisoformat(owner_changed_at) < after_change_datetime
+    assert before_change_datetime < Timestamp(owner_changed_at) < after_change_datetime
     owner_elements = owner_rel.pop("elements")
     assert owner_rel == {
         "name": "owner",
@@ -504,7 +506,7 @@ async def test_diff_tree_one_relationship_change(
     assert len(owner_elements) == 1
     owner_element = owner_elements[0]
     owner_element_changed_at = owner_element["last_changed_at"]
-    assert before_change_datetime < datetime.fromisoformat(owner_element_changed_at) < after_change_datetime
+    assert before_change_datetime < Timestamp(owner_element_changed_at) < after_change_datetime
     owner_properties = owner_element.pop("properties")
     assert owner_element == {
         "status": UPDATED_ACTION,
@@ -517,7 +519,7 @@ async def test_diff_tree_one_relationship_change(
     assert set(owner_properties_by_type.keys()) == {IS_RELATED_TYPE, IS_PROTECTED_TYPE, IS_VISIBLE_TYPE}
     owner_prop = owner_properties_by_type[IS_RELATED_TYPE]
     owner_prop_changed_at = owner_prop["last_changed_at"]
-    assert before_change_datetime < datetime.fromisoformat(owner_prop_changed_at) < after_change_datetime
+    assert before_change_datetime < Timestamp(owner_prop_changed_at) < after_change_datetime
     assert owner_prop == {
         "property_type": IS_RELATED_TYPE,
         "last_changed_at": owner_prop_changed_at,
@@ -530,7 +532,7 @@ async def test_diff_tree_one_relationship_change(
     }
     owner_prop = owner_properties_by_type[IS_RELATED_TYPE]
     owner_prop_changed_at = owner_prop["last_changed_at"]
-    assert before_change_datetime < datetime.fromisoformat(owner_prop_changed_at) < after_change_datetime
+    assert before_change_datetime < Timestamp(owner_prop_changed_at) < after_change_datetime
     assert owner_prop == {
         "property_type": IS_RELATED_TYPE,
         "last_changed_at": owner_prop_changed_at,
@@ -545,7 +547,7 @@ async def test_diff_tree_one_relationship_change(
     john_response = node_response_by_id[person_john_main.id]
     john_relationship_response = john_response.pop("relationships")
     john_changed_at = john_response["last_changed_at"]
-    assert datetime.fromisoformat(john_changed_at) < before_change_datetime
+    assert Timestamp(john_changed_at) < before_change_datetime
     assert john_response == {
         "uuid": person_john_main.id,
         "kind": person_john_main.get_kind(),
@@ -564,7 +566,7 @@ async def test_diff_tree_one_relationship_change(
     assert set(john_relationships_by_name.keys()) == {"cars"}
     cars_rel = john_relationships_by_name["cars"]
     cars_changed_at = cars_rel["last_changed_at"]
-    assert before_change_datetime < datetime.fromisoformat(cars_changed_at) < after_change_datetime
+    assert before_change_datetime < Timestamp(cars_changed_at) < after_change_datetime
     cars_elements = cars_rel.pop("elements")
     assert cars_rel == {
         "name": "cars",
@@ -576,7 +578,7 @@ async def test_diff_tree_one_relationship_change(
     assert len(cars_elements) == 1
     cars_element = cars_elements[0]
     cars_element_changed_at = cars_element["last_changed_at"]
-    assert before_change_datetime < datetime.fromisoformat(cars_element_changed_at) < after_change_datetime
+    assert before_change_datetime < Timestamp(cars_element_changed_at) < after_change_datetime
     cars_properties = cars_element.pop("properties")
     assert cars_element == {
         "status": REMOVED_ACTION,
@@ -594,7 +596,7 @@ async def test_diff_tree_one_relationship_change(
     ]:
         cars_prop = cars_properties_by_type[property_type]
         cars_prop_changed_at = cars_prop["last_changed_at"]
-        assert before_change_datetime < datetime.fromisoformat(cars_prop_changed_at) < after_change_datetime
+        assert before_change_datetime < Timestamp(cars_prop_changed_at) < after_change_datetime
         assert cars_prop == {
             "property_type": property_type,
             "last_changed_at": cars_prop_changed_at,
@@ -609,7 +611,7 @@ async def test_diff_tree_one_relationship_change(
     jane_response = node_response_by_id[person_jane_main.id]
     jane_relationship_response = jane_response.pop("relationships")
     jane_changed_at = jane_response["last_changed_at"]
-    assert datetime.fromisoformat(jane_changed_at) < before_change_datetime
+    assert Timestamp(jane_changed_at) < before_change_datetime
     assert jane_response == {
         "uuid": person_jane_main.id,
         "kind": person_jane_main.get_kind(),
@@ -628,7 +630,7 @@ async def test_diff_tree_one_relationship_change(
     assert set(jane_relationships_by_name.keys()) == {"cars"}
     cars_rel = jane_relationships_by_name["cars"]
     cars_changed_at = cars_rel["last_changed_at"]
-    assert before_change_datetime < datetime.fromisoformat(cars_changed_at) < after_change_datetime
+    assert before_change_datetime < Timestamp(cars_changed_at) < after_change_datetime
     cars_elements = cars_rel.pop("elements")
     assert cars_rel == {
         "name": "cars",
@@ -640,7 +642,7 @@ async def test_diff_tree_one_relationship_change(
     assert len(cars_elements) == 1
     cars_element = cars_elements[0]
     cars_element_changed_at = cars_element["last_changed_at"]
-    assert before_change_datetime < datetime.fromisoformat(cars_element_changed_at) < after_change_datetime
+    assert before_change_datetime < Timestamp(cars_element_changed_at) < after_change_datetime
     cars_properties = cars_element.pop("properties")
     assert cars_element == {
         "status": ADDED_ACTION,
@@ -658,7 +660,7 @@ async def test_diff_tree_one_relationship_change(
     ]:
         cars_prop = cars_properties_by_type[property_type]
         cars_prop_changed_at = cars_prop["last_changed_at"]
-        assert before_change_datetime < datetime.fromisoformat(cars_prop_changed_at) < after_change_datetime
+        assert before_change_datetime < Timestamp(cars_prop_changed_at) < after_change_datetime
         assert cars_prop == {
             "property_type": property_type,
             "last_changed_at": cars_prop_changed_at,
@@ -745,8 +747,8 @@ async def test_diff_tree_summary_no_changes(
     enriched_diff_metadata = await diff_coordinator.update_branch_diff(
         base_branch=default_branch, diff_branch=diff_branch
     )
-    from_time = datetime.fromisoformat(diff_branch.branched_from)
-    to_time = datetime.fromisoformat(enriched_diff_metadata.to_time.to_string())
+    from_time = Timestamp(diff_branch.branched_from)
+    to_time = enriched_diff_metadata.to_time
 
     params = await prepare_graphql_params(
         db=db, include_mutation=False, include_subscription=False, branch=default_branch
@@ -763,8 +765,8 @@ async def test_diff_tree_summary_no_changes(
     assert result.data["DiffTreeSummary"] == {
         "base_branch": default_branch.name,
         "diff_branch": diff_branch.name,
-        "from_time": from_time.isoformat(),
-        "to_time": to_time.isoformat(),
+        "from_time": from_time.to_datetime().isoformat(),
+        "to_time": to_time.to_datetime().isoformat(),
         "num_added": 0,
         "num_removed": 0,
         "num_updated": 0,
@@ -780,12 +782,24 @@ async def test_diff_tree_summary_no_changes(
     [
         pytest.param(
             {},
-            DiffSummaryCounters(num_added=2, num_updated=5, num_removed=2, from_time=Timestamp(), to_time=Timestamp()),
+            DiffSummaryCounters(
+                num_added=2,
+                num_updated=5,
+                num_removed=2,
+                from_time=Timestamp(datetime.now(UTC).isoformat()),
+                to_time=Timestamp(datetime.now(UTC).isoformat()),
+            ),
             id="no-filters",
         ),
         pytest.param(
             {"kind": {"includes": ["TestThing"]}},
-            DiffSummaryCounters(num_added=2, num_updated=1, num_removed=2, from_time=Timestamp(), to_time=Timestamp()),
+            DiffSummaryCounters(
+                num_added=2,
+                num_updated=1,
+                num_removed=2,
+                from_time=Timestamp(datetime.now(UTC).isoformat()),
+                to_time=Timestamp(datetime.now(UTC).isoformat()),
+            ),
             id="kind-includes",
         ),
     ],
@@ -945,4 +959,4 @@ async def test_diff_get_filters(
     )
 
     assert result.errors is None
-    assert set([node["label"] for node in result.data["DiffTree"]["nodes"]]) == set(labels)
+    assert {node["label"] for node in result.data["DiffTree"]["nodes"]} == set(labels)

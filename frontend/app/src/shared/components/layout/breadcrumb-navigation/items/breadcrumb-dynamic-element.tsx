@@ -4,6 +4,7 @@ import BreadcrumbObjectSelector from "@/shared/components/layout/breadcrumb-navi
 import BreadcrumbSchemaSelector from "@/shared/components/layout/breadcrumb-navigation/items/breadcrumb-schema-selector";
 import { BreadcrumbItem } from "@/shared/components/layout/breadcrumb-navigation/type";
 import { warnUnexpectedType } from "@/shared/utils/common";
+import BreadcrumbObjectIdDisplay from "./breadcrumb-object-id";
 
 export type BreadcrumbDynamicElementProps = BreadcrumbItem & {
   isLast?: boolean;
@@ -22,6 +23,12 @@ export const BreadcrumbDynamicElement = ({ ...props }: BreadcrumbDynamicElementP
     }
 
     return <BreadcrumbObjectSelector kind={kind} id={value} {...otherProps} />;
+  }
+
+  if (props.type === "id") {
+    const { value, ...otherProps } = props;
+
+    return <BreadcrumbObjectIdDisplay id={value} {...otherProps} />;
   }
 
   if (props.type === "branch") {

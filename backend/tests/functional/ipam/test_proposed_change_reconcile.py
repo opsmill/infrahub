@@ -13,7 +13,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.message_bus.types import KVTTL
-from infrahub.services import services
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.worker import WORKER_IDENTITY
 
@@ -34,7 +33,7 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
 
     @pytest.fixture(scope="class", autouse=True)
     def bus_simulator_cache(self, bus_simulator):
-        bus_simulator.service.cache = RedisCache()
+        bus_simulator.service._cache = RedisCache()
 
     @pytest.fixture(scope="class", autouse=True)
     def git_repos_dir(self, git_repos_source_dir_module_scope: Path): ...
@@ -62,15 +61,16 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
         client: InfrahubClient,
         branch_1,
         new_address_1,
+        service,
     ) -> None:
-        await services.service.component.refresh_heartbeat()
+        await service.component.refresh_heartbeat()
         proposed_change_create = await client.create(
             kind=InfrahubKind.PROPOSEDCHANGE,
             data={"source_branch": branch_1.name, "destination_branch": "main", "name": "add_address_pc"},
         )
         await proposed_change_create.save()
         proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
-        await services.service.cache.set(
+        await service.cache.set(
             key=f"workers:active:{ComponentType.API_SERVER}:worker:{WORKER_IDENTITY}",
             value=Timestamp().to_string(),
             expires=KVTTL.FIFTEEN,

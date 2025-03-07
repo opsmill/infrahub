@@ -1,5 +1,5 @@
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Navigate, useLocation, useParams } from "react-router-dom";
+import { Navigate, useLocation, useParams } from "react-router";
 
 const RedirectToGraphqlSandboxPage = () => {
   const { branch } = useParams();

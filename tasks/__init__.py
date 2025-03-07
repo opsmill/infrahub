@@ -34,6 +34,7 @@ def format_all(context: Context) -> None:
 @task(name="lint")
 def lint_all(context: Context) -> None:
     yamllint(context)
+    main.lint(context)
     backend.lint(context)
 
 

@@ -1,0 +1,1 @@
+Made object list retrieval faster with an optimized query.

@@ -5,6 +5,7 @@ from infrahub_sdk.client import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.git.repository import InfrahubReadOnlyRepository
+from infrahub.services import InfrahubServices
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -16,6 +17,7 @@ async def test_new_empty_dir(git_upstream_repo_01: dict[str, str | Path], git_re
         ref="branch01",
         infrahub_branch_name="main",
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        service=await InfrahubServices.new(),
     )
 
     assert repo.directory_root.is_dir()

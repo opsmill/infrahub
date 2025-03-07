@@ -1,8 +1,8 @@
 import { useObjectDetails } from "@/entities/nodes/hooks/useObjectDetails";
-import { useObjectItems } from "@/entities/nodes/hooks/useObjectItems";
-import { getPermission } from "@/entities/permission/utils";
-import { IModelSchema } from "@/entities/schema/stores/schema.atom";
+import { useObjectsCount } from "@/entities/nodes/object/domain/get-objects-count.query";
+import { ModelSchema } from "@/entities/schema/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { queryClient } from "@/shared/api/rest/client";
 import Content from "@/shared/components/layout/content";
 import { ObjectDetailsButton } from "@/shared/components/menu/object-details-button";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
@@ -10,7 +10,7 @@ import { Skeleton } from "@/shared/components/skeleton";
 import useFilters from "@/shared/hooks/useFilters";
 
 type ObjectHeaderProps = {
-  schema: IModelSchema;
+  schema: ModelSchema;
   objectId?: string;
 };
 
@@ -24,24 +24,26 @@ const ObjectHeader = ({ schema, objectId }: ObjectHeaderProps) => {
 
 const ObjectItemsHeader = ({ schema }: ObjectHeaderProps) => {
   const [filters] = useFilters();
-  const { data, loading, error } = useObjectItems(schema, filters);
-  const kindFilter = filters?.find((filter) => filter.name === "kind__value");
+  const {
+    data: count,
+    isPending,
+    isRefetching,
+    isError,
+  } = useObjectsCount({ schemaKind: schema.kind as string, filters });
 
-  const schemaKind = kindFilter?.value || (schema.kind as string);
-  const { count, permissions } = data?.[schemaKind] ?? { count: undefined, permissions: undefined };
-  const currentPermission = getPermission(permissions?.edges);
-
-  if (!currentPermission.view.isAllowed) {
-    return null;
-  }
+  const refetchObjects = () => {
+    queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey.includes("objects"),
+    });
+  };
 
   return (
     <Content.CardTitle
       title={schema.label || schema.name}
-      badgeContent={loading && !error ? "..." : count}
+      badgeContent={isPending && !isError ? "..." : count}
       description={schema.description}
-      isReloadLoading={loading}
-      reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
+      isReloadLoading={isRefetching}
+      reload={refetchObjects}
       data-testid="object-header"
       end={
         <ObjectHelpButton
@@ -79,7 +81,10 @@ const ObjectDetailsHeader = ({ schema, objectId }: ObjectHeaderProps & { objectI
       title={title}
       description={objectDetailsData?.description?.value ?? schema.description}
       isReloadLoading={loading}
-      reload={() => graphqlClient.refetchQueries({ include: [schema.kind!] })}
+      reload={() => {
+        graphqlClient.refetchQueries({ include: [schema.kind!] });
+        queryClient.invalidateQueries({ queryKey: ["events", [objectId]] });
+      }}
       end={
         objectDetailsData?.hfid &&
         objectId && (

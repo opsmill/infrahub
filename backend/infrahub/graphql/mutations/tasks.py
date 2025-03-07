@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from prefect import flow
 
+from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -13,15 +14,14 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import ValidationError
-from infrahub.services import services
+from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.workflows.catalogue import BRANCH_MERGE
-from infrahub.workflows.utils import add_branch_tag
+from infrahub.workflows.utils import add_tags
 
 
 @flow(name="merge-branch-mutation", flow_run_name="Merge branch graphQL mutation")
-async def merge_branch_mutation(branch: str) -> None:
-    service = services.service
-    await add_branch_tag(branch_name=branch)
+async def merge_branch_mutation(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
+    await add_tags(branches=[branch])
 
     async with service.database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=branch)
@@ -60,10 +60,13 @@ async def merge_branch_mutation(branch: str) -> None:
 
         if constraints:
             responses = await schema_validate_migrations(
-                message=SchemaValidateMigrationData(branch=obj, schema_branch=candidate_schema, constraints=constraints)
+                message=SchemaValidateMigrationData(
+                    branch=obj, schema_branch=candidate_schema, constraints=constraints
+                ),
+                service=service,
             )
             error_messages = [violation.message for response in responses for violation in response.violations]
             if error_messages:
                 raise ValidationError(",\n".join(error_messages))
 
-        await service.workflow.execute_workflow(workflow=BRANCH_MERGE, parameters={"branch": obj.name})
+        await service.workflow.execute_workflow(workflow=BRANCH_MERGE, context=context, parameters={"branch": obj.name})

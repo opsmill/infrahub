@@ -60,9 +60,6 @@ const NumberField = ({
                   onChange={(value) =>
                     field.onChange(updateAttributeFieldValue(value, defaultValue))
                   }
-                  onReset={() => {
-                    if (defaultValue) field.onChange(defaultValue);
-                  }}
                   value={fieldData}
                   pools={pools}
                 >

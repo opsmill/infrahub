@@ -7,7 +7,7 @@ import graphene
 
 from infrahub import config
 from infrahub.core.attribute import String
-from infrahub.core.constants import InfrahubKind, RelationshipKind
+from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipKind
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -15,6 +15,7 @@ from infrahub.core.schema import (
     NodeSchema,
     ProfileSchema,
     RelationshipSchema,
+    TemplateSchema,
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
@@ -59,14 +60,14 @@ from .types import (
 )
 from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
+from .types.context import ContextInput
+from .types.event import EVENT_TYPES
 
 if TYPE_CHECKING:
     from graphql import GraphQLSchema
 
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
-
-# pylint: disable=redefined-builtin,c-extension-no-member,too-many-lines,too-many-public-methods
 
 
 class DeleteInput(graphene.InputObjectType):
@@ -105,7 +106,7 @@ class BranchDetails:
     gql_manager: GraphQLSchemaManager
 
 
-class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
+class GraphQLSchemaManager:
     _extra_types: dict[str, GraphQLTypes] = {}
     _branch_details_by_name: dict[str, BranchDetails] = {}
 
@@ -161,6 +162,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         self._graphql_types: dict[str, GraphQLTypes] = {}
 
         self._load_attribute_types()
+        self._load_event_types()
         if config.SETTINGS.experimental_features.graphql_enums:
             self._load_all_enum_types(node_schemas=self.schema.get_all().values())
         self._load_node_interface()
@@ -251,7 +253,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
     def get_type(self, name: str) -> type[InfrahubObject]:
         if name in self._graphql_types and issubclass(
-            self._graphql_types[name], (BaseAttributeType, graphene.Interface, graphene.ObjectType)
+            self._graphql_types[name], BaseAttributeType | graphene.Interface | graphene.ObjectType
         ):
             return self._graphql_types[name]
         raise ValueError(f"Unable to find {name!r}")
@@ -272,6 +274,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def _load_attribute_types(self) -> None:
         for data_type in ATTRIBUTE_TYPES.values():
             self.set_type(name=data_type.get_graphql_type_name(), graphql_type=data_type.get_graphql_type())
+
+    def _load_event_types(self) -> None:
+        for event in EVENT_TYPES.values():
+            self.set_type(name=event._meta.name, graphql_type=event)
 
     def _load_node_interface(self) -> None:
         node_interface_schema = GenericSchema(
@@ -339,13 +345,13 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         return RelatedNodeInput
 
-    def generate_object_types(self) -> None:  # pylint: disable=too-many-branches,too-many-statements
+    def generate_object_types(self) -> None:
         """Generate all GraphQL objects for the schema and store them in the internal registry."""
 
         full_schema = self.schema.get_all(duplicate=False)
 
         # Generate all GraphQL Interface  Object first and store them in the registry
-        for node_name, node_schema in full_schema.items():
+        for node_schema in full_schema.values():
             if not isinstance(node_schema, GenericSchema):
                 continue
             interface = self.generate_interface_object(schema=node_schema, populate_cache=True)
@@ -385,8 +391,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             self.set_type(name=nested_edged_interface._meta.name, graphql_type=nested_edged_interface)
 
         # Generate all GraphQL ObjectType, Nested, Paginated & NestedPaginated and store them in the registry
-        for node_name, node_schema in full_schema.items():
-            if isinstance(node_schema, (NodeSchema, ProfileSchema)):
+        for node_schema in full_schema.values():
+            if isinstance(node_schema, NodeSchema | ProfileSchema | TemplateSchema):
                 node_type = self.generate_graphql_object(schema=node_schema, populate_cache=True)
                 node_type_edged = self.generate_graphql_edged_object(
                     schema=node_schema, node=node_type, populate_cache=True
@@ -417,11 +423,13 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                     continue
                 peer_filters = self.generate_filters(schema=peer_schema, top_level=False)
 
-                if rel.cardinality == "one":
+                if rel.cardinality == RelationshipCardinality.ONE:
                     peer_type = self.get_type(name=f"NestedEdged{peer_schema.kind}")
-                    node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=single_relationship_resolver)
+                    node_type._meta.fields[rel.name] = graphene.Field(
+                        peer_type, resolver=single_relationship_resolver, required=True
+                    )
 
-                elif rel.cardinality == "many":
+                elif rel.cardinality == RelationshipCardinality.MANY:
                     peer_type = self.get_type(name=f"NestedPaginated{peer_schema.kind}")
 
                     if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
@@ -430,7 +438,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                         peer_filters["include_descendants"] = graphene.Boolean()
 
                     node_type._meta.fields[rel.name] = graphene.Field(
-                        peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
+                        peer_type, required=True, resolver=many_relationship_resolver, **peer_filters
                     )
 
             if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
@@ -448,16 +456,16 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 peer_type_edge = self.get_type(name=f"NestedEdged{hierarchy_name}")
 
                 node_type._meta.fields["parent"] = graphene.Field(
-                    peer_type_edge, required=False, resolver=single_relationship_resolver
+                    peer_type_edge, required=True, resolver=single_relationship_resolver
                 )
                 node_type._meta.fields["children"] = graphene.Field(
-                    peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
+                    peer_type, required=True, resolver=many_relationship_resolver, **peer_filters
                 )
                 node_type._meta.fields["ancestors"] = graphene.Field(
-                    peer_type, required=False, resolver=ancestors_resolver, **peer_filters
+                    peer_type, required=True, resolver=ancestors_resolver, **peer_filters
                 )
                 node_type._meta.fields["descendants"] = graphene.Field(
-                    peer_type, required=False, resolver=descendants_resolver, **peer_filters
+                    peer_type, required=True, resolver=descendants_resolver, **peer_filters
                 )
 
     def generate_query_mixin(self) -> type[object]:
@@ -478,6 +486,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             class_attrs[node_schema.kind] = graphene.Field(
                 node_type,
                 resolver=default_paginated_list_resolver,
+                required=True,
                 **node_filters,
             )
             if node_name == InfrahubKind.GENERICACCOUNT:
@@ -513,7 +522,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             else:
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 
-            if isinstance(node_schema, (NodeSchema, ProfileSchema)):
+            if isinstance(node_schema, NodeSchema | ProfileSchema | TemplateSchema):
                 mutations = self.generate_graphql_mutations(schema=node_schema, base_class=base_class)
 
                 class_attrs[f"{node_schema.kind}Create"] = mutations.create.Field()
@@ -539,7 +548,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         interfaces: set[type[InfrahubObject]] = set()
 
-        if isinstance(schema, (NodeSchema, ProfileSchema)) and schema.inherit_from:
+        if isinstance(schema, NodeSchema | ProfileSchema | TemplateSchema) and schema.inherit_from:
             for generic_name in schema.inherit_from:
                 generic = self.get_type(name=generic_name)
                 interfaces.add(generic)
@@ -559,7 +568,9 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         main_attrs = {
             "id": graphene.Field(graphene.String, required=True, description="Unique identifier"),
             "hfid": graphene.Field(
-                graphene.List(of_type=graphene.String), required=False, description="Human friendly identifier"
+                graphene.List(of_type=graphene.NonNull(graphene.String)),
+                required=False,
+                description="Human friendly identifier",
             ),
             "_updated_at": graphene.DateTime(required=False),
             "display_label": graphene.String(required=False),
@@ -569,7 +580,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         for attr in schema.local_attributes:
             attr_kind = get_attr_kind(schema, attr)
             attr_type = self.get_type(name=get_attribute_type(kind=attr_kind).get_graphql_type_name())
-            main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
+            req = "" if attr.optional else " (required)"
+            main_attrs[attr.name] = graphene.Field(attr_type, description=f"{attr.description}{req}")
 
         graphql_object = type(schema.kind, (InfrahubObject,), main_attrs)
 
@@ -589,7 +601,9 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         main_attrs = {
             "id": graphene.Field(graphene.String, required=False, description="Unique identifier"),
             "hfid": graphene.Field(
-                graphene.List(of_type=graphene.String), required=False, description="Human friendly identifier"
+                graphene.List(of_type=graphene.NonNull(graphene.String)),
+                required=False,
+                description="Human friendly identifier",
             ),
             "display_label": graphene.String(required=False),
             "Meta": type("Meta", (object,), meta_attrs),
@@ -598,7 +612,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         for attr in schema.attributes:
             attr_kind = get_attr_kind(node_schema=schema, attr_schema=attr)
             attr_type = self.get_type(name=get_attribute_type(kind=attr_kind).get_graphql_type_name())
-            main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
+            main_attrs[attr.name] = graphene.Field(attr_type, description=attr.description)
 
         interface_object = type(schema.kind, (InfrahubInterface,), main_attrs)
 
@@ -629,7 +643,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         self.set_type(name=type_name, graphql_type=relationship_property)
 
     def generate_graphql_mutations(
-        self, schema: Union[NodeSchema, ProfileSchema], base_class: type[InfrahubMutation]
+        self, schema: NodeSchema | ProfileSchema | TemplateSchema, base_class: type[InfrahubMutation]
     ) -> GraphqlMutations:
         graphql_mutation_create_input = self.generate_graphql_mutation_create_input(schema)
         graphql_mutation_update_input = self.generate_graphql_mutation_update_input(schema)
@@ -657,7 +671,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         return GraphqlMutations(create=create, update=update, upsert=upsert, delete=delete)
 
     def generate_graphql_mutation_create_input(
-        self, schema: Union[NodeSchema, ProfileSchema]
+        self, schema: NodeSchema | ProfileSchema | TemplateSchema
     ) -> type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
 
@@ -677,10 +691,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             attr_kind = get_attr_kind(schema, attr)
             attr_type = get_attribute_type(kind=attr_kind).get_graphql_create()
 
-            # A Field is not required if explicitly indicated or if a default value has been provided
-            required = not attr.optional if not attr.default_value else False
-
-            attrs[attr.name] = graphene.InputField(attr_type, required=required, description=attr.description)
+            attrs[attr.name] = graphene.InputField(attr_type, description=attr.description)
 
         for rel in schema.relationships:
             if rel.internal_peer or rel.read_only:
@@ -688,14 +699,11 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
             input_type = self._get_related_input_type(relationship=rel)
 
-            required = not rel.optional
-            if rel.cardinality == "one":
-                attrs[rel.name] = graphene.InputField(input_type, required=required, description=rel.description)
+            if rel.cardinality == RelationshipCardinality.ONE:
+                attrs[rel.name] = graphene.InputField(input_type, description=rel.description)
 
-            elif rel.cardinality == "many":
-                attrs[rel.name] = graphene.InputField(
-                    graphene.List(input_type), required=required, description=rel.description
-                )
+            elif rel.cardinality == RelationshipCardinality.MANY:
+                attrs[rel.name] = graphene.InputField(graphene.List(input_type), description=rel.description)
 
         return type(f"{schema.kind}CreateInput", (graphene.InputObjectType,), attrs)
 
@@ -728,10 +736,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
             input_type = self._get_related_input_type(relationship=rel)
 
-            if rel.cardinality == "one":
+            if rel.cardinality == RelationshipCardinality.ONE:
                 attrs[rel.name] = graphene.InputField(input_type, required=False, description=rel.description)
 
-            elif rel.cardinality == "many":
+            elif rel.cardinality == RelationshipCardinality.MANY:
                 attrs[rel.name] = graphene.InputField(
                     graphene.List(input_type), required=False, description=rel.description
                 )
@@ -739,7 +747,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         return type(f"{schema.kind}UpdateInput", (graphene.InputObjectType,), attrs)
 
     def generate_graphql_mutation_upsert_input(
-        self, schema: Union[NodeSchema, ProfileSchema]
+        self, schema: NodeSchema | ProfileSchema | TemplateSchema
     ) -> type[graphene.InputObjectType]:
         """Generate an InputObjectType Object from a Infrahub NodeSchema
 
@@ -775,10 +783,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             input_type = self._get_related_input_type(relationship=rel)
 
             required = not rel.optional
-            if rel.cardinality == "one":
+            if rel.cardinality == RelationshipCardinality.ONE:
                 attrs[rel.name] = graphene.InputField(input_type, required=required, description=rel.description)
 
-            elif rel.cardinality == "many":
+            elif rel.cardinality == RelationshipCardinality.MANY:
                 attrs[rel.name] = graphene.InputField(
                     graphene.List(input_type), required=required, description=rel.description
                 )
@@ -787,7 +795,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
     def generate_graphql_mutation_create(
         self,
-        schema: Union[NodeSchema, ProfileSchema],
+        schema: NodeSchema | ProfileSchema | TemplateSchema,
         input_type: type[graphene.InputObjectType],
         base_class: type[InfrahubMutation] = InfrahubMutation,
         mutation_type: str = "Create",
@@ -802,9 +810,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         meta_attrs: dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
         main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
 
-        args_attrs = {
-            "data": input_type(required=True),
-        }
+        args_attrs = {"data": input_type(required=True), "context": ContextInput(required=False)}
         main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
 
         return type(name, (base_class,), main_attrs)
@@ -825,16 +831,14 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         meta_attrs: dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
         main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
 
-        args_attrs = {
-            "data": input_type(required=True),
-        }
+        args_attrs = {"data": input_type(required=True), "context": ContextInput(required=False)}
         main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
 
         return type(name, (base_class,), main_attrs)
 
     @staticmethod
     def generate_graphql_mutation_delete(
-        schema: Union[NodeSchema, ProfileSchema], base_class: type[InfrahubMutation] = InfrahubMutation
+        schema: NodeSchema | ProfileSchema | TemplateSchema, base_class: type[InfrahubMutation] = InfrahubMutation
     ) -> type[InfrahubMutation]:
         """Generate a GraphQL Mutation to DELETE an object based on the specified NodeSchema."""
         name = f"{schema.kind}Delete"
@@ -844,9 +848,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         meta_attrs = {"schema": schema, "name": name, "description": schema.description}
         main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
 
-        args_attrs: dict[str, Any] = {
-            "data": DeleteInput(required=True),
-        }
+        args_attrs: dict[str, Any] = {"data": DeleteInput(required=True), "context": ContextInput(required=False)}
         main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
 
         return type(name, (base_class,), main_attrs)
@@ -940,7 +942,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         }
 
         if relation_property:
-            main_attrs["properties"] = graphene.Field(relation_property)
+            main_attrs["properties"] = graphene.Field(relation_property, required=False)
 
         graphql_edged_object = type(object_name, (InfrahubObject,), main_attrs)
 
@@ -967,15 +969,13 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         }
 
         main_attrs: dict[str, Any] = {
-            "count": graphene.Int(required=False),
-            "edges": graphene.List(of_type=edge),
+            "count": graphene.Int(required=True),
+            "edges": graphene.List(of_type=graphene.NonNull(edge), required=True),
+            "permissions": graphene.Field(
+                PaginatedObjectPermission, required=True, resolver=parent_field_name_resolver
+            ),
             "Meta": type("Meta", (object,), meta_attrs),
         }
-
-        if isinstance(schema, (NodeSchema, GenericSchema)):
-            main_attrs["permissions"] = graphene.Field(
-                PaginatedObjectPermission, required=True, resolver=parent_field_name_resolver
-            )
 
         graphql_paginated_object = type(object_name, (InfrahubObject,), main_attrs)
 
@@ -1004,7 +1004,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         }
 
         if relation_property:
-            main_attrs["properties"] = graphene.Field(relation_property)
+            main_attrs["properties"] = graphene.Field(relation_property, required=False)
 
         object_name = f"NestedEdged{schema.kind}"
         nested_interface_object = type(object_name, (InfrahubObject,), main_attrs)
@@ -1025,8 +1025,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         }
 
         main_attrs: dict[str, Any] = {
-            "count": graphene.Int(required=False),
-            "edges": graphene.List(of_type=base_interface),
+            "count": graphene.Int(required=True),
+            "edges": graphene.List(of_type=graphene.NonNull(base_interface)),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 

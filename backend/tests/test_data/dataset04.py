@@ -9,7 +9,6 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.log import get_logger
 
 # flake8: noqa
-# pylint: skip-file
 
 
 log = get_logger()

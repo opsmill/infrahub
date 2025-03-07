@@ -12,13 +12,14 @@ import {
 } from "@/entities/resource-manager/constants";
 import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";
 import ResourceSelector, { ResourceProps } from "@/entities/resource-manager/ui/resource-selector";
-import { iNodeSchema, schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { NodeSchema } from "@/entities/schema/types";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import ObjectEditSlideOverTrigger from "@/shared/components/form/object-edit-slide-over-trigger";
 import Content from "@/shared/components/layout/content";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ObjectHelpButton } from "@/shared/components/menu/object-help-button";
 import { Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
@@ -26,17 +27,17 @@ import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 import { useQuery } from "@apollo/client";
 import { useAtomValue } from "jotai";
-import { Outlet, useParams } from "react-router-dom";
+import { Outlet, useParams } from "react-router";
 
 const ResourcePoolDetailsPage = () => {
   const { resourcePoolId } = useParams();
-  const nodes = useAtomValue(schemaState);
+  const nodes = useAtomValue(nodeSchemasAtom);
 
   const { data, loading } = useQuery(GET_KIND_FOR_RESOURCE_POOL, {
     variables: { ids: [resourcePoolId] },
   });
 
-  if (loading) return <LoadingScreen />;
+  if (loading) return <LoadingIndicator className="h-full" />;
 
   const resourcePoolData = data[RESOURCE_GENERIC_KIND].edges[0];
   if (!resourcePoolData) return <NoDataFound />;
@@ -50,7 +51,7 @@ const ResourcePoolDetailsPage = () => {
 
 type ResourcePoolContentProps = {
   id: string;
-  schema: iNodeSchema;
+  schema: NodeSchema;
 };
 
 const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
@@ -62,9 +63,13 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
     },
   });
 
-  if (loading || getResourcePoolUtilizationQuery.loading) return <LoadingScreen />;
-  if (error || getResourcePoolUtilizationQuery.error)
+  if (loading || getResourcePoolUtilizationQuery.loading) {
+    return <LoadingIndicator className="h-full" />;
+  }
+
+  if (error || getResourcePoolUtilizationQuery.error) {
     return <ErrorScreen message="Error when fetching the resource pool details" />;
+  }
 
   const resourcePoolData = data[schema.kind!].edges[0];
   if (!resourcePoolData) return <NoDataFound />;
@@ -134,7 +139,7 @@ const ResourcePoolContent = ({ id, schema }: ResourcePoolContentProps) => {
         }
       />
 
-      <div className="p-2 flex items-start h-[calc(100%-64px)] overflow-hidden">
+      <div className="p-2 flex items-start overflow-hidden">
         <aside className="inline-flex flex-col gap-2 shrink-0 mr-1">
           <Card className="shrink-0">
             <CardWithBorder.Title className="flex items-center justify-between gap-1">

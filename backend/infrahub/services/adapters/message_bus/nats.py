@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import ssl
-from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, Optional, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Callable, MutableMapping, TypeVar
 
 import nats
 import ujson
@@ -33,7 +33,7 @@ async def _add_request_id(message: InfrahubMessage) -> None:
 
 
 class NATSMessageBus(InfrahubMessageBus):
-    def __init__(self, settings: Optional[BrokerSettings] = None) -> None:
+    def __init__(self, component_type: ComponentType, settings: BrokerSettings | None = None) -> None:
         self.settings = settings or config.SETTINGS.broker
 
         self.service: InfrahubServices
@@ -46,9 +46,15 @@ class NATSMessageBus(InfrahubMessageBus):
         self.loop = asyncio.get_running_loop()
         self.futures: MutableMapping[str, asyncio.Future] = {}
 
-    async def initialize(self, service: InfrahubServices) -> None:
-        self.service = service
+        self.component_type: ComponentType = component_type
 
+    @classmethod
+    async def new(cls, component_type: ComponentType, settings: BrokerSettings | None = None) -> NATSMessageBus:
+        message_bus = cls(component_type=component_type, settings=settings)
+        await message_bus._initialize()
+        return message_bus
+
+    async def _initialize(self) -> None:
         tls_context = None
         if self.settings.tls_enabled:
             tls_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
@@ -67,9 +73,9 @@ class NATSMessageBus(InfrahubMessageBus):
 
         self.jetstream = self.connection.jetstream()
 
-        if self.service.component_type == ComponentType.API_SERVER:
+        if self.component_type == ComponentType.API_SERVER:
             await self._initialize_api_server()
-        elif self.service.component_type == ComponentType.GIT_AGENT:
+        elif self.component_type == ComponentType.GIT_AGENT:
             await self._initialize_git_worker()
 
     async def shutdown(self) -> None:
@@ -207,7 +213,7 @@ class NATSMessageBus(InfrahubMessageBus):
         await self.publish(message, routing_key)
 
     async def publish(
-        self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None, is_retry: bool = False
+        self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
     ) -> None:
         with trace.get_tracer(__name__).start_as_current_span("publish_message") as span:
             span.set_attribute("routing_key", routing_key)
@@ -282,7 +288,7 @@ class NATSMessageBus(InfrahubMessageBus):
             request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_queue.config.name
         )
 
-        await self.service.send(message=message)
+        await self.service.message_bus.send(message=message)
 
         response: nats.aio.msg.Msg = await future
         data = ujson.loads(response.data)

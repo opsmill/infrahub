@@ -1,5 +1,3 @@
-from typing import Optional
-
 import pytest
 from infrahub_sdk import InfrahubClient
 
@@ -23,12 +21,10 @@ from .shared import (
     TestSchemaLifecycleBase,
 )
 
-# pylint: disable=unused-argument
-
 
 class BranchState:
     def __init__(self) -> None:
-        self._branch: Optional[Branch] = None
+        self._branch: Branch | None = None
 
     @property
     def branch(self) -> Branch:

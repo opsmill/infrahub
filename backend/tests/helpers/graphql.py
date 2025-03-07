@@ -16,11 +16,11 @@ from graphql import graphql as graphql_core
 from infrahub.core.branch import Branch
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.log import get_logger
-from infrahub.services import InfrahubServices, services
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
     from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubServices
 
 
 async def graphql(
@@ -64,13 +64,12 @@ async def graphql(
 async def graphql_mutation(
     query: str,
     db: InfrahubDatabase,
+    service: InfrahubServices,
     branch: Branch | None = None,
     variables: dict[str, Any] | None = None,
-    service: InfrahubServices | None = None,
     account_session: AccountSession | None = None,
 ) -> ExecutionResult:
     branch = branch or await Branch.get_by_name(name="main", db=db)
-    service = service or services.service
     variables = variables or {}
     gql_params = await prepare_graphql_params(
         db=db,
@@ -93,11 +92,9 @@ async def graphql_query(
     query: str,
     db: InfrahubDatabase,
     branch: Branch,
-    variables: dict[str, Any] | None = None,
     service: InfrahubServices | None = None,
+    variables: dict[str, Any] | None = None,
 ) -> ExecutionResult:
-    service = service or services.service
-
     variables = variables or {}
     gql_params = await prepare_graphql_params(
         db=db, include_subscription=False, include_mutation=False, branch=branch, service=service

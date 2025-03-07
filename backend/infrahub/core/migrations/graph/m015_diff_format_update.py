@@ -20,7 +20,7 @@ class Migration015(ArbitraryMigration):
     name: str = "015_diff_format_update"
     minimum_version: int = 14
 
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         result = MigrationResult()
 
         return result

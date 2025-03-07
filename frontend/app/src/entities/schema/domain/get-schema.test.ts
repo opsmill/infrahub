@@ -1,10 +1,16 @@
-import { genericsState, profilesAtom, schemaState } from "@/entities/schema/stores/schema.atom";
+import {
+  genericSchemasAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
+  templateSchemasAtom,
+} from "@/entities/schema/stores/schema.atom";
 import { store } from "@/shared/stores";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   generateGenericSchema,
   generateNodeSchema,
   generateProfileSchema,
+  generateTemplateSchema,
 } from "../../../../tests/fake/schema";
 import { getSchema } from "./get-schema";
 
@@ -12,13 +18,13 @@ describe("getSchema", () => {
   const nodeSchema = generateNodeSchema({ kind: "Node" });
   const genericSchema = generateGenericSchema({ kind: "Generic" });
   const profileSchema = generateProfileSchema({ kind: "Profile" });
+  const templateSchema = generateTemplateSchema({ kind: "Template" });
 
   beforeEach(() => {
-    store.set(schemaState, [nodeSchema]);
-
-    store.set(genericsState, [genericSchema]);
-
-    store.set(profilesAtom, [profileSchema]);
+    store.set(nodeSchemasAtom, [nodeSchema]);
+    store.set(genericSchemasAtom, [genericSchema]);
+    store.set(profileSchemasAtom, [profileSchema]);
+    store.set(templateSchemasAtom, [templateSchema]);
   });
 
   it("should return null schema when no kind is provided", () => {
@@ -28,6 +34,7 @@ describe("getSchema", () => {
       isGeneric: false,
       isNode: false,
       isProfile: false,
+      isTemplate: false,
     });
   });
 
@@ -38,6 +45,7 @@ describe("getSchema", () => {
       isGeneric: false,
       isNode: true,
       isProfile: false,
+      isTemplate: false,
     });
   });
 
@@ -48,6 +56,7 @@ describe("getSchema", () => {
       isGeneric: true,
       isNode: false,
       isProfile: false,
+      isTemplate: false,
     });
   });
 
@@ -58,6 +67,18 @@ describe("getSchema", () => {
       isGeneric: false,
       isNode: false,
       isProfile: true,
+      isTemplate: false,
+    });
+  });
+
+  it("should return template schema when kind matches a template", () => {
+    const result = getSchema("Template");
+    expect(result).toEqual({
+      schema: templateSchema,
+      isGeneric: false,
+      isNode: false,
+      isProfile: false,
+      isTemplate: true,
     });
   });
 
@@ -68,6 +89,7 @@ describe("getSchema", () => {
       isGeneric: false,
       isNode: false,
       isProfile: false,
+      isTemplate: false,
     });
   });
 });

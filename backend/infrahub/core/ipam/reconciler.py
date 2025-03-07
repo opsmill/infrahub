@@ -104,7 +104,7 @@ class IpamReconciler:
         ip_node_uuid = query.get_ip_node_uuid()
         if not ip_node_uuid:
             node_type = InfrahubKind.IPPREFIX
-            if isinstance(ip_value, (ipaddress.IPv6Interface, ipaddress.IPv4Interface)):
+            if isinstance(ip_value, ipaddress.IPv6Interface | ipaddress.IPv4Interface):
                 node_type = InfrahubKind.IPADDRESS
             raise NodeNotFoundError(node_type=node_type, identifier=str(ip_value))
         current_parent_uuid = query.get_current_parent_uuid()

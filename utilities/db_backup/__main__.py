@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Generator, Optional
+from typing import Any, Generator
 
 import docker
 from docker.models.containers import Container
@@ -133,7 +133,7 @@ class Neo4jBackupRestoreBase:
 
     @contextmanager
     def _print_task_status(
-        self, start: str, completion_message: Optional[str] = None, with_timestamp: bool = True
+        self, start: str, completion_message: str | None = None, with_timestamp: bool = True
     ) -> Generator[None, None, None]:
         end = "" if completion_message else "\n"
         to_print = start
@@ -150,8 +150,8 @@ class Neo4jBackupRestoreBase:
         self,
         container: Container,
         command: list[str],
-        environment: Optional[dict[str, str]] = None,
-        failure_message: Optional[str] = None,
+        environment: dict[str, str] | None = None,
+        failure_message: str | None = None,
         display_error: bool = True,
         continue_on_error: bool = False,
     ) -> bool:
@@ -168,7 +168,7 @@ class Neo4jBackupRestoreBase:
             sys.exit(exit_code)
         return False
 
-    def _get_database_container_details(self, raise_error_on_fail: bool = True) -> Optional[ContainerDetails]:
+    def _get_database_container_details(self, raise_error_on_fail: bool = True) -> ContainerDetails | None:
         containers = self.docker_client.containers.list(filters={"label": "infrahub_role=database"})
         if len(containers) == 0:
             if raise_error_on_fail:
@@ -189,8 +189,8 @@ class Neo4jBackupRestoreBase:
     def _create_helper_container(
         self,
         local_backup_directory: Path,
-        local_docker_networks: Optional[list[Network]],
-        volumes_from_container_names: Optional[list[str]] = None,
+        local_docker_networks: list[Network] | None,
+        volumes_from_container_names: list[str] | None = None,
     ) -> Container:
         try:
             existing_exporter_container = self.docker_client.containers.get(self.backup_helper_container_name)
@@ -278,7 +278,7 @@ class Neo4jBackupRunner(Neo4jBackupRestoreBase):
     def backup(
         self,
         local_backup_directory: Path,
-        database_url: Optional[str],
+        database_url: str | None,
         database_backup_port: int,
         do_aggregate_backups: bool = True,
     ) -> None:

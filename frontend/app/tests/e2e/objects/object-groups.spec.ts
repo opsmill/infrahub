@@ -18,7 +18,6 @@ test.describe("Object groups update", () => {
     await test.step("access the tags and create a new one", async () => {
       await page.goto("/objects/BuiltinTag");
       await expect(page.getByTestId("create-object-button")).toBeVisible();
-      await expect(page.getByText("Just a moment")).not.toBeVisible();
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Name *").fill(NEW_TAG);
       await page.getByRole("button", { name: "Save" }).click();
@@ -43,6 +42,7 @@ test.describe("Object groups update", () => {
       await page.getByLabel("Add groups *").click(); // to close the combobox
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("2 groups added")).toBeVisible();
+      await expect(page.getByText("2 groups added")).toBeHidden();
     });
 
     await test.step("auto-generated toggle button not visible if there is no auto-generated groups", async () => {

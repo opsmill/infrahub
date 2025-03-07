@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(
         cls, schema: NodeSchema, _meta: Optional[Any] = None, **options: dict[str, Any]
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
@@ -34,20 +34,24 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
 
     @classmethod
     async def extract_query_info(
-        cls, info: GraphQLResolveInfo, data: InputObjectType, branch: Branch
+        cls, info: GraphQLResolveInfo, data: InputObjectType, branch: Branch, db: InfrahubDatabase
     ) -> dict[str, Any]:
         query_value = data.get("query", {}).get("value", None)
         if query_value is None:
             return {}
 
         query_info = {}
-        analyzer = InfrahubGraphQLQueryAnalyzer(query=query_value, schema=info.schema, branch=branch)
+        schema_branch = db.schema.get_schema_branch(name=branch.name)
+
+        analyzer = InfrahubGraphQLQueryAnalyzer(
+            query=query_value, schema=info.schema, branch=branch, schema_branch=schema_branch
+        )
 
         valid, errors = analyzer.is_valid
         if not valid:
             raise ValueError(f"Query is not valid, {str(errors)}")
 
-        query_info["models"] = {"value": sorted(list(await analyzer.get_models_in_use(types=info.context.types)))}
+        query_info["models"] = {"value": analyzer.query_report.impacted_models}
         query_info["depth"] = {"value": await analyzer.calculate_depth()}
         query_info["height"] = {"value": await analyzer.calculate_height()}
         query_info["operations"] = {
@@ -63,11 +67,13 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
+        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
-        data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
+        data.update(
+            await cls.extract_query_info(info=info, data=data, branch=graphql_context.branch, db=graphql_context.db)
+        )
 
         obj, result = await super().mutate_create(info=info, data=data, branch=branch)
 
@@ -79,12 +85,14 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
-        node: Optional[Node] = None,
+        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
+        node: Optional[Node] = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
-        context: GraphqlContext = info.context
+        graphql_context: GraphqlContext = info.context
 
-        data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
+        data.update(
+            await cls.extract_query_info(info=info, data=data, branch=graphql_context.branch, db=graphql_context.db)
+        )
 
         obj, result = await super().mutate_update(info=info, data=data, branch=branch)
 

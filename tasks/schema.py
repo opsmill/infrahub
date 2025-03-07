@@ -11,7 +11,7 @@ INFRAHUB_DIRECTORY = REPO_BASE / "generated" / "infrahub"
 
 
 @task
-def generate_jsonschema(context: Context) -> None:
+def generate_jsonschema(context: Context) -> None:  # noqa: ARG001
     """Generate JSON schemas into ./generated"""
 
     generate_sdk_repository_config()

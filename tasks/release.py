@@ -96,7 +96,7 @@ def ship(context: Context) -> None:
 
 
 @task
-def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> None:
+def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> None:  # noqa: ARG001
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     print(" - [release] Update Helm chart")
 
@@ -151,7 +151,7 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> Non
 
 
 @task
-def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:
+def update_docker_compose(context: Context, docker_file: str | None = "docker-compose.yml") -> None:  # noqa: ARG001
     """Update docker-compose.yml with the current version from pyproject.toml."""
     print(" - [release] Update docker-compose.yml")
 
@@ -164,7 +164,7 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
     docker_yaml: dict = yaml.load(docker_path)
 
     # Define services to update
-    services_to_update = ["infrahub-server", "task-worker"]
+    services_to_update = ["infrahub-server", "task-worker", "task-manager"]
     updates_made = False
 
     # Iterate over the services and update their image versions
@@ -197,7 +197,7 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
 
 
 @task
-def update_test_containers(context: Context, toml_file: str | None = "python_testcontainers/pyproject.toml") -> None:
+def update_test_containers(context: Context, toml_file: str | None = "python_testcontainers/pyproject.toml") -> None:  # noqa: ARG001
     """Update test containers pyproject.toml with the current version from pyproject.toml."""
     print(" - [release] Update python_testcontainers/pyproject.toml")
 
@@ -340,7 +340,7 @@ def update_docker_compose_env_vars(
 
 @task
 def gen_config_env(
-    context: Context,
+    context: Context,  # noqa: ARG001
     docker_file: str | None = "docker-compose.yml",
     update_docker_file: bool | None = False,
 ) -> None:

@@ -1,6 +1,6 @@
 import useQuery from "@/shared/api/graphql/useQuery";
-import LoadingScreen from "@/shared/components/loading-screen";
 import { Badge } from "@/shared/components/ui/badge";
+import { Spinner } from "@/shared/components/ui/spinner";
 import { gql } from "@apollo/client";
 
 type tProposedChangesCounter = {
@@ -24,7 +24,7 @@ export const ProposedChangesCounter = ({ query, id, kind }: tProposedChangesCoun
   if (loading) {
     return (
       <Badge className="rounded-full">
-        <LoadingScreen size={8} hideText />
+        <Spinner />
       </Badge>
     );
   }

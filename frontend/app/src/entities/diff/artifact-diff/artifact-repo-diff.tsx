@@ -1,20 +1,20 @@
 import { getArtifactDetails } from "@/entities/artifacts/api/getArtifacts";
-import { schemaState } from "@/entities/schema/stores/schema.atom";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import useQuery from "@/shared/api/graphql/useQuery";
 import Accordion from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/display/badge";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import LoadingScreen from "@/shared/components/loading-screen";
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import "react-diff-view/style/index.css";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ArtifactContentDiff } from "./artifact-content-diff";
 
 export const ArtifactRepoDiff = (props: any) => {
   const { diff } = props;
 
-  const [schemaList] = useAtom(schemaState);
+  const [schemaList] = useAtom(nodeSchemasAtom);
 
   const schemaData = schemaList.filter((s) => s.kind === "Artifact")[0];
 
@@ -33,7 +33,7 @@ export const ArtifactRepoDiff = (props: any) => {
   const { loading, error, data } = useQuery(query, { skip: !schemaData });
 
   if (loading) {
-    return <LoadingScreen />;
+    return <LoadingIndicator className="h-10 m-4" />;
   }
 
   if (error) {

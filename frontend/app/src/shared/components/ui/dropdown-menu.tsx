@@ -25,7 +25,7 @@ export const DropdownMenuContent = forwardRef<
         sideOffset={4}
         ref={ref}
         className={classNames(
-          "p-2 bg-white rounded-xl shadow-lg min-w-32 overflow-hidden space-y-1",
+          "p-2 bg-white rounded-xl shadow-lg min-w-32 overflow-hidden space-y-1 z-50",
           "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
           "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
@@ -44,9 +44,9 @@ export const DropdownMenuItem = forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={classNames(
-      "rounded-lg p-2",
+      "rounded-lg px-2 py-1.5",
       "text-neutral-800 text-sm",
-      "relative flex items-center gap-2",
+      "relative flex items-center gap-1.5",
       "cursor-pointer outline-none focus:bg-neutral-100",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       className
@@ -75,7 +75,7 @@ export const DropdownMenuSubTrigger = forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={classNames(
-      "flex cursor-default select-none items-center rounded-lg p-2 text-sm outline-none focus:bg-neutral-100 data-[state=open]:bg-neutral-100",
+      "flex gap-1.5 cursor-default select-none items-center rounded-lg p-2 text-sm outline-none focus:bg-neutral-100 data-[state=open]:bg-neutral-100",
       className
     )}
     {...props}

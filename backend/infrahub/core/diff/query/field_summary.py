@@ -27,7 +27,7 @@ class EnrichedDiffNodeFieldSummaryQuery(Query):
         self.tracking_id = tracking_id
         self.diff_id = diff_id
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         if self.tracking_id is None and self.diff_id is None:
             raise RuntimeError("Either tacking_id or diff_id is required")
         self.params = {

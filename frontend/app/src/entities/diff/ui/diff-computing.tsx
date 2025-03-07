@@ -1,5 +1,5 @@
 import { DiffRefreshButton } from "@/entities/diff/ui/diff-refresh-button";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
 import { Icon } from "@iconify-icon/react";
 
@@ -11,7 +11,7 @@ export interface DiffComputingProps {
 export function DiffComputing({ sourceBranch, destinationBranch }: DiffComputingProps) {
   return (
     <div className="flex flex-col items-center mt-10 gap-5">
-      <LoadingScreen hideText />
+      <LoadingIndicator message="" />
 
       <h1 className="font-semibold inline-flex gap-1.5">
         We are computing the diff between

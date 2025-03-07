@@ -2,9 +2,9 @@ import { INFRAHUB_API_SERVER_URL } from "@/config/config";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useConfig } from "@/entities/config/get-config.query";
 import { fetchUrl } from "@/shared/api/rest/fetch";
-import LoadingScreen from "@/shared/components/loading-screen";
+import { InfrahubLoading } from "@/shared/components/loading/infrahub-loading";
 import { useEffect, useState } from "react";
-import { Navigate, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useParams, useSearchParams } from "react-router";
 
 function AuthCallback() {
   const { protocol, provider } = useParams();
@@ -52,11 +52,7 @@ function AuthCallback() {
     return <Navigate to={redirectTo} replace />;
   }
 
-  return (
-    <div className="w-screen h-screen flex items-center justify-center">
-      <LoadingScreen />
-    </div>
-  );
+  return <InfrahubLoading>Authenticating...</InfrahubLoading>;
 }
 
 export const Component = AuthCallback;
