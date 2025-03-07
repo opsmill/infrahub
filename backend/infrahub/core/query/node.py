@@ -20,6 +20,7 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
 from infrahub.graphql.models import OrderModel
+from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
@@ -34,6 +35,8 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 # pylint: disable=consider-using-f-string,redefined-builtin,too-many-lines
+
+log = get_logger()
 
 
 @dataclass
@@ -871,6 +874,7 @@ class NodeGetListQuery(Query):
         **kwargs: Any,
     ) -> None:
         self.use_profiles = not config.SETTINGS.experimental_features.no_profiles
+        log.info(f"node get list query {self.use_profiles=}")
         self.schema = schema
         self.filters = filters
         self.partial_match = partial_match
