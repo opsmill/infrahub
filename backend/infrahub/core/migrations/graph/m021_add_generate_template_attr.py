@@ -15,8 +15,8 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Migration020(InternalSchemaMigration):
-    name: str = "020_add_generate_template_attr"
+class Migration021(InternalSchemaMigration):
+    name: str = "021_add_generate_template_attr"
     minimum_version: int = 19
 
     @classmethod
