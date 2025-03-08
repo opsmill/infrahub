@@ -514,6 +514,8 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
                 base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 
             if isinstance(node_schema, (NodeSchema, ProfileSchema)):
+                if isinstance(node_schema, ProfileSchema) and config.SETTINGS.experimental_features.no_profiles is True:
+                    continue
                 mutations = self.generate_graphql_mutations(schema=node_schema, base_class=base_class)
 
                 class_attrs[f"{node_schema.kind}Create"] = mutations.create.Field()
