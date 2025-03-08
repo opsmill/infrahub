@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from graphene.types.definitions import GrapheneInterfaceType, GrapheneObjectType
 from graphql import (
@@ -50,7 +50,7 @@ def find_types_implementing_interface(
 
 
 async def extract_schema_models(
-    fields: dict, schema: Union[GrapheneObjectType, GraphQLUnionType], root_schema: GraphQLSchema
+    fields: dict, schema: GrapheneObjectType | GraphQLUnionType, root_schema: GraphQLSchema
 ) -> set[str]:
     response = set()
 

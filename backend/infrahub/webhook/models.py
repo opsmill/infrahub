@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -112,7 +112,7 @@ class Webhook(BaseModel):
     event_type: str = Field(...)
     validate_certificates: bool = Field(...)
     _payload: Any = None
-    _headers: Optional[dict[str, Any]] = None
+    _headers: dict[str, Any] | None = None
 
     async def _prepare_payload(self, data: dict[str, Any], context: EventContext, service: InfrahubServices) -> None:  # noqa: ARG002
         self._payload = {"data": data, **context.model_dump()}
@@ -199,7 +199,7 @@ class TransformWebhook(Webhook):
     transform_timeout: int = Field(...)
 
     async def _prepare_payload(self, data: dict[str, Any], context: EventContext, service: InfrahubServices) -> None:
-        repo: Union[InfrahubReadOnlyRepository, InfrahubRepository]
+        repo: InfrahubReadOnlyRepository | InfrahubRepository
         if self.repository_kind == InfrahubKind.READONLYREPOSITORY:
             repo = await InfrahubReadOnlyRepository.init(
                 id=self.repository_id,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from graphene import InputObjectType, Mutation
 from typing_extensions import Self
@@ -28,7 +28,7 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
     def __init_subclass_with_meta__(
         cls,
         schema: NodeSchema,
-        _meta: Optional[Any] = None,
+        _meta: Any | None = None,
         **options: dict[str, Any],
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
@@ -48,7 +48,7 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
@@ -74,8 +74,8 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
-        node: Optional[Node] = None,  # noqa: ARG003
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        node: Node | None = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 

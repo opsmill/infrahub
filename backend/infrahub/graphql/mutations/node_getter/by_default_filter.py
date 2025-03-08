@@ -1,5 +1,3 @@
-from typing import Optional
-
 from graphene import InputObjectType
 
 from infrahub.core.branch import Branch
@@ -21,7 +19,7 @@ class MutationNodeGetterByDefaultFilter(MutationNodeGetterInterface):
         node_schema: MainSchemaTypes,
         data: InputObjectType,
         branch: Branch,
-    ) -> Optional[Node]:
+    ) -> Node | None:
         node = None
         default_filter_value = None
         if not node_schema.default_filter:

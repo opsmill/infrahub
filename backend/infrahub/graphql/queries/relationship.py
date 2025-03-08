@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from graphene import Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node
@@ -25,7 +25,7 @@ class Relationships(ObjectType):
         ids: list[str],
         limit: int = 10,
         offset: int = 0,
-        excluded_namespaces: Optional[list[str]] = None,
+        excluded_namespaces: list[str] | None = None,
     ) -> dict[str, Any]:
         graphql_context: GraphqlContext = info.context
 

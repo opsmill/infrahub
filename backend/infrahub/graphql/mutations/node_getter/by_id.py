@@ -1,5 +1,3 @@
-from typing import Optional
-
 from graphene import InputObjectType
 
 from infrahub.core.branch import Branch
@@ -21,7 +19,7 @@ class MutationNodeGetterById(MutationNodeGetterInterface):
         node_schema: MainSchemaTypes,
         data: InputObjectType,
         branch: Branch,
-    ) -> Optional[Node]:
+    ) -> Node | None:
         node = None
         if "id" not in data:
             return node
