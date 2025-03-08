@@ -50,38 +50,6 @@ For more detailed explanations on how these events are used within Infrahub, see
 <!-- vale on -->
 
 <!-- vale off -->
-#### Event event.branch.create
-<!-- vale on -->
-
-**Description**: Sent a new branch is created.
-
-**Priority**: 5
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch that was created | string | None |
-| **branch_id** | The unique ID of the branch | string | None |
-| **sync_with_git** | Indicates if Infrahub should extend this branch to git. | boolean | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event event.branch.delete
-<!-- vale on -->
-
-**Description**: Sent when a branch has been deleted.
-
-**Priority**: 5
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch that was deleted | string | None |
-| **branch_id** | The unique ID of the branch | string | None |
-| **sync_with_git** | Indicates if the branch was extended to Git | boolean | None |
-<!-- vale on -->
-<!-- vale off -->
 #### Event event.branch.merge
 <!-- vale on -->
 
@@ -96,62 +64,6 @@ For more detailed explanations on how these events are used within Infrahub, see
 | **source_branch** | The source branch | string | None |
 | **target_branch** | The target branch | string | None |
 | **context** | The context of the event | N/A | None |
-<!-- vale on -->
-<!-- vale off -->
-#### Event event.branch.rebased
-<!-- vale on -->
-
-**Description**: Sent when a branch has been rebased.
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch that was rebased | string | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Event Node
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event event.node.mutated
-<!-- vale on -->
-
-**Description**: Sent when a node has been mutated
-
-**Priority**: 3
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch that was created | string | None |
-| **kind** | The type of object modified | string | None |
-| **node_id** | The ID of the mutated node | string | None |
-| **action** | The action taken on the node | string | None |
-| **data** | Data on modified object | object | None |
-<!-- vale on -->
-
-<!-- vale off -->
-### Event Schema
-<!-- vale on -->
-
-<!-- vale off -->
-#### Event event.schema.update
-<!-- vale on -->
-
-**Description**: Sent when the schema on a branch has been updated.
-
-**Priority**: 5
-
-<!-- vale off -->
-| Key | Description | Type | Default Value |
-|-----|-------------|------|---------------|
-| **meta** | Meta properties for the message | N/A | None |
-| **branch** | The branch where the update occurred | string | None |
 <!-- vale on -->
 
 <!-- vale off -->
@@ -374,7 +286,7 @@ For more detailed explanations on how these events are used within Infrahub, see
 
 **Description**: Sent a echo request, a ping message for example.
 
-**Priority**: 3
+**Priority**: 5
 
 <!-- vale off -->
 | Key | Description | Type | Default Value |
@@ -416,7 +328,7 @@ For more detailed explanations on how these events are used within Infrahub, see
 <!-- vale off -->
 #### Event send.echo.request
 <!-- vale on -->
-**Priority**: 3
+**Priority**: 5
 
 <!-- vale off -->
 | Key | Description | Type | Default Value |
