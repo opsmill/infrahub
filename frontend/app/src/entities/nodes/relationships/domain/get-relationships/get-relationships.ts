@@ -1,6 +1,8 @@
-import { getRelationshipsFromApi } from "@/entities/nodes/relationships/api/get-relationships-from-api";
+import {
+  getRelationshipsFromApi,
+  getRelationshipsFromApiParams,
+} from "@/entities/nodes/relationships/api/get-relationships-from-api";
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { ContextParams, PaginationParams } from "@/shared/api/types";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -8,12 +10,7 @@ export const RELATIONSHIPS_PER_PAGE = 20;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export type GetRelationshipsParams = ContextParams &
-  PaginationParams & {
-    peer: string;
-    search?: string;
-    parentId?: string;
-  };
+export type GetRelationshipsParams = getRelationshipsFromApiParams;
 
 export type GetRelationships = (params: GetRelationshipsParams) => Promise<Array<RelationshipNode>>;
 
@@ -24,7 +21,7 @@ export const getRelationships: GetRelationships = async ({
   offset,
   peer,
   search,
-  parentId,
+  filterQuery,
 }) => {
   const { data } = await getRelationshipsFromApi({
     peer,
@@ -33,7 +30,7 @@ export const getRelationships: GetRelationships = async ({
     search,
     branchName,
     atDate,
-    parent: parentId ? { name: "parent", value: parentId } : undefined,
+    filterQuery,
   });
 
   const relationshipsData = data[peer];

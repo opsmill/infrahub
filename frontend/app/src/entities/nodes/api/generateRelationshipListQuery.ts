@@ -1,17 +1,21 @@
 import { PaginationParams } from "@/shared/api/types";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
+export type GenerateRelationshipListQueryParams = PaginationParams & {
+  peer: string;
+  parent?: { name: string; value: string };
+  search?: string;
+  filterQuery?: Record<string, string | number | boolean | string[]>;
+};
+
 export const generateRelationshipListQuery = ({
   peer,
   parent,
   limit = 0,
   offset = 0,
   search = "",
-}: PaginationParams & {
-  peer: string;
-  parent?: { name?: string; value?: string };
-  search?: string;
-}): string => {
+  filterQuery = {},
+}: GenerateRelationshipListQueryParams): string => {
   const defaultArgs = { limit, offset, any__value: search, partial_match: true };
 
   const args = parent?.value
@@ -24,6 +28,7 @@ export const generateRelationshipListQuery = ({
       [peer]: {
         __args: {
           ...args,
+          ...filterQuery,
         },
         count: true,
         edges: {
