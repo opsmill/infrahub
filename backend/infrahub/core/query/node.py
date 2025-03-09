@@ -956,6 +956,7 @@ class NodeGetListQuery(Query):
         if not self.branch.is_default:
             topquery = """
             MATCH (:Root)<-[rfilter:IS_PART_OF]-(nfilter:%(node_kind)s)
+            USING INDEX rfilter:IS_PART_OF(branch, status)
             WHERE %(branch_filter_deleted)s
             AND rfilter.branch_level = %(branch_level)d AND rfilter.status = "deleted"
             WITH collect(nfilter.uuid) AS deleted_list
