@@ -1,1 +1,0 @@
-Fixed an error in the query to count the number of peers for a given cardinality-many relationship. Previous logic could have resulted in the count being multiplied by a power of 2 if changes were made to the relationship during a merge.

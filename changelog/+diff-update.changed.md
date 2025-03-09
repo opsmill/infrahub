@@ -1,1 +1,0 @@
-Updated the `DiffUpdate` mutation to return the id of the task when `wait_until_completion` is False. Also the argument `wait_for_completion` under data is deprecated and it has been replaced with `wait_until_completion` at the root of the mutation instead to align with the format of the other mutations.
