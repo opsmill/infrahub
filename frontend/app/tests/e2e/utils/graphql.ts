@@ -49,7 +49,7 @@ export const createBranchAPI = async (request: APIRequestContext, name: string) 
     }
   `;
 
-  return await executeGraphQLMutation(request, mutation, { name });
+  return executeGraphQLMutation(request, mutation, { name });
 };
 
 export const deleteBranchAPI = async (request: APIRequestContext, name: string): Promise<any> => {

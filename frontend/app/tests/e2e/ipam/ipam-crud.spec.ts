@@ -1,13 +1,24 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
+
+const BRANCH_NAME = "ipam-crud";
 
 test.describe("/ipam - Ipam home page", () => {
   test.describe.configure({ mode: "serial" });
   test.slow();
 
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
+  });
+
   test.describe("When not logged in", () => {
     test("disable buttons that open creation form", async ({ page }) => {
-      await page.goto("/ipam");
+      await page.goto(`/ipam?branch=${BRANCH_NAME}`);
 
       await expect(page.getByTestId("create-object-button")).toBeDisabled();
 
@@ -20,7 +31,7 @@ test.describe("/ipam - Ipam home page", () => {
   });
 
   test("should load all ipam home page elements", async ({ page }) => {
-    await page.goto("/ipam");
+    await page.goto(`/ipam?branch=${BRANCH_NAME}`);
 
     await expect(page.getByRole("heading", { name: "IP Address Manager" })).toBeVisible();
     await expect(page.getByTestId("ipam-tree")).toBeVisible();
@@ -33,7 +44,7 @@ test.describe("/ipam - Ipam home page", () => {
     test("create, validate ui then delete a prefix with a parents and children", async ({
       page,
     }) => {
-      await page.goto("/ipam");
+      await page.goto(`/ipam?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("treeitem", { name: "10.0.0.0/8" })).toBeVisible();
 
       await test.step("validate initial tree", async () => {
@@ -152,7 +163,7 @@ test.describe("/ipam - Ipam home page", () => {
     });
 
     test("create, validate ui then delete an ip address", async ({ page }) => {
-      await page.goto("/ipam/addresses?ipam-tab=ip-details");
+      await page.goto(`/ipam/addresses?branch=${BRANCH_NAME}&ipam-tab=ip-details`);
 
       await test.step("create an ip address", async () => {
         await page.getByTestId("create-object-button").click();

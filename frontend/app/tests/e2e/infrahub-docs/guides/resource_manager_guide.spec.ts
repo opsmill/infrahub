@@ -20,7 +20,8 @@ test.describe("Resource Managers - Guide", () => {
 
   test("IP Address Pool", async ({ page }) => {
     await test.step("Create prefix 10.100.0.0/24", async () => {
-      await page.goto("/ipam");
+      await page.goto(`/ipam?branch=${BRANCH_NAME}`);
+
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Prefix *").fill("10.100.0.0/24");
       await saveScreenshotForDocs(
@@ -32,7 +33,8 @@ test.describe("Resource Managers - Guide", () => {
     });
 
     await test.step("Create IP Pool - 10.100.0.0/24", async () => {
-      await page.goto("/resource-manager");
+      await page.goto(`/resource-manager?branch=${BRANCH_NAME}`);
+
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "IP Address Pool Core" }).click();
@@ -60,7 +62,8 @@ test.describe("Resource Managers - Guide", () => {
     });
 
     await test.step("Use Pool to allocate IP on Device", async () => {
-      await page.goto("/objects/InfraDevice");
+      await page.goto(`/objects/InfraDevice?branch=${BRANCH_NAME}`);
+
       await page.getByTestId("create-object-button").click();
       await page.getByRole("combobox", { name: "Site" }).click();
       await page.getByRole("option", { name: "atl1" }).click();
@@ -83,7 +86,8 @@ test.describe("Resource Managers - Guide", () => {
 
   test("IP Prefix Pool", async ({ page }) => {
     await test.step("Create prefix 10.100.1.0/24", async () => {
-      await page.goto("/ipam");
+      await page.goto(`/ipam?branch=${BRANCH_NAME}`);
+
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Prefix *").fill("10.100.1.0/24");
       await page.getByRole("combobox", { name: "Member Type" }).click();
@@ -100,7 +104,8 @@ test.describe("Resource Managers - Guide", () => {
     });
 
     await test.step("Create Prefix Pool - 10.100.1.0/24", async () => {
-      await page.goto("/resource-manager");
+      await page.goto(`/resource-manager?branch=${BRANCH_NAME}`);
+
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "IP Prefix Pool Core" }).click();
@@ -133,7 +138,7 @@ test.describe("Resource Managers - Guide", () => {
 
   test("Number Pool", async ({ page }) => {
     await test.step("Create Number Pool - VLAN ID", async () => {
-      await page.goto("/resource-manager");
+      await page.goto(`/resource-manager?branch=${BRANCH_NAME}`);
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "Number Pool Core" }).click();
@@ -152,7 +157,8 @@ test.describe("Resource Managers - Guide", () => {
     });
 
     await test.step("Use Pool to allocate ID to VLAN", async () => {
-      await page.goto("/objects/InfraVLAN");
+      await page.goto(`/objects/InfraVLAN?branch=${BRANCH_NAME}`);
+
       await page.getByTestId("create-object-button").click();
       await page.getByRole("textbox", { name: "Name *" }).fill("My vlan");
       await page.getByTestId("number-pool-button").click();
