@@ -2955,5 +2955,13 @@ async def test_manage_object_templates_with_component_relationships():
     assert test_device.generate_template
     assert test_device.get_relationship(name="object_template").peer == test_object_template_device.kind
 
-    # Make sure interfaces relationship is converted tp interface templates
+    # Make sure interfaces relationship is converted to interface templates
     assert test_object_template_device.get_relationship("interfaces").peer == f"Template{TestKind.INTERFACE}"
+
+    # Verify attributes mapping of components
+    test_interface_template = schema_branch.get(name=f"Template{TestKind.PHYSICAL_INTERFACE}", duplicate=False)
+    test_interface = schema_branch.get(name=TestKind.PHYSICAL_INTERFACE, duplicate=False)
+    for attr in test_interface.attributes:
+        template_attr = test_interface_template.get_attribute(name=attr.name)
+        # Optional value in component template should match original's
+        assert attr.optional == template_attr.optional
