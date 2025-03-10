@@ -63,7 +63,9 @@ class WebhookTriggerDefinition(TriggerDefinition):
                     workflow=WEBHOOK_PROCESS,
                     parameters={
                         "webhook_id": obj.id,
+                        "webhook_name": obj.name.value,
                         "webhook_kind": obj.get_kind(),
+                        "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
                         "event_id": "{{ event.id }}",
                         "event_type": "{{ event.event }}",
                         "event_occured_at": "{{ event.occurred }}",

@@ -1,8 +1,6 @@
-from typing import Any
+from typing import ClassVar
 
-from pydantic import Field, computed_field
-
-from infrahub.message_bus import InfrahubMessage
+from pydantic import Field
 
 from .constants import EVENT_NAMESPACE
 from .models import InfrahubEvent
@@ -19,7 +17,6 @@ class ArtifactEvent(InfrahubEvent):
     checksum_previous: str | None = Field(default=None, description="The previous checksum of the artifact")
     storage_id: str = Field(..., description="The current storage id of the artifact")
     storage_id_previous: str | None = Field(default=None, description="The previous storage id of the artifact")
-    created: bool = Field(..., description="Indicates if the artifact was created with this event or already existed")
 
     def get_related(self) -> list[dict[str, str]]:
         related = super().get_related()
@@ -52,25 +49,10 @@ class ArtifactEvent(InfrahubEvent):
             "infrahub.branch.name": self.meta.context.branch.name,
         }
 
-    def get_payload(self) -> dict[str, Any]:
-        return {
-            "node_id": self.node_id,
-            "artifact_definition_id": self.artifact_definition_id,
-            "target_id": self.target_id,
-            "target_kind": self.target_kind,
-            "checksum": self.checksum,
-            "checksum_previous": self.checksum_previous,
-            "storage_id": self.storage_id,
-            "storage_id_previous": self.storage_id_previous,
-        }
 
-    def get_messages(self) -> list[InfrahubMessage]:
-        return []
+class ArtifactCreatedEvent(ArtifactEvent):
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.artifact.created"
 
-    @computed_field
-    def event_name(self) -> str:
-        match self.created:
-            case True:
-                return f"{EVENT_NAMESPACE}.artifact.created"
-            case False:
-                return f"{EVENT_NAMESPACE}.artifact.updated"
+
+class ArtifactUpdatedEvent(ArtifactEvent):
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.artifact.updated"

@@ -29,7 +29,7 @@ from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent, BranchRebasedEvent
 from infrahub.events.models import EventMeta, InfrahubEvent
-from infrahub.events.node_action import NodeMutatedEvent
+from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.log import get_log_data
@@ -46,7 +46,7 @@ from infrahub.workflows.utils import add_tags
 
 
 @flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
-async def rebase_branch(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
+async def rebase_branch(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:  # noqa: PLR0915
     async with service.database.start_session() as db:
         log = get_run_logger()
         await add_tags(branches=[branch])
@@ -175,11 +175,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, service: Infrahub
         diff=default_branch_diff, branch=obj, db=db, migration_tracker=MigrationTracker(migrations=migrations)
     )
     for action, node_changelog in changelog_collector.collect_changelogs():
-        mutate_event = NodeMutatedEvent(
+        node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
+        mutate_event = node_event_class(
             kind=node_changelog.node_kind,
             node_id=node_changelog.node_id,
-            data=node_changelog,
-            action=MutationAction.from_diff_action(diff_action=action),
+            changelog=node_changelog,
             fields=node_changelog.updated_fields,
             meta=EventMeta.from_parent(parent=rebase_event, branch=obj),
         )
@@ -282,11 +282,11 @@ async def merge_branch(branch: str, context: InfrahubContext, service: InfrahubS
 
         for action, node_changelog in node_events:
             meta = EventMeta.from_parent(parent=merge_event, branch=default_branch)
-            mutate_event = NodeMutatedEvent(
+            node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
+            mutate_event = node_event_class(
                 kind=node_changelog.node_kind,
                 node_id=node_changelog.node_id,
-                data=node_changelog,
-                action=MutationAction.from_diff_action(diff_action=action),
+                changelog=node_changelog,
                 fields=node_changelog.updated_fields,
                 meta=meta,
             )

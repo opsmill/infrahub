@@ -39,7 +39,7 @@ from typing_extensions import Self
 
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositorySyncStatus
 from infrahub.core.registry import registry
-from infrahub.events.artifact_action import ArtifactEvent
+from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
 from infrahub.events.models import EventMeta
 from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.exceptions import CheckError, RepositoryInvalidFileSystemError, TransformError
@@ -1324,7 +1324,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             artifact.name.value = message.artifact_name
         await artifact.save()
 
-        event = ArtifactEvent(
+        event_class = ArtifactCreatedEvent if artifact_created else ArtifactUpdatedEvent
+
+        event = event_class(
             node_id=artifact.id,
             target_id=message.target_id,
             target_kind=message.target_kind,
@@ -1334,7 +1336,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             checksum_previous=previous_checksum,
             storage_id=storage_id,
             storage_id_previous=previous_storage_id,
-            created=artifact_created,
         )
 
         await self.service.event.send(event=event)

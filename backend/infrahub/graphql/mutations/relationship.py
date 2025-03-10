@@ -11,7 +11,6 @@ from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.changelog.models import NodeChangelog
 from infrahub.core.constants import (
     InfrahubKind,
-    MutationAction,
     PermissionAction,
     PermissionDecision,
     RelationshipCardinality,
@@ -26,9 +25,10 @@ from infrahub.core.query.relationship import (
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema import NodeSchema
 from infrahub.database import retry_db_transaction
-from infrahub.events import EventMeta, NodeMutatedEvent
+from infrahub.events import EventMeta
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
 from infrahub.events.models import EventNode
+from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
@@ -148,11 +148,10 @@ class RelationshipAdd(Mutation):
                         graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
 
             else:
-                event = NodeMutatedEvent(
+                event = NodeUpdatedEvent(
                     kind=source.get_schema().kind,
                     node_id=source.id,
-                    data=node_changelog,
-                    action=MutationAction.UPDATED,
+                    changelog=node_changelog,
                     fields=[relationship_name],
                     meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
                 )
@@ -244,11 +243,10 @@ class RelationshipRemove(Mutation):
                             graphql_context.active_service.event.send, group_remove_event
                         )
             else:
-                event = NodeMutatedEvent(
+                event = NodeUpdatedEvent(
                     kind=source.get_schema().kind,
                     node_id=source.id,
-                    data=node_changelog,
-                    action=MutationAction.UPDATED,
+                    changelog=node_changelog,
                     fields=[relationship_name],
                     meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
                 )

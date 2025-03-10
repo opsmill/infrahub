@@ -1,6 +1,6 @@
-from pydantic import Field, computed_field
+from typing import ClassVar
 
-from infrahub.message_bus import InfrahubMessage
+from pydantic import Field
 
 from .constants import EVENT_NAMESPACE
 from .models import InfrahubEvent
@@ -33,29 +33,20 @@ class ValidatorEvent(InfrahubEvent):
 
         return related
 
-    def get_messages(self) -> list[InfrahubMessage]:
-        return []
-
 
 class ValidatorStartedEvent(ValidatorEvent):
     """Event generated when an validator within a pipeline has started."""
 
-    @computed_field
-    def event_name(self) -> str:
-        return f"{EVENT_NAMESPACE}.validator.started"
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.validator.started"
 
 
 class ValidatorPassedEvent(ValidatorEvent):
     """Event generated when an validator within a pipeline has completed successfully."""
 
-    @computed_field
-    def event_name(self) -> str:
-        return f"{EVENT_NAMESPACE}.validator.passed"
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.validator.passed"
 
 
 class ValidatorFailedEvent(ValidatorEvent):
     """Event generated when an validator within a pipeline has completed successfully."""
 
-    @computed_field
-    def event_name(self) -> str:
-        return f"{EVENT_NAMESPACE}.validator.failed"
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.validator.failed"

@@ -22,7 +22,8 @@ from infrahub.core.schema.template_schema import TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.events import EventMeta, NodeMutatedEvent
+from infrahub.events import EventMeta
+from infrahub.events.node_action import NodeDeletedEvent, NodeUpdatedEvent, get_node_event
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
@@ -68,7 +69,7 @@ class InfrahubMutationOptions(MutationOptions):
 
 class InfrahubMutationMixin:
     @classmethod
-    async def mutate(
+    async def mutate(  # noqa: PLR0915
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
@@ -135,11 +136,11 @@ class InfrahubMutationMixin:
                 branch=graphql_context.branch,
                 context=graphql_context.get_context(),
             )
-            main_event = NodeMutatedEvent(
+            node_event_class = get_node_event(action)
+            main_event = node_event_class(
                 kind=obj._schema.kind,
                 node_id=obj.id,
-                data=obj.node_changelog,
-                action=action,
+                changelog=obj.node_changelog,
                 fields=_get_data_fields(data),
                 meta=meta,
             )
@@ -153,11 +154,10 @@ class InfrahubMutationMixin:
 
             for node_changelog in deleted_changelogs:
                 meta = EventMeta.from_parent(parent=main_event)
-                event = NodeMutatedEvent(
+                event = NodeDeletedEvent(
                     kind=node_changelog.node_kind,
                     node_id=node_changelog.node_id,
-                    data=node_changelog,
-                    action=MutationAction.DELETED,
+                    changelog=node_changelog,
                     fields=node_changelog.updated_fields,
                     meta=meta,
                 )
@@ -166,11 +166,10 @@ class InfrahubMutationMixin:
             for node_changelog in node_changelogs:
                 if node_changelog.node_id not in deleted_ids:
                     meta = EventMeta.from_parent(parent=main_event)
-                    event = NodeMutatedEvent(
+                    event = NodeUpdatedEvent(
                         kind=node_changelog.node_kind,
                         node_id=node_changelog.node_id,
-                        data=node_changelog,
-                        action=MutationAction.UPDATED,
+                        changelog=node_changelog,
                         fields=node_changelog.updated_fields,
                         meta=meta,
                     )

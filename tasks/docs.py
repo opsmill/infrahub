@@ -458,20 +458,13 @@ def _generate_infrahub_events_documentation() -> None:  # noqa: PLR0915
     import jinja2
 
     import infrahub.events
-    from infrahub.events.models import EventMeta, InfrahubEvent
+    from infrahub.events.models import EventMeta
+    from infrahub.events.utils import get_all_events
 
     def load_all_event_modules(package: Any) -> None:  # noqa: ANN401
         """Recursively load all modules in the given package."""
         for _, modname, _ in walk_packages(package.__path__, package.__name__ + "."):
             import_module(modname)
-
-    def get_all_event_subclasses(cls: type) -> list[type]:
-        """Recursively get all subclasses of the given class."""
-        subclasses: list[type] = []
-        for subclass in cls.__subclasses__():
-            subclasses.append(subclass)
-            subclasses.extend(get_all_event_subclasses(subclass))
-        return subclasses
 
     def format_event_name(raw_name: str) -> str:
         """
@@ -481,22 +474,9 @@ def _generate_infrahub_events_documentation() -> None:  # noqa: PLR0915
         formatted = re.sub(r"(?<!^)(?=[A-Z])", " ", raw_name)
         return formatted.strip()
 
-    def get_event_type(raw_name: str) -> str:
-        """
-        Convert a CamelCase event name into a dotted, lowercase event type string.
-        Removes a trailing "Event", then splits the name into parts.
-        For example: "NodeCreatedEvent" becomes "infrahub.node.created".
-        """
-        raw_name = raw_name.removesuffix("Event")
-        parts = re.findall(r"[A-Z][a-z]*", raw_name)
-        return "infrahub." + ".".join(part.lower() for part in parts)
-
     def group_events_by_category(event_classes: list[type]) -> dict[str, list[dict[str, Any]]]:
         grouped = defaultdict(list)
         for cls in event_classes:
-            if cls is InfrahubEvent:
-                continue
-
             # Extract the primary category from the class name (like "Node", "Group", "Commit")
             category = re.match(r"([A-Z][a-z]+)", cls.__name__)
             if not category:
@@ -505,7 +485,7 @@ def _generate_infrahub_events_documentation() -> None:  # noqa: PLR0915
             description = cls.__doc__.strip() if cls.__doc__ else ""
             # Use helper functions to produce a friendly event name and an event type
             event_name_formatted = format_event_name(cls.__name__)
-            event_type = get_event_type(cls.__name__)
+            event_type = cls.event_name
 
             schema = cls.model_json_schema().get("properties", {})
             fields = []
@@ -535,6 +515,10 @@ def _generate_infrahub_events_documentation() -> None:  # noqa: PLR0915
                 "fields": fields,
             }
             grouped[primary].append(event_info)
+
+        for primary, events in grouped.items():
+            grouped[primary] = sorted(events, key=lambda x: x["event_name"])
+
         return grouped
 
     template_file = DOCUMENTATION_DIRECTORY / "_templates" / "infrahub-events.j2"
@@ -552,7 +536,7 @@ def _generate_infrahub_events_documentation() -> None:  # noqa: PLR0915
 
     # IMPORTANT: Ensure all event classes are imported so that they are found by introspection.
     load_all_event_modules(package=infrahub.events)
-    all_event_classes = get_all_event_subclasses(cls=InfrahubEvent)
+    all_event_classes = get_all_events()
     event_groups = group_events_by_category(event_classes=all_event_classes)
 
     rendered_doc = template.render(event_groups=event_groups)
