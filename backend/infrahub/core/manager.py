@@ -242,7 +242,7 @@ class NodeManager:
             partial_match=partial_match,
             branch_agnostic=branch_agnostic,
             order=order,
-            use_profile=use_profiles,
+            use_profiles=use_profiles,
         )
         await query.execute(db=db)
         node_ids = query.get_node_ids()
