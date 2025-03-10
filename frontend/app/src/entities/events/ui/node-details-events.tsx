@@ -31,7 +31,7 @@ export const NodeEvents = ({
   } = useNodeLabel({
     objectid: objectId,
     kind: objectKind as string,
-    enabled: !parentId || !objectKind,
+    enabled: !parentId && !!objectKind,
   });
 
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
@@ -54,7 +54,7 @@ export const NodeEvents = ({
 
   const filter = {
     name: "relatedNodeIds__value",
-    value: [{ id: objectid, display_label: displayLabelData.display_label }],
+    value: [{ id: objectId, display_label: displayLabelData.display_label }],
   };
 
   return (
