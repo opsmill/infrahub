@@ -14,14 +14,14 @@ export type GetRelationshipsQueryParams = Omit<GetRelationshipsParams, keyof Pag
 export function getRelationshipsInfiniteQueryOptions({
   peer,
   search,
-  parentId,
   branchName,
   atDate,
+  filterQuery,
 }: GetRelationshipsQueryParams) {
   return infiniteQueryOptions({
-    queryKey: [branchName, atDate, "relationships", peer, search, parentId],
+    queryKey: [branchName, atDate, "relationships", peer, search, filterQuery],
     queryFn: ({ pageParam }) => {
-      return getRelationships({ peer, offset: pageParam, search, parentId, branchName, atDate });
+      return getRelationships({ peer, offset: pageParam, search, filterQuery, branchName, atDate });
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {

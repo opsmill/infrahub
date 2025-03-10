@@ -81,8 +81,8 @@ const HierarchicalExplorer = ({
       })
     : getRelationshipsInfiniteQueryOptions({
         peer: peer as string,
-        parentId: topLevelNode?.id,
         branchName,
+        ...(topLevelNode ? { filterQuery: { parent__ids: [topLevelNode.id] } } : {}),
       });
 
   const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
