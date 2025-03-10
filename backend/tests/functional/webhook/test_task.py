@@ -176,9 +176,7 @@ class TestWebhookTasks(TestInfrahubApp):
         assert len(automations) == 1
 
         # Delete the webhook automation
-        await delete_webhook_automation(
-            webhook_id=webhook1.id, webhook_name="Webhook1", event_data={"node_id": webhook1.id}, service=service
-        )
+        await delete_webhook_automation(webhook_id=webhook1.id, webhook_name="Webhook1", service=service)
         automations = await prefect_client.read_automations_by_name(name=name)
         assert len(automations) == 0
 
@@ -268,6 +266,7 @@ class TestWebhookTasks(TestInfrahubApp):
 
         await webhook_process(
             webhook_id=webhook1.id,
+            webhook_name="Webhook1",
             webhook_kind="CoreStandardWebhook",
             event_id="ce3b7013-4abb-4945-89de-1f56da4ff636",
             event_type="infrahub.branch.created",
@@ -294,7 +293,9 @@ class TestWebhookTasks(TestInfrahubApp):
         with pytest.raises(httpx.HTTPStatusError):
             await webhook_process(
                 webhook_id=webhook1.id,
+                webhook_name="Webhook1",
                 webhook_kind="CoreStandardWebhook",
+                branch_name="main",
                 event_id="ce3b7013-4abb-4945-89de-1f56da4ff636",
                 event_type="infrahub.branch.created",
                 event_occured_at="2025-02-28T08:37:09.969Z",

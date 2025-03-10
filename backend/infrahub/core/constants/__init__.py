@@ -52,7 +52,7 @@ class EventType(InfrahubStringEnum):
     BRANCH_MERGED = f"{EVENT_NAMESPACE}.branch.merged"
     BRANCH_REBASED = f"{EVENT_NAMESPACE}.branch.rebased"
 
-    SCHEMA_UPDATED = f"{EVENT_NAMESPACE}.schema.update"
+    SCHEMA_UPDATED = f"{EVENT_NAMESPACE}.schema.updated"
 
     NODE_CREATED = f"{EVENT_NAMESPACE}.node.created"
     NODE_UPDATED = f"{EVENT_NAMESPACE}.node.updated"

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any, Self, cast, final
+from typing import Any, ClassVar, Self, final
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, PrivateAttr, computed_field, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
 from infrahub import __version__
 from infrahub.auth import AccountSession, AuthType
@@ -131,7 +131,7 @@ class EventMeta(BaseModel):
             account_id=parent.meta.account_id,
             level=parent.meta.level + 1,
             context=context,
-            ancestors=[ParentEvent(id=parent.get_id(), name=parent.get_name())] + parent.meta.ancestors,
+            ancestors=[ParentEvent(id=parent.get_id(), name=parent.event_name)] + parent.meta.ancestors,
         )
 
     @classmethod
@@ -148,21 +148,19 @@ class EventMeta(BaseModel):
 class InfrahubEvent(BaseModel):
     meta: EventMeta = Field(..., description="Metadata for the event")
 
+    event_name: ClassVar[str] = Field(..., description="The name of the event")
+
     def get_id(self) -> str:
         return self.meta.get_id()
 
     def get_event_namespace(self) -> str:
         return EVENT_NAMESPACE
 
-    def get_name(self) -> str:
-        # Convince linters that @computed_field is a property and not a method...
-        return cast(str, self.event_name)
-
     def get_resource(self) -> dict[str, str]:
         raise NotImplementedError
 
     def get_messages(self) -> list[InfrahubMessage]:
-        raise NotImplementedError
+        return []
 
     def get_related(self) -> list[dict[str, str]]:
         if not self.meta:
@@ -176,13 +174,12 @@ class InfrahubEvent(BaseModel):
         be used for that as it will always contain the 'context' key regardless of changes
         in child classes
         """
-        return {}
+        return self.model_dump(exclude={"meta"})
 
     @final
     def get_event_payload(self) -> dict[str, Any]:
         """This method should be used when emitting the event to the event broker"""
-        event_payload = self.get_payload()
-        event_payload["context"] = self.meta.context.model_dump(mode="json")
+        event_payload = {"data": self.get_payload(), "context": self.meta.context.to_event()}
         return event_payload
 
     def get_message_meta(self) -> Meta:
@@ -194,13 +191,9 @@ class InfrahubEvent(BaseModel):
 
         return meta
 
-    @computed_field
-    def event_name(self) -> str:
-        raise NotImplementedError("The event name has not been defined")
-
     @model_validator(mode="after")
     def update_context(self) -> Self:
         """Update the context object using this event provided that the meta data was created with a context."""
         if self.meta._created_with_context:
-            self.meta.context.set_event(self.get_name(), id=self.get_id())
+            self.meta.context.set_event(self.event_name, id=self.get_id())
         return self

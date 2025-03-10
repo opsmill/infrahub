@@ -15,6 +15,7 @@ from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.tasks import setup_triggers
+from infrahub.workflows.utils import add_tags
 
 from .constants import AUTOMATION_NAME_RUN
 from .models import CustomWebhook, EventContext, StandardWebhook, TransformWebhook, Webhook, WebhookTriggerDefinition
@@ -61,17 +62,22 @@ async def convert_node_to_webhook(webhook_node: CoreWebhook, client: InfrahubCli
     return CustomWebhook.from_object(obj=webhook_node)
 
 
-@flow(name="webhook-process", flow_run_name="Send webhook")
+@flow(name="webhook-process", flow_run_name="Send webhook for {webhook_name}")
 async def webhook_process(
     webhook_id: str,
+    webhook_name: str,  # noqa: ARG001
     webhook_kind: str,
     event_id: str,
     event_type: str,
     event_occured_at: str,
     event_payload: dict,
     service: InfrahubServices,
+    branch_name: str | None = None,
 ) -> None:
     log = get_run_logger()
+
+    if branch_name:
+        await add_tags(branches=[branch_name])
 
     webhook_data_str = await service.cache.get(key=f"webhook:{webhook_id}")
     if not webhook_data_str:
@@ -101,7 +107,7 @@ async def webhook_process(
     log.info(f"Successfully sent webhook to {response.url} with status {response.status_code}")
 
 
-@flow(name="webhook-setup-automation-all", flow_run_name="Configuration webhook automation for all webhooks")
+@flow(name="webhook-setup-automation-all", flow_run_name="Configure all webhooks")
 async def configure_webhook_all(service: InfrahubServices) -> None:
     log = get_run_logger()
 
@@ -119,7 +125,7 @@ async def configure_webhook_all(service: InfrahubServices) -> None:
     log.info(f"{len(triggers)} Webhooks automation configuration completed")
 
 
-@flow(name="webhook-setup-automation-one", flow_run_name="Configuration webhook automation for {webhook_name}")
+@flow(name="webhook-setup-automation-one", flow_run_name="Configurate webhook for {webhook_name}")
 async def configure_webhook_one(
     webhook_name: str,  # noqa: ARG001
     event_data: dict,
@@ -160,7 +166,6 @@ async def configure_webhook_one(
 async def delete_webhook_automation(
     webhook_id: str,
     webhook_name: str,  # noqa: ARG001
-    event_data: dict,  # noqa: ARG001
     service: InfrahubServices,
 ) -> None:
     log = get_run_logger()

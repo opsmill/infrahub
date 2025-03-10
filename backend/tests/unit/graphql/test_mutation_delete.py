@@ -227,4 +227,4 @@ async def test_delete_events_with_cascade(
     assert secondary.action == MutationAction.DELETED
     assert not secondary.meta.has_children
     assert secondary.meta.parent == primary.meta.id
-    assert secondary.meta.ancestors == [ParentEvent(id=primary.get_id(), name=primary.get_name())]
+    assert secondary.meta.ancestors == [ParentEvent(id=primary.get_id(), name=primary.event_name)]
