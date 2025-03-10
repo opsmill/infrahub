@@ -1,6 +1,6 @@
 import {
-  generateRelationshipListQuery,
   GenerateRelationshipListQueryParams,
+  generateRelationshipListQuery,
 } from "@/entities/nodes/api/generateRelationshipListQuery";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ContextParams } from "@/shared/api/types";
