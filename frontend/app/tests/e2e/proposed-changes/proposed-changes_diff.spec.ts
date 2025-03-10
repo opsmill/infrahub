@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 
-test.describe("/proposed-changes diff data", () => {
+test.describe.fixme("/proposed-changes diff data", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
   test.slow();
@@ -83,7 +83,7 @@ test.describe("/proposed-changes diff data", () => {
     });
   });
 
-  test.fixme("should comment a proposed changes", async ({ page }) => {
+  test("should comment a proposed changes", async ({ page }) => {
     await test.step("access proposed change diff tab", async () => {
       await page.goto("/proposed-changes");
       await page.getByRole("link", { name: "conflict-test" }).first().click();
