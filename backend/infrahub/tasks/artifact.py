@@ -1,5 +1,3 @@
-from typing import Union
-
 from infrahub_sdk.node import InfrahubNode
 from prefect import task
 from prefect.cache_policies import NONE
@@ -13,7 +11,7 @@ from infrahub.services import InfrahubServices
 
 @task(name="define-artifact", task_run_name="Define Artifact", cache_policy=NONE)  # type: ignore[arg-type]
 async def define_artifact(
-    model: Union[CheckArtifactCreate, RequestArtifactGenerate], service: InfrahubServices
+    model: CheckArtifactCreate | RequestArtifactGenerate, service: InfrahubServices
 ) -> tuple[InfrahubNode, bool]:
     """Return an artifact together with a flag to indicate if the artifact is created now or already existed."""
     created = False

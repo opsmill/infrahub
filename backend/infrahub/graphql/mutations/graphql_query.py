@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     def __init_subclass_with_meta__(
-        cls, schema: NodeSchema, _meta: Optional[Any] = None, **options: dict[str, Any]
+        cls, schema: NodeSchema, _meta: Any | None = None, **options: dict[str, Any]
     ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
@@ -67,7 +67,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 
@@ -85,8 +85,8 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
-        node: Optional[Node] = None,  # noqa: ARG003
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        node: Node | None = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
 

@@ -1,9 +1,12 @@
+from unittest.mock import patch
+
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.node.constraints.grouped_uniqueness import NodeGroupedUniquenessConstraint
+from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 
@@ -196,6 +199,86 @@ class TestNodeGroupedUniquenessConstraint:
         ]
 
         await self.__call_system_under_test(db=db, branch=default_branch, node=car_node)
+
+    @pytest.mark.parametrize(
+        ["node_constraints", "parent_constraints", "node_query_should_run"],
+        [
+            (
+                [
+                    ["nbr_seats__value", "name__value"],
+                    ["previous_owner", "nbr_seats__value"],
+                ],
+                [
+                    ["nbr_seats__value", "name__value"],
+                    ["previous_owner", "nbr_seats__value"],
+                ],
+                False,
+            ),
+            (
+                [
+                    ["nbr_seats__value", "name__value"],
+                ],
+                [
+                    ["nbr_seats__value", "name__value"],
+                    ["previous_owner", "nbr_seats__value"],
+                ],
+                False,
+            ),
+            (
+                [
+                    ["previous_owner", "name__value"],
+                ],
+                [
+                    ["nbr_seats__value", "name__value"],
+                    ["previous_owner", "nbr_seats__value"],
+                ],
+                True,
+            ),
+            (
+                [
+                    ["nbr_seats__value", "name__value"],
+                    ["previous_owner", "nbr_seats__value", "color__value"],
+                ],
+                [
+                    ["nbr_seats__value", "name__value"],
+                    ["previous_owner", "nbr_seats__value"],
+                ],
+                True,
+            ),
+        ],
+    )
+    async def test_uniqueness_constraint_skips_overlapping_constraints(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_person_generics_data_simple,
+        node_constraints: list[list[str]],
+        parent_constraints: list[list[str]],
+        node_query_should_run: bool,
+    ):
+        car_node: Node = car_person_generics_data_simple["c1"]
+        car_schema = car_node.get_schema()
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        parent_kind = car_schema.inherit_from[0]
+        parent_schema = schema_branch.get(name=parent_kind, duplicate=False)
+        car_schema.uniqueness_constraints = node_constraints
+        parent_schema.uniqueness_constraints = parent_constraints
+
+        # make sure we only use this query once if the constraints overlap
+        with patch(
+            "infrahub.core.node.constraints.grouped_uniqueness.NodeUniqueAttributeConstraintQuery",
+            wraps=NodeUniqueAttributeConstraintQuery,
+        ) as wrapped_query:
+            await self.__call_system_under_test(db=db, branch=default_branch, node=car_node)
+            if node_query_should_run:
+                assert len(wrapped_query.init.call_args_list) == 2
+            else:
+                assert len(wrapped_query.init.call_args_list) == 1
+            query_kinds = {init_call[1]["query_request"].kind for init_call in wrapped_query.init.call_args_list}
+            if node_query_should_run:
+                assert query_kinds == {car_schema.kind, parent_kind}
+            else:
+                assert query_kinds == {parent_kind}
 
     async def test_uniqueness_constraint_conflict_relationship_and_attribute(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_generics_data_simple

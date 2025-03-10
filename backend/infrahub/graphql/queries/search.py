@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, Field, Int, List, NonNull, ObjectType, String
 from infrahub_sdk.utils import extract_fields_first_node, is_valid_uuid
@@ -110,7 +110,7 @@ async def search_resolver(
     fields = await extract_fields_first_node(info)
 
     if is_valid_uuid(q):
-        matching: Optional[CoreNode] = await NodeManager.get_one(
+        matching: CoreNode | None = await NodeManager.get_one(
             db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, id=q
         )
         if matching:

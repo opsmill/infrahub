@@ -21,7 +21,8 @@ from .m016_diff_delete_bug_fix import Migration016
 from .m017_add_core_profile import Migration017
 from .m018_uniqueness_nulls import Migration018
 from .m019_restore_rels_to_time import Migration019
-from .m020_add_generate_template_attr import Migration020
+from .m020_duplicate_edges import Migration020
+from .m021_add_generate_template_attr import Migration021
 
 if TYPE_CHECKING:
     from infrahub.core.root import Root
@@ -49,6 +50,7 @@ MIGRATIONS: list[type[Union[GraphMigration, InternalSchemaMigration, ArbitraryMi
     Migration018,
     Migration019,
     Migration020,
+    Migration021,
 ]
 
 

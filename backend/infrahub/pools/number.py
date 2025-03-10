@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 from infrahub.core.query.resource_manager import NumberPoolGetAllocated
 from infrahub.core.registry import registry
@@ -20,9 +20,7 @@ class UsedNumber:
 
 
 class NumberUtilizationGetter:
-    def __init__(
-        self, db: InfrahubDatabase, pool: CoreNode, branch: Branch, at: Optional[Union[Timestamp, str]] = None
-    ) -> None:
+    def __init__(self, db: InfrahubDatabase, pool: CoreNode, branch: Branch, at: Timestamp | str | None = None) -> None:
         self.db = db
         self.at = at
         self.pool = pool

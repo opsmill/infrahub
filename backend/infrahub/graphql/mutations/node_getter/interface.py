@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from graphene import InputObjectType
 
@@ -15,4 +14,4 @@ class MutationNodeGetterInterface(ABC):
         node_schema: MainSchemaTypes,
         data: InputObjectType,
         branch: Branch,
-    ) -> Optional[Node]: ...
+    ) -> Node | None: ...

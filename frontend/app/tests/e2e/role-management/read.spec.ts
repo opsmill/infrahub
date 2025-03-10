@@ -10,7 +10,7 @@ test.describe("Role management - READ", () => {
     });
 
     await test.step("check counts", async () => {
-      await expect(page.getByRole("link", { name: "Accounts 12" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Accounts 13" })).toBeVisible();
       await expect(page.getByRole("link", { name: "Groups 6" })).toBeVisible();
       await expect(page.getByRole("link", { name: "Roles 7" })).toBeVisible();
       await expect(page.getByRole("link", { name: "Global Permissions 8" })).toBeVisible();

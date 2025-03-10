@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Optional
+from typing import Any
 
 import typer
 from anyio.abc import TaskStatus
@@ -138,7 +138,7 @@ class InfrahubWorkerAsync(BaseWorker):
         self,
         flow_run: FlowRun,
         configuration: BaseJobConfiguration,
-        task_status: Optional[TaskStatus] = None,
+        task_status: TaskStatus | None = None,
     ) -> BaseWorkerResult:
         flow_run_logger = self.get_flow_run_logger(flow_run)
 

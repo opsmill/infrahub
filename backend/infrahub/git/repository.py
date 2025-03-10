@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
@@ -250,7 +250,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
 async def get_initialized_repo(
     repository_id: str, name: str, service: InfrahubServices, repository_kind: str, commit: str | None = None
-) -> Union[InfrahubReadOnlyRepository, InfrahubRepository]:
+) -> InfrahubReadOnlyRepository | InfrahubRepository:
     if repository_kind == InfrahubKind.REPOSITORY:
         return await InfrahubRepository.init(
             id=repository_id, name=name, commit=commit, client=service._client, service=service
@@ -266,7 +266,7 @@ async def get_initialized_repo(
 
 async def initialize_repo(
     location: str, repository_id: str, name: str, service: InfrahubServices, repository_kind: str
-) -> Union[InfrahubReadOnlyRepository, InfrahubRepository]:
+) -> InfrahubReadOnlyRepository | InfrahubRepository:
     if repository_kind == InfrahubKind.REPOSITORY:
         return await InfrahubRepository.new(
             location=location, id=repository_id, name=name, client=service._client, service=service
