@@ -1,21 +1,23 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
+
+const BRANCH_NAME = "multi-select";
 
 test.describe("Verify multi select behaviour", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
   });
 
   test("select, remove and create tags using multi-select", async ({ page }) => {
     await test.step("Navigate to Ethernet11", async () => {
-      // eslint-disable-next-line quotes
-      await page.goto('/objects/InfraInterfaceL2?pagination={"limit":10, "offset": 20}');
+      await page.goto(`/objects/InfraInterfaceL2?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "atl1-edge1, Ethernet11", exact: true }).click();
     });
 
