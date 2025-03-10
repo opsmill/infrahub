@@ -1,12 +1,7 @@
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
 from .check_generator_run import CheckGeneratorRun
-from .event_branch_create import EventBranchCreate
-from .event_branch_delete import EventBranchDelete
 from .event_branch_merge import EventBranchMerge
-from .event_branch_rebased import EventBranchRebased
-from .event_node_mutated import EventNodeMutated
-from .event_schema_update import EventSchemaUpdate
 from .event_worker_newprimaryapi import EventWorkerNewPrimaryAPI
 from .finalize_validator_execution import FinalizeValidatorExecution
 from .git_file_get import GitFileGet, GitFileGetResponse
@@ -21,12 +16,7 @@ from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
 
 MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "check.generator.run": CheckGeneratorRun,
-    "event.branch.create": EventBranchCreate,
-    "event.branch.delete": EventBranchDelete,
     "event.branch.merge": EventBranchMerge,
-    "event.branch.rebased": EventBranchRebased,
-    "event.node.mutated": EventNodeMutated,
-    "event.schema.update": EventSchemaUpdate,
     "event.worker.new_primary_api": EventWorkerNewPrimaryAPI,
     "finalize.validator.execution": FinalizeValidatorExecution,
     "git.file.get": GitFileGet,
@@ -49,7 +39,7 @@ PRIORITY_MAP = {
     "check.artifact.create": 2,
     "check.repository.check_definition": 2,
     "check.repository.merge_conflicts": 2,
-    "event.branch.create": 5,
+    "send.echo.request": 5,  # Currently only for testing purposes, will be removed once all message bus have been migrated to prefect
     "event.branch.delete": 5,
     "event.branch.merge": 5,
     "event.schema.update": 5,
