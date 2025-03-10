@@ -251,7 +251,7 @@ class SchemaManager(NodeManager):
 
         branch = await registry.get_branch(branch=branch, db=db)
 
-        for item_kind in schema.node_names + schema.generic_names:
+        for item_kind in schema.node_names + schema.generic_names_without_templates:
             if limit and item_kind not in limit:
                 continue
             item = schema.get(name=item_kind, duplicate=False)

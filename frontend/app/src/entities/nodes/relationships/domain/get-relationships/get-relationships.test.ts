@@ -38,7 +38,16 @@ describe("getRelationships", () => {
     vi.mocked(getRelationshipsFromApi).mockResolvedValue(mockResponse);
 
     // WHEN
-    const result = await getRelationships({ peer, offset, search, parentId, branchName, atDate });
+    const result = await getRelationships({
+      peer,
+      offset,
+      search,
+      filterQuery: {
+        parent__ids: [parentId],
+      },
+      branchName,
+      atDate,
+    });
 
     // THEN
     expect(getRelationshipsFromApi).toHaveBeenCalledWith({
@@ -48,7 +57,9 @@ describe("getRelationships", () => {
       limit: 20,
       offset,
       search,
-      parent: { name: "parent", value: parentId },
+      filterQuery: {
+        parent__ids: [parentId],
+      },
     });
     expect(result).toEqual([
       {
@@ -87,7 +98,7 @@ describe("getRelationships", () => {
       limit: 20,
       offset: undefined,
       search: undefined,
-      parent: undefined,
+      filterQuery: undefined,
     });
     expect(result).toEqual([]);
   });

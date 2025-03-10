@@ -14,12 +14,12 @@ from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.context import InfrahubContext
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion, ValidatorState
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
 from infrahub.core.registry import registry
 from infrahub.exceptions import CheckError, RepositoryError
 from infrahub.message_bus import Meta, messages
 from infrahub.services import InfrahubServices
-from infrahub.validators.events import send_start_validator
+from infrahub.validators.tasks import start_validator
 from infrahub.worker import WORKER_IDENTITY
 
 from ..core.manager import NodeManager
@@ -530,8 +530,8 @@ async def trigger_repository_user_checks_definitions(
     validator_execution_id = str(UUIDT())
     check_execution_ids: list[str] = []
     await proposed_change.validations.fetch()
-    validator: CoreUserValidator | None = None
 
+    previous_validator: CoreUserValidator | None = None
     for relationship in proposed_change.validations.peers:
         existing_validator = relationship.peer
 
@@ -540,29 +540,20 @@ async def trigger_repository_user_checks_definitions(
             and existing_validator.repository.id == model.repository_id
             and existing_validator.check_definition.id == model.check_definition_id
         ):
-            validator = existing_validator
-            service.log.info("Found the same validator", validator=validator)
+            previous_validator = existing_validator
+            service.log.info("Found the same validator", validator=previous_validator)
 
-    if validator:
-        validator.conclusion.value = ValidatorConclusion.UNKNOWN.value
-        validator.state.value = ValidatorState.QUEUED.value
-        validator.started_at.value = ""
-        validator.completed_at.value = ""
-        await validator.save()
-    else:
-        validator = await service.client.create(
-            kind=CoreUserValidator,
-            data={
-                "label": f"Check: {definition.name.value}",
-                "proposed_change": model.proposed_change,
-                "repository": model.repository_id,
-                "check_definition": model.check_definition_id,
-            },
-        )
-        await validator.save()
-
-    await send_start_validator(
-        service=service, validator=validator, proposed_change_id=model.proposed_change, context=context
+    validator = await start_validator(
+        service=service,
+        validator=previous_validator,
+        validator_type=CoreUserValidator,
+        proposed_change=model.proposed_change,
+        data={
+            "label": f"Check: {definition.name.value}",
+            "repository": model.repository_id,
+            "check_definition": model.check_definition_id,
+        },
+        context=context,
     )
 
     if definition.targets.id:
@@ -695,7 +686,7 @@ async def trigger_internal_checks(
     await repository.checks.fetch()
 
     validator_name = f"Repository Validator: {repository.name.value}"
-    validator: CoreRepositoryValidator | None = None
+    previous_validator: CoreRepositoryValidator | None = None
     for relationship in proposed_change.validations.peers:
         existing_validator = relationship.peer
 
@@ -703,27 +694,18 @@ async def trigger_internal_checks(
             existing_validator.typename == InfrahubKind.REPOSITORYVALIDATOR
             and existing_validator.repository.id == model.repository
         ):
-            validator = existing_validator
+            previous_validator = existing_validator
 
-    if validator:
-        validator.conclusion.value = ValidatorConclusion.UNKNOWN.value
-        validator.state.value = ValidatorState.QUEUED.value
-        validator.started_at.value = ""
-        validator.completed_at.value = ""
-        await validator.save()
-    else:
-        validator = await service.client.create(
-            kind=CoreRepositoryValidator,
-            data={
-                "label": validator_name,
-                "proposed_change": model.proposed_change,
-                "repository": model.repository,
-            },
-        )
-        await validator.save()
-
-    await send_start_validator(
-        service=service, validator=validator, proposed_change_id=model.proposed_change, context=context
+    validator = await start_validator(
+        service=service,
+        validator=previous_validator,
+        validator_type=CoreRepositoryValidator,
+        proposed_change=model.proposed_change,
+        data={
+            "label": validator_name,
+            "repository": model.repository,
+        },
+        context=context,
     )
 
     check_execution_id = str(UUIDT())

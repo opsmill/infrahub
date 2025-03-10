@@ -40,7 +40,7 @@ test.describe("Global Activities - List view and filter usage", () => {
       await expect(
         page.getByLabel("Primary Node contains [object").getByRole("button")
       ).toContainText("blue");
-      await saveScreenshotForDocs(page, "activity_log_global_filters_primary");
+      await saveScreenshotForDocs(page, "topics/activity-logs/activity_log_global_filters_primary");
     });
   });
   test("3. View the Activity log page with children", async ({ page }) => {
@@ -49,21 +49,26 @@ test.describe("Global Activities - List view and filter usage", () => {
       const activitiesHeading = page.getByRole("heading", { name: "Activities" });
       await expect(activitiesHeading).toBeVisible();
     });
-
     await test.step("Choose filters", async () => {
       await page.getByRole("button", { name: "Has Children" }).click();
       await page.getByText("True").click();
       await page.getByRole("button", { name: "Apply" }).click();
-      await saveScreenshotForDocs(page, "activity_log_global_filters_children");
+      await saveScreenshotForDocs(
+        page,
+        "topics/activity-logs/activity_log_global_filters_children"
+      );
     });
 
     await test.step("View Event details with children", async () => {
       const viewMoreLink = page.getByRole("link", { name: /View details/i }).first();
       await viewMoreLink.click();
 
-      // Check that at least one "View more" button is present in the details page
+      // Check that at least one "View more." button is present in the details page
       await expect(page.getByRole("button", { name: "View more" }).first()).toBeVisible();
-      await saveScreenshotForDocs(page, "activity_log_global_details_children");
+      await saveScreenshotForDocs(
+        page,
+        "topics/activity-logs/activity_log_global_details_children"
+      );
     });
   });
 });

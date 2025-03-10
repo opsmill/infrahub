@@ -1,10 +1,52 @@
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
 from tests.constants import TestKind
+
+INTERFACE_HOLDER = GenericSchema(
+    name="InterfaceHolder",
+    namespace="Testing",
+    include_in_menu=False,
+    label="Interface Holder",
+    relationships=[
+        RelationshipSchema(
+            name="interfaces",
+            kind=RelationshipKind.COMPONENT,
+            optional=True,
+            peer=TestKind.INTERFACE,
+            cardinality=RelationshipCardinality.MANY,
+            identifier="interfaceholder__interfaces",
+        )
+    ],
+)
+
+
+INTERFACE = GenericSchema(
+    name="Interface",
+    namespace="Testing",
+    include_in_menu=False,
+    label="Interface",
+    default_filter="name__value",
+    uniqueness_constraints=[["device", "name__value"]],
+    attributes=[
+        AttributeSchema(name="name", kind="Text"),
+        AttributeSchema(name="enabled", kind="Boolean", default_value=True),
+    ],
+    relationships=[
+        RelationshipSchema(
+            name="device",
+            kind=RelationshipKind.PARENT,
+            optional=False,
+            peer=TestKind.INTERFACE_HOLDER,
+            cardinality=RelationshipCardinality.ONE,
+            identifier="interfaceholder__interfaces",
+        )
+    ],
+)
 
 DEVICE = NodeSchema(
     name="Device",
     namespace="Testing",
+    inherit_from=[TestKind.INTERFACE_HOLDER],
     include_in_menu=True,
     label="Device",
     default_filter="name__value",
@@ -32,27 +74,15 @@ DEVICE = NodeSchema(
         ),
         AttributeSchema(name="part_number", kind="Text", optional=True),
     ],
-    relationships=[
-        RelationshipSchema(
-            name="interfaces",
-            kind=RelationshipKind.COMPONENT,
-            optional=True,
-            peer=TestKind.INTERFACE,
-            cardinality=RelationshipCardinality.MANY,
-        )
-    ],
 )
 
-INTERFACE = NodeSchema(
-    name="Interface",
+PHYSICAL_INTERFACE = NodeSchema(
+    name="PhysicalInterface",
     namespace="Testing",
+    inherit_from=[TestKind.INTERFACE],
     include_in_menu=True,
-    label="Interface",
-    default_filter="name__value",
-    human_friendly_id=["device__name__value", "name__value"],
-    uniqueness_constraints=[["device", "name__value"]],
+    label="Physical Interface",
     attributes=[
-        AttributeSchema(name="name", kind="Text"),
         AttributeSchema(
             name="phys_type",
             kind="Text",
@@ -68,25 +98,25 @@ INTERFACE = NodeSchema(
                 "QSFP28 (100GE)",
                 "Virtual",
             ],
-        ),
-        AttributeSchema(name="enabled", kind="Boolean", default_value=True),
+        )
     ],
     relationships=[
-        RelationshipSchema(
-            name="device",
-            kind=RelationshipKind.PARENT,
-            optional=False,
-            peer=TestKind.DEVICE,
-            cardinality=RelationshipCardinality.ONE,
-        ),
         RelationshipSchema(
             name="sfp",
             kind=RelationshipKind.COMPONENT,
             optional=True,
             peer=TestKind.SFP,
             cardinality=RelationshipCardinality.ONE,
-        ),
+        )
     ],
+)
+
+VIRTUAL_INTERFACE = NodeSchema(
+    name="VirtualInterface",
+    namespace="Testing",
+    inherit_from=[TestKind.INTERFACE],
+    include_in_menu=True,
+    label="Virtual Interface",
 )
 
 SFP = NodeSchema(
@@ -120,7 +150,7 @@ SFP = NodeSchema(
             name="interface",
             kind=RelationshipKind.PARENT,
             optional=False,
-            peer=TestKind.INTERFACE,
+            peer=TestKind.PHYSICAL_INTERFACE,
             cardinality=RelationshipCardinality.ONE,
         )
     ],

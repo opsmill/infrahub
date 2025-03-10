@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Any, Mapping
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
@@ -63,7 +63,7 @@ class DeleteResult:
 # Infrahub GraphQLType
 # ------------------------------------------
 class InfrahubMutationOptions(MutationOptions):
-    schema: Optional[NodeSchema] = None
+    schema: NodeSchema | None = None
 
 
 class InfrahubMutationMixin:
@@ -190,7 +190,7 @@ class InfrahubMutationMixin:
 
     @classmethod
     async def _refresh_for_profile_update(
-        cls, db: InfrahubDatabase, branch: Branch, obj: Node, previous_profile_ids: Optional[set[str]] = None
+        cls, db: InfrahubDatabase, branch: Branch, obj: Node, previous_profile_ids: set[str] | None = None
     ) -> Node:
         if not hasattr(obj, "profiles"):
             return obj
@@ -288,8 +288,13 @@ class InfrahubMutationMixin:
             if not template_relationship_peers:
                 continue
 
-            obj_peer_schema = relationship.get_peer_schema(db=db, branch=branch)
             for template_relationship_peer in template_relationship_peers.values():
+                # We retrieve peer schema for each peer in case we are processing a relationship which is based on a generic
+                obj_peer_schema = registry.schema.get_node_schema(
+                    name=template_relationship_peer.get_schema().kind.removeprefix("Template"),
+                    branch=branch,
+                    duplicate=False,
+                )
                 obj_peer_data = await cls._extract_peer_data(
                     db=db,
                     template_peer=template_relationship_peer,
@@ -318,7 +323,7 @@ class InfrahubMutationMixin:
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
+        database: InfrahubDatabase | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
@@ -434,8 +439,8 @@ class InfrahubMutationMixin:
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
-        node: Optional[Node] = None,
+        database: InfrahubDatabase | None = None,
+        node: Node | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
@@ -502,7 +507,7 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         node_getters: list[MutationNodeGetterInterface],
-        database: Optional[InfrahubDatabase] = None,
+        database: InfrahubDatabase | None = None,
     ) -> tuple[Node, Self, bool]:
         schema_name = cls._meta.schema.kind
 
@@ -559,7 +564,7 @@ class InfrahubMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     def __init_subclass_with_meta__(
         cls,
-        schema: Optional[Union[NodeSchema, GenericSchema, ProfileSchema, TemplateSchema]] = None,
+        schema: NodeSchema | GenericSchema | ProfileSchema | TemplateSchema | None = None,
         _meta=None,
         **options,
     ) -> None:

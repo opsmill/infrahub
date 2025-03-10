@@ -3,12 +3,12 @@ from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.timestamp import Timestamp
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
-from infrahub.validators.events import send_start_validator
+from infrahub.validators.tasks import start_validator
 from infrahub.workflows.utils import add_tags
 
 
@@ -29,33 +29,25 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
 
     await proposed_change.validations.fetch()
 
-    validator: CoreGeneratorValidator | None = None
+    previous_validator: CoreGeneratorValidator | None = None
     for relationship in proposed_change.validations.peers:
         existing_validator = relationship.peer
         if (
             existing_validator.typename == InfrahubKind.GENERATORVALIDATOR
             and existing_validator.definition.id == message.generator_definition.definition_id
         ):
-            validator = existing_validator
+            previous_validator = existing_validator
 
-    if validator:
-        validator.conclusion.value = ValidatorConclusion.UNKNOWN.value
-        validator.state.value = ValidatorState.QUEUED.value
-        validator.started_at.value = ""
-        validator.completed_at.value = ""
-        await validator.save()
-    else:
-        validator = await service.client.create(
-            kind=CoreGeneratorValidator,
-            data={
-                "label": validator_name,
-                "proposed_change": message.proposed_change,
-                "definition": message.generator_definition.definition_id,
-            },
-        )
-        await validator.save()
-    await send_start_validator(
-        service=service, validator=validator, proposed_change_id=message.proposed_change, context=message.context
+    validator = await start_validator(
+        service=service,
+        validator=previous_validator,
+        validator_type=CoreGeneratorValidator,
+        proposed_change=message.proposed_change,
+        data={
+            "label": validator_name,
+            "definition": message.generator_definition.definition_id,
+        },
+        context=message.context,
     )
 
     group = await service.client.get(

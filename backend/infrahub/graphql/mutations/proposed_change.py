@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
@@ -49,7 +49,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
     ):
         graphql_context: GraphqlContext = info.context
 
@@ -86,8 +86,8 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
-        node: Optional[Node] = None,  # noqa: ARG003
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        node: Node | None = None,  # noqa: ARG003
     ):
         graphql_context: GraphqlContext = info.context
 

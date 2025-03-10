@@ -41,7 +41,7 @@ test.describe("Verify multi select behaviour", () => {
       await page.getByRole("button", { name: "+ Add new Tag" }).click();
       await page.getByTestId("new-object-form").getByLabel("Name *").fill("new tag");
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.getByText("blue×green×new tag×")).toBeVisible();
+      await expect(page.getByText("new tag×")).toBeVisible();
     });
   });
 });

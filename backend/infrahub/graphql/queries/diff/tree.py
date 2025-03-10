@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from graphene import Argument, Boolean, DateTime, Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphene import Enum as GrapheneEnum
@@ -324,7 +324,7 @@ class DiffTreeResolver:
 
     async def to_graphql(
         self, fields: dict[str, dict], diff_object: Any | None
-    ) -> Optional[Union[list[dict[str, Any]], dict[str, Any]]]:
+    ) -> list[dict[str, Any]] | dict[str, Any] | None:
         if diff_object is None:
             return None
         if isinstance(diff_object, list):
@@ -387,7 +387,7 @@ class DiffTreeResolver:
         root_node_uuids: list[str] | None = None,
         limit: int | None = None,
         offset: int | None = None,
-    ) -> Optional[Union[list[dict[str, Any]], dict[str, Any]]]:
+    ) -> list[dict[str, Any]] | dict[str, Any] | None:
         component_registry = get_component_registry()
         graphql_context: GraphqlContext = info.context
         base_branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
@@ -459,7 +459,7 @@ class DiffTreeResolver:
         from_time: datetime | None = None,
         to_time: datetime | None = None,
         filters: dict | None = None,
-    ) -> Optional[Union[list[dict[str, Any]], dict[str, Any]]]:
+    ) -> list[dict[str, Any]] | dict[str, Any] | None:
         component_registry = get_component_registry()
         graphql_context: GraphqlContext = info.context
         base_branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
