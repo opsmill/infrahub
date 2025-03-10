@@ -6,7 +6,6 @@ import NoDataFound from "@/shared/components/errors/no-data-found";
 import { Link } from "@/shared/components/ui/link";
 import { Spinner } from "@/shared/components/ui/spinner";
 import React from "react";
-import { useParams } from "react-router";
 import { useEvents } from "../api/get-events.query";
 import { EventCard } from "./event-card";
 
@@ -14,16 +13,13 @@ const MAX_EVENTS = 5;
 
 export const NodeEvents = ({
   parentId,
-  relatedNodeId,
-}: { parentId?: string; relatedNodeId?: string }) => {
-  const { objectKind, objectid } = useParams();
-
-  const relatedId = relatedNodeId || objectid;
-
+  objectId,
+  objectKind,
+}: { parentId?: string; objectId?: string; objectKind?: string }) => {
   const { isPending, data, error } = useEvents({
     filters: {
       parentIds: parentId ? [parentId] : undefined,
-      relatedNodeIds: relatedId ? [relatedId] : undefined,
+      relatedNodeIds: objectId ? [objectId] : undefined,
       limit: parentId ? 0 : MAX_EVENTS,
     },
   });
@@ -33,9 +29,9 @@ export const NodeEvents = ({
     error: displayLabelError,
     data: displayLabelData,
   } = useNodeLabel({
-    objectid: objectid,
+    objectid: objectId,
     kind: objectKind as string,
-    enabled: !parentId,
+    enabled: !parentId || !objectKind,
   });
 
   const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);

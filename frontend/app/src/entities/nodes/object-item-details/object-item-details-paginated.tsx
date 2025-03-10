@@ -55,7 +55,7 @@ export default function ObjectItemDetails({
   hideHeaders,
 }: ObjectDetailsProps) {
   const location = useLocation();
-  const { objectid } = useParams();
+  const { objectKind, objectid } = useParams();
   const { pathname } = location;
 
   const [qspTab, setQspTab] = useQueryParam(QSP.TAB, StringParam);
@@ -214,7 +214,7 @@ export default function ObjectItemDetails({
 
           <Card className="p-0 overflow-x-hidden">
             <CardWithBorder.Title className="border-b">Activities</CardWithBorder.Title>
-            <NodeEvents />
+            <NodeEvents objectId={objectid} objectKind={objectKind} />
           </Card>
         </div>
       )}
