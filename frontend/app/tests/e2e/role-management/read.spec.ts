@@ -1,12 +1,23 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../constants";
+import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
+
+const BRANCH_NAME = "role-management/read";
 
 test.describe.fixme("Role management - READ", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
+  });
+
   test("should read correctly the different views", async ({ page }) => {
     await test.step("access main view", async () => {
-      await page.goto("/role-management");
+      await page.goto(`/role-management?branch=${BRANCH_NAME}`);
     });
 
     await test.step("check counts", async () => {
