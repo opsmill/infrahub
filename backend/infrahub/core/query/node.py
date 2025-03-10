@@ -734,9 +734,10 @@ class NodeListGetInfoQuery(Query):
     name = "node_list_get_info"
     type = QueryType.READ
 
-    def __init__(self, ids: list[str], account=None, **kwargs: Any) -> None:
+    def __init__(self, ids: list[str], account=None, use_profiles: bool = True, **kwargs: Any) -> None:
         self.account = account
         self.ids = ids
+        self.use_profiles = use_profiles
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
@@ -744,6 +745,7 @@ class NodeListGetInfoQuery(Query):
             at=self.at, branch_agnostic=self.branch_agnostic
         )
         self.params.update(branch_params)
+        self.params["ids"] = self.ids
 
         query = """
         MATCH p = (root:Root)<-[:IS_PART_OF]-(n:Node)
@@ -758,16 +760,20 @@ class NodeListGetInfoQuery(Query):
         }
         WITH n1 as n, r1 as rb
         WHERE rb.status = "active"
-        OPTIONAL MATCH profile_path = (n)-[:IS_RELATED]->(profile_r:Relationship)<-[:IS_RELATED]-(profile:Node)-[:IS_PART_OF]->(:Root)
-        WHERE profile_r.name = "node__profile"
-        AND profile.namespace = "Profile"
-        AND all(r in relationships(profile_path) WHERE %(branch_filter)s and r.status = "active")
         """ % {"branch_filter": branch_filter}
-
         self.add_to_query(query)
-        self.params["ids"] = self.ids
 
-        self.return_labels = ["collect(profile.uuid) as profile_uuids", "n", "rb"]
+        if self.use_profiles:
+            profiles_query = """
+            OPTIONAL MATCH profile_path = (n)-[:IS_RELATED]->(profile_r:Relationship)<-[:IS_RELATED]-(profile:Node)-[:IS_PART_OF]->(:Root)
+            WHERE profile_r.name = "node__profile"
+            AND profile.namespace = "Profile"
+            AND all(r in relationships(profile_path) WHERE %(branch_filter)s and r.status = "active")
+            """ % {"branch_filter": branch_filter}
+            self.add_to_query(profiles_query)
+            self.return_labels = ["collect(profile.uuid) as profile_uuids", "n", "rb"]
+        else:
+            self.return_labels = ["[] as profile_uuids", "n", "rb"]
 
     async def get_nodes(self, db: InfrahubDatabase, duplicate: bool = False) -> AsyncIterator[NodeToProcess]:
         """Return all the node objects as NodeToProcess."""
@@ -871,10 +877,10 @@ class NodeGetListQuery(Query):
         filters: Optional[dict] = None,
         partial_match: bool = False,
         order: OrderModel | None = None,
+        use_profiles: bool = True,
         **kwargs: Any,
     ) -> None:
-        self.use_profiles = not config.SETTINGS.experimental_features.no_profiles
-        log.info(f"node get list query {self.use_profiles=}")
+        self.use_profiles = use_profiles
         self.schema = schema
         self.filters = filters
         self.partial_match = partial_match

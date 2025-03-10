@@ -8,6 +8,7 @@ import ujson
 from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel
 
+from infrahub import config
 from infrahub.core.constants import NULL_VALUE
 from infrahub.core.query.standard_node import (
     StandardNodeCreateQuery,
@@ -214,8 +215,9 @@ class StandardNode(BaseModel):
     async def get_list(
         cls, db: InfrahubDatabase, limit: int = 1000, ids: list[str] | None = None, name: str | None = None, **kwargs
     ) -> list[Self]:
+        use_profiles = not config.SETTINGS.experimental_features.no_profiles
         query: Query = await StandardNodeGetListQuery.init(
-            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, **kwargs
+            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, use_profiles=use_profiles, **kwargs
         )
         await query.execute(db=db)
 

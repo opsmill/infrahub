@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from functools import reduce
 from typing import TYPE_CHECKING, Any, Iterable, Literal, Optional, TypeVar, Union, overload
 
 from infrahub_sdk.utils import deep_merge_dict, is_valid_uuid
 
+from infrahub import config
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
@@ -123,6 +125,13 @@ class ProfileAttributeIndex:
         return updated_data
 
 
+@dataclass
+class NodesToProcessData:
+    node_infos_by_id: dict[str, NodeToProcess]
+    node_attributes_map: dict[str, dict[str, AttributeFromDB]]
+    profile_index: ProfileAttributeIndex
+
+
 class NodeManager:
     @overload
     @classmethod
@@ -199,6 +208,7 @@ class NodeManager:
             list[Node]: List of Node object
         """
 
+        use_profiles = not config.SETTINGS.experimental_features.no_profiles
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -232,6 +242,7 @@ class NodeManager:
             partial_match=partial_match,
             branch_agnostic=branch_agnostic,
             order=order,
+            use_profile=use_profiles,
         )
         await query.execute(db=db)
         node_ids = query.get_node_ids()
@@ -286,7 +297,7 @@ class NodeManager:
         Returns:
             int: The number of responses found
         """
-
+        use_profiles = not config.SETTINGS.experimental_features.no_profiles
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -301,6 +312,7 @@ class NodeManager:
             partial_match=partial_match,
             branch_agnostic=branch_agnostic,
             order=OrderModel(disable=True),
+            use_profiles=use_profiles,
         )
         return await query.count(db=db)
 
@@ -1086,6 +1098,84 @@ class NodeManager:
         return node
 
     @classmethod
+    async def _get_nodes_to_process(
+        cls,
+        db: InfrahubDatabase,
+        ids: list[str],
+        fields: Optional[dict] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        account=None,
+        branch_agnostic: bool = False,
+        use_profiles: bool = True,
+    ) -> NodesToProcessData:
+        branch = await registry.get_branch(branch=branch, db=db)
+        at = Timestamp(at)
+        # Query all nodes
+        query = await NodeListGetInfoQuery.init(
+            db=db,
+            ids=ids,
+            branch=branch,
+            account=account,
+            at=at,
+            branch_agnostic=branch_agnostic,
+            use_profiles=use_profiles,
+        )
+        await query.execute(db=db)
+        nodes_info_by_id: dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes(db=db)}
+        node_ids = list(nodes_info_by_id.keys())
+
+        all_profile_ids: set[str] = set()
+        if use_profiles:
+            profile_ids_by_node_id = query.get_profile_ids_by_node_id()
+            all_profile_ids = reduce(
+                lambda all_ids, these_ids: all_ids | set(these_ids), profile_ids_by_node_id.values(), set()
+            )
+
+            if fields and all_profile_ids:
+                if "profile_priority" not in fields:
+                    fields["profile_priority"] = {}
+                if "value" not in fields["profile_priority"]:
+                    fields["profile_priority"]["value"] = None
+
+            node_ids += list(all_profile_ids)
+        # Query list of all Attributes
+        query = await NodeListGetAttributeQuery.init(
+            db=db,
+            ids=node_ids,
+            fields=fields,
+            branch=branch,
+            include_source=include_source,
+            include_owner=include_owner,
+            account=account,
+            at=at,
+            branch_agnostic=branch_agnostic,
+        )
+        await query.execute(db=db)
+        all_node_attributes = query.get_attributes_group_by_node()
+
+        profile_attributes: dict[str, dict[str, AttributeFromDB]] = {}
+        node_attributes: dict[str, dict[str, AttributeFromDB]] = {}
+        for node_id, attribute_dict in all_node_attributes.items():
+            if use_profiles and node_id in all_profile_ids:
+                profile_attributes[node_id] = attribute_dict
+            else:
+                node_attributes[node_id] = attribute_dict
+        profile_index: None | ProfileAttributeIndex = None
+        if use_profiles:
+            profile_index = ProfileAttributeIndex(
+                profile_attributes_id_map=profile_attributes, profile_ids_by_node_id=profile_ids_by_node_id
+            )
+
+        return NodesToProcessData(
+            node_infos_by_id=nodes_info_by_id,
+            node_attributes_map=node_attributes,
+            profile_index=profile_index,
+        )
+
+    @classmethod
     async def get_many(
         cls,
         db: InfrahubDatabase,
@@ -1100,59 +1190,27 @@ class NodeManager:
         branch_agnostic: bool = False,
     ) -> dict[str, Node]:
         """Return a list of nodes based on their IDs."""
-
-        branch = await registry.get_branch(branch=branch, db=db)
-        at = Timestamp(at)
-
-        # Query all nodes
-        query = await NodeListGetInfoQuery.init(
-            db=db, ids=ids, branch=branch, account=account, at=at, branch_agnostic=branch_agnostic
-        )
-        await query.execute(db=db)
-        nodes_info_by_id: dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes(db=db)}
-        profile_ids_by_node_id = query.get_profile_ids_by_node_id()
-        all_profile_ids = reduce(
-            lambda all_ids, these_ids: all_ids | set(these_ids), profile_ids_by_node_id.values(), set()
-        )
-
-        if fields and all_profile_ids:
-            if "profile_priority" not in fields:
-                fields["profile_priority"] = {}
-            if "value" not in fields["profile_priority"]:
-                fields["profile_priority"]["value"] = None
-
-        # Query list of all Attributes
-        query = await NodeListGetAttributeQuery.init(
+        use_profiles = not config.SETTINGS.experimental_features.no_profiles
+        nodes_to_process_data = await cls._get_nodes_to_process(
             db=db,
-            ids=list(nodes_info_by_id.keys()) + list(all_profile_ids),
+            ids=ids,
             fields=fields,
+            at=at,
             branch=branch,
             include_source=include_source,
             include_owner=include_owner,
             account=account,
-            at=at,
             branch_agnostic=branch_agnostic,
-        )
-        await query.execute(db=db)
-        all_node_attributes = query.get_attributes_group_by_node()
-        profile_attributes: dict[str, dict[str, AttributeFromDB]] = {}
-        node_attributes: dict[str, dict[str, AttributeFromDB]] = {}
-        for node_id, attribute_dict in all_node_attributes.items():
-            if node_id in all_profile_ids:
-                profile_attributes[node_id] = attribute_dict
-            else:
-                node_attributes[node_id] = attribute_dict
-        profile_index = ProfileAttributeIndex(
-            profile_attributes_id_map=profile_attributes, profile_ids_by_node_id=profile_ids_by_node_id
+            use_profiles=use_profiles,
         )
 
         nodes: dict[str, Node] = {}
 
-        for node_id in ids:  # pylint: disable=too-many-nested-blocks
-            if node_id not in nodes_info_by_id:
+        for node_id in ids:
+            if node_id not in nodes_to_process_data.node_infos_by_id:
                 continue
 
-            node = nodes_info_by_id[node_id]
+            node = nodes_to_process_data.node_infos_by_id[node_id]
             new_node_data: dict[str, Union[str, AttributeFromDB]] = {
                 "db_id": node.node_id,
                 "id": node_id,
@@ -1169,15 +1227,18 @@ class NodeManager:
             # --------------------------------------------------------
             # Attributes
             # --------------------------------------------------------
-            if node_id in node_attributes:
-                for attr_name, attr in node_attributes[node_id].attrs.items():
+            if node_id in nodes_to_process_data.node_attributes_map:
+                for attr_name, attr in nodes_to_process_data.node_attributes_map[node_id].attrs.items():
                     new_node_data[attr_name] = attr
 
-            new_node_data_with_profile_overrides = profile_index.apply_profiles(new_node_data)
             node_class = identify_node_class(node=node)
             node_branch = await registry.get_branch(db=db, branch=node.branch)
             item = await node_class.init(schema=node.schema, branch=node_branch, at=at, db=db)
-            await item.load(**new_node_data_with_profile_overrides, db=db)
+            if use_profiles and nodes_to_process_data.profile_index:
+                new_node_data_with_profile_overrides = nodes_to_process_data.profile_index.apply_profiles(new_node_data)
+                await item.load(**new_node_data_with_profile_overrides, db=db)
+            else:
+                await item.load(**new_node_data, db=db)
 
             nodes[node_id] = item
 
