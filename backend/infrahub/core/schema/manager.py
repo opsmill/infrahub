@@ -295,15 +295,21 @@ class SchemaManager(NodeManager):
             new_node.attributes = []
 
             for item in node.attributes:
-                new_attr = await self.create_attribute_in_db(
-                    schema=attribute_schema, item=item, parent=obj, branch=branch, db=db
-                )
+                if item.inherited is False:
+                    new_attr = await self.create_attribute_in_db(
+                        schema=attribute_schema, item=item, parent=obj, branch=branch, db=db
+                    )
+                else:
+                    new_attr = item.duplicate()
                 new_node.attributes.append(new_attr)
 
             for item in node.relationships:
-                new_rel = await self.create_relationship_in_db(
-                    schema=relationship_schema, item=item, parent=obj, branch=branch, db=db
-                )
+                if item.inherited is False:
+                    new_rel = await self.create_relationship_in_db(
+                        schema=relationship_schema, item=item, parent=obj, branch=branch, db=db
+                    )
+                else:
+                    new_rel = item.duplicate()
                 new_node.relationships.append(new_rel)
 
         # Save back the node with the newly created IDs in the SchemaManager
