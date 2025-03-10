@@ -1,6 +1,8 @@
 import { GENERIC_REPOSITORY_KIND } from "@/config/constants";
 import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";
 import { ArtifactGenerateButton } from "@/entities/artifacts/ui/artifact-generate-button";
+import { GENERATOR_INSTANCE_KIND } from "@/entities/generators/constants";
+import { RunGeneratorButton } from "@/entities/generators/ui/run-generator-button";
 import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-trigger-button";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
@@ -8,6 +10,7 @@ import { Permission } from "@/entities/permission/types";
 import RepositoryActionMenu from "@/entities/repository/ui/repository-action-menu";
 import { ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
+import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ButtonWithTooltip } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -33,6 +36,15 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
       <div className="flex items-center gap-2">
         {schema.kind === ARTIFACT_DEFINITION_KIND && (
           <ArtifactGenerateButton definitionId={objectDetailsData.id} />
+        )}
+
+        {isOfKind(GENERATOR_INSTANCE_KIND, schema) && (
+          <RunGeneratorButton
+            generatorId={objectDetailsData.definition.node.id}
+            targetNodeIds={[objectDetailsData.object.node.id]}
+          >
+            Re-generate
+          </RunGeneratorButton>
         )}
 
         <ButtonWithTooltip
