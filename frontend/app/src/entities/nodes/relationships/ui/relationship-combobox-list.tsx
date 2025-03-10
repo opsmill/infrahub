@@ -2,24 +2,31 @@ import { useRelationships } from "@/entities/nodes/relationships/domain/get-rela
 import { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { ComboboxEmpty, ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
+import {
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxListProps,
+} from "@/shared/components/ui/combobox";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
 import React, { forwardRef } from "react";
 
-export interface RelationshipComboboxListProps {
+export interface RelationshipComboboxListProps
+  extends Omit<ComboboxListProps, "value" | "onSelect"> {
   peer: string;
   onSelect: (value: RelationshipNode) => void;
   value?: RelationshipNode | null;
   filterItem?: (relationshipNode: RelationshipNode) => boolean;
+  filterQuery?: Record<string, string | number | boolean | string[]>;
 }
 
 export const RelationshipComboboxList = forwardRef<HTMLDivElement, RelationshipComboboxListProps>(
-  ({ peer, value, onSelect, filterItem }, ref) => {
+  ({ peer, value, onSelect, filterItem, filterQuery, ...props }, ref) => {
     const [search, setSearch] = React.useState("");
     const { schema } = useSchema(peer);
     const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
-      useRelationships({ peer, search });
+      useRelationships({ peer, search, filterQuery });
 
     if (error) return <ErrorScreen message={error.message} />;
 
@@ -30,6 +37,7 @@ export const RelationshipComboboxList = forwardRef<HTMLDivElement, RelationshipC
         ref={ref}
         onValueChange={(newValue) => setSearchDebounced(newValue)}
         shouldFilter={false}
+        {...props}
       >
         {isPending ? (
           <Spinner className="flex justify-center m-2" />

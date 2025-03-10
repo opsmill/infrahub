@@ -5,7 +5,6 @@ from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
 
 import httpx
 import pytest
@@ -344,8 +343,8 @@ async def test_rabbitmq_publish(rabbitmq_api: RabbitMQManager) -> None:
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
     service = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
 
-    normal_message = messages.EventBranchCreate(branch="normal", branch_id=str(uuid4()), sync_with_git=False)
-    delayed_message = messages.EventBranchCreate(branch="delayed", branch_id=str(uuid4()), sync_with_git=False)
+    normal_message = messages.SendEchoRequest(message="normal")
+    delayed_message = messages.SendEchoRequest(message="delayed")
 
     await bus.send(message=normal_message)
     await service.message_bus.send(message=delayed_message, delay=MessageTTL.FIVE)
@@ -359,8 +358,8 @@ async def test_rabbitmq_publish(rabbitmq_api: RabbitMQManager) -> None:
 
     await bus.shutdown()
 
-    parsed_message = messages.EventBranchCreate(**parsed_message)
-    parsed_delayed_message = messages.EventBranchCreate(**parsed_delayed_message)
+    parsed_message = messages.SendEchoRequest(**parsed_message)
+    parsed_delayed_message = messages.SendEchoRequest(**parsed_delayed_message)
 
     # The priority isn't currently included in the header, reset it to show expected priority
     normal_message.meta.priority = 3
