@@ -72,6 +72,7 @@ async def run(message: messages.CheckGeneratorRun, service: InfrahubServices) ->
             convert_query_response=generator_definition.convert_query_response,
             infrahub_node=InfrahubNode,
         )
+        generator._init_client.request_context = message.context.to_request_context()
         await generator.run(identifier=generator_definition.name)
         generator_instance.status.value = GeneratorInstanceStatus.READY.value
     except ModuleImportError as exc:

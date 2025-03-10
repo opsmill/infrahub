@@ -1,5 +1,6 @@
 from typing import Any
 
+from infrahub_sdk.context import ContextAccount, RequestContext
 from pydantic import BaseModel, Field
 from typing_extensions import Self
 
@@ -47,3 +48,6 @@ class InfrahubContext(BaseModel):
 
     def to_event(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
+
+    def to_request_context(self) -> RequestContext:
+        return RequestContext(account=ContextAccount(id=self.account.account_id))
