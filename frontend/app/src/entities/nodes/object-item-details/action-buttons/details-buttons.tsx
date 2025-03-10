@@ -1,7 +1,11 @@
 import { GENERIC_REPOSITORY_KIND } from "@/config/constants";
 import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";
 import { ArtifactGenerateButton } from "@/entities/artifacts/ui/artifact-generate-button";
-import { GENERATOR_INSTANCE_KIND } from "@/entities/generators/constants";
+import {
+  GENERATOR_DEFINITION_KIND,
+  GENERATOR_INSTANCE_KIND,
+} from "@/entities/generators/constants";
+import { RunGeneratorAction } from "@/entities/generators/ui/run-generator-action";
 import { RunGeneratorButton } from "@/entities/generators/ui/run-generator-button";
 import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-trigger-button";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
@@ -36,6 +40,13 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
       <div className="flex items-center gap-2">
         {schema.kind === ARTIFACT_DEFINITION_KIND && (
           <ArtifactGenerateButton definitionId={objectDetailsData.id} />
+        )}
+
+        {isOfKind(GENERATOR_DEFINITION_KIND, schema) && (
+          <RunGeneratorAction
+            generatorId={objectDetailsData.id}
+            groupId={objectDetailsData.targets.node.id}
+          />
         )}
 
         {isOfKind(GENERATOR_INSTANCE_KIND, schema) && (
