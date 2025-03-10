@@ -17,6 +17,7 @@ test.describe("/objects/CoreGraphQLQuery/:graphqlQueryId - GraphQL Query details
     await test.step("Navigate to CoreGraphQLQuery page", async () => {
       await page.goto("/objects/CoreGraphQLQuery");
       await expect(page.getByRole("heading", { name: "GraphQL Query" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "device_startup_info" })).toBeVisible();
     });
 
     await test.step("Create a new graphql query", async () => {

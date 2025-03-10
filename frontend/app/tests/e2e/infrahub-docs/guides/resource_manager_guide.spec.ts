@@ -1,11 +1,22 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../../constants";
-import { saveScreenshotForDocs } from "../../utils";
+import { ACCOUNT_STATE_PATH } from "../../../constants";
+import { saveScreenshotForDocs } from "../../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 
-test.describe("Resource Managers guide", () => {
+const BRANCH_NAME = "resource-managers_guide";
+
+test.describe("Resource Managers - Guide", () => {
   test.describe.configure({ mode: "parallel" });
   test.slow();
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
+  });
 
   test("IP Address Pool", async ({ page }) => {
     await test.step("Create prefix 10.100.0.0/24", async () => {
