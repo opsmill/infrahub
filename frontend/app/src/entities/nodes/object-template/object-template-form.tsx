@@ -1,5 +1,6 @@
 import { ObjectTemplateAutocomplete } from "@/entities/nodes/object-template/object-template-autocomplete";
 import { NodeObject } from "@/entities/nodes/types";
+import { TemplateSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { Popover } from "@/shared/components/aria/popover";
 import ObjectForm, { ObjectFormProps } from "@/shared/components/form/object-form";
@@ -37,7 +38,7 @@ const StartFromTemplateButton = ({
   objectTemplateSchema,
   onSelect,
 }: {
-  objectTemplateSchema: any;
+  objectTemplateSchema: TemplateSchema;
   onSelect: (template: NodeObject | null) => void;
 }) => {
   let buttonRef = useRef<HTMLButtonElement>(null);

@@ -5,12 +5,6 @@ from .models import WorkerPoolDefinition, WorkflowDefinition
 
 INFRAHUB_WORKER_POOL = WorkerPoolDefinition(name="infrahub-worker", description="Default Pool for internal tasks")
 
-WEBHOOK_SEND = WorkflowDefinition(
-    name="event-send-webhook",
-    type=WorkflowType.USER,
-    module="infrahub.webhook.tasks",
-    function="send_webhook",
-)
 
 TRANSFORM_JINJA2_RENDER = WorkflowDefinition(
     name="transform_render_jinja2_template",
@@ -356,18 +350,33 @@ REQUEST_ARTIFACT_DEFINITION_CHECK = WorkflowDefinition(
     function="validate_artifacts_generation",
 )
 
-WEBHOOK_CONFIGURE = WorkflowDefinition(
-    name="webhook-setup-automations",
+WEBHOOK_PROCESS = WorkflowDefinition(
+    name="webhook-process",
     type=WorkflowType.USER,
     module="infrahub.webhook.tasks",
-    function="configure_webhooks",
+    function="webhook_process",
 )
 
-WEBHOOK_TRIGGER = WorkflowDefinition(
-    name="webhook-trigger-actions",
-    type=WorkflowType.USER,
+WEBHOOK_CONFIGURE_ONE = WorkflowDefinition(
+    name="webhook-setup-automation-one",
+    type=WorkflowType.CORE,
     module="infrahub.webhook.tasks",
-    function="trigger_webhooks",
+    function="configure_webhook_one",
+)
+
+WEBHOOK_CONFIGURE_ALL = WorkflowDefinition(
+    name="webhook-setup-automation-all",
+    type=WorkflowType.INTERNAL,
+    cron=f"{random.randint(0, 59)} 3 * * *",
+    module="infrahub.webhook.tasks",
+    function="configure_webhook_all",
+)
+
+WEBHOOK_DELETE_AUTOMATION = WorkflowDefinition(
+    name="webhook-delete-automation",
+    type=WorkflowType.CORE,
+    module="infrahub.webhook.tasks",
+    function="delete_webhook_automation",
 )
 
 GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE = WorkflowDefinition(
@@ -376,6 +385,42 @@ GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE = WorkflowDefinition(
     module="infrahub.artifacts.tasks",
     function="create",
 )
+
+GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER = WorkflowDefinition(
+    name="git-repository-user-checks-definition-trigger",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="trigger_repository_user_checks_definitions",
+)
+
+GIT_REPOSITORY_USER_CHECK_RUN = WorkflowDefinition(
+    name="git-repository-run-user-check",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="run_user_check",
+)
+
+GIT_REPOSITORY_USER_CHECKS_TRIGGER = WorkflowDefinition(
+    name="git-repository-trigger-user-checks",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="trigger_user_checks",
+)
+
+GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER = WorkflowDefinition(
+    name="git-repository-trigger-internal-checks",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="trigger_internal_checks",
+)
+
+GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN = WorkflowDefinition(
+    name="git-repository-check-merge-conflict",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="run_check_merge_conflicts",
+)
+
 
 worker_pools = [INFRAHUB_WORKER_POOL]
 
@@ -403,6 +448,11 @@ workflows = [
     GIT_REPOSITORIES_SYNC,
     GIT_REPOSITORY_ADD,
     GIT_REPOSITORY_ADD_READ_ONLY,
+    GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
+    GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
+    GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER,
+    GIT_REPOSITORY_USER_CHECKS_TRIGGER,
+    GIT_REPOSITORY_USER_CHECK_RUN,
     GRAPHQL_QUERY_GROUP_UPDATE,
     IPAM_RECONCILIATION,
     PROCESS_COMPUTED_MACRO,
@@ -427,7 +477,8 @@ workflows = [
     TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
     UPDATE_COMPUTED_ATTRIBUTE_TRANSFORM,
-    WEBHOOK_CONFIGURE,
-    WEBHOOK_SEND,
-    WEBHOOK_TRIGGER,
+    WEBHOOK_CONFIGURE_ALL,
+    WEBHOOK_CONFIGURE_ONE,
+    WEBHOOK_DELETE_AUTOMATION,
+    WEBHOOK_PROCESS,
 ]

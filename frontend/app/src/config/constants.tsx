@@ -8,6 +8,8 @@ export const NODE_OBJECT = "CoreNode";
 
 export const PROFILE_KIND = "CoreProfile";
 
+export const TEMPLATE_GENERIC_KIND = "CoreObjectTemplate";
+
 export const TASK_TARGET = "CoreTaskTarget";
 
 export const ACCOUNT_GENERIC_OBJECT = "CoreGenericAccount";

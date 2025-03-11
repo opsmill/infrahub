@@ -109,6 +109,7 @@ regenerate_host_artifact
 repo
 REST
 resources
+schema's
 schema_mapping
 sdk
 subcommand

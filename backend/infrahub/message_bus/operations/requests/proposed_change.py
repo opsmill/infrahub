@@ -11,6 +11,7 @@ from infrahub.core.constants import CheckType, InfrahubKind, RepositoryInternalS
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.registry import registry
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.git.models import TriggerRepositoryInternalChecks
 from infrahub.git.repository import InfrahubRepository
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import (
@@ -29,6 +30,7 @@ from infrahub.proposed_change.models import (
 )
 from infrahub.services import InfrahubServices  # noqa: TC001
 from infrahub.workflows.catalogue import (
+    GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
     REQUEST_ARTIFACT_DEFINITION_CHECK,
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
@@ -76,17 +78,17 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
     ):
         for repo in repositories:
             if not repo.read_only and repo.internal_status == RepositoryInternalStatus.ACTIVE.value:
-                events.append(
-                    messages.RequestRepositoryChecks(
-                        proposed_change=message.proposed_change,
-                        repository=repo.repository_id,
-                        source_branch=repo.source_branch,
-                        target_branch=repo.destination_branch,
-                    )
+                model = TriggerRepositoryInternalChecks(
+                    proposed_change=message.proposed_change,
+                    repository=repo.repository_id,
+                    source_branch=repo.source_branch,
+                    target_branch=repo.destination_branch,
                 )
-        for event in events:
-            event.assign_meta(parent=message)
-            await service.message_bus.send(message=event)
+                await service.workflow.submit_workflow(
+                    workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
+                    context=message.context,
+                    parameters={"model": model},
+                )
         return
 
     await _gather_repository_repository_diffs(repositories=repositories, service=service)
@@ -105,6 +107,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
     if message.check_type is CheckType.ARTIFACT:
         events.append(
             messages.RequestProposedChangeRefreshArtifacts(
+                context=message.context,
                 proposed_change=message.proposed_change,
                 source_branch=message.source_branch,
                 source_branch_sync_with_git=message.source_branch_sync_with_git,
@@ -243,6 +246,7 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
         if select:
             log.info(f"Trigger processing of {artifact_definition.definition_name}")
             model = RequestArtifactDefinitionCheck(
+                context=message.context,
                 artifact_definition=artifact_definition,
                 branch_diff=message.branch_diff,
                 proposed_change=message.proposed_change,

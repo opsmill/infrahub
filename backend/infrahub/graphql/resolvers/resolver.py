@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from graphql.type.definition import GraphQLNonNull
 from infrahub_sdk.utils import extract_fields
@@ -164,7 +164,7 @@ async def default_paginated_list_resolver(
         edges = fields.get("edges", {})
         node_fields = edges.get("node", {})
 
-        permission_set: Optional[dict[str, Any]] = None
+        permission_set: dict[str, Any] | None = None
         permissions = (
             await get_permissions(schema=schema, graphql_context=graphql_context)
             if graphql_context.permissions
@@ -234,7 +234,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
 
 
 async def many_relationship_resolver(
-    parent: dict, info: GraphQLResolveInfo, include_descendants: Optional[bool] = False, **kwargs: Any
+    parent: dict, info: GraphQLResolveInfo, include_descendants: bool | None = False, **kwargs: Any
 ) -> dict[str, Any]:
     """Resolver for relationships of cardinality=many for Edged responses
 

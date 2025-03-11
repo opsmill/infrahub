@@ -1,4 +1,6 @@
-from pydantic import Field, computed_field
+from typing import ClassVar
+
+from pydantic import Field
 
 from infrahub.message_bus import InfrahubMessage
 from infrahub.message_bus.messages.refresh_registry_branches import RefreshRegistryBranches
@@ -10,6 +12,8 @@ from .models import InfrahubEvent
 
 class BranchDeletedEvent(InfrahubEvent):
     """Event generated when a branch has been deleted"""
+
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.branch.deleted"
 
     branch_name: str = Field(..., description="The name of the branch")
     branch_id: str = Field(..., description="The ID of the mutated node")
@@ -34,13 +38,11 @@ class BranchDeletedEvent(InfrahubEvent):
         ]
         return events
 
-    @computed_field
-    def event_name(self) -> str:
-        return f"{EVENT_NAMESPACE}.branch.deleted"
-
 
 class BranchCreatedEvent(InfrahubEvent):
     """Event generated when a branch has been created"""
+
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.branch.created"
 
     branch_name: str = Field(..., description="The name of the branch")
     branch_id: str = Field(..., description="The ID of the branch")
@@ -65,32 +67,27 @@ class BranchCreatedEvent(InfrahubEvent):
         ]
         return events
 
-    @computed_field
-    def event_name(self) -> str:
-        return f"{EVENT_NAMESPACE}.branch.created"
-
 
 class BranchMergedEvent(InfrahubEvent):
     """Event generated when a branch has been merged"""
 
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.branch.merged"
+
+    branch_name: str = Field(..., description="The name of the branch")
+    branch_id: str = Field(..., description="The ID of the branch")
+
     def get_resource(self) -> dict[str, str]:
         return {
-            "prefect.resource.id": f"infrahub.branch.{self.meta.get_branch_id()}",
-            "infrahub.node.kind": "Branch",
-            "infrahub.node.id": self.meta.get_branch_id(),
-            "infrahub.node.label": self.meta.context.branch.name,
+            "prefect.resource.id": f"infrahub.branch.{self.branch_name}",
+            "infrahub.branch.id": self.branch_id,
+            "infrahub.branch.name": self.branch_name,
         }
-
-    def get_messages(self) -> list[InfrahubMessage]:
-        return []
-
-    @computed_field
-    def event_name(self) -> str:
-        return f"{EVENT_NAMESPACE}.branch.merged"
 
 
 class BranchRebasedEvent(InfrahubEvent):
     """Event generated when a branch has been rebased"""
+
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.branch.rebased"
 
     branch_id: str = Field(..., description="The ID of the mutated node")
     branch_name: str = Field(..., description="The name of the branch")
@@ -99,6 +96,7 @@ class BranchRebasedEvent(InfrahubEvent):
         return {
             "prefect.resource.id": f"infrahub.branch.{self.branch_name}",
             "infrahub.branch.id": self.branch_id,
+            "infrahub.branch.name": self.branch_name,
         }
 
     def get_messages(self) -> list[InfrahubMessage]:
@@ -110,7 +108,3 @@ class BranchRebasedEvent(InfrahubEvent):
             RefreshRegistryRebasedBranch(branch=self.branch_name),
         ]
         return events
-
-    @computed_field
-    def event_name(self) -> str:
-        return f"{EVENT_NAMESPACE}.branch.rebased"

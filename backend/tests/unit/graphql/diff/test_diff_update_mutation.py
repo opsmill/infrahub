@@ -2,6 +2,7 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.diff.model.path import EnrichedDiffRootMetadata, NameTrackingId
+from infrahub.core.diff.parent_node_adder import DiffParentNodeAdder
 from infrahub.core.diff.repository.deserializer import EnrichedDiffDeserializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
@@ -70,7 +71,7 @@ class TestDiffUpdateMutation:
         assert result.errors is None
         assert result.data["DiffUpdate"]["ok"] is True
 
-        diff_repo = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer())
+        diff_repo = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()))
         return (
             await diff_repo.get_roots_metadata(
                 diff_branch_names=[diff_branch.name],

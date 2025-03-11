@@ -1,14 +1,14 @@
-from typing import Optional
-
+from infrahub_sdk.protocols import CoreGeneratorValidator
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.timestamp import Timestamp
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
+from infrahub.validators.tasks import start_validator
 from infrahub.workflows.utils import add_tags
 
 
@@ -29,31 +29,26 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
 
     await proposed_change.validations.fetch()
 
-    validator = None
+    previous_validator: CoreGeneratorValidator | None = None
     for relationship in proposed_change.validations.peers:
         existing_validator = relationship.peer
         if (
             existing_validator.typename == InfrahubKind.GENERATORVALIDATOR
             and existing_validator.definition.id == message.generator_definition.definition_id
         ):
-            validator = existing_validator
+            previous_validator = existing_validator
 
-    if validator:
-        validator.conclusion.value = ValidatorConclusion.UNKNOWN.value
-        validator.state.value = ValidatorState.QUEUED.value
-        validator.started_at.value = ""
-        validator.completed_at.value = ""
-        await validator.save()
-    else:
-        validator = await service.client.create(
-            kind=InfrahubKind.GENERATORVALIDATOR,
-            data={
-                "label": validator_name,
-                "proposed_change": message.proposed_change,
-                "definition": message.generator_definition.definition_id,
-            },
-        )
-        await validator.save()
+    validator = await start_validator(
+        service=service,
+        validator=previous_validator,
+        validator_type=CoreGeneratorValidator,
+        proposed_change=message.proposed_change,
+        data={
+            "label": validator_name,
+            "definition": message.generator_definition.definition_id,
+        },
+        context=message.context,
+    )
 
     group = await service.client.get(
         kind=InfrahubKind.GENERICGROUP,
@@ -92,6 +87,7 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
             log.info(f"Trigger execution of {message.generator_definition.definition_name} for {member.display_label}")
             events.append(
                 messages.CheckGeneratorRun(
+                    context=message.context,
                     generator_definition=message.generator_definition,
                     generator_instance=generator_instance,
                     commit=repository.source_commit,
@@ -121,6 +117,8 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
             validator_id=validator.id,
             validator_execution_id=validator_execution_id,
             validator_type=InfrahubKind.GENERATORVALIDATOR,
+            context=message.context,
+            proposed_change=message.proposed_change,
         )
     )
     for event in events:
@@ -128,7 +126,7 @@ async def check(message: messages.RequestGeneratorDefinitionCheck, service: Infr
         await service.message_bus.send(message=event)
 
 
-def _run_generator(instance_id: Optional[str], managed_branch: bool, impacted_instances: list[str]) -> bool:
+def _run_generator(instance_id: str | None, managed_branch: bool, impacted_instances: list[str]) -> bool:
     """Returns a boolean to indicate if a generator instance needs to be executed
     Will return true if:
         * The instance_id wasn't set which could be that it's a new object that doesn't have a previous generator instance

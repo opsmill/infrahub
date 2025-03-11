@@ -1,23 +1,42 @@
 from infrahub_sdk import InfrahubClient
-from infrahub_sdk.protocols import CoreArtifact, CoreArtifactDefinition, CoreRepository
+from infrahub_sdk.protocols import (
+    CoreArtifact,
+    CoreArtifactDefinition,
+    CoreCheckDefinition,
+    CoreRepository,
+    CoreRepositoryValidator,
+    CoreUserValidator,
+)
+from infrahub_sdk.uuidt import UUIDT
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.context import InfrahubContext
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
 from infrahub.core.registry import registry
-from infrahub.exceptions import RepositoryError
+from infrahub.exceptions import CheckError, RepositoryError
 from infrahub.message_bus import Meta, messages
 from infrahub.services import InfrahubServices
+from infrahub.validators.tasks import start_validator
 from infrahub.worker import WORKER_IDENTITY
 
+from ..core.manager import NodeManager
+from ..core.timestamp import Timestamp
+from ..core.validators.checks_runner import run_checks_and_update_validator
 from ..log import get_log_data
 from ..tasks.artifact import define_artifact
-from ..workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE, REQUEST_ARTIFACT_GENERATE
+from ..workflows.catalogue import (
+    GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
+    GIT_REPOSITORY_USER_CHECK_RUN,
+    GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER,
+    REQUEST_ARTIFACT_DEFINITION_GENERATE,
+    REQUEST_ARTIFACT_GENERATE,
+)
 from ..workflows.utils import add_branch_tag, add_tags
 from .models import (
+    CheckRepositoryMergeConflicts,
     GitDiffNamesOnly,
     GitDiffNamesOnlyResponse,
     GitRepositoryAdd,
@@ -27,6 +46,10 @@ from .models import (
     GitRepositoryPullReadOnly,
     RequestArtifactDefinitionGenerate,
     RequestArtifactGenerate,
+    TriggerRepositoryInternalChecks,
+    TriggerRepositoryUserChecks,
+    UserCheckData,
+    UserCheckDefinitionData,
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
 
@@ -257,10 +280,10 @@ async def generate_artifact(model: RequestArtifactGenerate, service: InfrahubSer
         commit=model.commit,
     )
 
-    artifact = await define_artifact(model=model, service=service)
+    artifact, artifact_created = await define_artifact(model=model, service=service)
 
     try:
-        result = await repo.render_artifact(artifact=artifact, message=model)
+        result = await repo.render_artifact(artifact=artifact, artifact_created=artifact_created, message=model)
         log.debug(
             f"Generated artifact | changed: {result.changed} | {result.checksum} | {result.storage_id}",
         )
@@ -343,7 +366,9 @@ async def generate_request_artifact_definition(
             variables=member.extract(params=artifact_definition.parameters.value),
             target_id=member.id,
             target_name=member.display_label,
+            target_kind=member.get_kind(),
             timeout=transform.timeout.value,
+            context=context,
         )
 
         await service.workflow.submit_workflow(
@@ -486,3 +511,380 @@ async def git_repository_diff_names_only(
         files_added=files_added, files_changed=files_changed, files_removed=files_removed
     )
     return response
+
+
+@flow(
+    name="git-repository-user-checks-definition-trigger",
+    flow_run_name="Trigger user defined checks for repository {model.repository_name}",
+)
+async def trigger_repository_user_checks_definitions(
+    model: UserCheckDefinitionData, context: InfrahubContext, service: InfrahubServices
+) -> None:
+    await add_tags(branches=[model.branch_name], nodes=[model.proposed_change])
+    log = get_run_logger()
+
+    definition = await service.client.get(
+        kind=CoreCheckDefinition, id=model.check_definition_id, branch=model.branch_name
+    )
+    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+    validator_execution_id = str(UUIDT())
+    check_execution_ids: list[str] = []
+    await proposed_change.validations.fetch()
+
+    previous_validator: CoreUserValidator | None = None
+    for relationship in proposed_change.validations.peers:
+        existing_validator = relationship.peer
+
+        if (
+            existing_validator.typename == InfrahubKind.USERVALIDATOR
+            and existing_validator.repository.id == model.repository_id
+            and existing_validator.check_definition.id == model.check_definition_id
+        ):
+            previous_validator = existing_validator
+            service.log.info("Found the same validator", validator=previous_validator)
+
+    validator = await start_validator(
+        service=service,
+        validator=previous_validator,
+        validator_type=CoreUserValidator,
+        proposed_change=model.proposed_change,
+        data={
+            "label": f"Check: {definition.name.value}",
+            "repository": model.repository_id,
+            "check_definition": model.check_definition_id,
+        },
+        context=context,
+    )
+
+    if definition.targets.id:
+        # Check against a group of targets
+        await definition.targets.fetch()
+        group = definition.targets.peer
+        await group.members.fetch()
+        check_models = []
+        for relationship in group.members.peers:
+            member = relationship.peer
+
+            check_execution_id = str(UUIDT())
+            check_execution_ids.append(check_execution_id)
+            check_model = UserCheckData(
+                name=member.display_label,
+                validator_id=validator.id,
+                validator_execution_id=validator_execution_id,
+                check_execution_id=check_execution_id,
+                repository_id=model.repository_id,
+                repository_name=model.repository_name,
+                commit=model.commit,
+                file_path=model.file_path,
+                class_name=model.class_name,
+                branch_name=model.branch_name,
+                check_definition_id=model.check_definition_id,
+                proposed_change=model.proposed_change,
+                variables=member.extract(params=definition.parameters.value),
+                branch_diff=model.branch_diff,
+                timeout=definition.timeout.value,
+            )
+            check_models.append(check_model)
+    else:
+        check_execution_id = str(UUIDT())
+        check_execution_ids.append(check_execution_id)
+        check_models = [
+            UserCheckData(
+                name=definition.name.value,
+                validator_id=validator.id,
+                validator_execution_id=validator_execution_id,
+                check_execution_id=check_execution_id,
+                repository_id=model.repository_id,
+                repository_name=model.repository_name,
+                commit=model.commit,
+                file_path=model.file_path,
+                class_name=model.class_name,
+                branch_name=model.branch_name,
+                check_definition_id=model.check_definition_id,
+                proposed_change=model.proposed_change,
+                branch_diff=model.branch_diff,
+                timeout=definition.timeout.value,
+            )
+        ]
+
+    checks_in_execution = ",".join(check_execution_ids)
+    log.info(f"Checks in execution {checks_in_execution}")
+
+    checks_coroutines = [
+        service.workflow.execute_workflow(
+            workflow=GIT_REPOSITORY_USER_CHECK_RUN, parameters={"model": model}, expected_return=ValidatorConclusion
+        )
+        for model in check_models
+    ]
+
+    await run_checks_and_update_validator(
+        checks=checks_coroutines,
+        validator=validator,
+        context=context,
+        service=service,
+        proposed_change_id=model.proposed_change,
+    )
+
+
+@flow(
+    name="git-repository-trigger-user-checks",
+    flow_run_name="Evaluating user-defined checks on repository {model.repository_name}",
+)
+async def trigger_user_checks(
+    model: TriggerRepositoryUserChecks, service: InfrahubServices, context: InfrahubContext
+) -> None:
+    """Request to start validation checks on a specific repository for User-defined checks."""
+
+    await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
+    log = get_run_logger()
+
+    repository = await service.client.get(
+        kind=InfrahubKind.GENERICREPOSITORY, id=model.repository_id, branch=model.source_branch, fragment=True
+    )
+    await repository.checks.fetch()
+
+    for relationship in repository.checks.peers:
+        log.info("Adding check for user defined check")
+        check_definition = relationship.peer
+        user_check_definition_model = UserCheckDefinitionData(
+            check_definition_id=check_definition.id,
+            repository_id=repository.id,
+            repository_name=repository.name.value,
+            commit=repository.commit.value,
+            file_path=check_definition.file_path.value,
+            class_name=check_definition.class_name.value,
+            branch_name=model.source_branch,
+            proposed_change=model.proposed_change,
+            branch_diff=model.branch_diff,
+        )
+        await service.workflow.submit_workflow(
+            workflow=GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER,
+            context=context,
+            parameters={"model": user_check_definition_model},
+        )
+
+
+@flow(
+    name="git-repository-trigger-internal-checks",
+    flow_run_name="Running repository checks for repository {model.repository}",
+)
+async def trigger_internal_checks(
+    model: TriggerRepositoryInternalChecks, service: InfrahubServices, context: InfrahubContext
+) -> None:
+    """Request to start validation checks on a specific repository."""
+    await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
+    log = get_run_logger()
+
+    repository = await service.client.get(
+        kind=InfrahubKind.GENERICREPOSITORY, id=model.repository, branch=model.source_branch
+    )
+    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=model.proposed_change)
+
+    validator_execution_id = str(UUIDT())
+    check_execution_ids: list[str] = []
+    await proposed_change.validations.fetch()
+    await repository.checks.fetch()
+
+    validator_name = f"Repository Validator: {repository.name.value}"
+    previous_validator: CoreRepositoryValidator | None = None
+    for relationship in proposed_change.validations.peers:
+        existing_validator = relationship.peer
+
+        if (
+            existing_validator.typename == InfrahubKind.REPOSITORYVALIDATOR
+            and existing_validator.repository.id == model.repository
+        ):
+            previous_validator = existing_validator
+
+    validator = await start_validator(
+        service=service,
+        validator=previous_validator,
+        validator_type=CoreRepositoryValidator,
+        proposed_change=model.proposed_change,
+        data={
+            "label": validator_name,
+            "repository": model.repository,
+        },
+        context=context,
+    )
+
+    check_execution_id = str(UUIDT())
+    check_execution_ids.append(check_execution_id)
+    log.info("Adding check for merge conflict")
+    checks_in_execution = ",".join(check_execution_ids)
+    log.info(f"Checks in execution {checks_in_execution}")
+
+    check_merge_conflict_model = CheckRepositoryMergeConflicts(
+        validator_id=validator.id,
+        validator_execution_id=validator_execution_id,
+        check_execution_id=check_execution_id,
+        proposed_change=model.proposed_change,
+        repository_id=model.repository,
+        repository_name=repository.name.value,
+        source_branch=model.source_branch,
+        target_branch=model.target_branch,
+    )
+    check_coroutine = service.workflow.execute_workflow(
+        workflow=GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
+        parameters={"model": check_merge_conflict_model},
+        expected_return=ValidatorConclusion,
+    )
+
+    await run_checks_and_update_validator(
+        checks=[check_coroutine],
+        validator=validator,
+        context=context,
+        service=service,
+        proposed_change_id=model.proposed_change,
+    )
+
+
+@flow(
+    name="git-repository-check-merge-conflict",
+    flow_run_name="Check for merge conflicts between {model.source_branch} and {model.target_branch}",
+)
+async def run_check_merge_conflicts(
+    model: CheckRepositoryMergeConflicts, service: InfrahubServices
+) -> ValidatorConclusion:
+    """Runs a check to see if there are merge conflicts between two branches."""
+    await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
+
+    success_condition = "-"
+    validator = await service.client.get(kind=InfrahubKind.REPOSITORYVALIDATOR, id=model.validator_id)
+    await validator.checks.fetch()
+
+    repo = await InfrahubRepository.init(id=model.repository_id, name=model.repository_name, service=service)
+    async with lock.registry.get(name=model.repository_name, namespace="repository"):
+        conflicts = await repo.get_conflicts(source_branch=model.source_branch, dest_branch=model.target_branch)
+
+    existing_checks = {}
+    for relationship in validator.checks.peers:
+        existing_check = relationship.peer
+        if existing_check.typename == InfrahubKind.FILECHECK and existing_check.kind.value == "MergeConflictCheck":
+            check_key = ""
+            if existing_check.files.value:
+                check_key = "".join(existing_check.files.value)
+            check_key = f"-{check_key}"
+            existing_checks[check_key] = existing_check
+
+    if conflicts:
+        validator_conclusion = ValidatorConclusion.FAILURE
+        for conflict in conflicts:
+            conflict_key = f"-{conflict}"
+            if conflict_key in existing_checks:
+                existing_checks[conflict_key].created_at.value = Timestamp().to_string()
+                await existing_checks[conflict_key].save()
+                existing_checks.pop(conflict_key)
+            else:
+                check = await service.client.create(
+                    kind=InfrahubKind.FILECHECK,
+                    data={
+                        "name": conflict,
+                        "origin": "ConflictCheck",
+                        "kind": "MergeConflictCheck",
+                        "validator": model.validator_id,
+                        "created_at": Timestamp().to_string(),
+                        "files": [conflict],
+                        "conclusion": "failure",
+                        "severity": "critical",
+                    },
+                )
+                await check.save()
+
+    elif success_condition in existing_checks:
+        validator_conclusion = ValidatorConclusion.SUCCESS
+        existing_checks[success_condition].created_at.value = Timestamp().to_string()
+        await existing_checks[success_condition].save()
+        existing_checks.pop(success_condition)
+
+    else:
+        validator_conclusion = ValidatorConclusion.SUCCESS
+        check = await service.client.create(
+            kind=InfrahubKind.FILECHECK,
+            data={
+                "name": "Merge Conflict Check",
+                "origin": "ConflictCheck",
+                "kind": "MergeConflictCheck",
+                "validator": model.validator_id,
+                "created_at": Timestamp().to_string(),
+                "conclusion": validator_conclusion.value,
+                "severity": "info",
+            },
+        )
+        await check.save()
+
+    async with service.database.start_session() as db:
+        await NodeManager.delete(db=db, nodes=list(existing_checks.values()))
+
+    return validator_conclusion
+
+
+@flow(name="git-repository-run-user-check", flow_run_name="Execute user defined Check '{model.name}'")
+async def run_user_check(model: UserCheckData, service: InfrahubServices) -> ValidatorConclusion:
+    await add_tags(branches=[model.branch_name], nodes=[model.proposed_change])
+    log = get_run_logger()
+
+    validator = await service.client.get(kind=InfrahubKind.USERVALIDATOR, id=model.validator_id)
+    await validator.checks.fetch()
+
+    repo = await InfrahubRepository.init(
+        id=model.repository_id, name=model.repository_name, commit=model.commit, service=service
+    )
+    conclusion = ValidatorConclusion.FAILURE
+    severity = "critical"
+    try:
+        check_run = await repo.execute_python_check.with_options(timeout_seconds=model.timeout)(
+            branch_name=model.branch_name,
+            location=model.file_path,
+            class_name=model.class_name,
+            client=service.client,
+            commit=model.commit,
+            params=model.variables,
+        )  # type: ignore[misc]
+        if check_run.passed:
+            conclusion = ValidatorConclusion.SUCCESS
+            severity = "info"
+            log.info("The check passed")
+        else:
+            log.warning("The check reported failures")
+            for log_entry in check_run.log_entries:
+                log.warning(log_entry)
+        log_entries = check_run.log_entries
+    except CheckError as exc:
+        log.warning("The check failed to run")
+        log.error(exc.message)
+        log_entries = f"FATAL Error/n:{exc.message}"
+
+    check = None
+    for relationship in validator.checks.peers:
+        existing_check = relationship.peer
+        if (
+            existing_check.typename == InfrahubKind.STANDARDCHECK
+            and existing_check.kind.value == "CheckDefinition"
+            and existing_check.name.value == model.name
+        ):
+            check = existing_check
+
+    if check:
+        check.created_at.value = Timestamp().to_string()
+        check.message.value = log_entries
+        check.conclusion.value = conclusion.value
+        check.severity.value = severity
+        await check.save()
+    else:
+        check = await service.client.create(
+            kind=InfrahubKind.STANDARDCHECK,
+            data={
+                "name": model.name,
+                "origin": model.repository_id,
+                "kind": "CheckDefinition",
+                "validator": model.validator_id,
+                "created_at": Timestamp().to_string(),
+                "message": log_entries,
+                "conclusion": conclusion.value,
+                "severity": severity,
+            },
+        )
+        await check.save()
+
+    return conclusion

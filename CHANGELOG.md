@@ -11,39 +11,55 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
-## [Infrahub - v1.2.0rc0](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.0rc0)  - 2025-02-23
+## [Infrahub - v1.2.0b1](https://github.com/opsmill/infrahub/tree/infrahub-v1.2.0b1) - 2025-03-03
 
 ### Added
 
-- Added Containerlab to the codespace base image. ([#458](https://github.com/opsmill/infrahub/issues/458))
-- - We added validation on UI for `min_count` and `max_count` in relationships fields. ([#5661](https://github.com/opsmill/infrahub/issues/5661))
-- - Improved Infrahub app layout for a cleaner look.
-  - Made the top menu more compact.
-- Add activities logs in the nodes details view
-- Add new feature to create object templates when setting `generate_template: true` in a schema on a node
+- Added Containerlab to the GitHub Codespace base image. ([#458](https://github.com/opsmill/infrahub/issues/458))
+- Added validation to the UI for `min_count` and `max_count` in relationships fields. ([#5661](https://github.com/opsmill/infrahub/issues/5661))
+- Added a new feature to create object templates when setting `generate_template: true` in a schema on a node.
+- Added activities logs into the node details view.
+- Added icon support to sub-menu items in the sidebar.
+- Improved Infrahub app layout for a cleaner look. Made the top menu more compact.
 
 ### Changed
 
-- Replace PrefixPool with netaddr.IPSet ([#3547](https://github.com/opsmill/infrahub/issues/3547))
-- Modified query analyzer to not list all potential meta data models when only querying for "source" or "owner" ID. The full models will still show up if a fragment is used under the meta data properties. This change makes it easier to setup fine grained permissions and also speeds up the permission lookup as it doesn't require as many checks. ([#4644](https://github.com/opsmill/infrahub/issues/4644))
-- - We made object list retrieval faster with an optimized query.
-- Improve typing of GraphQL schema by defining list as non-nullable and ensure that top level item are mandatory.
+- Replaced `PrefixPool` with `netaddr.IPSet`. ([#3547](https://github.com/opsmill/infrahub/issues/3547))
+- Modified the query analyzer to not list all potential meta data models when only querying for "source" or "owner" ID. The full models will still show up if a fragment is used under the meta data properties. This change makes it easier to setup fine grained permissions and also speeds up the permission lookup as it doesn't require as many checks. ([#4644](https://github.com/opsmill/infrahub/issues/4644))
+- Improved the performance of the cypher query that saves a diff.
+- Improved typing of GraphQL schema by defining list as non-nullable and ensure that top level item are mandatory.
+- Made object list retrieval faster with an optimized query.
 - Reorganized builtin/default menu to provide a better user experience.
 - Updated Infrahub account tokens view:
-
-  - Redesigned for a faster, cleaner experience
+  - Redesigned for a faster, cleaner experience.
   - Improved clarity and formatting of expiration dates.
   - Resolved an issue where expiration data was not being sent to the API.
+- Updated the `DiffUpdate` mutation to return the id of the task when `wait_until_completion` is False. Also the argument `wait_for_completion` under data is deprecated and it has been replaced with `wait_until_completion` at the root of the mutation instead to align with the format of the other mutations.
 
 ### Fixed
 
-- Set correct state in events after merging a proposed change, they were incorrectly set as "merging" instead of "merged" ([#5600](https://github.com/opsmill/infrahub/issues/5600))
+- Fixed an event error in event state after merging a proposed change, they were incorrectly set as "merging" instead of "merged". ([#5600](https://github.com/opsmill/infrahub/issues/5600))
+- Fixed an error in the query to count the number of peers for a given cardinality-many relationship. Previous logic could have resulted in the count being multiplied by a power of 2 if changes were made to the relationship during a merge.
 
 ### Housekeeping
 
-- Activate ruff B rules. ([#2193](https://github.com/opsmill/infrahub/issues/2193))
-- Activate ruff C4 rule. ([#2194](https://github.com/opsmill/infrahub/issues/2194))
-- Add basic integration test for the HTTP service adapter ([#5553](https://github.com/opsmill/infrahub/issues/5553))
+- Activated `ruff` B rules. ([#2193](https://github.com/opsmill/infrahub/issues/2193))
+- Activated `ruff` C4 rule. ([#2194](https://github.com/opsmill/infrahub/issues/2194))
+- Added a basic integration test for the HTTP service adapter. ([#5553](https://github.com/opsmill/infrahub/issues/5553))
+
+## [Infrahub - v1.1.8](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.8) - 2025-03-07
+
+### Changed
+
+- Improved the performance of the cypher query that saves a diff in the database.
+- Updated the DiffUpdate mutation to return the ID of the task when `wait_until_completion` is False. Also, the argument `wait_for_completion` under the data section is deprecated and it has been replaced with `wait_until_completion` at the root of the mutation instead to align with the format of the other mutations.
+
+### Fixed
+
+- Fixed an error in the query to count the number of peers for a given cardinality-many relationship. Existing logic could have resulted in the count being multiplied by a power of 2 if changes were made to the relationship during a merge.
+- Fixed the HFID format in the mutations `IPAddressPoolGetResource` and `IPPrefixPoolGetResource`.
+- Reduced the number of database queries we run when checking a uniqueness constraint during a node update or create mutation. Specifically in the instance that node uses a schema which inherits from a generic schema and the node schema's uniqueness constraints are contained within the generic schema's uniqueness constraints.
+- Removed duplicated edges that could have been added to the database during concurrent updates.
 
 ## [Infrahub - v1.1.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.1.7) - 2025-02-18
 

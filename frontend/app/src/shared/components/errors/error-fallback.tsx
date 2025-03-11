@@ -4,21 +4,21 @@ import { Card } from "@/shared/components/ui/card";
 import Kbd from "@/shared/components/ui/kbd";
 import { Icon } from "@iconify-icon/react";
 import { useEffect, useState } from "react";
-import { useErrorBoundary } from "react-error-boundary";
 
-type ErrorFallbackProps = {
+interface ErrorFallbackProps {
   error: Error;
-};
-function ErrorFallback({ error }: ErrorFallbackProps) {
-  const { resetBoundary } = useErrorBoundary();
+  onReset: () => void;
+}
+
+function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
   const [bugPosition, setBugPosition] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     const onKeydown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() === "enter") {
-        resetBoundary();
+        onReset();
       }
-      console.error(event.key);
+
       if (event.key.toLowerCase() === "backspace") {
         window.location.href = window.location.origin;
       }
@@ -57,11 +57,11 @@ function ErrorFallback({ error }: ErrorFallbackProps) {
           </p>
 
           <div>
-            <Button className="mr-2" onClick={resetBoundary}>
+            <Button className="mr-2" onClick={onReset}>
               Refresh
             </Button>
             <a href={window.location.origin}>
-              <Button variant="outline" className="my-4" onClick={resetBoundary}>
+              <Button variant="outline" className="my-4">
                 Homepage
               </Button>
             </a>
@@ -104,7 +104,7 @@ function ErrorFallback({ error }: ErrorFallbackProps) {
         </p>
       </Card>
 
-      {error.stack && (
+      {error?.stack && (
         <Accordion className="text-sm text-gray-600" title="View error stack">
           <pre className="p-2 rounded bg-red-50 text-red-800">{error.stack}</pre>
         </Accordion>

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from graphene import Field, Int, ObjectType, String
 from netaddr import IPSet
@@ -27,7 +27,7 @@ class IPAddressGetNextAvailable(ObjectType):
         root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         prefix_id: str,
-        prefix_length: Optional[int] = None,
+        prefix_length: int | None = None,
     ) -> dict[str, str]:
         graphql_context: GraphqlContext = info.context
 

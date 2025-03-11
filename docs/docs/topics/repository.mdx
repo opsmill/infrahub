@@ -23,7 +23,7 @@ See [this topic](../topics/infrahub-yml) for a full explanation of everything th
 
 ## Architecture {#architecture}
 
-The [Infrahub web server](../reference/api-server) will never connect directly with external Git repositories. All interactions between Infrahub and remote Git repositories are handled by the [Task worker](../reference/git-agent). The Task worker(s) can work with any remote Git server that using either `git` or `http` protocols. The Infrahub web server can send commands to the Task worker via our message broker and the Task worker can send data back to the Infrahub web server via GraphQL mutations.
+The [Infrahub web server](../reference/api-server) will never connect directly with external Git repositories. All interactions between Infrahub and remote Git repositories are handled by the [Task worker](../reference/task-worker). The Task worker(s) can work with any remote Git server that using either `git` or `http` protocols. The Infrahub web server can send commands to the Task worker via our message broker and the Task worker can send data back to the Infrahub web server via GraphQL mutations.
 
 ![](../media/repository_architecture.excalidraw.svg)
 

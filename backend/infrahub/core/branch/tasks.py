@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import uuid4
 
 import pydantic
 from prefect import flow, get_run_logger
@@ -11,23 +12,24 @@ from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.changelog.diff import DiffChangelogCollector
+from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
 from infrahub.core.constants import MutationAction
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.merger.merger import DiffMerger
-from infrahub.core.diff.model.path import BranchTrackingId
+from infrahub.core.diff.model.path import BranchTrackingId, EnrichedDiffRoot, EnrichedDiffRootMetadata
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.merge import BranchMerger
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
 from infrahub.core.migrations.schema.tasks import schema_apply_migrations
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent, BranchRebasedEvent
 from infrahub.events.models import EventMeta, InfrahubEvent
-from infrahub.events.node_action import NodeMutatedEvent
+from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import BranchNotFoundError, MergeFailedError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.log import get_log_data
@@ -44,7 +46,7 @@ from infrahub.workflows.utils import add_tags
 
 
 @flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
-async def rebase_branch(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:
+async def rebase_branch(branch: str, context: InfrahubContext, service: InfrahubServices) -> None:  # noqa: PLR0915
     async with service.database.start_session() as db:
         log = get_run_logger()
         await add_tags(branches=[branch])
@@ -54,6 +56,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, service: Infrahub
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
         diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
+        initial_from_time = Timestamp(obj.get_branched_from())
         merger = BranchMerger(
             db=db,
             diff_coordinator=diff_coordinator,
@@ -62,7 +65,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, service: Infrahub
             source_branch=obj,
             service=service,
         )
-        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
+
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(base_branch=base_branch, diff_branch=obj)
         async for _ in diff_repository.get_all_conflicts_for_diff(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
@@ -97,7 +100,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, service: Infrahub
                 raise ValidationError(",\n".join(error_messages))
 
         schema_in_main_before = merger.destination_schema.duplicate()
-
+        migrations = []
         async with lock.registry.global_graph_lock():
             async with db.start_transaction() as dbt:
                 await obj.rebase(db=dbt)
@@ -134,6 +137,14 @@ async def rebase_branch(branch: str, context: InfrahubContext, service: Infrahub
                 for error in errors:
                     log.error(error)
 
+        default_branch_diff = await _get_diff_root(
+            diff_coordinator=diff_coordinator,
+            enriched_diff_metadata=enriched_diff_metadata,
+            diff_repository=diff_repository,
+            base_branch=base_branch,
+            target_from=initial_from_time,
+        )
+
         # -------------------------------------------------------------
         # Trigger the reconciliation of IPAM data after the rebase
         # -------------------------------------------------------------
@@ -156,12 +167,26 @@ async def rebase_branch(branch: str, context: InfrahubContext, service: Infrahub
     # -------------------------------------------------------------
     # Generate an event to indicate that a branch has been rebased
     # -------------------------------------------------------------
-    # TODO Add account information
-    await service.event.send(
-        event=BranchRebasedEvent(
-            branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
-        )
+    rebase_event = BranchRebasedEvent(
+        branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
     )
+    events: list[InfrahubEvent] = [rebase_event]
+    changelog_collector = DiffChangelogCollector(
+        diff=default_branch_diff, branch=obj, db=db, migration_tracker=MigrationTracker(migrations=migrations)
+    )
+    for action, node_changelog in changelog_collector.collect_changelogs():
+        node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
+        mutate_event = node_event_class(
+            kind=node_changelog.node_kind,
+            node_id=node_changelog.node_id,
+            changelog=node_changelog,
+            fields=node_changelog.updated_fields,
+            meta=EventMeta.from_parent(parent=rebase_event, branch=obj),
+        )
+        events.append(mutate_event)
+
+    for event in events:
+        await service.event.send(event)
 
 
 @flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
@@ -174,7 +199,11 @@ async def merge_branch(branch: str, context: InfrahubContext, service: InfrahubS
         obj = await Branch.get_by_name(db=db, name=branch)
         default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
         component_registry = get_component_registry()
-        merge_event = BranchMergedEvent(meta=EventMeta.from_context(context=context, branch=obj))
+        merge_event = BranchMergedEvent(
+            branch_name=obj.name,
+            branch_id=str(obj.get_uuid()),
+            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+        )
 
         merger: BranchMerger | None = None
         async with lock.registry.global_graph_lock():
@@ -252,16 +281,15 @@ async def merge_branch(branch: str, context: InfrahubContext, service: InfrahubS
         events: list[InfrahubEvent] = [merge_event]
 
         for action, node_changelog in node_events:
-            meta = EventMeta.from_parent(parent=merge_event)
-            mutate_event = NodeMutatedEvent(
+            meta = EventMeta.from_parent(parent=merge_event, branch=default_branch)
+            node_event_class = get_node_event(MutationAction.from_diff_action(diff_action=action))
+            mutate_event = node_event_class(
                 kind=node_changelog.node_kind,
                 node_id=node_changelog.node_id,
-                data=node_changelog,
-                action=MutationAction.from_diff_action(diff_action=action),
+                changelog=node_changelog,
                 fields=node_changelog.updated_fields,
                 meta=meta,
             )
-            mutate_event.set_context_branch(branch=default_branch)
             events.append(mutate_event)
 
         for event in events:
@@ -280,7 +308,7 @@ async def delete_branch(branch: str, context: InfrahubContext, service: Infrahub
             branch_name=branch,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta(branch=obj, context=context),
+            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
         )
 
         await service.workflow.submit_workflow(
@@ -348,9 +376,7 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext, serv
             branch_name=obj.name,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta(
-                branch=obj, account_id=context.account.account_id, initiator_id=WORKER_IDENTITY, context=context
-            ),
+            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
         )
         await service.event.send(event=event)
 
@@ -360,3 +386,26 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext, serv
                 context=context,
                 parameters={"branch": obj.name, "branch_id": str(obj.uuid)},
             )
+
+
+async def _get_diff_root(
+    diff_coordinator: DiffCoordinator,
+    enriched_diff_metadata: EnrichedDiffRootMetadata,
+    diff_repository: DiffRepository,
+    base_branch: Branch,
+    target_from: Timestamp,
+) -> EnrichedDiffRoot:
+    default_branch_diff = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+        base_branch=base_branch,
+        diff_branch=base_branch,
+        from_time=target_from,
+        to_time=enriched_diff_metadata.to_time,
+        name=str(uuid4()),
+    )
+    # make sure we have the actual diff with data and not just the metadata
+    if not isinstance(default_branch_diff, EnrichedDiffRoot):
+        default_branch_diff = await diff_repository.get_one(
+            diff_branch_name=base_branch.name, diff_id=default_branch_diff.uuid
+        )
+
+    return default_branch_diff

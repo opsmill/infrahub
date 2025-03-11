@@ -1,8 +1,12 @@
+from typing import Any
+
+from infrahub_sdk.context import ContextAccount, RequestContext
 from pydantic import BaseModel, Field
 from typing_extensions import Self
 
 from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 
 
 class ParentEvent(BaseModel):
@@ -21,6 +25,10 @@ class BranchContext(BaseModel):
     name: str
     id: str | None = None
 
+    @property
+    def is_global(self) -> bool:
+        return self.name == GLOBAL_BRANCH_NAME
+
 
 class InfrahubContext(BaseModel):
     branch: BranchContext
@@ -37,3 +45,9 @@ class InfrahubContext(BaseModel):
             self.event.id = id
         else:
             self.event = EventContext(name=name, id=id)
+
+    def to_event(self) -> dict[str, Any]:
+        return self.model_dump(mode="json")
+
+    def to_request_context(self) -> RequestContext:
+        return RequestContext(account=ContextAccount(id=self.account.account_id))

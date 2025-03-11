@@ -6,6 +6,7 @@ from graphql import ExecutionResult
 from infrahub_sdk.graphql import Query
 from prefect.artifacts import ArtifactRequest
 from prefect.client.orchestration import PrefectClient, get_client
+from prefect.flows import FlowRun
 from prefect.states import State
 
 from infrahub.core.branch import Branch
@@ -131,7 +132,7 @@ async def delete_flow_runs(prefect_client: PrefectClient):
 
 
 @pytest.fixture
-async def flow_runs_data(prefect_client: PrefectClient, tag_blue, tag_red, account_bob):
+async def flow_runs_data(prefect_client: PrefectClient, tag_blue, tag_red, account_bob) -> dict[str, FlowRun]:
     branch1_tag = WorkflowTag.BRANCH.render(identifier="branch1")
     db_tag = WorkflowTag.DATABASE_CHANGE.render()
     items = [
@@ -225,7 +226,7 @@ async def test_task_query_prefect(
     default_branch: Branch,
     register_core_models_schema: None,
     delete_flow_runs,
-    flow_runs_data,
+    flow_runs_data: dict[str, FlowRun],
 ):
     result = await run_query(
         db=db,
@@ -254,7 +255,7 @@ async def test_task_query_filter_workflow(
     default_branch: Branch,
     register_core_models_schema: None,
     delete_flow_runs,
-    flow_runs_data,
+    flow_runs_data: dict[str, FlowRun],
 ):
     QUERY = """
     query {
@@ -473,7 +474,7 @@ async def test_task_query_filter_node(
     account_bob,
     account_bill,
     delete_flow_runs,
-    flow_runs_data,
+    flow_runs_data: dict[str, FlowRun],
 ):
     result = await run_query(
         db=db,
@@ -580,7 +581,7 @@ async def test_task_query_both(
     tag_blue,
     account_bob,
     delete_flow_runs,
-    flow_runs_data,
+    flow_runs_data: dict[str, FlowRun],
 ):
     result = await run_query(
         db=db,
@@ -611,7 +612,7 @@ async def test_task_branch_status(
     tag_blue,
     account_bob,
     delete_flow_runs,
-    flow_runs_data,
+    flow_runs_data: dict[str, FlowRun],
 ):
     QUERY = """
     query TaskQuery(
@@ -710,7 +711,7 @@ async def test_task_no_count(
     tag_blue,
     account_bob,
     delete_flow_runs,
-    flow_runs_data,
+    flow_runs_data: dict[str, FlowRun],
 ):
     QUERY = """
     query TaskQuery {
@@ -753,7 +754,7 @@ async def test_task_only_count(
     tag_blue,
     account_bob,
     delete_flow_runs,
-    flow_runs_data,
+    flow_runs_data: dict[str, FlowRun],
 ):
     QUERY = """
     query TaskQuery {

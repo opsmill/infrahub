@@ -172,7 +172,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     await test.step("Object attribute using profile value should be reset", async () => {
       await page.goto("/objects/BuiltinTag");
       await page.getByRole("link", { name: "tag with profile" }).click();
-      await expect(page.getByText("Description-")).toBeVisible();
+      await expect(page.getByText("Description-", { exact: true })).toBeVisible();
       await page.getByText("Description-").getByTestId("view-metadata-button").click();
       await expect(page.getByTestId("metadata-tooltip").getByText("Source-")).toBeVisible();
     });

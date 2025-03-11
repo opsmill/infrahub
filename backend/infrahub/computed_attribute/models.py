@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 class ComputedAttributeAutomations(BaseModel):
-    data: dict[str, dict[str, Automation]] = Field(default_factory=lambda: defaultdict(dict))
+    data: dict[str, dict[str, Automation]] = Field(default_factory=lambda: defaultdict(dict))  # type: ignore[arg-type]
 
     @classmethod
     def from_prefect(cls, automations: list[Automation], prefix: str = "") -> Self:

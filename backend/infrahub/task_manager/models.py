@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from prefect.client.schemas.objects import Log as PrefectLog  # noqa: TC002
@@ -31,7 +31,7 @@ class RelatedNodeInfo(BaseModel):
 
 
 class RelatedNodesInfo(BaseModel):
-    flows: dict[UUID, dict[str, RelatedNodeInfo]] = Field(default_factory=lambda: defaultdict(dict))
+    flows: dict[UUID, dict[str, RelatedNodeInfo]] = Field(default_factory=lambda: defaultdict(dict))  # type: ignore[arg-type]
     nodes: dict[str, RelatedNodeInfo] = Field(default_factory=dict)
 
     def add_nodes(self, flow_id: UUID, node_ids: list[str]) -> None:
@@ -64,7 +64,7 @@ class RelatedNodesInfo(BaseModel):
 
 
 class FlowLogs(BaseModel):
-    logs: defaultdict[UUID, list[PrefectLog]] = Field(default_factory=lambda: defaultdict(list))
+    logs: defaultdict[UUID, list[PrefectLog]] = Field(default_factory=lambda: defaultdict(list))  # type: ignore[arg-type]
 
     def to_graphql(self, flow_id: UUID) -> list[dict]:
         return [
@@ -122,7 +122,26 @@ class InfrahubEventFilter(EventFilter):
         if ids:
             self.id = EventIDFilter(id=[uuid.UUID(id) for id in ids])
 
-    def add_event_type_filter(self, event_type: list[str] | None = None) -> None:
+    def add_event_type_filter(
+        self, event_type: list[str] | None = None, event_type_filter: dict[str, Any] | None = None
+    ) -> None:
+        event_type = event_type or []
+        event_type_filter = event_type_filter or {}
+
+        if branch_merged := event_type_filter.get("branch_merged"):
+            branches: list[str] = branch_merged.get("branches") or []
+            if "infrahub.branch.created" not in event_type:
+                event_type.append("infrahub.branch.merged")
+            if branches:
+                self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
+
+        if branch_rebased := event_type_filter.get("branch_rebased"):
+            branches = branch_rebased.get("branches") or []
+            if "infrahub.branch.created" not in event_type:
+                event_type.append("infrahub.branch.rebased")
+            if branches:
+                self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
+
         if event_type:
             self.event = EventNameFilter(name=event_type)
 
@@ -159,6 +178,7 @@ class InfrahubEventFilter(EventFilter):
         parent__ids: list[str] | None = None,
         primary_node__ids: list[str] | None = None,
         event_type: list[str] | None = None,
+        event_type_filter: dict[str, Any] | None = None,
         branches: list[str] | None = None,
         level: int | None = None,
         has_children: bool | None = None,
@@ -167,10 +187,10 @@ class InfrahubEventFilter(EventFilter):
     ) -> InfrahubEventFilter:
         occurred_filter = {}
         if since:
-            occurred_filter["since"] = Timestamp(since.isoformat()).obj
+            occurred_filter["since"] = Timestamp(since.isoformat()).to_datetime()
 
         if until:
-            occurred_filter["until"] = Timestamp(until.isoformat()).obj
+            occurred_filter["until"] = Timestamp(until.isoformat()).to_datetime()
 
         if occurred_filter:
             filters = cls(occurred=EventOccurredFilter(**occurred_filter))
@@ -179,7 +199,7 @@ class InfrahubEventFilter(EventFilter):
 
         filters.add_event_filter(level=level, has_children=has_children)
         filters.add_event_id_filter(ids=ids)
-        filters.add_event_type_filter(event_type=event_type)
+        filters.add_event_type_filter(event_type=event_type, event_type_filter=event_type_filter)
         filters.add_branch_filter(branches=branches)
         filters.add_account_filter(account__ids=account__ids)
         filters.add_parent_filter(parent__ids=parent__ids)

@@ -3,8 +3,8 @@ import Content from "@/shared/components/layout/content";
 import { CardWithBorder } from "@/shared/components/ui/card";
 import { useParams } from "react-router";
 import { useEventDetails } from "../api/get-event-details.query";
-import { EventDetails } from "./event";
-import { NodeEvents } from "./node-events";
+import { EventDetails } from "./event-card";
+import { NodeEvents } from "./node-details-events";
 
 const EventDetailsView = () => {
   const { activityid } = useParams();

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ssl
-from typing import Optional
 
 import nats
 
@@ -84,7 +83,7 @@ class NATSCache(InfrahubCache):
         key = self._tokenize_key_name(key)
         await self._get_kv(key).delete(key)
 
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         key = self._tokenize_key_name(key)
         try:
             entry = await self._get_kv(key).get(key=key)
@@ -94,7 +93,7 @@ class NATSCache(InfrahubCache):
             pass
         return None
 
-    async def get_values(self, keys: list[str]) -> list[Optional[str]]:
+    async def get_values(self, keys: list[str]) -> list[str | None]:
         return [await self.get(key) for key in keys]
 
     async def _keys(self, kv: nats.js.kv.KeyValue, filter_pattern: str) -> list[str]:
@@ -138,9 +137,9 @@ class NATSCache(InfrahubCache):
         self,
         key: str,
         value: str,
-        expires: Optional[KVTTL] = None,  # noqa: ARG002
+        expires: KVTTL | None = None,  # noqa: ARG002
         not_exists: bool = False,
-    ) -> Optional[bool]:
+    ) -> bool | None:
         key = self._tokenize_key_name(key)
         if not_exists:
             try:

@@ -5,13 +5,15 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, InputObjectType, Mutation, String
 
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import ComputedAttributeKind, MutationAction, PermissionAction, PermissionDecision
+from infrahub.core.constants import ComputedAttributeKind, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.database import retry_db_transaction
 from infrahub.events import EventMeta
-from infrahub.events.node_action import NodeMutatedEvent
+from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.graphql.context import apply_external_context
+from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_log_data
 from infrahub.worker import WORKER_IDENTITY
 
@@ -31,6 +33,7 @@ class InfrahubComputedAttributeUpdateInput(InputObjectType):
 class UpdateComputedAttribute(Mutation):
     class Arguments:
         data = InfrahubComputedAttributeUpdateInput(required=True)
+        context = ContextInput(required=False)
 
     ok = Boolean()
 
@@ -41,6 +44,7 @@ class UpdateComputedAttribute(Mutation):
         _: dict,
         info: GraphQLResolveInfo,
         data: InfrahubComputedAttributeUpdateInput,
+        context: ContextInput | None = None,
     ) -> UpdateComputedAttribute:
         graphql_context: GraphqlContext = info.context
         node_schema = registry.schema.get_node_schema(
@@ -63,6 +67,7 @@ class UpdateComputedAttribute(Mutation):
                 else PermissionDecision.ALLOW_OTHER.value,
             )
         )
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         if not (
             target_node := await NodeManager.get_one(
@@ -90,12 +95,11 @@ class UpdateComputedAttribute(Mutation):
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
-            event = NodeMutatedEvent(
+            event = NodeUpdatedEvent(
                 kind=node_schema.kind,
                 node_id=target_node.get_id(),
-                data=target_node.node_changelog.model_dump(),
+                changelog=target_node.node_changelog.model_dump(),
                 fields=[str(data.attribute)],
-                action=MutationAction.UPDATED,
                 meta=EventMeta(
                     context=graphql_context.get_context(),
                     initiator_id=WORKER_IDENTITY,

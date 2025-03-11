@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 from datetime import timedelta
 from enum import Enum
-from typing import Any
-from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
 from prefect.events.actions import RunDeployment
 from prefect.events.schemas.automations import EventTrigger as PrefectEventTrigger
@@ -9,11 +10,17 @@ from prefect.events.schemas.automations import Posture
 from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field
 
+from infrahub.workflows.models import WorkflowDefinition  # noqa: TC001
+
 from .constants import NAME_SEPARATOR
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 
 class TriggerType(str, Enum):
     BUILTIN = "builtin"
+    WEBHOOK = "webhook"
     # OBJECT = "object"
     # COMPUTED_ATTR = "computed_attr"
 
@@ -35,18 +42,43 @@ class EventTrigger(BaseModel):
 
 
 class ExecuteWorkflow(BaseModel):
-    name: str
+    workflow: WorkflowDefinition
     parameters: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def name(self) -> str:
+        return self.workflow.name
 
     def get_prefect(self, mapping: dict[str, UUID]) -> RunDeployment:
         deployment_id = mapping[self.name]
+        return self.get(deployment_id)
 
+    def get(self, id: UUID) -> RunDeployment:
         return RunDeployment(
             source="selected",
-            deployment_id=deployment_id,
+            deployment_id=id,
             parameters=self.parameters,
             job_variables={},
         )
+
+    def validate_parameters(self) -> None:
+        if not self.parameters:
+            return
+
+        workflow_params = self.workflow.get_parameters()
+        workflow_required_params = [p.name for p in workflow_params.values() if p.required]
+        trigger_params = list(self.parameters.keys())
+
+        missing_required_params = set(workflow_required_params) - set(trigger_params)
+        wrong_params = set(trigger_params) - set(workflow_params)
+
+        if missing_required_params:
+            raise ValueError(
+                f"Missing required parameters: {missing_required_params} for workflow {self.workflow.name}"
+            )
+
+        if wrong_params:
+            raise ValueError(f"Workflow {self.workflow.name} doesn't support parameters: {wrong_params}")
 
 
 class TriggerDefinition(BaseModel):
@@ -61,8 +93,15 @@ class TriggerDefinition(BaseModel):
         """Return the name of all deployments used by this trigger"""
         return [action.name for action in self.actions]
 
+    def get_description(self) -> str:
+        return f"Automation for Trigger {self.name} of type {self.type.value}"
+
     def generate_name(self) -> str:
         return f"{self.type.value}{NAME_SEPARATOR}{self.name}"
+
+    def validate_actions(self) -> None:
+        for action in self.actions:
+            action.validate_parameters()
 
 
 class BuiltinTriggerDefinition(TriggerDefinition):

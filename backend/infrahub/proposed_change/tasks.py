@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreProposedChange
+from infrahub_sdk.protocols import CoreArtifactValidator, CoreGeneratorDefinition, CoreProposedChange
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.client.schemas.objects import (
@@ -22,7 +22,7 @@ from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import merge_branch
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion, ValidatorState
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
@@ -36,6 +36,7 @@ from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import MergeFailedError
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
+from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
@@ -51,9 +52,12 @@ from infrahub.proposed_change.models import (
 )
 from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefect flow
+from infrahub.validators.tasks import start_validator
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_SETUP_PYTHON,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
+    GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
+    GIT_REPOSITORY_USER_CHECKS_TRIGGER,
     REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
 )
 from infrahub.workflows.utils import add_tags
@@ -272,6 +276,7 @@ async def run_generators(
 
         if select:
             msg = messages.RequestGeneratorDefinitionCheck(
+                context=context,
                 generator_definition=generator_definition,
                 branch_diff=model.branch_diff,
                 proposed_change=model.proposed_change,
@@ -286,6 +291,7 @@ async def run_generators(
     if model.refresh_artifacts:
         next_messages.append(
             messages.RequestProposedChangeRefreshArtifacts(
+                context=context,
                 proposed_change=model.proposed_change,
                 source_branch=model.source_branch,
                 source_branch_sync_with_git=model.source_branch_sync_with_git,
@@ -411,39 +417,43 @@ async def _get_proposed_change_schema_integrity_constraints(
     name="proposed-changed-repository-checks",
     flow_run_name="Process user defined checks",
 )
-async def repository_checks(model: RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
+async def repository_checks(
+    model: RequestProposedChangeRepositoryChecks, service: InfrahubServices, context: InfrahubContext
+) -> None:
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
-    events: list[InfrahubMessage] = []
     for repository in model.branch_diff.repositories:
         if (
             model.source_branch_sync_with_git
             and not repository.read_only
             and repository.internal_status == RepositoryInternalStatus.ACTIVE.value
         ):
-            events.append(
-                messages.RequestRepositoryChecks(
-                    proposed_change=model.proposed_change,
-                    repository=repository.repository_id,
-                    source_branch=model.source_branch,
-                    target_branch=model.destination_branch,
-                )
+            trigger_internal_checks_model = TriggerRepositoryInternalChecks(
+                proposed_change=model.proposed_change,
+                repository=repository.repository_id,
+                source_branch=model.source_branch,
+                target_branch=model.destination_branch,
+            )
+            await service.workflow.submit_workflow(
+                workflow=GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
+                context=context,
+                parameters={"model": trigger_internal_checks_model},
             )
 
-        events.append(
-            messages.RequestRepositoryUserChecks(
-                proposed_change=model.proposed_change,
-                repository_id=repository.repository_id,
-                repository_name=repository.repository_name,
-                source_branch=model.source_branch,
-                source_branch_sync_with_git=model.source_branch_sync_with_git,
-                target_branch=model.destination_branch,
-                branch_diff=model.branch_diff,
-            )
+        trigger_user_checks_model = TriggerRepositoryUserChecks(
+            proposed_change=model.proposed_change,
+            repository_id=repository.repository_id,
+            repository_name=repository.repository_name,
+            source_branch=model.source_branch,
+            source_branch_sync_with_git=model.source_branch_sync_with_git,
+            target_branch=model.destination_branch,
+            branch_diff=model.branch_diff,
         )
-    for event in events:
-        event.assign_meta(parent=model)
-        await service.message_bus.send(message=event)
+        await service.workflow.submit_workflow(
+            workflow=GIT_REPOSITORY_USER_CHECKS_TRIGGER,
+            context=context,
+            parameters={"model": trigger_user_checks_model},
+        )
 
 
 @flow(
@@ -530,31 +540,26 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, s
 
     await proposed_change.validations.fetch()
 
-    validator = None
+    previous_validator: CoreArtifactValidator | None = None
     for relationship in proposed_change.validations.peers:
         existing_validator = relationship.peer
         if (
             existing_validator.typename == InfrahubKind.ARTIFACTVALIDATOR
             and existing_validator.definition.id == model.artifact_definition.definition_id
         ):
-            validator = existing_validator
+            previous_validator = existing_validator
 
-    if validator:
-        validator.conclusion.value = ValidatorConclusion.UNKNOWN.value
-        validator.state.value = ValidatorState.QUEUED.value
-        validator.started_at.value = ""
-        validator.completed_at.value = ""
-        await validator.save()
-    else:
-        validator = await service.client.create(
-            kind=InfrahubKind.ARTIFACTVALIDATOR,
-            data={
-                "label": validator_name,
-                "proposed_change": model.proposed_change,
-                "definition": model.artifact_definition.definition_id,
-            },
-        )
-        await validator.save()
+    validator = await start_validator(
+        service=service,
+        validator=previous_validator,
+        validator_type=CoreArtifactValidator,
+        proposed_change=model.proposed_change,
+        data={
+            "label": validator_name,
+            "definition": model.artifact_definition.definition_id,
+        },
+        context=model.context,
+    )
 
     await artifact_definition.targets.fetch()
     group = artifact_definition.targets.peer
@@ -586,6 +591,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, s
             log.info(f"Trigger Artifact processing for {member.display_label}")
 
             check_model = CheckArtifactCreate(
+                context=model.context,
                 artifact_name=model.artifact_definition.artifact_name,
                 artifact_id=artifact_id,
                 artifact_definition=model.artifact_definition.definition_id,
@@ -600,6 +606,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, s
                 query=model.artifact_definition.query_name,
                 variables=member.extract(params=artifact_definition.parameters.value),
                 target_id=member.id,
+                target_kind=member.get_kind(),
                 target_name=member.display_label,
                 timeout=model.artifact_definition.timeout,
                 validator_id=validator.id,
@@ -613,7 +620,13 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, s
                 )
             )
 
-    await run_checks_and_update_validator(checks, validator)
+    await run_checks_and_update_validator(
+        checks=checks,
+        validator=validator,
+        proposed_change_id=model.proposed_change,
+        context=model.context,
+        service=service,
+    )
 
 
 def _should_render_artifact(artifact_id: str | None, managed_branch: bool, impacted_artifacts: list[str]) -> bool:  # noqa: ARG001

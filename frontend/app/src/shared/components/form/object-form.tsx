@@ -11,8 +11,9 @@ import {
 
 import { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeObject } from "@/entities/nodes/types";
-import { IP_ADDRESS_POOL } from "@/entities/resource-manager/constants";
+import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/constants";
 import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
+import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
 import { NumberPoolForm } from "@/entities/resource-manager/ui/number-pool-form";
 import { AccountForm } from "@/entities/role-manager/ui/account-form";
 import { AccountGroupForm } from "@/entities/role-manager/ui/account-group-form";
@@ -62,7 +63,7 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     );
   }
 
-  if (!props.isUpdate) {
+  if (!props.isUpdate && !isGeneric) {
     const objectTemplateRelationship = getTemplateRelationshipFromSchema(schema);
     if (objectTemplateRelationship && props.objectTemplate === undefined) {
       return (
@@ -110,7 +111,11 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
   }
 
   if (kind === IP_ADDRESS_POOL) {
-    return <IpAddressPoolForm {...props} />;
+    return <IpAddressPoolForm schema={schema} {...props} />;
+  }
+
+  if (kind === IP_PREFIX_POOL) {
+    return <IpPrefixPoolForm schema={schema} {...props} />;
   }
 
   if (isGeneric) {

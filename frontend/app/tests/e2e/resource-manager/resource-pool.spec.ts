@@ -6,16 +6,8 @@ test.describe("/resource-manager - Resource Manager", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("create a new pool", async ({ page }) => {
-    await Promise.all([
-      page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
-
-        return reqData?.operationName === "CoreResourcePool" && status === 200;
-      }),
-
-      page.goto("/resource-manager"),
-    ]);
+    await page.goto("/resource-manager");
+    await expect(page.getByRole("link", { name: "External prefixes pool" })).toBeVisible();
     await page.getByTestId("create-object-button").click();
 
     await page.getByLabel("Select an object type").click();
@@ -27,13 +19,14 @@ test.describe("/resource-manager - Resource Manager", () => {
     await page.getByRole("option", { name: "10.0.0.0/8" }).click();
     await page.getByRole("option", { name: "10.0.0.0/16" }).click();
     await page.getByRole("option", { name: "10.1.0.0/16" }).click();
+    await expect(page.getByLabel("Default Prefix Type")).toContainText("IP PrefixIpam");
     await page.getByLabel("Resources *").click();
 
     await page.getByLabel("IPAM Namespace *").click();
     await page.getByRole("option", { name: "default" }).click();
     await page.getByRole("button", { name: "Save" }).click();
 
-    await expect(page.getByText("PrefixPool created")).toBeVisible();
+    await expect(page.getByText("IP prefix pool created")).toBeVisible();
     await expect(page.getByRole("link", { name: "test prefix pool" })).toBeVisible();
   });
 
@@ -47,10 +40,11 @@ test.describe("/resource-manager - Resource Manager", () => {
     expect(page.url()).toContain("/resource-manager/");
 
     await page.getByTestId("edit-button").click();
+    await expect(page.getByLabel("Default Prefix Type")).toContainText("IP PrefixIpam");
     await page.getByLabel("Description").fill("a test pool for e2e");
     await page.getByRole("button", { name: "Save" }).click();
 
-    await expect(page.getByText("PrefixPool updated")).toBeVisible();
+    await expect(page.getByText("IPPrefixPool updated")).toBeVisible();
     await expect(page.getByText("Descriptiona test pool for e2e")).toBeVisible();
   });
 

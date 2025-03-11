@@ -5,7 +5,12 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { getNodeLabelFromApi } from "./get-display-label";
 
-type NodeLabelProps = { objectid?: string; kind: string; enabled?: boolean };
+type NodeLabelProps = {
+  objectid?: string;
+  kind: string;
+  enabled?: boolean;
+  branch?: string | null;
+};
 
 export function getNodeLabelQueryOptions({
   objectid,
@@ -28,7 +33,7 @@ export function getNodeLabelQueryOptions({
   });
 }
 
-export const useNodeLabel = ({ objectid, kind, enabled }: NodeLabelProps) => {
+export const useNodeLabel = ({ objectid, kind, enabled, branch }: NodeLabelProps) => {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
@@ -37,7 +42,7 @@ export const useNodeLabel = ({ objectid, kind, enabled }: NodeLabelProps) => {
       objectid,
       kind,
       enabled,
-      branchName: currentBranch.name,
+      branchName: branch ?? currentBranch.name,
       atDate: timeMachineDate,
     })
   );

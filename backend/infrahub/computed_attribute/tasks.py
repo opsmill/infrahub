@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
-import ujson
 from infrahub_sdk.protocols import (
     CoreNode,  # noqa: TC002
     CoreTransformPython,
@@ -115,7 +114,7 @@ async def process_transform(
             service=service,
             repository_kind=str(transform.repository.peer.typename),
             commit=repo_node.commit.value,
-        )
+        )  # type: ignore[misc]
 
         data = await service.client.query_gql_query(
             name=transform.query.peer.name.value,
@@ -131,7 +130,7 @@ async def process_transform(
             location=f"{transform.file_path.value}::{transform.class_name.value}",
             data=data,
             client=service.client,
-        )
+        )  # type: ignore[misc]
 
         await service.client.execute_graphql(
             query=UPDATE_ATTRIBUTE,
@@ -237,14 +236,12 @@ async def process_jinja2(
     computed_attribute_kind: str,
     context: InfrahubContext,  # noqa: ARG001
     service: InfrahubServices,
-    updated_fields: str | None = None,
+    updated_fields: list[str] | None = None,
 ) -> None:
     log = get_run_logger()
 
     await add_tags(branches=[branch_name])
-    updates: list[str] = []
-    if isinstance(updated_fields, str):
-        updates = ujson.loads(updated_fields)
+    updates: list[str] = updated_fields or []
 
     target_branch_schema = (
         branch_name if branch_name in registry.get_altered_schema_branches() else registry.default_branch
@@ -384,7 +381,13 @@ async def computed_attribute_setup(
                             "object_id": "{{ event.resource['infrahub.node.id'] }}",
                             "computed_attribute_name": computed_attribute.attribute.name,
                             "computed_attribute_kind": computed_attribute.kind,
-                            "updated_fields": "{{ event.payload['fields'] | tojson }}",
+                            "updated_fields": {
+                                "__prefect_kind": "json",
+                                "value": {
+                                    "__prefect_kind": "jinja",
+                                    "template": "{{ event.payload['data']['fields'] | tojson }}",
+                                },
+                            },
                             "context": {
                                 "__prefect_kind": "json",
                                 "value": {
@@ -457,7 +460,13 @@ async def computed_attribute_setup(
                                 "object_id": "{{ event.resource['infrahub.node.id'] }}",
                                 "computed_attribute_name": computed_attribute.attribute.name,
                                 "computed_attribute_kind": computed_attribute.kind,
-                                "updated_fields": "{{ event.payload['fields'] | tojson }}",
+                                "updated_fields": {
+                                    "__prefect_kind": "json",
+                                    "value": {
+                                        "__prefect_kind": "jinja",
+                                        "template": "{{ event.payload['data']['fields'] | tojson }}",
+                                    },
+                                },
                                 "context": {
                                     "__prefect_kind": "json",
                                     "value": {

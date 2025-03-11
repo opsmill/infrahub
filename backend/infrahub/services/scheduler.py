@@ -5,8 +5,6 @@ import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from typing_extensions import Optional
-
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.log import get_logger
@@ -29,7 +27,7 @@ class Schedule:
 
 class InfrahubScheduler:
     # TODO we could remove service dependency by adding kwargs to Schedule instead of passing services
-    service: Optional[InfrahubServices]
+    service: InfrahubServices | None
 
     def __init__(self, component_type: ComponentType) -> None:
         self.running: bool = False

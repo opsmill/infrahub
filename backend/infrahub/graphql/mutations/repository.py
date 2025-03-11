@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import httpx
 from graphene import Boolean, Field, InputObjectType, Mutation, String
@@ -45,7 +45,7 @@ log = get_logger()
 
 class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: Optional[NodeSchema] = None, _meta=None, **options):
+    def __init_subclass_with_meta__(cls, schema: NodeSchema | None = None, _meta=None, **options):
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -63,7 +63,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
     ):
         graphql_context: GraphqlContext = info.context
 
@@ -149,8 +149,8 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,  # noqa: ARG003
-        node: Optional[Node] = None,
+        database: InfrahubDatabase | None = None,  # noqa: ARG003
+        node: Node | None = None,
     ):
         graphql_context: GraphqlContext = info.context
 

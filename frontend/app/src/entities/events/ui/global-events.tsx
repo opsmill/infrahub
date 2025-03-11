@@ -1,14 +1,14 @@
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { Button } from "@/shared/components/buttons/button-primitive";
-import ErrorFallback from "@/shared/components/errors/error-fallback";
+import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
 import { Spinner } from "@/shared/components/ui/spinner";
 import useFilters from "@/shared/hooks/useFilters";
 import React from "react";
 import { useEvents } from "../api/get-events.query";
+import { GlobalEventsFilters } from "./filters/global-events-filters";
 import { Event } from "./global-event";
-import { GlobalEventsFilters } from "./global-events-filters";
 
 export const GlobalEvents = () => {
   const [filters] = useFilters();
@@ -34,18 +34,27 @@ export const GlobalEvents = () => {
       },
     });
 
-  const flatData = React.useMemo(() => data?.pages?.flat() ?? [], [data]);
+  const flatData = React.useMemo(() => data?.pages?.flat()?.filter(Boolean) ?? [], [data]);
 
   if (error) {
-    return <ErrorFallback error={error} />;
+    return <ErrorScreen message={error.message} />;
   }
 
   return (
     <Content.Card className="relative">
       <Content.CardTitle title="Activities" isReloadLoading={isLoading} reload={() => refetch()} />
-      <div className="flex items-center gap-2 sticky top-0 bg-white z-10 p-2">
-        <GlobalEventsFilters />
-        {filters.length > 0 && <FilterResetButton />}
+      <div className="flex flex-col gap-2 sticky top-0 bg-white z-10 p-2">
+        <div className="flex items-center gap-2">
+          <GlobalEventsFilters />
+          {filters.length > 0 && <FilterResetButton />}
+        </div>
+
+        <div className="grid grid-cols-8 gap-2 text-xs text-gray-500 font-semibold px-2">
+          <span>Date</span>
+          <span className="col-span-5">Event</span>
+          <span>Branch</span>
+          <span>Action</span>
+        </div>
       </div>
 
       <div className="flex flex-col flex-grow gap-2 p-2 bg-white z-30">

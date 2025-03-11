@@ -29,7 +29,7 @@ const GraphqlQueryDetailsCard = ({
   permission,
 }: GraphqlQueryDetailsCardProps) => {
   return (
-    <Card>
+    <Card className="p-0 overflow-x-hidden">
       <GraphqlQueryDetailsTitle
         data={data}
         schema={schema}

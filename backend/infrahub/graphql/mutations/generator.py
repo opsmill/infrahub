@@ -6,6 +6,8 @@ from graphene import Boolean, Field, InputField, InputObjectType, List, Mutation
 
 from infrahub.core.manager import NodeManager
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
+from infrahub.graphql.context import apply_external_context
+from infrahub.graphql.types.context import ContextInput
 from infrahub.graphql.types.task import TaskInfo
 from infrahub.workflows.catalogue import REQUEST_GENERATOR_DEFINITION_RUN
 
@@ -23,6 +25,7 @@ class GeneratorDefinitionRequestRunInput(InputObjectType):
 class GeneratorDefinitionRequestRun(Mutation):
     class Arguments:
         data = GeneratorDefinitionRequestRunInput(required=True)
+        context = ContextInput(required=False)
         wait_until_completion = Boolean(required=False)
 
     ok = Boolean()
@@ -34,11 +37,12 @@ class GeneratorDefinitionRequestRun(Mutation):
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
         data: GeneratorDefinitionRequestRunInput,
+        context: ContextInput | None = None,
         wait_until_completion: bool = True,
     ) -> GeneratorDefinitionRequestRun:
         graphql_context: GraphqlContext = info.context
         db = graphql_context.db
-
+        await apply_external_context(graphql_context=graphql_context, context_input=context)
         generator_definition = await NodeManager.get_one(
             id=str(data.id), db=db, branch=graphql_context.branch, prefetch_relationships=True, raise_on_error=True
         )

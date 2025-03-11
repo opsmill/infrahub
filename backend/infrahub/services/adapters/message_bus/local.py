@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Optional, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 import ujson
 from infrahub_sdk.uuidt import UUIDT
@@ -29,7 +29,7 @@ class BusSimulator(InfrahubMessageBus):
         self,
         message: InfrahubMessage,
         routing_key: str,
-        delay: Optional[MessageTTL] = None,  # noqa: ARG002
+        delay: MessageTTL | None = None,  # noqa: ARG002
         is_retry: bool = False,  # noqa: ARG002
     ) -> None:
         self.messages.append(message)
