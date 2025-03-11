@@ -5,7 +5,7 @@ import {
   relationshipsForTabs,
 } from "@/config/constants";
 import { ATTRIBUTE_KINDS_FOR_LIST_VIEW } from "@/entities/schema/constants";
-import { AttributeKind, GenericSchema, ModelSchema, NodeSchema } from "@/entities/schema/types";
+import { AttributeKind, ModelSchema } from "@/entities/schema/types";
 import { isGenericSchema } from "@/entities/schema/utils/is-generic-schema";
 import { sortByOrderWeight } from "@/shared/utils/common";
 import * as R from "ramda";
@@ -45,7 +45,7 @@ export const getObjectAttributes = ({
 };
 
 type tgetObjectRelationships = {
-  schema?: NodeSchema | GenericSchema;
+  schema?: ModelSchema;
   forListView?: boolean;
   forQuery?: boolean;
 };
@@ -77,7 +77,7 @@ export const getObjectRelationships = ({
   return relationships;
 };
 
-export const getTabs = (schema?: NodeSchema | GenericSchema) => {
+export const getTabs = (schema?: ModelSchema) => {
   if (!schema) {
     return [];
   }
@@ -98,7 +98,7 @@ export const getTabs = (schema?: NodeSchema | GenericSchema) => {
 };
 
 type tgetSchemaObjectColumns = {
-  schema?: NodeSchema | GenericSchema;
+  schema?: ModelSchema;
   forListView?: boolean;
   forQuery?: boolean;
   limit?: number;

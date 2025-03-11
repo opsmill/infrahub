@@ -1,5 +1,6 @@
-import { ARTIFACT_DEFINITION_OBJECT, GENERIC_REPOSITORY_KIND } from "@/config/constants";
-import { Generate } from "@/entities/artifacts/ui/generate";
+import { GENERIC_REPOSITORY_KIND } from "@/config/constants";
+import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";
+import { ArtifactGenerateButton } from "@/entities/artifacts/ui/artifact-generate-button";
 import { GroupsManagerTriggerButton } from "@/entities/groups/ui/groups-manager-trigger-button";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getObjectDetailsUrl2 } from "@/entities/nodes/utils";
@@ -30,7 +31,9 @@ export function DetailsButtons({ schema, objectDetailsData, permission }: Detail
   return (
     <>
       <div className="flex items-center gap-2">
-        {schema.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
+        {schema.kind === ARTIFACT_DEFINITION_KIND && (
+          <ArtifactGenerateButton definitionId={objectDetailsData.id} />
+        )}
 
         <ButtonWithTooltip
           disabled={!permission.update.isAllowed}

@@ -9,8 +9,9 @@ export const ScrollArea = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
     scrollX?: boolean;
     scrollY?: boolean;
+    scrollBarClassName?: string;
   }
->(({ className, children, scrollX = false, scrollY = true, ...props }, ref) => (
+>(({ className, children, scrollX = false, scrollY = true, scrollBarClassName, ...props }, ref) => (
   <ScrollAreaPrimitive.Root
     ref={ref}
     scrollHideDelay={0}
@@ -20,8 +21,8 @@ export const ScrollArea = React.forwardRef<
     <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
       {children}
     </ScrollAreaPrimitive.Viewport>
-    {scrollX && <ScrollBar orientation="horizontal" />}
-    {scrollY && <ScrollBar orientation="vertical" />}
+    {scrollX && <ScrollBar orientation="horizontal" className={scrollBarClassName} />}
+    {scrollY && <ScrollBar orientation="vertical" className={scrollBarClassName} />}
     <ScrollAreaPrimitive.Corner />
   </ScrollAreaPrimitive.Root>
 ));
