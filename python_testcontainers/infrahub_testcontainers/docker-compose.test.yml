@@ -102,11 +102,7 @@ services:
       mode: replicated
       replicas: ${INFRAHUB_TESTING_API_SERVER_COUNT}
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
-    command: >
-      gunicorn --config backend/infrahub/serve/gunicorn_config.py
-      -w ${INFRAHUB_TESTING_WEB_CONCURRENCY}
-      --logger-class infrahub.serve.log.GunicornLogger
-      infrahub.server:app
+    command: ${INFRAHUB_TESTING_DOCKER_ENTRYPOINT}
     environment:
       INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}
       INFRAHUB_LOG_LEVEL: ${INFRAHUB_TESTING_LOG_LEVEL:-INFO}
@@ -114,6 +110,7 @@ services:
       INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
       INFRAHUB_DB_ADDRESS: ${INFRAHUB_TESTING_DB_ADDRESS}
       INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_TESTING_WORKFLOW_ADDRESS}
+      INFRAHUB_WORKFLOW_DEFAULT_WORKER_TYPE: ${INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE}
       INFRAHUB_INITIAL_ADMIN_TOKEN: ${INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN}
       INFRAHUB_INITIAL_AGENT_TOKEN: ${INFRAHUB_TESTING_INITIAL_AGENT_TOKEN}
       INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_TESTING_SECURITY_SECRET_KEY}
@@ -142,7 +139,7 @@ services:
       mode: replicated
       replicas: ${INFRAHUB_TESTING_TASK_WORKER_COUNT}
     image: "${INFRAHUB_TESTING_DOCKER_IMAGE}:${INFRAHUB_TESTING_IMAGE_VERSION}"
-    command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
+    command: prefect worker start --type ${INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE} --pool infrahub-worker --with-healthcheck
     environment:
       INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}
       INFRAHUB_LOG_LEVEL: ${INFRAHUB_TESTING_LOG_LEVEL}

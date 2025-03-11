@@ -24,6 +24,7 @@ INFRAHUB_SERVICES: dict[str, ContainerService] = {
 
 PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub",
+    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config backend/infrahub/serve/gunicorn_config.py -w {os.environ.get("INFRAHUB_TESTING_WEB_CONCURRENCY", 4)} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app",  # noqa: E501
     "INFRAHUB_TESTING_IMAGE_VERSION": infrahub_version,
     "INFRAHUB_TESTING_PRODUCTION": "false",
     "INFRAHUB_TESTING_DB_ADDRESS": "database",
@@ -38,6 +39,7 @@ PROJECT_ENV_VARIABLES: dict[str, str] = {
     "INFRAHUB_TESTING_BROKER_ADDRESS": "message-queue",
     "INFRAHUB_TESTING_CACHE_ADDRESS": "cache",
     "INFRAHUB_TESTING_WORKFLOW_ADDRESS": "task-manager",
+    "INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE": "infrahubasync",
     "INFRAHUB_TESTING_TIMEOUT": "60",
     "INFRAHUB_TESTING_PREFECT_API": "http://task-manager:4200/api",
     "INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY": "repos",
@@ -96,6 +98,15 @@ class InfrahubDockerCompose(DockerCompose):
         env_file = directory / ".env"
 
         PROJECT_ENV_VARIABLES.update({"INFRAHUB_TESTING_IMAGE_VERSION": version})
+        if os.environ.get("INFRAHUB_TESTING_ENTERPRISE"):
+            PROJECT_ENV_VARIABLES.update(
+                {
+                    "INFRAHUB_TESTING_DOCKER_IMAGE": "registry.opsmill.io/opsmill/infrahub-enterprise",
+                    "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get("INFRAHUB_TESTING_WEB_CONCURRENCY", 4)} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",  # noqa: E501
+                    "INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE": "infrahubentasync",
+                    "NEO4J_DOCKER_IMAGE": "neo4j:5.20.0-enterprise",
+                }
+            )
 
         with env_file.open(mode="w", encoding="utf-8") as file:
             for key, value in PROJECT_ENV_VARIABLES.items():
