@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 from infrahub.context import InfrahubContext
@@ -21,7 +19,7 @@ class CheckArtifactCreate(BaseModel):
     target_id: str = Field(..., description="The ID of the target object for this artifact")
     target_kind: str = Field(..., description="The kind of the target object for this artifact")
     target_name: str = Field(..., description="Name of the artifact target")
-    artifact_id: Optional[str] = Field(default=None, description="The id of the artifact if it previously existed")
+    artifact_id: str | None = Field(default=None, description="The id of the artifact if it previously existed")
     query: str = Field(..., description="The name of the query to use when collecting data")
     timeout: int = Field(..., description="Timeout for requests used to generate this artifact")
     variables: dict = Field(..., description="Input variables when generating the artifact")
