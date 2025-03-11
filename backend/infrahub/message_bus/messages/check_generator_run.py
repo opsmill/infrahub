@@ -1,5 +1,6 @@
 from pydantic import Field
 
+from infrahub.context import InfrahubContext
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.message_bus import InfrahubMessage
 
@@ -22,3 +23,4 @@ class CheckGeneratorRun(InfrahubMessage):
     variables: dict = Field(..., description="Input variables when running the generator")
     validator_id: str = Field(..., description="The ID of the validator")
     proposed_change: str | None = Field(None, description="The unique ID of the Proposed Change")
+    context: InfrahubContext = Field(..., description="The Infrahub context")
