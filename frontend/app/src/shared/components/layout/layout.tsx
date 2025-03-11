@@ -22,7 +22,7 @@ function Layout() {
   }, [branches.length, branchInQueryString]);
 
   return (
-    <div className="h-screen w-screen  text-stone-800 p-px bg-stone-100">
+    <div className="h-screen w-screen text-stone-800 p-0.5 bg-stone-100">
       <div className="h-full w-full flex gap-0.5">
         <Sidebar />
 
