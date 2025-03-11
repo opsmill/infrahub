@@ -125,7 +125,6 @@ const EVENTS_QUERY = gql`
 
 export async function getEventsFromApi({
   limit = OBJECTS_PER_PAGE,
-  branchName,
   atDate,
   filters,
 }: GetEventsParams) {
@@ -136,7 +135,6 @@ export async function getEventsFromApi({
       ...filters,
     },
     context: {
-      branch: branchName,
       date: atDate,
     },
   });
