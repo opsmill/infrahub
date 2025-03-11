@@ -1,9 +1,8 @@
-from typing import Any
+from typing import ClassVar
 
-from pydantic import Field, computed_field
+from pydantic import Field
 
 from infrahub.core.constants import MutationAction
-from infrahub.message_bus import InfrahubMessage
 
 from .constants import EVENT_NAMESPACE
 from .models import EventNode, InfrahubEvent
@@ -78,10 +77,6 @@ class GroupMutatedEvent(InfrahubEvent):
 
         return related
 
-    @computed_field
-    def event_name(self) -> str:
-        return f"{EVENT_NAMESPACE}.group.{self.action.value}"
-
     def get_resource(self) -> dict[str, str]:
         return {
             "prefect.resource.id": f"infrahub.node.{self.node_id}",
@@ -91,27 +86,12 @@ class GroupMutatedEvent(InfrahubEvent):
             "infrahub.node.root_id": self.node_id,
         }
 
-    def get_payload(self) -> dict[str, Any]:
-        return {
-            "ancestors": [ancestor.model_dump() for ancestor in self.ancestors],
-            "members": [member.model_dump() for member in self.members],
-        }
-
-    def get_messages(self) -> list[InfrahubMessage]:
-        return []
-
 
 class GroupMemberAddedEvent(GroupMutatedEvent):
     action: MutationAction = MutationAction.CREATED
-
-    @computed_field
-    def event_name(self) -> str:
-        return f"{EVENT_NAMESPACE}.group.member_added"
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.member_added"
 
 
 class GroupMemberRemovedEvent(GroupMutatedEvent):
     action: MutationAction = MutationAction.DELETED
-
-    @computed_field
-    def event_name(self) -> str:
-        return f"{EVENT_NAMESPACE}.group.member_removed"
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.member_removed"

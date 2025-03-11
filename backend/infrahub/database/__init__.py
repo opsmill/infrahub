@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
 
 from neo4j import (
     READ_ACCESS,
@@ -69,7 +69,7 @@ class InfrahubDatabaseSessionMode(InfrahubStringEnum):
     WRITE = "write"
 
 
-def get_branch_name(branch: Optional[Union[Branch, str]] = None) -> str:
+def get_branch_name(branch: Branch | str | None = None) -> str:
     if not branch:
         return registry.default_branch
     if isinstance(branch, str):
@@ -82,43 +82,39 @@ class DatabaseSchemaManager:
     def __init__(self, db: InfrahubDatabase) -> None:
         self._db = db
 
-    def get(self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True) -> MainSchemaTypes:
+    def get(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> MainSchemaTypes:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.get(name=name, branch=branch, duplicate=duplicate)
         return self._db._schemas[branch_name].get(name=name, duplicate=duplicate)
 
-    def get_node_schema(
-        self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
-    ) -> NodeSchema:
+    def get_node_schema(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> NodeSchema:
         schema = self.get(name=name, branch=branch, duplicate=duplicate)
         if schema.is_node_schema:
             return schema
 
         raise ValueError("The selected node is not of type NodeSchema")
 
-    def set(self, name: str, schema: MainSchemaTypes, branch: Optional[str] = None) -> int:
+    def set(self, name: str, schema: MainSchemaTypes, branch: str | None = None) -> int:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.set(name=name, schema=schema, branch=branch)
         return self._db._schemas[branch_name].set(name=name, schema=schema)
 
-    def has(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
+    def has(self, name: str, branch: Branch | str | None = None) -> bool:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.has(name=name, branch=branch)
         return self._db._schemas[branch_name].has(name=name)
 
-    def get_full(
-        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
-    ) -> dict[str, MainSchemaTypes]:
+    def get_full(self, branch: Branch | str | None = None, duplicate: bool = True) -> dict[str, MainSchemaTypes]:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.get_full(branch=branch)
         return self._db._schemas[branch_name].get_all(duplicate=duplicate)
 
     async def get_full_safe(
-        self, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+        self, branch: Branch | str | None = None, duplicate: bool = True
     ) -> dict[str, MainSchemaTypes]:
         await lock.registry.local_schema_wait()
         return self.get_full(branch=branch, duplicate=duplicate)
@@ -206,10 +202,10 @@ class InfrahubDatabase:
 
         return {}
 
-    def add_schema(self, schema: SchemaBranch, name: Optional[str] = None) -> None:
+    def add_schema(self, schema: SchemaBranch, name: str | None = None) -> None:
         self._schemas[name or schema.name] = schema
 
-    def start_session(self, read_only: bool = False, schemas: Optional[list[SchemaBranch]] = None) -> InfrahubDatabase:
+    def start_session(self, read_only: bool = False, schemas: list[SchemaBranch] | None = None) -> InfrahubDatabase:
         """Create a new InfrahubDatabase object in Session mode."""
         session_mode = InfrahubDatabaseSessionMode.WRITE
         if read_only:
@@ -229,7 +225,7 @@ class InfrahubDatabase:
             **context,
         )
 
-    def start_transaction(self, schemas: Optional[list[SchemaBranch]] = None) -> InfrahubDatabase:
+    def start_transaction(self, schemas: list[SchemaBranch] | None = None) -> InfrahubDatabase:
         context = self.get_context()
 
         return self.__class__(
@@ -261,7 +257,7 @@ class InfrahubDatabase:
         self._is_session_local = True
         return self._session
 
-    async def transaction(self, name: Optional[str]) -> AsyncTransaction:
+    async def transaction(self, name: str | None) -> AsyncTransaction:
         if self._transaction:
             return self._transaction
 
@@ -290,9 +286,9 @@ class InfrahubDatabase:
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ):
         if self._mode == InfrahubDatabaseMode.SESSION:
             return await self._session.close()
@@ -385,9 +381,9 @@ class InfrahubDatabase:
                 return results, response._metadata or {}
 
     async def run_query(
-        self, query: str, params: Optional[dict[str, Any]] = None, name: Optional[str] = "undefined"
+        self, query: str, params: dict[str, Any] | None = None, name: str | None = "undefined"
     ) -> AsyncResult:
-        _query: Union[str | Query] = query
+        _query: str | Query = query
         if self.is_transaction:
             execution_method = await self.transaction(name=name)
         else:

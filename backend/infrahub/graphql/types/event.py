@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, DateTime, Field, InputObjectType, Int, Interface, List, NonNull, ObjectType, String
 from graphene.types.generic import GenericScalar
 
+from infrahub import events
+
 from .common import RelatedNode
 from .enums import DiffAction
 
@@ -143,16 +145,16 @@ class StandardEvent(ObjectType):
 
 
 EVENT_TYPES: dict[str, type[ObjectType]] = {
-    "infrahub.artifact.created": ArtifactEvent,
-    "infrahub.artifact.updated": ArtifactEvent,
-    "infrahub.node.created": NodeMutatedEvent,
-    "infrahub.node.updated": NodeMutatedEvent,
-    "infrahub.node.deleted": NodeMutatedEvent,
-    "infrahub.branch.created": BranchCreatedEvent,
-    "infrahub.branch.merged": BranchMergedEvent,
-    "infrahub.branch.rebased": BranchRebasedEvent,
-    "infrahub.branch.deleted": BranchDeletedEvent,
-    "infrahub.group.member_added": GroupEvent,
-    "infrahub.group.member_removed": GroupEvent,
+    events.ArtifactCreatedEvent.event_name: ArtifactEvent,
+    events.ArtifactUpdatedEvent.event_name: ArtifactEvent,
+    events.NodeCreatedEvent.event_name: NodeMutatedEvent,
+    events.NodeUpdatedEvent.event_name: NodeMutatedEvent,
+    events.NodeDeletedEvent.event_name: NodeMutatedEvent,
+    events.BranchCreatedEvent.event_name: BranchCreatedEvent,
+    events.BranchMergedEvent.event_name: BranchMergedEvent,
+    events.BranchRebasedEvent.event_name: BranchRebasedEvent,
+    events.BranchDeletedEvent.event_name: BranchDeletedEvent,
+    events.GroupMemberAddedEvent.event_name: GroupEvent,
+    events.GroupMemberRemovedEvent.event_name: GroupEvent,
     "undefined": StandardEvent,
 }

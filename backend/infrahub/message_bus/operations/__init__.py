@@ -18,8 +18,6 @@ from infrahub.tasks.check import set_check_status
 COMMAND_MAP = {
     "check.generator.run": check.generator.run,
     "event.branch.merge": event.branch.merge,
-    "event.node.mutated": event.node.mutated,
-    "event.schema.update": event.schema.update,
     "event.worker.new_primary_api": event.worker.new_primary_api,
     "finalize.validator.execution": finalize.validator.execution,
     "git.file.get": git.file.get,

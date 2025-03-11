@@ -2,9 +2,10 @@ import hashlib
 from enum import Enum, EnumMeta
 from pathlib import Path
 from re import finditer
-from typing import Any
+from typing import Any, TypeVar
 
 KWARGS_TO_DROP = ["session"]
+AnyClass = TypeVar("AnyClass", bound=type)
 
 
 def get_fixtures_dir() -> Path:
@@ -73,3 +74,12 @@ def get_nested_dict(nested_dict: dict[str, Any], keys: list[str]) -> dict[str, A
         else:
             return {}
     return current_level if isinstance(current_level, dict) else {}
+
+
+def get_all_subclasses(cls: AnyClass) -> list[AnyClass]:
+    """Recursively get all subclasses of the given class."""
+    subclasses: list[AnyClass] = []
+    for subclass in cls.__subclasses__():
+        subclasses.append(subclass)
+        subclasses.extend(get_all_subclasses(subclass))
+    return subclasses

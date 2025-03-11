@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from graphql.language import (
     DirectiveNode,
@@ -172,13 +172,13 @@ class GraphQLExtractor:
         return fields
 
     async def extract_fields(
-        self, selection_set: Optional[SelectionSetNode], path: str = "/"
-    ) -> Optional[dict[str, Optional[dict]]]:
+        self, selection_set: SelectionSetNode | None, path: str = "/"
+    ) -> dict[str, dict | None] | None:
         """Extract fields and apply Directives"""
         if not selection_set:
             return None
 
-        fields: dict[str, Optional[dict]] = {}
+        fields: dict[str, dict | None] = {}
         for node in selection_set.selections:
             sub_selection_set = getattr(node, "selection_set", None)
             if isinstance(node, FieldNode):

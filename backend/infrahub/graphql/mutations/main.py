@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Any, Mapping
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
@@ -22,7 +22,8 @@ from infrahub.core.schema.template_schema import TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.events import EventMeta, NodeMutatedEvent
+from infrahub.events import EventMeta
+from infrahub.events.node_action import NodeDeletedEvent, NodeUpdatedEvent, get_node_event
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.lock import InfrahubMultiLock, build_object_lock_name
@@ -63,12 +64,12 @@ class DeleteResult:
 # Infrahub GraphQLType
 # ------------------------------------------
 class InfrahubMutationOptions(MutationOptions):
-    schema: Optional[NodeSchema] = None
+    schema: NodeSchema | None = None
 
 
 class InfrahubMutationMixin:
     @classmethod
-    async def mutate(
+    async def mutate(  # noqa: PLR0915
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
@@ -135,11 +136,11 @@ class InfrahubMutationMixin:
                 branch=graphql_context.branch,
                 context=graphql_context.get_context(),
             )
-            main_event = NodeMutatedEvent(
+            node_event_class = get_node_event(action)
+            main_event = node_event_class(
                 kind=obj._schema.kind,
                 node_id=obj.id,
-                data=obj.node_changelog,
-                action=action,
+                changelog=obj.node_changelog,
                 fields=_get_data_fields(data),
                 meta=meta,
             )
@@ -153,11 +154,10 @@ class InfrahubMutationMixin:
 
             for node_changelog in deleted_changelogs:
                 meta = EventMeta.from_parent(parent=main_event)
-                event = NodeMutatedEvent(
+                event = NodeDeletedEvent(
                     kind=node_changelog.node_kind,
                     node_id=node_changelog.node_id,
-                    data=node_changelog,
-                    action=MutationAction.DELETED,
+                    changelog=node_changelog,
                     fields=node_changelog.updated_fields,
                     meta=meta,
                 )
@@ -166,11 +166,10 @@ class InfrahubMutationMixin:
             for node_changelog in node_changelogs:
                 if node_changelog.node_id not in deleted_ids:
                     meta = EventMeta.from_parent(parent=main_event)
-                    event = NodeMutatedEvent(
+                    event = NodeUpdatedEvent(
                         kind=node_changelog.node_kind,
                         node_id=node_changelog.node_id,
-                        data=node_changelog,
-                        action=MutationAction.UPDATED,
+                        changelog=node_changelog,
                         fields=node_changelog.updated_fields,
                         meta=meta,
                     )
@@ -190,7 +189,7 @@ class InfrahubMutationMixin:
 
     @classmethod
     async def _refresh_for_profile_update(
-        cls, db: InfrahubDatabase, branch: Branch, obj: Node, previous_profile_ids: Optional[set[str]] = None
+        cls, db: InfrahubDatabase, branch: Branch, obj: Node, previous_profile_ids: set[str] | None = None
     ) -> Node:
         if not hasattr(obj, "profiles"):
             return obj
@@ -288,8 +287,13 @@ class InfrahubMutationMixin:
             if not template_relationship_peers:
                 continue
 
-            obj_peer_schema = relationship.get_peer_schema(db=db, branch=branch)
             for template_relationship_peer in template_relationship_peers.values():
+                # We retrieve peer schema for each peer in case we are processing a relationship which is based on a generic
+                obj_peer_schema = registry.schema.get_node_schema(
+                    name=template_relationship_peer.get_schema().kind.removeprefix("Template"),
+                    branch=branch,
+                    duplicate=False,
+                )
                 obj_peer_data = await cls._extract_peer_data(
                     db=db,
                     template_peer=template_relationship_peer,
@@ -318,7 +322,7 @@ class InfrahubMutationMixin:
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
+        database: InfrahubDatabase | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
@@ -434,8 +438,8 @@ class InfrahubMutationMixin:
         info: GraphQLResolveInfo,
         data: InputObjectType,
         branch: Branch,
-        database: Optional[InfrahubDatabase] = None,
-        node: Optional[Node] = None,
+        database: InfrahubDatabase | None = None,
+        node: Node | None = None,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
@@ -502,7 +506,7 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         node_getters: list[MutationNodeGetterInterface],
-        database: Optional[InfrahubDatabase] = None,
+        database: InfrahubDatabase | None = None,
     ) -> tuple[Node, Self, bool]:
         schema_name = cls._meta.schema.kind
 
@@ -559,7 +563,7 @@ class InfrahubMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     def __init_subclass_with_meta__(
         cls,
-        schema: Optional[Union[NodeSchema, GenericSchema, ProfileSchema, TemplateSchema]] = None,
+        schema: NodeSchema | GenericSchema | ProfileSchema | TemplateSchema | None = None,
         _meta=None,
         **options,
     ) -> None:

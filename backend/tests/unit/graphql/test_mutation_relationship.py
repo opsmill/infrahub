@@ -96,8 +96,8 @@ async def test_relationship_add(
     assert len(memory_event.events) == 1
     node_event = memory_event.events[0]
     assert isinstance(node_event, NodeMutatedEvent)
-    assert node_event.data.node_id == person_jack_main.id
-    relationship = node_event.data.relationships["tags"]
+    assert node_event.changelog.node_id == person_jack_main.id
+    relationship = node_event.changelog.relationships["tags"]
     assert isinstance(relationship, RelationshipCardinalityManyChangelog)
     peers = [peer.peer_id for peer in relationship.peers]
     assert len(peers) == 2
@@ -165,8 +165,8 @@ async def test_relationship_add(
     assert len(memory_event.events) == 1
     node_event = memory_event.events[0]
     assert isinstance(node_event, NodeMutatedEvent)
-    assert node_event.data.node_id == person_jack_main.id
-    relationship = node_event.data.relationships["tags"]
+    assert node_event.changelog.node_id == person_jack_main.id
+    relationship = node_event.changelog.relationships["tags"]
     assert isinstance(relationship, RelationshipCardinalityManyChangelog)
     peers = [peer.peer_id for peer in relationship.peers]
     assert len(peers) == 1

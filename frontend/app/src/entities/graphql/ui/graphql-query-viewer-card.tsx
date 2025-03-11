@@ -1,14 +1,14 @@
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
-import { GraphqlViewer } from "@/shared/components/editor/graphql/graphql-viewer";
+import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
 const GraphqlQueryViewerCard = ({ query }: { query: string }) => {
   return (
-    <Card className="flex-grow">
+    <Card className="flex-grow p-0 overflow-x-hidden">
       <CardWithBorder.Title className="flex gap-2 items-center rounded-t">
         <h3 className="mr-auto">Query</h3>
 
@@ -21,7 +21,7 @@ const GraphqlQueryViewerCard = ({ query }: { query: string }) => {
         </Link>
       </CardWithBorder.Title>
 
-      <GraphqlViewer value={query} />
+      <CodeViewer language="graphql">{query}</CodeViewer>
     </Card>
   );
 };

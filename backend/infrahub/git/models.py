@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.context import InfrahubContext
@@ -34,7 +32,7 @@ class RequestArtifactGenerate(BaseModel):
     target_id: str = Field(..., description="The ID of the target object for this artifact")
     target_kind: str = Field(..., description="The kind of the target object for this artifact")
     target_name: str = Field(..., description="Name of the artifact target")
-    artifact_id: Optional[str] = Field(default=None, description="The id of the artifact if it previously existed")
+    artifact_id: str | None = Field(default=None, description="The id of the artifact if it previously existed")
     query: str = Field(..., description="The name of the query to use when collecting data")
     timeout: int = Field(..., description="Timeout for requests used to generate this artifact")
     variables: dict = Field(..., description="Input variables when generating the artifact")
@@ -47,8 +45,8 @@ class GitRepositoryAdd(BaseModel):
     location: str = Field(..., description="The external URL of the repository")
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the repository")
-    created_by: Optional[str] = Field(default=None, description="The user ID of the user that created the repository")
-    default_branch_name: Optional[str] = Field(None, description="Default branch for this repository")
+    created_by: str | None = Field(default=None, description="The user ID of the user that created the repository")
+    default_branch_name: str | None = Field(None, description="Default branch for this repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
     infrahub_branch_id: str = Field(..., description="Id of the Infrahub branch on which to sync the remote repository")
     internal_status: str = Field(..., description="Administrative status of the repository")
@@ -61,7 +59,7 @@ class GitRepositoryAddReadOnly(BaseModel):
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the repository")
     ref: str = Field(..., description="Ref to track on the external repository")
-    created_by: Optional[str] = Field(default=None, description="The user ID of the user that created the repository")
+    created_by: str | None = Field(default=None, description="The user ID of the user that created the repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
     infrahub_branch_id: str = Field(..., description="Id of the Infrahub branch on which to sync the remote repository")
     internal_status: str = Field(..., description="Internal status of the repository")
@@ -73,8 +71,8 @@ class GitRepositoryPullReadOnly(BaseModel):
     location: str = Field(..., description="The external URL of the repository")
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the repository")
-    ref: Optional[str] = Field(None, description="Ref to track on the external repository")
-    commit: Optional[str] = Field(None, description="Specific commit to pull")
+    ref: str | None = Field(None, description="Ref to track on the external repository")
+    commit: str | None = Field(None, description="Specific commit to pull")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
     infrahub_branch_id: str = Field(..., description="Infrahub branch on which to sync the remote repository")
 
@@ -108,7 +106,7 @@ class GitDiffNamesOnly(BaseModel):
     repository_name: str = Field(..., description="The name of the repository")
     repository_kind: str = Field(..., description="The kind of the repository")
     first_commit: str = Field(..., description="The first commit")
-    second_commit: Optional[str] = Field(None, description="The second commit")
+    second_commit: str | None = Field(None, description="The second commit")
 
 
 class GitDiffNamesOnlyResponse(BaseModel):

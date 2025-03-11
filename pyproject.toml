@@ -511,7 +511,6 @@ allow-dunder-method-names = [
     "ANN003", # Missing type annotation for `**kwargs`
     "ANN204", # Missing return type annotation for special method
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
-    "PT013",   # Incorrect import of `pytest`; use `import pytest` instead
     "UP007",  # Use X | Y for type annotations
 ]
 

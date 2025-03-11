@@ -10,6 +10,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.constants import TestKind
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import DEVICE_SCHEMA
 
@@ -1081,7 +1082,7 @@ async def test_create_with_object_template(
     )
     assert "Unable to find the object template in the database" in result.errors[0].message
 
-    device_template: Node = await Node.init(schema="TemplateTestingDevice", db=db, branch=default_branch)
+    device_template: Node = await Node.init(schema=f"Template{TestKind.DEVICE}", db=db, branch=default_branch)
     await device_template.new(
         db=db, template_name="MX204 Router", manufacturer="Juniper", height=1, weight=6, airflow="Front to rear"
     )
@@ -1097,7 +1098,7 @@ async def test_create_with_object_template(
     assert not result.errors
 
     device = await NodeManager.get_one(
-        db=db, kind="TestingDevice", branch=default_branch, id=result.data["TestingDeviceCreate"]["object"]["id"]
+        db=db, kind=TestKind.DEVICE, branch=default_branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
     )
     assert device
     assert device.name.value == "th2.par.asbr01"
@@ -1112,7 +1113,9 @@ async def test_create_with_object_template(
     if_names = ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"]
     interface_templates: list[Node] = []
     for if_name in if_names:
-        interface_template: Node = await Node.init(schema="TemplateTestingInterface", db=db, branch=default_branch)
+        interface_template: Node = await Node.init(
+            schema=f"Template{TestKind.PHYSICAL_INTERFACE}", db=db, branch=default_branch
+        )
         await interface_template.new(
             db=db, template_name=f"MX204 {if_name}", device=device_template, name=if_name, phys_type="QSFP28 (100GE)"
         )
@@ -1132,7 +1135,7 @@ async def test_create_with_object_template(
     assert not result.errors
 
     device = await NodeManager.get_one(
-        db=db, kind="TestingDevice", branch=default_branch, id=result.data["TestingDeviceCreate"]["object"]["id"]
+        db=db, kind=TestKind.DEVICE, branch=default_branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
     )
     assert device
     assert device.name.value == "th2.par.asbr02"
@@ -1140,6 +1143,8 @@ async def test_create_with_object_template(
     device_template_node = await device.object_template.get_peer(db=db)
     assert device_template_node.id == device_template.id
     # Validate that interfaces relationship has been populated according to object template
+    interfaces = await NodeManager.query(db=db, branch=default_branch, schema=TestKind.PHYSICAL_INTERFACE)
+    assert len(interfaces) == len(if_names)
     device_interfaces = await device.interfaces.get_peers(db=db)
     assert len(device_interfaces) == len(if_names)
     assert sorted([interface.name.value for interface in device_interfaces.values()]) == if_names
@@ -1147,7 +1152,7 @@ async def test_create_with_object_template(
     # Add a SFP to each interface of the object template
     template_interfaces = await device_template.interfaces.get_peers(db=db)
     for interface in template_interfaces.values():
-        sfp_template: Node = await Node.init(schema="TemplateTestingSfp", db=db, branch=default_branch)
+        sfp_template: Node = await Node.init(schema=f"Template{TestKind.SFP}", db=db, branch=default_branch)
         await sfp_template.new(
             db=db,
             template_name=f"QSFP {interface.name.value}",
@@ -1167,7 +1172,7 @@ async def test_create_with_object_template(
     assert not result.errors
 
     device = await NodeManager.get_one(
-        db=db, kind="TestingDevice", branch=default_branch, id=result.data["TestingDeviceCreate"]["object"]["id"]
+        db=db, kind=TestKind.DEVICE, branch=default_branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
     )
     assert device
     assert device.name.value == "th2.par.asbr03"
@@ -1217,7 +1222,7 @@ async def test_create_without_object_template(
     assert not result.errors
 
     device = await NodeManager.get_one(
-        db=db, kind="TestingDevice", branch=default_branch, id=result.data["TestingDeviceCreate"]["object"]["id"]
+        db=db, kind=TestKind.DEVICE, branch=default_branch, id=result.data[f"{TestKind.DEVICE}Create"]["object"]["id"]
     )
     assert device
     assert device.name.value == "th2.par.asbr01"

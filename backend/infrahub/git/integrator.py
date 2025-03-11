@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import sys
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 import jinja2
 import ujson
@@ -39,7 +39,7 @@ from typing_extensions import Self
 
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositorySyncStatus
 from infrahub.core.registry import registry
-from infrahub.events.artifact_action import ArtifactEvent
+from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
 from infrahub.events.models import EventMeta
 from infrahub.events.repository_action import CommitUpdatedEvent
 from infrahub.exceptions import CheckError, RepositoryInvalidFileSystemError, TransformError
@@ -93,10 +93,10 @@ class CheckDefinitionInformation(BaseModel):
     timeout: int
     """Timeout for the Check."""
 
-    parameters: Optional[dict] = None
+    parameters: dict | None = None
     """Additional Parameters to extract from each target (if targets is provided)"""
 
-    targets: Optional[str] = Field(default=None, description="Targets if not a global check")
+    targets: str | None = Field(default=None, description="Targets if not a global check")
 
 
 class TransformPythonInformation(BaseModel):
@@ -161,7 +161,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     @flow(name="import-object-from-file", flow_run_name="Import objects")
     async def import_objects_from_files(
-        self, infrahub_branch_name: str, git_branch_name: Optional[str] = None, commit: Optional[str] = None
+        self, infrahub_branch_name: str, git_branch_name: str | None = None, commit: str | None = None
     ) -> None:
         if not commit:
             commit = self.get_commit_value(branch_name=git_branch_name or infrahub_branch_name)
@@ -443,7 +443,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         await existing_artifact_definition.save()
 
     @task(name="repository-get-config", task_run_name="get repository config", cache_policy=NONE)  # type: ignore[arg-type]
-    async def get_repository_config(self, branch_name: str, commit: str) -> Optional[InfrahubRepositoryConfig]:
+    async def get_repository_config(self, branch_name: str, commit: str) -> InfrahubRepositoryConfig | None:
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         log = get_run_logger()
 
@@ -1098,7 +1098,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         location: str,
         class_name: str,
         client: InfrahubClient,
-        params: Optional[dict] = None,
+        params: dict | None = None,
     ) -> InfrahubCheck:
         """Execute A Python Check stored in the repository."""
         log = get_run_logger()
@@ -1270,7 +1270,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         self,
         artifact: CoreArtifact,
         artifact_created: bool,
-        message: Union[CheckArtifactCreate, RequestArtifactGenerate],
+        message: CheckArtifactCreate | RequestArtifactGenerate,
     ) -> ArtifactGenerateResult:
         response = await self.sdk.query_gql_query(
             name=message.query,
@@ -1324,7 +1324,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             artifact.name.value = message.artifact_name
         await artifact.save()
 
-        event = ArtifactEvent(
+        event_class = ArtifactCreatedEvent if artifact_created else ArtifactUpdatedEvent
+
+        event = event_class(
             node_id=artifact.id,
             target_id=message.target_id,
             target_kind=message.target_kind,
@@ -1334,7 +1336,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             checksum_previous=previous_checksum,
             storage_id=storage_id,
             storage_id_previous=previous_storage_id,
-            created=artifact_created,
         )
 
         await self.service.event.send(event=event)

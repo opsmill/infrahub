@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, AsyncIterator, Optional
+from typing import TYPE_CHECKING, AsyncIterator
 
 from fastapi import Depends, Query, Request
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
@@ -25,7 +25,7 @@ jwt_scheme = HTTPBearer(auto_error=False)
 api_key_scheme = APIKeyHeader(name="X-INFRAHUB-KEY", auto_error=False)
 
 
-async def cookie_auth_scheme(request: Request) -> Optional[str]:
+async def cookie_auth_scheme(request: Request) -> str | None:
     return request.cookies.get("access_token")  # Replace with the actual name of your JWT cookie
 
 
@@ -62,7 +62,7 @@ async def get_access_token(
 async def get_refresh_token(
     request: Request,
     db: InfrahubDatabase = Depends(get_db),
-    jwt_header: Optional[HTTPAuthorizationCredentials] = Depends(jwt_scheme),
+    jwt_header: HTTPAuthorizationCredentials | None = Depends(jwt_scheme),
 ) -> RefreshTokenData:
     token = None
 
@@ -83,8 +83,8 @@ async def get_refresh_token(
 
 async def get_branch_params(
     db: InfrahubDatabase = Depends(get_db),
-    branch_name: Optional[str] = Query(None, alias="branch", description="Name of the branch to use for the query"),
-    at: Optional[str] = Query(None, description="Time to use for the query, in absolute or relative format"),
+    branch_name: str | None = Query(None, alias="branch", description="Name of the branch to use for the query"),
+    at: str | None = Query(None, description="Time to use for the query, in absolute or relative format"),
 ) -> BranchParams:
     branch = await registry.get_branch(db=db, branch=branch_name)
 
@@ -93,7 +93,7 @@ async def get_branch_params(
 
 async def get_branch_dep(
     db: InfrahubDatabase = Depends(get_db),
-    branch_name: Optional[str] = Query(None, alias="branch", description="Name of the branch to use for the query"),
+    branch_name: str | None = Query(None, alias="branch", description="Name of the branch to use for the query"),
 ) -> Branch:
     return await registry.get_branch(db=db, branch=branch_name)
 
