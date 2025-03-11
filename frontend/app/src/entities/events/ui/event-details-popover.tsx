@@ -6,7 +6,7 @@ import { InfoIcon } from "lucide-react";
 export function EventDetailsPopover(props: EventType) {
   return (
     <Popover>
-      <PopoverTrigger className="flex items-center gap-1 text-xs text-gray-600">
+      <PopoverTrigger className="flex items-center px-1 py-0.5 rounded-md gap-1 text-xs text-gray-600 hover:text-gray-700 hover:bg-gray-100 transition-all">
         View more <InfoIcon className="size-3" />
       </PopoverTrigger>
 

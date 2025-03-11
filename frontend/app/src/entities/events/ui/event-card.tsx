@@ -9,6 +9,7 @@ import { PropertyRow } from "@/entities/schema/ui/styled";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Link } from "@/shared/components/ui/link";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
+import { Icon } from "@iconify-icon/react";
 import { BRANCH_EVENTS, GROUP_EVENTS, STANDARD_EVENTS } from "../constants";
 import { BranchEventTitle } from "./branch-events/branch-event-title";
 import { GroupEventTitle } from "./group-events/group-event-title";
@@ -137,7 +138,17 @@ export const EventCard = (props: EventType) => {
           <div className="flex justify-between text-gray-500">
             <DateDisplay date={props.occurred_at} />
 
-            <EventDetailsPopover {...props} />
+            <div className="flex items-center gap-4">
+              {props.branch && (
+                <div className="text-xs font-medium text-gray-500 flex items-center gap-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                  <Icon icon={"mdi:source-branch"} />
+
+                  {props.branch}
+                </div>
+              )}
+
+              <EventDetailsPopover {...props} />
+            </div>
           </div>
         </div>
       </div>
