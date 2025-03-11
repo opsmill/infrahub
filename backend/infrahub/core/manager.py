@@ -1102,17 +1102,15 @@ class NodeManager:
         cls,
         db: InfrahubDatabase,
         ids: list[str],
-        fields: Optional[dict] = None,
-        at: Optional[Union[Timestamp, str]] = None,
-        branch: Optional[Union[Branch, str]] = None,
-        include_source: bool = False,
-        include_owner: bool = False,
-        account=None,
-        branch_agnostic: bool = False,
-        use_profiles: bool = True,
+        fields: dict | None,
+        at: Timestamp,
+        branch: Branch,
+        include_source: bool,
+        include_owner: bool,
+        account,
+        branch_agnostic: bool,
+        use_profiles: bool,
     ) -> NodesToProcessData:
-        branch = await registry.get_branch(branch=branch, db=db)
-        at = Timestamp(at)
         # Query all nodes
         query = await NodeListGetInfoQuery.init(
             db=db,
@@ -1180,9 +1178,9 @@ class NodeManager:
         cls,
         db: InfrahubDatabase,
         ids: list[str],
-        fields: Optional[dict] = None,
-        at: Optional[Union[Timestamp, str]] = None,
-        branch: Optional[Union[Branch, str]] = None,
+        fields: dict | None = None,
+        at: Timestamp | str | None = None,
+        branch: Branch | str | None = None,
         include_source: bool = False,
         include_owner: bool = False,
         prefetch_relationships: bool = False,
@@ -1191,6 +1189,8 @@ class NodeManager:
     ) -> dict[str, Node]:
         """Return a list of nodes based on their IDs."""
         use_profiles = not config.SETTINGS.experimental_features.no_profiles
+        branch = await registry.get_branch(branch=branch, db=db)
+        at = Timestamp(at)
         nodes_to_process_data = await cls._get_nodes_to_process(
             db=db,
             ids=ids,

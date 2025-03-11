@@ -1,6 +1,7 @@
 import pytest
 from infrahub_sdk.uuidt import UUIDT
 
+from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager, identify_node_class
@@ -13,6 +14,11 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
+
+
+@pytest.fixture(params=[True, False])
+async def use_profiles(request) -> None:
+    config.SETTINGS.experimental_features.no_profiles = request.param
 
 
 async def test_get_one_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -248,13 +254,15 @@ async def test_get_one_by_hfid(
         await NodeManager.get_one_by_hfid(db=db, hfid=["Not", "Dog"], kind=dog_schema.kind, raise_on_error=True)
 
 
-async def test_get_many(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):
+async def test_get_many(
+    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium, use_profiles
+):
     nodes = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
     assert len(nodes) == 2
 
 
 async def test_get_many_prefetch(
-    db: InfrahubDatabase, person_jack_tags_main, tag_blue_main, tag_red_main, branch: Branch
+    db: InfrahubDatabase, person_jack_tags_main, tag_blue_main, tag_red_main, branch: Branch, use_profiles
 ):
     nodes = await NodeManager.get_many(
         db=db, branch=branch, ids=[person_jack_tags_main.id], prefetch_relationships=True
@@ -289,7 +297,7 @@ async def test_get_many_prefetch(
 
 
 async def test_get_many_prefetch_hierarchical(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node], use_profiles
 ):
     nodes_to_query = ["europe", "asia", "paris", "chicago", "london-r1"]
     node_ids = [hierarchical_location_data[value].id for value in nodes_to_query]
@@ -378,7 +386,7 @@ async def test_get_many_with_multiple_profiles_same_priority(
 
 
 async def test_get_many_branch_agnostic(
-    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium
+    db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium, use_profiles
 ):
     branch = await create_branch(db=db, branch_name="branch")
     crit_schema = registry.schema.get(name="TestCriticality", branch=branch, duplicate=False)
@@ -411,7 +419,7 @@ async def test_get_many_branch_agnostic(
 
 
 async def test_get_many_relationship_fields(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node]
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: dict[str, Node], use_profiles
 ):
     nodes_to_query = ["europe", "asia", "paris", "chicago", "london-r1"]
     node_ids = [hierarchical_location_data[value].id for value in nodes_to_query]
