@@ -27,12 +27,12 @@ test.describe("Global Activities - List view and filter usage", () => {
   test("Filter by event type", async ({ page }) => {
     await page.goto("/activities");
     await page.getByRole("button", { name: "Event Type" }).click();
-    await expect(page.getByRole("option", { name: "Node created" })).toBeVisible();
-    await page.getByRole("option", { name: "Node created" }).locator("div").nth(1).click();
+    await page.getByRole("option", { name: "Node created" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText("created").nth(1)).toBeVisible();
     await page.getByRole("button", { name: "Event Type" }).click();
-    await expect(page.getByRole("option", { name: "Node deleted" })).toBeVisible();
+    await page.getByRole("button", { name: "Event Type" }).click();
+    await page.getByRole("option", { name: "Node deleted" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText("deleted").nth(1)).toBeVisible();
   });
