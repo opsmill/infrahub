@@ -744,23 +744,28 @@ class NodeListGetInfoQuery(Query):
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
+        branch_filter_deleted, _ = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic, variable_name="rfilter"
+        )
         self.params.update(branch_params)
         self.params["ids"] = self.ids
 
         query = """
-        MATCH p = (root:Root)<-[:IS_PART_OF]-(n:Node)
-        WHERE n.uuid IN $ids
-        CALL {
-            WITH root, n
-            MATCH (root:Root)<-[r:IS_PART_OF]-(n:Node)
-            WHERE %(branch_filter)s
-            RETURN n as n1, r as r1
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n1 as n, r1 as rb
+        MATCH (:Root)<-[rfilter:IS_PART_OF]-(nfilter:Node)
+        WHERE %(branch_filter_deleted)s
+        AND rfilter.branch_level = %(branch_level)d AND rfilter.status = "deleted"
+        AND nfilter.uuid IN $ids
+        WITH collect(nfilter.uuid) AS deleted_list
+        MATCH p = (root:Root)<-[r:IS_PART_OF]-(n:Node)
+        WHERE n.uuid IN $ids AND NOT n.uuid IN deleted_list AND
+        %(branch_filter)s
+        WITH n, r as rb
         WHERE rb.status = "active"
-        """ % {"branch_filter": branch_filter}
+        """ % {
+            "branch_filter": branch_filter,
+            "branch_filter_deleted": branch_filter_deleted,
+            "branch_level": self.branch.hierarchy_level,
+        }
         self.add_to_query(query)
 
         if self.use_profiles:
