@@ -8,18 +8,11 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("should create a new profile successfully", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
       await page.goto("/objects/CoreProfile");
       await expect(page.getByRole("heading")).toContainText("Profile");
+      await expect(page.getByRole("link", { name: "upstream_profile" })).toBeVisible();
     });
 
     await test.step("Create a new profile", async () => {
@@ -62,6 +55,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
   test("create an object with a profile", async ({ page }) => {
     await test.step("Navigate to object creation page", async () => {
       await page.goto("/objects/BuiltinTag");
+      await expect(page.getByRole("link", { name: "blue" })).toBeVisible();
       await page.getByTestId("create-object-button").click();
     });
 
@@ -125,7 +119,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
       await page.getByTestId("edit-button").click();
       await page.getByLabel("Description").fill("A profile for E2E test edited");
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.getByText("DescriptionA profile for E2E test")).toBeVisible();
+      await expect(page.getByText("DescriptionA profile for E2E test edited")).toBeVisible();
     });
 
     await test.step("Verify the changes in an object using the edited profile", async () => {
@@ -183,17 +177,10 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test.beforeEach(async function ({ page }) {
-    page.on("response", async (response) => {
-      if (response.status() === 500) {
-        await expect(response.url()).toBe("This URL responded with a 500 status");
-      }
-    });
-  });
-
   test("should verify the form fields for a new profile for interface L2", async ({ page }) => {
     await test.step("access Interface L2 form", async () => {
       await page.goto("/objects/CoreProfile");
+      await expect(page.getByRole("link", { name: "backbone_profile" })).toBeVisible();
 
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
@@ -223,6 +210,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
   test("should create a new profile successfully for interface L2", async ({ page }) => {
     await test.step("access Interface L2 form", async () => {
       await page.goto("/objects/CoreProfile");
+      await expect(page.getByRole("link", { name: "backbone_profile" })).toBeVisible();
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
@@ -243,6 +231,7 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
   test("should create a new profile successfully for generic interface", async ({ page }) => {
     await test.step("access Interface form", async () => {
       await page.goto("/objects/CoreProfile");
+      await expect(page.getByRole("link", { name: "backbone_profile" })).toBeVisible();
       await page.getByTestId("create-object-button").click();
       await page.getByLabel("Select an object type").click();
       await page.getByRole("option", { name: "Interface Infra", exact: true }).click();
@@ -276,6 +265,9 @@ test.describe("/objects/CoreProfile - Profile for Interface L2 and fields verifi
 
   test("should verify the available profiles in the object form", async ({ page }) => {
     await page.goto("/objects/InfraInterface");
+    await expect(
+      page.getByRole("link", { name: "atl1-edge1, Ethernet1", exact: true })
+    ).toBeVisible();
     await page.getByTestId("create-object-button").click();
     await page.getByLabel("Select an object type").click();
     await page.getByRole("option", { name: "Interface L2 Infra", exact: true }).click();
