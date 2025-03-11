@@ -14,7 +14,6 @@ from typing import (
     Awaitable,
     Callable,
     Sequence,
-    Union,
     cast,
 )
 
@@ -86,7 +85,7 @@ GQL_ERROR = "error"
 GQL_START = "start"
 GQL_STOP = "stop"
 
-ContextValue = Union[Any, Callable[[HTTPConnection], Any]]
+ContextValue = Any | Callable[[HTTPConnection], Any]
 RootValue = Any
 
 

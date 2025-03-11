@@ -1,6 +1,5 @@
 import re
 import sys
-from typing import Optional
 
 import typer
 from infrahub_sdk import Config, InfrahubClientSync
@@ -16,7 +15,7 @@ REGEX_PASSWORD = r"^Password.*\'(.*\:\/\/)(.*)@(.*)\'"
 
 @app.command()
 def askpass(
-    text: Optional[list[str]] = typer.Argument(None),
+    text: list[str] | None = typer.Argument(None),
     config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     config.SETTINGS.initialize_and_exit(config_file=config_file)

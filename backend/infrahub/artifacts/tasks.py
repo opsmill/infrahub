@@ -1,5 +1,3 @@
-from typing import Union
-
 from prefect import flow
 
 from infrahub.artifacts.models import CheckArtifactCreate
@@ -35,7 +33,7 @@ async def create(model: CheckArtifactCreate, service: InfrahubServices) -> Valid
     artifact, artifact_created = await define_artifact(model=model, service=service)
 
     severity = "info"
-    artifact_result: dict[str, Union[str, bool, None]] = {
+    artifact_result: dict[str, str | bool | None] = {
         "changed": None,
         "checksum": None,
         "artifact_id": None,

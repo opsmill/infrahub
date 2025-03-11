@@ -4,7 +4,7 @@ import importlib
 import logging
 import os
 from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import typer
 from infrahub_sdk.async_typer import AsyncTyper
@@ -333,7 +333,7 @@ async def constraint(
     context: CliContext = ctx.obj
     dbdriver = await context.init_db(retry=1)
 
-    manager: Optional[ConstraintManagerBase] = None
+    manager: ConstraintManagerBase | None = None
     if dbdriver.db_type == DatabaseType.NEO4J:
         manager = ConstraintManagerNeo4j.from_graph_schema(db=dbdriver, schema=GRAPH_SCHEMA)
     elif dbdriver.db_type == DatabaseType.MEMGRAPH:
