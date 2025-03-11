@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../../constants";
+import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
+import { generateRandomBranchName } from "../../../utils";
 
 const PROFILE_NAME = "Interface L2 profile test";
 const GENERIC_PROFILE_NAME = "Generic Interface profile test";
@@ -7,10 +9,19 @@ const GENERIC_PROFILE_NAME = "Generic Interface profile test";
 test.describe("/objects/CoreProfile - Profiles page", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
+  const BRANCH_NAME = generateRandomBranchName("profiles");
+
+  test.beforeAll(async ({ request }) => {
+    await createBranchAPI(request, BRANCH_NAME);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await deleteBranchAPI(request, BRANCH_NAME);
+  });
 
   test("should create a new profile successfully", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
-      await page.goto("/objects/CoreProfile");
+      await page.goto(`/objects/CoreProfile?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("heading")).toContainText("Profile");
       await expect(page.getByRole("link", { name: "upstream_profile" })).toBeVisible();
     });
@@ -34,7 +45,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("access the created profile, view its data, and edit it", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
-      await page.goto("/objects/CoreProfile");
+      await page.goto(`/objects/CoreProfile?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("heading")).toContainText("Profile");
       await page.getByRole("link", { name: "profile test tag" }).click();
     });
@@ -54,7 +65,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("create an object with a profile", async ({ page }) => {
     await test.step("Navigate to object creation page", async () => {
-      await page.goto("/objects/BuiltinTag");
+      await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("link", { name: "blue" })).toBeVisible();
       await page.getByTestId("create-object-button").click();
     });
@@ -110,7 +121,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     page,
   }) => {
     await test.step("Navigate to an used profile", async () => {
-      await page.goto("/objects/CoreProfile");
+      await page.goto(`/objects/CoreProfile?branch=${BRANCH_NAME}`);
       await expect(page.getByRole("heading")).toContainText("Profile");
       await page.getByRole("link", { name: "profile test tag" }).click();
     });
@@ -123,7 +134,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("Verify the changes in an object using the edited profile", async () => {
-      await page.goto("/objects/BuiltinTag");
+      await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "tag with profile" }).click();
       await expect(page.getByText("DescriptionA profile for E2E test edited")).toBeVisible();
     });
@@ -131,7 +142,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("edit profile of tag without touching any other field", async ({ page }) => {
     await test.step("got to edit form of tag", async () => {
-      await page.goto("/objects/BuiltinTag");
+      await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "tag with profile" }).click();
       await page.getByTestId("edit-button").click();
     });
@@ -147,7 +158,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
 
   test("delete the profile and reset object attribute value", async ({ page }) => {
     await test.step("Navigate to CoreProfile page", async () => {
-      await page.goto("/objects/CoreProfile");
+      await page.goto(`/objects/CoreProfile?branch=${BRANCH_NAME}`);
     });
 
     await test.step("Delete the profile", async () => {
@@ -164,7 +175,7 @@ test.describe("/objects/CoreProfile - Profiles page", () => {
     });
 
     await test.step("Object attribute using profile value should be reset", async () => {
-      await page.goto("/objects/BuiltinTag");
+      await page.goto(`/objects/BuiltinTag?branch=${BRANCH_NAME}`);
       await page.getByRole("link", { name: "tag with profile" }).click();
       await expect(page.getByText("Description-", { exact: true })).toBeVisible();
       await page.getByText("Description-").getByTestId("view-metadata-button").click();
