@@ -85,7 +85,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if not self._schema.human_friendly_id:
             return None
 
-        hfid = [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
+        hfid_values = [await self.get_path_value(db=db, path=item) for item in self._schema.human_friendly_id]
+        hfid = [value for value in hfid_values if value is not None]
         if include_kind:
             return [self.get_kind()] + hfid
         return hfid
