@@ -2957,6 +2957,11 @@ async def test_manage_object_templates_with_component_relationships():
 
     # Make sure interfaces relationship is converted to interface templates
     assert test_object_template_device.get_relationship("interfaces").peer == f"Template{TestKind.INTERFACE}"
+    # Make sure identifier matches as they are set to be the same
+    assert (
+        test_object_template_device.get_relationship("interfaces").identifier.removeprefix("template_")
+        == schema_branch.get_node(name=TestKind.DEVICE, duplicate=False).get_relationship("interfaces").identifier
+    )
 
     # Verify attributes mapping of components
     test_interface_template = schema_branch.get(name=f"Template{TestKind.PHYSICAL_INTERFACE}", duplicate=False)
