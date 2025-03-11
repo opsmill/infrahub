@@ -151,7 +151,9 @@ async def merge_proposed_change(
 
         log.info("Proposed change is eligible to be merged")
         try:
-            await merge_branch(branch=source_branch.name, context=context, service=service)
+            await merge_branch(
+                branch=source_branch.name, context=context, service=service, proposed_change_id=proposed_change_id
+            )
         except MergeFailedError as exc:
             await _proposed_change_transition_state(
                 proposed_change=proposed_change, state=ProposedChangeState.OPEN, service=service
