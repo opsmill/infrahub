@@ -1,13 +1,11 @@
 import { DateDisplay } from "@/shared/components/display/date-display";
 
 import { ACCOUNT_OBJECT } from "@/config/constants";
-import { QSP } from "@/config/qsp";
 import { EventType } from "@/entities/events/types";
 import { EventDetailsPopover } from "@/entities/events/ui/event-details-popover";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 import { PropertyRow } from "@/entities/schema/ui/styled";
-import { constructPath } from "@/shared/api/rest/fetch";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Link } from "@/shared/components/ui/link";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
@@ -16,6 +14,7 @@ import { BranchEventTitle } from "./branch-events/branch-event-title";
 import { GroupEventTitle } from "./group-events/group-event-title";
 import { EventAttributes } from "./node-events/event-attributes";
 import { NodeEventTitle } from "./node-events/node-event-title";
+import { getLink } from "./node-events/utils";
 import { StandardEventTitle } from "./standard-events/standard-event-title";
 
 export const EventDetails = ({
@@ -47,11 +46,7 @@ export const EventDetails = ({
         <PropertyRow
           title="Account"
           value={
-            <Link
-              to={constructPath(`/${ACCOUNT_OBJECT}/${account_id}`, [
-                { name: QSP.BRANCH, value: props.branch },
-              ])}
-            >
+            <Link to={getLink({ kind: ACCOUNT_OBJECT, id: account_id, branch })}>
               <NodeLabel id={account_id} />
             </Link>
           }
@@ -61,11 +56,7 @@ export const EventDetails = ({
         <PropertyRow
           title="Primary Node"
           value={
-            <Link
-              to={constructPath(`/${primary_node.kind}/${primary_node.id}`, [
-                { name: QSP.BRANCH, value: props.branch },
-              ])}
-            >
+            <Link to={getLink({ kind: primary_node.kind, id: primary_node.id, branch })}>
               <NodeLabel id={primary_node.id} />
             </Link>
           }
@@ -78,12 +69,7 @@ export const EventDetails = ({
             <div className="flex flex-col items-end gap-1">
               {related_nodes.map((node) => {
                 return (
-                  <Link
-                    key={node.id}
-                    to={constructPath(`/${node.kind}/${node.id}`, [
-                      { name: QSP.BRANCH, value: props.branch },
-                    ])}
-                  >
+                  <Link key={node.id} to={getLink({ kind: node.kind, id: node.id, branch })}>
                     <NodeLabel id={node?.id} />
                   </Link>
                 );
@@ -99,12 +85,7 @@ export const EventDetails = ({
             <div className="flex flex-col items-end gap-1">
               {ancestors.map((node) => {
                 return (
-                  <Link
-                    key={node.id}
-                    to={constructPath(`/${node.kind}/${node.id}`, [
-                      { name: QSP.BRANCH, value: props.branch },
-                    ])}
-                  >
+                  <Link key={node.id} to={getLink({ kind: node.kind, id: node.id, branch })}>
                     <NodeLabel id={node?.id} />
                   </Link>
                 );
@@ -120,12 +101,7 @@ export const EventDetails = ({
             <div className="flex flex-col items-end gap-1">
               {members.map((node) => {
                 return (
-                  <Link
-                    key={node.id}
-                    to={constructPath(`/${node.kind}/${node.id}`, [
-                      { name: QSP.BRANCH, value: props.branch },
-                    ])}
-                  >
+                  <Link key={node.id} to={getLink({ kind: node.kind, id: node.id, branch })}>
                     <NodeLabel id={node?.id} />
                   </Link>
                 );
