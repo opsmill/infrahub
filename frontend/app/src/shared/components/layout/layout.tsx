@@ -23,10 +23,10 @@ function Layout() {
 
   return (
     <div className="h-screen w-screen  text-stone-800 p-px bg-stone-100">
-      <div className="h-full w-full flex gap-px">
+      <div className="h-full w-full flex gap-0.5">
         <Sidebar />
 
-        <div className="flex flex-col gap-px h-full grow overflow-hidden">
+        <div className="flex flex-col gap-0.5 h-full grow overflow-hidden">
           <Header />
 
           <Outlet />

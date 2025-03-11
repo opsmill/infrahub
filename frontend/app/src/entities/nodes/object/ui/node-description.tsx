@@ -16,7 +16,7 @@ export function NodeDescription({ node, className, ...props }: ObjectInlineDispl
   const schemaLabel = schema?.label ?? schema?.name ?? node.__typename;
 
   return (
-    <div className={classNames("flex flex-col gap-px text-sm", className)} {...props}>
+    <div className={classNames("flex flex-col text-sm", className)} {...props}>
       <div className="flex items-center gap-1">
         <Icon icon={schema?.icon ?? "mdi:cube-outline"} className="text-gray-400 text-xs" />
         {schemaLabel}
