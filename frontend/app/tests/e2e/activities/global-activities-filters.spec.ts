@@ -51,13 +51,13 @@ test.describe("Global Activities - List view and filter usage", () => {
     await page.getByRole("option", { name: "Account", exact: true }).click();
     await page.getByRole("option", { name: "Chloe O'Brian" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
-    await expect(page.getByText("Chloe O'").nth(1)).toBeVisible();
+    await expect(page.getByText("Chloe O'Brian'").nth(1)).toBeVisible();
     await page.getByRole("button", { name: "Primary Node Chloe O'Brian" }).click();
     await page.getByRole("button", { name: "Related Node" }).click();
     await page.getByRole("option", { name: "Account", exact: true }).click();
     await page.getByRole("option", { name: "CRM Synchronization" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
-    await expect(page.getByText("AccountCRM").nth(1)).toBeVisible();
+    await expect(page.getByText("CRM Synchronization").nth(1)).toBeVisible();
   });
 
   test("Filter by account", async ({ page }) => {
