@@ -9,9 +9,8 @@ import { useTitle } from "@/shared/hooks/useTitle";
 import { useParams } from "react-router";
 
 export const ArtifactDetailsPage = () => {
-  useTitle("Artifact details");
+  useTitle("Artifact");
   const { artifactId } = useParams();
-
   const { schema: artifactSchema } = useSchema(ARTIFACT_OBJECT);
   const { isPending, error, data: permission } = useGetObjectPermissions(ARTIFACT_OBJECT);
 

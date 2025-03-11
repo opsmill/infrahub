@@ -4,10 +4,9 @@ import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { queryClient } from "@/shared/api/rest/client";
 import { fetchUrl, getUrlWithQsp } from "@/shared/api/rest/fetch";
 import { Button } from "@/shared/components/buttons/button-primitive";
-
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
@@ -77,11 +76,8 @@ export const ArtifactReGenerateButton = (props: tGenerateProps) => {
 
   return (
     <Button variant={"active"} disabled={!isAuthenticated || isLoading} onClick={handleGenerate}>
+      <RefreshCwIcon className={classNames("mr-2 size-4", isLoading && "animate-spin")} />
       {label ?? "Generate"}
-      <ArrowPathIcon
-        className={classNames("ml-2 h-4 w-4", isLoading ? "animate-spin" : "")}
-        aria-hidden="true"
-      />
     </Button>
   );
 };
