@@ -13,12 +13,12 @@ import { StringParam, useQueryParam } from "use-query-params";
 
 type tGenerateProps = {
   label?: string;
-  artifactid?: string;
+  artifactId?: string;
   definitionId: string;
 };
 
 export const ArtifactGenerateButton = (props: tGenerateProps) => {
-  const { label, artifactid, definitionId } = props;
+  const { label, artifactId, definitionId } = props;
 
   const auth = useAuth();
 
@@ -46,7 +46,7 @@ export const ArtifactGenerateButton = (props: tGenerateProps) => {
         headers: {
           authorization: `Bearer ${auth.accessToken}`,
         },
-        ...(artifactid ? { body: JSON.stringify({ nodes: [artifactid] }) } : {}),
+        ...(artifactId ? { body: JSON.stringify({ nodes: [artifactId] }) } : {}),
       });
 
       if (res?.errors?.length) {
@@ -55,7 +55,7 @@ export const ArtifactGenerateButton = (props: tGenerateProps) => {
 
       await queryClient.invalidateQueries({ queryKey: ["is-task-running"] });
 
-      if (artifactid) {
+      if (artifactId) {
         toast(<Alert message="Artifact re-generated" type={ALERT_TYPES.SUCCESS} />);
       } else {
         toast(<Alert message="Artifacts generated" type={ALERT_TYPES.SUCCESS} />);
