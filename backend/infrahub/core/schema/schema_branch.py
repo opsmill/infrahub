@@ -1860,7 +1860,8 @@ class SchemaBranch:
                     else relationship.kind != RelationshipKind.PARENT,
                     cardinality=relationship.cardinality,
                     branch=relationship.branch,
-                    identifier=self._generate_identifier_string(template_schema.kind, rel_template_peer),
+                    identifier=relationship.identifier
+                    or self._generate_identifier_string(template_schema.kind, rel_template_peer),
                     min_count=relationship.min_count,
                     max_count=relationship.max_count,
                     label=f"{relationship.name} template".title()
