@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../../constants";
-import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 import { generateRandomBranchName } from "../../../utils";
+import { createBranchAPI, deleteBranchAPI } from "../../utils/graphql";
 
 const PROFILE_NAME = "Interface L2 profile test";
 const GENERIC_PROFILE_NAME = "Generic Interface profile test";
