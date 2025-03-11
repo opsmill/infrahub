@@ -17,12 +17,6 @@ test.describe("Global Activities - List view and filter usage", () => {
   test("Filter by branch", async ({ page }) => {
     await page.goto("/activities");
     await page.getByRole("button", { name: "Branch" }).click();
-    await page
-      .locator("div")
-      .filter({ hasText: /^Filter byBranch$/ })
-      .locator("span")
-      .click();
-    await page.getByRole("combobox").click();
     await page.getByRole("option", { name: "platform-conflict" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText("platform-conflict").nth(1)).toBeVisible();
