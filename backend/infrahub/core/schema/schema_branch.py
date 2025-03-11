@@ -1861,8 +1861,9 @@ class SchemaBranch:
                     cardinality=relationship.cardinality,
                     direction=relationship.direction,
                     branch=relationship.branch,
-                    identifier=relationship.identifier
-                    or self._generate_identifier_string(template_schema.kind, rel_template_peer),
+                    identifier=f"template_{relationship.identifier}"
+                    if relationship.identifier
+                    else self._generate_identifier_string(template_schema.kind, rel_template_peer),
                     min_count=relationship.min_count,
                     max_count=relationship.max_count,
                     label=f"{relationship.name} template".title()
