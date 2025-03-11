@@ -8,20 +8,18 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 import { RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
-import { useParams } from "react-router";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 
 type tGenerateProps = {
   label?: string;
   artifactid?: string;
-  definitionid?: string;
+  definitionId: string;
 };
 
-export const ArtifactReGenerateButton = (props: tGenerateProps) => {
-  const { label, artifactid, definitionid } = props;
+export const ArtifactGenerateButton = (props: tGenerateProps) => {
+  const { label, artifactid, definitionId } = props;
 
-  const { objectid } = useParams();
   const auth = useAuth();
 
   const [branch] = useQueryParam(QSP.BRANCH, StringParam);
@@ -34,7 +32,7 @@ export const ArtifactReGenerateButton = (props: tGenerateProps) => {
     try {
       setIsLoading(true);
 
-      const url = CONFIG.ARTIFACTS_GENERATE_URL(definitionid || objectid);
+      const url = CONFIG.ARTIFACTS_GENERATE_URL(definitionId);
 
       const options: string[][] = [
         ["branch", branch ?? ""],
